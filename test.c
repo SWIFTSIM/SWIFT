@@ -27,6 +27,11 @@
 #include <math.h>
 #include <omp.h>
 
+/* Conditional headers. */
+#ifdef HAVE_ZLIB
+#include <zlib.h>
+#endif
+
 /* Local headers. */
 #define INLINE
 #include "cycle.h"
@@ -178,6 +183,28 @@ void map_dump ( struct part *p , struct cell *c , void *data ) {
  
 void read_coords ( char *fname , struct part *parts , int N ) {
 
+#ifdef HAVE_ZLIB
+    gzFile *fd;
+    char buff[1024];
+    int k;
+    
+    /* Open the given file. */
+    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
+        error( "Failed to open coordinate file" );
+        
+    /* Read the coordinates into the part positions. */
+    for ( k = 0 ; k < N ; k++ ) {
+        if ( gzgets( fd , buff , 1024 ) == NULL )
+            error( "Error reading coordinate file." );
+        if ( sscanf( buff , "%lf %lf %lf" , &parts[k].x[0] , &parts[k].x[1] , &parts[k].x[2] ) != 3 ) {
+            printf( "read_coords: failed to parse %ith entry.\n" , k );
+            error( "Error parsing coordinate file." );
+            }
+        }
+        
+    /* Wrap it up. */
+    gzclose( fd );
+#else
     FILE *fd;
     int k;
     
@@ -192,6 +219,10 @@ void read_coords ( char *fname , struct part *parts , int N ) {
             error( "Error reading coordinate file." );
             }
         }
+        
+    /* Wrap it up. */
+    fclose( fd );
+#endif
 
     }
 
@@ -206,6 +237,28 @@ void read_coords ( char *fname , struct part *parts , int N ) {
  
 void read_cutoffs ( char *fname , struct part *parts , int N ) {
 
+#ifdef HAVE_ZLIB
+    gzFile *fd;
+    char buff[1024];
+    int k;
+    
+    /* Open the given file. */
+    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
+        error( "Failed to open cutoff file" );
+        
+    /* Read the coordinates into the part positions. */
+    for ( k = 0 ; k < N ; k++ ) {
+        if ( gzgets( fd , buff , 1024 ) == NULL )
+            error( "Error reading cutoff file." );
+        if ( sscanf( buff , "%ef" , &parts[k].r ) != 1 ) {
+            printf( "read_cutoffs: failed to parse %ith entry.\n" , k );
+            error( "Error parsing cutoff file." );
+            }
+        }
+        
+    /* Wrap it up. */
+    gzclose( fd );
+#else
     FILE *fd;
     int k;
     
@@ -220,6 +273,10 @@ void read_cutoffs ( char *fname , struct part *parts , int N ) {
             error( "Error reading cutoff file." );
             }
         }
+        
+    /* Wrap it up. */
+    fclose( fd );
+#endif
 
     }
     
@@ -234,6 +291,28 @@ void read_cutoffs ( char *fname , struct part *parts , int N ) {
  
 void read_id ( char *fname , struct part *parts , int N ) {
 
+#ifdef HAVE_ZLIB
+    gzFile *fd;
+    char buff[1024];
+    int k;
+    
+    /* Open the given file. */
+    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
+        error( "Failed to open id file" );
+        
+    /* Read the coordinates into the part positions. */
+    for ( k = 0 ; k < N ; k++ ) {
+        if ( gzgets( fd , buff , 1024 ) == NULL )
+            error( "Error reading id file." );
+        if ( sscanf( buff , "%i" , &parts[k].id ) != 1 ) {
+            printf( "read_id: failed to parse %ith entry.\n" , k );
+            error( "Error parsing id file." );
+            }
+        }
+        
+    /* Wrap it up. */
+    gzclose( fd );
+#else
     FILE *fd;
     int k;
     
@@ -248,6 +327,10 @@ void read_id ( char *fname , struct part *parts , int N ) {
             error( "Error reading id file." );
             }
         }
+
+    /* Wrap it up. */
+    fclose( fd );
+#endif
 
     }
     
