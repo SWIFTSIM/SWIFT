@@ -112,6 +112,23 @@ void map_cells_plot ( struct cell *c , void *data ) {
  * @brief Mapping function for neighbour count.
  */
 
+void map_maxdepth ( struct cell *c , void *data ) {
+
+    int maxdepth = ((int *)data)[0];
+    int *count = &((int *)data)[1];
+    
+    // printf( "%e\n" , p->count );
+
+    if ( c->depth == maxdepth )
+        *count += 1;
+
+    }
+
+
+/**
+ * @brief Mapping function for neighbour count.
+ */
+
 void map_count ( struct part *p , struct cell *c , void *data ) {
 
     double *count = (double *)data;
@@ -377,7 +394,9 @@ void pairs_single ( double *dim , struct part *__restrict__ parts , int N , int 
  
 int main ( int argc , char *argv[] ) {
 
-    int c, icount, j, k, N = 100, periodic = 1, nr_threads = 1, nr_queues = -1, runs = 1;
+    int c, icount, j, k, N = 100, periodic = 1;
+    int nr_threads = 1, nr_queues = -1, runs = 1;
+    int data[2];
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
     double r_min = 0.01, r_max = 0.1, h_max = -1.0 , scaling = 1.0, count = 0.0;
     struct part *parts = NULL;
@@ -492,6 +511,10 @@ int main ( int argc , char *argv[] ) {
     printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
     printf( "main: maximum depth is %d.\n" , s.maxdepth );
     printf( "main: cutoffs in [ %.3f %.3f ].\n" , s.r_min , s.r_max ); fflush(stdout);
+    
+    data[0] = s.maxdepth; data[1] = 0;
+    space_map_cells( &s , &map_maxdepth , data );
+    printf( "main: nr of cells at depth %i is %i.\n" , data[0] , data[1] );
     
     /* Dump the particle positions. */
     // space_map_parts( &s , &map_dump , shift );
