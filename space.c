@@ -468,7 +468,7 @@ void space_splittasks ( struct space *s ) {
                 case 4: /* (  1 ,  0 ,  0 ) */
                     if ( !ci->progeny[4]->split && !ci->progeny[5]->split && !ci->progeny[6]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[1]->split && !cj->progeny[2]->split && !cj->progeny[3]->split &&
-                         ci->progeny[4]->count + ci->progeny[5]->count + ci->progeny[6]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[1]->count + cj->progeny[2]->count + cj->progeny[3]->count < space_splitsize ) {
+                         ci->progeny[4]->count + ci->progeny[5]->count + ci->progeny[6]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[1]->count + cj->progeny[2]->count + cj->progeny[3]->count < 1.5*space_splitsize ) {
                         t->type = tid_sub; t->flags = 4;
                         task_addunlock( ci->progeny[4]->sorts[4] , t ); task_addunlock( cj->progeny[0]->sorts[4] , t );
                         task_addunlock( ci->progeny[5]->sorts[5] , t ); task_addunlock( cj->progeny[0]->sorts[5] , t );
@@ -626,7 +626,7 @@ void space_splittasks ( struct space *s ) {
                 case 10: /* (  0 ,  1 ,  0 ) */
                     if ( !ci->progeny[2]->split && !ci->progeny[3]->split && !ci->progeny[6]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[1]->split && !cj->progeny[4]->split && !cj->progeny[5]->split &&
-                         ci->progeny[2]->count + ci->progeny[3]->count + ci->progeny[6]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[1]->count + cj->progeny[4]->count + cj->progeny[5]->count < space_splitsize ) {
+                         ci->progeny[2]->count + ci->progeny[3]->count + ci->progeny[6]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[1]->count + cj->progeny[4]->count + cj->progeny[5]->count < 1.5*space_splitsize ) {
                         t->type = tid_sub; t->flags = 10;
                         task_addunlock( ci->progeny[2]->sorts[10] , t ); task_addunlock( cj->progeny[0]->sorts[10] , t );
                         task_addunlock( ci->progeny[3]->sorts[11] , t ); task_addunlock( cj->progeny[0]->sorts[11] , t );
@@ -718,7 +718,7 @@ void space_splittasks ( struct space *s ) {
                 case 12: /* (  0 ,  0 ,  1 ) */
                     if ( !ci->progeny[1]->split && !ci->progeny[3]->split && !ci->progeny[5]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[2]->split && !cj->progeny[4]->split && !cj->progeny[6]->split &&
-                         ci->progeny[1]->count + ci->progeny[3]->count + ci->progeny[5]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[2]->count + cj->progeny[4]->count + cj->progeny[6]->count < space_splitsize ) {
+                         ci->progeny[1]->count + ci->progeny[3]->count + ci->progeny[5]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[2]->count + cj->progeny[4]->count + cj->progeny[6]->count < 1.5*space_splitsize ) {
                         t->type = tid_sub; t->flags = 12;
                         task_addunlock( ci->progeny[1]->sorts[12] , t ); task_addunlock( cj->progeny[0]->sorts[12] , t );
                         task_addunlock( ci->progeny[3]->sorts[11] , t ); task_addunlock( cj->progeny[0]->sorts[11] , t );
