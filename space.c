@@ -916,7 +916,8 @@ void space_maketasks ( struct space *s , int do_sort ) {
                 /* Make it depend on all the sorts of its progeny. */
                 for ( k = 0 ; k < 8 ; k++ )
                     for ( j = 0 ; j < 13 ; j++ )
-                        task_addunlock( c->progeny[k]->sorts[j] , t );
+                        if ( c->progeny[k] != NULL )
+                            task_addunlock( c->progeny[k]->sorts[j] , t );
             
                 }
 

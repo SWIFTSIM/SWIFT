@@ -547,106 +547,179 @@ void runner_dosub ( struct runner_thread *rt , struct cell *ci , struct cell *cj
         case 0:
             for ( j = 0 ; j < 7 ; j++ )
                 for ( k = j + 1 ; k < 8 ; k++ )
-                    runner_dopair( rt , ci->progeny[j] , ci->progeny[k] );
+                    if ( ci->progeny[j] != NULL && ci->progeny[k] != NULL )
+                        runner_dopair( rt , ci->progeny[j] , ci->progeny[k] );
             break;
             
         case 1: /* (  1 ,  1 ,  0 ) */
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[1] );
+            if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[0] );
+            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
+            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
+            if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[1] );
             break;
     
         case 3: /* (  1 ,  0 ,  1 ) */
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[2] );
+            if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[0] );
+            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
+            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
+            if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[2] );
             break;
                     
         case 4: /* (  1 ,  0 ,  0 ) */
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[3] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[3] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[3] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[3] );
+            if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[0] );
+            if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[1] );
+            if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[2] );
+            if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[3] );
+            if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[0] );
+            if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[1] );
+            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
+            if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[3] );
+            if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[0] );
+            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
+            if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[2] );
+            if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[3] );
+            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
+            if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[1] );
+            if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[2] );
+            if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[3] );
             break;
             
         case 5: /* (  1 ,  0 , -1 ) */
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[3] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[3] );
+            if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[1] );
+            if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[3] );
+            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
+            if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[3] );
             break;
                     
         case 7: /* (  1 , -1 ,  0 ) */
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[4] , cj->progeny[3] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[3] );
+            if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[2] );
+            if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[4] , cj->progeny[3] );
+            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
+            if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[3] );
             break;
                     
         case 9: /* (  0 ,  1 ,  1 ) */
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[4] );
+            if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[0] );
+            if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[4] );
+            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
+            if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[4] );
             break;
                     
         case 10: /* (  0 ,  1 ,  0 ) */
-            runner_dopair( rt , ci->progeny[2] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[2] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[2] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[2] , cj->progeny[5] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[5] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[5] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[5] );
+            if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[2] , cj->progeny[0] );
+            if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[2] , cj->progeny[1] );
+            if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[2] , cj->progeny[4] );
+            if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
+                runner_dopair( rt , ci->progeny[2] , cj->progeny[5] );
+            if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[0] );
+            if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[1] );
+            if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[4] );
+            if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[5] );
+            if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[0] );
+            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
+            if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[4] );
+            if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[5] );
+            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
+            if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[1] );
+            if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[4] );
+            if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[5] );
             break;
                     
         case 11: /* (  0 ,  1 , -1 ) */
-            runner_dopair( rt , ci->progeny[2] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[2] , cj->progeny[5] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
-            runner_dopair( rt , ci->progeny[6] , cj->progeny[5] );
+            if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[2] , cj->progeny[1] );
+            if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
+                runner_dopair( rt , ci->progeny[2] , cj->progeny[5] );
+            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[1] );
+            if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
+                runner_dopair( rt , ci->progeny[6] , cj->progeny[5] );
             break;
                     
         case 12: /* (  0 ,  0 ,  1 ) */
-            runner_dopair( rt , ci->progeny[1] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[1] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[1] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[1] , cj->progeny[6] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[3] , cj->progeny[6] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[5] , cj->progeny[6] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[2] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[4] );
-            runner_dopair( rt , ci->progeny[7] , cj->progeny[6] );
+            if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[1] , cj->progeny[0] );
+            if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[1] , cj->progeny[2] );
+            if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[1] , cj->progeny[4] );
+            if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
+                runner_dopair( rt , ci->progeny[1] , cj->progeny[6] );
+            if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[0] );
+            if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[2] );
+            if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[4] );
+            if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
+                runner_dopair( rt , ci->progeny[3] , cj->progeny[6] );
+            if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[0] );
+            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[2] );
+            if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[4] );
+            if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
+                runner_dopair( rt , ci->progeny[5] , cj->progeny[6] );
+            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[0] );
+            if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[2] );
+            if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[4] );
+            if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
+                runner_dopair( rt , ci->progeny[7] , cj->progeny[6] );
             break;
                 
         }
