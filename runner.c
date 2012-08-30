@@ -382,8 +382,8 @@ void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *c
     
         /* Get a hold of the ith part in ci. */
         pi = &parts_i[ sort_i[ pid ].i ];
-        ri = pi->r - rshift;
-        di = sort_i[pid].d + ri;
+        ri = pi->r;
+        di = sort_i[pid].d + ri - rshift;
         if ( di < dj_min )
             continue;
             
@@ -423,8 +423,8 @@ void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *c
     
         /* Get a hold of the jth part in cj. */
         pj = &parts_j[ sort_j[ pjd ].i ];
-        rj = pj->r + rshift;
-        dj = sort_j[pjd].d - rj;
+        rj = pj->r;
+        dj = sort_j[pjd].d - rj - rshift;
         if ( dj > di_max )
             continue;
             
@@ -448,7 +448,7 @@ void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *c
             /* Hit or miss? */
             if ( r2 < rj2 && r2 > pi->r*pi->r ) {
             
-                iact( r2 , 0 , rj , NULL , &pj->count , NULL , &pj->icount );
+                iact( r2 , pi->r , rj , NULL , &pj->count , NULL , &pj->icount );
             
                 }
         

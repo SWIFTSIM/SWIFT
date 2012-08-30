@@ -613,6 +613,12 @@ int main ( int argc , char *argv[] ) {
     runner_init( &r , &s , nr_threads , nr_queues , runner_policy_steal | runner_policy_keep );
     printf( "main: runner_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
+    /* Init the runner history. */
+    #ifdef HIST
+    for ( k = 0 ; k < runner_hist_N ; k++ )
+        runner_hist_bins[k] = 0;
+    #endif
+    
     /* Let loose a runner on the space. */
     for ( j = 0 ; j < runs ; j++ ) {
         printf( "main: starting run %i/%i with %i threads and %i queues...\n" , j+1 , runs , r.nr_threads , r.nr_queues ); fflush(stdout);
@@ -646,6 +652,16 @@ int main ( int argc , char *argv[] ) {
         printf( " ].\n" );
         fflush(stdout);
         }
+        
+    /* Print the values of the runner histogram. */
+    #ifdef HIST
+        printf( "main: runner histogram data:\n" );
+        for ( k = 0 ; k < runner_hist_N ; k++ )
+            printf( " %e %e %e\n" ,
+                runner_hist_a + k * (runner_hist_b - runner_hist_a) / runner_hist_N ,
+                runner_hist_a + (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N ,
+                (double)runner_hist_bins[k] );
+    #endif
         
     /* Get the average interactions per particle. */
     count = 0;

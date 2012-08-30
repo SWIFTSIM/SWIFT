@@ -93,6 +93,15 @@ extern int runner_counter[ runner_counter_count ];
     #define COUNT(c)
 #endif
 
+
+/* Histogram functions. */
+#define runner_hist_a 1.0
+#define runner_hist_b 6.0
+#define runner_hist_N 99
+long long int runner_hist_bins[ runner_hist_N ];
+#define runner_hist_hit( x ) __sync_add_and_fetch( &runner_hist_bins[ (int)fmax( 0.0 , fmin( runner_hist_N-1 , ((x) - runner_hist_a) / (runner_hist_b - runner_hist_a) * runner_hist_N ) ) ] , 1 )
+
+
 /* Get the inlining right. */
 #ifndef INLINE
 # if __GNUC__ && !__GNUC_STDC_INLINE__
@@ -113,7 +122,7 @@ extern int runner_counter[ runner_counter_count ];
  * @param jo Pointer to where to store the interaction of the ith particle.
  */
  
-__attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float hj , float *io , float *jo , int *ic , int *jc ) {
+__attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float hj , float *force_i , float *force_j , int *count_i , int *count_j ) {
 
     #define  KERNEL_COEFF_1  2.546479089470f
     #define  KERNEL_COEFF_2  15.278874536822f
@@ -126,33 +135,40 @@ __attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float h
     float r = sqrtf( r2 );
     float ui, uj, wi, wj;
     
-    if ( r2 < hi*hi ) {
+    if ( r2 < hi*hi && !( force_i == NULL && count_i == NULL ) ) {
         
         ui = r / hi;
         if ( ui < 0.5 )
             wi = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (ui - 1.0f) * ui * ui;
         else
             wi = KERNEL_COEFF_5 * (1.0f - ui) * (1.0f - ui) * (1.0 - ui);
-        if ( io != NULL )
-            *io += NORM_COEFF * wi;
-        if ( ic != NULL )
-            *ic += 1;
+        if ( force_i != NULL )
+            *force_i += NORM_COEFF * wi;
+        if ( count_i != NULL )
+            *count_i += 1;
         
         }
 
-    if ( r2 < hj*hj ) {
+    if ( r2 < hj*hj && !( force_j == NULL && count_j == NULL ) ) {
         
         uj = r / hj;
         if ( uj < 0.5 )
             wj = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (uj - 1.0f) * uj * uj;
         else
             wj = KERNEL_COEFF_5 * (1.0f - uj) * (1.0f - uj) * (1.0 - uj);
-        if ( jo != NULL )
-            *jo += NORM_COEFF * wj;
-        if ( jc != NULL )
-            *jc += 1;
+        if ( force_j != NULL )
+            *force_j += NORM_COEFF * wj;
+        if ( count_j != NULL )
+            *count_j += 1;
             
         }
+        
+    #ifdef HIST
+    if ( hi > hj )
+        runner_hist_hit( hi / hj );
+    else
+        runner_hist_hit( hj / hi );
+    #endif
     
     }
     
