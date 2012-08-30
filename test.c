@@ -605,7 +605,7 @@ int main ( int argc , char *argv[] ) {
             }
     
     /* Get the brute-force number of pairs. */
-    pairs_n2( dim , parts , N , periodic );
+    // pairs_n2( dim , parts , N , periodic );
     // pairs_single( dim , parts , N , periodic , 63628 );
     fflush( stdout );
     
