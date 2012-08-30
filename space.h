@@ -25,7 +25,7 @@
 #define space_cellallocchunk            1000
 #define space_splitratio                0.875
 #define space_splitsize_default         800
-#define space_dosub                     0
+#define space_dosub                     1
 #define task_maxwait                    3
 #define task_maxunlock                  39
 
