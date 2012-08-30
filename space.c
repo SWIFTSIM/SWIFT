@@ -410,7 +410,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 1: /* (  1 ,  1 ,  0 ) */
-                    if ( !ci->progeny[6]->split && !ci->progeny[7]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[6]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[1]->split &&
                          ci->progeny[6]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[1]->count < space_splitsize ) {
                         t->type = tid_sub; t->flags = 1;
@@ -443,7 +444,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 3: /* (  1 ,  0 ,  1 ) */
-                    if ( !ci->progeny[5]->split && !ci->progeny[7]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[5]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[2]->split &&
                          ci->progeny[5]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[2]->count < space_splitsize  ) {
                         t->type = tid_sub; t->flags = 3;
@@ -469,7 +471,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 4: /* (  1 ,  0 ,  0 ) */
-                    if ( !ci->progeny[4]->split && !ci->progeny[5]->split && !ci->progeny[6]->split && !ci->progeny[7]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[4]->split && !ci->progeny[5]->split && !ci->progeny[6]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[1]->split && !cj->progeny[2]->split && !cj->progeny[3]->split &&
                          ci->progeny[4]->count + ci->progeny[5]->count + ci->progeny[6]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[1]->count + cj->progeny[2]->count + cj->progeny[3]->count < space_splitsize ) {
                         t->type = tid_sub; t->flags = 4;
@@ -535,7 +538,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 5: /* (  1 ,  0 , -1 ) */
-                    if ( !ci->progeny[4]->split && !ci->progeny[6]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[4]->split && !ci->progeny[6]->split &&
                          !cj->progeny[1]->split && !cj->progeny[3]->split &&
                          ci->progeny[4]->count + ci->progeny[6]->count + cj->progeny[1]->count + cj->progeny[3]->count < space_splitsize ) {
                         t->type = tid_sub; t->flags = 5;
@@ -568,7 +572,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 7: /* (  1 , -1 ,  0 ) */
-                    if ( !ci->progeny[4]->split && !ci->progeny[5]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[4]->split && !ci->progeny[5]->split &&
                          !cj->progeny[2]->split && !cj->progeny[3]->split &&
                          ci->progeny[4]->count + ci->progeny[5]->count + cj->progeny[2]->count + cj->progeny[3]->count < space_splitsize ) {
                         t->type = tid_sub; t->flags = 7;
@@ -601,7 +606,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 9: /* (  0 ,  1 ,  1 ) */
-                    if ( !ci->progeny[3]->split && !ci->progeny[7]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[3]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[4]->split &&
                          ci->progeny[3]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[4]->count < space_splitsize ) {
                         t->type = tid_sub; t->flags = 9;
@@ -693,7 +699,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 11: /* (  0 ,  1 , -1 ) */
-                    if ( !ci->progeny[2]->split && !ci->progeny[6]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[2]->split && !ci->progeny[6]->split &&
                          !cj->progeny[1]->split && !cj->progeny[5]->split &&
                          ci->progeny[2]->count + ci->progeny[6]->count + cj->progeny[1]->count + cj->progeny[5]->count < space_splitsize ) {
                         t->type = tid_sub; t->flags = 11;
@@ -719,7 +726,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 12: /* (  0 ,  0 ,  1 ) */
-                    if ( !ci->progeny[1]->split && !ci->progeny[3]->split && !ci->progeny[5]->split && !ci->progeny[7]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[1]->split && !ci->progeny[3]->split && !ci->progeny[5]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[2]->split && !cj->progeny[4]->split && !cj->progeny[6]->split &&
                          ci->progeny[1]->count + ci->progeny[3]->count + ci->progeny[5]->count + ci->progeny[7]->count + cj->progeny[0]->count + cj->progeny[2]->count + cj->progeny[4]->count + cj->progeny[6]->count < space_splitsize ) {
                         t->type = tid_sub; t->flags = 12;
@@ -883,7 +891,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
                     maketasks_rec( c->progeny[k] , sort , nr_sort , c );
                         
             /* Worth splitting into several tasks? */
-            if ( c->count > 1.5*space_splitsize ) {
+            if ( !space_dosub || c->count > 1.5*space_splitsize ) {
             
                 /* Make a task for eac pair of progeny. */
                 for ( j = 0 ; j < 8 ; j++ )
@@ -1012,7 +1020,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
  
 void cell_split ( struct cell *c  ) {
 
-    int i, j, k;
+    int i, j, k, kk;
     struct part temp, *parts = c->parts;
     int left[8], right[8];
     double pivot[3];
@@ -1023,30 +1031,44 @@ void cell_split ( struct cell *c  ) {
     
     /* Split along the x-axis. */
     i = 0; j = c->count - 1;
-    while ( i < j ) {
-        while ( i < c->count-1 && parts[i].x[0] <= pivot[0] )
+    while ( i <= j ) {
+        while ( i <= c->count-1 && parts[i].x[0] <= pivot[0] )
             i += 1;
-        while ( j > 0 && parts[j].x[0] > pivot[0] )
+        while ( j >= 0 && parts[j].x[0] > pivot[0] )
             j -= 1;
         if ( i < j ) {
             temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
             }
         }
+    for ( k = 0 ; k <= j ; k++ )
+        if ( parts[k].x[0] > pivot[0] )
+            error( "cell_split: sorting failed." );
+    for ( k = i ; k < c->count ; k++ )
+        if ( parts[k].x[0] < pivot[0] )
+            error( "cell_split: sorting failed." );
     left[1] = i; right[1] = c->count - 1;
     left[0] = 0; right[0] = j;
     
     /* Split along the y axis, twice. */
     for ( k = 1 ; k >= 0 ; k-- ) {
         i = left[k]; j = right[k];
-        while ( i < j ) {
-            while ( i < right[k] && parts[i].x[1] <= pivot[1] )
+        while ( i <= j ) {
+            while ( i <= right[k] && parts[i].x[1] <= pivot[1] )
                 i += 1;
-            while ( j > left[k] && parts[j].x[1] > pivot[1] )
+            while ( j >= left[k] && parts[j].x[1] > pivot[1] )
                 j -= 1;
             if ( i < j ) {
                 temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
                 }
             }
+        for ( kk = left[k] ; kk <= j ; kk++ )
+            if ( parts[kk].x[1] > pivot[1] ) {
+                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
+                error( "sorting failed (left)." );
+                }
+        for ( kk = i ; kk <= right[k] ; kk++ )
+            if ( parts[kk].x[1] < pivot[1] )
+                error( "sorting failed (right)." );
         left[2*k+1] = i; right[2*k+1] = right[k];
         left[2*k] = left[k]; right[2*k] = j;
         }
@@ -1054,15 +1076,25 @@ void cell_split ( struct cell *c  ) {
     /* Split along the z axis, four times. */
     for ( k = 3 ; k >= 0 ; k-- ) {
         i = left[k]; j = right[k];
-        while ( i < j ) {
-            while ( i < right[k] && parts[i].x[2] <= pivot[2] )
+        while ( i <= j ) {
+            while ( i <= right[k] && parts[i].x[2] <= pivot[2] )
                 i += 1;
-            while ( j > left[k] && parts[j].x[2] > pivot[2] )
+            while ( j >= left[k] && parts[j].x[2] > pivot[2] )
                 j -= 1;
             if ( i < j ) {
                 temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
                 }
             }
+        for ( kk = left[k] ; kk <= j ; kk++ )
+            if ( parts[kk].x[2] > pivot[2] ) {
+                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
+                error( "sorting failed (left)." );
+                }
+        for ( kk = i ; kk <= right[k] ; kk++ )
+            if ( parts[kk].x[2] < pivot[2] ) {
+                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
+                error( "sorting failed (right)." );
+                }
         left[2*k+1] = i; right[2*k+1] = right[k];
         left[2*k] = left[k]; right[2*k] = j;
         }
@@ -1315,11 +1347,6 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
         c->count += 1;
         }
         
-    /* Loop over the cells and split them. */
-    /* for ( k = 0 ; k < nr_cells ; k++ )
-        if ( cells[k].count > space_maxppc )
-            space_split( s , &cells[k] ); */
-        
     /* Store eveything in the space. */
     s->r_min = r_min; s->r_max = r_max;
     s->dim[0] = dim[0]; s->dim[1] = dim[1]; s->dim[2] = dim[2];
@@ -1338,6 +1365,6 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     /* Loop over the cells and split them. */
     for ( k = 0 ; k < nr_cells ; k++ )
         space_split( s , &cells[k] );
-            
+        
     }
 

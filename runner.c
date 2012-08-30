@@ -371,7 +371,7 @@ void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *c
     ri_max = ci->r_max - rshift; rj_max = cj->r_max - rshift;
     count_i = ci->count; count_j = cj->count;
     parts_i = ci->parts; parts_j = cj->parts;
-    di_max = sort_i[count_i-1].d;
+    di_max = sort_i[count_i-1].d - rshift;
     dj_min = sort_j[0].d;
     
     /* if ( ci->split && cj->split && sid == 4 )

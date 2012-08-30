@@ -117,6 +117,32 @@ void map_cells_plot ( struct cell *c , void *data ) {
  * @brief Mapping function for neighbour count.
  */
 
+void map_cellcheck ( struct cell *c , void *data ) {
+
+    int k, *count = (int *)data;
+    struct part *p;
+    
+    /* Loop over all parts and check if they are in the cell. */
+    for ( k = 0 ; k < c->count ; k++ ) {
+        *count += 1;
+        p = &c->parts[k];
+        if ( p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
+             p->x[0] > c->loc[0] + c->h[0] || p->x[1] > c->loc[1] + c->h[1] || p->x[2] > c->loc[2] + c->h[2] ) {
+            printf( "map_cellcheck: particle at [ %e %e %e ] outside of cell [ %e %e %e ] - [ %e %e %e ].\n" ,
+                p->x[0] , p->x[1] , p->x[2] ,
+                c->loc[0] , c->loc[1] , c->loc[2] ,
+                c->loc[0] + c->h[0] , c->loc[1] + c->h[1] , c->loc[2] + c->h[2] );
+            error( "particle out of bounds!" );
+            }
+        }
+
+    }
+
+
+/**
+ * @brief Mapping function for maxdepth cell count.
+ */
+
 void map_maxdepth ( struct cell *c , void *data ) {
 
     int maxdepth = ((int *)data)[0];
@@ -374,11 +400,11 @@ void read_dt ( char *fname , struct part *parts , int N ) {
 void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int periodic ) {
 
     int i, j, k, count = 0, mj, mk;
-    double r, dx[3], dcount = 0.0, maxratio = 1.0;
+    double r2, dx[3], dcount = 0.0, maxratio = 1.0;
     float f1, f2;
     
     /* Loop over all particle pairs. */
-    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r,f1,f2), shared(maxratio,mj,mk,periodic,parts,dim,N,stdout), reduction(+:count,dcount)
+    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r2,f1,f2), shared(maxratio,mj,mk,periodic,parts,dim,N,stdout), reduction(+:count,dcount)
     for ( j = 0 ; j < N ; j++ ) {
         if ( j % 1000 == 0 ) {
             printf( "pairs_n2: j=%i, count=%i.\n" , j , count );
@@ -394,10 +420,10 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
                         dx[i] -= dim[i];
                     }
                 }
-            r = sqrt( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
-            if ( r < parts[j].r || r < parts[k].r ) {
+            r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
+            if ( r2 < parts[j].r*parts[j].r || r2 < parts[k].r*parts[k].r ) {
                 f1 = 0.0; f2 = 0.0;
-                iact( r*r , parts[j].r , parts[k].r , &f1 , &f2 , &count , &count );
+                iact( r2 , parts[j].r , parts[k].r , &f1 , &f2 , &count , &count );
                 dcount += f1 + f2;
                 if ( parts[j].r / parts[k].r > maxratio )
                     #pragma omp critical
@@ -579,7 +605,7 @@ int main ( int argc , char *argv[] ) {
             }
     
     /* Get the brute-force number of pairs. */
-    // pairs_n2( dim , parts , N , periodic );
+    pairs_n2( dim , parts , N , periodic );
     // pairs_single( dim , parts , N , periodic , 63628 );
     fflush( stdout );
     
@@ -599,6 +625,11 @@ int main ( int argc , char *argv[] ) {
     printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
     printf( "main: maximum depth is %d.\n" , s.maxdepth );
     printf( "main: cutoffs in [ %.3f %.3f ].\n" , s.r_min , s.r_max ); fflush(stdout);
+    
+    /* Verify that each particle is in it's propper cell. */
+    icount = 0;
+    space_map_cells( &s , &map_cellcheck , &icount );
+    printf( "main: map_cellcheck picked up %i parts.\n" , icount );
     
     data[0] = s.maxdepth; data[1] = 0;
     space_map_cells( &s , &map_maxdepth , data );
