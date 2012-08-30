@@ -882,7 +882,7 @@ void runner_dosort ( struct runner_thread *rt , struct cell *c , int flags ) {
     int j, k, count = c->count;
     int cone, ctwo;
     int i, ind, off[8], inds[8], temp_i;
-    float shift[3];
+    // float shift[3];
     float buff[8];
     struct cell *temp_c;
     TIMER_TIC
@@ -998,35 +998,56 @@ void runner_dosort ( struct runner_thread *rt , struct cell *c , int flags ) {
         } /* progeny? */
         
     /* Otherwise, just sort. */
+    // else {
+    // 
+    //     /* Loop over the different cell axes. */
+    //     for ( j = 0 ; j < 13 ; j++ ) {
+    //     
+    //         /* Has this sort array been flagged? */
+    //         if ( !( flags & (1 << j) ) )
+    //             continue;
+    //     
+    //         /* Get the shift vector. */
+    //         shift[0] = runner_shift[ 3*j + 0 ];
+    //         shift[1] = runner_shift[ 3*j + 1 ];
+    //         shift[2] = runner_shift[ 3*j + 2 ];
+    //         
+    //         /* Fill the sort array. */
+    //         finger = &c->sort[ j*(count + 1) ];
+    //         for ( k = 0 ; k < count ; k++ ) {
+    //             finger[k].i = k;
+    //             finger[k].d = parts[k].x[0]*shift[0] + parts[k].x[1]*shift[1] + parts[k].x[2]*shift[2];
+    //             }
+    //             
+    //         /* Add the sentinel. */
+    //         finger[ c->count ].d = FLT_MAX;
+    //         finger[ c->count ].i = 0;
+    //             
+    //         /* Sort descending. */
+    //         runner_dosort_ascending( finger , c->count );
+    //     
+    //         }
+    //         
+    //     }
+        
+    /* Otherwise, just sort. */
     else {
     
-        /* Loop over the different cell axes. */
-        for ( j = 0 ; j < 13 ; j++ ) {
-        
-            /* Has this sort array been flagged? */
-            if ( !( flags & (1 << j) ) )
-                continue;
-        
-            /* Get the shift vector. */
-            shift[0] = runner_shift[ 3*j + 0 ];
-            shift[1] = runner_shift[ 3*j + 1 ];
-            shift[2] = runner_shift[ 3*j + 2 ];
-            
-            /* Fill the sort array. */
-            finger = &c->sort[ j*(count + 1) ];
-            for ( k = 0 ; k < count ; k++ ) {
-                finger[k].i = k;
-                finger[k].d = parts[k].x[0]*shift[0] + parts[k].x[1]*shift[1] + parts[k].x[2]*shift[2];
+        /* Fill the sort array. */
+        for ( k = 0 ; k < count ; k++ )
+            for ( j = 0 ; j < 13 ; j++ )
+                if ( flags & (1 << j) ) {
+                    c->sort[ j*(count + 1) + k].i = k;
+                    c->sort[ j*(count + 1) + k].d = parts[k].x[0]*runner_shift[ 3*j + 0 ] + parts[k].x[1]*runner_shift[ 3*j + 1 ] + parts[k].x[2]*runner_shift[ 3*j + 2 ];
+                    }
+
+        /* Add the sentinel and sort. */
+        for ( j = 0 ; j < 13 ; j++ )
+            if ( flags & (1 << j) ) {
+                c->sort[ j*(count + 1) + c->count ].d = FLT_MAX;
+                c->sort[ j*(count + 1) + c->count ].i = 0;
+                runner_dosort_ascending( &c->sort[ j*(count + 1) ] , c->count );
                 }
-                
-            /* Add the sentinel. */
-            finger[ c->count ].d = FLT_MAX;
-            finger[ c->count ].i = 0;
-                
-            /* Sort descending. */
-            runner_dosort_ascending( finger , c->count );
-        
-            }
             
         }
         
