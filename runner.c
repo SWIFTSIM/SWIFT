@@ -883,7 +883,7 @@ void runner_dosort ( struct runner_thread *rt , struct cell *c , int flags ) {
     int cone, ctwo;
     int i, ind, off[8], inds[8], temp_i;
     // float shift[3];
-    float buff[8];
+    float buff[8], px[3];
     struct cell *temp_c;
     TIMER_TIC
     
@@ -1034,12 +1034,16 @@ void runner_dosort ( struct runner_thread *rt , struct cell *c , int flags ) {
     else {
     
         /* Fill the sort array. */
-        for ( k = 0 ; k < count ; k++ )
+        for ( k = 0 ; k < count ; k++ ) {
+            px[0] = parts[k].x[0];
+            px[1] = parts[k].x[1];
+            px[2] = parts[k].x[2];
             for ( j = 0 ; j < 13 ; j++ )
                 if ( flags & (1 << j) ) {
                     c->sort[ j*(count + 1) + k].i = k;
-                    c->sort[ j*(count + 1) + k].d = parts[k].x[0]*runner_shift[ 3*j + 0 ] + parts[k].x[1]*runner_shift[ 3*j + 1 ] + parts[k].x[2]*runner_shift[ 3*j + 2 ];
+                    c->sort[ j*(count + 1) + k].d = px[0]*runner_shift[ 3*j + 0 ] + px[1]*runner_shift[ 3*j + 1 ] + px[2]*runner_shift[ 3*j + 2 ];
                     }
+            }
 
         /* Add the sentinel and sort. */
         for ( j = 0 ; j < 13 ; j++ )
