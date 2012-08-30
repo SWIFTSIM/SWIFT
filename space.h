@@ -24,10 +24,13 @@
 #define space_maxdepth                  10
 #define space_cellallocchunk            1000
 #define space_splitratio                0.875
-#define space_splitsize                 800
+#define space_splitsize_default         800
 #define task_maxwait                    3
 #define task_maxunlock                  39
 
+
+/* Split size. */
+extern int space_splitsize;
 
 /* Map shift vector to sortlist. */
 extern const int sortlistID[27];

@@ -491,7 +491,7 @@ int main ( int argc , char *argv[] ) {
     bzero( &s , sizeof(struct space) );
     
     /* Parse the options. */
-    while ( ( c = getopt( argc , argv  , "a:b:p:d:N:c:h:v:m:s:t:q:r:i:m:" ) ) != -1 )
+    while ( ( c = getopt( argc , argv  , "a:b:p:d:N:c:h:v:m:s:t:q:r:i:m:z:" ) ) != -1 )
         switch ( c ) {
             case 'N':
                 if ( sscanf( optarg , "%d" , &N ) != 1 )
@@ -567,6 +567,11 @@ int main ( int argc , char *argv[] ) {
                 if ( sscanf( optarg , "%d" , &nr_threads ) != 1 )
                     error( "Error parsing number of threads." );
                 omp_set_num_threads( nr_threads );
+                break;
+            case 'z':
+                if ( sscanf( optarg , "%d" , &space_splitsize ) != 1 )
+                    error( "Error parsing split size." );
+                printf( "main: split size set to %i.\n" , space_splitsize );
                 break;
             case '?':
                 error( "Unknown option." );

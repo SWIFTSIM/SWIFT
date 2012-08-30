@@ -39,6 +39,9 @@
 /* Convert cell location to ID. */
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
 
+/* Split size. */
+int space_splitsize = space_splitsize_default;
+
 /* Task type names. */
 const char *taskID_names[tid_count] = { "none" , "sort" , "self" , "pair" , "sub" };
 
