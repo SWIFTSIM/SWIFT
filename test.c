@@ -371,6 +371,26 @@ void read_id ( char *fname , struct part *parts , int N ) {
  
 void read_dt ( char *fname , struct part *parts , int N ) {
 
+#ifdef HAVE_ZLIB
+    gzFile *fd;
+    char buff[1024];
+    int k;
+    
+    /* Open the given file. */
+    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
+        error( "Failed to open dt file" );
+        
+    /* Read the coordinates into the part positions. */
+    for ( k = 0 ; k < N ; k++ ) {
+        if ( gzgets( fd , buff , 1024 ) == NULL )
+            error( "Error reading id file." );
+        if ( sscanf( buff , "%ef" , &parts[k].dt ) != 1 )
+            error( "Error parsing dt file." );
+        }
+        
+    /* Wrap it up. */
+    gzclose( fd );
+#else
     FILE *fd;
     int k;
     
@@ -383,6 +403,10 @@ void read_dt ( char *fname , struct part *parts , int N ) {
         if ( fscanf( fd , "%ef" , &parts[k].dt ) != 1 )
             error( "Error reading dt file." );
         }
+
+    /* Wrap it up. */
+    fclose( fd );
+#endif
 
     }
     
