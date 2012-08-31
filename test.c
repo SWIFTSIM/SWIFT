@@ -726,12 +726,12 @@ int main ( int argc , char *argv[] ) {
     /* Get the average interactions per particle. */
     count = 0;
     space_map_parts( &s , &map_count , &count );
-    printf( "main: average interactions per particle is %.3f.\n" , count / s.nr_parts + 32.0/3 );
+    printf( "main: average interactions per particle is %.3f.\n" , count / s.nr_parts / runs + 32.0/3 );
     
     /* Get the average interactions per particle. */
     icount = 0;
     space_map_parts( &s , &map_icount , &icount );
-    printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
+    printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts / runs );
     
     /* Get all the cells of a certain depth. */
     /* count = 11;
