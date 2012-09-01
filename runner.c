@@ -27,6 +27,7 @@
 #include <float.h>
 #include <limits.h>
 #include <omp.h>
+#include <sched.h>
 
 /* Local headers. */
 #include "cycle.h"
@@ -1582,6 +1583,9 @@ struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
  
 void runner_init ( struct runner *r , struct space *s , int nr_threads , int nr_queues , int policy ) {
 
+    #if defined(HAVE_SETAFFINITY)
+        cpu_set_t cpuset;
+    #endif
     int k, qid, nrq;
     
     /* Store the values. */
@@ -1647,6 +1651,15 @@ void runner_init ( struct runner *r , struct space *s , int nr_threads , int nr_
         r->threads[k].r = r;
         if ( pthread_create( &r->threads[k].thread , NULL , &runner_main , &r->threads[k] ) != 0 )
             error( "Failed to create runner thread." );
+        #if defined(HAVE_SETAFFINITY)
+            /* Set the cpu mask to zero | r->id. */
+            CPU_ZERO( &cpuset );
+            CPU_SET( r->threads[k].id , &cpuset );
+
+            /* Apply this mask to the runner's pthread. */
+            if ( pthread_setaffinity_np( r->threads[k].thread , sizeof(cpu_set_t) , &cpuset ) != 0 )
+                error( "Failed to set thread affinity." );
+        #endif
         }
         
     /* Wait for the runner threads to be in place. */
