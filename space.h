@@ -86,7 +86,7 @@ struct part {
     int id;
     
     /* Number of pairwise interactions. */
-    float count;
+    double count, count_dh;
     int icount;
     
     } __attribute__((aligned (32)));

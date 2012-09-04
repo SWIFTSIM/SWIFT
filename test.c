@@ -128,7 +128,7 @@ void map_cellcheck ( struct cell *c , void *data ) {
         p = &c->parts[k];
         if ( p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
              p->x[0] > c->loc[0] + c->h[0] || p->x[1] > c->loc[1] + c->h[1] || p->x[2] > c->loc[2] + c->h[2] ) {
-            printf( "map_cellcheck: particle at [ %e %e %e ] outside of cell [ %e %e %e ] - [ %e %e %e ].\n" ,
+            printf( "map_cellcheck: particle at [ %.16e %.16e %.16e ] outside of cell [ %.16e %.16e %.16e ] - [ %.16e %.16e %.16e ].\n" ,
                 p->x[0] , p->x[1] , p->x[2] ,
                 c->loc[0] , c->loc[1] , c->loc[2] ,
                 c->loc[0] + c->h[0] , c->loc[1] + c->h[1] , c->loc[2] + c->h[2] );
@@ -164,7 +164,7 @@ void map_count ( struct part *p , struct cell *c , void *data ) {
 
     double *count = (double *)data;
     
-    // printf( "%e\n" , p->count );
+    // printf( "%i %e %e\n" , p->id , p->count , p->count_dh );
 
     *count += p->count;
 
@@ -447,7 +447,7 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
             r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
             if ( r2 < parts[j].r*parts[j].r || r2 < parts[k].r*parts[k].r ) {
                 f1 = 0.0; f2 = 0.0;
-                iact( r2 , parts[j].r , parts[k].r , &f1 , &f2 , &count , &count );
+                iact_nopart( r2 , parts[j].r , parts[k].r , &f1 , &f2 , &count , &count );
                 dcount += f1 + f2;
                 if ( parts[j].r / parts[k].r > maxratio )
                     #pragma omp critical
@@ -552,6 +552,7 @@ int main ( int argc , char *argv[] ) {
                     parts[k].x[0] = ((double)rand()) / RAND_MAX * dim[0];
                     parts[k].x[1] = ((double)rand()) / RAND_MAX * dim[1];
                     parts[k].x[2] = ((double)rand()) / RAND_MAX * dim[2];
+                    parts[k].id = k;
                     parts[k].r = r_min + ((r_max - r_min)*rand())/RAND_MAX;
                     }
                 printf( "main: allocated memory for %i parts.\n" , N ); fflush(stdout);
@@ -651,9 +652,9 @@ int main ( int argc , char *argv[] ) {
     printf( "main: cutoffs in [ %.3f %.3f ].\n" , s.r_min , s.r_max ); fflush(stdout);
     
     /* Verify that each particle is in it's propper cell. */
-    icount = 0;
-    space_map_cells( &s , &map_cellcheck , &icount );
-    printf( "main: map_cellcheck picked up %i parts.\n" , icount );
+    // icount = 0;
+    // space_map_cells( &s , &map_cellcheck , &icount );
+    // printf( "main: map_cellcheck picked up %i parts.\n" , icount );
     
     data[0] = s.maxdepth; data[1] = 0;
     space_map_cells( &s , &map_maxdepth , data );
@@ -723,6 +724,10 @@ int main ( int argc , char *argv[] ) {
                 (double)runner_hist_bins[k] );
     #endif
         
+    /* Loop over the parts directly. */
+    // for ( k = 0 ; k < N ; k++ )
+    //     printf( " %i %e %e\n" , s.parts[k].id , s.parts[k].count , s.parts[k].count_dh );
+    
     /* Get the average interactions per particle. */
     count = 0;
     space_map_parts( &s , &map_count , &count );

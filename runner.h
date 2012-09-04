@@ -122,7 +122,7 @@ long long int runner_hist_bins[ runner_hist_N ];
  * @param jo Pointer to where to store the interaction of the ith particle.
  */
  
-__attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float hj , float *force_i , float *force_j , int *count_i , int *count_j ) {
+__attribute__ ((always_inline)) INLINE void iact_nopart ( float r2 , float hi , float hj , float *force_i , float *force_j , int *count_i , int *count_j ) {
 
     #define  KERNEL_COEFF_1  2.546479089470f
     #define  KERNEL_COEFF_2  15.278874536822f
@@ -160,6 +160,69 @@ __attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float h
             *force_j += NORM_COEFF * wj;
         if ( count_j != NULL )
             *count_j += 1;
+            
+        }
+        
+    #ifdef HIST
+    if ( hi > hj )
+        runner_hist_hit( hi / hj );
+    else
+        runner_hist_hit( hj / hi );
+    #endif
+    
+    }
+    
+
+
+__attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float hj , struct part *pi , struct part *pj ) {
+
+    #define  KERNEL_COEFF_1  2.546479089470f
+    #define  KERNEL_COEFF_2  15.278874536822f
+    #define  KERNEL_COEFF_3  45.836623610466f
+    #define  KERNEL_COEFF_4  30.557749073644f
+    #define  KERNEL_COEFF_5  5.092958178941f
+    #define  KERNEL_COEFF_6  (-15.278874536822f)
+    #define  NORM_COEFF      4.188790204786f
+
+    float r = sqrtf( r2 );
+    float ui, uj, wi, wj;
+    float ui_dh, uj_dh, wi_dh, wj_dh;
+    
+    if ( r2 < hi*hi && pi != NULL ) {
+        
+        ui = r / hi;
+        ui_dh = -r / hi / hi;
+        if ( ui < 0.5f ) {
+            wi = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (ui - 1.0f) * ui * ui;
+            wi_dh = KERNEL_COEFF_2 * ui_dh * ui * ui
+                  + 2 * KERNEL_COEFF_2 * (ui - 1.0f) * ui_dh * ui;
+            }
+        else {
+            wi = KERNEL_COEFF_5 * (1.0f - ui) * (1.0f - ui) * (1.0f - ui);
+            wi_dh = -3 * KERNEL_COEFF_5 * ui_dh * (1.0f - ui) * (1.0f - ui);
+            }
+        pi->count += NORM_COEFF * wi;
+        pi->count_dh += NORM_COEFF * wi_dh;
+        pi->icount += 1;
+        
+        }
+
+    if ( r2 < hj*hj && pj != NULL ) {
+        
+        uj = r / hj;
+        uj_dh = -r / hj / hj;
+        if ( uj < 0.5f ) {
+            wj = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (uj - 1.0f) * uj * uj;
+            wj_dh = KERNEL_COEFF_2 * uj_dh * uj * uj
+                  + 2 * KERNEL_COEFF_2 * (uj - 1.0f) * uj_dh * uj;
+            }
+        else {
+            wj = KERNEL_COEFF_5 * (1.0f - uj) * (1.0f - uj) * (1.0f - uj);
+            wj_dh = -3 * KERNEL_COEFF_5 * uj_dh * (1.0f - uj) * (1.0f - uj);
+            }
+        pj->count += NORM_COEFF * wj;
+        pj->count_dh += NORM_COEFF * wj_dh;
+        pj->icount += 1;
             
         }
         

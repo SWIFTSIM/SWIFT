@@ -292,7 +292,7 @@ void runner_dopair_naive ( struct runner_thread *rt , struct cell *ci , struct c
             /* Hit or miss? */
             if ( r2 < ri2 || r2 < pj->r*pj->r ) {
             
-                iact( r2 , ri , pj->r , &pi->count , &pj->count , &pi->icount , &pj->icount );
+                iact( r2 , ri , pj->r , pi , pj );
             
                 }
         
@@ -408,7 +408,7 @@ void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *c
             /* Hit or miss? */
             if ( r2 < ri2 ) {
             
-                iact( r2 , ri , pj->r , &pi->count , &pj->count , &pi->icount , &pj->icount );
+                iact( r2 , ri , pj->r , pi , pj );
             
                 }
         
@@ -449,7 +449,7 @@ void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *c
             /* Hit or miss? */
             if ( r2 < rj2 && r2 > pi->r*pi->r ) {
             
-                iact( r2 , pi->r , rj , NULL , &pj->count , NULL , &pj->icount );
+                iact( r2 , pi->r , rj , pi , pj );
             
                 }
         
@@ -511,7 +511,7 @@ void runner_doself ( struct runner_thread *rt , struct cell *c ) {
             /* Hit or miss? */
             if ( r2 < ri2 || r2 < pj->r*pj->r ) {
             
-                iact( r2 , ri , pj->r , &pi->count , &pj->count , &pi->icount , &pj->icount );
+                iact( r2 , ri , pj->r , pi , pj );
             
                 }
         
