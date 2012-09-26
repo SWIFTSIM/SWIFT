@@ -831,13 +831,13 @@ void space_maketasks ( struct space *s , int do_sort ) {
         if ( c->count > 0 ) {
         
             if ( do_sort ) {
-                if ( c->count < 500 ) {
+                if ( c->count < 1000 ) {
                     sort[0] = space_addtask( s , tid_sort , 0x1fff , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     for ( k = 0 ; k < 13 ; k++ )
                         c->sorts[k] = sort[0];
                     nr_sort = 1;
                     }
-                else if ( c->count < 2000 ) {
+                else if ( c->count < 5000 ) {
                     sort[0] = space_addtask( s , tid_sort , 0xf , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     sort[1] = space_addtask( s , tid_sort , 0xf0 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     sort[2] = space_addtask( s , tid_sort , 0x1f00 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
@@ -882,7 +882,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
                     maketasks_rec( c->progeny[k] , sort , nr_sort , c );
                         
             /* Worth splitting into several tasks? */
-            if ( !space_dosub || c->count > 1.5*space_splitsize ) {
+            if ( !space_dosub || c->count > 2*space_splitsize ) {
             
                 /* Make a task for eac pair of progeny. */
                 for ( j = 0 ; j < 8 ; j++ )

@@ -22,7 +22,7 @@
 CC=gcc
 FC=gfortran
 
-OPTS=-DTIMER -DCOUNTER -DCPU_TPS=2.67e9 -DHAVE_ZLIB -DHAVE_SETAFFINITY -D_GNU_SOURCE
+OPTS=-DTIMER -DCOUNTER -DCPU_TPS=2.2e9 -DHAVE_ZLIB -DHAVE_SETAFFINITY -D_GNU_SOURCE
 CFLAGS=-O3 -g -std=gnu99 -Wall -Werror -march=native -mtune=native -ffast-math -fomit-frame-pointer -malign-double -fstrict-aliasing -fopenmp
 # CFLAGS=-O0 -g -std=gnu99 -Wall -Werror -fopenmp
 LDFLAGS=-std=gnu99 -lm -lpthread -fopenmp -lz
