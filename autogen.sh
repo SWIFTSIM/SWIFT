@@ -24,10 +24,10 @@ libtoolize --force --copy
 aclocal -Im4/
 
 # run autoconf
-autoconf
+autoconf -I m4
 
 # run autoheader to generate config.h.in
-autoheader
+autoheader -I m4
 
 # run automake
 automake --add-missing
