@@ -16,18 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Automake stuff
-AUTOMAKE_OPTIONS=gnu
+AUTOMAKE_OPTIONS = gnu
+ACLOCAL_AMFLAGS = -I m4
 
-# Add the debug flag to the whole thing
-AM_CFLAGS = -g -O3 -Wall -Werror $(SIMD_FLAGS) $(CFLAGS) $(OPENMP_CFLAGS) -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
-
-# Assign a "safe" version number
-AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) -version-info 0:0:0
-
-# Build the libgadgetsmp library
-lib_LTLIBRARIES = libgadgetsmp.la
-libgadgetsmp_la_SOURCES = space.c runner.c
-
-# List required headers
-include_HEADERS = space.h runner.h lock.h
-
+# Show the way...
+SUBDIRS = src examples doc

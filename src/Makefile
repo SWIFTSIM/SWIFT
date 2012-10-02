@@ -133,7 +133,7 @@ AUTOMAKE = ${SHELL} /home/pedro/work/gadgetsmp/missing --run automake-1.11
 AWK = mawk
 CC = gcc -std=gnu99
 CCDEPMODE = depmode=gcc3
-CFLAGS = -Wall  -march=native -pthread
+CFLAGS = -g -O2 -march=native -pthread
 CPP = gcc -E
 CPPFLAGS =  -I/usr/include -I/usr/include
 CYGPATH_W = echo
@@ -273,7 +273,7 @@ top_srcdir = ..
 AUTOMAKE_OPTIONS = gnu
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = -g -O3 -Werror $(SIMD_FLAGS) $(CFLAGS) $(OPENMP_CFLAGS) -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
+AM_CFLAGS = -g -O3 -Wall -Werror $(SIMD_FLAGS) $(CFLAGS) $(OPENMP_CFLAGS) -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) -version-info 0:0:0
