@@ -58,7 +58,10 @@ ACX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     non-standard location.]))
     
 # check for zlib
-AX_CHECK_ZLIB()
+AC_CHECK_LIB(z,gzopen,[
+    AC_DEFINE([HAVE_LIBZ],[1],[Set to 1 if zlib is installed.])
+    LDFLAGS="$LDFLAGS -lz"
+    ],[])
 
 # check for memalign
 AX_FUNC_POSIX_MEMALIGN
