@@ -1,24 +1,26 @@
 
 %% Scaling and efficiency plots for the first test
-test = importdata( 'test_nosort.totals');
+datadir = 'Opteron8380';
+test = importdata( [ datadir '/snap_C90.totals' ]);
 ncores = size( test , 1 );
+col = 11;
 
 clf
 subplot('position',[ 0.05 , 0.1 , 0.4 , 0.8 ]);
-plot( 1:ncores , test(1,10) ./ test(:,10) , '-k' , 'LineWidth' , 2 ); hold on;
+plot( 1:ncores , test(1,col) ./ test(:,col) , '-k' , 'LineWidth' , 2 ); hold on;
 xlabel('nr. cores');
 plot( [1,ncores] , [1,ncores] , ':k' , 'LineWidth' , 1.4 );
 hold off;
-title('Speedup');
+title('Speedup GadgetSMP');
 axis([ 1 , ncores , 0 , ncores ]);
 
 subplot('position',[ 0.52 0.1 , 0.4 , 0.8 ]);
-plot( 1:ncores , test(1,10) ./ test(:,10) ./ (1:ncores)' , '-k' , 'LineWidth' , 2 ); hold on;
+plot( 1:ncores , test(1,col) ./ test(:,col) ./ (1:ncores)' , '-k' , 'LineWidth' , 2 ); hold on;
 plot( [1,ncores] , [1,1] , ':k' , 'LineWidth' , 1.4 );
-text(4*ncores/5,1,sprintf('%.2f',min(test(:,10))),'BackgroundColor',[1,1,1],'FontSize',12);
+% text(4*ncores/5,1,sprintf('%.2f',min(test(:,10))),'BackgroundColor',[1,1,1],'FontSize',12);
 xlabel('nr. cores');
 hold off;
-title('Efficiency');
+title('Efficiency GadgetSMP');
 axis([ 1 , ncores , 0 , 1.2 ]);
 
 % Print this plot

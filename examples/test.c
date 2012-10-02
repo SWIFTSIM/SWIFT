@@ -17,6 +17,8 @@
  * 
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
 
 /* Some standard headers. */
 #include <stdio.h>
@@ -28,12 +30,11 @@
 #include <omp.h>
 
 /* Conditional headers. */
-#ifdef HAVE_ZLIB
-#include <zlib.h>
+#ifdef HAVE_LIBZ
+    #include <zlib.h>
 #endif
 
 /* Local headers. */
-#define INLINE
 #include "cycle.h"
 #include "lock.h"
 #include "space.h"
@@ -209,7 +210,7 @@ void map_dump ( struct part *p , struct cell *c , void *data ) {
  
 void read_coords ( char *fname , struct part *parts , int N ) {
 
-#ifdef HAVE_ZLIB
+#ifdef HAVE_LIBZ
     gzFile *fd;
     char buff[1024];
     int k;
@@ -263,7 +264,7 @@ void read_coords ( char *fname , struct part *parts , int N ) {
  
 void read_cutoffs ( char *fname , struct part *parts , int N ) {
 
-#ifdef HAVE_ZLIB
+#ifdef HAVE_LIBZ
     gzFile *fd;
     char buff[1024];
     int k;
@@ -317,7 +318,7 @@ void read_cutoffs ( char *fname , struct part *parts , int N ) {
  
 void read_id ( char *fname , struct part *parts , int N ) {
 
-#ifdef HAVE_ZLIB
+#ifdef HAVE_LIBZ
     gzFile *fd;
     char buff[1024];
     int k;
@@ -371,7 +372,7 @@ void read_id ( char *fname , struct part *parts , int N ) {
  
 void read_dt ( char *fname , struct part *parts , int N ) {
 
-#ifdef HAVE_ZLIB
+#ifdef HAVE_LIBZ
     gzFile *fd;
     char buff[1024];
     int k;

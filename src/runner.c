@@ -17,6 +17,8 @@
  * 
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
 
 /* Some standard headers. */
 #include <stdio.h>
