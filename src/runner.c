@@ -1371,7 +1371,8 @@ void *runner_main ( void *data ) {
             
             /* Resolve any dependencies. */
             for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
-                __sync_fetch_and_sub( &t->unlock_tasks[k]->wait , 1 );
+                if ( __sync_fetch_and_sub( &t->unlock_tasks[k]->wait , 1 ) == 0 )
+                    abort();
             for ( k = 0 ; k < t->nr_unlock_cells ; k++ )
                 __sync_fetch_and_sub( &t->unlock_cells[k]->wait , 1 );
         

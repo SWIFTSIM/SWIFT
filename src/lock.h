@@ -45,5 +45,5 @@
         return 0;
         }
     #define lock_trylock( l ) ( ( *(l) ) ? 1 : __sync_val_compare_and_swap( l , 0 , 1 ) )
-    #define lock_unlock( l ) ( *l = 0 )
+    #define lock_unlock( l ) ( __sync_lock_test_and_set( l , 0 ) != 1 )
 #endif
