@@ -1526,7 +1526,7 @@ struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
             
                 /* Bubble-up. */
                 q->count = qcount - 1;
-                for ( ; k < qcount ; k++)
+                for ( ; k < qcount - 1 ; k++ )
                     qtid[k] = qtid[k+1];
             
                 }
