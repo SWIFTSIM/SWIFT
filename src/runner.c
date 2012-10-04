@@ -1239,6 +1239,7 @@ void *runner_main ( void *data ) {
     struct queue *queues[ r->nr_queues ], *myq;
     struct task *t;
     struct cell *ci, *cj;
+    unsigned int myseed = rand() + rt->id;
     #ifdef TIMER
         ticks stalled;
     #endif
@@ -1288,7 +1289,7 @@ void *runner_main ( void *data ) {
                 if ( ( myq->next == myq->count ) ||
                      ( t = queue_gettask( myq , 0 , 0 ) ) == NULL ) {
                     TIMER_TIC2
-                    qid = rand() % naq;
+                    qid = rand_r( &myseed ) % naq;
                     keep = ( r->policy & runner_policy_keep ) &&
                            ( myq->count <= myq->size-tpq );
                     if ( myq->next == myq->count )
@@ -1312,7 +1313,7 @@ void *runner_main ( void *data ) {
                     }
                 }
             else if ( r->policy & runner_policy_rand ) {
-                qid = rand() % naq;
+                qid = rand_r( &myseed ) % naq;
                 t = queue_gettask( queues[qid] , r->policy & runner_policy_block , 0 );
                 }
             else {
