@@ -18,6 +18,10 @@
  ******************************************************************************/
 
 
+/* Some constants. */
+#define queue_maxhits            10
+
+
 /* The queue timers themselves. */
 enum {
     queue_timer_none = 0,

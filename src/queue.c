@@ -343,7 +343,8 @@ struct task *queue_gettask_new ( struct queue *q , int rid , int blocking , int 
             score_best = score;
             
             /* Should we bother looking any farther? */
-            if ( score_best == 2 )
+            if ( ( qtasks[ qtid[ ind_best ] ].cj == NULL && score_best == 1 ) ||
+                score_best == 2 );
                 break;
         
             } /* loop over the task IDs. */

@@ -1079,7 +1079,7 @@ void *runner_main ( void *data ) {
             TIMER_TIC
             t = NULL;
             if ( r->nr_queues == 1 ) {
-                t = queue_gettask_new( &r->queues[0] , rt->id , 1 , 0 );
+                t = queue_gettask( &r->queues[0] , 1 , 0 );
                 }
             else if ( r->policy & runner_policy_steal ) {
                 if ( ( myq->next == myq->count ) ||
