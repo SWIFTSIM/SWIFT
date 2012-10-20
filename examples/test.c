@@ -685,6 +685,10 @@ int main ( int argc , char *argv[] ) {
         #ifdef TIMER
             for ( k = 0 ; k < runner_timer_count ; k++ )
                 runner_timer[k] = 0;
+            for ( k = 0 ; k < queue_timer_count ; k++ )
+                queue_timer[k] = 0;
+            for ( k = 0 ; k < cell_timer_count ; k++ )
+                cell_timer[k] = 0;
         #endif
         #ifdef COUNTER
             for ( k = 0 ; k < runner_counter_count ; k++ )
@@ -699,6 +703,10 @@ int main ( int argc , char *argv[] ) {
             printf( "main: queue timers are [ %.3f" , queue_timer[0]/CPU_TPS*1000 );
             for ( k = 1 ; k < queue_timer_count ; k++ )
                 printf( " %.3f" , ((double)queue_timer[k])/CPU_TPS*1000 );
+            printf( " ] ms.\n" );
+            printf( "main: cell timers are [ %.3f" , cell_timer[0]/CPU_TPS*1000 );
+            for ( k = 1 ; k < cell_timer_count ; k++ )
+                printf( " %.3f" , ((double)cell_timer[k])/CPU_TPS*1000 );
             printf( " ] ms.\n" );
         #else
             printf( "main: runner_run with %i threads took %.3f ms.\n" , nr_threads , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
