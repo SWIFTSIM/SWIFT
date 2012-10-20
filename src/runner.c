@@ -34,7 +34,11 @@
 /* Local headers. */
 #include "cycle.h"
 #include "lock.h"
+#include "task.h"
+#include "part.h"
+#include "cell.h"
 #include "space.h"
+#include "queue.h"
 #include "runner.h"
 
 /* Error macro. */
@@ -70,117 +74,6 @@ const char runner_flip[27] = { 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1
                                0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 }; 
 
 
-/**
- * @brief Sort the tasks IDs according to their weight and constraints.
- *
- * @param q The #queue.
- */
- 
-void queue_sort ( struct queue *q ) {
-
-    struct {
-        short int lo, hi;
-        } qstack[20];
-    int qpos, i, j, k, lo, hi, imin, temp;
-    int pivot_weight, pivot_wait;
-    int *weight, *wait;
-    int *data = q->tid;
-    struct task *t;
-        
-    /* Allocate and pre-compute each task's weight. */
-    if ( ( weight = (int *)alloca( sizeof(int) * q->count ) ) == NULL ||
-         ( wait = (int *)alloca( sizeof(int) * q->count ) ) == NULL )
-        error( "Failed to allocate weight buffer." );
-    for ( k = 0 ; k < q->count ; k++ ) {
-        t = &q->tasks[ q->tid[k] ];
-        switch ( t->type ) {
-            case tid_self:
-                wait[k] = t->rank;
-                weight[k] = 0; // t->ci->count * t->ci->count;
-                break;
-            case tid_pair:
-                wait[k] = t->rank;
-                weight[k] = 0; // t->ci->count * t->cj->count;
-                break;
-            case tid_sub:
-                wait[k] = t->rank;
-                weight[k] = 0; // (t->cj == NULL) ? t->ci->count * t->ci->count : t->ci->count * t->cj->count;
-                break;
-            case tid_sort:
-                wait[k] = t->rank;
-                weight[k] = 0; // t->ci->count;
-                break;
-            }
-        }
-        
-    /* Sort tasks. */
-    qstack[0].lo = 0; qstack[0].hi = q->count - 1; qpos = 0;
-    while ( qpos >= 0 ) {
-        lo = qstack[qpos].lo; hi = qstack[qpos].hi;
-        qpos -= 1;
-        if ( hi - lo < 15 ) {
-            for ( i = lo ; i < hi ; i++ ) {
-                imin = i;
-                for ( j = i+1 ; j <= hi ; j++ )
-                    if ( ( wait[ j ] < wait[ imin ] ) ||
-                         ( wait[ j ] == wait[ imin ] && weight[ j ] > weight[ imin ] ) )
-                if ( imin != i ) {
-                    temp = data[imin]; data[imin] = data[i]; data[i] = temp;
-                    temp = wait[imin]; wait[imin] = wait[i]; wait[i] = temp;
-                    temp = weight[imin]; weight[imin] = weight[i]; weight[i] = temp;
-                    }
-                }
-            }
-        else {
-            pivot_weight = weight[ ( lo + hi ) / 2 ];
-            pivot_wait = wait[ ( lo + hi ) / 2 ];
-            i = lo; j = hi;
-            while ( i <= j ) {
-                while ( ( wait[ i ] < pivot_wait ) ||
-                        ( wait[ i ] == pivot_wait && weight[ i ] > pivot_weight ) )
-                    i++;
-                while ( ( wait[ j ] > pivot_wait ) ||
-                        ( wait[ j ] == pivot_wait && weight[ j ] < pivot_weight ) )
-                    j--;
-                if ( i <= j ) {
-                    if ( i < j ) {
-                        temp = data[i]; data[i] = data[j]; data[j] = temp;
-                        temp = wait[i]; wait[i] = wait[j]; wait[j] = temp;
-                        temp = weight[i]; weight[i] = weight[j]; weight[j] = temp;
-                        }
-                    i += 1; j -= 1;
-                    }
-                }
-            if ( j > ( lo + hi ) / 2 ) {
-                if ( lo < j ) {
-                    qpos += 1;
-                    qstack[qpos].lo = lo;
-                    qstack[qpos].hi = j;
-                    }
-                if ( i < hi ) {
-                    qpos += 1;
-                    qstack[qpos].lo = i;
-                    qstack[qpos].hi = hi;
-                    }
-                }
-            else {
-                if ( i < hi ) {
-                    qpos += 1;
-                    qstack[qpos].lo = i;
-                    qstack[qpos].hi = hi;
-                    }
-                if ( lo < j ) {
-                    qpos += 1;
-                    qstack[qpos].lo = lo;
-                    qstack[qpos].hi = j;
-                    }
-                }
-            }
-        }
-                
-    }
-    
-    
 /** 
  * @brief Sort the tasks in topological order over all queues.
  *
@@ -1084,102 +977,6 @@ void runner_dosort ( struct runner_thread *rt , struct cell *c , int flags ) {
 
 
 /**
- * @brief Lock a cell and hold its parents.
- *
- * @param c The #cell.
- */
- 
-int cell_locktree( struct cell *c ) {
-
-    struct cell *finger, *finger2;
-    TIMER_TIC
-
-    /* First of all, try to lock this cell. */
-    if ( lock_trylock( &c->lock ) != 0 ) {
-        TIMER_TOC(runner_timer_tree);
-        return 1;
-        }
-        
-    /* Did somebody hold this cell in the meantime? */
-    if ( c->hold ) {
-        
-        /* Unlock this cell. */
-        if ( lock_unlock( &c->lock ) != 0 )
-            error( "Failed to unlock cell." );
-            
-        /* Admit defeat. */
-        TIMER_TOC(runner_timer_tree);
-        return 1;
-    
-        }
-        
-    /* Climb up the tree and lock/hold/unlock. */
-    for ( finger = c->parent ; finger != NULL ; finger = finger->parent ) {
-    
-        /* Lock this cell. */
-        if ( lock_trylock( &finger->lock ) != 0 )
-            break;
-            
-        /* Increment the hold. */
-        __sync_fetch_and_add( &finger->hold , 1 );
-        
-        /* Unlock the cell. */
-        if ( lock_unlock( &finger->lock ) != 0 )
-            error( "Failed to unlock cell." );
-    
-        }
-        
-    /* If we reached the top of the tree, we're done. */
-    if ( finger == NULL ) {
-        TIMER_TOC(runner_timer_tree);
-        return 0;
-        }
-        
-    /* Otherwise, we hit a snag. */
-    else {
-    
-        /* Undo the holds up to finger. */
-        for ( finger2 = c->parent ; finger2 != finger ; finger2 = finger2->parent )
-            __sync_fetch_and_sub( &finger2->hold , 1 );
-            
-        /* Unlock this cell. */
-        if ( lock_unlock( &c->lock ) != 0 )
-            error( "Failed to unlock cell." );
-            
-        /* Admit defeat. */
-        TIMER_TOC(runner_timer_tree);
-        return 1;
-    
-        }
-
-    }
-    
-    
-/**
- * @brief Unock a cell's parents.
- *
- * @param c The #cell.
- */
- 
-void cell_unlocktree( struct cell *c ) {
-
-    struct cell *finger;
-    TIMER_TIC
-
-    /* First of all, try to unlock this cell. */
-    if ( lock_unlock( &c->lock ) != 0 )
-        error( "Failed to unlock cell." );
-        
-    /* Climb up the tree and unhold the parents. */
-    for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
-        __sync_fetch_and_sub( &finger->hold , 1 );
-        
-    TIMER_TOC(runner_timer_tree);
-        
-    }
-    
-    
-/**
  * @brief Implements a barrier for the #runner threads.
  *
  */
@@ -1447,134 +1244,6 @@ void runner_run ( struct runner *r , int sort_queues ) {
     
     
 /**
- * @brief Get a task free of dependencies and conflicts.
- *
- * @param q The task #queue.
- * @param blocking Block until access to the queue is granted.
- * @param keep Remove the returned task from this queue.
- */
- 
-struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
-
-    int k, tid = -1, qcount, *qtid = q->tid;
-    lock_type *qlock = &q->lock;
-    struct task *qtasks = q->tasks, *res = NULL;
-    TIMER_TIC
-    
-    /* If there are no tasks, leave immediately. */
-    if ( q->next >= q->count ) {
-        TIMER_TOC(runner_timer_queue);
-        return NULL;
-        }
-
-    /* Main loop, while there are tasks... */
-    while ( q->next < q->count ) {
-    
-        /* Grab the task lock. */
-        // if ( blocking ) {
-            if ( lock_lock( qlock ) != 0 )
-                error( "Locking the task_lock failed.\n" );
-        //     }
-        // else {
-        //     if ( lock_trylock( qlock ) != 0 )
-        //         break;
-        //     }
-            
-        /* Loop over the remaining task IDs. */
-        qcount = q->count;
-        for ( k = q->next ; k < qcount ; k++ ) {
-        
-            /* Put a finger on the task. */
-            res = &qtasks[ qtid[k] ];
-            
-            /* Is this task blocked? */
-            if ( res->wait )
-                continue;
-            
-            /* Different criteria for different types. */
-            if ( res->type == tid_self || (res->type == tid_sub && res->cj == NULL) ) {
-                if ( res->ci->hold || cell_locktree( res->ci ) != 0 )
-                    continue;
-                }
-            else if ( res->type == tid_pair || (res->type == tid_sub && res->cj != NULL) ) {
-                if ( res->ci->hold || res->cj->hold || res->ci->wait || res->cj->wait )
-                    continue;
-                if ( cell_locktree( res->ci ) != 0 )
-                    continue;
-                if ( cell_locktree( res->cj ) != 0 ) {
-                    cell_unlocktree( res->ci );
-                    continue;
-                    }
-                }
-            
-            /* If we made it this far, we're safe. */
-            break;
-        
-            } /* loop over the task IDs. */
-            
-        /* Did we get a task? */
-        if ( k < qcount ) {
-        
-            /* Do we need to swap? */
-            if ( k != q->next )
-                COUNT(runner_counter_swap);
-        
-            /* get the task ID. */
-            tid = qtid[k];
-        
-            /* Remove the task? */
-            if ( keep ) {
-            
-                /* Bubble-up. */
-                q->count = qcount - 1;
-                for ( ; k < qcount - 1 ; k++ )
-                    qtid[k] = qtid[k+1];
-            
-                }
-                
-            /* No, leave it in the queue. */
-            else {
-            
-                TIMER_TIC2
-
-                /* Bubble-down the task. */
-                while ( k > q->next ) {
-                    qtid[ k ] = qtid[ k-1 ];
-                    k -= 1;
-                    }
-                qtid[ q->next ] = tid;
-                
-                /* up the counter. */
-                q->next += 1;
-                
-                TIMER_TOC2(runner_timer_bubble);
-            
-                }
-            
-            }
-    
-        /* Release the task lock. */
-        if ( lock_unlock( qlock ) != 0 )
-            error( "Unlocking the task_lock failed.\n" );
-            
-        /* Leave? */
-        if ( tid >= 0 ) {
-            TIMER_TOC(runner_timer_queue);
-            return &qtasks[tid];
-            }
-        else if ( !blocking )
-            break;
-    
-        } /* while there are tasks. */
-        
-    /* No beef. */
-    TIMER_TOC(runner_timer_queue);
-    return NULL;
-
-    }
-
-
-/**
  * @brief init a runner with the given number of threads, queues, and
  *      the given policy.
  *
@@ -1613,17 +1282,8 @@ void runner_init ( struct runner *r , struct space *s , int nr_threads , int nr_
     bzero( r->queues , nr_queues * sizeof(struct queue) );
         
     /* Init the queues. */
-    for ( k = 0 ; k < nr_queues ; k++ ) {
-        r->queues[k].size = s->nr_tasks;
-        if ( ( r->queues[k].tid = (int *)malloc( sizeof(int) * r->queues[k].size ) ) == NULL )
-            error( "Failed to allocate queue tids." );
-        r->queues[k].count = 0;
-        r->queues[k].next = 0;
-        if ( lock_init( &r->queues[k].lock ) != 0 )
-            error( "Failed to init queue lock." );
-        r->queues[k].tasks = s->tasks;
-        r->queues[k].r = r;
-        }
+    for ( k = 0 ; k < nr_queues ; k++ )
+        queue_init( &r->queues[k] , s->nr_tasks , s->tasks );
         
     /* Rank the tasks in topological order. */
     runner_ranktasks( r );

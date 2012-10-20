@@ -26,8 +26,6 @@
 #define space_splitratio                0.875
 #define space_splitsize_default         800
 #define space_dosub                     1
-#define task_maxwait                    3
-#define task_maxunlock                  39
 
 
 /* Split size. */
@@ -37,32 +35,6 @@ extern int space_splitsize;
 extern const int sortlistID[27];
     
     
-/* The different task IDs. */
-enum taskIDs {
-    tid_none = 0,
-    tid_sort,
-    tid_self,
-    tid_pair,
-    tid_sub,
-    tid_count
-    };
-extern const char *taskID_names[];
-    
-    
-/* Data of a task. */
-struct task {
-
-    int type, flags, wait, rank, done;
-    
-    int nr_unlock_tasks;
-    struct task *unlock_tasks[ task_maxunlock ];
-
-    int nr_unlock_cells;
-    struct cell *ci, *cj, *unlock_cells[2];
-    
-    } __attribute__((aligned (64)));
-
-
 /* Entry in a list of sorted indices. */
 struct entry {
     float d;
@@ -70,79 +42,6 @@ struct entry {
     };
     
     
-/* Data of a single particle. */
-struct part {
-
-    /* Particle position. */
-    double x[3];
-    
-    /* Particle cutoff radius. */
-    float r;
-    
-    /* Particle time-step. */
-    float dt;
-    
-    /* Particle ID. */
-    int id;
-    
-    /* Number of pairwise interactions. */
-    double count, count_dh;
-    int icount;
-    
-    } __attribute__((aligned (32)));
-    
-
-/* Structure to store the data of a single cell. */
-struct cell {
-
-    /* The cell location on the grid. */
-    double loc[3];
-    
-    /* The cell dimensions. */
-    double h[3];
-    
-    /* Max radii in this cell. */
-    double r_max;
-    
-    /* The depth of this cell in the tree. */
-    int depth, split;
-    
-    /* Nr of parts. */
-    int count;
-    
-    /* Pointers to the particle data. */
-    struct part *parts;
-    
-    /* Pointers for the sorted indices. */
-    struct entry *sort;
-    
-    /* Number of pairs associated with this cell. */
-    int nr_pairs;
-    
-    /* Pointers to the next level of cells. */
-    struct cell *progeny[8];
-    
-    /* Parent cell. */
-    struct cell *parent;
-    
-    /* The tasks computing this cell's sorts. */
-    struct task *sorts[14];
-    
-    /* Number of tasks this cell is waiting for and whether it is in use. */
-    int wait;
-    
-    /* Is the data of this cell being used in a sub-cell? */
-    int hold;
-    
-    /* Spin lock for various uses. */
-    lock_type lock;
-    
-    /* Linking pointer for "memory management". */
-    struct cell *next;
-
-    } __attribute__((aligned (64)));
-
-
 /* The space in which the cells reside. */
 struct space {
 

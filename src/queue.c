@@ -1,0 +1,352 @@
+/*******************************************************************************
+ * This file is part of GadgetSMP.
+ * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ ******************************************************************************/
+
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <math.h>
+#include <float.h>
+#include <limits.h>
+#include <omp.h>
+#include <sched.h>
+
+/* Local headers. */
+#include "cycle.h"
+#include "lock.h"
+#include "task.h"
+#include "cell.h"
+#include "queue.h"
+
+/* Error macro. */
+#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+
+/* Define the timer macros. */
+#ifdef TIMER_VERBOSE
+    #define TIMER
+#endif
+#ifdef TIMER
+    #define TIMER_TIC ticks tic = getticks();
+    #define TIMER_TOC(t) timer_toc( t , tic )
+    #define TIMER_TIC2 ticks tic2 = getticks();
+    #define TIMER_TOC2(t) timer_toc( t , tic2 )
+    #ifndef INLINE
+    # if __GNUC__ && !__GNUC_STDC_INLINE__
+    #  define INLINE extern inline
+    # else
+    #  define INLINE inline
+    # endif
+    #endif
+    INLINE ticks timer_toc ( int t , ticks tic ) {
+        ticks d = (getticks() - tic);
+        __sync_add_and_fetch( &queue_timer[t] , d );
+        return d;
+        }
+#else
+    #define TIMER_TIC
+    #define TIMER_TOC(t)
+#endif
+
+
+/* Counter macros. */
+#ifdef COUNTER
+    #define COUNT(c) ( __sync_add_and_fetch( &queue_counter[ c ] , 1 ) )
+#else
+    #define COUNT(c)
+#endif
+
+
+/* The timers. */
+ticks queue_timer[ queue_timer_count ];
+
+/* The counters. */
+int queue_counter[ queue_counter_count ];
+
+        
+
+/** 
+ * @brief Initialize the given queue.
+ *
+ * @param q The #queue.
+ * @param size The maximum size of the queue.
+ * @param tasks List of tasks to which the queue indices refer to.
+ */
+ 
+void queue_init ( struct queue *q , int size , struct task *tasks ) {
+    
+    /* Allocate the task list. */
+    q->size = size;
+    if ( ( q->tid = (int *)malloc( sizeof(int) * size ) ) == NULL )
+        error( "Failed to allocate queue tids." );
+    q->tasks = tasks;
+        
+    /* Init counters. */
+    q->count = 0;
+    q->next = 0;
+    
+    /* Init the queue lock. */
+    if ( lock_init( &q->lock ) != 0 )
+        error( "Failed to init queue lock." );
+
+    }
+
+
+/**
+ * @brief Get a task free of dependencies and conflicts.
+ *
+ * @param q The task #queue.
+ * @param blocking Block until access to the queue is granted.
+ * @param keep Remove the returned task from this queue.
+ */
+ 
+struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
+
+    int k, tid = -1, qcount, *qtid = q->tid;
+    lock_type *qlock = &q->lock;
+    struct task *qtasks = q->tasks, *res = NULL;
+    TIMER_TIC
+    
+    /* If there are no tasks, leave immediately. */
+    if ( q->next >= q->count ) {
+        TIMER_TOC(queue_timer_gettask);
+        return NULL;
+        }
+
+    /* Main loop, while there are tasks... */
+    while ( q->next < q->count ) {
+    
+        /* Grab the task lock. */
+        // if ( blocking ) {
+            if ( lock_lock( qlock ) != 0 )
+                error( "Locking the task_lock failed.\n" );
+        //     }
+        // else {
+        //     if ( lock_trylock( qlock ) != 0 )
+        //         break;
+        //     }
+            
+        /* Loop over the remaining task IDs. */
+        qcount = q->count;
+        for ( k = q->next ; k < qcount ; k++ ) {
+        
+            /* Put a finger on the task. */
+            res = &qtasks[ qtid[k] ];
+            
+            /* Is this task blocked? */
+            if ( res->wait )
+                continue;
+            
+            /* Different criteria for different types. */
+            if ( res->type == tid_self || (res->type == tid_sub && res->cj == NULL) ) {
+                if ( res->ci->hold || cell_locktree( res->ci ) != 0 )
+                    continue;
+                }
+            else if ( res->type == tid_pair || (res->type == tid_sub && res->cj != NULL) ) {
+                if ( res->ci->hold || res->cj->hold || res->ci->wait || res->cj->wait )
+                    continue;
+                if ( cell_locktree( res->ci ) != 0 )
+                    continue;
+                if ( cell_locktree( res->cj ) != 0 ) {
+                    cell_unlocktree( res->ci );
+                    continue;
+                    }
+                }
+            
+            /* If we made it this far, we're safe. */
+            break;
+        
+            } /* loop over the task IDs. */
+            
+        /* Did we get a task? */
+        if ( k < qcount ) {
+        
+            /* Do we need to swap? */
+            if ( k != q->next )
+                COUNT(queue_counter_swap);
+        
+            /* get the task ID. */
+            tid = qtid[k];
+        
+            /* Remove the task? */
+            if ( keep ) {
+            
+                /* Bubble-up. */
+                q->count = qcount - 1;
+                for ( ; k < qcount - 1 ; k++ )
+                    qtid[k] = qtid[k+1];
+            
+                }
+                
+            /* No, leave it in the queue. */
+            else {
+            
+                TIMER_TIC2
+
+                /* Bubble-down the task. */
+                while ( k > q->next ) {
+                    qtid[ k ] = qtid[ k-1 ];
+                    k -= 1;
+                    }
+                qtid[ q->next ] = tid;
+                
+                /* up the counter. */
+                q->next += 1;
+                
+                TIMER_TOC2(queue_timer_bubble);
+            
+                }
+            
+            }
+    
+        /* Release the task lock. */
+        if ( lock_unlock( qlock ) != 0 )
+            error( "Unlocking the task_lock failed.\n" );
+            
+        /* Leave? */
+        if ( tid >= 0 ) {
+            TIMER_TOC(queue_timer_gettask);
+            return &qtasks[tid];
+            }
+        else if ( !blocking )
+            break;
+    
+        } /* while there are tasks. */
+        
+    /* No beef. */
+    TIMER_TOC(queue_timer_gettask);
+    return NULL;
+
+    }
+
+
+/**
+ * @brief Sort the tasks IDs according to their weight and constraints.
+ *
+ * @param q The #queue.
+ */
+ 
+void queue_sort ( struct queue *q ) {
+
+    struct {
+        short int lo, hi;
+        } qstack[20];
+    int qpos, i, j, k, lo, hi, imin, temp;
+    int pivot_weight, pivot_wait;
+    int *weight, *wait;
+    int *data = q->tid;
+    struct task *t;
+        
+    /* Allocate and pre-compute each task's weight. */
+    if ( ( weight = (int *)alloca( sizeof(int) * q->count ) ) == NULL ||
+         ( wait = (int *)alloca( sizeof(int) * q->count ) ) == NULL )
+        error( "Failed to allocate weight buffer." );
+    for ( k = 0 ; k < q->count ; k++ ) {
+        t = &q->tasks[ q->tid[k] ];
+        switch ( t->type ) {
+            case tid_self:
+                wait[k] = t->rank;
+                weight[k] = 0; // t->ci->count * t->ci->count;
+                break;
+            case tid_pair:
+                wait[k] = t->rank;
+                weight[k] = 0; // t->ci->count * t->cj->count;
+                break;
+            case tid_sub:
+                wait[k] = t->rank;
+                weight[k] = 0; // (t->cj == NULL) ? t->ci->count * t->ci->count : t->ci->count * t->cj->count;
+                break;
+            case tid_sort:
+                wait[k] = t->rank;
+                weight[k] = 0; // t->ci->count;
+                break;
+            }
+        }
+        
+    /* Sort tasks. */
+    qstack[0].lo = 0; qstack[0].hi = q->count - 1; qpos = 0;
+    while ( qpos >= 0 ) {
+        lo = qstack[qpos].lo; hi = qstack[qpos].hi;
+        qpos -= 1;
+        if ( hi - lo < 15 ) {
+            for ( i = lo ; i < hi ; i++ ) {
+                imin = i;
+                for ( j = i+1 ; j <= hi ; j++ )
+                    if ( ( wait[ j ] < wait[ imin ] ) ||
+                         ( wait[ j ] == wait[ imin ] && weight[ j ] > weight[ imin ] ) )
+                if ( imin != i ) {
+                    temp = data[imin]; data[imin] = data[i]; data[i] = temp;
+                    temp = wait[imin]; wait[imin] = wait[i]; wait[i] = temp;
+                    temp = weight[imin]; weight[imin] = weight[i]; weight[i] = temp;
+                    }
+                }
+            }
+        else {
+            pivot_weight = weight[ ( lo + hi ) / 2 ];
+            pivot_wait = wait[ ( lo + hi ) / 2 ];
+            i = lo; j = hi;
+            while ( i <= j ) {
+                while ( ( wait[ i ] < pivot_wait ) ||
+                        ( wait[ i ] == pivot_wait && weight[ i ] > pivot_weight ) )
+                    i++;
+                while ( ( wait[ j ] > pivot_wait ) ||
+                        ( wait[ j ] == pivot_wait && weight[ j ] < pivot_weight ) )
+                    j--;
+                if ( i <= j ) {
+                    if ( i < j ) {
+                        temp = data[i]; data[i] = data[j]; data[j] = temp;
+                        temp = wait[i]; wait[i] = wait[j]; wait[j] = temp;
+                        temp = weight[i]; weight[i] = weight[j]; weight[j] = temp;
+                        }
+                    i += 1; j -= 1;
+                    }
+                }
+            if ( j > ( lo + hi ) / 2 ) {
+                if ( lo < j ) {
+                    qpos += 1;
+                    qstack[qpos].lo = lo;
+                    qstack[qpos].hi = j;
+                    }
+                if ( i < hi ) {
+                    qpos += 1;
+                    qstack[qpos].lo = i;
+                    qstack[qpos].hi = hi;
+                    }
+                }
+            else {
+                if ( i < hi ) {
+                    qpos += 1;
+                    qstack[qpos].lo = i;
+                    qstack[qpos].hi = hi;
+                    }
+                if ( lo < j ) {
+                    qpos += 1;
+                    qstack[qpos].lo = lo;
+                    qstack[qpos].hi = j;
+                    }
+                }
+            }
+        }
+                
+    }
+    
+    

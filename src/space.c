@@ -32,6 +32,9 @@
 /* Local headers. */
 #include "cycle.h"
 #include "lock.h"
+#include "task.h"
+#include "part.h"
+#include "cell.h"
 #include "space.h"
 #include "runner.h"
 
@@ -43,9 +46,6 @@
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
-
-/* Task type names. */
-const char *taskID_names[tid_count] = { "none" , "sort" , "self" , "pair" , "sub" };
 
 /* Map shift vector to sortlist. */
 const int sortlistID[27] = {
@@ -287,57 +287,6 @@ struct task *space_addtask ( struct space *s , int type , int flags , int wait ,
     }
 
 
-
-/**
- * @brief Remove an unlock_task from the given task.
- *
- * @param ta The unlocking #task.
- * @param tb The #task that will be unlocked.
- */
- 
-void task_rmunlock( struct task *ta , struct task *tb ) {
-
-    int k;
-    
-    for ( k = 0 ; k < ta->nr_unlock_tasks ; k++ )
-        if ( ta->unlock_tasks[k] == tb ) {
-            ta->nr_unlock_tasks -= 1;
-            ta->unlock_tasks[k] = ta->unlock_tasks[ ta->nr_unlock_tasks ];
-            return;
-            }
-    error( "Task not found." );
-
-    }
-    
-
-/**
- * @brief Add an unlock_task to the given task.
- *
- * @param ta The unlocking #task.
- * @param tb The #task that will be unlocked.
- */
- 
-void task_addunlock( struct task *ta , struct task *tb ) {
-
-    int k;
-    
-    /* Bogus? */
-    if ( ta == NULL || tb == NULL )
-        return;
-    
-    /* Check if ta already unlocks tb. */
-    for ( k = 0 ; k < ta->nr_unlock_tasks ; k++ )
-        if ( ta->unlock_tasks[k] == tb )
-            return;
-
-    if ( ta->nr_unlock_tasks == task_maxunlock )
-        error( "Too many unlock_tasks in task." );
-        
-    ta->unlock_tasks[ ta->nr_unlock_tasks] = tb;
-    ta->nr_unlock_tasks += 1;
-
-    }
-    
 
 /**
  * @brief Split tasks that may be too large.
@@ -1006,120 +955,6 @@ void space_maketasks ( struct space *s , int do_sort ) {
     }
     
     
-/**
- * @brief Sort the parts into eight bins along the given pivots.
- *
- * @param c The #cell array to be sorted.
- */
- 
-void cell_split ( struct cell *c  ) {
-
-    int i, j, k, kk;
-    struct part temp, *parts = c->parts;
-    int left[8], right[8];
-    double pivot[3];
-    
-    /* Init the pivot. */
-    for ( k = 0 ; k < 3 ; k++ )
-        pivot[k] = c->loc[k] + c->h[k]/2;
-    
-    /* Split along the x-axis. */
-    i = 0; j = c->count - 1;
-    while ( i <= j ) {
-        while ( i <= c->count-1 && parts[i].x[0] <= pivot[0] )
-            i += 1;
-        while ( j >= 0 && parts[j].x[0] > pivot[0] )
-            j -= 1;
-        if ( i < j ) {
-            temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
-            }
-        }
-    for ( k = 0 ; k <= j ; k++ )
-        if ( parts[k].x[0] > pivot[0] )
-            error( "cell_split: sorting failed." );
-    for ( k = i ; k < c->count ; k++ )
-        if ( parts[k].x[0] < pivot[0] )
-            error( "cell_split: sorting failed." );
-    left[1] = i; right[1] = c->count - 1;
-    left[0] = 0; right[0] = j;
-    
-    /* Split along the y axis, twice. */
-    for ( k = 1 ; k >= 0 ; k-- ) {
-        i = left[k]; j = right[k];
-        while ( i <= j ) {
-            while ( i <= right[k] && parts[i].x[1] <= pivot[1] )
-                i += 1;
-            while ( j >= left[k] && parts[j].x[1] > pivot[1] )
-                j -= 1;
-            if ( i < j ) {
-                temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
-                }
-            }
-        for ( kk = left[k] ; kk <= j ; kk++ )
-            if ( parts[kk].x[1] > pivot[1] ) {
-                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
-                error( "sorting failed (left)." );
-                }
-        for ( kk = i ; kk <= right[k] ; kk++ )
-            if ( parts[kk].x[1] < pivot[1] )
-                error( "sorting failed (right)." );
-        left[2*k+1] = i; right[2*k+1] = right[k];
-        left[2*k] = left[k]; right[2*k] = j;
-        }
-
-    /* Split along the z axis, four times. */
-    for ( k = 3 ; k >= 0 ; k-- ) {
-        i = left[k]; j = right[k];
-        while ( i <= j ) {
-            while ( i <= right[k] && parts[i].x[2] <= pivot[2] )
-                i += 1;
-            while ( j >= left[k] && parts[j].x[2] > pivot[2] )
-                j -= 1;
-            if ( i < j ) {
-                temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
-                }
-            }
-        for ( kk = left[k] ; kk <= j ; kk++ )
-            if ( parts[kk].x[2] > pivot[2] ) {
-                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
-                error( "sorting failed (left)." );
-                }
-        for ( kk = i ; kk <= right[k] ; kk++ )
-            if ( parts[kk].x[2] < pivot[2] ) {
-                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
-                error( "sorting failed (right)." );
-                }
-        left[2*k+1] = i; right[2*k+1] = right[k];
-        left[2*k] = left[k]; right[2*k] = j;
-        }
-        
-    /* Store the counts and offsets. */
-    for ( k = 0 ; k < 8 ; k++ ) {
-        c->progeny[k]->count = right[k] - left[k] + 1;
-        if ( c->progeny[k]->count < 0 )
-            abort();
-        c->progeny[k]->parts = &c->parts[ left[k] ];
-        }
-        
-    /* Verify a few sub-cells. */
-    /* for ( k = 0 ; k < c->progeny[0]->count ; k++ )
-        if ( c->progeny[0]->parts[k].x[0] > pivot[0] ||
-             c->progeny[0]->parts[k].x[1] > pivot[1] ||
-             c->progeny[0]->parts[k].x[2] > pivot[2] )
-            error( "Sorting failed (progeny=0)." );
-    for ( k = 0 ; k < c->progeny[1]->count ; k++ )
-        if ( c->progeny[1]->parts[k].x[0] > pivot[0] ||
-             c->progeny[1]->parts[k].x[1] > pivot[1] ||
-             c->progeny[1]->parts[k].x[2] <= pivot[2] )
-            error( "Sorting failed (progeny=1)." );
-    for ( k = 0 ; k < c->progeny[2]->count ; k++ )
-        if ( c->progeny[2]->parts[k].x[0] > pivot[0] ||
-             c->progeny[2]->parts[k].x[1] <= pivot[1] ||
-             c->progeny[2]->parts[k].x[2] > pivot[2] )
-            error( "Sorting failed (progeny=2)." ); */
-
-    }
-
 
 /**
  * @brief Split cells that contain too many particles.

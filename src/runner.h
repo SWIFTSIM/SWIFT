@@ -237,27 +237,6 @@ __attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float h
     
 
 
-/* A task queue. */
-struct queue {
-
-    /* The lock to access this queue. */
-    lock_type lock;
-
-    /* Size, count and next element. */
-    int size, count, next;
-    
-    /* The runner in which this queue lives. */
-    struct runner *r;
-    
-    /* The actual tasks to which the indices refer. */
-    struct task *tasks;
-    
-    /* The task indices. */
-    int *tid;
-
-    } __attribute__((aligned (64)));
-    
-
 /* A struct representing a runner's thread and its data. */
 struct runner_thread {
 
@@ -308,4 +287,3 @@ void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *c
 void runner_doself ( struct runner_thread *rt , struct cell *c );
 void runner_dosort ( struct runner_thread *rt , struct cell *c , int flag );
 void runner_init ( struct runner *r , struct space *s , int nr_threads , int nr_queues , int policy );
-struct task *queue_gettask ( struct queue *q , int blocking , int keep );
