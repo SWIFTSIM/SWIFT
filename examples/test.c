@@ -696,6 +696,10 @@ int main ( int argc , char *argv[] ) {
             for ( k = 1 ; k < runner_timer_count ; k++ )
                 printf( " %.3f" , ((double)runner_timer[k])/CPU_TPS*1000 );
             printf( " %.3f ] ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+            printf( "main: queue timers are [ %.3f" , queue_timer[0]/CPU_TPS*1000 );
+            for ( k = 1 ; k < queue_timer_count ; k++ )
+                printf( " %.3f" , ((double)queue_timer[k])/CPU_TPS*1000 );
+            printf( " ] ms.\n" );
         #else
             printf( "main: runner_run with %i threads took %.3f ms.\n" , nr_threads , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
         #endif
