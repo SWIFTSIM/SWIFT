@@ -73,6 +73,9 @@ struct cell {
     /* Spin lock for various uses. */
     lock_type lock;
     
+    /* ID of the previous owner, e.g. runner. */
+    int owner;
+    
     /* Linking pointer for "memory management". */
     struct cell *next;
 

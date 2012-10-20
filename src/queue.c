@@ -84,6 +84,34 @@ int queue_counter[ queue_counter_count ];
 
         
 
+/**
+ * @brief Insert a used tasks into the given queue.
+ *
+ * @param q The #queue.
+ * @param t The #task.
+ */
+ 
+void queue_insert ( struct queue *q , struct task *t ) {
+
+    int k;
+
+    /* Lock the queue. */
+    if ( lock_lock( &q->lock ) != 0 )
+        error( "Failed to get queue lock." );
+        
+    /* Bubble-up the tasks. */
+    for ( k = q->count ; k > q->next ; k-- )
+        q->tid[k] = q->tid[k-1];
+    q->tid[ q->next ] = t - q->tasks;
+    q->count += 1;
+    q->next += 1;
+    
+    /* Unlock the queue. */
+    if ( lock_unlock( &q->lock ) != 0 )
+        error( "Failed to unlock queue." );
+    }
+
+
 /** 
  * @brief Initialize the given queue.
  *
@@ -207,6 +235,152 @@ struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
                     qtid[ k ] = qtid[ k-1 ];
                     k -= 1;
                     }
+                qtid[ q->next ] = tid;
+                
+                /* up the counter. */
+                q->next += 1;
+                
+                TIMER_TOC2(queue_timer_bubble);
+            
+                }
+            
+            }
+    
+        /* Release the task lock. */
+        if ( lock_unlock( qlock ) != 0 )
+            error( "Unlocking the task_lock failed.\n" );
+            
+        /* Leave? */
+        if ( tid >= 0 ) {
+            TIMER_TOC(queue_timer_gettask);
+            return &qtasks[tid];
+            }
+        else if ( !blocking )
+            break;
+    
+        } /* while there are tasks. */
+        
+    /* No beef. */
+    TIMER_TOC(queue_timer_gettask);
+    return NULL;
+
+    }
+
+
+struct task *queue_gettask_new ( struct queue *q , int rid , int blocking , int keep ) {
+
+    int k, tid = -1, qcount, *qtid = q->tid;
+    lock_type *qlock = &q->lock;
+    struct task *qtasks = q->tasks, *res = NULL;
+    int ind_best, score_best = -1, score;
+    TIMER_TIC
+    
+    /* If there are no tasks, leave immediately. */
+    if ( q->next >= q->count ) {
+        TIMER_TOC(queue_timer_gettask);
+        return NULL;
+        }
+
+    /* Main loop, while there are tasks... */
+    while ( q->next < q->count ) {
+    
+        /* Grab the task lock. */
+        // if ( blocking ) {
+            if ( lock_lock( qlock ) != 0 )
+                error( "Locking the task_lock failed.\n" );
+        //     }
+        // else {
+        //     if ( lock_trylock( qlock ) != 0 )
+        //         break;
+        //     }
+            
+        /* Loop over the remaining task IDs. */
+        qcount = q->count; ind_best = -1;
+        for ( k = q->next ; k < qcount ; k++ ) {
+        
+            /* Put a finger on the task. */
+            res = &qtasks[ qtid[k] ];
+            
+            /* Is this task blocked? */
+            if ( res->wait )
+                continue;
+                
+            /* Get the score for this task. */
+            if ( res->type == tid_self || res->type == tid_sort || ( res->type == tid_sub && res->cj == NULL ) )
+                score = ( res->ci->owner == rid );
+            else
+                score = ( res->ci->owner == rid ) + ( res->cj->owner == rid );
+            if ( score <= score_best )
+                continue;
+            
+            /* Different criteria for different types. */
+            if ( res->type == tid_self || (res->type == tid_sub && res->cj == NULL) ) {
+                if ( res->ci->hold || cell_locktree( res->ci ) != 0 )
+                    continue;
+                }
+            else if ( res->type == tid_pair || (res->type == tid_sub && res->cj != NULL) ) {
+                if ( res->ci->hold || res->cj->hold || res->ci->wait || res->cj->wait )
+                    continue;
+                if ( cell_locktree( res->ci ) != 0 )
+                    continue;
+                if ( cell_locktree( res->cj ) != 0 ) {
+                    cell_unlocktree( res->ci );
+                    continue;
+                    }
+                }
+                
+            /* If we owned a previous task, unlock it. */
+            if ( ind_best >= 0 ) {
+                res = &qtasks[ qtid[ ind_best ] ];
+                if ( res->type == tid_self || res->type == tid_pair || res->type == tid_sub )
+                    cell_unlocktree( res->ci );
+                if ( res->type == tid_pair || (res->type == tid_sub && res->cj != NULL) )
+                    cell_unlocktree( res->cj );
+                }
+            
+            /* If we made it this far, we're safe. */
+            ind_best = k;
+            score_best = score;
+            
+            /* Should we bother looking any farther? */
+            if ( score_best == 2 )
+                break;
+        
+            } /* loop over the task IDs. */
+            
+        /* Did we get a task? */
+        if ( ind_best >= 0 ) {
+        
+            /* Do we need to swap? */
+            if ( ind_best != q->next )
+                COUNT(queue_counter_swap);
+        
+            /* get the task ID. */
+            tid = qtid[ ind_best ];
+            
+            /* Own the cells involved. */
+            qtasks[ tid ].ci->owner = rid;
+            if ( qtasks[ tid ].cj != NULL )
+                qtasks[ tid ].cj->owner = rid;
+        
+            /* Remove the task? */
+            if ( keep ) {
+            
+                /* Bubble-up. */
+                q->count = qcount - 1;
+                for ( k = ind_best ; k < qcount - 1 ; k++ )
+                    qtid[k] = qtid[k+1];
+            
+                }
+                
+            /* No, leave it in the queue. */
+            else {
+            
+                TIMER_TIC2
+
+                /* Bubble-down the task. */
+                for ( k = ind_best ; k > q->next ; k-- )
+                    qtid[ k ] = qtid[ k-1 ];
                 qtid[ q->next ] = tid;
                 
                 /* up the counter. */

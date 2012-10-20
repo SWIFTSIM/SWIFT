@@ -1030,7 +1030,6 @@ void *runner_main ( void *data ) {
 
     struct runner_thread *rt = (struct runner_thread *)data;
     struct runner *r = rt->r;
-    struct space *s = r->s;
     int threadID = rt->id;
     int k, qid, naq, keep, tpq;
     struct queue *queues[ r->nr_queues ], *myq;
@@ -1080,11 +1079,11 @@ void *runner_main ( void *data ) {
             TIMER_TIC
             t = NULL;
             if ( r->nr_queues == 1 ) {
-                t = queue_gettask( &r->queues[0] , 1 , 0 );
+                t = queue_gettask_new( &r->queues[0] , rt->id , 1 , 0 );
                 }
             else if ( r->policy & runner_policy_steal ) {
                 if ( ( myq->next == myq->count ) ||
-                     ( t = queue_gettask( myq , 0 , 0 ) ) == NULL ) {
+                     ( t = queue_gettask_new( myq , rt->id , 0 , 0 ) ) == NULL ) {
                     TIMER_TIC2
                     qid = rand_r( &myseed ) % naq;
                     keep = ( r->policy & runner_policy_keep ) &&
@@ -1093,19 +1092,9 @@ void *runner_main ( void *data ) {
                         COUNT(runner_counter_steal_empty);
                     else
                         COUNT(runner_counter_steal_stall);
-                    t = queue_gettask( queues[qid] , 0 , keep );
-                    if ( t != NULL && keep ) {
-                        COUNT(runner_counter_keep);
-                        if ( lock_lock( &myq->lock ) != 0 )
-                            error( "Failed to get queue lock." );
-                        for ( k = myq->count ; k > myq->next ; k-- )
-                            myq->tid[k] = myq->tid[k-1];
-                        myq->tid[ myq->next ] = t - s->tasks;
-                        myq->count += 1;
-                        myq->next += 1;
-                        if ( lock_unlock( &myq->lock ) != 0 )
-                            error( "Failed to unlock queue." );
-                        }
+                    t = queue_gettask_new( queues[qid] , rt->id , 0 , keep );
+                    if ( t != NULL && keep )
+                        queue_insert( myq , t );
                     TIMER_TOC2(runner_timer_steal);
                     }
                 }
