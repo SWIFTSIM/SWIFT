@@ -35,10 +35,7 @@
 #endif
 
 /* Local headers. */
-#include "cycle.h"
-#include "lock.h"
-#include "space.h"
-#include "runner.h"
+#include "gadgetsmp.h"
 
 /* Ticks per second on this machine. */
 #ifndef CPU_TPS
