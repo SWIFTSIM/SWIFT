@@ -160,11 +160,11 @@ void map_maxdepth ( struct cell *c , void *data ) {
 
 void map_count ( struct part *p , struct cell *c , void *data ) {
 
-    double *count = (double *)data;
+    double *rho = (double *)data;
     
     // printf( "%i %e %e\n" , p->id , p->count , p->count_dh );
 
-    *count += p->count;
+    *rho += p->rho;
 
     }
 
@@ -274,7 +274,7 @@ void read_cutoffs ( char *fname , struct part *parts , int N ) {
     for ( k = 0 ; k < N ; k++ ) {
         if ( gzgets( fd , buff , 1024 ) == NULL )
             error( "Error reading cutoff file." );
-        if ( sscanf( buff , "%ef" , &parts[k].r ) != 1 ) {
+        if ( sscanf( buff , "%ef" , &parts[k].h ) != 1 ) {
             printf( "read_cutoffs: failed to parse %ith entry.\n" , k );
             error( "Error parsing cutoff file." );
             }
@@ -292,7 +292,7 @@ void read_cutoffs ( char *fname , struct part *parts , int N ) {
         
     /* Read the coordinates into the part positions. */
     for ( k = 0 ; k < N ; k++ ) {
-        if ( fscanf( fd , "%ef" , &parts[k].r ) != 1 ) {
+        if ( fscanf( fd , "%ef" , &parts[k].h ) != 1 ) {
             printf( "read_cutoffs: failed to read %ith entry.\n" , k );
             error( "Error reading cutoff file." );
             }
@@ -422,14 +422,13 @@ void read_dt ( char *fname , struct part *parts , int N ) {
 void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int periodic ) {
 
     int i, j, k, count = 0, mj, mk;
-    double r2, dx[3], dcount = 0.0, maxratio = 1.0;
-    float f1, f2;
+    double r2, dx[3], rho = 0.0, maxratio = 1.0;
     
     /* Loop over all particle pairs. */
-    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r2,f1,f2), shared(maxratio,mj,mk,periodic,parts,dim,N,stdout), reduction(+:count,dcount)
+    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r2), shared(maxratio,mj,mk,periodic,parts,dim,N,stdout)
     for ( j = 0 ; j < N ; j++ ) {
         if ( j % 1000 == 0 ) {
-            printf( "pairs_n2: j=%i, count=%i.\n" , j , count );
+            printf( "pairs_n2: j=%i.\n" , j );
             fflush(stdout);
             }
         for ( k = j+1 ; k < N ; k++ ) {
@@ -443,32 +442,36 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
                     }
                 }
             r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
-            if ( r2 < parts[j].r*parts[j].r || r2 < parts[k].r*parts[k].r ) {
-                f1 = 0.0; f2 = 0.0;
-                iact_nopart( r2 , parts[j].r , parts[k].r , &f1 , &f2 , &count , &count );
-                dcount += f1 + f2;
-                if ( parts[j].r / parts[k].r > maxratio )
+            if ( r2 < parts[j].h*parts[j].h || r2 < parts[k].h*parts[k].h ) {
+                runner_iact_density( r2 , parts[j].h , parts[k].h , &parts[j] , &parts[k] );
+                if ( parts[j].h / parts[k].h > maxratio )
                     #pragma omp critical
                     {
-                    maxratio = parts[j].r / parts[k].r;
+                    maxratio = parts[j].h / parts[k].h;
                     mj = j; mk = k;
                     }
-                else if ( parts[k].r / parts[j].r > maxratio )
+                else if ( parts[k].h / parts[j].h > maxratio )
                     #pragma omp critical
                     {
-                    maxratio = parts[k].r / parts[j].r;
+                    maxratio = parts[k].h / parts[j].h;
                     mj = j; mk = k;
                     }
                 }
             }
         }
+        
+    /* Aggregate the results. */
+    for ( k = 0 ; k < N ; k++ ) {
+        count += parts[k].icount;
+        rho += parts[k].rho;
+        }
             
     /* Dump the result. */
-    printf( "pairs_n2: avg. nr. of pairs per part is %.3f (%.3f).\n" , ((double)count)/N , dcount/N + 32.0/3 );
+    printf( "pairs_n2: avg. density per part is %.3f (nr. pairs %.3f).\n" , rho/N + 32.0/3 , ((double)count)/N );
     printf( "pairs_n2: maximum ratio between parts %i [%e,%e,%e] and %i [%e,%e,%e] is %.3f/%.3f\n" ,
         mj , parts[mj].x[0] , parts[mj].x[1] , parts[mj].x[2] ,
         mk , parts[mk].x[0] , parts[mk].x[1] , parts[mk].x[2] ,
-        parts[mj].r , parts[mk].r ); fflush(stdout);
+        parts[mj].h , parts[mk].h ); fflush(stdout);
     fflush(stdout);
             
     }
@@ -487,16 +490,16 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
 void pairs_single ( double *dim , struct part *__restrict__ parts , int N , int periodic , int target ) {
 
     int i, k, tid;
-    double r, tx[3], tr, dx[3];
+    double r, tx[3], th, dx[3];
     
     /* Get the target position and radius. */
     for ( k = 0 ; k < 3 ; k++ )
         tx[k] = parts[target].x[k];
-    tr = parts[target].r;
+    th = parts[target].h;
     tid = parts[target].id;
     
     /* Loop over all particle pairs. */
-    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r), shared(target,tx,tr,tid,periodic,parts,dim,N)
+    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r), shared(target,tx,th,tid,periodic,parts,dim,N)
     for ( k = 0 ; k < N ; k++ ) {
         if ( k == target )
             continue;
@@ -510,7 +513,7 @@ void pairs_single ( double *dim , struct part *__restrict__ parts , int N , int 
                 }
             }
         r = sqrt( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
-        if ( r < tr )
+        if ( r < th )
             printf( "pairs_single: %i %i [%e,%e,%e] %e\n" ,
                 tid , parts[k].id , dx[0] , dx[1] , dx[2] , r );
         }
@@ -529,7 +532,7 @@ int main ( int argc , char *argv[] ) {
     int nr_threads = 1, nr_queues = -1, runs = 1;
     int data[2];
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
-    double r_min = 0.01, r_max = 0.1, h_max = -1.0 , scaling = 1.0, count = 0.0;
+    double r_min = 0.01, r_max = 0.1, h_max = -1.0 , scaling = 1.0, rho = 0.0;
     struct part *parts = NULL;
     struct space s;
     struct runner r;
@@ -551,7 +554,7 @@ int main ( int argc , char *argv[] ) {
                     parts[k].x[1] = ((double)rand()) / RAND_MAX * dim[1];
                     parts[k].x[2] = ((double)rand()) / RAND_MAX * dim[2];
                     parts[k].id = k;
-                    parts[k].r = r_min + ((r_max - r_min)*rand())/RAND_MAX;
+                    parts[k].h = r_min + ((r_max - r_min)*rand())/RAND_MAX;
                     }
                 printf( "main: allocated memory for %i parts.\n" , N ); fflush(stdout);
                 break;
@@ -560,7 +563,7 @@ int main ( int argc , char *argv[] ) {
                     error( "Error parsing cutoff scaling." );
                 printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout);
                 for ( k = 0 ; k < N ; k++ )
-                    parts[k].r *= scaling;
+                    parts[k].h *= scaling;
                 break;
             case 'b':
                 if ( sscanf( optarg , "%lf %lf %lf" , &dim[0] , &dim[1] , &dim[2] ) != 3 )
@@ -647,7 +650,7 @@ int main ( int argc , char *argv[] ) {
     printf( "main: highest-level cell dimensions are [ %i %i %i ].\n" , s.cdim[0] , s.cdim[1] , s.cdim[2] );
     printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
     printf( "main: maximum depth is %d.\n" , s.maxdepth );
-    printf( "main: cutoffs in [ %.3f %.3f ].\n" , s.r_min , s.r_max ); fflush(stdout);
+    printf( "main: cutoffs in [ %.3f %.3f ].\n" , s.h_min , s.h_max ); fflush(stdout);
     
     /* Verify that each particle is in it's propper cell. */
     // icount = 0;
@@ -655,7 +658,7 @@ int main ( int argc , char *argv[] ) {
     // printf( "main: map_cellcheck picked up %i parts.\n" , icount );
     
     data[0] = s.maxdepth; data[1] = 0;
-    space_map_cells( &s , &map_maxdepth , data );
+    space_map_cells( &s , 0 , &map_maxdepth , data );
     printf( "main: nr of cells at depth %i is %i.\n" , data[0] , data[1] );
     
     /* Dump the particle positions. */
@@ -739,9 +742,9 @@ int main ( int argc , char *argv[] ) {
     //     printf( " %i %e %e\n" , s.parts[k].id , s.parts[k].count , s.parts[k].count_dh );
     
     /* Get the average interactions per particle. */
-    count = 0;
-    space_map_parts( &s , &map_count , &count );
-    printf( "main: average interactions per particle is %.3f.\n" , count / s.nr_parts / runs + 32.0/3 );
+    rho = 0;
+    space_map_parts( &s , &map_count , &rho );
+    printf( "main: average interactions per particle is %.3f.\n" , rho / s.nr_parts / runs + 32.0/3 );
     
     /* Get the average interactions per particle. */
     icount = 0;
