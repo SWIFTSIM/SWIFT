@@ -64,6 +64,9 @@ struct cell {
     /* The tasks computing this cell's sorts. */
     struct task *sorts[14];
     
+    /* The ghost task to link density to interactions. */
+    struct task *ghost;
+    
     /* Number of tasks this cell is waiting for and whether it is in use. */
     int wait;
     

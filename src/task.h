@@ -20,26 +20,36 @@
 
 /* Some constants. */
 #define task_maxwait                    3
-#define task_maxunlock                  39
+#define task_maxunlock                  40
 
 
-/* The different task IDs. */
-enum taskIDs {
-    tid_none = 0,
-    tid_sort,
-    tid_self,
-    tid_pair,
-    tid_sub,
-    tid_count
+/* The different task types. */
+enum task_types {
+    task_type_none = 0,
+    task_type_sort,
+    task_type_self,
+    task_type_pair,
+    task_type_sub,
+    task_type_ghost,
+    task_type_count
     };
     
 extern const char *taskID_names[];
     
+/* The different task sub-types. */
+enum task_subtypes {
+    task_subtype_none = 0,
+    task_subtype_density,
+    task_subtype_force,
+    task_subtype_count
+    };
+    
+extern const char *taskID_names[];
     
 /* Data of a task. */
 struct task {
 
-    int type, flags, wait, rank, done;
+    int type, subtype, flags, wait, rank, done;
     
     int nr_unlock_tasks;
     struct task *unlock_tasks[ task_maxunlock ];

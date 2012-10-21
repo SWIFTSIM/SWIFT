@@ -52,7 +52,7 @@ struct space {
     double h[3], ih[3];
     
     /* The minimum and maximum cutoff radii. */
-    double r_min, r_max;
+    double h_min, h_max;
     
     /* Number of cells. */
     int nr_cells, tot_cells;
@@ -90,9 +90,10 @@ struct space {
 /* function prototypes. */
 struct cell *space_getcell ( struct space *s );
 struct task *space_gettask ( struct space *s );
+struct task *space_addtask ( struct space *s , int type , int subtype , int flags , int wait , struct cell *ci , struct cell *cj , struct task *unlock_tasks[] , int nr_unlock_tasks , struct cell *unlock_cells[] , int nr_unlock_cells );
 void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_max );
 void space_maketasks ( struct space *s , int do_sort );
-void space_map_cells ( struct space *s , void (*fun)( struct cell *c , void *data ) , void *data );
+void space_map_cells ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data );
 void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct cell *c , void *data ) , void *data );
 void space_recycle ( struct space *s , struct cell *c );
 

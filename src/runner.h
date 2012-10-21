@@ -109,131 +109,6 @@ long long int runner_hist_bins[ runner_hist_N ];
 #endif
 
 
-/**
- * @brief Compute the 'interaction' between two particles.
- *
- * @param r2 the inter-particle radius squared.
- * @param hi the screening distance of the ith particle.
- * @param hj the screening distance of the jth particle.
- * @param io Pointer to where to store the interaction of the ith particle.
- * @param jo Pointer to where to store the interaction of the ith particle.
- */
- 
-__attribute__ ((always_inline)) INLINE void iact_nopart ( float r2 , float hi , float hj , float *force_i , float *force_j , int *count_i , int *count_j ) {
-
-    #define  KERNEL_COEFF_1  2.546479089470f
-    #define  KERNEL_COEFF_2  15.278874536822f
-    #define  KERNEL_COEFF_3  45.836623610466f
-    #define  KERNEL_COEFF_4  30.557749073644f
-    #define  KERNEL_COEFF_5  5.092958178941f
-    #define  KERNEL_COEFF_6  (-15.278874536822f)
-    #define  NORM_COEFF      4.188790204786f
-
-    float r = sqrtf( r2 );
-    float ui, uj, wi, wj;
-    
-    if ( r2 < hi*hi && !( force_i == NULL && count_i == NULL ) ) {
-        
-        ui = r / hi;
-        if ( ui < 0.5 )
-            wi = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (ui - 1.0f) * ui * ui;
-        else
-            wi = KERNEL_COEFF_5 * (1.0f - ui) * (1.0f - ui) * (1.0 - ui);
-        if ( force_i != NULL )
-            *force_i += NORM_COEFF * wi;
-        if ( count_i != NULL )
-            *count_i += 1;
-        
-        }
-
-    if ( r2 < hj*hj && !( force_j == NULL && count_j == NULL ) ) {
-        
-        uj = r / hj;
-        if ( uj < 0.5 )
-            wj = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (uj - 1.0f) * uj * uj;
-        else
-            wj = KERNEL_COEFF_5 * (1.0f - uj) * (1.0f - uj) * (1.0 - uj);
-        if ( force_j != NULL )
-            *force_j += NORM_COEFF * wj;
-        if ( count_j != NULL )
-            *count_j += 1;
-            
-        }
-        
-    #ifdef HIST
-    if ( hi > hj )
-        runner_hist_hit( hi / hj );
-    else
-        runner_hist_hit( hj / hi );
-    #endif
-    
-    }
-    
-
-
-__attribute__ ((always_inline)) INLINE void iact ( float r2 , float hi , float hj , struct part *pi , struct part *pj ) {
-
-    #define  KERNEL_COEFF_1  2.546479089470f
-    #define  KERNEL_COEFF_2  15.278874536822f
-    #define  KERNEL_COEFF_3  45.836623610466f
-    #define  KERNEL_COEFF_4  30.557749073644f
-    #define  KERNEL_COEFF_5  5.092958178941f
-    #define  KERNEL_COEFF_6  (-15.278874536822f)
-    #define  NORM_COEFF      4.188790204786f
-
-    float r = sqrtf( r2 );
-    float ui, uj, wi, wj;
-    float ui_dh, uj_dh, wi_dh, wj_dh;
-    
-    if ( r2 < hi*hi && pi != NULL ) {
-        
-        ui = r / hi;
-        ui_dh = -r / hi / hi;
-        if ( ui < 0.5f ) {
-            wi = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (ui - 1.0f) * ui * ui;
-            wi_dh = KERNEL_COEFF_2 * ui_dh * ui * ui
-                  + 2 * KERNEL_COEFF_2 * (ui - 1.0f) * ui_dh * ui;
-            }
-        else {
-            wi = KERNEL_COEFF_5 * (1.0f - ui) * (1.0f - ui) * (1.0f - ui);
-            wi_dh = -3 * KERNEL_COEFF_5 * ui_dh * (1.0f - ui) * (1.0f - ui);
-            }
-        pi->count += NORM_COEFF * wi;
-        pi->count_dh += NORM_COEFF * wi_dh;
-        pi->icount += 1;
-        
-        }
-
-    if ( r2 < hj*hj && pj != NULL ) {
-        
-        uj = r / hj;
-        uj_dh = -r / hj / hj;
-        if ( uj < 0.5f ) {
-            wj = KERNEL_COEFF_1 + KERNEL_COEFF_2 * (uj - 1.0f) * uj * uj;
-            wj_dh = KERNEL_COEFF_2 * uj_dh * uj * uj
-                  + 2 * KERNEL_COEFF_2 * (uj - 1.0f) * uj_dh * uj;
-            }
-        else {
-            wj = KERNEL_COEFF_5 * (1.0f - uj) * (1.0f - uj) * (1.0f - uj);
-            wj_dh = -3 * KERNEL_COEFF_5 * uj_dh * (1.0f - uj) * (1.0f - uj);
-            }
-        pj->count += NORM_COEFF * wj;
-        pj->count_dh += NORM_COEFF * wj_dh;
-        pj->icount += 1;
-            
-        }
-        
-    #ifdef HIST
-    if ( hi > hj )
-        runner_hist_hit( hi / hj );
-    else
-        runner_hist_hit( hj / hi );
-    #endif
-    
-    }
-    
-
-
 /* A struct representing a runner's thread and its data. */
 struct runner_thread {
 
@@ -280,7 +155,8 @@ struct runner {
 
 /* Function prototypes. */
 void runner_run ( struct runner *r , int sort_queues );
-void runner_dopair ( struct runner_thread *rt , struct cell *ci , struct cell *cj );
-void runner_doself ( struct runner_thread *rt , struct cell *c );
+void runner_dopair_density ( struct runner_thread *rt , struct cell *ci , struct cell *cj );
+void runner_doself_density ( struct runner_thread *rt , struct cell *c );
+void runner_dosub_density ( struct runner_thread *rt , struct cell *ci , struct cell *cj , int flags );
 void runner_dosort ( struct runner_thread *rt , struct cell *c , int flag );
 void runner_init ( struct runner *r , struct space *s , int nr_threads , int nr_queues , int policy );

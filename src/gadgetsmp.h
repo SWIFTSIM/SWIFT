@@ -28,5 +28,6 @@
 #include "cell.h"
 #include "space.h"
 #include "queue.h"
+#include "runner_iact.h"
 #include "runner.h"
 

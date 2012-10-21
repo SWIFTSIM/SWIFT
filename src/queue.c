@@ -185,11 +185,11 @@ struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
                 continue;
             
             /* Different criteria for different types. */
-            if ( res->type == tid_self || (res->type == tid_sub && res->cj == NULL) ) {
+            if ( res->type == task_type_self || (res->type == task_type_sub && res->cj == NULL) ) {
                 if ( res->ci->hold || cell_locktree( res->ci ) != 0 )
                     continue;
                 }
-            else if ( res->type == tid_pair || (res->type == tid_sub && res->cj != NULL) ) {
+            else if ( res->type == task_type_pair || (res->type == task_type_sub && res->cj != NULL) ) {
                 if ( res->ci->hold || res->cj->hold || res->ci->wait || res->cj->wait )
                     continue;
                 if ( cell_locktree( res->ci ) != 0 )
@@ -306,7 +306,7 @@ struct task *queue_gettask_new ( struct queue *q , int rid , int blocking , int 
                 continue;
                 
             /* Get the score for this task. */
-            if ( res->type == tid_self || res->type == tid_sort || ( res->type == tid_sub && res->cj == NULL ) )
+            if ( res->type == task_type_self || res->type == task_type_sort || ( res->type == task_type_sub && res->cj == NULL ) )
                 score = ( res->ci->owner == rid );
             else
                 score = ( res->ci->owner == rid ) + ( res->cj->owner == rid );
@@ -314,11 +314,11 @@ struct task *queue_gettask_new ( struct queue *q , int rid , int blocking , int 
                 continue;
             
             /* Different criteria for different types. */
-            if ( res->type == tid_self || (res->type == tid_sub && res->cj == NULL) ) {
+            if ( res->type == task_type_self || (res->type == task_type_sub && res->cj == NULL) ) {
                 if ( res->ci->hold || cell_locktree( res->ci ) != 0 )
                     continue;
                 }
-            else if ( res->type == tid_pair || (res->type == tid_sub && res->cj != NULL) ) {
+            else if ( res->type == task_type_pair || (res->type == task_type_sub && res->cj != NULL) ) {
                 if ( res->ci->hold || res->cj->hold || res->ci->wait || res->cj->wait )
                     continue;
                 if ( cell_locktree( res->ci ) != 0 )
@@ -332,9 +332,9 @@ struct task *queue_gettask_new ( struct queue *q , int rid , int blocking , int 
             /* If we owned a previous task, unlock it. */
             if ( ind_best >= 0 ) {
                 res = &qtasks[ qtid[ ind_best ] ];
-                if ( res->type == tid_self || res->type == tid_pair || res->type == tid_sub )
+                if ( res->type == task_type_self || res->type == task_type_pair || res->type == task_type_sub )
                     cell_unlocktree( res->ci );
-                if ( res->type == tid_pair || (res->type == tid_sub && res->cj != NULL) )
+                if ( res->type == task_type_pair || (res->type == task_type_sub && res->cj != NULL) )
                     cell_unlocktree( res->cj );
                 }
             
@@ -438,19 +438,19 @@ void queue_sort ( struct queue *q ) {
     for ( k = 0 ; k < q->count ; k++ ) {
         t = &q->tasks[ q->tid[k] ];
         switch ( t->type ) {
-            case tid_self:
+            case task_type_self:
                 wait[k] = t->rank;
                 weight[k] = 0; // t->ci->count * t->ci->count;
                 break;
-            case tid_pair:
+            case task_type_pair:
                 wait[k] = t->rank;
                 weight[k] = 0; // t->ci->count * t->cj->count;
                 break;
-            case tid_sub:
+            case task_type_sub:
                 wait[k] = t->rank;
                 weight[k] = 0; // (t->cj == NULL) ? t->ci->count * t->ci->count : t->ci->count * t->cj->count;
                 break;
-            case tid_sort:
+            case task_type_sort:
                 wait[k] = t->rank;
                 weight[k] = 0; // t->ci->count;
                 break;

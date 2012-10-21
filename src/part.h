@@ -26,11 +26,8 @@
 /* Data of a single particle. */
 struct part {
 
-    /* Particle position. */
-    double x[3];
-    
     /* Particle cutoff radius. */
-    float r;
+    float h;
     
     /* Particle time-step. */
     float dt;
@@ -38,8 +35,34 @@ struct part {
     /* Particle ID. */
     int id;
     
-    /* Number of pairwise interactions. */
-    double count, count_dh;
+    /* Particle density. */
+    float rho;
+    
+    /* Particle position. */
+    double x[3];
+    
+    /* Particle velocity. */
+    float v[3];
+    
+    /* Particle acceleration. */
+    float a[3];
+    
+    /* Particle pressure. */
+    float P;
+    
+    /* Particle mass. */
+    float m;
+    
+    /* Particle internal energy. */
+    float u;
+    
+    /* Change in particle energy over time. */
+    float u_dt;
+    
+    /* Derivative of the density with respect to this particle's smoothing length. */
+    float rho_dh;
+    
+    /* Particle number density. */
     int icount;
     
     } __attribute__((aligned (32)));

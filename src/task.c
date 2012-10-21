@@ -38,8 +38,7 @@
 
 
 /* Task type names. */
-const char *taskID_names[tid_count] = { "none" , "sort" , "self" , "pair" , "sub" };
-
+const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" , "sub" , "ghost" };
 
 /* Error macro. */
 #define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
