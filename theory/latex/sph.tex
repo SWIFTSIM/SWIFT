@@ -1,0 +1,183 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+
+%opening
+\title{SPH equations}
+\author{Matthieu}
+\begin{document}
+
+\maketitle
+
+This document does not follow the GADGET notation.\\
+
+\section{Particle definition}
+Every particle contains the following information:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|c|l|}
+ Quantity & Type & Symbol & Unit \\
+ \hline \hline
+ Position & Primary & $\vec{x}$ & $[m]$ \\
+ Velocity & Primary &$\vec{v}$ & $[m\cdot s^{-1}]$ \\
+ Acceleration & Tertiary &$\vec{a}$ & $[m\cdot s^{-2}]$ \\
+ Mass & Primary &$m$ & $[kg]$ \\
+ Density & Secondary & $\rho$ & $[kg\cdot m^{-3}]$ \\
+ Pressure & Secondary & $P$ & $[kg \cdot m^{-1}\cdot s^{-2}]$ \\
+ Internal energy per unit mass & Primary & $u$ & $[m^2 \cdot s^{-2}]$ \\ 
+ Energy derivative & Tertiary & $\frac{du}{dt}$ & $[ m^2 \cdot s^{-3}]$ \\
+ Correction term & Secondary & $\Omega$ & $[-]$ \\
+ Smoothing length & --- &$h$ & $[m]$ \\
+ Smoothing length derivative & --- &$\frac{dh}{dt}$ & $[m\cdot s^{-1}]$ \\
+ Time step & --- & $\Delta t$ & $[s]$ \\
+\hline
+\end{tabular} 
+\end{table}
+
+For optimisation purposes, any function of these qunatities could be stored. For instance, $1/h$ instead of $h$ or
+$\frac{P}{\rho\Omega}$ instead of $\Omega$ may be options worth exploring.
+
+\section{Kernel function}
+
+In what follows, we will use $r_{ij} = \vec{x_i} - \vec{x_j}$ and the kernel function given by:
+
+\begin{equation}
+ W(\vec{x}, h) = \frac{1}{h^3}f\left(\frac{|\vec{x}|}{h}\right) 
+\end{equation}
+
+where $f(q)$ is a low-order polynomial. The simplest possible choice is the cubic-spline kernel which (in 3D) reads
+\begin{eqnarray*}
+ f(q) &=& \frac{1}{\pi}\left\lbrace \begin{array}{rcl}
+                      \frac{1}{4}(2-q)^3 - (1-q)^3 & \mbox{if} & 0 \leq q < 1 \\
+		      \frac{1}{4}(2-q)^3 & \mbox{if} & 1 \leq q < 2 \\
+		      0 & \mbox{if} & q \geq 2 \\
+                     \end{array}
+ \right. \\
+&=&\left\lbrace \begin{array}{rcl}
+    0.31831 -0.477465 q^2+0.238732 q^3& \mbox{if} & 0 \leq q < 1 \\
+   0.63662 -0.95493 q+0.477465 q^2-0.0795775 q^3  & \mbox{if} & 1 \leq q < 2 \\
+		      0 & \mbox{if} & q \geq 2 \\
+                     \end{array}
+ \right.
+\end{eqnarray*}
+
+The constants here are NOT the constants used in GADGET as we are not following their convention of setting $h$ as the
+cut-off value of $W$.\\
+Notice that the kernel goes to $0$ when $r_{ij} = 2h$ in this case. The constant in front of $h$ depends on the kernel
+chosen and to keep it general, we should insert a constant here and say that the interaction only takes place if
+$r<\zeta h$ and keep $\zeta$ as a modifiable (compile time) constant. In other words, we can say that $W(x,h)$ is a
+function that goes to $0$ if $x > \zeta h$. \\
+Coming back to the simplest case, the derivatives of the kernel function are given by:
+
+\begin{eqnarray*}
+ \vec\nabla W(\vec{x},h) &=& \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|} \\
+ \frac{\partial W(\vec{x},h)}{\partial h} &=&- \frac{1}{h^4}\left[3\left(\frac{|\vec{x}|}{h}\right) + 
+\frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right]
+\end{eqnarray*}
+
+with
+
+\begin{eqnarray*}
+  f'(q)&=& \frac{1}{\pi}\left\lbrace \begin{array}{rcl}
+                      3 \left(1-q\right)^2-\frac{3}{4} \left(2-q\right)^2 & \mbox{if} &
+0 \leq q < 1 \\
+ 		      -\frac{3}{4} \left(2-q\right)^2 & \mbox{if} & 1 \leq q < 2 \\
+		      0 & \mbox{if} & q \geq 2 \\
+                     \end{array}
+ \right. \\
+&=&\left\lbrace \begin{array}{rcl}
+    -0.95493 q + 0.716197 q^2& \mbox{if} & 0 \leq q < 1 \\
+   0.95493 -0.95493 q+0.238732 q^2  & \mbox{if} & 1 \leq q < 2 \\
+		      0 & \mbox{if} & q \geq 2 \\
+                     \end{array}
+ \right.
+\end{eqnarray*}
+
+In summary, the SPH method uses a low order polynomial $f(q)$ which vanishes for any $q>\zeta$. Those two ``objects''
+are linked together and are likely to be changed in different versions of the code. It would be great to be able to
+change this without really touching the code. 
+Having a compilation option somewhere which activates a given form of $f$ and changes the value of $\zeta$ accordingly
+would be great.
+
+\section{SPH equations}
+
+In the first loop of the algorithm, the secondary quantities of particle $i$ are computed from the primary ones in the
+following way:
+
+\begin{eqnarray}
+ \rho_i &=& \sum_j m_j W(r_{ij}, h_i)\\
+ h_i &=& \eta \left(\frac{m_i}{\rho_i} \right)^{1/3}
+\end{eqnarray}
+
+where $\eta \approx 1.2$ is a constant. These two equations can be solved iterativelly using a Newton-Raphson or
+bissection scheme. In practice, the loop is performed over all particles $j$ which are at a distance $r_{ij}<\zeta
+h$ from the particle of interest. One has to iterate those two equations until their outcomes are stable. \\
+To increase the convergence rate, one can use the derivative of the density with respect to the smoothing length in the
+Newton iterations:
+
+\begin{equation}
+ \frac{\partial \rho}{\partial h} = \sum_j m_j \frac{\partial W(r_{ij},h_i)}{\partial h}
+\end{equation}
+
+This can also give a convergence criterion as this term must be $0$ when the right value oh $h$ has been found.
+The derivative of the kernel function has to be computed anyway to obtain a value for the correction term $\Omega_i$.
+This term is given by
+
+\begin{equation}
+  \Omega_i = 1 + \frac{h_i}{3\rho_i}\sum_b m_b\frac{\partial W(r_{ij},h_i)}{\partial h}
+\end{equation}
+
+Once those quantities have been obtained, the force estiamtion loop can be started.
+First, the pressure has to be evaluated evaluated using the equation of state
+
+\begin{equation}
+ P_i = \rho_i u_i (\gamma - 1)
+\end{equation}
+
+where $\gamma$ is the polytropic index. Usually, $\gamma = \frac{5}{3}$.
+The second loop is used to compute the accelerations (tertiary quantities). The exact expressions are
+
+\begin{eqnarray}
+ \vec{a} &=& - \sum_j m_j\left[\frac{P_i}{\Omega_i\rho_i^2}\vec{\nabla} W(r_{ij}, h_i) +
+\frac{P_j}{\Omega_j\rho_j^2}\vec{\nabla}
+W(r_{ij}, h_j) \right] \\
+ \frac{du}{dt} &=& \frac{P_i}{\rho_i^2} \sum_j m_j (\vec{v_i}-\vec{v_j})\cdot\vec{\nabla} W(r_{ij}, h_i) \\
+ \frac{dh}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right) \cdot\vec{\nabla}W(r_{ij},
+h_i)
+\end{eqnarray}
+
+In practice the loop is here performed over all pairs of particles such that $r_{ij} < \zeta h_i$ or $r_{ij} < \zeta
+h_j$. In general, the equations are more involved as they will contain terms to mimimc the effect of viscosity or
+thermal conduction. These terms are pure functions of the properties of particles $i$ and $j$ and are thus very simple
+to insert once the code is stabilized.\\
+
+The time steps are computed using the speed of sound inside each ``kernel volume'' surrounding the particle:
+
+\begin{equation}
+ c_i = \sqrt{\frac{\gamma P_i}{\rho_i}} = \sqrt{\gamma (\gamma-1)u_i}
+\end{equation}
+
+The time step is then given by the Courant relation:
+
+\begin{equation}
+ \Delta t_i = C_{CFL} \frac{h_i}{c_i}
+\end{equation}
+
+where the CFL parameter usually takes a value between $0.1$ and $0.3$. The integration in time can then take place. The
+leapfrog integrator is usually used as it behaves well when coupled to gravity. \\
+In the case where only one global timestep is used for all particles, the minimal timestep of all particles is reduced
+and used.
+
+
+\section{Conserved quantities}
+
+The following quantities are exactly conserved by the code:
+
+\begin{eqnarray}
+\vec{P} &=&\sum_i m_i \vec{v_i}\\
+\vec{L} &=& \sum_i m_i \vec{x_i} \times \vec{v_i}\\ 
+E &=&\sum_i m_i\left(\frac{1}{2}|\vec{v_i}|^2+u_i\right)
+\end{eqnarray}
+
+
+\end{document}
