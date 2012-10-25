@@ -71,7 +71,7 @@ Coming back to the simplest case, the derivatives of the kernel function are giv
 
 \begin{eqnarray*}
  \vec\nabla W(\vec{x},h) &=& \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|} \\
- \frac{\partial W(\vec{x},h)}{\partial h} &=&- \frac{1}{h^4}\left[3\left(\frac{|\vec{x}|}{h}\right) + 
+ \frac{\partial W(\vec{x},h)}{\partial h} &=&- \frac{1}{h^4}\left[3f\left(\frac{|\vec{x}|}{h}\right) + 
 \frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right]
 \end{eqnarray*}
 
@@ -163,11 +163,16 @@ The time step is then given by the Courant relation:
  \Delta t_i = C_{CFL} \frac{h_i}{c_i}
 \end{equation}
 
-where the CFL parameter usually takes a value between $0.1$ and $0.3$. The integration in time can then take place. The
+where the CFL parameter usually takes a value between $0.2$ and $0.3$. The integration in time can then take place. The
 leapfrog integrator is usually used as it behaves well when coupled to gravity. \\
 In the case where only one global timestep is used for all particles, the minimal timestep of all particles is reduced
-and used.
+and used. \\
 
+Notice that $h$ has to be recomputed through the iterative process
+presented in the previous section at every timestep. The time
+derivative of the smoothing length only give a rough estimate of its
+change. It only provides a good guess for the Newton-Raphson (or
+bissection) scheme.
 
 \section{Conserved quantities}
 
