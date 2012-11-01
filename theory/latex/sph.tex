@@ -34,7 +34,7 @@ Every particle contains the following information:
 \end{tabular} 
 \end{table}
 
-For optimisation purposes, any function of these qunatities could be stored. For instance, $1/h$ instead of $h$ or
+For optimization purposes, any function of these quantities could be stored. For instance, $1/h$ instead of $h$ or
 $\frac{P}{\rho\Omega}$ instead of $\Omega$ may be options worth exploring.
 
 \section{Kernel function}
@@ -70,7 +70,7 @@ function that goes to $0$ if $x > \zeta h$. \\
 Coming back to the simplest case, the derivatives of the kernel function are given by:
 
 \begin{eqnarray*}
- \vec\nabla W(\vec{x},h) &=& \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|} \\
+ \vec\nabla_x W(\vec{x},h) &=& \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|} \\
  \frac{\partial W(\vec{x},h)}{\partial h} &=&- \frac{1}{h^4}\left[3f\left(\frac{|\vec{x}|}{h}\right) + 
 \frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right]
 \end{eqnarray*}
@@ -87,7 +87,7 @@ with
  \right. \\
 &=&\left\lbrace \begin{array}{rcl}
     -0.95493 q + 0.716197 q^2& \mbox{if} & 0 \leq q < 1 \\
-   0.95493 -0.95493 q+0.238732 q^2  & \mbox{if} & 1 \leq q < 2 \\
+   -0.95493+0.95493 q-0.238732 q^2  & \mbox{if} & 1 \leq q < 2 \\
 		      0 & \mbox{if} & q \geq 2 \\
                      \end{array}
  \right.
@@ -99,7 +99,7 @@ change this without really touching the code.
 Having a compilation option somewhere which activates a given form of $f$ and changes the value of $\zeta$ accordingly
 would be great.
 
-\section{SPH equations}
+\section{First SPH loop (density)}
 
 In the first loop of the algorithm, the secondary quantities of particle $i$ are computed from the primary ones in the
 following way:
@@ -109,9 +109,25 @@ following way:
  h_i &=& \eta \left(\frac{m_i}{\rho_i} \right)^{1/3}
 \end{eqnarray}
 
-where $\eta \approx 1.2$ is a constant. These two equations can be solved iterativelly using a Newton-Raphson or
-bissection scheme. In practice, the loop is performed over all particles $j$ which are at a distance $r_{ij}<\zeta
-h$ from the particle of interest. One has to iterate those two equations until their outcomes are stable. \\
+where $\eta \approx 1.2$ is a constant. These two equations can be solved iteratively using a Newton-Raphson or
+bisection scheme. In practice, the loop is performed over all particles $j$ which are at a distance $r_{ij}<\zeta
+h$ from the particle of interest. One has to iterate those two equations until their outcomes are stable.\\
+Another measure of the accuracy of $h$ is to use the weighted number of neighbors which (in 3D) reads
+
+\begin{equation}
+ N_{ngb} = \frac{4}{3}\pi \left(\zeta h\right)^3 \sum_j W(r_{ij},h_i)
+\end{equation}
+
+The (magical) value of $N_{ngb}$ is a numerical parameter and its value can be expressed as a function of the more
+physically relevant parameter $\eta$. In 3D this reads
+
+\begin{equation}
+ N_{ngb} = \frac{4}{3}\pi\left(\zeta \eta\right)^3
+\end{equation}
+
+We usually use $N_{ngb} = 48$, which corresponds to a sub-optimal value of $\eta=1.127$. The optimal value should be
+$N_{ngb}=57.9$ but this is computationally more expensive and the improvement over $N_{ngb}=48$ is not obvious.\\ 
+
 To increase the convergence rate, one can use the derivative of the density with respect to the smoothing length in the
 Newton iterations:
 
@@ -127,7 +143,13 @@ This term is given by
   \Omega_i = 1 + \frac{h_i}{3\rho_i}\sum_b m_b\frac{\partial W(r_{ij},h_i)}{\partial h}
 \end{equation}
 
-Once those quantities have been obtained, the force estiamtion loop can be started.
+This concludes the first SPH loop in the standard implementation. More complicated quantities such as
+$\vec\nabla\times\vec v_i$ or $\vec\nabla\cdot\vec v_i$ are sometimes computed here if they are needed in the force
+loop.
+
+\section{Second SPH loop (forces)}
+
+Once those quantities have been obtained, the force estimation loop can be started.
 First, the pressure has to be evaluated evaluated using the equation of state
 
 \begin{equation}
@@ -138,16 +160,16 @@ where $\gamma$ is the polytropic index. Usually, $\gamma = \frac{5}{3}$.
 The second loop is used to compute the accelerations (tertiary quantities). The exact expressions are
 
 \begin{eqnarray}
- \vec{a} &=& - \sum_j m_j\left[\frac{P_i}{\Omega_i\rho_i^2}\vec{\nabla} W(r_{ij}, h_i) +
-\frac{P_j}{\Omega_j\rho_j^2}\vec{\nabla}
-W(r_{ij}, h_j) \right] \\
- \frac{du}{dt} &=& \frac{P_i}{\rho_i^2} \sum_j m_j (\vec{v_i}-\vec{v_j})\cdot\vec{\nabla} W(r_{ij}, h_i) \\
- \frac{dh}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right) \cdot\vec{\nabla}W(r_{ij},
+ \vec{a} &=& - \sum_j m_j\left[\frac{P_i}{\Omega_i\rho_i^2}\vec{\nabla_r} W(r_{ij}, h_i) +
+\frac{P_j}{\Omega_j\rho_j^2}\vec{\nabla_r}W(r_{ij}, h_j) \right] \\
+ \frac{du}{dt} &=& \frac{P_i}{\rho_i^2} \sum_j m_j (\vec{v_i}-\vec{v_j})\cdot\vec{\nabla_r} W(r_{ij}, h_i) \\
+ \frac{dh}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right)
+\cdot\vec{\nabla_r}W(r_{ij},
 h_i)
 \end{eqnarray}
 
 In practice the loop is here performed over all pairs of particles such that $r_{ij} < \zeta h_i$ or $r_{ij} < \zeta
-h_j$. In general, the equations are more involved as they will contain terms to mimimc the effect of viscosity or
+h_j$. In general, the equations are more involved as they will contain terms to mimic the effect of viscosity or
 thermal conduction. These terms are pure functions of the properties of particles $i$ and $j$ and are thus very simple
 to insert once the code is stabilized.\\
 
@@ -165,14 +187,14 @@ The time step is then given by the Courant relation:
 
 where the CFL parameter usually takes a value between $0.2$ and $0.3$. The integration in time can then take place. The
 leapfrog integrator is usually used as it behaves well when coupled to gravity. \\
-In the case where only one global timestep is used for all particles, the minimal timestep of all particles is reduced
+In the case where only one global time step is used for all particles, the minimal time step of all particles is reduced
 and used. \\
 
 Notice that $h$ has to be recomputed through the iterative process
-presented in the previous section at every timestep. The time
+presented in the previous section at every time step. The time
 derivative of the smoothing length only give a rough estimate of its
 change. It only provides a good guess for the Newton-Raphson (or
-bissection) scheme.
+bisection) scheme.
 
 \section{Conserved quantities}
 
