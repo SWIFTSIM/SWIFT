@@ -1,5 +1,7 @@
 \documentclass[a4paper,10pt]{article}
 \usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{color}
 
 %opening
 \title{SPH equations}
@@ -39,7 +41,8 @@ $\frac{P}{\rho\Omega}$ instead of $\Omega$ may be options worth exploring.
 
 \section{Kernel function}
 
-In what follows, we will use $r_{ij} = \vec{x_i} - \vec{x_j}$ and the kernel function given by:
+In what follows, we will use $\vec{r}_{ij} = \vec{x_i} - \vec{x_j}$ and $\hat{r}_{ij} = |\vec{r}_{ij}|$. The kernel
+function can always be decomposed as:
 
 \begin{equation}
  W(\vec{x}, h) = \frac{1}{h^3}f\left(\frac{|\vec{x}|}{h}\right) 
@@ -63,7 +66,8 @@ where $f(q)$ is a low-order polynomial. The simplest possible choice is the cubi
 
 The constants here are NOT the constants used in GADGET as we are not following their convention of setting $h$ as the
 cut-off value of $W$.\\
-Notice that the kernel goes to $0$ when $r_{ij} = 2h$ in this case. The constant in front of $h$ depends on the kernel
+Notice that the kernel goes to $0$ when $|\vec{r}_{ij}| = 2h$ in this case. The constant in front of $h$ depends on the
+kernel
 chosen and to keep it general, we should insert a constant here and say that the interaction only takes place if
 $r<\zeta h$ and keep $\zeta$ as a modifiable (compile time) constant. In other words, we can say that $W(x,h)$ is a
 function that goes to $0$ if $x > \zeta h$. \\
@@ -105,17 +109,18 @@ In the first loop of the algorithm, the secondary quantities of particle $i$ are
 following way:
 
 \begin{eqnarray}
- \rho_i &=& \sum_j m_j W(r_{ij}, h_i)\\
+ \rho_i &=& \sum_j m_j W(\vec{r}_{ij}, h_i)\\
  h_i &=& \eta \left(\frac{m_i}{\rho_i} \right)^{1/3}
 \end{eqnarray}
 
 where $\eta \approx 1.2$ is a constant. These two equations can be solved iteratively using a Newton-Raphson or
-bisection scheme. In practice, the loop is performed over all particles $j$ which are at a distance $r_{ij}<\zeta
+bisection scheme. In practice, the loop is performed over all particles $j$ which are at a distance
+$|\vec{r}_{ij}|<\zeta
 h$ from the particle of interest. One has to iterate those two equations until their outcomes are stable.\\
 Another measure of the accuracy of $h$ is to use the weighted number of neighbors which (in 3D) reads
 
 \begin{equation}
- N_{ngb} = \frac{4}{3}\pi \left(\zeta h\right)^3 \sum_j W(r_{ij},h_i)
+ N_{ngb} = \frac{4}{3}\pi \left(\zeta h\right)^3 \sum_j W(\vec{r}_{ij},h_i)
 \end{equation}
 
 The (magical) value of $N_{ngb}$ is a numerical parameter and its value can be expressed as a function of the more
@@ -132,7 +137,7 @@ To increase the convergence rate, one can use the derivative of the density with
 Newton iterations:
 
 \begin{equation}
- \frac{\partial \rho}{\partial h} = \sum_j m_j \frac{\partial W(r_{ij},h_i)}{\partial h}
+ \frac{\partial \rho}{\partial h} = \sum_j m_j \frac{\partial W(\vec{r}_{ij},h_i)}{\partial h}
 \end{equation}
 
 This can also give a convergence criterion as this term must be $0$ when the right value oh $h$ has been found.
@@ -140,7 +145,7 @@ The derivative of the kernel function has to be computed anyway to obtain a valu
 This term is given by
 
 \begin{equation}
-  \Omega_i = 1 + \frac{h_i}{3\rho_i}\sum_b m_b\frac{\partial W(r_{ij},h_i)}{\partial h}
+  \Omega_i = 1 + \frac{h_i}{3\rho_i}\sum_b m_b\frac{\partial W(\vec{r}_{ij},h_i)}{\partial h}
 \end{equation}
 
 This concludes the first SPH loop in the standard implementation. More complicated quantities such as
@@ -160,15 +165,17 @@ where $\gamma$ is the polytropic index. Usually, $\gamma = \frac{5}{3}$.
 The second loop is used to compute the accelerations (tertiary quantities). The exact expressions are
 
 \begin{eqnarray}
- \vec{a} &=& - \sum_j m_j\left[\frac{P_i}{\Omega_i\rho_i^2}\vec{\nabla_r} W(r_{ij}, h_i) +
-\frac{P_j}{\Omega_j\rho_j^2}\vec{\nabla_r}W(r_{ij}, h_j) \right] \\
- \frac{du}{dt} &=& \frac{P_i}{\rho_i^2} \sum_j m_j (\vec{v_i}-\vec{v_j})\cdot\vec{\nabla_r} W(r_{ij}, h_i) \\
- \frac{dh}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right)
-\cdot\vec{\nabla_r}W(r_{ij},
+ \vec{a_i} &=& - \sum_j m_j\left[\frac{P_i}{\Omega_i\rho_i^2}\vec{\nabla_r} W(\vec{r}_{ij}, h_i) +
+\frac{P_j}{\Omega_j\rho_j^2}\vec{\nabla_r}W(\vec{r}_{ij}, h_j) \right] \label{eq:acceleration}\\
+ \frac{du_i}{dt} &=& \frac{P_i}{\rho_i^2} \sum_j m_j (\vec{v_i}-\vec{v_j})\cdot\vec{\nabla_r} W(\vec{r}_{ij}, h_i)
+\label{eq:dudt}\\
+ \frac{dh_i}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right)
+\cdot\vec{\nabla_r}W(\vec{r}_{ij},
 h_i)
 \end{eqnarray}
 
-In practice the loop is here performed over all pairs of particles such that $r_{ij} < \zeta h_i$ or $r_{ij} < \zeta
+In practice the loop is here performed over all pairs of particles such that $|\vec{r}_{ij}| < \zeta h_i$ or
+$|\vec{r}_{ij}| < \zeta
 h_j$. In general, the equations are more involved as they will contain terms to mimic the effect of viscosity or
 thermal conduction. These terms are pure functions of the properties of particles $i$ and $j$ and are thus very simple
 to insert once the code is stabilized.\\
@@ -185,7 +192,8 @@ The time step is then given by the Courant relation:
  \Delta t_i = C_{CFL} \frac{h_i}{c_i}
 \end{equation}
 
-where the CFL parameter usually takes a value between $0.2$ and $0.3$. The integration in time can then take place. The
+where the Courant parameter ($C_{DFL}$)usually takes a value between $0.2$ and $0.3$. The integration in time can then
+take place. The
 leapfrog integrator is usually used as it behaves well when coupled to gravity. \\
 In the case where only one global time step is used for all particles, the minimal time step of all particles is reduced
 and used. \\
@@ -196,15 +204,135 @@ derivative of the smoothing length only give a rough estimate of its
 change. It only provides a good guess for the Newton-Raphson (or
 bisection) scheme.
 
+\section{Time integration}
+
+The usual scheme uses a kick-drift-kick leap-frog integrator. A full time step of size $\Delta t$ consists of the
+following sub-steps: \\
+
+\textbf{first kick} Compute velocity and internal energy at half step.
+
+\begin{eqnarray*}
+ \tilde {\vec{v}}_i &=& \vec{v}_i + \textstyle\frac{1}{2}\Delta t ~\vec{a}_i \\
+ \tilde u_i &=& u_i + \textstyle\frac{1}{2}\Delta t ~\frac{du_i}{dt}
+\end{eqnarray*}
+
+\textbf{drift} Advance time and position by a full step.
+
+\begin{eqnarray*}
+ t &\leftarrow& t + \Delta t \\
+ \vec{x}_i &\leftarrow& \vec{x}_i + \Delta t \tilde {\vec{v}}_i\\
+\end{eqnarray*}
+
+\textbf{prediction} Estimate velocity, internal energy and smoothing length at full step
+
+\begin{eqnarray*}
+\vec{v}_i &\leftarrow& \vec{v}_i + \Delta t \vec{a}_i \\
+u_i &\leftarrow& u_i + \Delta t ~\frac{du_i}{dt} \\
+h_i &\leftarrow& h_i + \Delta t ~\frac{dh_i}{dt} \\
+\end{eqnarray*}
+
+\textbf{SPH loop 1} Compute $\rho_i$, correct $h_i$ and compute $\Omega_i$ using the first SPH loop. \\
+
+\textbf{SPH loop 2} Compute $\vec{a_i}$ and $\frac{du_i}{dt}$ using the second SPH loop. \\
+
+\textbf{Gravity} Compute accelerations due to gravity. \\
+
+\textbf{Cooling} Compute the change in internal energy due to radiative cooling. \\
+
+\textbf{second kick} Compute velocity and internal energy at end of step. 
+
+\begin{eqnarray*}
+ \vec{v}_i &=& \tilde{\vec{v}}_i + \textstyle\frac{1}{2}\Delta t ~\vec{a}_i \\
+ u_i &=& \tilde{u}_i + \textstyle\frac{1}{2}\Delta t ~\frac{du_i}{dt}
+\end{eqnarray*}
+
+
+
+
 \section{Conserved quantities}
 
-The following quantities are exactly conserved by the code:
+The energy, momentum, angular momentum and entropic function are exactly conserved by the equations:
 
 \begin{eqnarray}
+E &=&\sum_i m_i\left(\frac{1}{2}|\vec{v_i}|^2+u_i\right)\\
 \vec{P} &=&\sum_i m_i \vec{v_i}\\
 \vec{L} &=& \sum_i m_i \vec{x_i} \times \vec{v_i}\\ 
-E &=&\sum_i m_i\left(\frac{1}{2}|\vec{v_i}|^2+u_i\right)
+A(s) &=& \left(\gamma -1 \right)\sum_i \frac{u_i}{\rho_i^{\gamma - 1}}
 \end{eqnarray}
 
+The conservation of those quantities in the code depends on the quality of the time integrator. \\
+Notice that the entropic function $A(s)$ is not the ``physical'' entropy $s$ but is related to it through a monotonic
+function. It is just a convenient way to represent entropy.
+
+\section{Improved SPH equations}
+
+\textcolor{red}{WORK IN PROGRESS !!!\\}
+
+The equations \ref{eq:acceleration} and \ref{eq:dudt} correspond to a non-physical system with no viscosity and no
+thermal conduction. The physical model can be improved by adding some terms which vary depending on the authors. We
+follow here, D. Price and W. Dehnen.
+These terms require second derivatives of the fields, which can be expressed in terms of the second derivative of $W$.
+However, due to discreteness effects computing the derivatives of a field using $\partial^2_{rr}W$ is very noisy even
+when using high-order polynomial. For this reason a wrong second derivative is used based on the first derivative. We
+first introduce $F(\vec{r}_{ij},h_i)$, the scalar part of the gradient of $W$. It is defined as
+
+\begin{equation}
+ \nabla_r W(\vec{r}_{ij},h_i) = F(\vec{r}_{ij},h_i) \hat{r}_{ij}
+\end{equation}
+
+which in 3D implies that
+
+\begin{equation}
+ F_{ij}(h_i) \equiv F(\vec{r}_{ij},h_i) = \frac{1}{h_i^4}f'\left(\frac{|\vec{r}_{ij}|}{h_i}\right)
+\end{equation}
+
+where $f$ is the dimensionless part of the kernel introduced earlier. For symmetry reasons, we will use
+
+\begin{eqnarray}
+ \bar{F}_{ij} &=& \frac{1}{2} \left(F_{ij}(h_i) + F_{ij}(h_j)\right) \\
+	      &=& \frac{1}{2h_i^4}f'\left(\frac{|\vec{r}_{ij}|}{h_i}\right) +
+\frac{1}{2h_j^4}f'\left(\frac{|\vec{r}_{ij}|}{h_j}\right) \\
+\end{eqnarray}
+
+in the equations. A decent place-holder for the second derivative of $W$ is then $-2F_{ij}/|\vec{r}_{ij}|$.
+
+\subsection{Artificial viscosity}
+
+ Artificial viscosity can be introduced by adding a term to both equation \ref{eq:acceleration} and \ref{eq:dudt}:
+
+\begin{eqnarray*}
+  \vec{a_i} &\stackrel{visc}{=}& 2\sum_j m_j \frac{\alpha v_{sig}\left(\vec{v}_i -
+\vec{v}_j\right)\cdot\hat{r}_{ij}}{\left(\rho_i + \rho_j\right)}\hat{r}_{ij}\cdot \bar{F}_{ij} \\
+ \frac{du_i}{dt} &\stackrel{visc}{=}& -\sum_j \frac{m_j}{(\rho_i + \rho_j)} \alpha
+v_{sig}\left[\left(\vec{v}_i-\vec{v}_j\right)\cdot\hat{r}_{ij}\right]^2 \bar{F}_{ij}
+\end{eqnarray*}
+
+where $\alpha$ is the dimensionless artificial viscosity and
+
+\begin{equation}
+ v_{sig} = \begin{cases}
+	    \frac{1}{2}\left[c_i + c_j - \beta\left(\vec{v}_i-\vec{v}_j\right)\cdot\hat{r}_{ij} \right] &
+\mbox{if} \quad \left(\vec{v}_i-\vec{v}_j\right)\cdot \hat{r}_{ij} < 0\\
+            0 & \mbox{if} \quad \left(\vec{v}_i-\vec{v}_j\right)\cdot \hat{r}_{ij} > 0
+            \end{cases}
+\end{equation}
+
+corresponds to the maximal (average) signal speed between pairs of particles.
+GADGET uses $\alpha=1$ (but can be changed) and $\beta=3\alpha$ (fixed). In addition, the Balsara switch is used.
+
+Modern implementations of SPH use a variable viscosity $\alpha_i$ for each particle. The idea behind this is to switch
+of viscosity in the part of the flows where the fluid is dissipation-less and to switch it on in shocks. This is done by
+using a shock detector and then a slow decay of the viscosity with time. Following Dehen, we use
+
+\begin{eqnarray}
+ \alpha_{loc,i} &=& \alpha_{max} \frac{h_i^2 A_i}{v_{sig,i}^2 + h_i^2 A_i} \\
+ \dot\alpha_i   &=& \frac{2lv_{sig,i}\left(\alpha_{loc,i}-\alpha_i\right)}{h_i} \\
+  A_i &=& \xi_i \max\left(-\frac{d}{dt}\nabla\cdot v_i\right) \\
+  v_{sig,i} &=& \max\left(\frac{1}{2}(c_i+c_j) - \min(0, \left(\vec{v}_i-\vec{v}_j\right)\cdot \hat{r}_{ij})\right) \\
+\end{eqnarray}
+
+The constants are usually $\alpha_{max} =2$, $l=0.05$ and $\xi_i$ = 1.
+
+\subsection{Thermal conductivity}
 
 \end{document}
