@@ -55,7 +55,7 @@ void map_cells_plot ( struct cell *c , void *data ) {
     int k, depth = *(int *)data;
     double *l = c->loc, *h = c->h;
 
-    if ( c->depth >= depth ) {
+    if ( c->depth <= depth ) {
     
         printf( "%.16e %.16e %.16e\n" , l[0] , l[1] , l[2] );
         printf( "%.16e %.16e %.16e\n" , l[0]+h[0] , l[1] , l[2] );
@@ -87,10 +87,12 @@ void map_cells_plot ( struct cell *c , void *data ) {
         printf( "%.16e %.16e %.16e\n" , l[0]+h[0] , l[1]+h[1] , l[2]+h[2] );
         printf( "%.16e %.16e %.16e\n\n\n" , l[0]+h[0] , l[1]+h[1] , l[2] );
         
-        for ( k = 0 ; k < c->count ; k++ )
-            printf( "%.16e %.16e %.16e %.16e %.16e %.16e\n" , l[0]+h[0] , l[1]+h[1] , l[2] ,
-                c->parts[k].x[0] , c->parts[k].x[1] , c->parts[k].x[2] );
-        printf( "\n\n" );
+        if ( !c->split ) {
+            for ( k = 0 ; k < c->count ; k++ )
+                printf( "0 0 0 %.16e %.16e %.16e\n" ,
+                    c->parts[k].x[0] , c->parts[k].x[1] , c->parts[k].x[2] );
+            printf( "\n\n" );
+            }
     
         }
 
@@ -555,7 +557,7 @@ int main ( int argc , char *argv[] ) {
     double r_min = 0.01, r_max = 0.1, h_max = -1.0 , scaling = 1.0, rho = 0.0;
     struct part *parts = NULL;
     struct space s;
-    struct runner r;
+    struct engine e;
     ticks tic;
     
     /* Init the space. */
@@ -575,7 +577,8 @@ int main ( int argc , char *argv[] ) {
                     parts[k].x[2] = ((double)rand()) / RAND_MAX * dim[2];
                     parts[k].id = k;
                     parts[k].h = r_min + ((r_max - r_min)*rand())/RAND_MAX;
-                    parts[k].mass = 1.0;
+                    parts[k].mass = 1.0f;
+                    parts[k].u = 1.0f;
                     }
                 printf( "main: allocated memory for %i parts.\n" , N ); fflush(stdout);
                 break;
@@ -652,7 +655,7 @@ int main ( int argc , char *argv[] ) {
             }
             
     /* How large are the parts? */
-    printf( "main: sizeof(struct part) is %li bytes.\n" , sizeof( struct part ) );
+    printf( "main: sizeof(struct part) is %li bytes.\n" , (long int)sizeof( struct part ) );
             
     /* Dump the kernel to make sure its ok. */
     // kernel_dump( 100 );
@@ -699,8 +702,8 @@ int main ( int argc , char *argv[] ) {
     
     /* Initialize the runner with this space. */
     tic = getticks();
-    runner_init( &r , &s , nr_threads , nr_queues , runner_policy_steal | runner_policy_keep );
-    printf( "main: runner_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+    engine_init( &e , &s , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
+    printf( "main: engine_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Init the runner history. */
     #ifdef HIST
@@ -710,7 +713,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Let loose a runner on the space. */
     for ( j = 0 ; j < runs ; j++ ) {
-        printf( "main: starting run %i/%i with %i threads and %i queues...\n" , j+1 , runs , r.nr_threads , r.nr_queues ); fflush(stdout);
+        printf( "main: starting run %i/%i with %i threads and %i queues...\n" , j+1 , runs , e.nr_threads , e.nr_queues ); fflush(stdout);
         tic = getticks();
         #ifdef TIMER
             for ( k = 0 ; k < runner_timer_count ; k++ )
@@ -724,7 +727,7 @@ int main ( int argc , char *argv[] ) {
             for ( k = 0 ; k < runner_counter_count ; k++ )
                 runner_counter[k] = 0;
         #endif
-        runner_run( &r , 0 );
+        engine_run( &e , 0 );
         #ifdef TIMER
             printf( "main: runner timers are [ %.3f" , runner_timer[0]/CPU_TPS*1000 );
             for ( k = 1 ; k < runner_timer_count ; k++ )
@@ -739,7 +742,7 @@ int main ( int argc , char *argv[] ) {
                 printf( " %.3f" , ((double)cell_timer[k])/CPU_TPS*1000 );
             printf( " ] ms.\n" );
         #else
-            printf( "main: runner_run with %i threads took %.3f ms.\n" , nr_threads , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+            printf( "main: engine_run with %i threads took %.3f ms.\n" , nr_threads , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
         #endif
         #ifdef COUNTER
             printf( "main: runner counters are [ %d" , runner_counter[0] );
@@ -747,9 +750,9 @@ int main ( int argc , char *argv[] ) {
                 printf( " %d" , runner_counter[k] );
             printf( " ].\n" );
         #endif
-        printf( "main: runner queue lengths are [ %i" , r.queues[0].count );
-        for ( k = 1 ; k < r.nr_queues ; k++ )
-            printf( " %i" , r.queues[k].count );
+        printf( "main: engine queue lengths are [ %i" , e.queues[0].count );
+        for ( k = 1 ; k < e.nr_queues ; k++ )
+            printf( " %i" , e.queues[k].count );
         printf( " ].\n" );
         fflush(stdout);
         }
@@ -778,9 +781,12 @@ int main ( int argc , char *argv[] ) {
     space_map_parts( &s , &map_icount , &icount );
     printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts / runs );
     
+    /* Dump the acceleration of the first particle. */
+    printf( "main: parts[%i].a is [ %.16e %.16e %.16e ].\n" , s.parts[6178].id , s.parts[6178].a[0] , s.parts[6178].a[1] , s.parts[6178].a[2] );
+    
     /* Get all the cells of a certain depth. */
-    /* count = 11;
-    space_map_cells( &s , &map_cells_plot , &count ); */
+    // icount = 11;
+    // space_map_cells( &s , 0 , &map_cells_plot , &icount );
     
     /* Check for outliers. */
     // space_map_parts( &s , &map_check , NULL );
