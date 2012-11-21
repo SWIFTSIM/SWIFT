@@ -160,11 +160,11 @@ void map_maxdepth ( struct cell *c , void *data ) {
 
 void map_count ( struct part *p , struct cell *c , void *data ) {
 
-    double *rho = (double *)data;
+    double *wcount = (double *)data;
     
     // printf( "%i %e %e\n" , p->id , p->count , p->count_dh );
 
-    *rho += p->rho;
+    *wcount += p->wcount;
 
     }
 
@@ -382,7 +382,7 @@ void read_dt ( char *fname , struct part *parts , int N ) {
     for ( k = 0 ; k < N ; k++ ) {
         if ( gzgets( fd , buff , 1024 ) == NULL )
             error( "Error reading id file." );
-        if ( sscanf( buff , "%ef" , &parts[k].dt ) != 1 )
+        if ( sscanf( buff , "%i" , &parts[k].dt ) != 1 )
             error( "Error parsing dt file." );
         }
         
@@ -443,7 +443,7 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
                 }
             r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
             if ( r2 < parts[j].h*parts[j].h || r2 < parts[k].h*parts[k].h ) {
-                runner_iact_density( r2 , parts[j].h , parts[k].h , &parts[j] , &parts[k] );
+                runner_iact_density( r2 , NULL , parts[j].h , parts[k].h , &parts[j] , &parts[k] );
                 if ( parts[j].h / parts[k].h > maxratio )
                     #pragma omp critical
                     {
@@ -519,6 +519,26 @@ void pairs_single ( double *dim , struct part *__restrict__ parts , int N , int 
         }
             
     }
+    
+    
+/**
+ * @brief Test the kernel function by dumping it in the interval [0,1].
+ *
+ * @param N number of intervals in [0,1].
+ */
+ 
+void kernel_dump ( int N ) {
+
+    int k;
+    float x, w, dw_dx;
+
+    for ( k = 0 ; k <= N ; k++ ) {
+        x = ((float)k) / N * kernel_igamma;
+        kernel_deval( x , &w , &dw_dx );
+        printf( " %e %e %e\n" , x , w , dw_dx );
+        }
+
+    }
 
 
 /**
@@ -555,6 +575,7 @@ int main ( int argc , char *argv[] ) {
                     parts[k].x[2] = ((double)rand()) / RAND_MAX * dim[2];
                     parts[k].id = k;
                     parts[k].h = r_min + ((r_max - r_min)*rand())/RAND_MAX;
+                    parts[k].mass = 1.0;
                     }
                 printf( "main: allocated memory for %i parts.\n" , N ); fflush(stdout);
                 break;
@@ -629,6 +650,12 @@ int main ( int argc , char *argv[] ) {
                 error( "Unknown option." );
                 break;
             }
+            
+    /* How large are the parts? */
+    printf( "main: sizeof(struct part) is %i bytes.\n" , sizeof( struct part ) );
+            
+    /* Dump the kernel to make sure its ok. */
+    // kernel_dump( 100 );
     
     /* Get the brute-force number of pairs. */
     // pairs_n2( dim , parts , N , periodic );
@@ -744,7 +771,7 @@ int main ( int argc , char *argv[] ) {
     /* Get the average interactions per particle. */
     rho = 0;
     space_map_parts( &s , &map_count , &rho );
-    printf( "main: average interactions per particle is %.3f.\n" , rho / s.nr_parts / runs + 32.0/3 );
+    printf( "main: average wcount per particle is %.3f.\n" , rho / s.nr_parts / runs + 32.0/3 );
     
     /* Get the average interactions per particle. */
     icount = 0;
