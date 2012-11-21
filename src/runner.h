@@ -19,16 +19,6 @@
 
 
 
-/* Some constants. */
-#define runner_policy_none          0
-#define runner_policy_rand          1
-#define runner_policy_steal         2
-#define runner_policy_keep          4
-#define runner_policy_block         8
-
-#define runner_queue_scale          1.2
-
-
 /* The timers themselves. */
 enum {
     runner_timer_none = 0,
@@ -114,7 +104,7 @@ long long int runner_hist_bins[ runner_hist_N ];
 
 
 /* A struct representing a runner's thread and its data. */
-struct runner_thread {
+struct runner {
 
     /* The id of this thread. */
     int id;
@@ -123,45 +113,15 @@ struct runner_thread {
     pthread_t thread;
     
     /* The underlying runner. */
-    struct runner *r;
-    
-    };
-
-
-/* Data structure for the runner. */
-struct runner {
-
-    /* Number of threads on which to run. */
-    int nr_threads;
-    
-    /* The space with which the runner is associated. */
-    struct space *s;
-    
-    /* The runner's threads. */
-    struct runner_thread *threads;
-    
-    /* The running policy. */
-    int policy;
-    
-    /* The number of queues. */
-    int nr_queues;
-    
-    /* The queues. */
-    struct queue *queues;
-    
-    /* Data for the threads' barrier. */
-    pthread_mutex_t barrier_mutex;
-    pthread_cond_t barrier_cond;
-    int barrier_count;
+    struct engine *e;
     
     };
 
 
 /* Function prototypes. */
-void runner_run ( struct runner *r , int sort_queues );
-void runner_doghost ( struct runner_thread *rt , struct cell *c );
-void runner_dopair_density ( struct runner_thread *rt , struct cell *ci , struct cell *cj );
-void runner_doself_density ( struct runner_thread *rt , struct cell *c );
-void runner_dosub_density ( struct runner_thread *rt , struct cell *ci , struct cell *cj , int flags );
-void runner_dosort ( struct runner_thread *rt , struct cell *c , int flag );
-void runner_init ( struct runner *r , struct space *s , int nr_threads , int nr_queues , int policy );
+void runner_doghost ( struct runner *r , struct cell *c );
+void runner_dopair_density ( struct runner *r , struct cell *ci , struct cell *cj );
+void runner_doself_density ( struct runner *r , struct cell *c );
+void runner_dosub_density ( struct runner *r , struct cell *ci , struct cell *cj , int flags );
+void runner_dosort ( struct runner *r , struct cell *c , int flag );
+void *runner_main ( void *data );

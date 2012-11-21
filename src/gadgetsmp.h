@@ -30,5 +30,6 @@
 #include "space.h"
 #include "queue.h"
 #include "runner_iact.h"
+#include "engine.h"
 #include "runner.h"
 

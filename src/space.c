@@ -970,7 +970,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
             if ( t->cj != NULL )
                 task_addunlock( t->cj->ghost , t2 );
             }
-
+            
         }
         
     /* Did we already create indices? */
@@ -987,12 +987,27 @@ void space_maketasks ( struct space *s , int do_sort ) {
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         t = &s->tasks[k];
         if ( ( t->type == task_type_sort || t->type == task_type_ghost ) && t->nr_unlock_tasks == 0 ) {
+            if ( t->type == task_type_sort && t->ci->split )
+                for ( i = 0 ; i < 13 ; i++ )
+                    if ( t->flags & ( 1 << i ) ) {
+                        for ( j = 0 ; j < 8 ; j++ )
+                            if ( t->ci->progeny[j] != NULL )
+                                task_rmunlock( t->ci->progeny[j]->sorts[i] , t );
+                        t->ci->sorts[i] = NULL;
+                        }
             t->type = task_type_none;
-            if ( t->ci->split )
-                for ( j = 0 ; j < 8 ; j++ )
-                    if ( t->ci->progeny[j] != NULL && t->flags & ( 1 << j ) )
-                        task_rmunlock( t->ci->progeny[j]->sorts[j] , t );
             }
+        }
+        
+    /* Make each remaining ghost task unlock the ghosts of its progeny. */
+    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+        t = &s->tasks[k];
+        if ( t->type == task_type_ghost && t->ci->split )
+            for ( j = 0 ; j < 8 ; j++ )
+                if ( t->ci->progeny[j] != NULL )
+                    task_addunlock( t->ci->ghost , t->ci->progeny[j]->ghost );
+        if ( t->type == task_type_ghost && ( t->ci->parent == NULL || t->ci->parent->ghost->type == task_type_none ) )
+            t->flags = 1;
         }
             
     /* Count the number of each task type. */

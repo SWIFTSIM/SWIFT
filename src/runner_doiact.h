@@ -59,9 +59,9 @@
  * @param cj The second #cell.
  */
  
-void DOPAIR_NAIVE ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
+void DOPAIR_NAIVE ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
-    struct runner *r = rt->r;
+    struct engine *e = r->e;
     int pid, pjd, k, count_i = ci->count, count_j = cj->count;
     double shift[3] = { 0.0 , 0.0 , 0.0 };
     struct part *pi, *pj, *parts_i = ci->parts, *parts_j = cj->parts;
@@ -71,10 +71,10 @@ void DOPAIR_NAIVE ( struct runner_thread *rt , struct cell *ci , struct cell *cj
     
     /* Get the relative distance between the pairs, wrapping. */
     for ( k = 0 ; k < 3 ; k++ ) {
-        if ( cj->loc[k] - ci->loc[k] < -r->s->dim[k]/2 )
-            shift[k] = r->s->dim[k];
-        else if ( cj->loc[k] - ci->loc[k] > r->s->dim[k]/2 )
-            shift[k] = -r->s->dim[k];
+        if ( cj->loc[k] - ci->loc[k] < -e->s->dim[k]/2 )
+            shift[k] = e->s->dim[k];
+        else if ( cj->loc[k] - ci->loc[k] > e->s->dim[k]/2 )
+            shift[k] = -e->s->dim[k];
         }
         
     /* printf( "runner_dopair_naive: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts and shift = [ %g %g %g ].\n" ,
@@ -117,7 +117,7 @@ void DOPAIR_NAIVE ( struct runner_thread *rt , struct cell *ci , struct cell *cj
         } /* loop over the parts in ci. */
         
     #ifdef TIMER_VERBOSE
-        printf( "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , rt->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
+        printf( "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOPAIR);
     #endif
@@ -134,9 +134,9 @@ void DOPAIR_NAIVE ( struct runner_thread *rt , struct cell *ci , struct cell *cj
  * @param cj The second #cell.
  */
  
-void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
+void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
-    struct runner *r = rt->r;
+    struct engine *e = r->e;
     int pid, pjd, k, sid;
     double rshift, shift[3] = { 0.0 , 0.0 , 0.0 };
     struct cell *temp;
@@ -150,10 +150,10 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
     
     /* Get the relative distance between the pairs, wrapping. */
     for ( k = 0 ; k < 3 ; k++ ) {
-        if ( cj->loc[k] - ci->loc[k] < -r->s->dim[k]/2 )
-            shift[k] = r->s->dim[k];
-        else if ( cj->loc[k] - ci->loc[k] > r->s->dim[k]/2 )
-            shift[k] = -r->s->dim[k];
+        if ( cj->loc[k] - ci->loc[k] < -e->s->dim[k]/2 )
+            shift[k] = e->s->dim[k];
+        else if ( cj->loc[k] - ci->loc[k] > e->s->dim[k]/2 )
+            shift[k] = -e->s->dim[k];
         }
         
     /* Get the sorting index. */
@@ -275,7 +275,7 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
         } /* loop over the parts in ci. */
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , rt->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
+        printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOPAIR);
     #endif
@@ -290,7 +290,7 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
  * @param c The #cell.
  */
 
-void DOSELF ( struct runner_thread *rt , struct cell *c ) {
+void DOSELF ( struct runner *r , struct cell *c ) {
 
     int k, pid, pjd, count = c->count;
     double pix[3];
@@ -338,7 +338,7 @@ void DOSELF ( struct runner_thread *rt , struct cell *c ) {
         } /* loop over all particles. */
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n" , rt->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
+        printf( "runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n" , r->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOSELF);
     #endif
@@ -353,7 +353,7 @@ void DOSELF ( struct runner_thread *rt , struct cell *c ) {
  * @param c The #cell.
  */
 
-void DOSUB ( struct runner_thread *rt , struct cell *ci , struct cell *cj , int flags ) {
+void DOSUB ( struct runner *r , struct cell *ci , struct cell *cj , int flags ) {
 
     int j, k;
 
@@ -367,185 +367,185 @@ void DOSUB ( struct runner_thread *rt , struct cell *ci , struct cell *cj , int 
             for ( j = 0 ; j < 7 ; j++ )
                 for ( k = j + 1 ; k < 8 ; k++ )
                     if ( ci->progeny[j] != NULL && ci->progeny[k] != NULL )
-                        DOPAIR( rt , ci->progeny[j] , ci->progeny[k] );
+                        DOPAIR( r , ci->progeny[j] , ci->progeny[k] );
             break;
             
         case 1: /* (  1 ,  1 ,  0 ) */
             if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[0] );
             if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
             if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
             if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[1] );
             break;
     
         case 3: /* (  1 ,  0 ,  1 ) */
             if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[0] );
             if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
             if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
             if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[2] );
             break;
                     
         case 4: /* (  1 ,  0 ,  0 ) */
             if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[0] );
             if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[1] );
             if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[2] );
             if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[3] );
             if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[0] );
             if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[1] );
             if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
             if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[3] );
             if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[0] );
             if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
             if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[2] );
             if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[3] );
             if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
             if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[1] );
             if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[2] );
             if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[3] );
             break;
             
         case 5: /* (  1 ,  0 , -1 ) */
             if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[1] );
             if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[3] );
             if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
             if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[3] );
             break;
                     
         case 7: /* (  1 , -1 ,  0 ) */
             if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[2] );
             if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[4] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[4] , cj->progeny[3] );
             if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
             if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[3] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[3] );
             break;
                     
         case 9: /* (  0 ,  1 ,  1 ) */
             if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[0] );
             if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[4] );
             if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
             if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[4] );
             break;
                     
         case 10: /* (  0 ,  1 ,  0 ) */
             if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[2] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[2] , cj->progeny[0] );
             if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[2] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[2] , cj->progeny[1] );
             if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[2] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[2] , cj->progeny[4] );
             if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( rt , ci->progeny[2] , cj->progeny[5] );
+                DOPAIR( r , ci->progeny[2] , cj->progeny[5] );
             if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[0] );
             if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[1] );
             if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[4] );
             if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[5] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[5] );
             if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[0] );
             if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
             if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[4] );
             if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[5] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[5] );
             if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
             if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[1] );
             if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[4] );
             if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[5] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[5] );
             break;
                     
         case 11: /* (  0 ,  1 , -1 ) */
             if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[2] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[2] , cj->progeny[1] );
             if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( rt , ci->progeny[2] , cj->progeny[5] );
+                DOPAIR( r , ci->progeny[2] , cj->progeny[5] );
             if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[1] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
             if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( rt , ci->progeny[6] , cj->progeny[5] );
+                DOPAIR( r , ci->progeny[6] , cj->progeny[5] );
             break;
                     
         case 12: /* (  0 ,  0 ,  1 ) */
             if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[1] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[1] , cj->progeny[0] );
             if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[1] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[1] , cj->progeny[2] );
             if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[1] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[1] , cj->progeny[4] );
             if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( rt , ci->progeny[1] , cj->progeny[6] );
+                DOPAIR( r , ci->progeny[1] , cj->progeny[6] );
             if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[0] );
             if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[2] );
             if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[4] );
             if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( rt , ci->progeny[3] , cj->progeny[6] );
+                DOPAIR( r , ci->progeny[3] , cj->progeny[6] );
             if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[0] );
             if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
             if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[4] );
             if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( rt , ci->progeny[5] , cj->progeny[6] );
+                DOPAIR( r , ci->progeny[5] , cj->progeny[6] );
             if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[0] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
             if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[2] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[2] );
             if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[4] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[4] );
             if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( rt , ci->progeny[7] , cj->progeny[6] );
+                DOPAIR( r , ci->progeny[7] , cj->progeny[6] );
             break;
                 
         }
     
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , rt->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOSUB);
     #endif

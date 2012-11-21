@@ -147,6 +147,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
         
     /* Compute dv dot r. */
     dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+    dvdr *= ri;
         
     /* Get the time derivative for u. */
     pi->u_dt += pj->mass * dvdr * wi_dr;
