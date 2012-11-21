@@ -652,7 +652,7 @@ int main ( int argc , char *argv[] ) {
             }
             
     /* How large are the parts? */
-    printf( "main: sizeof(struct part) is %i bytes.\n" , sizeof( struct part ) );
+    printf( "main: sizeof(struct part) is %li bytes.\n" , sizeof( struct part ) );
             
     /* Dump the kernel to make sure its ok. */
     // kernel_dump( 100 );
