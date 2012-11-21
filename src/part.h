@@ -21,6 +21,7 @@
 /* Some constants. */
 #define part_maxwait                    3
 #define part_maxunlock                  39
+#define part_dtmax                      10
 
 
 /* Data of a single particle. */
@@ -30,13 +31,16 @@ struct part {
     float h;
     
     /* Particle time-step. */
-    float dt;
+    int dt;
     
-    /* Particle ID. */
-    int id;
+    /* Particle mass. */
+    float mass;
     
     /* Particle density. */
     float rho;
+    
+    /* Particle ID. */
+    int id;
     
     /* Particle position. */
     double x[3];
@@ -50,8 +54,8 @@ struct part {
     /* Particle pressure. */
     float P;
     
-    /* Particle mass. */
-    float m;
+    /* Aggregate quantities. */
+    float POrho2;
     
     /* Particle internal energy. */
     float u;
@@ -59,11 +63,15 @@ struct part {
     /* Change in particle energy over time. */
     float u_dt;
     
+    /* Change in smoothing length over time. */
+    float h_dt;
+    
     /* Derivative of the density with respect to this particle's smoothing length. */
     float rho_dh;
     
     /* Particle number density. */
     int icount;
+    float wcount;
     
     } __attribute__((aligned (32)));
     

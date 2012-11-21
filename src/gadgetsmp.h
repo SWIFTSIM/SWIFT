@@ -22,6 +22,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "const.h"
 #include "lock.h"
 #include "task.h"
 #include "part.h"

@@ -960,6 +960,17 @@ void space_maketasks ( struct space *s , int do_sort ) {
             task_addunlock( t->cj->ghost , t2 );
             }
 
+        /* Otherwise, sub interaction? */
+        else if ( t->type == task_type_sub && t->subtype == task_subtype_density ) {
+            task_addunlock( t , t->ci->ghost );
+            if ( t->cj != NULL )
+                task_addunlock( t , t->cj->ghost );
+            t2 = space_addtask( s , task_type_sub , task_subtype_force , t->flags , 0 , t->ci , t->cj , NULL , 0 , NULL , 0 );
+            task_addunlock( t->ci->ghost , t2 );
+            if ( t->cj != NULL )
+                task_addunlock( t->cj->ghost , t2 );
+            }
+
         }
         
     /* Did we already create indices? */

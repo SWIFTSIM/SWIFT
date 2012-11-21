@@ -33,9 +33,13 @@
 enum {
     runner_timer_none = 0,
     runner_timer_dosort,
-    runner_timer_doself,
-    runner_timer_dopair,
-    runner_timer_dosub,
+    runner_timer_doself_density,
+    runner_timer_doself_force,
+    runner_timer_dopair_density,
+    runner_timer_dopair_force,
+    runner_timer_dosub_density,
+    runner_timer_dosub_force,
+    runner_timer_doghost,
     runner_timer_getpair,
     runner_timer_steal,
     runner_timer_stalled,
@@ -155,6 +159,7 @@ struct runner {
 
 /* Function prototypes. */
 void runner_run ( struct runner *r , int sort_queues );
+void runner_doghost ( struct runner_thread *rt , struct cell *c );
 void runner_dopair_density ( struct runner_thread *rt , struct cell *ci , struct cell *cj );
 void runner_doself_density ( struct runner_thread *rt , struct cell *c );
 void runner_dosub_density ( struct runner_thread *rt , struct cell *ci , struct cell *cj , int flags );

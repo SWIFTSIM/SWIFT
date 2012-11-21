@@ -33,6 +33,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "const.h"
 #include "lock.h"
 #include "task.h"
 #include "part.h"
@@ -485,6 +486,56 @@ void runner_dosort ( struct runner_thread *rt , struct cell *c , int flags ) {
     #endif
 
     }
+    
+    
+/**
+ * @brief Intermediate task between density and force
+ *
+ * @param rt The runner thread.
+ * @param ci THe cell.
+ */
+ 
+void runner_doghost ( struct runner_thread *r , struct cell *c ) {
+
+    struct part *p;
+    int i, k;
+    TIMER_TIC
+    
+    /* If this cell has progeny, don't bother. */
+    if ( c->split )
+        return;
+    
+    /* Loop over the parts in this cell. */
+    for ( i = 0 ; i < c->count ; i++ ) {
+    
+        /* Get a direct pointer on the part. */
+        p = &c->parts[i];
+    
+        /* Reset the acceleration. */
+        for ( k = 0 ; k < 3 ; k++ )
+            p->a[k] = 0.0f;
+            
+        /* Reset the time derivatives. */
+        p->u_dt = 0.0f;
+        p->h_dt = 0.0f;
+            
+        /* Compute the pressure. */
+        p->P = p->rho * p->u * ( const_gamma - 1.0f );
+        
+        /* Compute the P/Omega/rho2. */
+        p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+        
+        }
+
+    #ifdef TIMER_VERBOSE
+        printf( "runner_doghost[%02i]: %i parts at depth %i took %.3f ms.\n" ,
+            rt->id , c->count , c->depth ,
+            ((double)TIMER_TOC(runner_timer_doghost)) / CPU_TPS * 1000 ); fflush(stdout);
+    #else
+        TIMER_TOC(runner_timer_doghost);
+    #endif
+    
+    }
 
 
 /**
@@ -677,6 +728,7 @@ void *runner_main ( void *data ) {
                         cell_unlocktree( cj );
                     break;
                 case task_type_ghost:
+                    runner_doghost( rt , ci );
                     break;
                 default:
                     error( "Unknown task type." );

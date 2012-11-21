@@ -306,7 +306,7 @@ struct task *queue_gettask_new ( struct queue *q , int rid , int blocking , int 
                 continue;
                 
             /* Get the score for this task. */
-            if ( res->type == task_type_self || res->type == task_type_sort || ( res->type == task_type_sub && res->cj == NULL ) )
+            if ( res->type == task_type_self || res->type == task_type_ghost || res->type == task_type_sort || ( res->type == task_type_sub && res->cj == NULL ) )
                 score = ( res->ci->owner == rid );
             else
                 score = ( res->ci->owner == rid ) + ( res->cj->owner == rid );

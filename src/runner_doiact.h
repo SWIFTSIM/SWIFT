@@ -41,6 +41,15 @@
 #define IACT2(f) PASTE(runner_iact,f)
 #define IACT IACT2(FUNCTION)
 
+#define TIMER_DOSELF2(f) PASTE(runner_timer_doself,f)
+#define TIMER_DOSELF TIMER_DOSELF2(FUNCTION)
+
+#define TIMER_DOPAIR2(f) PASTE(runner_timer_dopair,f)
+#define TIMER_DOPAIR TIMER_DOPAIR2(FUNCTION)
+
+#define TIMER_DOSUB2(f) PASTE(runner_timer_dosub,f)
+#define TIMER_DOSUB TIMER_DOSUB2(FUNCTION)
+
 
 /**
  * @brief Compute the interactions between a cell pair.
@@ -56,7 +65,8 @@ void DOPAIR_NAIVE ( struct runner_thread *rt , struct cell *ci , struct cell *cj
     int pid, pjd, k, count_i = ci->count, count_j = cj->count;
     double shift[3] = { 0.0 , 0.0 , 0.0 };
     struct part *pi, *pj, *parts_i = ci->parts, *parts_j = cj->parts;
-    double dx[3], pix[3], hi, hi2, r2;
+    double pix[3];
+    float dx[3], hi, hi2, r2;
     TIMER_TIC
     
     /* Get the relative distance between the pairs, wrapping. */
@@ -98,7 +108,7 @@ void DOPAIR_NAIVE ( struct runner_thread *rt , struct cell *ci , struct cell *cj
             /* Hit or miss? */
             if ( r2 < hi2 || r2 < pj->h*pj->h ) {
             
-                IACT( r2 , hi , pj->h , pi , pj );
+                IACT( r2 , dx , hi , pj->h , pi , pj );
             
                 }
         
@@ -107,9 +117,9 @@ void DOPAIR_NAIVE ( struct runner_thread *rt , struct cell *ci , struct cell *cj
         } /* loop over the parts in ci. */
         
     #ifdef TIMER_VERBOSE
-        printf( "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , rt->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , ((double)TIMER_TOC(runner_timer_dopair)) / CPU_TPS * 1000 );
+        printf( "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , rt->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
     #else
-        TIMER_TOC(runner_timer_dopair);
+        TIMER_TOC(TIMER_DOPAIR);
     #endif
 
 
@@ -132,7 +142,8 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
     struct cell *temp;
     struct entry *sort_i, *sort_j;
     struct part *pi, *pj, *parts_i, *parts_j;
-    double dx[3], pix[3], pjx[3], hi, hi2, hj, hj2, r2, di, dj;
+    double pix[3], pjx[3], di, dj;
+    float dx[3], hi, hi2, hj, hj2, r2;
     double hi_max, hj_max, di_max, dj_min;
     int count_i, count_j;
     TIMER_TIC
@@ -214,7 +225,7 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
             /* Hit or miss? */
             if ( r2 < hi2 ) {
             
-                IACT( r2 , hi , pj->h , pi , pj );
+                IACT( r2 , dx , hi , pj->h , pi , pj );
             
                 }
         
@@ -255,7 +266,7 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
             /* Hit or miss? */
             if ( r2 < hj2 && r2 > pi->h*pi->h ) {
             
-                IACT( r2 , pi->h , hj , pi , pj );
+                IACT( r2 , dx , pi->h , hj , pi , pj );
             
                 }
         
@@ -264,9 +275,9 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
         } /* loop over the parts in ci. */
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , rt->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(runner_timer_dopair))) / CPU_TPS * 1000 );
+        printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , rt->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
     #else
-        TIMER_TOC(runner_timer_dopair);
+        TIMER_TOC(TIMER_DOPAIR);
     #endif
 
     }
@@ -282,7 +293,8 @@ void DOPAIR ( struct runner_thread *rt , struct cell *ci , struct cell *cj ) {
 void DOSELF ( struct runner_thread *rt , struct cell *c ) {
 
     int k, pid, pjd, count = c->count;
-    double pix[3], dx[3], hi, hi2, r2;
+    double pix[3];
+    float dx[3], hi, hi2, r2;
     struct part *pi, *pj, *parts = c->parts;
     TIMER_TIC
     
@@ -317,7 +329,7 @@ void DOSELF ( struct runner_thread *rt , struct cell *c ) {
             /* Hit or miss? */
             if ( r2 < hi2 || r2 < pj->h*pj->h ) {
             
-                IACT( r2 , hi , pj->h , pi , pj );
+                IACT( r2 , dx , hi , pj->h , pi , pj );
             
                 }
         
@@ -326,9 +338,9 @@ void DOSELF ( struct runner_thread *rt , struct cell *c ) {
         } /* loop over all particles. */
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n" , rt->id , count , c->depth , ((double)TIMER_TOC(runner_timer_doself)) / CPU_TPS * 1000 );
+        printf( "runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n" , rt->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
     #else
-        TIMER_TOC(runner_timer_doself);
+        TIMER_TOC(TIMER_DOSELF);
     #endif
 
     }
@@ -533,9 +545,9 @@ void DOSUB ( struct runner_thread *rt , struct cell *ci , struct cell *cj , int 
     
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , rt->id , flags , ci->depth , ((double)TIMER_TOC(runner_timer_dosub)) / CPU_TPS * 1000 );
+        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , rt->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
     #else
-        TIMER_TOC(runner_timer_dosub);
+        TIMER_TOC(TIMER_DOSUB);
     #endif
 
     }
