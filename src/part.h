@@ -36,9 +36,6 @@ struct part {
     /* Particle mass. */
     float mass;
     
-    /* Particle density. */
-    float rho;
-    
     /* Particle ID. */
     int id;
     
@@ -51,8 +48,11 @@ struct part {
     /* Particle acceleration. */
     float a[3];
     
+    /* Particle density. */
+    float rho;
+    
     /* Particle pressure. */
-    float P;
+    // float P;
     
     /* Aggregate quantities. */
     float POrho2;

@@ -61,11 +61,17 @@ struct cell {
     /* Parent cell. */
     struct cell *parent;
     
+    /* Super cell, i.e. the highest-level supercell that has interactions. */
+    struct cell *super;
+    
     /* The tasks computing this cell's sorts. */
     struct task *sorts[14];
     
     /* The ghost task to link density to interactions. */
     struct task *ghost;
+    
+    /* Number of tasks that are associated with this cell. */
+    int nr_tasks;
     
     /* Number of tasks this cell is waiting for and whether it is in use. */
     int wait;

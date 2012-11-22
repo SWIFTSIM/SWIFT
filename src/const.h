@@ -19,4 +19,6 @@
 
 
 /* Physical constants. */
-#define const_gamma (5.0f/3.0f)
+#define const_gamma             (5.0f/3.0f)
+#define const_cfl               0.25f
+#define const_nwneigh           48

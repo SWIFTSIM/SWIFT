@@ -30,7 +30,7 @@ static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] =
     { 3.0/4.0*M_1_PI , -3.0/2.0*M_1_PI , 0.0 , M_1_PI , 
       -0.25*M_1_PI , 3.0/2.0*M_1_PI , -3.0*M_1_PI , M_2_PI , 
       0.0 , 0.0 , 0.0 , 0.0 };
-#define kernel_root(h) ( 1.0f/((h)*(h)*(h))*kernel_igamma3*kernel_coeffs[ kernel_degree ] )
+#define kernel_root ( 4.0/3.0*M_PI*kernel_igamma3*kernel_coeffs[ kernel_degree ] )
       
       
 /**
@@ -69,19 +69,18 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
 
     float r = sqrtf( r2 );
     float xi, xj;
-    float hg_inv, hg2_inv;
+    float hg_inv;
     float wi, wj, wi_dx, wj_dx;
     
     if ( r2 < hi*hi && pi != NULL ) {
         
         hg_inv = kernel_igamma / hi;
-        hg2_inv = hg_inv * hg_inv;
         xi = r * hg_inv;
         kernel_deval( xi , &wi , &wi_dx );
         
-        pi->rho += pj->mass * hg_inv * hg2_inv * wi;
-        pi->rho_dh += -pj->mass * hg2_inv * hg2_inv * ( 3.0*wi + xi*wi_dx );
-        pi->wcount += wi * 4.0f * M_PI / 3.0f * kernel_igamma3;
+        pi->rho += pj->mass * wi;
+        pi->rho_dh += -pj->mass * ( 3.0*wi + xi*wi_dx );
+        pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->icount += 1;
         
         }
@@ -89,13 +88,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     if ( r2 < hj*hj && pj != NULL ) {
         
         hg_inv = kernel_igamma / hj;
-        hg2_inv = hg_inv * hg_inv;
         xj = r * hg_inv;
         kernel_deval( xj , &wj , &wj_dx );
         
-        pj->rho += pi->mass * hg_inv * hg2_inv * wj;
-        pj->rho_dh += -pi->mass * hg2_inv * hg2_inv * ( 3.0*wj + xj*wj_dx );
-        pj->wcount += wj * 4.0f * M_PI / 3.0f * kernel_igamma3;
+        pj->rho += pi->mass * wj;
+        pj->rho_dh += -pi->mass * ( 3.0*wj + xj*wj_dx );
+        pj->wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pj->icount += 1;
         
         }
@@ -133,7 +131,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     hjg2_inv = hjg_inv * hjg_inv;
     xj = r * hjg_inv;
     kernel_deval( xj , &wj , &wj_dx );
-    wj_dr = hjg2_inv *hjg2_inv * wj_dx;
+    wj_dr = hjg2_inv * hjg2_inv * wj_dx;
     
     /* Get the common factor out. */
     w = ri * ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr );

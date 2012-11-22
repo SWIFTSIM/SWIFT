@@ -100,9 +100,34 @@ void space_map_clearsort ( struct cell *c , void *data ) {
 void space_map_mkghosts ( struct cell *c , void *data ) {
 
     struct space *s = (struct space *)data;
+    struct cell *finger;
 
-    /* Make the ghost task. */
-    c->ghost = space_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , NULL , 0 , NULL , 0 );
+    /* Find the super cell, i.e. the highest cell hierarchically above
+       this one to still have at least one task associated with it. */
+    c->super = c;
+    for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
+        if ( finger->nr_tasks > 0 )
+            c->super = finger;
+            
+    /* Make the ghost task, if needed. */
+    if ( c->super != c || c->nr_tasks > 0 )
+        c->ghost = space_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , NULL , 0 , NULL , 0 );
+
+    /* If we are not the super cell ourselves, make our ghost depend
+       on our parent cell. */
+    if ( c->super != c )
+        task_addunlock( c->parent->ghost , c->ghost );
+    
+    }
+
+
+/**
+ * @brief Mapping function to clear the number of tasks in each cell.
+ */
+
+void space_map_clearnrtasks ( struct cell *c , void *data ) {
+
+    c->nr_tasks = 0;
 
     }
 
@@ -594,7 +619,8 @@ void space_splittasks ( struct space *s ) {
                     break;
                     
                 case 10: /* (  0 ,  1 ,  0 ) */
-                    if ( !ci->progeny[2]->split && !ci->progeny[3]->split && !ci->progeny[6]->split && !ci->progeny[7]->split &&
+                    if ( space_dosub &&
+                         !ci->progeny[2]->split && !ci->progeny[3]->split && !ci->progeny[6]->split && !ci->progeny[7]->split &&
                          !cj->progeny[0]->split && !cj->progeny[1]->split && !cj->progeny[4]->split && !cj->progeny[5]->split ) {
                         t->type = task_type_sub; t->flags = 10;
                         task_addunlock( ci->progeny[2]->sorts[10] , t ); task_addunlock( cj->progeny[0]->sorts[10] , t );
@@ -885,7 +911,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
         
     /* Allocate the task-list, if needed. */
     if ( s->tasks == NULL )
-        if ( posix_memalign( (void *)&s->tasks , 64 , sizeof(struct task) * s->tot_cells * 14 ) != 0 )
+        if ( posix_memalign( (void *)&s->tasks , 64 , sizeof(struct task) * s->tot_cells * 30 ) != 0 )
             error( "Failed to allocate task list." );
     s->nr_tasks = 0;
     
@@ -933,6 +959,39 @@ void space_maketasks ( struct space *s , int do_sort ) {
     /* Split the tasks. */
     space_splittasks( s );
     
+    /* Remove sort tasks with no dependencies. */
+    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+        t = &s->tasks[k];
+        if ( t->type == task_type_sort && t->nr_unlock_tasks == 0 ) {
+            if ( t->ci->split )
+                for ( i = 0 ; i < 13 ; i++ )
+                    if ( t->flags & ( 1 << i ) ) {
+                        for ( j = 0 ; j < 8 ; j++ )
+                            if ( t->ci->progeny[j] != NULL )
+                                task_rmunlock( t->ci->progeny[j]->sorts[i] , t );
+                        t->ci->sorts[i] = NULL;
+                        }
+            t->type = task_type_none;
+            }
+        }
+        
+    /* Count the number of tasks associated with each cell. */
+    space_map_cells( s , 1 , &space_map_mkghosts , NULL );
+    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+        t = &s->tasks[k];
+        if ( t->type == task_type_self )
+            t->ci->nr_tasks += 1;
+        else if ( t->type == task_type_pair ) {
+            t->ci->nr_tasks += 1;
+            t->cj->nr_tasks += 1;
+            }
+        else if ( t->type == task_type_sub ) {
+            t->ci->nr_tasks += 1;
+            if ( t->cj != NULL )
+                t->cj->nr_tasks += 1;
+            }
+        }
+    
     /* Append a ghost task to each cell. */
     space_map_cells( s , 1 , &space_map_mkghosts , s );
     
@@ -944,7 +1003,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
         
         /* Self-interaction? */
         if ( t->type == task_type_self && t->subtype == task_subtype_density ) {
-            task_addunlock( t , t->ci->ghost );
+            task_addunlock( t , t->ci->super->ghost );
             t2 = space_addtask( s , task_type_self , task_subtype_force , 0 , 0 , t->ci , NULL , NULL , 0 , NULL , 0 );
             task_addunlock( t->ci->ghost , t2 );
             }
@@ -953,8 +1012,8 @@ void space_maketasks ( struct space *s , int do_sort ) {
         else if ( t->type == task_type_pair && t->subtype == task_subtype_density ) {
             if ( t->ci->ghost == NULL )
                 printf( "space_maketasks: cell at %lx has no ghost!\n" , (unsigned long int)t->ci );
-            task_addunlock( t , t->ci->ghost );
-            task_addunlock( t , t->cj->ghost );
+            task_addunlock( t , t->ci->super->ghost );
+            task_addunlock( t , t->cj->super->ghost );
             t2 = space_addtask( s , task_type_pair , task_subtype_force , 0 , 0 , t->ci , t->cj , NULL , 0 , NULL , 0 );
             task_addunlock( t->ci->ghost , t2 );
             task_addunlock( t->cj->ghost , t2 );
@@ -962,9 +1021,9 @@ void space_maketasks ( struct space *s , int do_sort ) {
 
         /* Otherwise, sub interaction? */
         else if ( t->type == task_type_sub && t->subtype == task_subtype_density ) {
-            task_addunlock( t , t->ci->ghost );
+            task_addunlock( t , t->ci->super->ghost );
             if ( t->cj != NULL )
-                task_addunlock( t , t->cj->ghost );
+                task_addunlock( t , t->cj->super->ghost );
             t2 = space_addtask( s , task_type_sub , task_subtype_force , t->flags , 0 , t->ci , t->cj , NULL , 0 , NULL , 0 );
             task_addunlock( t->ci->ghost , t2 );
             if ( t->cj != NULL )
@@ -982,33 +1041,6 @@ void space_maketasks ( struct space *s , int do_sort ) {
     if ( nr_tasks_old != s->nr_tasks )
         for ( k = 0 ; k < s->nr_tasks ; k++ )
             s->tasks_ind[k] = k;
-            
-    /* Remove sort and ghost tasks with no dependencies. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        t = &s->tasks[k];
-        if ( ( t->type == task_type_sort || t->type == task_type_ghost ) && t->nr_unlock_tasks == 0 ) {
-            if ( t->type == task_type_sort && t->ci->split )
-                for ( i = 0 ; i < 13 ; i++ )
-                    if ( t->flags & ( 1 << i ) ) {
-                        for ( j = 0 ; j < 8 ; j++ )
-                            if ( t->ci->progeny[j] != NULL )
-                                task_rmunlock( t->ci->progeny[j]->sorts[i] , t );
-                        t->ci->sorts[i] = NULL;
-                        }
-            t->type = task_type_none;
-            }
-        }
-        
-    /* Make each remaining ghost task unlock the ghosts of its progeny. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        t = &s->tasks[k];
-        if ( t->type == task_type_ghost && t->ci->split )
-            for ( j = 0 ; j < 8 ; j++ )
-                if ( t->ci->progeny[j] != NULL )
-                    task_addunlock( t->ci->ghost , t->ci->progeny[j]->ghost );
-        if ( t->type == task_type_ghost && ( t->ci->parent == NULL || t->ci->parent->ghost->type == task_type_none ) )
-            t->flags = 1;
-        }
             
     /* Count the number of each task type. */
     for ( k = 0 ; k < task_type_count ; k++ )

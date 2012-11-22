@@ -442,29 +442,76 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
 void runner_doghost ( struct runner *r , struct cell *c ) {
 
     struct part *p;
-    int i, k;
+    int i, k, redo, count = c->count;
+    int *pid;
+    float ihg, ihg2;
     TIMER_TIC
     
-    /* Loop over the parts in this cell. */
-    for ( i = 0 ; i < c->count ; i++ ) {
+    /* Recurse? */
+    if ( c->split ) {
+        for ( k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL )
+                runner_doghost( r , c->progeny[k] );
+        return;
+        }
     
-        /* Get a direct pointer on the part. */
-        p = &c->parts[i];
+    /* Init the IDs that have to be updated. */
+    if ( ( pid = (int *)alloca( sizeof(int) * count ) ) == NULL )
+        error( "Call to alloca failed." );
+    for ( k = 0 ; k < count ; k++ )
+        pid[k] = k;
+        
+    /* While there are particles that need to be updated... */
+    while ( count > 0 ) {
     
-        /* Reset the acceleration. */
-        for ( k = 0 ; k < 3 ; k++ )
-            p->a[k] = 0.0f;
+        /* Reset the redo-count. */
+        redo = 0;
+    
+        /* Loop over the parts in this cell. */
+        for ( i = 0 ; i < count ; i++ ) {
+
+            /* Get a direct pointer on the part. */
+            p = &c->parts[ pid[i] ];
+
+            /* Adjust the computed rho. */
+            ihg = kernel_igamma / p->h;
+            ihg2 = ihg * ihg;
+            p->rho *= ihg * ihg2;
+            p->rho_dh *= ihg2 * ihg2;
+
+            /* Did we get the right number density? */
+            if ( p->wcount + kernel_root > const_nwneigh + 1 ||
+                 p->wcount + kernel_root < const_nwneigh - 1 ) {
+                printf( "runner_doghost: particle %i has bad wcount=%f.\n" , p->id , p->wcount + kernel_root );
+                pid[redo] = pid[i];
+                redo += 1;
+                continue;
+                }
+
+            /* Reset the acceleration. */
+            for ( k = 0 ; k < 3 ; k++ )
+                p->a[k] = 0.0f;
+
+            /* Reset the time derivatives. */
+            p->u_dt = 0.0f;
+            p->h_dt = 0.0f;
+
+            /* Compute this particle's time step. */
+            p->dt = const_cfl * p->h / ( const_gamma * ( const_gamma - 1.0f ) * p->u );
+
+            /* Compute the pressure. */
+            // p->P = p->rho * p->u * ( const_gamma - 1.0f );
+
+            /* Compute the P/Omega/rho2. */
+            p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+
+            }
             
-        /* Reset the time derivatives. */
-        p->u_dt = 0.0f;
-        p->h_dt = 0.0f;
+        /* Re-set the counter for the next loop (potentially). */
+        count = redo;
+        if ( count > 0 )
+            error( "Bad smoothing length, fixing this isn't implemented yet." );
             
-        /* Compute the pressure. */
-        p->P = p->rho * p->u * ( const_gamma - 1.0f );
-        
-        /* Compute the P/Omega/rho2. */
-        p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
-        
         }
 
     #ifdef TIMER_VERBOSE
@@ -624,7 +671,7 @@ void *runner_main ( void *data ) {
                         cell_unlocktree( cj );
                     break;
                 case task_type_ghost:
-                    if ( t->flags )
+                    if ( ci->super == ci )
                         runner_doghost( r , ci );
                     break;
                 default:

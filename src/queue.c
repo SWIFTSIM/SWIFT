@@ -454,6 +454,10 @@ void queue_sort ( struct queue *q ) {
                 wait[k] = t->rank;
                 weight[k] = 0; // t->ci->count;
                 break;
+            case task_type_ghost:
+                wait[k] = t->rank;
+                weight[k] = 0; // t->ci->count;
+                break;
             }
         }
         
