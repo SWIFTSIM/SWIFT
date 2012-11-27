@@ -485,6 +485,9 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 printf( "runner_doghost: particle %i has bad wcount=%f.\n" , p->id , p->wcount + kernel_root );
                 pid[redo] = pid[i];
                 redo += 1;
+                p->wcount = 0.0;
+                p->rho = 0.0;
+                p->rho_dh = 0.0;
                 continue;
                 }
 

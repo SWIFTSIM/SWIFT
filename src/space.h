@@ -24,9 +24,12 @@
 #define space_maxdepth                  10
 #define space_cellallocchunk            1000
 #define space_splitratio                0.875
-#define space_splitsize_default         800
+#define space_splitsize_default         400
 #define space_dosub                     1
 
+
+/* Convert cell location to ID. */
+#define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
 
 /* Split size. */
 extern int space_splitsize;

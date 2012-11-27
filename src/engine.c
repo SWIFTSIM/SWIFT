@@ -55,6 +55,10 @@
  * @brief Sort the tasks in topological order over all queues.
  *
  * @param e The #engine.
+ *
+ * TODO: Return the indices tid as these are the tasks sorted according
+ * to their ranks. They can then be dropped into the queues in order
+ * of these indices.
  */
  
 void engine_ranktasks ( struct engine *e ) {

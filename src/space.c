@@ -41,9 +41,6 @@
 /* Error macro. */
 #define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
-/* Convert cell location to ID. */
-#define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
-
 /* Split size. */
 int space_splitsize = space_splitsize_default;
 
@@ -95,6 +92,10 @@ void space_map_clearsort ( struct cell *c , void *data ) {
 
 /**
  * @brief Mapping function to append a ghost task to each cell.
+ *
+ * Looks for the super cell, e.g. the highest-level cell above each
+ * cell for which a pair is defined. All ghosts below this cell will
+ * depend on the ghost of their parents (sounds spooky, but it isn't).
  */
 
 void space_map_mkghosts ( struct cell *c , void *data ) {
@@ -109,7 +110,7 @@ void space_map_mkghosts ( struct cell *c , void *data ) {
         if ( finger->nr_tasks > 0 )
             c->super = finger;
             
-    /* Make the ghost task, if needed. */
+    /* Make the ghost task */
     if ( c->super != c || c->nr_tasks > 0 )
         c->ghost = space_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , NULL , 0 , NULL , 0 );
 
@@ -359,7 +360,7 @@ void space_splittasks ( struct space *s ) {
         hj = fmax( cj->h[0] , fmax( cj->h[1] , cj->h[2] ) );
             
         /* Should this task be split-up? */
-        if ( ci->split && cj->split && ci->r_max < hi/2 && cj->r_max < hj/2 ) {
+        if ( ci->split && cj->split && ci->h_max < hi/2 && cj->h_max < hj/2 ) {
         
             /* Get the relative distance between the pairs, wrapping. */
             for ( k = 0 ; k < 3 ; k++ ) {
@@ -800,7 +801,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
     int i, j, k, ii, jj, kk, iii, jjj, kkk, cid, cjd;
     int *cdim = s->cdim;
     int nr_tasks_old = s->nr_tasks;
-    struct task *t, *t2;
+    struct task *t , *t2;
     int pts[7][8] = { { -1 , 12 , 10 , 9 , 4 , 3 , 1 , 0 } ,
                       { -1 , -1 , 11 , 10 , 5 , 4 , 2 , 1 } ,
                       { -1 , -1 , -1 , 12 , 7 , 6 , 4 , 3 } , 
@@ -968,7 +969,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
                     if ( t->flags & ( 1 << i ) ) {
                         for ( j = 0 ; j < 8 ; j++ )
                             if ( t->ci->progeny[j] != NULL )
-                                task_rmunlock( t->ci->progeny[j]->sorts[i] , t );
+                                task_rmunlock_blind( t->ci->progeny[j]->sorts[i] , t );
                         t->ci->sorts[i] = NULL;
                         }
             t->type = task_type_none;
@@ -976,7 +977,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
         }
         
     /* Count the number of tasks associated with each cell. */
-    space_map_cells( s , 1 , &space_map_mkghosts , NULL );
+    space_map_cells( s , 1 , &space_map_clearnrtasks , NULL );
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         t = &s->tasks[k];
         if ( t->type == task_type_self )
@@ -1010,8 +1011,6 @@ void space_maketasks ( struct space *s , int do_sort ) {
             
         /* Otherwise, pair interaction? */
         else if ( t->type == task_type_pair && t->subtype == task_subtype_density ) {
-            if ( t->ci->ghost == NULL )
-                printf( "space_maketasks: cell at %lx has no ghost!\n" , (unsigned long int)t->ci );
             task_addunlock( t , t->ci->super->ghost );
             task_addunlock( t , t->cj->super->ghost );
             t2 = space_addtask( s , task_type_pair , task_subtype_force , 0 , 0 , t->ci , t->cj , NULL , 0 , NULL , 0 );
@@ -1069,7 +1068,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
 void space_split ( struct space *s , struct cell *c ) {
 
     int k, count;
-    double h, h_limit, r_max = 0.0;
+    double h, h_limit, h_max = 0.0;
     struct cell *temp;
     
     /* Check the depth. */
@@ -1084,10 +1083,10 @@ void space_split ( struct space *s , struct cell *c ) {
         h = c->parts[k].h;
         if ( h <= h_limit )
             count += 1;
-        if ( h > r_max )
-            r_max = h;
+        if ( h > h_max )
+            h_max = h;
         }
-    c->r_max = r_max;
+    c->h_max = h_max;
             
     /* Split or let it be? */
     if ( count > c->count*space_splitratio && c->count > space_splitsize ) {
@@ -1113,7 +1112,7 @@ void space_split ( struct space *s , struct cell *c ) {
                 temp->loc[2] += temp->h[2];
             temp->depth = c->depth + 1;
             temp->split = 0;
-            temp->r_max = 0.0;
+            temp->h_max = 0.0;
             temp->parent = c;
             c->progeny[k] = temp;
             }
@@ -1237,7 +1236,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     if ( h_cells < h_max )
         h_cells = h_max;
     for ( k = 0 ; k < 3 ; k++ ) {
-        cdim[k] = ceil( dim[k] / h_cells );
+        cdim[k] = floor( dim[k] / h_cells );
         h[k] = dim[k] / cdim[k];
         ih[k] = 1.0 / h[k];
         }

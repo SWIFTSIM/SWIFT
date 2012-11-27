@@ -67,6 +67,30 @@ void task_rmunlock( struct task *ta , struct task *tb ) {
     
 
 /**
+ * @brief Remove an unlock_task from the given task.
+ *
+ * @param ta The unlocking #task.
+ * @param tb The #task that will be unlocked.
+ *
+ * Differs from #task_rmunlock in that it will not fail if
+ * the task @c tb is not in the unlocks of @c ta.
+ */
+ 
+void task_rmunlock_blind( struct task *ta , struct task *tb ) {
+
+    int k;
+    
+    for ( k = 0 ; k < ta->nr_unlock_tasks ; k++ )
+        if ( ta->unlock_tasks[k] == tb ) {
+            ta->nr_unlock_tasks -= 1;
+            ta->unlock_tasks[k] = ta->unlock_tasks[ ta->nr_unlock_tasks ];
+            return;
+            }
+
+    }
+    
+
+/**
  * @brief Add an unlock_task to the given task.
  *
  * @param ta The unlocking #task.

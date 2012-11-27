@@ -38,7 +38,7 @@ struct cell {
     double h[3];
     
     /* Max radii in this cell. */
-    double r_max;
+    double h_max;
     
     /* The depth of this cell in the tree. */
     int depth, split;

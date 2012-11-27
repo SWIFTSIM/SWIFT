@@ -99,7 +99,7 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *ci , struct cell *cj ) {
             pj = &parts_j[ pjd ];
         
             /* Compute the pairwise distance. */
-            r2 = 0.0;
+            r2 = 0.0f;
             for ( k = 0 ; k < 3 ; k++ ) {
                 dx[k] = pix[k] - pj->x[k];
                 r2 += dx[k]*dx[k];
@@ -117,7 +117,7 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *ci , struct cell *cj ) {
         } /* loop over the parts in ci. */
         
     #ifdef TIMER_VERBOSE
-        printf( "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
+        printf( "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOPAIR);
     #endif
@@ -144,7 +144,8 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
     struct part *pi, *pj, *parts_i, *parts_j;
     double pix[3], pjx[3], di, dj;
     float dx[3], hi, hi2, hj, hj2, r2;
-    double hi_max, hj_max, di_max, dj_min;
+    double hi_max, hj_max;
+    double di_max, dj_min;
     int count_i, count_j;
     TIMER_TIC
     
@@ -172,9 +173,17 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
     for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )
         rshift += shift[k]*runner_shift[ 3*sid + k ];
         
-    /* printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts and shift = [ %g %g %g ].\n" ,
-        ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
-        ci->count , cj->count , shift[0] , shift[1] , shift[2] ); fflush(stdout); */
+    /* for ( k = 0 ; k < ci->count ; k++ )
+        if ( ci->parts[k].id == 561590 )
+            break;
+    if ( k == ci->count )
+        for ( k = 0 ; k < cj->count ; k++ )
+            if ( cj->parts[k].id == 561590 )
+                break;
+    if ( k < cj->count )
+        printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts, h_max=%g/%g, and shift = [ %g %g %g ] (rshift=%g).\n" ,
+            ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
+            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout); */
     /* for ( hi = 0 , k = 0 ; k < ci->count ; k++ )
         hi += ci->parts[k].r;
     for ( hj = 0 , k = 0 ; k < cj->count ; k++ )
@@ -186,7 +195,7 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
     sort_j = &cj->sort[ sid*(cj->count + 1) ];
     
     /* Get some other useful values. */
-    hi_max = ci->r_max - rshift; hj_max = cj->r_max - rshift;
+    hi_max = ci->h_max - rshift; hj_max = cj->h_max;
     count_i = ci->count; count_j = cj->count;
     parts_i = ci->parts; parts_j = cj->parts;
     di_max = sort_i[count_i-1].d - rshift;
@@ -216,7 +225,7 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
             pj = &parts_j[ sort_j[pjd].i ];
         
             /* Compute the pairwise distance. */
-            r2 = 0.0;
+            r2 = 0.0f;
             for ( k = 0 ; k < 3 ; k++ ) {
                 dx[k] = pix[k] - pj->x[k];
                 r2 += dx[k]*dx[k];
@@ -237,7 +246,7 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
     tic = getticks(); */
 
     /* Loop over the parts in cj. */
-    for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max < di_max ; pjd++ ) {
+    for ( pjd = 0 ; pjd < count_j && ( 1 || sort_j[pjd].d - hj_max < di_max ) ; pjd++ ) {
     
         /* Get a hold of the jth part in cj. */
         pj = &parts_j[ sort_j[ pjd ].i ];
@@ -257,7 +266,7 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
             pi = &parts_i[ sort_i[pid].i ];
             
             /* Compute the pairwise distance. */
-            r2 = 0.0;
+            r2 = 0.0f;
             for ( k = 0 ; k < 3 ; k++ ) {
                 dx[k] = pi->x[k] - pjx[k];
                 r2 += dx[k]*dx[k];
@@ -275,7 +284,7 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
         } /* loop over the parts in ci. */
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->r_max , cj->r_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
+        printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOPAIR);
     #endif
@@ -320,7 +329,7 @@ void DOSELF ( struct runner *r , struct cell *c ) {
             pj = &parts[pjd];
         
             /* Compute the pairwise distance. */
-            r2 = 0.0;
+            r2 = 0.0f;
             for ( k = 0 ; k < 3 ; k++ ) {
                 dx[k] = pix[k] - pj->x[k];
                 r2 += dx[k]*dx[k];
@@ -330,7 +339,7 @@ void DOSELF ( struct runner *r , struct cell *c ) {
             if ( r2 < hi2 || r2 < pj->h*pj->h ) {
             
                 IACT( r2 , dx , hi , pj->h , pi , pj );
-            
+                
                 }
         
             } /* loop over all other particles. */

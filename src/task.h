@@ -62,4 +62,5 @@ struct task {
 
 /* Function prototypes. */
 void task_rmunlock( struct task *ta , struct task *tb );
+void task_rmunlock_blind( struct task *ta , struct task *tb );
 void task_addunlock( struct task *ta , struct task *tb );
