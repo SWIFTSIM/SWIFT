@@ -848,7 +848,7 @@ int main ( int argc , char *argv[] ) {
     /* Get the average interactions per particle. */
     rho = 0;
     space_map_parts( &s , &map_count , &rho );
-    printf( "main: average wcount per particle is %.3f.\n" , rho / s.nr_parts / runs + 32.0/3 );
+    printf( "main: average wcount per particle is %.3f.\n" , rho / s.nr_parts + 32.0/3 );
     
     /* Get the particle with the lowest wcount. */
     p = &s.parts[0];
@@ -898,7 +898,7 @@ int main ( int argc , char *argv[] ) {
     /* Get the average interactions per particle. */
     icount = 0;
     space_map_parts( &s , &map_icount , &icount );
-    printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts / runs );
+    printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
     
     /* Dump the acceleration of the first particle. */
     printf( "main: parts[%i].a is [ %.16e %.16e %.16e ].\n" , s.parts[6178].id , s.parts[6178].a[0] , s.parts[6178].a[1] , s.parts[6178].a[2] );
