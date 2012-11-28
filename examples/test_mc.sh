@@ -27,4 +27,6 @@ do
 
     ./test -r 100 -t $cpu -b "100 100 100" -N 3558892 -c snap_C09/Coordinates.txt.gz -s "50 50 50" -p 0 -h snap_C09/SmoothingLength.txt.gz -m 6.138 > snap_C09_${cpu}.dump
 
+    ./test -r 100 -t $cpu -b "6.25 6.25 6.25" -N 1841127 -c scaling/Coordinates.txt.gz -p 1 -h scaling/SmoothingLength.txt.gz -m 0.5 -z 200 > scaling_${cpu}.dump
+
 done
