@@ -52,7 +52,7 @@
 
 void map_cells_plot ( struct cell *c , void *data ) {
 
-    int k, depth = *(int *)data;
+    int depth = *(int *)data;
     double *l = c->loc, *h = c->h;
 
     if ( c->depth <= depth ) {
@@ -88,11 +88,15 @@ void map_cells_plot ( struct cell *c , void *data ) {
         printf( "%.16e %.16e %.16e\n\n\n" , l[0]+h[0] , l[1]+h[1] , l[2] );
         
         if ( !c->split ) {
-            for ( k = 0 ; k < c->count ; k++ )
+            for ( int k = 0 ; k < c->count ; k++ )
                 printf( "0 0 0 %.16e %.16e %.16e\n" ,
                     c->parts[k].x[0] , c->parts[k].x[1] , c->parts[k].x[2] );
             printf( "\n\n" );
             }
+        /* else
+            for ( int k = 0 ; k < 8 ; k++ )
+                if ( c->progeny[k] != NULL )
+                    map_cells_plot( c->progeny[k] , data ); */
     
         }
 
@@ -167,6 +171,24 @@ void map_count ( struct part *p , struct cell *c , void *data ) {
     // printf( "%i %e %e\n" , p->id , p->count , p->count_dh );
 
     *wcount += p->wcount;
+
+    }
+
+void map_wcount_min ( struct part *p , struct cell *c , void *data ) {
+
+    struct part **p2 = (struct part **)data;
+    
+    if ( p->wcount < (*p2)->wcount )
+        *p2 = p;
+
+    }
+
+void map_wcount_max ( struct part *p , struct cell *c , void *data ) {
+
+    struct part **p2 = (struct part **)data;
+    
+    if ( p->wcount > (*p2)->wcount )
+        *p2 = p;
 
     }
 
@@ -423,11 +445,14 @@ void read_dt ( char *fname , struct part *parts , int N ) {
 
 void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int periodic ) {
 
-    int i, j, k, count = 0, mj, mk;
-    double r2, dx[3], rho = 0.0, maxratio = 1.0;
+    int i, j, k, count = 0;
+    // int mj, mk;
+    // double maxratio = 1.0;
+    double r2, dx[3], rho = 0.0;
+    double rho_max = 0.0, rho_min = 100;
     
     /* Loop over all particle pairs. */
-    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r2), shared(maxratio,mj,mk,periodic,parts,dim,N,stdout)
+    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r2), shared(periodic,parts,dim,N,stdout)
     for ( j = 0 ; j < N ; j++ ) {
         if ( j % 1000 == 0 ) {
             printf( "pairs_n2: j=%i.\n" , j );
@@ -446,7 +471,7 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
             r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
             if ( r2 < parts[j].h*parts[j].h || r2 < parts[k].h*parts[k].h ) {
                 runner_iact_density( r2 , NULL , parts[j].h , parts[k].h , &parts[j] , &parts[k] );
-                if ( parts[j].h / parts[k].h > maxratio )
+                /* if ( parts[j].h / parts[k].h > maxratio )
                     #pragma omp critical
                     {
                     maxratio = parts[j].h / parts[k].h;
@@ -457,7 +482,7 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
                     {
                     maxratio = parts[k].h / parts[j].h;
                     mj = j; mk = k;
-                    }
+                    } */
                 }
             }
         }
@@ -465,16 +490,65 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
     /* Aggregate the results. */
     for ( k = 0 ; k < N ; k++ ) {
         count += parts[k].icount;
-        rho += parts[k].rho;
+        rho += parts[k].wcount;
+        rho_min = fmin( parts[k].wcount , rho_min );
+        rho_min = fmax( parts[k].wcount , rho_max );
         }
             
     /* Dump the result. */
     printf( "pairs_n2: avg. density per part is %.3f (nr. pairs %.3f).\n" , rho/N + 32.0/3 , ((double)count)/N );
-    printf( "pairs_n2: maximum ratio between parts %i [%e,%e,%e] and %i [%e,%e,%e] is %.3f/%.3f\n" ,
+    printf( "pairs_n2: densities are in [ %e , %e ].\n" , rho_min/N + 32.0/3 , rho_max/N + 32.0/3 );
+    /* printf( "pairs_n2: maximum ratio between parts %i [%e,%e,%e] and %i [%e,%e,%e] is %.3f/%.3f\n" ,
         mj , parts[mj].x[0] , parts[mj].x[1] , parts[mj].x[2] ,
         mk , parts[mk].x[0] , parts[mk].x[1] , parts[mk].x[2] ,
-        parts[mj].h , parts[mk].h ); fflush(stdout);
+        parts[mj].h , parts[mk].h ); fflush(stdout); */
     fflush(stdout);
+            
+    }
+
+
+void pairs_single ( double *dim , int pid , struct part *__restrict__ parts , int N , int periodic ) {
+
+    int i, k;
+    // int mj, mk;
+    // double maxratio = 1.0;
+    double r2, dx[3];
+    struct part *p = &parts[pid];
+    double ih = 15.0/6.25; 
+    
+    /* Loop over all particle pairs. */
+    for ( k = 0 ; k < N ; k++ ) {
+        if ( k == pid )
+            continue;
+        for ( i = 0 ; i < 3 ; i++ ) {
+            dx[i] = p->x[i] - parts[k].x[i];
+            if ( periodic ) {
+                if ( dx[i] < -dim[i]/2 )
+                    dx[i] += dim[i];
+                else if ( dx[i] > dim[i]/2 )
+                    dx[i] -= dim[i];
+                }
+            }
+        r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
+        if ( r2 < p->h*p->h ) {
+            runner_iact_density( r2 , NULL , p->h , parts[k].h , p , &parts[k] );
+            printf( "runner_dopair: interacting particles %i [%i,%i,%i] and %i [%i,%i,%i].\n" ,
+                pid , (int)(parts[pid].x[0]*ih) , (int)(parts[pid].x[1]*ih) , (int)(parts[pid].x[2]*ih) ,
+                parts[k].id , (int)(parts[k].x[0]*ih) , (int)(parts[k].x[1]*ih) , (int)(parts[k].x[2]*ih) );
+            parts[k].rho = 0.0;
+            parts[k].wcount = 0.0;
+            parts[k].rho_dh = 0.0;
+            }
+        }
+        
+    /* Dump the result. */
+    printf( "pairs_single: wcount of part %i (h=%e) is %.3f (nr. pairs %i).\n" , p->id , p->h , p->wcount + 32.0/3 , p->icount );
+    fflush(stdout);
+    
+    p->rho = 0.0;
+    p->wcount = 0.0;
+    p->icount = 0;
+    p->rho_dh = 0.0;
             
     }
 
@@ -489,7 +563,7 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
  * @param target the index of the target particle.
  */
 
-void pairs_single ( double *dim , struct part *__restrict__ parts , int N , int periodic , int target ) {
+void pairs_single_old ( double *dim , struct part *__restrict__ parts , int N , int periodic , int target ) {
 
     int i, k, tid;
     double r, tx[3], th, dx[3];
@@ -555,7 +629,7 @@ int main ( int argc , char *argv[] ) {
     int data[2];
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
     double r_min = 0.01, r_max = 0.1, h_max = -1.0 , scaling = 1.0, rho = 0.0;
-    struct part *parts = NULL;
+    struct part *parts = NULL, *p;
     struct space s;
     struct engine e;
     ticks tic;
@@ -569,7 +643,7 @@ int main ( int argc , char *argv[] ) {
             case 'N':
                 if ( sscanf( optarg , "%d" , &N ) != 1 )
                     error( "Error parsing number of particles." );
-                if ( posix_memalign( (void *)&parts , 16 , N * sizeof(struct part) ) != 0 )
+                if ( posix_memalign( (void *)&parts , 32 , N * sizeof(struct part) ) != 0 )
                     error( "Call to posix_memalign failed." );
                 for ( k = 0 ; k < N ; k++ ) {
                     parts[k].x[0] = ((double)rand()) / RAND_MAX * dim[0];
@@ -662,8 +736,8 @@ int main ( int argc , char *argv[] ) {
     
     /* Get the brute-force number of pairs. */
     // pairs_n2( dim , parts , N , periodic );
-    // pairs_single( dim , parts , N , periodic , 63628 );
-    fflush( stdout );
+    // pairs_single( dim , 1517660 , parts , N , periodic );
+    // fflush( stdout );
     
     /* Set default number of queues. */
     if ( nr_queues < 0 )
@@ -680,12 +754,12 @@ int main ( int argc , char *argv[] ) {
     printf( "main: highest-level cell dimensions are [ %i %i %i ].\n" , s.cdim[0] , s.cdim[1] , s.cdim[2] );
     printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
     printf( "main: maximum depth is %d.\n" , s.maxdepth );
-    printf( "main: cutoffs in [ %.3f %.3f ].\n" , s.h_min , s.h_max ); fflush(stdout);
+    printf( "main: cutoffs in [ %g %g ].\n" , s.h_min , s.h_max ); fflush(stdout);
     
     /* Verify that each particle is in it's propper cell. */
-    // icount = 0;
-    // space_map_cells( &s , &map_cellcheck , &icount );
-    // printf( "main: map_cellcheck picked up %i parts.\n" , icount );
+    icount = 0;
+    space_map_cells( &s , 0 , &map_cellcheck , &icount );
+    printf( "main: map_cellcheck picked up %i parts.\n" , icount );
     
     data[0] = s.maxdepth; data[1] = 0;
     space_map_cells( &s , 0 , &map_maxdepth , data );
@@ -776,6 +850,51 @@ int main ( int argc , char *argv[] ) {
     space_map_parts( &s , &map_count , &rho );
     printf( "main: average wcount per particle is %.3f.\n" , rho / s.nr_parts / runs + 32.0/3 );
     
+    /* Get the particle with the lowest wcount. */
+    p = &s.parts[0];
+    space_map_parts( &s , &map_wcount_min , &p );
+    printf( "main: particle %i/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f (icount=%i).\n" ,
+        p->id , p - s.parts , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
+    
+    /* Loop over all the tasks and dump the ones containing p. */
+    /* for ( k = 0 ; k < s.nr_tasks ; k++ ) {
+        if ( s.tasks[k].type == task_type_self ) {
+            struct cell *c = s.tasks[k].ci;
+            if ( c->loc[0] <= p->x[0] && c->loc[1] <= p->x[1] && c->loc[2] <= p->x[2] &&
+                 c->loc[0]+c->h[0] >= p->x[0] && c->loc[1]+c->h[1] > p->x[1] && c->loc[2]+c->h[2] > p->x[2] ) {
+                printf( "main: found self-interaction for part %i!\n" , p->id );
+                // map_cells_plot( c , &c->depth );
+                }
+            }
+        else if ( s.tasks[k].type == task_type_pair ) {
+            struct cell *ci = s.tasks[k].ci;
+            struct cell *cj = s.tasks[k].cj;
+            if ( ( ci->loc[0] <= p->x[0] && ci->loc[1] <= p->x[1] && ci->loc[2] <= p->x[2] &&
+                   ci->loc[0]+ci->h[0] >= p->x[0] && ci->loc[1]+ci->h[1] > p->x[1] && ci->loc[2]+ci->h[2] > p->x[2] ) ||
+                 ( cj->loc[0] <= p->x[0] && cj->loc[1] <= p->x[1] && cj->loc[2] <= p->x[2] &&
+                   cj->loc[0]+cj->h[0] >= p->x[0] && cj->loc[1]+cj->h[1] > p->x[1] && cj->loc[2]+cj->h[2] > p->x[2] ) ) {
+                printf( "%e %e %e\n%e %e %e\n\n\n" ,
+                    ci->loc[0]+ci->h[0]/2 , ci->loc[1]+ci->h[1]/2 , ci->loc[2]+ci->h[2]/2 ,
+                    cj->loc[0]+cj->h[0]/2 , cj->loc[1]+cj->h[1]/2 , cj->loc[2]+cj->h[2]/2 );
+                // map_cells_plot( ci , &ci->depth );
+                // map_cells_plot( cj , &cj->depth );
+                }
+            }
+        }
+        
+    for ( int ii = -1 ; ii <= 1 ; ii++ )
+        for ( int jj = -1 ; jj <= 1 ; jj++ )
+            for ( int kk = -1 ; kk <= 1 ; kk++ ) {
+                int cid = cell_getid( s.cdim , ((int)(p->x[0]*s.ih[0])+ii+s.cdim[0]) % s.cdim[0] , ((int)(p->x[1]*s.ih[1])+jj+s.cdim[1]) % s.cdim[1] , ((int)(p->x[2]*s.ih[2])+kk+s.cdim[2]) % s.cdim[2] );
+                map_cells_plot( &s.cells[cid] , &s.maxdepth );
+                } */
+    
+    /* Get the particle with the highest wcount. */
+    p = &s.parts[0];
+    space_map_parts( &s , &map_wcount_max , &p );
+    printf( "main: particle %i/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f (icount=%i).\n" ,
+        p->id , p - s.parts , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
+    
     /* Get the average interactions per particle. */
     icount = 0;
     space_map_parts( &s , &map_icount , &icount );
@@ -785,7 +904,7 @@ int main ( int argc , char *argv[] ) {
     printf( "main: parts[%i].a is [ %.16e %.16e %.16e ].\n" , s.parts[6178].id , s.parts[6178].a[0] , s.parts[6178].a[1] , s.parts[6178].a[2] );
     
     /* Get all the cells of a certain depth. */
-    // icount = 11;
+    // icount = 1;
     // space_map_cells( &s , 0 , &map_cells_plot , &icount );
     
     /* Check for outliers. */
