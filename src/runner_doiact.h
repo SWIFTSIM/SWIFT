@@ -47,6 +47,9 @@
 #define DOSUB_SUBSET2(f) PASTE(runner_dosub_subset,f)
 #define DOSUB_SUBSET DOSUB_SUBSET2(FUNCTION)
 
+#define IACT_NONSYM2(f) PASTE(runner_iact_nonsym,f)
+#define IACT_NONSYM IACT_NONSYM2(FUNCTION)
+
 #define IACT2(f) PASTE(runner_iact,f)
 #define IACT IACT2(FUNCTION)
 
@@ -156,11 +159,12 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *ci , struct cell *cj ) {
 void DOPAIR_SUBSET ( struct runner *r , struct cell *ci , struct part *parts_i , int *ind , int count , struct cell *cj ) {
 
     struct engine *e = r->e;
-    int pid, pjd, k, count_j = cj->count;
+    int pid, pjd, sid, k, count_j = cj->count, flipped;
     double shift[3] = { 0.0 , 0.0 , 0.0 };
     struct part *pi, *pj, *parts_j = cj->parts;
     double pix[3];
-    float dx[3], hi, hi2, r2;
+    float dx[3], hi, hi2, r2, di;
+    struct entry *sort_j;
     TIMER_TIC
     
     /* Get the relative distance between the pairs, wrapping. */
@@ -171,44 +175,101 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *ci , struct part *parts_i ,
             shift[k] = -e->s->dim[k];
         }
         
+    /* Get the sorting index. */
+    for ( sid = 0 , k = 0 ; k < 3 ; k++ )
+        sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
+
+    /* Switch the cells around? */
+    flipped = runner_flip[sid];
+    sid = sortlistID[sid];
+    
     /* printf( "runner_dopair_naive: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts and shift = [ %g %g %g ].\n" ,
         ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
         ci->count , cj->count , shift[0] , shift[1] , shift[2] ); fflush(stdout);
     tic = getticks(); */
     
-    /* Loop over the parts in ci. */
-    for ( pid = 0 ; pid < count ; pid++ ) {
+    /* Pick-out the sorted lists. */
+    sort_j = &cj->sort[ sid*(cj->count + 1) ];
     
-        /* Get a hold of the ith part in ci. */
-        pi = &parts_i[ ind[ pid ] ];
-        for ( k = 0 ; k < 3 ; k++ )
-            pix[k] = pi->x[k] - shift[k];
-        hi = pi->h;
-        hi2 = hi * hi;
-        
-        /* Loop over the parts in cj. */
-        for ( pjd = 0 ; pjd < count_j ; pjd++ ) {
-        
-            /* Get a pointer to the jth particle. */
-            pj = &parts_j[ pjd ];
-        
-            /* Compute the pairwise distance. */
-            r2 = 0.0f;
-            for ( k = 0 ; k < 3 ; k++ ) {
-                dx[k] = pix[k] - pj->x[k];
-                r2 += dx[k]*dx[k];
-                }
-                
-            /* Hit or miss? */
-            if ( r2 < hi2 ) {
-            
-                IACT( r2 , dx , hi , 0.0f , pi , pj );
-            
-                }
-        
-            } /* loop over the parts in cj. */
+    /* Parts are on the left? */
+    if ( !flipped ) {
     
-        } /* loop over the parts in ci. */
+        /* Loop over the parts_i. */
+        for ( pid = 0 ; pid < count ; pid++ ) {
+
+            /* Get a hold of the ith part in ci. */
+            pi = &parts_i[ ind[ pid ] ];
+            for ( k = 0 ; k < 3 ; k++ )
+                pix[k] = pi->x[k] - shift[k];
+            hi = pi->h;
+            hi2 = hi * hi;
+            di = hi + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
+
+            /* Loop over the parts in cj. */
+            for ( pjd = 0 ; pjd < count_j && sort_j[ pjd ].d < di ; pjd++ ) {
+
+                /* Get a pointer to the jth particle. */
+                pj = &parts_j[ sort_j[ pjd ].i ];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = pix[k] - pj->x[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hi2 ) {
+
+                    IACT_NONSYM( r2 , dx , hi , pj->h , pi , pj );
+
+                    }
+
+                } /* loop over the parts in cj. */
+
+            } /* loop over the parts in ci. */
+            
+        }
+        
+    /* Parts are on the right. */
+    else {
+    
+        /* Loop over the parts_i. */
+        for ( pid = 0 ; pid < count ; pid++ ) {
+
+            /* Get a hold of the ith part in ci. */
+            pi = &parts_i[ ind[ pid ] ];
+            for ( k = 0 ; k < 3 ; k++ )
+                pix[k] = pi->x[k] - shift[k];
+            hi = pi->h;
+            hi2 = hi * hi;
+            di = -hi + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
+
+            /* Loop over the parts in cj. */
+            for ( pjd = count_j-1 ; pjd >= 0 && di < sort_j[ pjd ].d ; pjd-- ) {
+
+                /* Get a pointer to the jth particle. */
+                pj = &parts_j[ sort_j[ pjd ].i ];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = pix[k] - pj->x[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hi2 ) {
+
+                    IACT_NONSYM( r2 , dx , hi , pj->h , pi , pj );
+
+                    }
+
+                } /* loop over the parts in cj. */
+
+            } /* loop over the parts in ci. */
+            
+        }
         
     #ifdef TIMER_VERBOSE
         printf( "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
@@ -275,7 +336,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , i
             /* Hit or miss? */
             if ( r2 < hi2 ) {
             
-                IACT( r2 , dx , hi , 0.0f , pi , pj );
+                IACT_NONSYM( r2 , dx , hi , pj->h , pi , pj );
             
                 }
         

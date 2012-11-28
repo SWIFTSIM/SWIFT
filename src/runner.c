@@ -486,7 +486,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Did we get the right number density? */
             if ( p->wcount + kernel_root > const_nwneigh + 1 ||
                  p->wcount + kernel_root < const_nwneigh - 1 ) {
-                printf( "runner_doghost: particle %i has bad wcount=%f.\n" , p->id , p->wcount + kernel_root ); fflush(stdout);
+                // printf( "runner_doghost: particle %i (h=%e) has bad wcount=%f.\n" , p->id , p->h , p->wcount + kernel_root ); fflush(stdout);
                 pid[redo] = pid[i];
                 redo += 1;
                 p->wcount = 0.0;

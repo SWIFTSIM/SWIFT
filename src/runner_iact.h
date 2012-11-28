@@ -113,6 +113,36 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     
 
 
+/**
+ * @brief Density kernel
+ */
+
+__attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
+
+    float r = sqrtf( r2 );
+    float xi;
+    float h_inv, hg_inv;
+    float wi, wi_dx;
+    
+    if ( r2 < hi*hi && pi != NULL ) {
+        
+        h_inv = 1.0 / hi;
+        hg_inv = kernel_igamma * h_inv;
+        xi = r * hg_inv;
+        kernel_deval( xi , &wi , &wi_dx );
+        
+        pi->rho += pj->mass * wi;
+        pi->rho_dh += -pj->mass * ( 3.0*wi + xi*wi_dx );
+        pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pi->icount += 1;
+        
+        }
+
+    }
+    
+
+
 __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
 
     float r = sqrtf( r2 ), ri = 1.0f / r;
@@ -166,6 +196,53 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
         runner_hist_hit( hj / hi );
     #endif
     
+    }
+    
+
+
+__attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
+
+    float r = sqrtf( r2 ), ri = 1.0f / r;
+    float xi, xj;
+    float hig_inv, hig2_inv;
+    float hjg_inv, hjg2_inv;
+    float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
+    float f;
+    int k;
+    
+    /* Get the kernel for hi. */
+    hig_inv = kernel_igamma / hi;
+    hig2_inv = hig_inv * hig_inv;
+    xi = r * hig_inv;
+    kernel_deval( xi , &wi , &wi_dx );
+    wi_dr = hig2_inv * hig2_inv * wi_dx;
+        
+    /* Get the kernel for hj. */
+    hjg_inv = kernel_igamma / hj;
+    hjg2_inv = hjg_inv * hjg_inv;
+    xj = r * hjg_inv;
+    kernel_deval( xj , &wj , &wj_dx );
+    wj_dr = hjg2_inv * hjg2_inv * wj_dx;
+    
+    /* Get the common factor out. */
+    w = ri * ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr );
+        
+    /* Use the force, Luke! */
+    for ( k = 0 ; k < 3 ; k++ ) {
+        f = dx[k] * w;
+        pi->a[k] += pj->mass * f;
+        }
+        
+    /* Compute dv dot r. */
+    dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+    dvdr *= ri;
+        
+    /* Get the time derivative for u. */
+    pi->u_dt += pj->mass * dvdr * wi_dr;
+    
+    /* Get the time derivative for h. */
+    pi->h_dt += pj->mass / pj->rho * dvdr * wi_dr;
+        
     }
     
 
