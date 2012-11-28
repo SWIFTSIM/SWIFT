@@ -77,12 +77,13 @@
  * @param cj The second #cell.
  */
  
-void DOPAIR_NAIVE ( struct runner *r , struct cell *ci , struct cell *cj ) {
+void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj ) {
 
     struct engine *e = r->e;
     int pid, pjd, k, count_i = ci->count, count_j = cj->count;
     double shift[3] = { 0.0 , 0.0 , 0.0 };
-    struct part *pi, *pj, *parts_i = ci->parts, *parts_j = cj->parts;
+    struct part *restrict pi, *restrict pj;
+    struct part *restrict parts_i = ci->parts, *restrict parts_j = cj->parts;
     double pix[3];
     float dx[3], hi, hi2, r2;
     TIMER_TIC
@@ -156,12 +157,12 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *ci , struct cell *cj ) {
  * @param cj The second #cell.
  */
  
-void DOPAIR_SUBSET ( struct runner *r , struct cell *ci , struct part *parts_i , int *ind , int count , struct cell *cj ) {
+void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *restrict parts_i , int *restrict ind , int count , struct cell *restrict cj ) {
 
     struct engine *e = r->e;
     int pid, pjd, sid, k, count_j = cj->count, flipped;
     double shift[3] = { 0.0 , 0.0 , 0.0 };
-    struct part *pi, *pj, *parts_j = cj->parts;
+    struct part *restrict pi, *restrict pj, *restrict parts_j = cj->parts;
     double pix[3];
     float dx[3], hi, hi2, r2, di;
     struct entry *sort_j;
@@ -293,10 +294,10 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *ci , struct part *parts_i ,
  * @param cj The second #cell.
  */
  
-void DOSELF_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , int *ind , int count ) {
+void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *restrict parts , int *restrict ind , int count ) {
 
     int pid, pjd, k, count_i = ci->count;
-    struct part *pi, *pj, *parts_i = ci->parts;
+    struct part *restrict pi, *restrict pj, *restrict parts_i = ci->parts;
     double pix[3];
     float dx[3], hi, hi2, r2;
     TIMER_TIC
@@ -362,14 +363,14 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , i
  * @param cj The second #cell.
  */
  
-void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
+void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj ) {
 
-    struct engine *e = r->e;
+    struct engine *restrict e = r->e;
     int pid, pjd, k, sid;
     double rshift, shift[3] = { 0.0 , 0.0 , 0.0 };
     struct cell *temp;
-    struct entry *sort_i, *sort_j;
-    struct part *pi, *pj, *parts_i, *parts_j;
+    struct entry *restrict sort_i, *restrict sort_j;
+    struct part *restrict pi, *restrict pj, *restrict parts_i, *restrict parts_j;
     double pix[3], pjx[3], di, dj;
     float dx[3], hi, hi2, hj, hj2, r2;
     double hi_max, hj_max;
@@ -474,7 +475,7 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
     tic = getticks(); */
 
     /* Loop over the parts in cj. */
-    for ( pjd = 0 ; pjd < count_j && ( 1 || sort_j[pjd].d - hj_max < di_max ) ; pjd++ ) {
+    for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max < di_max ; pjd++ ) {
     
         /* Get a hold of the jth part in cj. */
         pj = &parts_j[ sort_j[ pjd ].i ];
@@ -527,12 +528,12 @@ void DOPAIR ( struct runner *r , struct cell *ci , struct cell *cj ) {
  * @param c The #cell.
  */
 
-void DOSELF ( struct runner *r , struct cell *c ) {
+void DOSELF ( struct runner *r , struct cell *restrict c ) {
 
     int k, pid, pjd, count = c->count;
     double pix[3];
     float dx[3], hi, hi2, r2;
-    struct part *pi, *pj, *parts = c->parts;
+    struct part *restrict pi, *restrict pj, *restrict parts = c->parts;
     TIMER_TIC
     
     if ( c->split )
@@ -590,7 +591,7 @@ void DOSELF ( struct runner *r , struct cell *c ) {
  * @param c The #cell.
  */
 
-void DOSUB ( struct runner *r , struct cell *ci , struct cell *cj , int flags ) {
+void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int flags ) {
 
     int j, k;
 
@@ -790,7 +791,7 @@ void DOSUB ( struct runner *r , struct cell *ci , struct cell *cj , int flags ) 
     }
 
 
-void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct cell *cj , struct cell *sub , struct part *parts_i , int *ind , int count , int flags ) {
+void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , struct cell *sub , struct part *parts_i , int *ind , int count , int flags ) {
 
     int j, k;
 
