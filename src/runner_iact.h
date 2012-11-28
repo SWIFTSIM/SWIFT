@@ -69,31 +69,35 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
 
     float r = sqrtf( r2 );
     float xi, xj;
-    float hg_inv;
+    float h_inv, hg_inv;
     float wi, wj, wi_dx, wj_dx;
     
     if ( r2 < hi*hi && pi != NULL ) {
         
-        hg_inv = kernel_igamma / hi;
+        h_inv = 1.0 / hi;
+        hg_inv = kernel_igamma * h_inv;
         xi = r * hg_inv;
         kernel_deval( xi , &wi , &wi_dx );
         
         pi->rho += pj->mass * wi;
         pi->rho_dh += -pj->mass * ( 3.0*wi + xi*wi_dx );
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->icount += 1;
         
         }
 
     if ( r2 < hj*hj && pj != NULL ) {
         
-        hg_inv = kernel_igamma / hj;
+        h_inv = 1.0 / hj;
+        hg_inv = kernel_igamma * h_inv;
         xj = r * hg_inv;
         kernel_deval( xj , &wj , &wj_dx );
         
         pj->rho += pi->mass * wj;
         pj->rho_dh += -pi->mass * ( 3.0*wj + xj*wj_dx );
         pj->wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pj->wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pj->icount += 1;
         
         }

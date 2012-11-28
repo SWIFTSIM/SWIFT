@@ -129,6 +129,7 @@ void space_map_mkghosts ( struct cell *c , void *data ) {
 void space_map_clearnrtasks ( struct cell *c , void *data ) {
 
     c->nr_tasks = 0;
+    c->nr_density = 0;
 
     }
 
@@ -976,23 +977,43 @@ void space_maketasks ( struct space *s , int do_sort ) {
             }
         }
         
-    /* Count the number of tasks associated with each cell. */
+    /* Count the number of tasks associated with each cell and
+       store the density tasks in each cell. */
     space_map_cells( s , 1 , &space_map_clearnrtasks , NULL );
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         t = &s->tasks[k];
-        if ( t->type == task_type_self )
+        if ( t->type == task_type_self ) {
             t->ci->nr_tasks += 1;
+            if ( t->subtype == task_subtype_density ) {
+                t->ci->density[ t->ci->nr_density ] = t;
+                t->ci->nr_density += 1;
+                }
+            }
         else if ( t->type == task_type_pair ) {
             t->ci->nr_tasks += 1;
             t->cj->nr_tasks += 1;
+            if ( t->subtype == task_subtype_density ) {
+                t->ci->density[ t->ci->nr_density ] = t;
+                t->ci->nr_density += 1;
+                t->cj->density[ t->cj->nr_density ] = t;
+                t->cj->nr_density += 1;
+                }
             }
         else if ( t->type == task_type_sub ) {
             t->ci->nr_tasks += 1;
             if ( t->cj != NULL )
                 t->cj->nr_tasks += 1;
+            if ( t->subtype == task_subtype_density ) {
+                t->ci->density[ t->ci->nr_density ] = t;
+                t->ci->nr_density += 1;
+                if ( t->cj != NULL ) {
+                    t->cj->density[ t->cj->nr_density ] = t;
+                    t->cj->nr_density += 1;
+                    }
+                }
             }
         }
-    
+        
     /* Append a ghost task to each cell. */
     space_map_cells( s , 1 , &space_map_mkghosts , s );
     

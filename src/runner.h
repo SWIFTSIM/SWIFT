@@ -29,6 +29,7 @@ enum {
     runner_timer_dopair_force,
     runner_timer_dosub_density,
     runner_timer_dosub_force,
+    runner_timer_dopair_subset,
     runner_timer_doghost,
     runner_timer_getpair,
     runner_timer_steal,

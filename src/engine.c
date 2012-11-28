@@ -169,6 +169,14 @@ void engine_run ( struct engine *e , int sort_queues ) {
     int j, k;
     struct space *s = e->s;
     
+    /* Re-set the particle data. */
+    for ( k = 0 ; k < s->nr_parts ; k++ ) {
+        s->parts[k].wcount = 0.0f;
+        s->parts[k].wcount_dh = 0.0f;
+        s->parts[k].rho = 0.0f;
+        s->parts[k].rho_dh = 0.0f;
+        }
+    
     /* Run throught the tasks and get all the waits right. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         s->tasks[k].done = 0;

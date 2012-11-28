@@ -67,6 +67,10 @@ struct cell {
     /* The tasks computing this cell's sorts. */
     struct task *sorts[14];
     
+    /* The tasks computing this cell's density. */
+    struct task *density[27];
+    int nr_density;
+    
     /* The ghost task to link density to interactions. */
     struct task *ghost;
     

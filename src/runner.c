@@ -442,6 +442,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
 void runner_doghost ( struct runner *r , struct cell *c ) {
 
     struct part *p;
+    struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
     float ihg, ihg2;
@@ -478,14 +479,18 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             ihg2 = ihg * ihg;
             p->rho *= ihg * ihg2;
             p->rho_dh *= ihg2 * ihg2;
+            
+            /* Update the smoothing length. */
+            p->h -= ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
 
             /* Did we get the right number density? */
             if ( p->wcount + kernel_root > const_nwneigh + 1 ||
                  p->wcount + kernel_root < const_nwneigh - 1 ) {
-                printf( "runner_doghost: particle %i has bad wcount=%f.\n" , p->id , p->wcount + kernel_root );
+                printf( "runner_doghost: particle %i has bad wcount=%f.\n" , p->id , p->wcount + kernel_root ); fflush(stdout);
                 pid[redo] = pid[i];
                 redo += 1;
                 p->wcount = 0.0;
+                p->wcount_dh = 0.0;
                 p->rho = 0.0;
                 p->rho_dh = 0.0;
                 continue;
@@ -512,8 +517,40 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             
         /* Re-set the counter for the next loop (potentially). */
         count = redo;
-        if ( count > 0 )
-            error( "Bad smoothing length, fixing this isn't implemented yet." );
+        if ( count > 0 ) {
+        
+            // error( "Bad smoothing length, fixing this isn't implemented yet." );
+            
+            /* Climb up the cell hierarchy. */
+            for ( finger = c ; finger != NULL ; finger = finger->parent ) {
+            
+                /* Run through this cell's density interactions. */
+                for ( k = 0 ; k < finger->nr_density ; k++ ) {
+                
+                    /* Self-interaction? */
+                    if ( finger->density[k]->type == task_type_self )
+                        runner_doself_subset_density( r , finger , c->parts , pid , count );
+                        
+                    /* Otherwise, pair interaction? */
+                    else if ( finger->density[k]->type == task_type_pair ) {
+                    
+                        /* Left or right? */
+                        if ( finger->density[k]->ci == finger )
+                            runner_dopair_subset_density( r , finger , c->parts , pid , count , finger->density[k]->cj );
+                        else
+                            runner_dopair_subset_density( r , finger , c->parts , pid , count , finger->density[k]->ci );
+                        
+                        }
+                
+                    /* Otherwise, sub interaction? */
+                    else if ( finger->density[k]->type == task_type_sub ) 
+                        runner_dosub_subset_density( r , finger->density[k]->ci , finger->density[k]->cj , c , c->parts , pid , count , finger->density[k]->flags );
+                
+                    }
+            
+                }
+        
+            }
             
         }
 

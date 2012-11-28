@@ -72,6 +72,7 @@ struct part {
     /* Particle number density. */
     int icount;
     float wcount;
+    float wcount_dh;
     
     } __attribute__((aligned (32)));
     
