@@ -18,7 +18,8 @@ Every particle contains the following information:
 \begin{table}[h]
 \centering
 \begin{tabular}{|l|l|c|l|}
- Quantity & Type & Symbol & Unit \\
+ \hline
+ \textbf{Quantity} & \textbf{Type} & \textbf{Symbol} & \textbf{Units} \\
  \hline \hline
  Position & Primary & $\vec{x}$ & $[m]$ \\
  Velocity & Primary &$\vec{v}$ & $[m\cdot s^{-1}]$ \\
@@ -41,19 +42,21 @@ Every particle contains the following information:
 \end{tabular} 
 \end{table}
 
-Secondary quantities are computed from the primary one in a loop of particle neighbors. Tertiary ones are computed from
-seondary ones in another loop. \\
+Secondary quantities are computed from the primary one in a loop (density loop) over all particle neighbors. Tertiary
+ones are computed from secondary ones in another loop (force loop). \\
 
 For optimization purposes, any function of these quantities could be stored. For instance, $1/h$ instead of $h$ or
 $\frac{P}{\rho\Omega}$ instead of $\Omega$ may be options worth exploring. \\
 
-The four quantities in the second half of the table are used in improved state-of-the-art implementations of SPH. In a
-first approximations, they can be neglected.
+The four quantities in the second part of the table are used in improved state-of-the-art implementations of SPH. In a
+first approximation, they can be neglected. \\
+
+In what follows, we will use $\vec{r}_{ij} = \vec{x_i} - \vec{x_j}$ and $\hat{r}_{ij} = \vec{r}_{ij}/x|\vec{r}_{ij}|$
+to simplify the notation.
 
 \section{Kernel function}
 
-In what follows, we will use $\vec{r}_{ij} = \vec{x_i} - \vec{x_j}$ and $\hat{r}_{ij} = |\vec{r}_{ij}|$. The kernel
-function can always be decomposed as:
+The kernel function can always be decomposed as:
 
 \begin{equation}
  W(\vec{x}, h) = \frac{1}{h^3}f\left(\frac{|\vec{x}|}{h}\right) 
@@ -128,14 +131,15 @@ where $\eta \approx 1.2$ is a constant. These two equations can be solved iterat
 bisection scheme. In practice, the loop is performed over all particles $j$ which are at a distance
 $|\vec{r}_{ij}|<\zeta
 h$ from the particle of interest. One has to iterate those two equations until their outcomes are stable.\\
-Another measure of the accuracy of $h$ is to use the weighted number of neighbors which (in 3D) reads
+Another measure of the accuracy of $h$ is the weighted number of neighbors which (in 3D) reads
 
 \begin{equation}
  N_{ngb} = \frac{4}{3}\pi \left(\zeta h\right)^3 \sum_j W(\vec{r}_{ij},h_i)
 \end{equation}
 
-The (magical) value of $N_{ngb}$ is a numerical parameter and its value can be expressed as a function of the more
-physically relevant parameter $\eta$. In 3D this reads
+One then change $h$ until an optimal value for $N_{ngb}$ is reached. GADGET uses a bisection algorithm to do so.
+The (magical) value of $N_{ngb}$ to obtain is a numerical parameter and its value can be expressed as a function of the
+more physically relevant parameter $\eta$. In 3D the relation between those quantities is
 
 \begin{equation}
  N_{ngb} = \frac{4}{3}\pi\left(\zeta \eta\right)^3
@@ -212,7 +216,7 @@ and used. \\
 
 Notice that $h$ has to be recomputed through the iterative process
 presented in the previous section at every time step. The time
-derivative of the smoothing length only give a rough estimate of its
+derivative of the smoothing length only gives a rough estimate of its
 change. It only provides a good guess for the Newton-Raphson (or
 bisection) scheme.
 
@@ -221,21 +225,21 @@ bisection) scheme.
 The usual scheme uses a kick-drift-kick leap-frog integrator. A full time step of size $\Delta t$ consists of the
 following sub-steps: \\
 
-\textbf{first kick} Compute velocity and internal energy at half step.
+\textbf{First kick} Compute velocity and internal energy at half step.
 
 \begin{eqnarray*}
  \tilde {\vec{v}}_i &=& \vec{v}_i + \textstyle\frac{1}{2}\Delta t ~\vec{a}_i \\
  \tilde u_i &=& u_i + \textstyle\frac{1}{2}\Delta t ~\frac{du_i}{dt}
 \end{eqnarray*}
 
-\textbf{drift} Advance time and position by a full step.
+\textbf{Drift} Advance time and position by a full step.
 
 \begin{eqnarray*}
  t &\leftarrow& t + \Delta t \\
  \vec{x}_i &\leftarrow& \vec{x}_i + \Delta t \tilde {\vec{v}}_i\\
 \end{eqnarray*}
 
-\textbf{prediction} Estimate velocity, internal energy and smoothing length at full step
+\textbf{Prediction} Estimate velocity, internal energy and smoothing length at full step
 
 \begin{eqnarray*}
 \vec{v}_i &\leftarrow& \vec{v}_i + \Delta t \vec{a}_i \\
@@ -243,15 +247,16 @@ u_i &\leftarrow& u_i + \Delta t ~\frac{du_i}{dt} \\
 h_i &\leftarrow& h_i + \Delta t ~\frac{dh_i}{dt} \\
 \end{eqnarray*}
 
-\textbf{SPH loop 1} Compute $\rho_i$, correct $h_i$ and compute $\Omega_i$ using the first SPH loop. \\
+\textbf{SPH loop 1} Compute $\rho_i$, correct $h_i$ if needed using bisection algorithm and compute $\Omega_i$ using the
+first SPH loop. \\
 
-\textbf{SPH loop 2} Compute $\vec{a_i}$ and $\frac{du_i}{dt}$ using the second SPH loop. \\
+\textbf{SPH loop 2} Compute $\vec{a_i}$, $\frac{du_i}{dt}$ and $\frac{dh_i}{dt}$ using the second SPH loop. \\
 
 \textbf{Gravity} Compute accelerations due to gravity. \\
 
-\textbf{Cooling} Compute the change in internal energy due to radiative cooling. \\
+\textbf{Cooling} Compute the change in internal energy due to radiative cooling and heating. \\
 
-\textbf{second kick} Compute velocity and internal energy at end of step. 
+\textbf{Second kick} Compute velocity and internal energy at end of step. 
 
 \begin{eqnarray*}
  \vec{v}_i &=& \tilde{\vec{v}}_i + \textstyle\frac{1}{2}\Delta t ~\vec{a}_i \\
@@ -272,9 +277,10 @@ E &=&\sum_i m_i\left(\frac{1}{2}|\vec{v_i}|^2+u_i\right)\\
 A(s) &=& \left(\gamma -1 \right)\sum_i \frac{u_i}{\rho_i^{\gamma - 1}}
 \end{eqnarray}
 
-The conservation of those quantities in the code depends on the quality of the time integrator. \\
+The conservation of those quantities in the code depends on the quality of the time integrator. The leap-frog
+integrator of the previous section should preserve these quantities to machine precision.\\
 Notice that the entropic function $A(s)$ is not the ``physical'' entropy $s$ but is related to it through a monotonic
-function. It is just a convenient way to represent entropy.
+function. It is just a more convenient way to represent entropy.
 
 \section{Improved SPH equations}
 
@@ -340,7 +346,8 @@ using a shock detector and then a slow decay of the viscosity with time. Followi
 \end{eqnarray}
 
 with (usually) $\alpha_{max} = 2$, $\alpha_{min} = 0.1$ and $\sigma=0.1$. The $\alpha$ term in (\ref{eq:visc}) is then
-replaced by $\bar\alpha = \frac{1}{2}(\alpha_i + \alpha_j)$. The same applies to $\beta$.\\
+replaced by $\bar\alpha = \frac{1}{2}(\alpha_i + \alpha_j)$. The same applies to $\beta$ which is now, $\beta =
+3\bar\alpha$.\\
 The divergence of the velocity field can be computed in the density loop and the exact expression is
 
 \begin{equation}
@@ -350,14 +357,15 @@ The divergence of the velocity field can be computed in the density loop and the
 
 \subsection{Thermal conductivity}
 
-The thermal conductivity dissipating energy at contact discontinuities can be modelled by adding another term to the
-internal energy equation \ref{eq:dudt}. 
+The thermal conductivity  which dissipates energy at discontinuities in the energy field can be modeled by adding
+another term to the internal energy evolution equation (\ref{eq:dudt}). 
 
 \begin{equation}
  \frac{du_i}{dt} \stackrel{cond}{=} - \sum_j \alpha_u v_{sig,u}\left(u_i - u_j\right)\bar{F}_{ij}
 \end{equation}
 
-This time, the signal velocity must vanish when we are dealing with a contact discontinuity. A good choice is to used
+This time, the signal velocity must vanish when we are dealing with a contact discontinuity as no energy should flow
+between the two regions in this case. A good choice is to use
 
 \begin{equation}
  v_{sig,u} = \sqrt{\frac{2|P_i-P_j|}{\rho_i+\rho_j}}
@@ -365,12 +373,13 @@ This time, the signal velocity must vanish when we are dealing with a contact di
 
 Once again, the $\alpha$-term is made to decay far from any discontinuity. In this case, the equation reads
 
-\begin{equation}
- \frac{d\alpha_{u,i}}{dt} = \frac{h_i \nabla^2 u_i}{10} - \frac{\alpha_{u,i}c_i\sigma}{h_i} 
-\end{equation}
+\begin{eqnarray}
+ \frac{d\alpha_{u,i}}{dt} &=&  \mathcal{S}_u - \frac{\alpha_{u,i}c_i\sigma}{h_i}  \\
+ \mathcal{S}_u &=& \frac{h_i \nabla^2 u_i}{10}
+\end{eqnarray}
 
-where all constants usually take the same value than in the viscosity terms. The laplacian of $u$ can again be computed
-in the density loop and reads
+where again $\sigma=0.1$ as in the viscosity terms. As in the velocity divergence case, the laplacian of $u$ can be
+computed in the density loop and reads
 
 \begin{equation}
  \nabla^2 u_i = \frac{2}{\rho_i} \sum_j m_j \left(u_j - u_i\right) \frac{F_{ij}}{|\vec{r}_{ij}|}
