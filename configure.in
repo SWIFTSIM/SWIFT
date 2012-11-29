@@ -30,7 +30,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_CONFIG_HEADER(config.h)
 
 # compiler settings
-# CFLAGS="-Wall $(CFLAGS)"
+#CFLAGS="-Wall $(CFLAGS)"
 
 # find and test the compiler
 AM_PROG_CC_C_O
@@ -69,6 +69,9 @@ AX_FUNC_POSIX_MEMALIGN
 # Check for OpenMP
 AX_OPENMP
 AC_SUBST(OPENMP_CFLAGS)
+
+# Check for HDF5
+AX_LIB_HDF5([serial])
 
 # check for setaffinity
 AC_USE_SYSTEM_EXTENSIONS

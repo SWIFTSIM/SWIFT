@@ -26,9 +26,9 @@ AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) -version-info 0:0:0
 
 # Build the libgadgetsmp library
 lib_LTLIBRARIES = libgadgetsmp.la
-libgadgetsmp_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c
+libgadgetsmp_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c ic.c
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
-    engine.h gadgetsmp.h
+    engine.h gadgetsmp.h ic.h
 
