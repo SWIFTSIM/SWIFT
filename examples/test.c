@@ -854,7 +854,7 @@ int main ( int argc , char *argv[] ) {
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_min , &p );
     printf( "main: particle %i/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f (icount=%i).\n" ,
-        p->id , p - s.parts , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
     
     /* Loop over all the tasks and dump the ones containing p. */
     /* for ( k = 0 ; k < s.nr_tasks ; k++ ) {
@@ -893,7 +893,7 @@ int main ( int argc , char *argv[] ) {
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_max , &p );
     printf( "main: particle %i/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f (icount=%i).\n" ,
-        p->id , p - s.parts , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
     
     /* Get the average interactions per particle. */
     icount = 0;
