@@ -37,7 +37,7 @@ struct part {
     float mass;
     
     /* Particle ID. */
-    int id;
+    long id;
     
     /* Particle position. */
     double x[3];

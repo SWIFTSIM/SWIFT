@@ -352,7 +352,7 @@ void read_id ( char *fname , struct part *parts , int N ) {
     for ( k = 0 ; k < N ; k++ ) {
         if ( gzgets( fd , buff , 1024 ) == NULL )
             error( "Error reading id file." );
-        if ( sscanf( buff , "%i" , &parts[k].id ) != 1 ) {
+        if ( sscanf( buff , "%li" , &parts[k].id ) != 1 ) {
             printf( "read_id: failed to parse %ith entry.\n" , k );
             error( "Error parsing id file." );
             }
@@ -532,7 +532,7 @@ void pairs_single ( double *dim , int pid , struct part *__restrict__ parts , in
         r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
         if ( r2 < p->h*p->h ) {
             runner_iact_density( r2 , NULL , p->h , parts[k].h , p , &parts[k] );
-            printf( "runner_dopair: interacting particles %i [%i,%i,%i] and %i [%i,%i,%i].\n" ,
+            printf( "runner_dopair: interacting particles %i [%i,%i,%i] and %li [%i,%i,%i].\n" ,
                 pid , (int)(parts[pid].x[0]*ih) , (int)(parts[pid].x[1]*ih) , (int)(parts[pid].x[2]*ih) ,
                 parts[k].id , (int)(parts[k].x[0]*ih) , (int)(parts[k].x[1]*ih) , (int)(parts[k].x[2]*ih) );
             parts[k].rho = 0.0;
@@ -542,7 +542,7 @@ void pairs_single ( double *dim , int pid , struct part *__restrict__ parts , in
         }
         
     /* Dump the result. */
-    printf( "pairs_single: wcount of part %i (h=%e) is %.3f (nr. pairs %i).\n" , p->id , p->h , p->wcount + 32.0/3 , p->icount );
+    printf( "pairs_single: wcount of part %li (h=%e) is %.3f (nr. pairs %i).\n" , p->id , p->h , p->wcount + 32.0/3 , p->icount );
     fflush(stdout);
     
     p->rho = 0.0;
@@ -590,7 +590,7 @@ void pairs_single_old ( double *dim , struct part *__restrict__ parts , int N , 
             }
         r = sqrt( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
         if ( r < th )
-            printf( "pairs_single: %i %i [%e,%e,%e] %e\n" ,
+            printf( "pairs_single: %i %li [%e,%e,%e] %e\n" ,
                 tid , parts[k].id , dx[0] , dx[1] , dx[2] , r );
         }
             
@@ -853,7 +853,7 @@ int main ( int argc , char *argv[] ) {
     /* Get the particle with the lowest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_min , &p );
-    printf( "main: particle %i/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f (icount=%i).\n" ,
+    printf( "main: particle %li/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f (icount=%i).\n" ,
 	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
     
     /* Loop over all the tasks and dump the ones containing p. */
@@ -892,7 +892,7 @@ int main ( int argc , char *argv[] ) {
     /* Get the particle with the highest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_max , &p );
-    printf( "main: particle %i/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f (icount=%i).\n" ,
+    printf( "main: particle %li/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f (icount=%i).\n" ,
 	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
     
     /* Get the average interactions per particle. */
@@ -901,7 +901,7 @@ int main ( int argc , char *argv[] ) {
     printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
     
     /* Dump the acceleration of the first particle. */
-    printf( "main: parts[%i].a is [ %.16e %.16e %.16e ].\n" , s.parts[6178].id , s.parts[6178].a[0] , s.parts[6178].a[1] , s.parts[6178].a[2] );
+    printf( "main: parts[%li].a is [ %.16e %.16e %.16e ].\n" , s.parts[6178].id , s.parts[6178].a[0] , s.parts[6178].a[1] , s.parts[6178].a[2] );
     
     /* Get all the cells of a certain depth. */
     // icount = 1;
