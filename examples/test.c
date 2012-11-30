@@ -628,108 +628,176 @@ int main ( int argc , char *argv[] ) {
     int nr_threads = 1, nr_queues = -1, runs = 1;
     int data[2];
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
-    double r_min = 0.01, r_max = 0.1, h_max = -1.0 , scaling = 1.0, rho = 0.0;
+    double /*r_min = 0.01, r_max = 0.1,*/ h_max = -1.0 , scaling = 1.0, rho = 0.0;
     struct part *parts = NULL, *p;
     struct space s;
     struct engine e;
+    char ICfileName[200];
     ticks tic;
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
-    
-    /* Parse the options. */
-    while ( ( c = getopt( argc , argv  , "a:b:p:d:N:c:h:v:m:s:t:q:r:i:m:z:" ) ) != -1 )
-        switch ( c ) {
-            case 'N':
-                if ( sscanf( optarg , "%d" , &N ) != 1 )
-                    error( "Error parsing number of particles." );
-                if ( posix_memalign( (void *)&parts , 32 , N * sizeof(struct part) ) != 0 )
-                    error( "Call to posix_memalign failed." );
-                for ( k = 0 ; k < N ; k++ ) {
-                    parts[k].x[0] = ((double)rand()) / RAND_MAX * dim[0];
-                    parts[k].x[1] = ((double)rand()) / RAND_MAX * dim[1];
-                    parts[k].x[2] = ((double)rand()) / RAND_MAX * dim[2];
-                    parts[k].id = k;
-                    parts[k].h = r_min + ((r_max - r_min)*rand())/RAND_MAX;
-                    parts[k].mass = 1.0f;
-                    parts[k].u = 1.0f;
-                    }
-                printf( "main: allocated memory for %i parts.\n" , N ); fflush(stdout);
-                break;
-            case 'a':
-                if ( sscanf( optarg , "%lf" , &scaling ) != 1 )
-                    error( "Error parsing cutoff scaling." );
-                printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout);
-                for ( k = 0 ; k < N ; k++ )
-                    parts[k].h *= scaling;
-                break;
-            case 'b':
-                if ( sscanf( optarg , "%lf %lf %lf" , &dim[0] , &dim[1] , &dim[2] ) != 3 )
-                    error( "Error parsing box dimensions." );
-                break;
-            case 'c':
-                printf( "main: reading parts from %s...\n" , optarg ); fflush(stdout);
-                if ( parts == NULL && posix_memalign( (void *)&parts , 16 , N * sizeof(struct part) ) != 0 )
-                    error( "Call to calloc failed." );
-                read_coords( optarg , parts , N );
-                break;
-            case 'd':
-                printf( "main: reading dt from %s...\n" , optarg ); fflush(stdout);
-                read_dt( optarg , parts , N );
-                break;
-            case 'h':
-                printf( "main: reading cutoffs from %s...\n" , optarg ); fflush(stdout);
-                read_cutoffs( optarg , parts , N );
-                break;
-            case 'i':
-                printf( "main: reading ids from %s...\n" , optarg ); fflush(stdout);
-                read_id( optarg , parts , N );
-                break;
-            case 'm':
-                if ( sscanf( optarg , "%lf" , &h_max ) != 1 )
-                    error( "Error parsing h_max." );
-                printf( "main: maximum h set to %e.\n" , h_max );
-                break;
-            case 'p':
-                if ( sscanf( optarg , "%d" , &periodic ) != 1 )
-                    error( "Error parsing periodicity." );
-                printf( "main: periodicity switched %s.\n" , periodic ? "on" : "off" );
-                break;
-            case 'q':
-                if ( sscanf( optarg , "%d" , &nr_queues ) != 1 )
-                    error( "Error parsing number of queues." );
-                break;
-            case 'r':
-                if ( sscanf( optarg , "%d" , &runs ) != 1 )
-                    error( "Error parsing number of runs." );
-                break;
-            case 's':
-                if ( sscanf( optarg , "%lf %lf %lf" , &shift[0] , &shift[1] , &shift[2] ) != 3 )
-                    error( "Error parsing shift." );
-                for ( k = 0 ; k < N ; k++ ) {
-                    parts[k].x[0] += shift[0];
-                    parts[k].x[1] += shift[1];
-                    parts[k].x[2] += shift[2];
-                    }
-                printf( "main: shifted parts by [ %.3f %.3f %.3f ].\n" , shift[0] , shift[1] , shift[2] );
-                break;
-            case 't':
-                if ( sscanf( optarg , "%d" , &nr_threads ) != 1 )
-                    error( "Error parsing number of threads." );
-                omp_set_num_threads( nr_threads );
-                break;
-            case 'z':
-                if ( sscanf( optarg , "%d" , &space_splitsize ) != 1 )
-                    error( "Error parsing split size." );
-                printf( "main: split size set to %i.\n" , space_splitsize );
-                break;
-            case '?':
-                error( "Unknown option." );
-                break;
-            }
+
+    /* Parse the options */
+    while ( ( c = getopt( argc , argv  , "f:a:m:s:t:q:r:z:" ) ) != -1 )
+      switch( c )
+	{
+	case 'f':
+	  if( !strcpy(ICfileName, optarg))
+	    error("Error parsing IC file name.");
+	  printf("main: IC to be read from file '%s'\n", ICfileName);
+	  break;
+	case 'a':
+	  if ( sscanf( optarg , "%lf" , &scaling ) != 1 )
+	    error( "Error parsing cutoff scaling." );
+	  printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout);
+	  break;
+	case 'm':
+	  if ( sscanf( optarg , "%lf" , &h_max ) != 1 )
+	    error( "Error parsing h_max." );
+	  printf( "main: maximum h set to %e.\n" , h_max ); fflush(stdout);
+	  break;
+	case 'q':
+	  if ( sscanf( optarg , "%d" , &nr_queues ) != 1 )
+	    error( "Error parsing number of queues." );
+	  break;
+	case 'r':
+	  if ( sscanf( optarg , "%d" , &runs ) != 1 )
+	    error( "Error parsing number of runs." );
+	  break;
+	case 's':
+	  if ( sscanf( optarg , "%lf %lf %lf" , &shift[0] , &shift[1] , &shift[2] ) != 3 )
+	    error( "Error parsing shift." );
+	  printf( "main: will shift parts by [ %.3f %.3f %.3f ].\n" , shift[0] , shift[1] , shift[2] );
+	  break;
+	case 't':
+	  if ( sscanf( optarg , "%d" , &nr_threads ) != 1 )
+	    error( "Error parsing number of threads." );
+	  omp_set_num_threads( nr_threads );
+	  break;
+	case 'z':
+	  if ( sscanf( optarg , "%d" , &space_splitsize ) != 1 )
+	    error( "Error parsing split size." );
+	  printf( "main: split size set to %i.\n" , space_splitsize );
+	  break;
+	case '?':
+	  error( "Unknown option." );
+	  break;
+
+	}
+
+    /* while ( ( c = getopt( argc , argv  , "a:b:p:d:N:c:h:v:m:s:t:q:r:i:m:z:" ) ) != -1 ) */
+    /*     switch ( c ) { */
+    /*         case 'N': */
+    /*             if ( sscanf( optarg , "%d" , &N ) != 1 ) */
+    /*                 error( "Error parsing number of particles." ); */
+    /*             if ( posix_memalign( (void *)&parts , 32 , N * sizeof(struct part) ) != 0 ) */
+    /*                 error( "Call to posix_memalign failed." ); */
+    /*             for ( k = 0 ; k < N ; k++ ) { */
+    /*                 parts[k].x[0] = ((double)rand()) / RAND_MAX * dim[0]; */
+    /*                 parts[k].x[1] = ((double)rand()) / RAND_MAX * dim[1]; */
+    /*                 parts[k].x[2] = ((double)rand()) / RAND_MAX * dim[2]; */
+    /*                 parts[k].id = k; */
+    /*                 parts[k].h = r_min + ((r_max - r_min)*rand())/RAND_MAX; */
+    /*                 parts[k].mass = 1.0f; */
+    /*                 parts[k].u = 1.0f; */
+    /*                 } */
+    /*             printf( "main: allocated memory for %i parts.\n" , N ); fflush(stdout); */
+    /*             break; */
+    /*         case 'a': */
+    /*             if ( sscanf( optarg , "%lf" , &scaling ) != 1 ) */
+    /*                 error( "Error parsing cutoff scaling." ); */
+    /*             printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout); */
+    /*             for ( k = 0 ; k < N ; k++ ) */
+    /*                 parts[k].h *= scaling; */
+    /*             break; */
+    /*         case 'b': */
+    /*             if ( sscanf( optarg , "%lf %lf %lf" , &dim[0] , &dim[1] , &dim[2] ) != 3 ) */
+    /*                 error( "Error parsing box dimensions." ); */
+    /*             break; */
+    /*         case 'c': */
+    /*             printf( "main: reading parts from %s...\n" , optarg ); fflush(stdout); */
+    /*             if ( parts == NULL && posix_memalign( (void *)&parts , 16 , N * sizeof(struct part) ) != 0 ) */
+    /*                 error( "Call to calloc failed." ); */
+    /*             read_coords( optarg , parts , N ); */
+    /*             break; */
+    /*         case 'd': */
+    /*             printf( "main: reading dt from %s...\n" , optarg ); fflush(stdout); */
+    /*             read_dt( optarg , parts , N ); */
+    /*             break; */
+    /*         case 'h': */
+    /*             printf( "main: reading cutoffs from %s...\n" , optarg ); fflush(stdout); */
+    /*             read_cutoffs( optarg , parts , N ); */
+    /*             break; */
+    /*         case 'i': */
+    /*             printf( "main: reading ids from %s...\n" , optarg ); fflush(stdout); */
+    /*             read_id( optarg , parts , N ); */
+    /*             break; */
+    /*         case 'm': */
+    /*             if ( sscanf( optarg , "%lf" , &h_max ) != 1 ) */
+    /*                 error( "Error parsing h_max." ); */
+    /*             printf( "main: maximum h set to %e.\n" , h_max ); */
+    /*             break; */
+    /*         case 'p': */
+    /*             if ( sscanf( optarg , "%d" , &periodic ) != 1 ) */
+    /*                 error( "Error parsing periodicity." ); */
+    /*             printf( "main: periodicity switched %s.\n" , periodic ? "on" : "off" ); */
+    /*             break; */
+    /*         case 'q': */
+    /*             if ( sscanf( optarg , "%d" , &nr_queues ) != 1 ) */
+    /*                 error( "Error parsing number of queues." ); */
+    /*             break; */
+    /*         case 'r': */
+    /*             if ( sscanf( optarg , "%d" , &runs ) != 1 ) */
+    /*                 error( "Error parsing number of runs." ); */
+    /*             break; */
+    /*         case 's': */
+    /*             if ( sscanf( optarg , "%lf %lf %lf" , &shift[0] , &shift[1] , &shift[2] ) != 3 ) */
+    /*                 error( "Error parsing shift." ); */
+    /*             for ( k = 0 ; k < N ; k++ ) { */
+    /*                 parts[k].x[0] += shift[0]; */
+    /*                 parts[k].x[1] += shift[1]; */
+    /*                 parts[k].x[2] += shift[2]; */
+    /*                 } */
+    /*             printf( "main: shifted parts by [ %.3f %.3f %.3f ].\n" , shift[0] , shift[1] , shift[2] ); */
+    /*             break; */
+    /*         case 't': */
+    /*             if ( sscanf( optarg , "%d" , &nr_threads ) != 1 ) */
+    /*                 error( "Error parsing number of threads." ); */
+    /*             omp_set_num_threads( nr_threads ); */
+    /*             break; */
+    /*         case 'z': */
+    /*             if ( sscanf( optarg , "%d" , &space_splitsize ) != 1 ) */
+    /*                 error( "Error parsing split size." ); */
+    /*             printf( "main: split size set to %i.\n" , space_splitsize ); */
+    /*             break; */
+    /*         case '?': */
+    /*             error( "Unknown option." ); */
+    /*             break; */
+    /*         } */
             
+
     /* How large are the parts? */
-    printf( "main: sizeof(struct part) is %li bytes.\n" , (long int)sizeof( struct part ) );
+    printf( "main: sizeof(struct part) is %li bytes.\n" , (long int)sizeof( struct part ));
+
+    /* Read particles and space information from (GADGET) IC */
+    tic = getticks();
+    read_ic(ICfileName, dim, &parts, &N, &periodic);
+    printf( "main: reading particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+    
+    /* Apply h scaling */
+    if(scaling != 1.0)
+      for ( k = 0 ; k < N ; k++ )
+	parts[k].h *= scaling;
+    
+    /* Apply shift */
+    if(shift[0] !=0 || shift[1] !=0 || shift[2] !=0 )
+      for ( k = 0 ; k < N ; k++ ) {
+	parts[k].x[0] += shift[0];
+	parts[k].x[1] += shift[1];
+	parts[k].x[2] += shift[2];
+      }
+
             
     /* Dump the kernel to make sure its ok. */
     // kernel_dump( 100 );

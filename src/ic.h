@@ -18,5 +18,8 @@
  ******************************************************************************/
 
 
-void read_ic ( char* fileName, struct space *s,  int* N);
-void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_max );
+
+
+void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic);
+
+

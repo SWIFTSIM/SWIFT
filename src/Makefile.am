@@ -22,7 +22,7 @@ AUTOMAKE_OPTIONS=gnu
 AM_CFLAGS = -g -O3 -Wall -Werror -ffast-math -fstrict-aliasing $(SIMD_FLAGS) $(CFLAGS) $(OPENMP_CFLAGS) -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
 
 # Assign a "safe" version number
-AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) -version-info 0:0:0
+AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0
 
 # Build the libgadgetsmp library
 lib_LTLIBRARIES = libgadgetsmp.la
@@ -32,3 +32,10 @@ libgadgetsmp_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c ic.c
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h gadgetsmp.h ic.h
 
+# Set-up the library
+#bin_PROGRAMS = test
+
+# Sources for test
+#test_SOURCES = main.c
+#test_CFLAGS = -DCOUNTER -DTIMER $(AM_CFLAGS)
+#test_LDADD = ../src/.libs/libgadgetsmp.a
