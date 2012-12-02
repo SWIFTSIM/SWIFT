@@ -88,8 +88,8 @@ extern int runner_counter[ runner_counter_count ];
 
 /* Histogram functions. */
 #define runner_hist_a 1.0
-#define runner_hist_b 10.0
-#define runner_hist_N 99
+#define runner_hist_b 1000.0
+#define runner_hist_N 100
 long long int runner_hist_bins[ runner_hist_N ];
 #define runner_hist_hit( x ) __sync_add_and_fetch( &runner_hist_bins[ (int)fmax( 0.0 , fmin( runner_hist_N-1 , ((x) - runner_hist_a) / (runner_hist_b - runner_hist_a) * runner_hist_N ) ) ] , 1 )
 

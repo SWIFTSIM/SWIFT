@@ -162,64 +162,6 @@ void runner_dosort_ascending ( struct entry *sort , int N ) {
     
     
 /**
- * @brief inline helper fuction to merge two entry arrays (forward).
- *
- * @param one the first array
- * @param none the length of the first array
- * @param two the second array
- * @param ntwo the length of the second array
- * @param dest the destination array.
- */
- 
-inline void merge_forward ( struct entry *__restrict__ one , int none , struct entry *__restrict__ two , int ntwo , struct entry *__restrict__ dest ) {
-
-    int i = 0, j = 0, k = 0;
-    
-    while ( j < none && k < ntwo )
-        if ( one[j].d < two[k].d )
-            dest[i++] = one[j++];
-        else
-            dest[i++] = two[k++];
-    if ( j == none )
-        for ( ; k < ntwo ; k++ )
-            dest[i++] = two[k];
-    else
-        for ( ; j < none ; j++ )
-            dest[i++] = one[j];
-
-    }
-    
-
-/**
- * @brief inline helper fuction to merge two entry arrays (forward).
- *
- * @param one the first array
- * @param none the length of the first array
- * @param two the second array
- * @param ntwo the length of the second array
- * @param dest the destination array.
- */
- 
-inline void merge_backward ( struct entry *__restrict__ one , int none , struct entry *__restrict__ two , int ntwo , struct entry *__restrict__ dest ) {
-
-    int i = none + ntwo - 1, j = none - 1, k = ntwo - 1;
-    
-    while ( j >= 0 && k >= 0 )
-        if ( one[j].d > two[k].d )
-            dest[i--] = one[j--];
-        else
-            dest[i--] = two[k--];
-    if ( j < 0 )
-        for ( ; k >= 0 ; k-- )
-            dest[i--] = two[k];
-    else
-        for ( ; j >= 0 ; j-- )
-            dest[i--] = one[j];
-
-    }
-    
-
-/**
  * @brief Sort the particles in the given cell along all cardinal directions.
  *
  * @param r The #runner.
@@ -232,7 +174,6 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     struct entry *fingers[8];
     struct part *parts = c->parts;
     int j, k, count = c->count;
-    int cone, ctwo;
     int i, ind, off[8], inds[8], temp_i;
     // float shift[3];
     float buff[8], px[3];
@@ -248,7 +189,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     if ( lock_lock( &c->lock ) != 0 )
         error( "Failed to lock cell." );
     if ( c->sort == NULL )
-        if ( ( c->sort = (struct entry *)malloc( sizeof(struct entry) * (c->count + 1) * 13 ) ) == NULL )
+        if ( ( c->sort = (struct entry *)malloc( sizeof(struct entry) * (c->count + 1) * 14 ) ) == NULL )
             error( "Failed to allocate sort memory." );
     if ( lock_unlock( &c->lock ) != 0 )
         error( "Failed to unlock cell." );
@@ -256,90 +197,57 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     /* Does this cell have any progeny? */
     if ( c->split ) {
     
-        /* Loop over the 13 different sort arrays. */
-        for ( j = 0 ; j < 13 ; j++ ) {
+        /* Loop over the 13+1 different sort arrays. */
+        for ( j = 0 ; j < 14 ; j++ ) {
         
             /* Has this sort array been flagged? */
             if ( !( flags & (1 << j) ) )
                 continue;
                 
-            if ( 0 ) {
-            
-                /* Get a finger on the sorting array. */
-                finger = &c->sort[ j*(count + 1) ];
-                
-                /* Merge the two first sub-cells forward into this cell. */
-                cone = c->progeny[0]->count;
-                ctwo = c->progeny[1]->count;
-                merge_forward( &c->progeny[0]->sort[ j*(cone + 1) ] , cone ,
-                               &c->progeny[1]->sort[ j*(ctwo + 1) ] , ctwo ,
-                               finger );
-                               
-                /* Merge-in the remaining arrays, alternating forward and
-                   backward merges. */
-                for ( k = 2 ; k < 8 ; k++ ) {
-                    cone = cone + ctwo;
-                    ctwo = c->progeny[k]->count;
-                    if ( k & 1 )
-                        merge_forward( &finger[ count - cone ] , cone ,
-                                       &c->progeny[k]->sort[ j*(ctwo + 1) ] , ctwo ,
-                                       finger );
-                    else
-                        merge_backward( finger , cone ,
-                                        &c->progeny[k]->sort[ j*(ctwo + 1) ] , ctwo ,
-                                        &finger[ count - cone - ctwo ] );
+            /* Init the particle index offsets. */
+            for ( off[0] = 0 , k = 1 ; k < 8 ; k++ )
+                if ( c->progeny[k-1] != NULL )
+                    off[k] = off[k-1] + c->progeny[k-1]->count;
+                else
+                    off[k] = off[k-1];
+
+            /* Init the entries and indices. */
+            for ( k = 0 ; k < 8 ; k++ ) {
+                inds[k] = k;
+                if ( c->progeny[k] != NULL && c->progeny[k]->count > 0 ) {
+                    fingers[k] = &c->progeny[k]->sort[ j*(c->progeny[k]->count + 1) ];
+                    buff[k] = fingers[k]->d;
+                    off[k] = off[k];
                     }
-                
+                else
+                    buff[k] = FLT_MAX;
                 }
-                
-            else {
-            
-                /* Init the particle index offsets. */
-                for ( off[0] = 0 , k = 1 ; k < 8 ; k++ )
-                    if ( c->progeny[k-1] != NULL )
-                        off[k] = off[k-1] + c->progeny[k-1]->count;
-                    else
-                        off[k] = off[k-1];
 
-                /* Init the entries and indices. */
-                for ( k = 0 ; k < 8 ; k++ ) {
-                    inds[k] = k;
-                    if ( c->progeny[k] != NULL && c->progeny[k]->count > 0 ) {
-                        fingers[k] = &c->progeny[k]->sort[ j*(c->progeny[k]->count + 1) ];
-                        buff[k] = fingers[k]->d;
-                        off[k] = off[k];
-                        }
-                    else
-                        buff[k] = FLT_MAX;
-                    }
-
-                /* Sort the buffer. */
-                for ( i = 0 ; i < 7 ; i++ )
-                    for ( k = i+1 ; k < 8 ; k++ )
-                        if ( buff[ inds[k] ] < buff[ inds[i] ] ) {
-                            temp_i = inds[i]; inds[i] = inds[k]; inds[k] = temp_i;
-                            }
-
-                /* For each entry in the new sort list. */
-                finger = &c->sort[ j*(count + 1) ];
-                for ( ind = 0 ; ind < count ; ind++ ) {
-
-                    /* Copy the minimum into the new sort array. */
-                    finger[ind].d = buff[inds[0]];
-                    finger[ind].i = fingers[inds[0]]->i + off[inds[0]];
-
-                    /* Update the buffer. */
-                    fingers[inds[0]] += 1;
-                    buff[inds[0]] = fingers[inds[0]]->d;
-
-                    /* Find the smallest entry. */
-                    for ( k = 1 ; k < 8 && buff[inds[k]] < buff[inds[k-1]] ; k++ ) {
-                        temp_i = inds[k-1]; inds[k-1] = inds[k]; inds[k] = temp_i;
+            /* Sort the buffer. */
+            for ( i = 0 ; i < 7 ; i++ )
+                for ( k = i+1 ; k < 8 ; k++ )
+                    if ( buff[ inds[k] ] < buff[ inds[i] ] ) {
+                        temp_i = inds[i]; inds[i] = inds[k]; inds[k] = temp_i;
                         }
 
-                    } /* Merge. */
-                    
-                }
+            /* For each entry in the new sort list. */
+            finger = &c->sort[ j*(count + 1) ];
+            for ( ind = 0 ; ind < count ; ind++ ) {
+
+                /* Copy the minimum into the new sort array. */
+                finger[ind].d = buff[inds[0]];
+                finger[ind].i = fingers[inds[0]]->i + off[inds[0]];
+
+                /* Update the buffer. */
+                fingers[inds[0]] += 1;
+                buff[inds[0]] = fingers[inds[0]]->d;
+
+                /* Find the smallest entry. */
+                for ( k = 1 ; k < 8 && buff[inds[k]] < buff[inds[k-1]] ; k++ ) {
+                    temp_i = inds[k-1]; inds[k-1] = inds[k]; inds[k] = temp_i;
+                    }
+
+                } /* Merge. */
             
             /* Add a sentinel. */
             c->sort[ j*(c->count + 1) + c->count ].d = FLT_MAX;
@@ -348,39 +256,6 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
             } /* loop over sort arrays. */
     
         } /* progeny? */
-        
-    /* Otherwise, just sort. */
-    // else {
-    // 
-    //     /* Loop over the different cell axes. */
-    //     for ( j = 0 ; j < 13 ; j++ ) {
-    //     
-    //         /* Has this sort array been flagged? */
-    //         if ( !( flags & (1 << j) ) )
-    //             continue;
-    //     
-    //         /* Get the shift vector. */
-    //         shift[0] = runner_shift[ 3*j + 0 ];
-    //         shift[1] = runner_shift[ 3*j + 1 ];
-    //         shift[2] = runner_shift[ 3*j + 2 ];
-    //         
-    //         /* Fill the sort array. */
-    //         finger = &c->sort[ j*(count + 1) ];
-    //         for ( k = 0 ; k < count ; k++ ) {
-    //             finger[k].i = k;
-    //             finger[k].d = parts[k].x[0]*shift[0] + parts[k].x[1]*shift[1] + parts[k].x[2]*shift[2];
-    //             }
-    //             
-    //         /* Add the sentinel. */
-    //         finger[ c->count ].d = FLT_MAX;
-    //         finger[ c->count ].i = 0;
-    //             
-    //         /* Sort descending. */
-    //         runner_dosort_ascending( finger , c->count );
-    //     
-    //         }
-    //         
-    //     }
         
     /* Otherwise, just sort. */
     else {
@@ -395,10 +270,14 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
                     c->sort[ j*(count + 1) + k].i = k;
                     c->sort[ j*(count + 1) + k].d = px[0]*runner_shift[ 3*j + 0 ] + px[1]*runner_shift[ 3*j + 1 ] + px[2]*runner_shift[ 3*j + 2 ];
                     }
+            if ( flags & (1 << 14) ) {
+                c->sort[ 14*(count + 1) + k ].i = k;
+                c->sort[ 14*(count + 1) + k ].d = parts[k].dt;
+                }
             }
 
         /* Add the sentinel and sort. */
-        for ( j = 0 ; j < 13 ; j++ )
+        for ( j = 0 ; j < 14 ; j++ )
             if ( flags & (1 << j) ) {
                 c->sort[ j*(count + 1) + c->count ].d = FLT_MAX;
                 c->sort[ j*(count + 1) + c->count ].i = 0;
@@ -505,7 +384,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             p->h_dt = 0.0f;
 
             /* Compute this particle's time step. */
-            p->dt = const_cfl * p->h / ( const_gamma * ( const_gamma - 1.0f ) * p->u );
+            p->dt = const_cfl * p->h / sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
 
             /* Compute the pressure. */
             // p->P = p->rho * p->u * ( const_gamma - 1.0f );

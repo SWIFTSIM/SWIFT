@@ -31,13 +31,13 @@ struct part {
     float h;
     
     /* Particle time-step. */
-    int dt;
+    float dt;
     
     /* Particle mass. */
     float mass;
     
     /* Particle ID. */
-    unsigned long id;
+    unsigned long long id;
     
     /* Particle position. */
     double x[3];

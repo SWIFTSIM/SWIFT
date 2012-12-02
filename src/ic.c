@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of GadgetSMP.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -292,7 +293,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   readArray(h_grp, "Mass", FLOAT, *N, 1, *parts, mass);
   readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h);
   readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u);
-  readArray(h_grp, "ParticleIDs", ULONG, *N, 1, *parts, id);
+  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id);
 
   /* Close particle group */
   H5Gclose(h_grp);

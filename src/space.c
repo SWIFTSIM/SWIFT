@@ -77,6 +77,60 @@ const int sortlistID[27] = {
     
     
 /**
+ * @brief Sort the particles according to the given indices.
+ *
+ * @param parts The list of #part
+ * @param ind The indices with respect to which the parts are sorted.
+ * @param N The number of parts
+ * @param min Lowest index.
+ * @param max highest index.
+ *
+ * This function calls itself recursively.
+ */
+ 
+void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
+
+    int pivot = (min + max) / 2;
+    int i = 0, j = N-1;
+    int temp_i;
+    struct part temp_p;
+    
+    /* One pass of quicksort. */
+    while ( i < j ) {
+        while ( i < N && ind[i] <= pivot )
+            i++;
+        while ( j >= 0 && ind[j] > pivot )
+            j--;
+        if ( i < j ) {
+            temp_i = ind[i]; ind[i] = ind[j]; ind[j] = temp_i;
+            temp_p = parts[i]; parts[i] = parts[j]; parts[j] = temp_p;
+            }
+        }
+        
+    /* Verify sort. */
+    for ( int k = 0 ; k <= j ; k++ )
+        if ( ind[k] > pivot ) {
+            printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+            error( "Sorting failed (<=pivot)." );
+            }
+    for ( int k = j+1 ; k < N ; k++ )
+        if ( ind[k] <= pivot ) {
+            printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+            error( "Sorting failed (>pivot)." );
+            }
+        
+    /* Recurse on the left? */
+    if ( j > 0 && pivot > min )
+        parts_sort( parts , ind , j+1 , min , pivot );
+        
+    /* Recurse on the right? */
+    if ( i < N && pivot+1 < max )
+        parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+
+    }
+
+
+/**
  * @brief Mapping function to free the sorted indices buffers.
  */
 
@@ -361,7 +415,7 @@ void space_splittasks ( struct space *s ) {
         hj = fmax( cj->h[0] , fmax( cj->h[1] , cj->h[2] ) );
             
         /* Should this task be split-up? */
-        if ( ci->split && cj->split && ci->h_max < hi/2 && cj->h_max < hj/2 ) {
+        if ( ci->split && cj->split && ci->h_max*space_stretch < hi/2 && cj->h_max*space_stretch < hj/2 ) {
         
             /* Get the relative distance between the pairs, wrapping. */
             for ( k = 0 ; k < 3 ; k++ ) {
@@ -816,7 +870,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
     void maketasks_rec ( struct cell *c , struct task *sort_up[] , int nr_sort_up , struct cell *parent ) {
 
         int j, k, nr_sort = 0;
-        struct task *sort[14], *t;
+        struct task *sort[7], *t;
 
         /* Clear the waits on this cell. */
         c->wait = 0;
@@ -827,38 +881,29 @@ void space_maketasks ( struct space *s , int do_sort ) {
         
             if ( do_sort ) {
                 if ( c->count < 1000 ) {
-                    sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x1fff , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x3fff , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     for ( k = 0 ; k < 13 ; k++ )
                         c->sorts[k] = sort[0];
                     nr_sort = 1;
                     }
                 else if ( c->count < 5000 ) {
-                    sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0xf , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    sort[1] = space_addtask( s , task_type_sort , task_subtype_none , 0xf0 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    sort[2] = space_addtask( s , task_type_sort , task_subtype_none , 0x1f00 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    for ( k = 0 ; k < 4 ; k++ )
+                    sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x7f , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    sort[1] = space_addtask( s , task_type_sort , task_subtype_none , 0x3f80 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    for ( k = 0 ; k < 7 ; k++ )
                         c->sorts[k] = sort[0];
-                    for ( k = 4 ; k < 8 ; k++ )
+                    for ( k = 7 ; k < 14 ; k++ )
                         c->sorts[k] = sort[1];
-                    for ( k = 8 ; k < 13 ; k++ )
-                        c->sorts[k] = sort[2];
-                    nr_sort = 3;
+                    nr_sort = 2;
                     }
                 else {
-                    c->sorts[0] = sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x1 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[1] = sort[1] = space_addtask( s , task_type_sort , task_subtype_none , 0x2 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[2] = sort[2] = space_addtask( s , task_type_sort , task_subtype_none , 0x4 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[3] = sort[3] = space_addtask( s , task_type_sort , task_subtype_none , 0x8 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[4] = sort[4] = space_addtask( s , task_type_sort , task_subtype_none , 0x10 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[5] = sort[5] = space_addtask( s , task_type_sort , task_subtype_none , 0x20 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[6] = sort[6] = space_addtask( s , task_type_sort , task_subtype_none , 0x40 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[7] = sort[7] = space_addtask( s , task_type_sort , task_subtype_none , 0x80 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[8] = sort[8] = space_addtask( s , task_type_sort , task_subtype_none , 0x100 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[9] = sort[9] = space_addtask( s , task_type_sort , task_subtype_none , 0x200 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[10] = sort[10] = space_addtask( s , task_type_sort , task_subtype_none , 0x400 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[11] = sort[11] = space_addtask( s , task_type_sort , task_subtype_none , 0x800 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[12] = sort[12] = space_addtask( s , task_type_sort , task_subtype_none , 0x1000 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    nr_sort = 13;
+                    c->sorts[0] = c->sorts[1] = sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x1 + 0x2 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    c->sorts[2] = c->sorts[3] = sort[1] = space_addtask( s , task_type_sort , task_subtype_none , 0x4 + 0x8 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    c->sorts[4] = c->sorts[5] = sort[2] = space_addtask( s , task_type_sort , task_subtype_none , 0x10 + 0x20 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    c->sorts[6] = c->sorts[7] = sort[3] = space_addtask( s , task_type_sort , task_subtype_none , 0x40 + 0x80 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    c->sorts[8] = c->sorts[9] = sort[4] = space_addtask( s , task_type_sort , task_subtype_none , 0x100 + 0x200 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    c->sorts[10] = c->sorts[11] = sort[5] = space_addtask( s , task_type_sort , task_subtype_none , 0x400 + 0x800 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    c->sorts[12] = c->sorts[13] = sort[6] = space_addtask( s , task_type_sort , task_subtype_none , 0x1000 + 0x2000 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    nr_sort = 7;
                     }
                 }
 
@@ -1242,7 +1287,8 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     int nr_cells, cdim[3];
     double h_min, h_max, h[3], ih[3];
     struct cell *c, *cells;
-    struct part *parts_new, *finger;
+    struct part *finger;
+    int *ind;
     
     
     /* Get the minimum and maximum cutoff radii. */
@@ -1252,6 +1298,9 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
             h_min = parts[k].h;
         else if ( parts[k].h > h_max )
             h_max = parts[k].h;
+            
+    /* Stretch the maximum smoothing length. */
+    h_max *= space_stretch;
             
     /* Get the cell width. */
     if ( h_cells < h_max )
@@ -1280,31 +1329,29 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
                 c->h[0] = h[0]; c->h[1] = h[1]; c->h[2] = h[2];
                 }
         
-    /* Run through the particles and get the counts for each cell. */
-    for ( k = 0 ; k < N ; k++ )
-        cells[ cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) ].count += 1;
+    /* Run through the particles and get their cell index. */
+    ind = (int *)alloca( sizeof(int) * N );
+    for ( k = 0 ; k < N ; k++ )  {
+        ind[k] = cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] );
+        cells[ ind[k] ].count += 1;
+        }
         
-    /* Allocate the new part buffer and set the part pointers in each cell. */
-    if ( posix_memalign( (void *)&parts_new , 64 , N * sizeof(struct part) ) != 0 )
-        error( "Failed to allocate parts." );
-    for ( finger = parts_new , k = 0 ; k < nr_cells ; k++ ) {
+    /* Sort the parts according to their cells. */
+    parts_sort( parts , ind , N , 0 , nr_cells );
+        
+    /* Hook the cells up to the parts. */
+    for ( finger = parts , k = 0 ; k < nr_cells ; k++ ) {
         c = &cells[ k ];
         c->parts = finger;
         finger = &finger[ c->count ];
-        c->count = 0;
-        }
-    for ( k = 0 ; k < N ; k++ ) {
-        c = &cells[ cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) ];
-        c->parts[ c->count ] = parts[k];
-        c->count += 1;
         }
         
     /* Store eveything in the space. */
     s->h_min = h_min; s->h_max = h_max;
     s->dim[0] = dim[0]; s->dim[1] = dim[1]; s->dim[2] = dim[2];
     s->periodic = periodic;
-    s->parts = parts_new;
     s->nr_parts = N;
+    s->parts = parts;
     s->h[0] = h[0]; s->h[1] = h[1]; s->h[2] = h[2];
     s->ih[0] = ih[0]; s->ih[1] = ih[1]; s->ih[2] = ih[2];
     s->cdim[0] = cdim[0]; s->cdim[1] = cdim[1]; s->cdim[2] = cdim[2];

@@ -26,6 +26,7 @@
 #define space_splitratio                0.875
 #define space_splitsize_default         400
 #define space_dosub                     1
+#define space_stretch                   1.0
 
 
 /* Convert cell location to ID. */
@@ -56,6 +57,9 @@ struct space {
     
     /* The minimum and maximum cutoff radii. */
     double h_min, h_max;
+    
+    /* Current time step for particles. */
+    float dt;
     
     /* Number of cells. */
     int nr_cells, tot_cells;
