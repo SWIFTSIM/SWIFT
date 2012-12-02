@@ -77,6 +77,209 @@ const int sortlistID[27] = {
     
     
 /**
+ * @breif Recursively dismantle a cell tree.
+ *
+ */
+ 
+void space_rebuild_recycle ( struct space *s , struct cell *c ) {
+    
+    int k;
+    
+    if ( c->split )
+        for ( k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL ) {
+                space_rebuild_recycle( s , c->progeny[k] );
+                space_recycle( s , c->progeny[k] );
+                c->progeny[k] = NULL;
+                }
+    
+    }
+
+/**
+ * @breif Recursively rebuild a cell tree.
+ *
+ */
+ 
+int space_rebuild_recurse ( struct space *s , struct cell *c ) {
+    
+    int k, count, changes = 0, wasmt[8];
+    float h, h_limit, h_max = 0.0f;
+    struct cell *temp;
+    
+    /* If the cell is already split, check that the split is still ok. */
+    if ( c->split ) {
+    
+        /* Check the depth. */
+        if ( c->depth > s->maxdepth )
+            s->maxdepth = c->depth;
+
+        /* Set the minimum cutoff. */
+        h_limit = fmin( c->h[0] , fmin( c->h[1] , c->h[2] ) ) / 2;
+
+        /* Count the particles below that. */
+        for ( count = 0 , k = 0 ; k < c->count ; k++ ) {
+            h = c->parts[k].h;
+            if ( h <= h_limit )
+                count += 1;
+            if ( h > h_max )
+                h_max = h;
+            }
+        c->h_max = h_max;
+            
+        /* Un-split? */
+        if ( count < c->count*space_splitratio || c->count < space_splitsize ) {
+        
+            /* Get rid of the progeny. */
+            space_rebuild_recycle( s , c );
+            
+            /* Re-set the split flag. */
+            c->split = 0;
+        
+            }
+        
+        /* Otherwise, recurse on the kids. */
+        else {
+        
+            /* Populate all progeny. */
+            for ( k = 0 ; k < 8 ; k++ )
+                if ( ( wasmt[k] = ( c->progeny[k] == NULL ) ) ) {
+                    temp = space_getcell( s );
+                    temp->count = 0;
+                    temp->loc[0] = c->loc[0];
+                    temp->loc[1] = c->loc[1];
+                    temp->loc[2] = c->loc[2];
+                    temp->h[0] = c->h[0]/2;
+                    temp->h[1] = c->h[1]/2;
+                    temp->h[2] = c->h[2]/2;
+                    if ( k & 4 )
+                        temp->loc[0] += temp->h[0];
+                    if ( k & 2 )
+                        temp->loc[1] += temp->h[1];
+                    if ( k & 1 )
+                        temp->loc[2] += temp->h[2];
+                    temp->depth = c->depth + 1;
+                    temp->split = 0;
+                    temp->h_max = 0.0;
+                    temp->parent = c;
+                    c->progeny[k] = temp;
+                    }
+        
+            /* Make sure each part is in its place. */
+            cell_split( c );
+            
+            /* Remove empty progeny. */
+            for ( k = 0 ; k < 8 ; k++ )
+                if ( c->progeny[k]->count == 0 ) {
+                    changes += !wasmt[k];
+                    space_recycle( s , c->progeny[k] );
+                    c->progeny[k] = NULL;
+                    }
+                else
+                    changes += wasmt[k];
+        
+            /* Recurse. */
+            for ( k = 0 ; k < 8 ; k++ )
+                if ( c->progeny[k] != NULL )
+                    changes += space_rebuild_recurse( s , c->progeny[k] );
+                    
+            }
+    
+        }
+        
+    /* Otherwise, try to split it anyway. */
+    else {
+        space_split( s , c );
+        changes += c->split;
+        }
+        
+    /* Return the grand total. */
+    return changes;
+    
+    }
+
+/**
+ * @breif Re-build the cells as well as the tasks.
+ *
+ * @param s The #space in which to update the cells.
+ * @param force Flag to force re-building the cells and tasks.
+ *
+ * @return 1 if changes to the cells and/or tasks were made.
+ */
+ 
+int space_rebuild ( struct space *s , int force ) {
+
+    float h_max = 0.0f;
+    int i, j, k, cdim[3];
+    struct cell *c;
+    int changes = 0;
+    
+    /* Run through the parts and get the current h_max. */
+    for ( k = 0 ; k < s->nr_parts ; k++ )
+        if ( s->parts[k].h > h_max )
+            h_max = s->parts[k].h;
+    
+    /* Get the new putative cell dimensions. */
+    for ( k = 0 ; k < 3 ; k++ )
+        cdim[k] = floor( s->dim[k] / h_max );
+        
+    /* Do we need to re-build the upper-level cells? */
+    if ( force || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ) {
+    
+        /* Free the old cells, if they were allocated. */
+        if ( s->cells != NULL ) {
+            for ( k = 0 ; k < s->nr_cells ; k++ )
+                space_rebuild_recycle( s , &s->cells[k] );
+            free( s->cells );
+            s->maxdepth = 0;
+            }
+            
+        /* Set the new cell dimensions. */
+        for ( k = 0 ; k < 3 ; k++ ) {
+            s->cdim[k] = cdim[k];
+            s->h[k] = s->dim[k] / cdim[k];
+            s->ih[k] = 1.0 / s->h[k];
+            }
+    
+        /* Allocate the highest level of cells. */
+        s->nr_cells = cdim[0] * cdim[1] * cdim[2];
+        if ( posix_memalign( (void *)&s->cells , 64 , s->nr_cells * sizeof(struct cell) ) != 0 )
+            error( "Failed to allocate cells." );
+        bzero( s->cells , s->nr_cells * sizeof(struct cell) );
+        for ( k = 0 ; k < s->nr_cells ; k++ )
+            if ( lock_init( &s->cells[k].lock ) != 0 )
+                error( "Failed to init spinlock." );
+
+        /* Set the cell location and sizes. */
+        for ( i = 0 ; i < cdim[0] ; i++ )
+            for ( j = 0 ; j < cdim[1] ; j++ )
+                for ( k = 0 ; k < cdim[2] ; k++ ) {
+                    c = &s->cells[ cell_getid( cdim , i , j , k ) ];
+                    c->loc[0] = i*s->h[0]; c->loc[1] = j*s->h[1]; c->loc[2] = k*s->h[2];
+                    c->h[0] = s->h[0]; c->h[1] = s->h[1]; c->h[2] = s->h[2];
+                    c->depth = 0;
+                    }
+                    
+        /* There were massive changes. */
+        changes = 1;
+        
+        } /* re-build upper-level cells? */
+        
+    /* At this point, we have the upper-level cells, old or new. Now make
+       sure that the parts in each cell are ok. */
+    for ( k = 0 ; k < s->nr_cells ; k++ )
+        changes += space_rebuild_recurse( s , &s->cells[k] );
+        
+    /* Now that we have the cell structre, re-build the tasks. */
+    if ( changes )
+        space_maketasks( s , 1 );
+    
+    /* Return the number of changes. */
+    return changes;
+
+    }
+
+
+/**
  * @brief Sort the particles according to the given indices.
  *
  * @param parts The list of #part
@@ -855,7 +1058,6 @@ void space_maketasks ( struct space *s , int do_sort ) {
 
     int i, j, k, ii, jj, kk, iii, jjj, kkk, cid, cjd;
     int *cdim = s->cdim;
-    int nr_tasks_old = s->nr_tasks;
     struct task *t , *t2;
     int pts[7][8] = { { -1 , 12 , 10 , 9 , 4 , 3 , 1 , 0 } ,
                       { -1 , -1 , 11 , 10 , 5 , 4 , 2 , 1 } ,
@@ -881,14 +1083,14 @@ void space_maketasks ( struct space *s , int do_sort ) {
         
             if ( do_sort ) {
                 if ( c->count < 1000 ) {
-                    sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x3fff , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x1fff , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     for ( k = 0 ; k < 13 ; k++ )
                         c->sorts[k] = sort[0];
                     nr_sort = 1;
                     }
                 else if ( c->count < 5000 ) {
                     sort[0] = space_addtask( s , task_type_sort , task_subtype_none , 0x7f , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    sort[1] = space_addtask( s , task_type_sort , task_subtype_none , 0x3f80 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    sort[1] = space_addtask( s , task_type_sort , task_subtype_none , 0x1f80 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     for ( k = 0 ; k < 7 ; k++ )
                         c->sorts[k] = sort[0];
                     for ( k = 7 ; k < 14 ; k++ )
@@ -902,7 +1104,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
                     c->sorts[6] = c->sorts[7] = sort[3] = space_addtask( s , task_type_sort , task_subtype_none , 0x40 + 0x80 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     c->sorts[8] = c->sorts[9] = sort[4] = space_addtask( s , task_type_sort , task_subtype_none , 0x100 + 0x200 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     c->sorts[10] = c->sorts[11] = sort[5] = space_addtask( s , task_type_sort , task_subtype_none , 0x400 + 0x800 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
-                    c->sorts[12] = c->sorts[13] = sort[6] = space_addtask( s , task_type_sort , task_subtype_none , 0x1000 + 0x2000 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
+                    c->sorts[12] = c->sorts[13] = sort[6] = space_addtask( s , task_type_sort , task_subtype_none , 0x1000 , 0 , c , NULL , sort_up , nr_sort_up , NULL , 0 );
                     nr_sort = 7;
                     }
                 }
@@ -957,9 +1159,17 @@ void space_maketasks ( struct space *s , int do_sort ) {
         }
         
     /* Allocate the task-list, if needed. */
-    if ( s->tasks == NULL )
-        if ( posix_memalign( (void *)&s->tasks , 64 , sizeof(struct task) * s->tot_cells * 30 ) != 0 )
+    if ( s->tasks == NULL || s->tasks_size < s->tot_cells * 30 ) {
+        if ( s->tasks != NULL )
+            free( s->tasks );
+        if ( s->tasks_ind != NULL )
+            free( s->tasks_ind );
+        s->tasks_size = s->tot_cells * 30;
+        if ( posix_memalign( (void *)&s->tasks , 64 , sizeof(struct task) * s->tasks_size ) != 0 )
             error( "Failed to allocate task list." );
+        if ( ( s->tasks_ind = (int *)malloc( sizeof(int) * s->tasks_size ) ) == NULL )
+            error( "Failed to allocate task indices." );
+        }
     s->nr_tasks = 0;
     
     /* Loop over the cells and get their sub-tasks. */
@@ -1097,15 +1307,9 @@ void space_maketasks ( struct space *s , int do_sort ) {
             
         }
         
-    /* Did we already create indices? */
-    if ( s->tasks_ind == NULL )
-        if ( ( s->tasks_ind = (int *)malloc( sizeof(int) * s->nr_tasks ) ) == NULL )
-            error( "Failed to allocate task indices." );
-    
-    /* Did the number of tasks change, i.e. do we have to re-index? */
-    if ( nr_tasks_old != s->nr_tasks )
-        for ( k = 0 ; k < s->nr_tasks ; k++ )
-            s->tasks_ind[k] = k;
+    /* Re-set the indices. */
+    for ( k = 0 ; k < s->nr_tasks ; k++ )
+        s->tasks_ind[k] = k;
             
     /* Count the number of each task type. */
     for ( k = 0 ; k < task_type_count ; k++ )
@@ -1196,7 +1400,7 @@ void space_split ( struct space *s , struct cell *c ) {
                 space_recycle( s , c->progeny[k] );
                 c->progeny[k] = NULL;
                 }
-            
+                
         }
         
     /* Otherwise, set the progeny to null. */

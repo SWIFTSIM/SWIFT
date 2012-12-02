@@ -51,14 +51,50 @@
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
 
 
+/**
+ * @brief Prepare the #engine by re-building the cells and tasks.
+ *
+ * @param e The #engine to prepare.
+ * @param force Flag to force re-building the cell and task structure.
+ */
+ 
+void engine_prepare ( struct engine *e , int force ) {
+
+    int k, qid, changes;
+    struct space *s = e->s;
+
+    /* Rebuild the space. */
+    changes = space_rebuild( e->s , force );
+    printf( "engine_prepare: space_rebuild with %i changes.\n" , changes );
+    
+    /* Has anything changed? */
+    if ( changes ) {
+    
+        /* Rank the tasks in topological order. */
+        engine_ranktasks( e );
+    
+        /* Clear the queues. */
+        for ( k = 0 ; k < e->nr_queues ; k++ )
+            e->queues[k].count = 0;
+        
+        /* Fill the queues (round-robin). */
+        for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+            if ( s->tasks[ s->tasks_ind[k] ].type == task_type_none )
+                continue;
+            qid = k % e->nr_queues;
+            e->queues[qid].tid[ e->queues[qid].count ] = s->tasks_ind[k];
+            e->queues[qid].count += 1;
+            }
+            
+        }
+
+    }
+
+
 /** 
  * @brief Sort the tasks in topological order over all queues.
  *
  * @param e The #engine.
- *
- * TODO: Return the indices tid as these are the tasks sorted according
- * to their ranks. They can then be dropped into the queues in order
- * of these indices.
  */
  
 void engine_ranktasks ( struct engine *e ) {
@@ -66,19 +102,13 @@ void engine_ranktasks ( struct engine *e ) {
     int i, j = 0, k, temp, left = 0, rank;
     struct task *t;
     struct space *s = e->s;
-    int *tid;
+    int *tid = s->tasks_ind;
 
     /* Run throught the tasks and get all the waits right. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
             s->tasks[k].unlock_tasks[j]->wait += 1;
         }
-        
-    /* Allocate and init the task-ID array. */
-    if ( ( tid = (int *)malloc( sizeof(int) * s->nr_tasks ) ) == NULL )
-        error( "Failed to allocate temporary tid array." );
-    for ( k = 0 ; k < s->nr_tasks ; k++ )
-        tid[k] = k;
         
     /* Main loop. */
     for ( rank = 0 ; left < s->nr_tasks ; rank++ ) {
@@ -106,9 +136,6 @@ void engine_ranktasks ( struct engine *e ) {
             
         }
         
-    /* Release the temporary array. */
-    free(tid);
-    
     }
 
 

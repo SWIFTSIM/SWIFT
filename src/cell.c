@@ -257,8 +257,6 @@ void cell_split ( struct cell *c  ) {
     /* Store the counts and offsets. */
     for ( k = 0 ; k < 8 ; k++ ) {
         c->progeny[k]->count = right[k] - left[k] + 1;
-        if ( c->progeny[k]->count < 0 )
-            abort();
         c->progeny[k]->parts = &c->parts[ left[k] ];
         }
         
