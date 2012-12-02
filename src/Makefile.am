@@ -1,6 +1,7 @@
 
 # This file is part of GadgetSMP.
-# Coypright (c) 2012 pedro.gonnet@durham.ac.uk.
+# Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+#                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +22,7 @@ AUTOMAKE_OPTIONS=gnu
 # Add the debug flag to the whole thing
 AM_CFLAGS = -g -O3 -Wall -Werror -ffast-math -fstrict-aliasing -ftree-vectorize \
     -funroll-loops $(SIMD_FLAGS) $(CFLAGS) $(OPENMP_CFLAGS) \
-    -DTIMER -DCOUNTER -DCPU_TPS=2.67e9 -DHIST
+    -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0
@@ -34,10 +35,3 @@ libgadgetsmp_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c ic.c
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h gadgetsmp.h ic.h
 
-# Set-up the library
-#bin_PROGRAMS = test
-
-# Sources for test
-#test_SOURCES = main.c
-#test_CFLAGS = -DCOUNTER -DTIMER $(AM_CFLAGS)
-#test_LDADD = ../src/.libs/libgadgetsmp.a
