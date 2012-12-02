@@ -208,15 +208,20 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
  
 int space_rebuild ( struct space *s , int force ) {
 
-    float h_max = 0.0f;
+    float h_max = s->parts[0].h, h_min = s->parts[0].h;
     int i, j, k, cdim[3];
     struct cell *c;
-    int changes = 0;
+    struct part *finger;
+    int *ind, changes = 0;
     
     /* Run through the parts and get the current h_max. */
     for ( k = 0 ; k < s->nr_parts ; k++ )
         if ( s->parts[k].h > h_max )
             h_max = s->parts[k].h;
+        else if ( s->parts[k].h < h_min )
+            h_min = s->parts[k].h;
+    s->h_min = h_min;
+    s->h_max = h_max;
     
     /* Get the new putative cell dimensions. */
     for ( k = 0 ; k < 3 ; k++ )
@@ -259,6 +264,23 @@ int space_rebuild ( struct space *s , int force ) {
                     c->depth = 0;
                     }
                     
+        /* Run through the particles and get their cell index. */
+        ind = (int *)alloca( sizeof(int) * s->nr_parts );
+        for ( k = 0 ; k < s->nr_parts ; k++ )  {
+            ind[k] = cell_getid( cdim , s->parts[k].x[0]*s->ih[0] , s->parts[k].x[1]*s->ih[1] , s->parts[k].x[2]*s->ih[2] );
+            s->cells[ ind[k] ].count += 1;
+            }
+
+        /* Sort the parts according to their cells. */
+        parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );        
+                    
+        /* Hook the cells up to the parts. */
+        for ( finger = s->parts , k = 0 ; k < s->nr_cells ; k++ ) {
+            c = &s->cells[ k ];
+            c->parts = finger;
+            finger = &finger[ c->count ];
+            }
+        
         /* There were massive changes. */
         changes = 1;
         
@@ -1424,6 +1446,10 @@ void space_recycle ( struct space *s , struct cell *c ) {
     /* Clear the cell. */
     if ( lock_destroy( &c->lock ) != 0 )
         error( "Failed to destroy spinlock." );
+        
+    /* Clear this cell's sort arrays. */
+    if ( c->sort != NULL )
+        free( c->sort );
     
     /* Hook this cell into the buffer. */
     c->next = s->cells_new;
@@ -1487,87 +1513,16 @@ struct cell *space_getcell ( struct space *s ) {
 
 void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_cells ) {
 
-    int i, j, k;
-    int nr_cells, cdim[3];
-    double h_min, h_max, h[3], ih[3];
-    struct cell *c, *cells;
-    struct part *finger;
-    int *ind;
-    
-    
-    /* Get the minimum and maximum cutoff radii. */
-    h_min = parts[0].h; h_max = h_min;
-    for ( k = 1 ; k < N ; k++ )
-        if ( parts[k].h < h_min )
-            h_min = parts[k].h;
-        else if ( parts[k].h > h_max )
-            h_max = parts[k].h;
-            
-    /* Stretch the maximum smoothing length. */
-    h_max *= space_stretch;
-            
-    /* Get the cell width. */
-    if ( h_cells < h_max )
-        h_cells = h_max;
-    for ( k = 0 ; k < 3 ; k++ ) {
-        cdim[k] = floor( dim[k] / h_cells );
-        h[k] = dim[k] / cdim[k];
-        ih[k] = 1.0 / h[k];
-        }
-        
-    /* Allocate the highest level of cells. */
-    nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if ( posix_memalign( (void *)&cells , 64 , nr_cells * sizeof(struct cell) ) != 0 )
-        error( "Failed to allocate cells." );
-    bzero( cells , nr_cells * sizeof(struct cell) );
-    for ( k = 0 ; k < nr_cells ; k++ )
-        if ( lock_init( &cells[k].lock ) != 0 )
-            error( "Failed to init spinlock." );
-        
-    /* Set the cell locations. */
-    for ( i = 0 ; i < cdim[0] ; i++ )
-        for ( j = 0 ; j < cdim[1] ; j++ )
-            for ( k = 0 ; k < cdim[2] ; k++ ) {
-                c = &cells[ cell_getid( cdim , i , j , k ) ];
-                c->loc[0] = i*h[0]; c->loc[1] = j*h[1]; c->loc[2] = k*h[2];
-                c->h[0] = h[0]; c->h[1] = h[1]; c->h[2] = h[2];
-                }
-        
-    /* Run through the particles and get their cell index. */
-    ind = (int *)alloca( sizeof(int) * N );
-    for ( k = 0 ; k < N ; k++ )  {
-        ind[k] = cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] );
-        cells[ ind[k] ].count += 1;
-        }
-        
-    /* Sort the parts according to their cells. */
-    parts_sort( parts , ind , N , 0 , nr_cells );
-        
-    /* Hook the cells up to the parts. */
-    for ( finger = parts , k = 0 ; k < nr_cells ; k++ ) {
-        c = &cells[ k ];
-        c->parts = finger;
-        finger = &finger[ c->count ];
-        }
-        
     /* Store eveything in the space. */
-    s->h_min = h_min; s->h_max = h_max;
     s->dim[0] = dim[0]; s->dim[1] = dim[1]; s->dim[2] = dim[2];
     s->periodic = periodic;
     s->nr_parts = N;
     s->parts = parts;
-    s->h[0] = h[0]; s->h[1] = h[1]; s->h[2] = h[2];
-    s->ih[0] = ih[0]; s->ih[1] = ih[1]; s->ih[2] = ih[2];
-    s->cdim[0] = cdim[0]; s->cdim[1] = cdim[1]; s->cdim[2] = cdim[2];
-    s->cells = cells;
-    s->nr_cells = nr_cells;
-    s->tot_cells = nr_cells;
     if ( lock_init( &s->task_lock ) != 0 )
         error( "Failed to create task spin-lock." );
     
-    /* Loop over the cells and split them. */
-    for ( k = 0 ; k < nr_cells ; k++ )
-        space_split( s , &cells[k] );
+    /* Build the cells and the tasks. */
+    space_rebuild( s , 1 );
         
     }
 

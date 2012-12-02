@@ -95,6 +95,7 @@ struct space {
 
 
 /* function prototypes. */
+void parts_sort ( struct part *parts , int *ind , int N , int min , int max );
 struct cell *space_getcell ( struct space *s );
 struct task *space_gettask ( struct space *s );
 struct task *space_addtask ( struct space *s , int type , int subtype , int flags , int wait , struct cell *ci , struct cell *cj , struct task *unlock_tasks[] , int nr_unlock_tasks , struct cell *unlock_cells[] , int nr_unlock_cells );
