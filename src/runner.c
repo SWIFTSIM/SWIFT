@@ -321,7 +321,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
 void runner_doghost ( struct runner *r , struct cell *c ) {
 
     struct part *p;
-    struct cell *finger;
+    struct cell *finger, *finger_prev;;
     int i, k, redo, count = c->count;
     int *pid;
     float ihg, ihg2;
@@ -365,7 +365,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Did we get the right number density? */
             if ( p->wcount + kernel_root > const_nwneigh + 1 ||
                  p->wcount + kernel_root < const_nwneigh - 1 ) {
-                // printf( "runner_doghost: particle %i (h=%e) has bad wcount=%f.\n" , p->id , p->h , p->wcount + kernel_root ); fflush(stdout);
+                // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount + kernel_root ); fflush(stdout);
+                // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
                 pid[redo] = pid[i];
                 redo += 1;
                 p->wcount = 0.0;
@@ -401,6 +402,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             // error( "Bad smoothing length, fixing this isn't implemented yet." );
             
             /* Climb up the cell hierarchy. */
+            finger_prev = c;
             for ( finger = c ; finger != NULL ; finger = finger->parent ) {
             
                 /* Run through this cell's density interactions. */
@@ -423,9 +425,12 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 
                     /* Otherwise, sub interaction? */
                     else if ( finger->density[k]->type == task_type_sub ) 
-                        runner_dosub_subset_density( r , finger->density[k]->ci , finger->density[k]->cj , c , c->parts , pid , count , finger->density[k]->flags );
+                        runner_dosub_subset_density( r , finger->density[k]->ci , finger->density[k]->cj , finger_prev , c->parts , pid , count , finger->density[k]->flags );
                 
                     }
+                    
+                /* Keep a finger on the previous cell. */
+                finger_prev = finger;
             
                 }
         

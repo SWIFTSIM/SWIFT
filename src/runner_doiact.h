@@ -223,7 +223,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                 if ( r2 < hi2 ) {
 
                     IACT_NONSYM( r2 , dx , hi , pj->h , pi , pj );
-
+                    
                     }
 
                 } /* loop over the parts in cj. */
@@ -797,17 +797,20 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct cell *r
 
     // TIMER_TIC
     
+    // printf( "dosub_subset: doing sub with flags=%i, depth=%i.\n" , flags , ci->depth ); fflush(stdout);
+    
     /* Different types of flags. */
     switch ( flags ) {
     
         /* Regular sub-cell interactions of a single cell. */
         case 0:
             for ( j = 0 ; j < 7 ; j++ )
-                for ( k = j + 1 ; k < 8 ; k++ )
+                for ( k = j + 1 ; k < 8 ; k++ ) {
                     if ( ci->progeny[j] == sub && ci->progeny[k] != NULL )
                         DOPAIR_SUBSET( r , ci->progeny[j] , parts_i , ind , count , ci->progeny[k] );
-                    else if ( ci->progeny[k] == sub && ci->progeny[j] != NULL)
+                    else if ( ci->progeny[k] == sub && ci->progeny[j] != NULL )
                         DOPAIR_SUBSET( r , ci->progeny[k] , parts_i , ind , count , ci->progeny[j] );
+                    }
             break;
             
         case 1: /* (  1 ,  1 ,  0 ) */

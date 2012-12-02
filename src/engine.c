@@ -64,8 +64,8 @@ void engine_prepare ( struct engine *e , int force ) {
     struct space *s = e->s;
 
     /* Rebuild the space. */
-    changes = space_rebuild( e->s , force );
-    printf( "engine_prepare: space_rebuild with %i changes.\n" , changes );
+    changes = space_rebuild( e->s , force , 0 );
+    // printf( "engine_prepare: space_rebuild with %i changes.\n" , changes );
     
     /* Has anything changed? */
     if ( changes ) {

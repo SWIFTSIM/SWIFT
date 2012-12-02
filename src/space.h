@@ -103,7 +103,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
 void space_maketasks ( struct space *s , int do_sort );
 void space_map_cells ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data );
 void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct cell *c , void *data ) , void *data );
-int space_rebuild ( struct space *s , int force );
+int space_rebuild ( struct space *s , int force , double h_max );
 void space_recycle ( struct space *s , struct cell *c );
 void space_split ( struct space *s , struct cell *c );
 
