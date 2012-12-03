@@ -35,6 +35,7 @@
     #define lock_lock( l ) ( pthread_spin_lock( l ) != 0 )
     #define lock_trylock( l ) ( pthread_spin_lock( l ) != 0 )
     #define lock_unlock( l ) ( pthread_spin_unlock( l ) != 0 )
+    #define lock_unlock_blind( l ) pthread_spin_unlock( l )
 #else
     #define lock_type volatile int
     #define lock_init( l ) ( *l = 0 )
@@ -46,4 +47,5 @@
         }
     #define lock_trylock( l ) ( ( *(l) ) ? 1 : __sync_val_compare_and_swap( l , 0 , 1 ) )
     #define lock_unlock( l ) ( __sync_val_compare_and_swap( l , 1 , 0 ) != 1 )
+    #define lock_unlock_blind( l ) __sync_val_compare_and_swap( l , 1 , 0 )
 #endif

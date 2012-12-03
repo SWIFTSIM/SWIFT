@@ -49,7 +49,9 @@ extern const char *taskID_names[];
 /* Data of a task. */
 struct task {
 
-    int type, subtype, flags, wait, rank, done;
+    int type, subtype, flags, wait, rank;
+    
+    lock_type lock;
     
     int nr_unlock_tasks;
     struct task *unlock_tasks[ task_maxunlock ];

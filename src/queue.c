@@ -39,7 +39,7 @@
 #include "queue.h"
 
 /* Error macro. */
-#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 /* Define the timer macros. */
 #ifdef TIMER_VERBOSE
@@ -147,7 +147,7 @@ void queue_init ( struct queue *q , int size , struct task *tasks ) {
  * @param keep Remove the returned task from this queue.
  */
  
-struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
+struct task *queue_gettask_old ( struct queue *q , int blocking , int keep ) {
 
     int k, tid = -1, qcount, *qtid = q->tid;
     lock_type *qlock = &q->lock;
@@ -267,7 +267,7 @@ struct task *queue_gettask ( struct queue *q , int blocking , int keep ) {
     }
 
 
-struct task *queue_gettask_new ( struct queue *q , int rid , int blocking , int keep ) {
+struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep ) {
 
     int k, tid = -1, qcount, *qtid = q->tid;
     lock_type *qlock = &q->lock;

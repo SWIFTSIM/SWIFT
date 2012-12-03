@@ -45,7 +45,7 @@
 #include "runner_iact.h"
 
 /* Error macro. */
-#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 /* Convert cell location to ID. */
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
@@ -508,11 +508,11 @@ void *runner_main ( void *data ) {
             TIMER_TIC
             t = NULL;
             if ( e->nr_queues == 1 ) {
-                t = queue_gettask( &e->queues[0] , 1 , 0 );
+                t = queue_gettask_old( &e->queues[0] , 1 , 0 );
                 }
             else if ( e->policy & engine_policy_steal ) {
                 if ( ( myq->next == myq->count ) ||
-                     ( t = queue_gettask_new( myq , r->id , 0 , 0 ) ) == NULL ) {
+                     ( t = queue_gettask( myq , r->id , 0 , 0 ) ) == NULL ) {
                     TIMER_TIC2
                     qid = rand_r( &myseed ) % naq;
                     keep = ( e->policy & engine_policy_keep ) &&
@@ -521,7 +521,7 @@ void *runner_main ( void *data ) {
                         COUNT(runner_counter_steal_empty);
                     else
                         COUNT(runner_counter_steal_stall);
-                    t = queue_gettask_new( queues[qid] , r->id , 0 , keep );
+                    t = queue_gettask( queues[qid] , r->id , 0 , keep );
                     if ( t != NULL && keep )
                         queue_insert( myq , t );
                     TIMER_TOC2(runner_timer_steal);
@@ -529,10 +529,10 @@ void *runner_main ( void *data ) {
                 }
             else if ( e->policy & engine_policy_rand ) {
                 qid = rand_r( &myseed ) % naq;
-                t = queue_gettask( queues[qid] , e->policy & engine_policy_block , 0 );
+                t = queue_gettask( queues[qid] , r->id , e->policy & engine_policy_block , 0 );
                 }
             else {
-                t = queue_gettask( &e->queues[threadID] , e->policy & engine_policy_block , 0 );
+                t = queue_gettask( &e->queues[threadID] , r->id , e->policy & engine_policy_block , 0 );
                 }
             TIMER_TOC(runner_timer_getpair);
             
@@ -602,8 +602,6 @@ void *runner_main ( void *data ) {
                     error( "Unknown task type." );
                 }
                 
-            t->done = 1;
-            
             /* Resolve any dependencies. */
             for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
                 if ( __sync_fetch_and_sub( &t->unlock_tasks[k]->wait , 1 ) == 0 )

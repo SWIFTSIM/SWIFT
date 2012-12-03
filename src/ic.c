@@ -32,13 +32,13 @@
 #include <hdf5.h>
 
 
-#include "task.h"
 #include "lock.h"
+#include "task.h"
 #include "part.h"
 #include "space.h"
 
 /* Error macro. */
-#define error(s) { printf( "%s:%s():%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#define error(s) { fprintf( stderr , "%s:%s():%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 
 /**

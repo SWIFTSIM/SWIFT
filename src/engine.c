@@ -45,7 +45,7 @@
 #include "runner_iact.h"
 
 /* Error macro. */
-#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 /* Convert cell location to ID. */
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
@@ -206,7 +206,6 @@ void engine_run ( struct engine *e , int sort_queues ) {
     
     /* Run throught the tasks and get all the waits right. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        s->tasks[k].done = 0;
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
             s->tasks[k].unlock_tasks[j]->wait += 1;
         for ( j = 0 ; j < s->tasks[k].nr_unlock_cells ; j++ )

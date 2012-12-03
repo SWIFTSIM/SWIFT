@@ -39,7 +39,7 @@
 #include "runner.h"
 
 /* Error macro. */
-#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -288,6 +288,7 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
+    #pragma omp parallel for shared(s) reduction(+:changes)
     for ( k = 0 ; k < s->nr_cells ; k++ )
         changes += space_rebuild_recurse( s , &s->cells[k] );
         
@@ -344,14 +345,35 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
             error( "Sorting failed (>pivot)." );
             }
         
-    /* Recurse on the left? */
-    if ( j > 0 && pivot > min )
-        parts_sort( parts , ind , j+1 , min , pivot );
-        
-    /* Recurse on the right? */
-    if ( i < N && pivot+1 < max )
-        parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+    /* Try to recurse in parallel. */
+    if ( N < 100 ) {
+    
+        /* Recurse on the left? */
+        if ( j > 0 && pivot > min )
+            parts_sort( parts , ind , j+1 , min , pivot );
 
+        /* Recurse on the right? */
+        if ( i < N && pivot+1 < max )
+            parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+
+        }
+        
+    else
+    #pragma omp parallel sections
+    {
+    
+        /* Recurse on the left? */
+        #pragma omp section
+        if ( j > 0 && pivot > min )
+            parts_sort( parts , ind , j+1 , min , pivot );
+
+        /* Recurse on the right? */
+        #pragma omp section
+        if ( i < N && pivot+1 < max )
+            parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+
+        }
+    
     }
 
 
@@ -409,101 +431,6 @@ void space_map_clearnrtasks ( struct cell *c , void *data ) {
 
     c->nr_tasks = 0;
     c->nr_density = 0;
-
-    }
-
-
-/**
- * @brief Get a task free of dependencies and conflicts.
- *
- * @param s The #space.
- */
- 
-struct task *space_gettask ( struct space *s ) {
-
-    int k, tid = -1;
-    struct task *res = NULL;
-    struct cell *c;
-
-    /* Main loop, while there are tasks... */
-    while ( s->next_task < s->nr_tasks ) {
-    
-        /* Grab the task lock. */
-        if ( lock_lock( &s->task_lock ) != 0 )
-            error( "Locking the task_lock failed.\n" );
-            
-        /* Loop over the remaining task IDs. */
-        for ( k = s->next_task ; k < s->nr_tasks ; k++ ) {
-        
-            /* Put a finger on the task. */
-            res = &s->tasks[ s->tasks_ind[k] ];
-            
-            /* Is this task blocked? */
-            if ( res->wait )
-                continue;
-            
-            /* Different criteria for different types. */
-            switch ( res->type ) {
-                case task_type_self:
-                    if ( res->ci->lock || res->ci->wait > 0 )
-                        continue;
-                    break;
-                case task_type_pair:
-                    if ( res->ci->lock || res->cj->lock || res->ci->wait || res->cj->wait )
-                        continue;
-                    break;
-                case task_type_sort:
-                    if ( res->ci->lock )
-                        continue;
-                    break;
-                }
-            
-            /* If we made it this far, we're safe. */
-            break;
-        
-            } /* loop over the task IDs. */
-            
-        /* Did we get a task? */
-        if ( k < s->nr_tasks ) {
-        
-            // /* Swap to front. */
-            // tid = s->tasks_ind[k];
-            // s->tasks_ind[k] = s->tasks_ind[ s->next_task ];
-            // s->tasks_ind[ s->next_task ] = tid;
-            
-            /* Bubble-down the task. */
-            tid = s->tasks_ind[k];
-            while ( k > s->next_task ) {
-                s->tasks_ind[ k ] = s->tasks_ind[ k-1 ];
-                k -= 1;
-                }
-            s->tasks_ind[ s->next_task ] = tid;
-            
-            /* Lock the cells, if needed. */
-            if ( s->tasks[tid].type != task_type_sort ) {
-                for ( c = res->ci ; c != NULL ; c = c->parent )
-                    __sync_fetch_and_add( &c->lock , 1 );
-                for ( c = res->cj ; c != NULL ; c = c->parent )
-                    __sync_fetch_and_add( &c->lock , 1 );
-                }
-            
-            /* up the counter. */
-            s->next_task += 1;
-        
-            }
-    
-        /* Release the task lock. */
-        if ( lock_unlock( &s->task_lock ) != 0 )
-            error( "Locking the task_lock failed.\n" );
-            
-        /* Leave? */
-        if ( tid >= 0 )
-            return &s->tasks[tid];
-    
-        } /* while there are tasks. */
-        
-    /* No beef. */
-    return NULL;
 
     }
 
@@ -584,7 +511,13 @@ void space_map_cells ( struct space *s , int full , void (*fun)( struct cell *c 
  
 struct task *space_addtask ( struct space *s , int type , int subtype , int flags , int wait , struct cell *ci , struct cell *cj , struct task *unlock_tasks[] , int nr_unlock_tasks , struct cell *unlock_cells[] , int nr_unlock_cells ) {
 
-    struct task *t = &s->tasks[ s->nr_tasks ];
+    struct task *t;
+    
+    /* Lock the space. */
+    lock_lock( &s->lock );
+    
+    /* Get the next free task. */
+    t = &s->tasks[ s->nr_tasks ];
     
     /* Copy the data. */
     t->type = type;
@@ -602,6 +535,9 @@ struct task *space_addtask ( struct space *s , int type , int subtype , int flag
     
     /* Increase the task counter. */
     s->nr_tasks += 1;
+    
+    /* Unock the space. */
+    lock_unlock_blind( &s->lock );
     
     /* Return a pointer to the new task. */
     return t;
@@ -1344,9 +1280,6 @@ void space_maketasks ( struct space *s , int do_sort ) {
         printf( " %s=%i" , taskID_names[k] , counts[k] );
     printf( " ]\n" );
         
-    /* Re-set the next task pointer. */
-    s->next_task = 0;
-            
     }
     
     
@@ -1444,6 +1377,9 @@ void space_split ( struct space *s , struct cell *c ) {
  
 void space_recycle ( struct space *s , struct cell *c ) {
 
+    /* Lock the space. */
+    lock_lock( &s->lock );
+    
     /* Clear the cell. */
     if ( lock_destroy( &c->lock ) != 0 )
         error( "Failed to destroy spinlock." );
@@ -1456,6 +1392,9 @@ void space_recycle ( struct space *s , struct cell *c ) {
     c->next = s->cells_new;
     s->cells_new = c;
     s->tot_cells -= 1;
+    
+    /* Unlock the space. */
+    lock_unlock_blind( &s->lock );
     
     }
 
@@ -1470,6 +1409,9 @@ struct cell *space_getcell ( struct space *s ) {
 
     struct cell *c;
     int k;
+    
+    /* Lock the space. */
+    lock_lock( &s->lock );
     
     /* Is the buffer empty? */
     if ( s->cells_new == NULL ) {
@@ -1491,6 +1433,9 @@ struct cell *space_getcell ( struct space *s ) {
     if ( lock_init( &c->lock ) != 0 )
         error( "Failed to initialize cell spinlock." );
         
+    /* Unlock the space. */
+    lock_unlock_blind( &s->lock );
+    
     return c;
 
     }
@@ -1519,8 +1464,10 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->periodic = periodic;
     s->nr_parts = N;
     s->parts = parts;
-    if ( lock_init( &s->task_lock ) != 0 )
-        error( "Failed to create task spin-lock." );
+    
+    /* Init the space lock. */
+    if ( lock_init( &s->lock ) != 0 )
+        error( "Failed to create space spin-lock." );
     
     /* Build the cells and the tasks. */
     space_rebuild( s , 1 , h_max );

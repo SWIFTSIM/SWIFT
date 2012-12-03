@@ -41,7 +41,7 @@
 const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" , "sub" , "ghost" };
 
 /* Error macro. */
-#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 
 /**
@@ -55,10 +55,13 @@ void task_rmunlock( struct task *ta , struct task *tb ) {
 
     int k;
     
+    lock_lock( &ta->lock );
+    
     for ( k = 0 ; k < ta->nr_unlock_tasks ; k++ )
         if ( ta->unlock_tasks[k] == tb ) {
             ta->nr_unlock_tasks -= 1;
             ta->unlock_tasks[k] = ta->unlock_tasks[ ta->nr_unlock_tasks ];
+            lock_unlock_blind( &ta->lock );
             return;
             }
     error( "Task not found." );
@@ -80,12 +83,16 @@ void task_rmunlock_blind( struct task *ta , struct task *tb ) {
 
     int k;
     
+    lock_lock( &ta->lock );
+    
     for ( k = 0 ; k < ta->nr_unlock_tasks ; k++ )
         if ( ta->unlock_tasks[k] == tb ) {
             ta->nr_unlock_tasks -= 1;
             ta->unlock_tasks[k] = ta->unlock_tasks[ ta->nr_unlock_tasks ];
-            return;
+            break;
             }
+            
+    lock_unlock_blind( &ta->lock );
 
     }
     
@@ -105,10 +112,14 @@ void task_addunlock( struct task *ta , struct task *tb ) {
     if ( ta == NULL || tb == NULL )
         return;
     
+    lock_lock( &ta->lock );
+    
     /* Check if ta already unlocks tb. */
     for ( k = 0 ; k < ta->nr_unlock_tasks ; k++ )
-        if ( ta->unlock_tasks[k] == tb )
+        if ( ta->unlock_tasks[k] == tb ) {
+            lock_unlock_blind( &ta->lock );
             return;
+            }
 
     if ( ta->nr_unlock_tasks == task_maxunlock )
         error( "Too many unlock_tasks in task." );
@@ -116,6 +127,8 @@ void task_addunlock( struct task *ta , struct task *tb ) {
     ta->unlock_tasks[ ta->nr_unlock_tasks] = tb;
     ta->nr_unlock_tasks += 1;
 
+    lock_unlock_blind( &ta->lock );
+    
     }
     
 

@@ -87,9 +87,11 @@ struct space {
     
     /* The list of tasks. */
     struct task *tasks;
-    int nr_tasks, next_task, tasks_size;
+    int nr_tasks, tasks_size;
     int *tasks_ind;
-    lock_type task_lock;
+    
+    /* General-purpose lock for this space. */
+    lock_type lock;
     
     };
 
