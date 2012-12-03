@@ -508,18 +508,24 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
     }
 
 
-void pairs_single ( double *dim , int pid , struct part *__restrict__ parts , int N , int periodic ) {
+void pairs_single ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
 
     int i, k;
     // int mj, mk;
     // double maxratio = 1.0;
     double r2, dx[3];
-    struct part *p = &parts[pid];
-    double ih = 15.0/6.25; 
+    struct part *p;
+    double ih = 15.0/6.25;
+    
+    /* Find "our" part. */
+    for ( k = 0 ; k < N && parts[k].id != pid ; k++ );
+    if ( k == N )
+        error( "Part not found." );
+    p = &parts[k];
     
     /* Loop over all particle pairs. */
     for ( k = 0 ; k < N ; k++ ) {
-        if ( k == pid )
+        if ( &parts[k] == p )
             continue;
         for ( i = 0 ; i < 3 ; i++ ) {
             dx[i] = p->x[i] - parts[k].x[i];
@@ -533,9 +539,10 @@ void pairs_single ( double *dim , int pid , struct part *__restrict__ parts , in
         r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
         if ( r2 < p->h*p->h ) {
             runner_iact_density( r2 , NULL , p->h , parts[k].h , p , &parts[k] );
-            printf( "runner_dopair: interacting particles %i [%i,%i,%i] and %lli [%i,%i,%i].\n" ,
-                pid , (int)(parts[pid].x[0]*ih) , (int)(parts[pid].x[1]*ih) , (int)(parts[pid].x[2]*ih) ,
-                parts[k].id , (int)(parts[k].x[0]*ih) , (int)(parts[k].x[1]*ih) , (int)(parts[k].x[2]*ih) );
+            printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli [%i,%i,%i], r=%e.\n" ,
+                pid , (int)(p->x[0]*ih) , (int)(p->x[1]*ih) , (int)(p->x[2]*ih) ,
+                parts[k].id , (int)(parts[k].x[0]*ih) , (int)(parts[k].x[1]*ih) , (int)(parts[k].x[2]*ih) ,
+                sqrtf(r2) );
             parts[k].rho = 0.0;
             parts[k].wcount = 0.0;
             parts[k].rho_dh = 0.0;
@@ -811,7 +818,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Get the brute-force number of pairs. */
     // pairs_n2( dim , parts , N , periodic );
-    // pairs_single( dim , 1517660 , parts , N , periodic );
+    // pairs_single( dim , 1168833436525 , parts , N , periodic );
     // fflush( stdout );
     
     /* Set default number of queues. */
