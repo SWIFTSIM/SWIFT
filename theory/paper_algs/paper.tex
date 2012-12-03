@@ -66,7 +66,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Title, author and affiliations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\title{Fast Algorithms for Smoothed Particle Hydrodynamics on Multi-Core
+\title{Efficient and Scalable Algorithms for Smoothed Particle Hydrodynamics on Multi-Core
     Architectures}
 \author{Pedro Gonnet\thanks{School of Engineering and Computing Sciences,
     Durham University, Durham, Untied Kingdom ({\tt pedro.gonnet@durham.ac.uk}).}}
@@ -95,7 +95,11 @@
 %  Abstract
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-Bla.
+A new framework for the parallelization of Smoothed Particle Hydrodynamics (SPH)
+simulations on shared-memory parallel architectures is described.
+This framework relies on fast and cache-efficient cell-based neighbour-finding
+algorithms, as well as task-based parallelism to achieve good scaling and
+parallel efficiency on mult-core computers.
 \end{abstract}
 
 
@@ -115,7 +119,7 @@ multi-cores
 
 \pagestyle{myheadings}
 \thispagestyle{plain}
-\markboth{P. GONNET}{FAST ALGORITHMS FOR SPH}
+\markboth{P. GONNET}{EFFICIENT AND SCALABLE ALGORITHMS FOR SPH}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -627,21 +631,17 @@ The dependencies and conflicts between tasks are then given as follows:
 
 \subsubsection{Task queues}
 
-\begin{itemize}
-
-    \item If the dependencies and conflicts are defined correctly, then
-        there is no risk of concurrency problems and thus each task
-        can be implemented without special attention to the latter,
-        e.g.~it can update data without using exclusinve access barriers
-        or atomic memory updates.
-        
-    \item This, however, requires some care in how the individual tasks
-        are allocated to the computing threads, i.e.~each task should
-        be allocated once to a single thread, and should not have
-        and unresolved dependencies, or conflict with any concurrently
-        executing tasks.
-        
-    \item In the following, tasks will be stored in one or more {\em queues}:
+If the dependencies and conflicts are defined correctly, then
+there is no risk of concurrency problems and thus each task
+can be implemented without special attention to the latter,
+e.g.~it can update data without using exclusinve access barriers
+or atomic memory updates.
+This, however, requires some care in how the individual tasks
+are allocated to the computing threads, i.e.~each task should
+be allocated once to a single thread, and should not have
+and unresolved dependencies, or conflict with any concurrently
+executing tasks.
+In the following, tasks will be stored in one or more {\em queues}:
         
 \begin{center}\begin{minipage}{0.8\textwidth}
     \begin{lstlisting}
@@ -660,7 +660,7 @@ in the queue.
 The {\tt pthread\_mutex\_t lock} is used to guarantee exclusive access
 to the queue.
 
-    \item Task IDs are retreived from the queue as follows:        
+Task IDs are retreived from the queue as follows:        
 
 \begin{center}\begin{minipage}{0.8\textwidth}
     \begin{lstlisting}
@@ -688,72 +688,145 @@ int queue_gettask ( struct queue *q , int steal ) {
     \end{lstlisting}
 \end{minipage}\end{center}
 
-    \noindent i.e.~exclusive access to the queue is obtained by locking
-        its mutex in line~2. In lines~3 to~6, the tasks are inspected
-        in sequence until a task is found that has no unresolved
-        dependencies or existing conflicts.
-        If a task has been found, its ID is swapped with that at
-        position {\tt next}, and {\tt next} is incremented by one
-        (lines 8~to~11).
-        The lock on the queue is then released (line~12) and
-        the task ID, or {\tt -1} if no available task was found, is
-        returned.
-        
-    \item The advantage of swapping the retreived task to the next
-        position in the list is that if the queue is reset, e.g.~{\tt next}
-        is set to zero, and used again with the same set of tasks,
-        they will now be traversed in the order in which they were
-        exectuted in the previous run.
-        This provides a basic form of iterative refinement of the task
-        order.
-        
-    \item The tasks can also be sorted topologically, according to their
-        dependency graph, to help minimize the effort required to find
-        a valid task.
-        
-    \item The mutex at the start of {\tt queue\_gettask} is a potential
-        bottleneck if the time required to process a task is small
-        compared to the time required for all the threads to obtain
-        a task, e.g.~for large numbers of very small tasks and/or
-        a large number of threads.
-        
-    \item One way of avoiding this problem is to use several concurrent
-        queues, e.g.~one queue per thread, and spread the tasks over
-        all queues.
-        
-    \item A fixed assignemnt of tasks to queues can, however,
-        cause load balancing problems, e.g.~when a thread's queue is
-        empty before the others have finished.
-        
-    \item In order to avoid such problems, {\em work-stealing} can be used:
-        If a thread cannot obtain a task from its own queue, it picks
-        another queue at random and tries to {\em steal} a task from it
-        i.e. if it can obtain a task, it removes it from the queue and
-        adds it to it's own queue, thus iteratively rebalancing
-        the task queues if they are used repeatedly:
+\noindent i.e.~exclusive access to the queue is obtained by locking
+its mutex in line~2. In lines~3 to~6, the tasks are inspected
+in sequence until a task is found that has no unresolved
+dependencies or existing conflicts.
+If a task has been found, its ID is swapped with that at
+position {\tt next}, and {\tt next} is incremented by one
+(lines 8~to~11).
+The lock on the queue is then released (line~12) and
+the task ID, or {\tt -1} if no available task was found, is
+returned.
+
+The advantage of swapping the retreived task to the next
+position in the list is that if the queue is reset, e.g.~{\tt next}
+is set to zero, and used again with the same set of tasks,
+they will now be traversed in the order in which they were
+exectuted in the previous run.
+This provides a basic form of iterative refinement of the task
+order.
+The tasks can also be sorted topologically, according to their
+dependency graph, to help minimize the effort required to find
+a valid task.
+
+The mutex at the start of {\tt queue\_gettask} is a potential
+bottleneck if the time required to process a task is small
+compared to the time required for all the threads to obtain
+a task, e.g.~for large numbers of very small tasks and/or
+a large number of threads.
+One way of avoiding this problem is to use several concurrent
+queues, e.g.~one queue per thread, and spread the tasks over
+all queues.
+A fixed assignemnt of tasks to queues can, however,
+cause load balancing problems, e.g.~when a thread's queue is
+empty before the others have finished.
+In order to avoid such problems, {\em work-stealing} can be used:
+If a thread cannot obtain a task from its own queue, it picks
+another queue at random and tries to {\em steal} a task from it
+i.e. if it can obtain a task, it removes it from the queue and
+adds it to it's own queue, thus iteratively rebalancing
+the task queues if they are used repeatedly:
 
 \begin{center}\begin{minipage}{0.8\textwidth}
     \begin{lstlisting}
-    while ( there is still a task in any of the queues ) {
-        
+while ( there is still a task in any of the queues ) {
+    if ( ( tid = queue_gettask( myq , 0 ) ) < 0 ) {
+        randq = pick a non-empty queue at random.
+        if ( ( tid = queue_gettask( randq , 1 ) ) >= 0 )
+            queue_addtask( myq , tid );
         }
+    if ( tid >= 0 )
+        execute task tid.
+    }
     \end{lstlisting}
 \end{minipage}\end{center}
 
-\end{itemize}
+\noindent where {\tt myq} is the queue associated with the
+current thread and {\tt queue\_addtask} adds a task ID
+to the given queue.
 
 
 \subsubsection{Cell locking}
 
-\begin{itemize}
+Particles within a cell are also within that cell's hierarchical
+parents.
+Therefore, when working on the particles of a cell, tasks which
+operate on its parent's data should not be allowed to execute.
+One way to avoid this problem is to require that a task
+not only lock a cell, but also all of its hierarchical
+parents in order to operate on its data.
+This, however, would prevent tasks involving siblings,
+whose particle sets do not overlap, from executing.
 
-    \item Explain problem of hierarchical locking, i.e.~interactions
-        involving higher-level cells exclude lower-level cells.
+We avoid this problem by giving each cell both a {\em lock},
+and a {\em hold} counter:
         
-    \item Two-phase locking up and down the cell hierarchy, with
-        ``lock'' and ``hold'' states.
+\begin{center}\begin{minipage}{0.8\textwidth}
+    \begin{lstlisting}
+int cell_locktree ( struct cell c ) {
+    struct cell *c1, *c2;
+    if ( trylock( c->lock ) != 0 )
+        return 1;
+    if ( c->hold > 0 ) {
+        unlock( c->lock )
+        return 1;
+        }
+    for ( c1 = c->parent ; c1 != NULL ; c1 = c1->parent ) {
+        if ( trylock( c1->lock ) != 0 )
+            break;
+        atomic_add( c1->hold , 1 );
+        unlock( c1->lock );
+        }
+    if ( finger != NULL ) {
+        for ( c2 = c->parent ; c2 != c1 ; c2 = c2->parent )
+            atomic_sub( c2->hold , 1 );
+        unlock( c->lock );
+        return 1;
+        }
+    else
+        return 0;
+    }
+    \end{lstlisting}
+\end{minipage}\end{center}
 
-\end{itemize}
+\noindent When trying to lock a cell, we first check that it is neither
+locked (line 3) or held (line 5), i.e.~its hold counter is zero, and lock it.
+We then travel up the hierarchy increasing the 
+hold counter of each cell on the way, up to the topmost cell (lines 9--14).
+If any cell along the hierarchy is locked (line 10), the locking is aborted
+and all locks and holds are undone (lines 15--20, see \fig{CellLocking}).
+The operations {\tt atomic\_add} and {\tt atomic\_sub} are understood,
+respectively, to increase or decrease a value atomically.
+
+When the cell is released, its lock is unlocked and the hold
+counter of all hierarchical parents is decreased by one:
+
+\begin{center}\begin{minipage}{0.8\textwidth}
+    \begin{lstlisting}
+void cell_unlocktree ( struct cell c ) {
+    struct cell *c1;
+    unlock( c->lock )
+    for ( c1 = c->parent ; c1 != NULL ; c1 = c1->parent ) {
+        atomic_sub( c1->hold , 1 );
+    }
+    \end{lstlisting}
+\end{minipage}\end{center}
+
+
+\begin{figure}[ht]
+    \centerline{\epsfig{file=figures/CellLocking.pdf,width=0.5\textwidth}}
+    
+    \caption{Example of hierarchical cell locking. The cells marked in red
+        are ``locked'' while the cells marked in yellow have a ``hold'' count
+        larger than zero.
+        The hold count is shown inside each cell and corresponds to the number
+        of locked cells hierarchicaly below it.
+        All cells except for those locked or with a ``hold'' count larger than
+        zero can still be locked without causing concurrent data access.
+        }
+    \label{fig:CellLocking}
+\end{figure}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -765,7 +838,14 @@ int queue_gettask ( struct queue *q , int steal ) {
 
 \begin{itemize}
 
-    \item Details of the task queues.
+    \item Implemented in C, compiled with {\tt gcc}.
+
+    \item Threading implemented with {\tt pthread}.
+
+    \item One task queue per thread.
+    
+    \item As of yet, no use of SIMD capabilities to evaluate several
+        interactions at a time.
     
     \item Details of the pair interactions.
     
@@ -778,7 +858,11 @@ int queue_gettask ( struct queue *q , int steal ) {
 
 \begin{itemize}
 
-    \item Show both large and small simulation setups.
+    \item Details of the simulation used, e.g. size, number of particles,
+        etc...
+        
+    \item So far only considering density and force computation,
+        particles not moving.
         
 \end{itemize}
 
@@ -801,7 +885,11 @@ int queue_gettask ( struct queue *q , int steal ) {
 
 \begin{itemize}
 
-    \item Bla.
+    \item Good scaling.
+    
+    \item Computational model can easily be exported to other architectures,
+        including GPUs (reference task-based parallelism on GPUs with Aidan),
+        and other multi-core accelerators such as the Intel MIC.
         
 \end{itemize}
 
@@ -811,7 +899,14 @@ int queue_gettask ( struct queue *q , int steal ) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Acknowledgments}
 
-ICC Durham, Nick Holliman's hardware, NVidia's hardware.
+\begin{itemize}
+
+    \item Collaboration with Matthieu Schaller and Tom Theums from the
+        Institute of Computational Cosmology (ICC) at Durham University.
+        
+    \item Lydia Heck from the ICC for providing access to the infrastructure.
+
+\end{itemize}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
