@@ -83,7 +83,7 @@ int cell_locktree( struct cell *c ) {
     TIMER_TIC
 
     /* First of all, try to lock this cell. */
-    if ( lock_trylock( &c->lock ) != 0 ) {
+    if ( c->hold || lock_trylock( &c->lock ) != 0 ) {
         TIMER_TOC(cell_timer_tree);
         return 1;
         }

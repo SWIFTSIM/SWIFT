@@ -272,6 +272,7 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
     int k, tid = -1, qcount, *qtid = q->tid;
     lock_type *qlock = &q->lock;
     struct task *qtasks = q->tasks, *res = NULL;
+    struct cell *ci_best = NULL, *cj_best = NULL;
     int ind_best, score_best = -1, score;
     TIMER_TIC
     
@@ -312,34 +313,39 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
                 score = ( res->ci->owner == rid ) + ( res->cj->owner == rid );
             if ( score <= score_best )
                 continue;
-            
-            /* Different criteria for different types. */
+                
+            /* Try to lock ci. */
             if ( res->type == task_type_self || (res->type == task_type_sub && res->cj == NULL) ) {
-                if ( res->ci->hold || cell_locktree( res->ci ) != 0 )
+                if ( res->ci != ci_best && res->ci != cj_best && cell_locktree( res->ci ) != 0 )
                     continue;
                 }
             else if ( res->type == task_type_pair || (res->type == task_type_sub && res->cj != NULL) ) {
                 if ( res->ci->hold || res->cj->hold || res->ci->wait || res->cj->wait )
                     continue;
-                if ( cell_locktree( res->ci ) != 0 )
+                if ( res->ci != ci_best && res->ci != cj_best && cell_locktree( res->ci ) != 0 )
                     continue;
-                if ( cell_locktree( res->cj ) != 0 ) {
-                    cell_unlocktree( res->ci );
+                if ( res->cj != ci_best && res->cj != cj_best && cell_locktree( res->cj ) != 0 ) {
+                    if ( res->ci != ci_best && res->ci != cj_best )
+                        cell_unlocktree( res->ci );
                     continue;
                     }
                 }
-                
+            
             /* If we owned a previous task, unlock it. */
             if ( ind_best >= 0 ) {
                 res = &qtasks[ qtid[ ind_best ] ];
                 if ( res->type == task_type_self || res->type == task_type_pair || res->type == task_type_sub )
-                    cell_unlocktree( res->ci );
+                    if ( res->ci != ci_best && res->ci != cj_best )
+                        cell_unlocktree( res->ci );
                 if ( res->type == task_type_pair || (res->type == task_type_sub && res->cj != NULL) )
-                    cell_unlocktree( res->cj );
+                    if ( res->cj != ci_best && res->cj != cj_best )
+                        cell_unlocktree( res->cj );
                 }
             
             /* If we made it this far, we're safe. */
             ind_best = k;
+            ci_best = qtasks[ qtid[ k ] ].ci;
+            cj_best = qtasks[ qtid[ k ] ].cj;
             score_best = score;
             
             /* Should we bother looking any farther? */
