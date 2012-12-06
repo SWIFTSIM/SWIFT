@@ -63,6 +63,8 @@ extern ticks runner_timer[ runner_timer_count ];
 #else
     #define TIMER_TIC
     #define TIMER_TOC(t)
+    #define TIMER_TIC2
+    #define TIMER_TOC2(t)
 #endif
 
 
