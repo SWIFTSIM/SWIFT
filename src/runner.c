@@ -479,7 +479,9 @@ void *runner_main ( void *data ) {
         keep = e->policy & engine_policy_keep;
         myq = &e->queues[ threadID % e->nr_queues ];
         tpq = ceil( ((double)e->nr_threads) / e->nr_queues );
-        stalled = 0;
+        #ifdef TIMER
+            stalled = 0;
+        #endif
         
         /* Set up the local list of active queues. */
         naq = e->nr_queues;
@@ -539,8 +541,10 @@ void *runner_main ( void *data ) {
             /* Did I get anything? */
             if ( t == NULL ) {
                 COUNT(runner_counter_stall);
-                if ( !stalled )
-                    stalled = getticks();
+                #ifdef TIMER
+                    if ( !stalled )
+                        stalled = getticks();
+                #endif
                 continue;
                 }
             #ifdef TIMER

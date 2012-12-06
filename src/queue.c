@@ -269,7 +269,7 @@ struct task *queue_gettask_old ( struct queue *q , int blocking , int keep ) {
 
 struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep ) {
 
-    int k, tid = -1, qcount, *qtid = q->tid, hits = 0;
+    int k, tid = -1, qcount, *qtid = q->tid, hits;
     lock_type *qlock = &q->lock;
     struct task *qtasks = q->tasks, *res = NULL;
     struct cell *ci_best = NULL, *cj_best = NULL;
@@ -296,7 +296,7 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
         //     }
             
         /* Loop over the remaining task IDs. */
-        qcount = q->count; ind_best = -1;
+        qcount = q->count; ind_best = -1; hits = 0;
         for ( k = q->next ; k < qcount && hits < queue_maxhits ; k++ ) {
         
             /* Put a finger on the task. */
