@@ -477,7 +477,7 @@ void *runner_main ( void *data ) {
         
         /* Set some convenient local data. */
         keep = e->policy & engine_policy_keep;
-        myq = &e->queues[ threadID % e->nr_queues ];
+        myq = &e->queues[ threadID * e->nr_queues / e->nr_threads ];
         tpq = ceil( ((double)e->nr_threads) / e->nr_queues );
         #ifdef TIMER
             stalled = 0;
