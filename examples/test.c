@@ -200,11 +200,11 @@ void map_wcount_max ( struct part *p , struct cell *c , void *data ) {
 
 void map_icount ( struct part *p , struct cell *c , void *data ) {
 
-    int *count = (int *)data;
+    // int *count = (int *)data;
     
     // printf( "%i\n" , p->icount );
 
-    *count += p->icount;
+    // *count += p->icount;
 
     }
 
@@ -490,7 +490,7 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
         
     /* Aggregate the results. */
     for ( k = 0 ; k < N ; k++ ) {
-        count += parts[k].icount;
+        // count += parts[k].icount;
         rho += parts[k].wcount;
         rho_min = fmin( parts[k].wcount , rho_min );
         rho_min = fmax( parts[k].wcount , rho_max );
@@ -550,12 +550,12 @@ void pairs_single ( double *dim , long long int pid , struct part *__restrict__ 
         }
         
     /* Dump the result. */
-    printf( "pairs_single: wcount of part %lli (h=%e) is %.3f (nr. pairs %i).\n" , p->id , p->h , p->wcount + 32.0/3 , p->icount );
+    printf( "pairs_single: wcount of part %lli (h=%e) is %.3f.\n" , p->id , p->h , p->wcount + 32.0/3 );
     fflush(stdout);
     
     p->rho = 0.0;
     p->wcount = 0.0;
-    p->icount = 0;
+    // p->icount = 0;
     p->rho_dh = 0.0;
             
     }
@@ -807,9 +807,9 @@ int main ( int argc , char *argv[] ) {
     /* Apply shift */
     if(shift[0] !=0 || shift[1] !=0 || shift[2] !=0 )
       for ( k = 0 ; k < N ; k++ ) {
-	parts[k].x[0] += shift[0];
-	parts[k].x[1] += shift[1];
-	parts[k].x[2] += shift[2];
+	    parts[k].x[0] += shift[0];
+	    parts[k].x[1] += shift[1];
+	    parts[k].x[2] += shift[2];
       }
 
             
@@ -942,8 +942,8 @@ int main ( int argc , char *argv[] ) {
     /* Get the particle with the lowest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_min , &p );
-    printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f (icount=%i).\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
+    printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f.\n" ,
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 );
     
     /* Loop over all the tasks and dump the ones containing p. */
     /* for ( k = 0 ; k < s.nr_tasks ; k++ ) {
@@ -981,13 +981,13 @@ int main ( int argc , char *argv[] ) {
     /* Get the particle with the highest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_max , &p );
-    printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f (icount=%i).\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 , p->icount );
+    printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f.\n" ,
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 );
     
     /* Get the average interactions per particle. */
-    icount = 0;
-    space_map_parts( &s , &map_icount , &icount );
-    printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
+    // icount = 0;
+    // space_map_parts( &s , &map_icount , &icount );
+    // printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
     
     /* Dump the acceleration of the first particle. */
     printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ].\n" , s.parts[6178].id , s.parts[6178].a[0] , s.parts[6178].a[1] , s.parts[6178].a[2] );
