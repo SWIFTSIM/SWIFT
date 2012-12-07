@@ -118,7 +118,7 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
 
         /* Count the particles below that. */
         for ( count = 0 , k = 0 ; k < c->count ; k++ ) {
-            h = c->parts[k].h;
+            h = c->cparts[k].h;
             if ( h <= h_limit )
                 count += 1;
             if ( h > h_max )
@@ -212,14 +212,16 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
     int i, j, k, cdim[3];
     struct cell *c;
     struct part *finger;
+    struct cpart *cfinger;
     int *ind, changes = 0;
     
     /* Run through the parts and get the current h_max. */
-    for ( k = 0 ; k < s->nr_parts ; k++ )
+    for ( k = 0 ; k < s->nr_parts ; k++ ) {
         if ( s->parts[k].h > h_max )
             h_max = s->parts[k].h;
         else if ( s->parts[k].h < h_min )
             h_min = s->parts[k].h;
+        }
     s->h_min = h_min;
     s->h_max = h_max;
     
@@ -264,27 +266,42 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
                     c->depth = 0;
                     }
                     
-        /* Run through the particles and get their cell index. */
-        ind = (int *)alloca( sizeof(int) * s->nr_parts );
-        for ( k = 0 ; k < s->nr_parts ; k++ )  {
-            ind[k] = cell_getid( cdim , s->parts[k].x[0]*s->ih[0] , s->parts[k].x[1]*s->ih[1] , s->parts[k].x[2]*s->ih[2] );
-            s->cells[ ind[k] ].count += 1;
-            }
-
-        /* Sort the parts according to their cells. */
-        parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );        
-                    
-        /* Hook the cells up to the parts. */
-        for ( finger = s->parts , k = 0 ; k < s->nr_cells ; k++ ) {
-            c = &s->cells[ k ];
-            c->parts = finger;
-            finger = &finger[ c->count ];
-            }
-        
         /* There were massive changes. */
         changes = 1;
         
         } /* re-build upper-level cells? */
+        
+        
+    /* Run through the particles and get their cell index. */
+    ind = (int *)alloca( sizeof(int) * s->nr_parts );
+    for ( k = 0 ; k < s->nr_cells ; k++ )
+        s->cells[ k ].count = 0;
+    for ( k = 0 ; k < s->nr_parts ; k++ )  {
+        ind[k] = cell_getid( s->cdim , s->parts[k].x[0]*s->ih[0] , s->parts[k].x[1]*s->ih[1] , s->parts[k].x[2]*s->ih[2] );
+        s->cells[ ind[k] ].count += 1;
+        }
+
+    /* Sort the parts according to their cells. */
+    parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );        
+
+    /* Update the condensed particle data. */         
+    for ( k = 0 ; k < s->nr_parts ; k++ ) {
+        s->cparts[k].x[0] = s->parts[k].x[0];
+        s->cparts[k].x[1] = s->parts[k].x[1];
+        s->cparts[k].x[2] = s->parts[k].x[2];
+        s->cparts[k].h = s->parts[k].h;
+        s->cparts[k].dt = s->parts[k].dt;
+        }
+
+    /* Hook the cells up to the parts. */
+    for ( finger = s->parts , cfinger = s->cparts , k = 0 ; k < s->nr_cells ; k++ ) {
+        c = &s->cells[ k ];
+        c->parts = finger;
+        c->cparts = cfinger;
+        finger = &finger[ c->count ];
+        cfinger = &cfinger[ c->count ];
+        }
+        
         
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
@@ -303,7 +320,7 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
 
 
 /**
- * @brief Sort the particles according to the given indices.
+ * @brief Sort the particles and condensed particles according to the given indices.
  *
  * @param parts The list of #part
  * @param ind The indices with respect to which the parts are sorted.
@@ -321,57 +338,79 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
     int temp_i;
     struct part temp_p;
     
-    /* One pass of quicksort. */
-    while ( i < j ) {
-        while ( i < N && ind[i] <= pivot )
-            i++;
-        while ( j >= 0 && ind[j] > pivot )
-            j--;
-        if ( i < j ) {
-            temp_i = ind[i]; ind[i] = ind[j]; ind[j] = temp_i;
-            temp_p = parts[i]; parts[i] = parts[j]; parts[j] = temp_p;
-            }
+    /* If N is small enough, just do insert sort. */
+    if ( N < 16 ) {
+    
+        for ( i = 1 ; i < N ; i++ )
+            if ( ind[i] < ind[i-1] ) {
+                temp_i = ind[i];
+                temp_p = parts[j];
+                for ( j = i ; j > 0 && ind[j-1] > temp_i ; j-- ) {
+                    ind[j] = ind[j-1];
+                    parts[j] = parts[j-1];
+                    }
+                ind[j] = temp_i;
+                parts[j] = temp_p;
+                }
+    
         }
         
-    /* Verify sort. */
-    for ( int k = 0 ; k <= j ; k++ )
-        if ( ind[k] > pivot ) {
-            printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
-            error( "Sorting failed (<=pivot)." );
-            }
-    for ( int k = j+1 ; k < N ; k++ )
-        if ( ind[k] <= pivot ) {
-            printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
-            error( "Sorting failed (>pivot)." );
-            }
-        
-    /* Try to recurse in parallel. */
-    if ( N < 100 ) {
+    /* Otherwise, recurse with Quicksort. */
+    else {
     
-        /* Recurse on the left? */
-        if ( j > 0 && pivot > min )
-            parts_sort( parts , ind , j+1 , min , pivot );
+        /* One pass of quicksort. */
+        while ( i < j ) {
+            while ( i < N && ind[i] <= pivot )
+                i++;
+            while ( j >= 0 && ind[j] > pivot )
+                j--;
+            if ( i < j ) {
+                temp_i = ind[i]; ind[i] = ind[j]; ind[j] = temp_i;
+                temp_p = parts[i]; parts[i] = parts[j]; parts[j] = temp_p;
+                }
+            }
 
-        /* Recurse on the right? */
-        if ( i < N && pivot+1 < max )
-            parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+        /* Verify sort. */
+        for ( int k = 0 ; k <= j ; k++ )
+            if ( ind[k] > pivot ) {
+                printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                error( "Sorting failed (<=pivot)." );
+                }
+        for ( int k = j+1 ; k < N ; k++ )
+            if ( ind[k] <= pivot ) {
+                printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                error( "Sorting failed (>pivot)." );
+                }
 
-        }
-        
-    else
-    #pragma omp parallel sections
-    {
-    
-        /* Recurse on the left? */
-        #pragma omp section
-        if ( j > 0 && pivot > min )
-            parts_sort( parts , ind , j+1 , min , pivot );
+        /* Try to recurse in parallel. */
+        if ( N < 100 ) {
 
-        /* Recurse on the right? */
-        #pragma omp section
-        if ( i < N && pivot+1 < max )
-            parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+            /* Recurse on the left? */
+            if ( j > 0 && pivot > min )
+                parts_sort( parts , ind , j+1 , min , pivot );
 
+            /* Recurse on the right? */
+            if ( i < N && pivot+1 < max )
+                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+
+            }
+
+        else
+        #pragma omp parallel sections
+        {
+
+            /* Recurse on the left? */
+            #pragma omp section
+            if ( j > 0 && pivot > min )
+                parts_sort( parts , ind , j+1 , min , pivot );
+
+            /* Recurse on the right? */
+            #pragma omp section
+            if ( i < N && pivot+1 < max )
+                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+
+            }
+            
         }
     
     }
@@ -1306,7 +1345,7 @@ void space_split ( struct space *s , struct cell *c ) {
     
     /* Count the particles below that. */
     for ( count = 0 , k = 0 ; k < c->count ; k++ ) {
-        h = c->parts[k].h;
+        h = c->cparts[k].h;
         if ( h <= h_limit )
             count += 1;
         if ( h > h_max )
@@ -1387,6 +1426,9 @@ void space_recycle ( struct space *s , struct cell *c ) {
     /* Clear this cell's sort arrays. */
     if ( c->sort != NULL )
         free( c->sort );
+        
+    /* Clear the cell data. */
+    bzero( c , sizeof(struct cell) );
     
     /* Hook this cell into the buffer. */
     c->next = s->cells_new;
@@ -1464,6 +1506,10 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->periodic = periodic;
     s->nr_parts = N;
     s->parts = parts;
+    
+    /* Allocate the cparts array. */
+    if ( posix_memalign( (void *)&s->cparts , 32 ,  N * sizeof(struct cpart) ) != 0 )
+        error( "Failed to allocate cparts." );
     
     /* Init the space lock. */
     if ( lock_init( &s->lock ) != 0 )

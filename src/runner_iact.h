@@ -83,7 +83,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pi->rho_dh += -pj->mass * ( 3.0*wi + xi*wi_dx );
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pi->icount += 1;
+        // pi->icount += 1;
         
         }
 
@@ -98,7 +98,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pj->rho_dh += -pi->mass * ( 3.0*wj + xj*wj_dx );
         pj->wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pj->wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pj->icount += 1;
+        // pj->icount += 1;
         
         }
         
@@ -135,7 +135,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         pi->rho_dh += -pj->mass * ( 3.0*wi + xi*wi_dx );
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pi->icount += 1;
+        // pi->icount += 1;
         
         }
 

@@ -258,8 +258,18 @@ void cell_split ( struct cell *c  ) {
     for ( k = 0 ; k < 8 ; k++ ) {
         c->progeny[k]->count = right[k] - left[k] + 1;
         c->progeny[k]->parts = &c->parts[ left[k] ];
+        c->progeny[k]->cparts = &c->cparts[ left[k] ];
         }
         
+    /* Update the condensed particle data. */         
+    for ( k = 0 ; k < c->count ; k++ ) {
+        c->cparts[k].x[0] = c->parts[k].x[0];
+        c->cparts[k].x[1] = c->parts[k].x[1];
+        c->cparts[k].x[2] = c->parts[k].x[2];
+        c->cparts[k].h = c->parts[k].h;
+        c->cparts[k].dt = c->parts[k].dt;
+        }
+
     /* Verify a few sub-cells. */
     /* for ( k = 0 ; k < c->progeny[0]->count ; k++ )
         if ( c->progeny[0]->parts[k].x[0] > pivot[0] ||

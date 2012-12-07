@@ -75,6 +75,7 @@ struct space {
     
     /* The particle data (cells have pointers to this). */
     struct part *parts;
+    struct cpart *cparts;
     
     /* The sortlist data (cells hold pointers to these). */
     struct entry *sortlist;

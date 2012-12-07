@@ -49,6 +49,7 @@ struct cell {
     
     /* Pointers to the particle data. */
     struct part *parts;
+    struct cpart *cparts;
     
     /* Pointers for the sorted indices. */
     struct entry *sort;

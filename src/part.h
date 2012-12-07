@@ -24,9 +24,27 @@
 #define part_dtmax                      10
 
 
+/* Condensed data of a single particle. */
+struct cpart {
+
+    /* Particle position. */
+    double x[3];
+    
+    /* Particle cutoff radius. */
+    float h;
+    
+    /* Particle time-step. */
+    float dt;
+    
+    } __attribute__((aligned (32)));
+    
+
 /* Data of a single particle. */
 struct part {
 
+    /* Particle position. */
+    double x[3];
+    
     /* Particle cutoff radius. */
     float h;
     
@@ -38,9 +56,6 @@ struct part {
     
     /* Particle ID. */
     unsigned long long id;
-    
-    /* Particle position. */
-    double x[3];
     
     /* Particle velocity. */
     float v[3];
@@ -70,7 +85,7 @@ struct part {
     float rho_dh;
     
     /* Particle number density. */
-    int icount;
+    // int icount;
     float wcount;
     float wcount_dh;
     

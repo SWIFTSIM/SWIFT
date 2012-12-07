@@ -172,7 +172,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
 
     struct entry *finger;
     struct entry *fingers[8];
-    struct part *parts = c->parts;
+    struct cpart *cparts = c->cparts;
     int j, k, count = c->count;
     int i, ind, off[8], inds[8], temp_i;
     // float shift[3];
@@ -262,9 +262,9 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     
         /* Fill the sort array. */
         for ( k = 0 ; k < count ; k++ ) {
-            px[0] = parts[k].x[0];
-            px[1] = parts[k].x[1];
-            px[2] = parts[k].x[2];
+            px[0] = cparts[k].x[0];
+            px[1] = cparts[k].x[1];
+            px[2] = cparts[k].x[2];
             for ( j = 0 ; j < 13 ; j++ )
                 if ( flags & (1 << j) ) {
                     c->sort[ j*(count + 1) + k].i = k;
@@ -272,7 +272,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
                     }
             if ( flags & (1 << 14) ) {
                 c->sort[ 14*(count + 1) + k ].i = k;
-                c->sort[ 14*(count + 1) + k ].d = parts[k].dt;
+                c->sort[ 14*(count + 1) + k ].d = cparts[k].dt;
                 }
             }
 
