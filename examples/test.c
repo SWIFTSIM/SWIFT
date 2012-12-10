@@ -648,7 +648,7 @@ int main ( int argc , char *argv[] ) {
     bzero( &s , sizeof(struct space) );
 
     /* Parse the options */
-    while ( ( c = getopt( argc , argv  , "a:d:f:m:s:t:q:r:z:" ) ) != -1 )
+    while ( ( c = getopt( argc , argv  , "a:d:f:m:q:r:s:t:w:z:" ) ) != -1 )
       switch( c )
 	{
 	case 'a':
@@ -688,6 +688,11 @@ int main ( int argc , char *argv[] ) {
 	  if ( sscanf( optarg , "%d" , &nr_threads ) != 1 )
 	    error( "Error parsing number of threads." );
 	  omp_set_num_threads( nr_threads );
+	  break;
+	case 'w':
+	  if ( sscanf( optarg , "%d" , &space_subsize ) != 1 )
+	    error( "Error parsing sub size." );
+	  printf( "main: sub size set to %i.\n" , space_subsize );
 	  break;
 	case 'z':
 	  if ( sscanf( optarg , "%d" , &space_splitsize ) != 1 )
