@@ -321,7 +321,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
 void runner_doghost ( struct runner *r , struct cell *c ) {
 
     struct part *p;
-    struct cell *finger, *finger_prev;;
+    struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
     float ihg, ihg2;
@@ -402,7 +402,6 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             // error( "Bad smoothing length, fixing this isn't implemented yet." );
             
             /* Climb up the cell hierarchy. */
-            finger_prev = c;
             for ( finger = c ; finger != NULL ; finger = finger->parent ) {
             
                 /* Run through this cell's density interactions. */
@@ -424,14 +423,18 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                         }
                 
                     /* Otherwise, sub interaction? */
-                    else if ( finger->density[k]->type == task_type_sub ) 
-                        runner_dosub_subset_density( r , finger->density[k]->ci , finger->density[k]->cj , finger_prev , c->parts , pid , count , finger->density[k]->flags );
+                    else if ( finger->density[k]->type == task_type_sub ) {
+                    
+                        /* Left or right? */
+                        if ( finger->density[k]->ci == finger )
+                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->cj , -1 );
+                        else
+                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->ci , -1 );
+                        
+                        }
                 
                     }
                     
-                /* Keep a finger on the previous cell. */
-                finger_prev = finger;
-            
                 }
         
             }

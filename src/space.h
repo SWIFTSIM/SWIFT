@@ -25,6 +25,7 @@
 #define space_cellallocchunk            1000
 #define space_splitratio                0.875
 #define space_splitsize_default         400
+#define space_subsize_default           1000
 #define space_dosub                     1
 #define space_stretch                   1.0
 
@@ -34,6 +35,7 @@
 
 /* Split size. */
 extern int space_splitsize;
+extern int space_subsize;
 
 /* Map shift vector to sortlist. */
 extern const int sortlistID[27];

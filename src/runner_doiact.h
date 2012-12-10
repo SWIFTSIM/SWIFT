@@ -129,7 +129,7 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
             if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
             
                 IACT( r2 , dx , hi , cpj->h , &parts_i[ pid ] , &parts_j[pjd] );
-            
+                
                 }
         
             } /* loop over the parts in cj. */
@@ -540,9 +540,6 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
     struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
     TIMER_TIC
     
-    if ( c->split )
-        error( "Split cell should not have self-interactions." );
-    
     /* Loop over the particles in the cell. */
     for ( pid = 0 ; pid < count ; pid++ ) {
     
@@ -593,197 +590,283 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
  *
  * @param r The #runner.
  * @param c The #cell.
+ *
+ * TODO: Hard-code the sid on the recursive calls to avoid the
+ * redundant computations to find the sid on-the-fly.
  */
 
-void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int flags ) {
+void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int sid ) {
 
     int j, k;
+    double shift[3];
+    float h;
+    struct space *s = r->e->s;
 
     TIMER_TIC
     
-    /* Different types of flags. */
-    switch ( flags ) {
+    /* Is this a single cell? */
+    if ( cj == NULL ) {
     
-        /* Regular sub-cell interactions of a single cell. */
-        case 0:
-            for ( j = 0 ; j < 7 ; j++ )
-                for ( k = j + 1 ; k < 8 ; k++ )
-                    if ( ci->progeny[j] != NULL && ci->progeny[k] != NULL )
-                        DOPAIR( r , ci->progeny[j] , ci->progeny[k] );
-            break;
+        /* Recurse? */
+        if ( ci->split ) {
+        
+            /* Loop over all progeny. */
+            for ( k = 0 ; k < 8 ; k++ )
+                if ( ci->progeny[k] != NULL ) {
+                    DOSUB( r , ci->progeny[k] , NULL , -1 );
+                    for ( j = k+1 ; j < 8 ; j++ )
+                        if ( ci->progeny[j] != NULL )
+                            DOSUB( r , ci->progeny[k] , ci->progeny[j] , -1 );
+                    }
+        
+            }
+        
+        /* Otherwsie, compute self-interaction. */
+        else
+            DOSELF( r , ci );
             
-        case 1: /* (  1 ,  1 ,  0 ) */
-            if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[0] );
-            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
-            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
-            if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[1] );
-            break;
+        } /* self-interaction. */
+        
+    /* Otherwise, it's a pair interaction. */
+    else {
     
-        case 3: /* (  1 ,  0 ,  1 ) */
-            if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[0] );
-            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
-            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
-            if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[2] );
-            break;
-                    
-        case 4: /* (  1 ,  0 ,  0 ) */
-            if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[0] );
-            if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[1] );
-            if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[2] );
-            if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[3] );
-            if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[0] );
-            if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[1] );
-            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
-            if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[3] );
-            if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[0] );
-            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
-            if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[2] );
-            if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[3] );
-            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
-            if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[1] );
-            if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[2] );
-            if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[3] );
-            break;
-            
-        case 5: /* (  1 ,  0 , -1 ) */
-            if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[1] );
-            if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[3] );
-            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
-            if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[3] );
-            break;
-                    
-        case 7: /* (  1 , -1 ,  0 ) */
-            if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[2] );
-            if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[4] , cj->progeny[3] );
-            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
-            if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[3] );
-            break;
-                    
-        case 9: /* (  0 ,  1 ,  1 ) */
-            if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[0] );
-            if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[4] );
-            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
-            if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[4] );
-            break;
-                    
-        case 10: /* (  0 ,  1 ,  0 ) */
-            if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[2] , cj->progeny[0] );
-            if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[2] , cj->progeny[1] );
-            if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[2] , cj->progeny[4] );
-            if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( r , ci->progeny[2] , cj->progeny[5] );
-            if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[0] );
-            if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[1] );
-            if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[4] );
-            if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[5] );
-            if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[0] );
-            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
-            if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[4] );
-            if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[5] );
-            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
-            if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[1] );
-            if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[4] );
-            if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[5] );
-            break;
-                    
-        case 11: /* (  0 ,  1 , -1 ) */
-            if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[2] , cj->progeny[1] );
-            if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( r , ci->progeny[2] , cj->progeny[5] );
-            if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[1] );
-            if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                DOPAIR( r , ci->progeny[6] , cj->progeny[5] );
-            break;
-                    
-        case 12: /* (  0 ,  0 ,  1 ) */
-            if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[1] , cj->progeny[0] );
-            if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[1] , cj->progeny[2] );
-            if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[1] , cj->progeny[4] );
-            if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( r , ci->progeny[1] , cj->progeny[6] );
-            if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[0] );
-            if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[2] );
-            if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[4] );
-            if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( r , ci->progeny[3] , cj->progeny[6] );
-            if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[0] );
-            if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[2] );
-            if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[4] );
-            if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( r , ci->progeny[5] , cj->progeny[6] );
-            if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[0] );
-            if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[2] );
-            if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[4] );
-            if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
-                DOPAIR( r , ci->progeny[7] , cj->progeny[6] );
-            break;
+        /* Get the cell dimensions. */
+        h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
+        
+        /* Get the type of pair if not specified explicitly. */
+        if ( sid < 0 ) {
+        
+            /* Get the relative distance between the pairs, wrapping. */
+            for ( k = 0 ; k < 3 ; k++ ) {
+                if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
+                    shift[k] = s->dim[k];
+                else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
+                    shift[k] = -s->dim[k];
+                else
+                    shift[k] = 0.0;
+                }
+
+            /* Get the sorting index. */
+            for ( sid = 0 , k = 0 ; k < 3 ; k++ )
+                sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
+
+            /* Flip? */
+            if ( sid < 13 ) {
+                struct cell *temp = cj; cj = ci; ci = temp;
+                }
+            else
+                sid = 26 - sid;
                 
-        }
+            }
+    
+        /* Recurse? */
+        if ( ci->split && cj->split &&
+             ci->h_max*2 < h && cj->h_max*2 < h ) {
+             
+            /* Different types of flags. */
+            switch ( sid ) {
+
+                /* Regular sub-cell interactions of a single cell. */
+                case 0: /* (  1 ,  1 ,  1 ) */
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    break;
+                    
+                case 1: /* (  1 ,  1 ,  0 ) */
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                    break;
+
+                case 2: /* (  1 ,  1 , -1 ) */
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    break;
+                    
+                case 3: /* (  1 ,  0 ,  1 ) */
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                    break;
+
+                case 4: /* (  1 ,  0 ,  0 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[3] , -1 );
+                    break;
+
+                case 5: /* (  1 ,  0 , -1 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                    break;
+
+                case 6: /* (  1 , -1 ,  1 ) */
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    break;
+                    
+                case 7: /* (  1 , -1 ,  0 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                    break;
+
+                case 8: /* (  1 , -1 , -1 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    break;
+                    
+                case 9: /* (  0 ,  1 ,  1 ) */
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                    break;
+
+                case 10: /* (  0 ,  1 ,  0 ) */
+                    if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[2] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[2] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
+                        DOSUB( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[5] , -1 );
+                    break;
+
+                case 11: /* (  0 ,  1 , -1 ) */
+                    if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
+                        DOSUB( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
+                        DOSUB( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                    break;
+
+                case 12: /* (  0 ,  0 ,  1 ) */
+                    if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[1] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[1] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[1] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
+                        DOSUB( r , ci->progeny[1] , cj->progeny[6] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
+                        DOSUB( r , ci->progeny[3] , cj->progeny[6] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
+                        DOSUB( r , ci->progeny[5] , cj->progeny[6] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
+                        DOSUB( r , ci->progeny[7] , cj->progeny[6] , -1 );
+                    break;
+
+                }
+            
+            }
+            
+        /* Otherwise, compute the pair directly. */
+        else
+            DOPAIR( r , ci , cj );
+    
+        } /* otherwise, pair interaction. */
     
 
     #ifdef TIMER_VERBOSE
@@ -795,351 +878,450 @@ void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict
     }
 
 
-void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , struct cell *sub , struct part *parts_i , int *ind , int count , int flags ) {
+void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *parts , int *ind , int count , struct cell *restrict cj , int sid ) {
 
     int j, k;
+    double shift[3];
+    float h;
+    struct space *s = r->e->s;
+    struct cell *sub = NULL;
 
-    // TIMER_TIC
+    TIMER_TIC
     
-    // printf( "dosub_subset: doing sub with flags=%i, depth=%i.\n" , flags , ci->depth ); fflush(stdout);
+    /* Find out in which sub-cell of ci the parts are. */
+    for ( k = 0 ; k < 8 ; k++ )
+        if ( ci->progeny[k] != NULL ) {
+            if ( parts[ ind[ 0 ] ].x[0] >= ci->progeny[k]->loc[0] &&
+                 parts[ ind[ 0 ] ].x[0] <= ci->progeny[k]->loc[0] + ci->progeny[k]->h[0] &&
+                 parts[ ind[ 0 ] ].x[1] >= ci->progeny[k]->loc[1] &&
+                 parts[ ind[ 0 ] ].x[1] <= ci->progeny[k]->loc[1] + ci->progeny[k]->h[1] &&
+                 parts[ ind[ 0 ] ].x[2] >= ci->progeny[k]->loc[2] &&
+                 parts[ ind[ 0 ] ].x[2] <= ci->progeny[k]->loc[2] + ci->progeny[k]->h[2] ) {
+                sub = ci->progeny[k];
+                break;
+                }
+            }
     
-    /* Different types of flags. */
-    switch ( flags ) {
     
-        /* Regular sub-cell interactions of a single cell. */
-        case 0:
-            for ( j = 0 ; j < 7 ; j++ )
-                for ( k = j + 1 ; k < 8 ; k++ ) {
-                    if ( ci->progeny[j] == sub && ci->progeny[k] != NULL )
-                        DOPAIR_SUBSET( r , ci->progeny[j] , parts_i , ind , count , ci->progeny[k] );
-                    else if ( ci->progeny[k] == sub && ci->progeny[j] != NULL )
-                        DOPAIR_SUBSET( r , ci->progeny[k] , parts_i , ind , count , ci->progeny[j] );
+    /* Is this a single cell? */
+    if ( cj == NULL ) {
+    
+        /* Recurse? */
+        if ( ci->split ) {
+        
+            /* Loop over all progeny. */
+            DOSUB_SUBSET( r , sub , parts , ind , count , NULL , -1 );
+            for ( j = 0 ; j < 8 ; j++ )
+                if ( ci->progeny[j] != sub && ci->progeny[j] != NULL )
+                    DOSUB_SUBSET( r , sub , parts , ind , count , ci->progeny[j] , -1 );
+        
+            }
+        
+        /* Otherwsie, compute self-interaction. */
+        else
+            DOSELF_SUBSET( r , ci , parts , ind , count );
+            
+        } /* self-interaction. */
+        
+    /* Otherwise, it's a pair interaction. */
+    else {
+    
+        /* Get the cell dimensions. */
+        h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
+
+        /* Recurse? */
+        if ( ci->split && cj->split &&
+             ci->h_max*2 < h && cj->h_max*2 < h ) {
+             
+            /* Get the type of pair if not specified explicitly. */
+            if ( sid < 0 ) {
+
+                /* Get the relative distance between the pairs, wrapping. */
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
+                        shift[k] = s->dim[k];
+                    else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
+                        shift[k] = -s->dim[k];
+                    else
+                        shift[k] = 0.0;
                     }
-            break;
-            
-        case 1: /* (  1 ,  1 ,  0 ) */
-            if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[0] );
-            if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[1] );
-            if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[0] );
-            if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[0] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[6] );
-            if ( cj->progeny[1] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[6] );
-            if ( cj->progeny[0] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[7] );
-            if ( cj->progeny[1] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[7] );
-            break;
+
+                /* Get the sorting index. */
+                for ( sid = 0 , k = 0 ; k < 3 ; k++ )
+                    sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
+
+                /* Flip? */
+                if ( sid < 13 ) {
+                    struct cell *temp = cj; cj = ci; ci = temp;
+                    }
+                else
+                    sid = 26 - sid;
+
+                }
     
-        case 3: /* (  1 ,  0 ,  1 ) */
-            if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[7] );
-            break;
+            /* Different types of flags. */
+            switch ( sid ) {
+
+                /* Regular sub-cell interactions of a single cell. */
+                case 0: /* (  1 ,  1 ,  1 ) */
+                    if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , ci->progeny[0] , parts , ind , count , cj->progeny[7] , -1 );
+                    break;
                     
-        case 4: /* (  1 ,  0 ,  0 ) */
-            if ( ci->progeny[4] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[4] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[4] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[7] );
-            break;
+                case 1: /* (  1 ,  1 ,  0 ) */
+                    if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 );
+                    break;
+
+                case 2: /* (  1 ,  1 , -1 ) */
+                    if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                    break;
+                    
+                case 3: /* (  1 ,  0 ,  1 ) */
+                    if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 );
+                    break;
+
+                case 4: /* (  1 ,  0 ,  0 ) */
+                    if ( ci->progeny[4] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[4] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[4] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[7] , -1 );
+                    break;
+
+                case 5: /* (  1 ,  0 , -1 ) */
+                    if ( ci->progeny[4] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[6] , -1 );
+                    break;
+
+                case 6: /* (  1 , -1 ,  1 ) */
+                    if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                    break;
+                    
+                case 7: /* (  1 , -1 ,  0 ) */
+                    if ( ci->progeny[4] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[5] , -1 );
+                    break;
+
+                case 8: /* (  1 , -1 , -1 ) */
+                    if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                    break;
+                    
+                case 9: /* (  0 ,  1 ,  1 ) */
+                    if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 );
+                    break;
+
+                case 10: /* (  0 ,  1 ,  0 ) */
+                    if ( ci->progeny[2] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[2] , -1 );
+                    if ( ci->progeny[2] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[2] , -1 );
+                    if ( ci->progeny[2] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[2] , -1 );
+                    if ( ci->progeny[2] == sub && cj->progeny[5] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[5] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[5] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[2] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[5] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[5] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[5] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[5] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[5] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[5] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[5] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[5] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[5] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[7] , -1 );
+                    break;
+
+                case 11: /* (  0 ,  1 , -1 ) */
+                    if ( ci->progeny[2] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[2] , -1 );
+                    if ( ci->progeny[2] == sub && cj->progeny[5] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[5] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[5] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[2] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                    if ( ci->progeny[6] == sub && cj->progeny[5] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[5] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[5] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[6] , -1 );
+                    break;
+
+                case 12: /* (  0 ,  0 ,  1 ) */
+                    if ( ci->progeny[1] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[1] , -1 );
+                    if ( ci->progeny[1] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[1] , -1 );
+                    if ( ci->progeny[1] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[1] , -1 );
+                    if ( ci->progeny[1] == sub && cj->progeny[6] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[6] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[6] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[1] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[3] == sub && cj->progeny[6] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[6] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[6] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[3] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[5] == sub && cj->progeny[6] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[6] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[6] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[5] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 );
+                    if ( ci->progeny[7] == sub && cj->progeny[6] != NULL )
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[6] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[6] == sub )
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[7] , -1 );
+                    break;
+
+                }
             
-        case 5: /* (  1 ,  0 , -1 ) */
-            if ( ci->progeny[4] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[6] );
-            break;
-                    
-        case 7: /* (  1 , -1 ,  0 ) */
-            if ( ci->progeny[4] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[4] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[4] );
-            if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[3] );
-            if ( cj->progeny[3] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[3] , parts_i , ind , count , ci->progeny[5] );
-            break;
-                    
-        case 9: /* (  0 ,  1 ,  1 ) */
-            if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[7] );
-            break;
-                    
-        case 10: /* (  0 ,  1 ,  0 ) */
-            if ( ci->progeny[2] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[2] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[2] );
-            if ( ci->progeny[2] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[2] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[2] );
-            if ( ci->progeny[2] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[2] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[2] );
-            if ( ci->progeny[2] == sub && cj->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[2] , parts_i , ind , count , cj->progeny[5] );
-            if ( cj->progeny[5] == sub && ci->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[5] , parts_i , ind , count , ci->progeny[2] );
-            if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[3] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[3] == sub && cj->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[5] );
-            if ( cj->progeny[5] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[5] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[5] );
-            if ( cj->progeny[5] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[5] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[5] );
-            if ( cj->progeny[5] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[5] , parts_i , ind , count , ci->progeny[7] );
-            break;
-                    
-        case 11: /* (  0 ,  1 , -1 ) */
-            if ( ci->progeny[2] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[2] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[2] );
-            if ( ci->progeny[2] == sub && cj->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[2] , parts_i , ind , count , cj->progeny[5] );
-            if ( cj->progeny[5] == sub && ci->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[5] , parts_i , ind , count , ci->progeny[2] );
-            if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[1] );
-            if ( cj->progeny[1] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[1] , parts_i , ind , count , ci->progeny[6] );
-            if ( ci->progeny[6] == sub && cj->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[6] , parts_i , ind , count , cj->progeny[5] );
-            if ( cj->progeny[5] == sub && ci->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[5] , parts_i , ind , count , ci->progeny[6] );
-            break;
-                    
-        case 12: /* (  0 ,  0 ,  1 ) */
-            if ( ci->progeny[1] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[1] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[1] );
-            if ( ci->progeny[1] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[1] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[1] );
-            if ( ci->progeny[1] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[1] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[1] );
-            if ( ci->progeny[1] == sub && cj->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[1] , parts_i , ind , count , cj->progeny[6] );
-            if ( cj->progeny[6] == sub && ci->progeny[1] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[6] , parts_i , ind , count , ci->progeny[1] );
-            if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[3] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[3] == sub && cj->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[3] , parts_i , ind , count , cj->progeny[6] );
-            if ( cj->progeny[6] == sub && ci->progeny[3] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[6] , parts_i , ind , count , ci->progeny[3] );
-            if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[5] == sub && cj->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[5] , parts_i , ind , count , cj->progeny[6] );
-            if ( cj->progeny[6] == sub && ci->progeny[5] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[6] , parts_i , ind , count , ci->progeny[5] );
-            if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[0] );
-            if ( cj->progeny[0] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[0] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[2] );
-            if ( cj->progeny[2] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[2] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[4] );
-            if ( cj->progeny[4] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[4] , parts_i , ind , count , ci->progeny[7] );
-            if ( ci->progeny[7] == sub && cj->progeny[6] != NULL )
-                DOPAIR_SUBSET( r , ci->progeny[7] , parts_i , ind , count , cj->progeny[6] );
-            if ( cj->progeny[6] == sub && ci->progeny[7] != NULL )
-                DOPAIR_SUBSET( r , cj->progeny[6] , parts_i , ind , count , ci->progeny[7] );
-            break;
-                
-        }
+            }
+            
+        /* Otherwise, compute the pair directly. */
+        else
+            DOPAIR_SUBSET( r , ci , parts , ind , count , cj );
+    
+        } /* otherwise, pair interaction. */
     
 
-    // #ifdef TIMER_VERBOSE
-    //     printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
-    // #else
-    //     TIMER_TOC(timer_dopair_subset);
-    // #endif
+    #ifdef TIMER_VERBOSE
+        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+    #else
+        TIMER_TOC(TIMER_DOSUB);
+    #endif
 
     }
 
