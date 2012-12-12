@@ -68,6 +68,13 @@
 #define TIMER_DOPAIR_SUBSET2(f) PASTE(runner_timer_dopair_subset,f)
 #define TIMER_DOPAIR_SUBSET TIMER_DOPAIR_SUBSET2(FUNCTION)
 
+#define IACT_NONSYM_VEC2(f) PASTE(runner_iact_nonsym_vec,f)
+#define IACT_NONSYM_VEC IACT_NONSYM_VEC2(FUNCTION)
+
+#define IACT_VEC2(f) PASTE(runner_iact_vec,f)
+#define IACT_VEC IACT_VEC2(FUNCTION)
+
+
 
 /**
  * @brief Compute the interactions between a cell pair.
@@ -87,6 +94,14 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
     struct cpart *restrict cpi, *restrict cparts_i = ci->cparts;
     double pix[3];
     float dx[3], hi, hi2, r2;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
     TIMER_TIC
     
     /* Get the relative distance between the pairs, wrapping. */
@@ -128,13 +143,43 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
             /* Hit or miss? */
             if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
             
-                IACT( r2 , dx , hi , cpj->h , &parts_i[ pid ] , &parts_j[pjd] );
+                #ifndef VECTORIZE
+                        
+                    IACT( r2 , dx , hi , cpj->h , &parts_i[ pid ] , &parts_j[pjd] );
                 
+                #else
+
+                    /* Add this interaction to the queue. */
+                    r2q[icount] = r2;
+                    dxq[3*icount+0] = dx[0];
+                    dxq[3*icount+1] = dx[1];
+                    dxq[3*icount+2] = dx[2];
+                    hiq[icount] = hi;
+                    hjq[icount] = cpj->h;
+                    piq[icount] = &parts_i[ pid ];
+                    pjq[icount] = &parts_j[ pjd ];
+                    icount += 1;
+
+                    /* Flush? */
+                    if ( icount == VEC_SIZE ) {
+                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        icount = 0;
+                        }
+
+                #endif
+                    
                 }
         
             } /* loop over the parts in cj. */
     
         } /* loop over the parts in ci. */
+        
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
         
     #ifdef TIMER_VERBOSE
         printf( "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
@@ -168,6 +213,14 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     double pix[3];
     float dx[3], hi, hi2, r2, di;
     struct entry *sort_j;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
     TIMER_TIC
     
     /* Get the relative distance between the pairs, wrapping. */
@@ -224,7 +277,30 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                 /* Hit or miss? */
                 if ( r2 < hi2 ) {
 
-                    IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[ pjd ].i ] );
+                    #ifndef VECTORIZE
+                        
+                        IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[ pjd ].i ] );
+                    
+                    #else
+                    
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hi;
+                        hjq[icount] = cpj->h;
+                        piq[icount] = pi;
+                        pjq[icount] = &parts_j[ sort_j[ pjd ].i ];
+                        icount += 1;
+                        
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
                     
                     }
 
@@ -264,7 +340,30 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                 /* Hit or miss? */
                 if ( r2 < hi2 ) {
 
-                    IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[ pjd ].i ] );
+                    #ifndef VECTORIZE
+                        
+                        IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[ pjd ].i ] );
+                    
+                    #else
+                    
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hi;
+                        hjq[icount] = cpj->h;
+                        piq[icount] = pi;
+                        pjq[icount] = &parts_j[ sort_j[ pjd ].i ];
+                        icount += 1;
+                        
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
 
                     }
 
@@ -273,6 +372,13 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
             } /* loop over the parts in ci. */
             
         }
+        
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT_NONSYM( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
         
     #ifdef TIMER_VERBOSE
         printf( "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
@@ -304,6 +410,14 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     struct cpart *restrict cpj, *restrict cparts = ci->cparts;
     double pix[3];
     float dx[3], hi, hi2, r2;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
     TIMER_TIC
     
     /* printf( "runner_dopair_naive: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts and shift = [ %g %g %g ].\n" ,
@@ -337,13 +451,43 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
             /* Hit or miss? */
             if ( r2 > 0.0f && r2 < hi2 ) {
             
-                IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_i[ pjd ] );
+                #ifndef VECTORIZE
+
+                    IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_i[ pjd ] );
+
+                #else
+
+                    /* Add this interaction to the queue. */
+                    r2q[icount] = r2;
+                    dxq[3*icount+0] = dx[0];
+                    dxq[3*icount+1] = dx[1];
+                    dxq[3*icount+2] = dx[2];
+                    hiq[icount] = hi;
+                    hjq[icount] = cpj->h;
+                    piq[icount] = pi;
+                    pjq[icount] = &parts_i[ pjd ];
+                    icount += 1;
+
+                    /* Flush? */
+                    if ( icount == VEC_SIZE ) {
+                        IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        icount = 0;
+                        }
+
+                #endif
             
                 }
         
             } /* loop over the parts in cj. */
     
         } /* loop over the parts in ci. */
+        
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT_NONSYM( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
         
     #ifdef TIMER_VERBOSE
         printf( "runner_doself_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
@@ -370,7 +514,7 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
     double rshift, shift[3] = { 0.0 , 0.0 , 0.0 };
     struct cell *temp;
     struct entry *restrict sort_i, *restrict sort_j;
-    struct part *restrict parts_i, *restrict parts_j;
+    struct part *restrict pi, *restrict pj, *restrict parts_i, *restrict parts_j;
     struct cpart *restrict cpi, *restrict cparts_i;
     struct cpart *restrict cpj, *restrict cparts_j;
     double pix[3], pjx[3], di, dj;
@@ -378,6 +522,14 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
     double hi_max, hj_max;
     double di_max, dj_min;
     int count_i, count_j;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
     TIMER_TIC
     
     /* Get the relative distance between the pairs, wrapping. */
@@ -440,6 +592,7 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
     for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max > dj_min ; pid-- ) {
     
         /* Get a hold of the ith part in ci. */
+        pi = &parts_i[ sort_i[ pid ].i ];
         cpi = &cparts_i[ sort_i[ pid ].i ];
         hi = cpi->h;
         di = sort_i[pid].d + hi - rshift;
@@ -466,7 +619,30 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
             /* Hit or miss? */
             if ( r2 < hi2 ) {
             
-                IACT( r2 , dx , hi , cpj->h , &parts_i[ sort_i[ pid ].i ] , &parts_j[ sort_j[pjd].i ] );
+                #ifndef VECTORIZE
+                        
+                    IACT( r2 , dx , hi , cpj->h , &parts_i[ sort_i[ pid ].i ] , &parts_j[ sort_j[pjd].i ] );
+                
+                #else
+
+                    /* Add this interaction to the queue. */
+                    r2q[icount] = r2;
+                    dxq[3*icount+0] = dx[0];
+                    dxq[3*icount+1] = dx[1];
+                    dxq[3*icount+2] = dx[2];
+                    hiq[icount] = hi;
+                    hjq[icount] = cpj->h;
+                    piq[icount] = pi;
+                    pjq[icount] = &parts_j[ sort_j[ pjd ].i ];
+                    icount += 1;
+
+                    /* Flush? */
+                    if ( icount == VEC_SIZE ) {
+                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        icount = 0;
+                        }
+
+                #endif
             
                 }
         
@@ -481,6 +657,7 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
     for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max < di_max ; pjd++ ) {
     
         /* Get a hold of the jth part in cj. */
+        pj = &parts_j[ sort_j[ pjd ].i ];
         cpj = &cparts_j[ sort_j[ pjd ].i ];
         hj = cpj->h;
         dj = sort_j[pjd].d - hj - rshift;
@@ -507,7 +684,30 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
             /* Hit or miss? */
             if ( r2 < hj2 && r2 > cpi->h*cpi->h ) {
             
-                IACT( r2 , dx , cpi->h , hj , &parts_i[ sort_i[pid].i ] , &parts_j[ sort_j[ pjd ].i ] );
+                #ifndef VECTORIZE
+                        
+                    IACT( r2 , dx , hj , cpi->h , &parts_j[ sort_j[ pjd ].i ] , &parts_i[ sort_i[pid].i ] );
+                
+                #else
+
+                    /* Add this interaction to the queue. */
+                    r2q[icount] = r2;
+                    dxq[3*icount+0] = dx[0];
+                    dxq[3*icount+1] = dx[1];
+                    dxq[3*icount+2] = dx[2];
+                    hiq[icount] = hj;
+                    hjq[icount] = cpi->h;
+                    piq[icount] = pj;
+                    pjq[icount] = &parts_i[ sort_i[ pid ].i ];
+                    icount += 1;
+
+                    /* Flush? */
+                    if ( icount == VEC_SIZE ) {
+                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        icount = 0;
+                        }
+
+                #endif
             
                 }
         
@@ -515,6 +715,13 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
     
         } /* loop over the parts in ci. */
 
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
+        
     #ifdef TIMER_VERBOSE
         printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
     #else
@@ -538,6 +745,14 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
     float dx[3], hi, hi2, r2;
     struct part *restrict parts = c->parts;
     struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
     TIMER_TIC
     
     /* Loop over the particles in the cell. */
@@ -568,7 +783,30 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
             /* Hit or miss? */
             if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
             
-                IACT( r2 , dx , hi , cpj->h , &parts[pid] , &parts[pjd] );
+                #ifndef VECTORIZE
+                        
+                    IACT( r2 , dx , hi , cpj->h , &parts[pid] , &parts[pjd] );
+                
+                #else
+
+                    /* Add this interaction to the queue. */
+                    r2q[icount] = r2;
+                    dxq[3*icount+0] = dx[0];
+                    dxq[3*icount+1] = dx[1];
+                    dxq[3*icount+2] = dx[2];
+                    hiq[icount] = hi;
+                    hjq[icount] = cpj->h;
+                    piq[icount] = &parts[pid];
+                    pjq[icount] = &parts[pjd];
+                    icount += 1;
+
+                    /* Flush? */
+                    if ( icount == VEC_SIZE ) {
+                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        icount = 0;
+                        }
+
+                #endif
                 
                 }
         
@@ -576,6 +814,13 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
     
         } /* loop over all particles. */
 
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
+        
     #ifdef TIMER_VERBOSE
         printf( "runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n" , r->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
     #else
