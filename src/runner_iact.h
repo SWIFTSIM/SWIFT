@@ -485,7 +485,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     pjh_dt.v = mi.v / pirho.v * dvdr.v * wj_dr.v;
     
     /* Store the forces back on the particles. */
-    for ( k = 0 ; k < 4 ; k++ ) {
+    for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->u_dt += piu_dt.f[k];
         pj[k]->u_dt += pju_dt.f[k];
         pi[k]->h_dt += pih_dt.f[k];
@@ -647,7 +647,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
     
     /* Store the forces back on the particles. */
-    for ( k = 0 ; k < 4 ; k++ ) {
+    for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->u_dt += piu_dt.f[k];
         pi[k]->h_dt += pih_dt.f[k];
         for ( j = 0 ; j < 3 ; j++ )
