@@ -615,11 +615,53 @@ void kernel_dump ( int N ) {
 
     int k;
     float x, w, dw_dx;
+    float x4[4] = {0.0f,0.0f,0.0f,0.0f}, w4[4], dw_dx4[4] __attribute__ ((aligned (16)));
 
     for ( k = 0 ; k <= N ; k++ ) {
         x = ((float)k) / N * kernel_igamma;
+        x4[3] = x4[2]; x4[2] = x4[1]; x4[1] = x4[0]; x4[0] = x;
         kernel_deval( x , &w , &dw_dx );
-        printf( " %e %e %e\n" , x , w , dw_dx );
+        kernel_deval_vec( (vector *)x4 , (vector *)w4 , (vector *)dw_dx4 );
+        printf( " %e %e %e %e %e %e %e\n" , x , w , dw_dx , w4[0] , w4[1] , w4[2] , w4[3] );
+        }
+
+    }
+
+
+/**
+ * @brief Test the density function by dumping it for two random parts.
+ *
+ * @param N number of intervals in [0,1].
+ */
+ 
+void density_dump ( int N ) {
+
+    int k;
+    float r2[4] = {0.0f,0.0f,0.0f,0.0f}, hi[4], hj[4];
+    struct part *pi[4], *pj[4], Pi[4], Pj[4];
+    
+    /* Init the interaction parameters. */
+    for ( k = 0 ; k < 4 ; k++ ) {
+        Pi[k].mass = 1.0f; Pi[k].rho = 0.0f; Pi[k].wcount = 0.0f;
+        Pj[k].mass = 1.0f; Pj[k].rho = 0.0f; Pj[k].wcount = 0.0f;
+        hi[k] = 1.0;
+        hj[k] = 1.0;
+        pi[k] = &Pi[k];
+        pj[k] = &Pj[k];
+        }
+
+    for ( k = 0 ; k <= N ; k++ ) {
+        r2[3] = r2[2]; r2[2] = r2[1]; r2[1] = r2[0];
+        r2[0] = ((float)k) / N;
+        Pi[0].wcount = 0; Pj[0].wcount = 0;
+        runner_iact_density( r2[0] , NULL , hi[0] , hj[0] , &Pi[0] , &Pj[0] );
+        printf( " %e %e %e" , r2[0] , Pi[0].wcount , Pj[0].wcount );
+        Pi[0].wcount = 0; Pj[0].wcount = 0;
+        Pi[1].wcount = 0; Pj[1].wcount = 0;
+        Pi[2].wcount = 0; Pj[2].wcount = 0;
+        Pi[3].wcount = 0; Pj[3].wcount = 0;
+        runner_iact_vec_density( r2 , NULL , hi , hj , pi , pj );
+        printf( " %e %e %e %e\n" , Pi[0].wcount , Pi[1].wcount , Pi[2].wcount , Pi[3].wcount );
         }
 
     }
@@ -820,6 +862,7 @@ int main ( int argc , char *argv[] ) {
             
     /* Dump the kernel to make sure its ok. */
     // kernel_dump( 100 );
+    // density_dump( 100 );
     
     /* Get the brute-force number of pairs. */
     // pairs_n2( dim , parts , N , periodic );
