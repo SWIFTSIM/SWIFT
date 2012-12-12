@@ -197,6 +197,7 @@ void engine_run ( struct engine *e , int sort_queues ) {
     struct space *s = e->s;
     
     /* Re-set the particle data. */
+    #pragma omp parallel for
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
         s->parts[k].wcount = 0.0f;
         s->parts[k].wcount_dh = 0.0f;
@@ -205,11 +206,12 @@ void engine_run ( struct engine *e , int sort_queues ) {
         }
     
     /* Run throught the tasks and get all the waits right. */
+    #pragma omp parallel for private(j)
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
-            s->tasks[k].unlock_tasks[j]->wait += 1;
+            __sync_add_and_fetch( &s->tasks[k].unlock_tasks[j]->wait , 1 );
         for ( j = 0 ; j < s->tasks[k].nr_unlock_cells ; j++ )
-            s->tasks[k].unlock_cells[j]->wait += 1;
+            __sync_add_and_fetch( &s->tasks[k].unlock_cells[j]->wait , 1 );
         }
     
     /* Re-set the queues.*/
