@@ -42,20 +42,8 @@ struct cpart {
 /* Data of a single particle. */
 struct part {
 
-    /* Particle position. */
-    double x[3];
-    
-    /* Particle cutoff radius. */
-    float h;
-    
-    /* Particle time-step. */
-    float dt;
-    
     /* Particle mass. */
     float mass;
-    
-    /* Particle ID. */
-    unsigned long long id;
     
     /* Particle velocity. */
     float v[3];
@@ -72,9 +60,6 @@ struct part {
     /* Aggregate quantities. */
     float POrho2;
     
-    /* Particle internal energy. */
-    float u;
-    
     /* Change in particle energy over time. */
     float u_dt;
     
@@ -88,6 +73,21 @@ struct part {
     // int icount;
     float wcount;
     float wcount_dh;
+    
+    /* Particle internal energy. */
+    float u;
+    
+    /* Particle ID. */
+    unsigned long long id;
+    
+    /* Particle position. */
+    double x[3];
+    
+    /* Particle cutoff radius. */
+    float h;
+    
+    /* Particle time-step. */
+    float dt;
     
     } __attribute__((aligned (32)));
     
