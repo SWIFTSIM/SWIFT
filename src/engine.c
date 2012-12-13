@@ -60,7 +60,7 @@
  
 void engine_prepare ( struct engine *e , int force ) {
 
-    int k, qid, changes;
+    int j, k, qid, changes;
     struct space *s = e->s;
 
     /* Rebuild the space. */
@@ -88,6 +88,28 @@ void engine_prepare ( struct engine *e , int force ) {
             
         }
 
+    /* Re-set the particle data. */
+    #pragma omp parallel for
+    for ( k = 0 ; k < s->nr_parts ; k++ ) {
+        s->parts[k].wcount = 0.0f;
+        s->parts[k].wcount_dh = 0.0f;
+        s->parts[k].rho = 0.0f;
+        s->parts[k].rho_dh = 0.0f;
+        }
+    
+    /* Run throught the tasks and get all the waits right. */
+    #pragma omp parallel for private(j)
+    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+        for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
+            __sync_add_and_fetch( &s->tasks[k].unlock_tasks[j]->wait , 1 );
+        for ( j = 0 ; j < s->tasks[k].nr_unlock_cells ; j++ )
+            __sync_add_and_fetch( &s->tasks[k].unlock_cells[j]->wait , 1 );
+        }
+    
+    /* Re-set the queues.*/
+    for ( k = 0 ; k < e->nr_queues ; k++ )
+        e->queues[k].next = 0;
+    
     }
 
 
@@ -193,27 +215,8 @@ void engine_barrier( struct engine *e ) {
  
 void engine_run ( struct engine *e , int sort_queues ) {
 
-    int j, k;
-    struct space *s = e->s;
-    
-    /* Re-set the particle data. */
-    #pragma omp parallel for
-    for ( k = 0 ; k < s->nr_parts ; k++ ) {
-        s->parts[k].wcount = 0.0f;
-        s->parts[k].wcount_dh = 0.0f;
-        s->parts[k].rho = 0.0f;
-        s->parts[k].rho_dh = 0.0f;
-        }
-    
-    /* Run throught the tasks and get all the waits right. */
-    #pragma omp parallel for private(j)
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
-            __sync_add_and_fetch( &s->tasks[k].unlock_tasks[j]->wait , 1 );
-        for ( j = 0 ; j < s->tasks[k].nr_unlock_cells ; j++ )
-            __sync_add_and_fetch( &s->tasks[k].unlock_cells[j]->wait , 1 );
-        }
-    
+    int k;
+
     /* Re-set the queues.*/
     if ( sort_queues ) {
         #pragma omp parallel for default(none), shared(e)
@@ -222,9 +225,6 @@ void engine_run ( struct engine *e , int sort_queues ) {
             e->queues[k].next = 0;
             }
         }
-    else
-        for ( k = 0 ; k < e->nr_queues ; k++ )
-            e->queues[k].next = 0;
     
     /* Cry havoc and let loose the dogs of war. */
     e->barrier_count = -e->barrier_count;
