@@ -99,7 +99,7 @@ A new framework for the parallelization of Smoothed Particle Hydrodynamics (SPH)
 simulations on shared-memory parallel architectures is described.
 This framework relies on fast and cache-efficient cell-based neighbour-finding
 algorithms, as well as task-based parallelism to achieve good scaling and
-parallel efficiency on mult-core computers.
+parallel efficiency on multi-core computers.
 \end{abstract}
 
 
@@ -497,7 +497,7 @@ This reduces the \oh{n\log{n}} sorting to \oh{n} for merging.
 The arguably most well-known paradigm for shared-memory,
 or thread-based parallelism, is OpenMP, in which
 compiler annotations are used to describe if and when
-specific loops or portions of the code can be execuded
+specific loops or portions of the code can be executed
 in parallel.
 When such a parallel section, e.g.~a parallel loop, is
 encountered, the sections of the loop are split statically
@@ -517,7 +517,7 @@ is inherently parallelisable.
 One such approach is {\em task-based parallelism}, in which the
 computation is divided into a number of inter-dependent
 computational tasks, which are then scheduled, concurrently
-and aysnchronously, to a number of processors.
+and asynchronously, to a number of processors.
 In order to ensure that the tasks are executed in the right
 order, e.g.~that data needed by one task is only used once it
 has been produced by another task, and that no two tasks
@@ -564,7 +564,7 @@ for a given cell, and, in turn, all force computations involving
 that cell depend on its ghost task.
 Using this mechanism, we can enforce that all density computations
 for a set of particles have completed before we use this
-density in the force computaitons.
+density in the force computations.
 
 The dependencies and conflicts between tasks are then given as follows:
 
@@ -634,7 +634,7 @@ The dependencies and conflicts between tasks are then given as follows:
 If the dependencies and conflicts are defined correctly, then
 there is no risk of concurrency problems and thus each task
 can be implemented without special attention to the latter,
-e.g.~it can update data without using exclusinve access barriers
+e.g.~it can update data without using exclusive access barriers
 or atomic memory updates.
 This, however, requires some care in how the individual tasks
 are allocated to the computing threads, i.e.~each task should
@@ -660,7 +660,7 @@ in the queue.
 The {\tt pthread\_mutex\_t lock} is used to guarantee exclusive access
 to the queue.
 
-Task IDs are retreived from the queue as follows:        
+Task IDs are retrieved from the queue as follows:        
 
 \begin{center}\begin{minipage}{0.8\textwidth}
     \begin{lstlisting}
@@ -699,11 +699,11 @@ The lock on the queue is then released (line~12) and
 the task ID, or {\tt -1} if no available task was found, is
 returned.
 
-The advantage of swapping the retreived task to the next
+The advantage of swapping the retrieved task to the next
 position in the list is that if the queue is reset, e.g.~{\tt next}
 is set to zero, and used again with the same set of tasks,
 they will now be traversed in the order in which they were
-exectuted in the previous run.
+executed in the previous run.
 This provides a basic form of iterative refinement of the task
 order.
 The tasks can also be sorted topologically, according to their
@@ -718,14 +718,14 @@ a large number of threads.
 One way of avoiding this problem is to use several concurrent
 queues, e.g.~one queue per thread, and spread the tasks over
 all queues.
-A fixed assignemnt of tasks to queues can, however,
+A fixed assignment of tasks to queues can, however,
 cause load balancing problems, e.g.~when a thread's queue is
 empty before the others have finished.
 In order to avoid such problems, {\em work-stealing} can be used:
 If a thread cannot obtain a task from its own queue, it picks
 another queue at random and tries to {\em steal} a task from it
 i.e. if it can obtain a task, it removes it from the queue and
-adds it to it's own queue, thus iteratively rebalancing
+adds it to it's own queue, thus iteratively re-balancing
 the task queues if they are used repeatedly:
 
 \begin{center}\begin{minipage}{0.8\textwidth}
@@ -821,7 +821,7 @@ void cell_unlocktree ( struct cell c ) {
         are ``locked'' while the cells marked in yellow have a ``hold'' count
         larger than zero.
         The hold count is shown inside each cell and corresponds to the number
-        of locked cells hierarchicaly below it.
+        of locked cells hierarchically below it.
         All cells except for those locked or with a ``hold'' count larger than
         zero can still be locked without causing concurrent data access.
         }
@@ -871,11 +871,28 @@ void cell_unlocktree ( struct cell c ) {
 
 \begin{itemize}
 
-    \item Scaling for both simulations on different parallel hardware.
-    
-    \item Compare, if possible, with {\sc gadget}.
+    \item Results for a 1.8M particle simulation on a 32-core Intel Xeon X7550
+        are shown in \fig{Results}.
         
+    \item The new simulation code not only scales much better, e.g. achieving
+        a parallel efficiency of 63\% at 32 cores.
+
 \end{itemize}
+
+
+\begin{figure}[ht]
+    \centerline{\epsfig{file=figures/scaling.pdf,width=0.9\textwidth}}
+    
+    \caption{Parallel scaling and efficiency for Gadget-2 and GadgetSMP
+        for a 1.8M particle simulation.
+        The numbers in the scaling plot are the average number of miliseconds
+        per simulation time step.
+        Note that not only does GadgetSMP scale better, it is also up to nine
+        times faster.
+        The timings for Gadget-2 are courtesy of Matthieu Schaller of the
+        Institute of Computational Cosmology at Durham University.}
+    \label{fig:Results}
+\end{figure}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
