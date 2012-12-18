@@ -615,13 +615,15 @@ void kernel_dump ( int N ) {
 
     int k;
     float x, w, dw_dx;
-    float x4[4] = {0.0f,0.0f,0.0f,0.0f}, w4[4], dw_dx4[4] __attribute__ ((aligned (16)));
+    float x4[4] = {0.0f,0.0f,0.0f,0.0f};
+    float w4[4] = {0.0f,0.0f,0.0f,0.0f};
+    // float dw_dx4[4] __attribute__ ((aligned (16)));
 
     for ( k = 0 ; k <= N ; k++ ) {
         x = ((float)k) / N * kernel_igamma;
         x4[3] = x4[2]; x4[2] = x4[1]; x4[1] = x4[0]; x4[0] = x;
         kernel_deval( x , &w , &dw_dx );
-        kernel_deval_vec( (vector *)x4 , (vector *)w4 , (vector *)dw_dx4 );
+        // kernel_deval_vec( (vector *)x4 , (vector *)w4 , (vector *)dw_dx4 );
         printf( " %e %e %e %e %e %e %e\n" , x , w , dw_dx , w4[0] , w4[1] , w4[2] , w4[3] );
         }
 
@@ -683,7 +685,7 @@ int main ( int argc , char *argv[] ) {
     struct space s;
     struct engine e;
     char ICfileName[200];
-    float dt = 1.0f;
+    float dt_max = 0.0f;
     ticks tic;
     
     /* Init the space. */
@@ -699,9 +701,9 @@ int main ( int argc , char *argv[] ) {
 	  printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout);
 	  break;
 	case 'd':
-	  if ( sscanf( optarg , "%f" , &dt ) != 1 )
+	  if ( sscanf( optarg , "%f" , &dt_max ) != 1 )
 	    error( "Error parsing timestep." );
-	  printf( "main: dt set to %.3f.\n" , dt ); fflush(stdout);
+	  printf( "main: dt set to %.3f.\n" , dt_max ); fflush(stdout);
 	  break;
 	case 'f':
 	  if( !strcpy(ICfileName, optarg))
@@ -879,8 +881,7 @@ int main ( int argc , char *argv[] ) {
     printf( "main: space_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Set the default time step to 1.0f. */
-    s.dt = dt;
-    printf( "main: space dt is %f.\n" , s.dt );
+    printf( "main: dt_max is %f.\n" , dt_max );
     
     /* Say a few nice things about the space we just created. */
     printf( "main: space dimensions are [ %.3f %.3f %.3f ].\n" , s.dim[0] , s.dim[1] , s.dim[2] );
@@ -889,6 +890,7 @@ int main ( int argc , char *argv[] ) {
     printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
     printf( "main: maximum depth is %d.\n" , s.maxdepth );
     printf( "main: cutoffs in [ %g %g ].\n" , s.h_min , s.h_max ); fflush(stdout);
+    printf( "main: generated %i tasks.\n" , s.nr_tasks );
     
     /* Verify that each particle is in it's propper cell. */
     icount = 0;
@@ -901,12 +903,6 @@ int main ( int argc , char *argv[] ) {
     
     /* Dump the particle positions. */
     // space_map_parts( &s , &map_dump , shift );
-    
-    /* Generate the tasks. */
-    tic = getticks();
-    space_maketasks( &s , 1 );
-    printf( "main: generated %i tasks.\n" , s.nr_tasks );
-    printf( "main: space_maketasks took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Initialize the runner with this space. */
     tic = getticks();
@@ -935,10 +931,10 @@ int main ( int argc , char *argv[] ) {
                 runner_counter[k] = 0;
         #endif
         tic = getticks();
-        engine_prepare( &e , 0 );
+        engine_prepare( &e , 1 );
         printf( "main: engine_prepare took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
         tic = getticks();
-        engine_run( &e , 0 );
+        engine_run( &e , 0 , dt_max );
         #ifdef TIMER
             printf( "main: runner timers are [ %.3f" , runner_timer[0]/CPU_TPS*1000 );
             for ( k = 1 ; k < runner_timer_count ; k++ )
@@ -1046,6 +1042,10 @@ int main ( int argc , char *argv[] ) {
     
     /* Check for outliers. */
     // space_map_parts( &s , &map_check , NULL );
+    
+    /* Dump the particle dts. */
+    // for ( k = 0; k < s.nr_parts ; k++ )
+    //     printf( " %lli %e\n" , s.parts[k].id , s.parts[k].dt );
     
     /* All is calm, all is bright. */
     return 0;
