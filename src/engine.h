@@ -50,6 +50,9 @@ struct engine {
     /* The queues. */
     struct queue *queues;
     
+    /* The maximum dt to step. */
+    float dt_max;
+    
     /* Data for the threads' barrier. */
     pthread_mutex_t barrier_mutex;
     pthread_cond_t barrier_cond;
@@ -63,4 +66,4 @@ void engine_barrier( struct engine *e );
 void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_queues , int policy );
 void engine_prepare ( struct engine *e , int force );
 void engine_ranktasks ( struct engine *e );
-void engine_run ( struct engine *e , int sort_queues );
+void engine_run ( struct engine *e , int sort_queues , float dt_max );

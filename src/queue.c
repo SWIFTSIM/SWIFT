@@ -124,10 +124,16 @@ void queue_insert ( struct queue *q , struct task *t ) {
  
 void queue_init ( struct queue *q , int size , struct task *tasks ) {
     
-    /* Allocate the task list. */
-    q->size = size;
-    if ( ( q->tid = (int *)malloc( sizeof(int) * size ) ) == NULL )
-        error( "Failed to allocate queue tids." );
+    /* Allocate the task list if needed. */
+    if ( q->tid == NULL || q->size < size ) {
+        if ( q->tid != NULL )
+            free( q->tid );
+        q->size = size;
+        if ( ( q->tid = (int *)malloc( sizeof(int) * size ) ) == NULL )
+            error( "Failed to allocate queue tids." );
+        }
+        
+    /* Set the tasks pointer. */
     q->tasks = tasks;
         
     /* Init counters. */

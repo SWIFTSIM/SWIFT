@@ -26,53 +26,65 @@
 
 #define PASTE(x,y) x ## _ ## y
 
-#define DOPAIR2(f) PASTE(runner_dopair,f)
-#define DOPAIR DOPAIR2(FUNCTION)
+#define _DOPAIR1(f) PASTE(runner_dopair1,f)
+#define DOPAIR1 _DOPAIR1(FUNCTION)
 
-#define DOPAIR_SUBSET2(f) PASTE(runner_dopair_subset,f)
-#define DOPAIR_SUBSET DOPAIR_SUBSET2(FUNCTION)
+#define _DOPAIR2(f) PASTE(runner_dopair2,f)
+#define DOPAIR2 _DOPAIR2(FUNCTION)
 
-#define DOPAIR_NAIVE2(f) PASTE(runner_dopair_naive,f)
-#define DOPAIR_NAIVE DOPAIR_NAIVE2(FUNCTION)
+#define _DOPAIR_SUBSET(f) PASTE(runner_dopair_subset,f)
+#define DOPAIR_SUBSET _DOPAIR_SUBSET(FUNCTION)
 
-#define DOSELF2(f) PASTE(runner_doself,f)
-#define DOSELF DOSELF2(FUNCTION)
+#define _DOPAIR_NAIVE(f) PASTE(runner_dopair_naive,f)
+#define DOPAIR_NAIVE _DOPAIR_NAIVE(FUNCTION)
 
-#define DOSELF_SUBSET2(f) PASTE(runner_doself_subset,f)
-#define DOSELF_SUBSET DOSELF_SUBSET2(FUNCTION)
+#define _DOSELF_NAIVE(f) PASTE(runner_doself_naive,f)
+#define DOSELF_NAIVE _DOSELF_NAIVE(FUNCTION)
 
-#define DOSUB2(f) PASTE(runner_dosub,f)
-#define DOSUB DOSUB2(FUNCTION)
+#define _DOSELF1(f) PASTE(runner_doself1,f)
+#define DOSELF1 _DOSELF1(FUNCTION)
 
-#define DOSUB_SUBSET2(f) PASTE(runner_dosub_subset,f)
-#define DOSUB_SUBSET DOSUB_SUBSET2(FUNCTION)
+#define _DOSELF2(f) PASTE(runner_doself2,f)
+#define DOSELF2 _DOSELF2(FUNCTION)
 
-#define IACT_NONSYM2(f) PASTE(runner_iact_nonsym,f)
-#define IACT_NONSYM IACT_NONSYM2(FUNCTION)
+#define _DOSELF_SUBSET(f) PASTE(runner_doself_subset,f)
+#define DOSELF_SUBSET _DOSELF_SUBSET(FUNCTION)
 
-#define IACT2(f) PASTE(runner_iact,f)
-#define IACT IACT2(FUNCTION)
+#define _DOSUB1(f) PASTE(runner_dosub1,f)
+#define DOSUB1 _DOSUB1(FUNCTION)
 
-#define TIMER_DOSELF2(f) PASTE(runner_timer_doself,f)
-#define TIMER_DOSELF TIMER_DOSELF2(FUNCTION)
+#define _DOSUB2(f) PASTE(runner_dosub2,f)
+#define DOSUB2 _DOSUB2(FUNCTION)
 
-#define TIMER_DOPAIR2(f) PASTE(runner_timer_dopair,f)
-#define TIMER_DOPAIR TIMER_DOPAIR2(FUNCTION)
+#define _DOSUB_SUBSET(f) PASTE(runner_dosub_subset,f)
+#define DOSUB_SUBSET _DOSUB_SUBSET(FUNCTION)
 
-#define TIMER_DOSUB2(f) PASTE(runner_timer_dosub,f)
-#define TIMER_DOSUB TIMER_DOSUB2(FUNCTION)
+#define _IACT_NONSYM(f) PASTE(runner_iact_nonsym,f)
+#define IACT_NONSYM _IACT_NONSYM(FUNCTION)
 
-#define TIMER_DOSELF_SUBSET2(f) PASTE(runner_timer_doself_subset,f)
-#define TIMER_DOSELF_SUBSET TIMER_DOSELF_SUBSET2(FUNCTION)
+#define _IACT(f) PASTE(runner_iact,f)
+#define IACT _IACT(FUNCTION)
 
-#define TIMER_DOPAIR_SUBSET2(f) PASTE(runner_timer_dopair_subset,f)
-#define TIMER_DOPAIR_SUBSET TIMER_DOPAIR_SUBSET2(FUNCTION)
+#define _TIMER_DOSELF(f) PASTE(runner_timer_doself,f)
+#define TIMER_DOSELF _TIMER_DOSELF(FUNCTION)
 
-#define IACT_NONSYM_VEC2(f) PASTE(runner_iact_nonsym_vec,f)
-#define IACT_NONSYM_VEC IACT_NONSYM_VEC2(FUNCTION)
+#define _TIMER_DOPAIR(f) PASTE(runner_timer_dopair,f)
+#define TIMER_DOPAIR _TIMER_DOPAIR(FUNCTION)
 
-#define IACT_VEC2(f) PASTE(runner_iact_vec,f)
-#define IACT_VEC IACT_VEC2(FUNCTION)
+#define _TIMER_DOSUB(f) PASTE(runner_timer_dosub,f)
+#define TIMER_DOSUB _TIMER_DOSUB(FUNCTION)
+
+#define _TIMER_DOSELF_SUBSET(f) PASTE(runner_timer_doself_subset,f)
+#define TIMER_DOSELF_SUBSET _TIMER_DOSELF_SUBSET(FUNCTION)
+
+#define _TIMER_DOPAIR_SUBSET(f) PASTE(runner_timer_dopair_subset,f)
+#define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
+
+#define _IACT_NONSYM_VEC(f) PASTE(runner_iact_nonsym_vec,f)
+#define IACT_NONSYM_VEC _IACT_NONSYM_VEC(FUNCTION)
+
+#define _IACT_VEC(f) PASTE(runner_iact_vec,f)
+#define IACT_VEC _IACT_VEC(FUNCTION)
 
 
 
@@ -94,6 +106,7 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
     struct cpart *restrict cpi, *restrict cparts_i = ci->cparts;
     double pix[3];
     float dx[3], hi, hi2, r2;
+    float dt_max = e->dt_max;
     #ifdef VECTORIZE
         int icount = 0;
         float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
@@ -103,6 +116,10 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
         struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
     #endif
     TIMER_TIC
+    
+    /* Anything to do here? */
+    if ( ci->dt_min > dt_max && cj->dt_min > dt_max )
+        return;
     
     /* Get the relative distance between the pairs, wrapping. */
     for ( k = 0 ; k < 3 ; k++ ) {
@@ -187,6 +204,106 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
         TIMER_TOC(TIMER_DOPAIR);
     #endif
 
+
+    }
+
+
+void DOSELF_NAIVE ( struct runner *r , struct cell *restrict c ) {
+
+    int pid, pjd, k, count = c->count;
+    struct part *restrict parts = c->parts;
+    struct cpart *restrict cpi,  *restrict cpj,*restrict cparts = c->cparts;
+    double pix[3];
+    float dx[3], hi, hi2, r2;
+    float dt_max = r->e->dt_max;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
+    TIMER_TIC
+    
+    /* Anything to do here? */
+    if ( c->dt_min > dt_max )
+        return;
+    
+    /* printf( "runner_dopair_naive: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts and shift = [ %g %g %g ].\n" ,
+        ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
+        ci->count , cj->count , shift[0] , shift[1] , shift[2] ); fflush(stdout);
+    tic = getticks(); */
+    
+    /* Loop over the parts in ci. */
+    for ( pid = 0 ; pid < count ; pid++ ) {
+    
+        /* Get a hold of the ith part in ci. */
+        cpi = &cparts[ pid ];
+        for ( k = 0 ; k < 3 ; k++ )
+            pix[k] = cpi->x[k];
+        hi = cpi->h;
+        hi2 = hi * hi;
+        
+        /* Loop over the parts in cj. */
+        for ( pjd = pid+1 ; pjd < count ; pjd++ ) {
+        
+            /* Get a pointer to the jth particle. */
+            cpj = &cparts[ pjd ];
+        
+            /* Compute the pairwise distance. */
+            r2 = 0.0f;
+            for ( k = 0 ; k < 3 ; k++ ) {
+                dx[k] = pix[k] - cpj->x[k];
+                r2 += dx[k]*dx[k];
+                }
+                
+            /* Hit or miss? */
+            if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+            
+                #ifndef VECTORIZE
+                        
+                    IACT( r2 , dx , hi , cpj->h , &parts[ pid ] , &parts[pjd] );
+                
+                #else
+
+                    /* Add this interaction to the queue. */
+                    r2q[icount] = r2;
+                    dxq[3*icount+0] = dx[0];
+                    dxq[3*icount+1] = dx[1];
+                    dxq[3*icount+2] = dx[2];
+                    hiq[icount] = hi;
+                    hjq[icount] = cpj->h;
+                    piq[icount] = &parts[ pid ];
+                    pjq[icount] = &parts[ pjd ];
+                    icount += 1;
+
+                    /* Flush? */
+                    if ( icount == VEC_SIZE ) {
+                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        icount = 0;
+                        }
+
+                #endif
+                    
+                }
+        
+            } /* loop over the parts in cj. */
+    
+        } /* loop over the parts in ci. */
+        
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
+        
+    #ifdef TIMER_VERBOSE
+        printf( "runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n" , r->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
+    #else
+        TIMER_TOC(TIMER_DOSELF);
+    #endif
 
     }
 
@@ -507,7 +624,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
  * @param cj The second #cell.
  */
  
-void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj ) {
+void DOPAIR1 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj ) {
 
     struct engine *restrict e = r->e;
     int pid, pjd, k, sid;
@@ -522,6 +639,7 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
     double hi_max, hj_max;
     double di_max, dj_min;
     int count_i, count_j;
+    float dt_max = e->dt_max;
     #ifdef VECTORIZE
         int icount = 0;
         float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
@@ -531,6 +649,10 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
         struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
     #endif
     TIMER_TIC
+    
+    /* Anything to do here? */
+    if ( ci->dt_min > dt_max && cj->dt_min > dt_max )
+        return;
     
     /* Get the relative distance between the pairs, wrapping. */
     for ( k = 0 ; k < 3 ; k++ ) {
@@ -594,6 +716,8 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
         /* Get a hold of the ith part in ci. */
         pi = &parts_i[ sort_i[ pid ].i ];
         cpi = &cparts_i[ sort_i[ pid ].i ];
+        if ( cpi->dt > dt_max )
+            continue;
         hi = cpi->h;
         di = sort_i[pid].d + hi - rshift;
         if ( di < dj_min )
@@ -621,7 +745,7 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
             
                 #ifndef VECTORIZE
                         
-                    IACT( r2 , dx , hi , cpj->h , &parts_i[ sort_i[ pid ].i ] , &parts_j[ sort_j[pjd].i ] );
+                    IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[pjd].i ] );
                 
                 #else
 
@@ -638,7 +762,7 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
 
                     /* Flush? */
                     if ( icount == VEC_SIZE ) {
-                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
                         icount = 0;
                         }
 
@@ -659,6 +783,8 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
         /* Get a hold of the jth part in cj. */
         pj = &parts_j[ sort_j[ pjd ].i ];
         cpj = &cparts_j[ sort_j[ pjd ].i ];
+        if ( cpj->dt > dt_max )
+            continue;
         hj = cpj->h;
         dj = sort_j[pjd].d - hj - rshift;
         if ( dj > di_max )
@@ -682,11 +808,11 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
                 }
                 
             /* Hit or miss? */
-            if ( r2 < hj2 && r2 > cpi->h*cpi->h ) {
+            if ( r2 < hj2 ) {
             
                 #ifndef VECTORIZE
                         
-                    IACT( r2 , dx , hj , cpi->h , &parts_j[ sort_j[ pjd ].i ] , &parts_i[ sort_i[pid].i ] );
+                    IACT_NONSYM( r2 , dx , hj , cpi->h , pj , &parts_i[ sort_i[pid].i ] );
                 
                 #else
 
@@ -703,7 +829,7 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
 
                     /* Flush? */
                     if ( icount == VEC_SIZE ) {
-                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
                         icount = 0;
                         }
 
@@ -719,9 +845,377 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
     /* Pick up any leftovers. */
     if ( icount > 0 )
         for ( k = 0 ; k < icount ; k++ )
-            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+            IACT_NONSYM( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
     #endif
         
+    #ifdef TIMER_VERBOSE
+        printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
+    #else
+        TIMER_TOC(TIMER_DOPAIR);
+    #endif
+
+    }
+
+
+void DOPAIR2 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj ) {
+
+    struct engine *restrict e = r->e;
+    int pid, pjd, k, sid;
+    double rshift, shift[3] = { 0.0 , 0.0 , 0.0 };
+    struct cell *temp;
+    struct entry *restrict sort_i, *restrict sort_j;
+    struct entry *restrict sortdt_i = NULL, *restrict sortdt_j = NULL;
+    int countdt_i = 0, countdt_j = 0;
+    struct part *restrict pi, *restrict pj, *restrict parts_i, *restrict parts_j;
+    struct cpart *restrict cpi, *restrict cparts_i;
+    struct cpart *restrict cpj, *restrict cparts_j;
+    double pix[3], pjx[3], di, dj;
+    float dx[3], hi, hi2, hj, hj2, r2;
+    double hi_max, hj_max;
+    double di_max, dj_min;
+    int count_i, count_j;
+    float dt_max = e->dt_max;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
+    TIMER_TIC
+    
+    /* Anything to do here? */
+    if ( ci->dt_min > dt_max && cj->dt_min > dt_max )
+        return;
+    
+    /* Get the relative distance between the pairs, wrapping. */
+    for ( k = 0 ; k < 3 ; k++ ) {
+        if ( cj->loc[k] - ci->loc[k] < -e->s->dim[k]/2 )
+            shift[k] = e->s->dim[k];
+        else if ( cj->loc[k] - ci->loc[k] > e->s->dim[k]/2 )
+            shift[k] = -e->s->dim[k];
+        }
+        
+    /* Get the sorting index. */
+    for ( sid = 0 , k = 0 ; k < 3 ; k++ )
+        sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
+
+    /* Switch the cells around? */
+    if ( runner_flip[sid] ) {
+        temp = ci; ci = cj; cj = temp;
+        for ( k = 0 ; k < 3 ; k++ )
+            shift[k] = -shift[k];
+        }
+    sid = sortlistID[sid];
+    
+    /* Get the cutoff shift. */
+    for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )
+        rshift += shift[k]*runner_shift[ 3*sid + k ];
+        
+    /* for ( k = 0 ; k < ci->count ; k++ )
+        if ( ci->parts[k].id == 561590 )
+            break;
+    if ( k == ci->count )
+        for ( k = 0 ; k < cj->count ; k++ )
+            if ( cj->parts[k].id == 561590 )
+                break;
+    if ( k < cj->count )
+        printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts, h_max=%g/%g, and shift = [ %g %g %g ] (rshift=%g).\n" ,
+            ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
+            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout); */
+    /* for ( hi = 0 , k = 0 ; k < ci->count ; k++ )
+        hi += ci->parts[k].r;
+    for ( hj = 0 , k = 0 ; k < cj->count ; k++ )
+        hj += cj->parts[k].r;
+    printf( "runner_dopair: avg. radii %g/%g for h=%g at depth=%i.\n" , hi/ci->count , hj/cj->count , ci->h[0] , ci->depth ); fflush(stdout); */
+    
+    /* Pick-out the sorted lists. */
+    sort_i = &ci->sort[ sid*(ci->count + 1) ];
+    sort_j = &cj->sort[ sid*(cj->count + 1) ];
+    
+    /* Get some other useful values. */
+    hi_max = ci->h_max - rshift; hj_max = cj->h_max;
+    count_i = ci->count; count_j = cj->count;
+    parts_i = ci->parts; parts_j = cj->parts;
+    cparts_i = ci->cparts; cparts_j = cj->cparts;
+    di_max = sort_i[count_i-1].d - rshift;
+    dj_min = sort_j[0].d;
+    
+    /* Collect the number of parts left and right below dt. */
+    if ( cj->dt_min > dt_max ) {
+        sortdt_i = sort_i;
+        countdt_i = count_i;
+        }
+    else if ( cj->dt_max > dt_max ) {
+        if ( ( sortdt_i = (struct entry *)alloca( sizeof(struct entry) * count_i ) ) == NULL )
+            error( "Failed to allocate dt sortlists." );
+        for ( k = 0 ; k < count_i ; k++ )
+            if ( cparts_i[ sort_i[ k ].i ].dt <= dt_max ) {
+                sortdt_i[ countdt_i ] = sort_i[k];
+                countdt_i += 1;
+                }
+        }
+    if ( ci->dt_min > dt_max ) {
+        sortdt_j = sort_j;
+        countdt_j = count_j;
+        }
+    else if ( ci->dt_max > dt_max ) {
+        if ( ( sortdt_j = (struct entry *)alloca( sizeof(struct entry) * count_j ) ) == NULL )
+            error( "Failed to allocate dt sortlists." );
+        for ( k = 0 ; k < count_j ; k++ )
+            if ( cparts_j[ sort_j[ k ].i ].dt <= dt_max ) {
+                sortdt_j[ countdt_j ] = sort_j[k];
+                countdt_j += 1;
+                }
+        }
+    
+    /* if ( ci->split && cj->split && sid == 4 )
+        printf( "boing!\n" ); */
+    
+    /* Loop over the parts in ci. */
+    for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max > dj_min ; pid-- ) {
+    
+        /* Get a hold of the ith part in ci. */
+        pi = &parts_i[ sort_i[ pid ].i ];
+        cpi = &cparts_i[ sort_i[ pid ].i ];
+        hi = cpi->h;
+        di = sort_i[pid].d + hi - rshift;
+        if ( di < dj_min )
+            continue;
+            
+        hi2 = hi * hi;
+        for ( k = 0 ; k < 3 ; k++ )
+            pix[k] = cpi->x[k] - shift[k];
+            
+        /* Look at valid dt parts only? */
+        if ( cpi->dt > dt_max ) {
+        
+            /* Loop over the parts in cj within dt. */
+            for ( pjd = 0 ; pjd < countdt_j && sortdt_j[pjd].d < di ; pjd++ ) {
+
+                /* Get a pointer to the jth particle. */
+                cpj = &cparts_j[ sortdt_j[pjd].i ];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = pix[k] - cpj->x[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hi2 ) {
+
+                    #ifndef VECTORIZE
+
+                        IACT( r2 , dx , hi , cpj->h , pi , &parts_j[ sortdt_j[pjd].i ] );
+
+                    #else
+
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hi;
+                        hjq[icount] = cpj->h;
+                        piq[icount] = pi;
+                        pjq[icount] = &parts_j[ sortdt_j[ pjd ].i ];
+                        icount += 1;
+
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
+
+                    }
+        
+                } /* loop over the parts in cj. */
+                
+            }
+            
+        /* Otherwise, look at all parts. */
+        else {
+        
+            /* Loop over the parts in cj. */
+            for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d < di ; pjd++ ) {
+
+                /* Get a pointer to the jth particle. */
+                cpj = &cparts_j[ sort_j[pjd].i ];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = pix[k] - cpj->x[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hi2 ) {
+
+                    #ifndef VECTORIZE
+
+                        IACT( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[pjd].i ] );
+
+                    #else
+
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hi;
+                        hjq[icount] = cpj->h;
+                        piq[icount] = pi;
+                        pjq[icount] = &parts_j[ sort_j[ pjd ].i ];
+                        icount += 1;
+
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
+
+                    }
+        
+                } /* loop over the parts in cj. */
+                
+            }
+    
+        } /* loop over the parts in ci. */
+        
+    /* printf( "runner_dopair: first half took %.3f ms...\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+    tic = getticks(); */
+
+    /* Loop over the parts in cj. */
+    for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max < di_max ; pjd++ ) {
+    
+        /* Get a hold of the jth part in cj. */
+        pj = &parts_j[ sort_j[ pjd ].i ];
+        cpj = &cparts_j[ sort_j[ pjd ].i ];
+        hj = cpj->h;
+        dj = sort_j[pjd].d - hj - rshift;
+        if ( dj > di_max )
+            continue;
+            
+        for ( k = 0 ; k < 3 ; k++ )
+            pjx[k] = cpj->x[k] + shift[k];
+        hj2 = hj * hj;
+        
+        /* Is this particle outside the dt? */
+        if ( cpj->dt > dt_max ) {
+        
+            /* Loop over the parts in ci. */
+            for ( pid = countdt_i-1 ; pid >= 0 && sortdt_i[pid].d > dj ; pid-- ) {
+
+                /* Get a pointer to the jth particle. */
+                cpi = &cparts_i[ sortdt_i[pid].i ];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = cpi->x[k] - pjx[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hj2 && r2 > cpi->h*cpi->h ) {
+
+                    #ifndef VECTORIZE
+
+                        IACT( r2 , dx , hj , cpi->h , pj , &parts_i[ sortdt_i[pid].i ] );
+
+                    #else
+
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hj;
+                        hjq[icount] = cpi->h;
+                        piq[icount] = pj;
+                        pjq[icount] = &parts_i[ sortdt_i[ pid ].i ];
+                        icount += 1;
+
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
+
+                    }
+
+                } /* loop over the parts in cj. */
+            }
+            
+        /* Otherwise, interact with all particles in cj. */
+        else {
+        
+            /* Loop over the parts in ci. */
+            for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d > dj ; pid-- ) {
+
+                /* Get a pointer to the jth particle. */
+                cpi = &cparts_i[ sort_i[pid].i ];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = cpi->x[k] - pjx[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hj2 && r2 > cpi->h*cpi->h ) {
+
+                    #ifndef VECTORIZE
+
+                        IACT( r2 , dx , hj , cpi->h , pj , &parts_i[ sort_i[pid].i ] );
+
+                    #else
+
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hj;
+                        hjq[icount] = cpi->h;
+                        piq[icount] = pj;
+                        pjq[icount] = &parts_i[ sort_i[ pid ].i ];
+                        icount += 1;
+
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
+
+                    }
+
+                } /* loop over the parts in cj. */
+                
+            }
+    
+        } /* loop over the parts in ci. */
+
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
+    
     #ifdef TIMER_VERBOSE
         printf( "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , fmax(ci->h[0],fmax(ci->h[1],ci->h[2])) , ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000 );
     #else
@@ -738,13 +1232,14 @@ void DOPAIR ( struct runner *r , struct cell *restrict ci , struct cell *restric
  * @param c The #cell.
  */
 
-void DOSELF ( struct runner *r , struct cell *restrict c ) {
+void DOSELF1 ( struct runner *r , struct cell *restrict c ) {
 
     int k, pid, pjd, count = c->count;
     double pix[3];
     float dx[3], hi, hi2, r2;
-    struct part *restrict parts = c->parts;
+    struct part *restrict parts = c->parts, *restrict pi;
     struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
+    float dt_max = r->e->dt_max;
     #ifdef VECTORIZE
         int icount = 0;
         float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
@@ -755,11 +1250,18 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
     #endif
     TIMER_TIC
     
+    /* Any work here? */
+    if ( c->dt_min > dt_max )
+        return;
+    
     /* Loop over the particles in the cell. */
     for ( pid = 0 ; pid < count ; pid++ ) {
     
         /* Get a pointer to the ith particle. */
         cpi = &cparts[pid];
+        pi = &parts[pid];
+        if ( cpi->dt > dt_max )
+            continue;
     
         /* Get the particle position and radius. */
         for ( k = 0 ; k < 3 ; k++ )
@@ -768,10 +1270,14 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
         hi2 = hi * hi;
             
         /* Loop over the other particles .*/
-        for ( pjd = pid+1 ; pjd < count ; pjd++ ) {
+        for ( pjd = 0 ; pjd < count ; pjd++ ) {
+        
+            /* Skip self-interactions. */
+            if ( pid == pjd )
+                continue;
         
             /* Get a pointer to the jth particle. */
-            cpj = &cparts[pjd];
+            cpj = &cparts[pjd];                
         
             /* Compute the pairwise distance. */
             r2 = 0.0f;
@@ -781,11 +1287,11 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
                 }
                 
             /* Hit or miss? */
-            if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+            if ( r2 < hi2 ) {
             
                 #ifndef VECTORIZE
                         
-                    IACT( r2 , dx , hi , cpj->h , &parts[pid] , &parts[pjd] );
+                    IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts[pjd] );
                 
                 #else
 
@@ -796,13 +1302,13 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
                     dxq[3*icount+2] = dx[2];
                     hiq[icount] = hi;
                     hjq[icount] = cpj->h;
-                    piq[icount] = &parts[pid];
+                    piq[icount] = pi;
                     pjq[icount] = &parts[pjd];
                     icount += 1;
 
                     /* Flush? */
                     if ( icount == VEC_SIZE ) {
-                        IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
                         icount = 0;
                         }
 
@@ -818,11 +1324,177 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
     /* Pick up any leftovers. */
     if ( icount > 0 )
         for ( k = 0 ; k < icount ; k++ )
-            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+            IACT_NONSYM( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
     #endif
         
     #ifdef TIMER_VERBOSE
-        printf( "runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n" , r->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
+        printf( "runner_doself1[%02i]: %i parts at depth %i took %.3f ms.\n" , r->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
+    #else
+        TIMER_TOC(TIMER_DOSELF);
+    #endif
+
+    }
+
+
+void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
+
+    int k, pid, pjd, count = c->count;
+    double pix[3];
+    float dx[3], hi, hi2, r2;
+    struct part *restrict parts = c->parts, *restrict pi;
+    struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
+    float dt_max = r->e->dt_max;
+    int firstdt = 0, countdt = 0, *indt = NULL;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
+    TIMER_TIC
+    
+    /* Set up indt if needed. */
+    if ( c->dt_min > dt_max )
+        return;
+    else if ( c->dt_max > dt_max ) {
+        if ( ( indt = (int *)alloca( sizeof(int) * count ) ) == NULL )
+            error( "Failed to allocate indt." );
+        for ( k = 0 ; k < count ; k++ )
+            if ( cparts[k].dt <= dt_max ) {
+                indt[ countdt ] = k;
+                countdt += 1;
+                }
+        }
+    
+    /* Loop over the particles in the cell. */
+    for ( pid = 0 ; pid < count ; pid++ ) {
+    
+        /* Get a pointer to the ith particle. */
+        pi = &parts[pid];
+        cpi = &cparts[pid];
+    
+        /* Get the particle position and radius. */
+        for ( k = 0 ; k < 3 ; k++ )
+            pix[k] = cpi->x[k];
+        hi = cpi->h;
+        hi2 = hi * hi;
+        
+        /* Is the ith particle not active? */
+        if ( cpi->dt > dt_max ) {
+        
+            /* Loop over the other particles .*/
+            for ( pjd = firstdt ; pjd < countdt ; pjd++ ) {
+
+                /* Get a pointer to the jth particle. */
+                cpj = &cparts[ indt[ pjd ] ];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = pix[k] - cpj->x[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+
+                    #ifndef VECTORIZE
+
+                        IACT( r2 , dx , hi , cpj->h , pi , &parts[indt[pjd]] );
+
+                    #else
+
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hi;
+                        hjq[icount] = cpj->h;
+                        piq[icount] = pi;
+                        pjq[icount] = &parts[indt[pjd]];
+                        icount += 1;
+
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
+
+                    }
+
+                } /* loop over all other particles. */
+                
+            }
+            
+        /* Otherwise, interact with all candidates. */
+        else {
+        
+            /* We caught a live one! */
+            firstdt += 1;
+            
+            /* Loop over the other particles .*/
+            for ( pjd = pid+1 ; pjd < count ; pjd++ ) {
+
+                /* Get a pointer to the jth particle. */
+                cpj = &cparts[pjd];
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = pix[k] - cpj->x[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+
+                    #ifndef VECTORIZE
+
+                        IACT( r2 , dx , hi , cpj->h , pi , &parts[pjd] );
+
+                    #else
+
+                        /* Add this interaction to the queue. */
+                        r2q[icount] = r2;
+                        dxq[3*icount+0] = dx[0];
+                        dxq[3*icount+1] = dx[1];
+                        dxq[3*icount+2] = dx[2];
+                        hiq[icount] = hi;
+                        hjq[icount] = cpj->h;
+                        piq[icount] = pi;
+                        pjq[icount] = &parts[pjd];
+                        icount += 1;
+
+                        /* Flush? */
+                        if ( icount == VEC_SIZE ) {
+                            IACT_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                            icount = 0;
+                            }
+
+                    #endif
+
+                    }
+
+                } /* loop over all other particles. */
+            
+            }
+    
+        } /* loop over all particles. */
+
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
+    
+    #ifdef TIMER_VERBOSE
+        printf( "runner_doself2[%02i]: %i parts at depth %i took %.3f ms.\n" , r->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOSELF);
     #endif
@@ -840,7 +1512,7 @@ void DOSELF ( struct runner *r , struct cell *restrict c ) {
  * redundant computations to find the sid on-the-fly.
  */
 
-void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int sid ) {
+void DOSUB1 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int sid ) {
 
     int j, k;
     double shift[3];
@@ -858,17 +1530,17 @@ void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict
             /* Loop over all progeny. */
             for ( k = 0 ; k < 8 ; k++ )
                 if ( ci->progeny[k] != NULL ) {
-                    DOSUB( r , ci->progeny[k] , NULL , -1 );
+                    DOSUB1( r , ci->progeny[k] , NULL , -1 );
                     for ( j = k+1 ; j < 8 ; j++ )
                         if ( ci->progeny[j] != NULL )
-                            DOSUB( r , ci->progeny[k] , ci->progeny[j] , -1 );
+                            DOSUB1( r , ci->progeny[k] , ci->progeny[j] , -1 );
                     }
         
             }
         
         /* Otherwsie, compute self-interaction. */
         else
-            DOSELF( r , ci );
+            DOSELF2( r , ci );
             
         } /* self-interaction. */
         
@@ -914,193 +1586,193 @@ void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict
                 /* Regular sub-cell interactions of a single cell. */
                 case 0: /* (  1 ,  1 ,  1 ) */
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
                     break;
                     
                 case 1: /* (  1 ,  1 ,  0 ) */
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 );
                     break;
 
                 case 2: /* (  1 ,  1 , -1 ) */
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
                     break;
                     
                 case 3: /* (  1 ,  0 ,  1 ) */
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 );
                     break;
 
                 case 4: /* (  1 ,  0 ,  0 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[0] , -1 );
                     if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[1] , -1 );
                     if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[2] , -1 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[1] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[3] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[2] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[3] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[3] , -1 );
                     break;
 
                 case 5: /* (  1 ,  0 , -1 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[1] , -1 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[3] , -1 );
                     break;
 
                 case 6: /* (  1 , -1 ,  1 ) */
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
                     break;
                     
                 case 7: /* (  1 , -1 ,  0 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[2] , -1 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[3] , -1 );
                     break;
 
                 case 8: /* (  1 , -1 , -1 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
                     break;
                     
                 case 9: /* (  0 ,  1 ,  1 ) */
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 );
                     break;
 
                 case 10: /* (  0 ,  1 ,  0 ) */
                     if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[2] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[0] , -1 );
                     if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[1] , -1 );
                     if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[2] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[4] , -1 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                        DOSUB( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[5] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[1] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[5] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[4] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[5] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[5] , -1 );
                     break;
 
                 case 11: /* (  0 ,  1 , -1 ) */
                     if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[1] , -1 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                        DOSUB( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[5] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                        DOSUB( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[5] , -1 );
                     break;
 
                 case 12: /* (  0 ,  0 ,  1 ) */
                     if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[1] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[0] , -1 );
                     if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[1] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[2] , -1 );
                     if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[1] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[4] , -1 );
                     if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
-                        DOSUB( r , ci->progeny[1] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[6] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[2] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 );
                     if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
-                        DOSUB( r , ci->progeny[3] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[6] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[4] , -1 );
                     if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
-                        DOSUB( r , ci->progeny[5] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[6] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 );
                     if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
-                        DOSUB( r , ci->progeny[7] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[6] , -1 );
                     break;
 
                 }
@@ -1109,7 +1781,290 @@ void DOSUB ( struct runner *r , struct cell *restrict ci , struct cell *restrict
             
         /* Otherwise, compute the pair directly. */
         else
-            DOPAIR( r , ci , cj );
+            DOPAIR1( r , ci , cj );
+    
+        } /* otherwise, pair interaction. */
+    
+
+    #ifdef TIMER_VERBOSE
+        printf( "runner_DOSUB[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+    #else
+        TIMER_TOC(TIMER_DOSUB);
+    #endif
+
+    }
+
+
+void DOSUB2 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int sid ) {
+
+    int j, k;
+    double shift[3];
+    float h;
+    struct space *s = r->e->s;
+
+    TIMER_TIC
+    
+    /* Is this a single cell? */
+    if ( cj == NULL ) {
+    
+        /* Recurse? */
+        if ( ci->split ) {
+        
+            /* Loop over all progeny. */
+            for ( k = 0 ; k < 8 ; k++ )
+                if ( ci->progeny[k] != NULL ) {
+                    DOSUB2( r , ci->progeny[k] , NULL , -1 );
+                    for ( j = k+1 ; j < 8 ; j++ )
+                        if ( ci->progeny[j] != NULL )
+                            DOSUB2( r , ci->progeny[k] , ci->progeny[j] , -1 );
+                    }
+        
+            }
+        
+        /* Otherwsie, compute self-interaction. */
+        else
+            DOSELF2( r , ci );
+            
+        } /* self-interaction. */
+        
+    /* Otherwise, it's a pair interaction. */
+    else {
+    
+        /* Get the cell dimensions. */
+        h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
+        
+        /* Get the type of pair if not specified explicitly. */
+        if ( sid < 0 ) {
+        
+            /* Get the relative distance between the pairs, wrapping. */
+            for ( k = 0 ; k < 3 ; k++ ) {
+                if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
+                    shift[k] = s->dim[k];
+                else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
+                    shift[k] = -s->dim[k];
+                else
+                    shift[k] = 0.0;
+                }
+
+            /* Get the sorting index. */
+            for ( sid = 0 , k = 0 ; k < 3 ; k++ )
+                sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
+
+            /* Flip? */
+            if ( sid < 13 ) {
+                struct cell *temp = cj; cj = ci; ci = temp;
+                }
+            else
+                sid = 26 - sid;
+                
+            }
+    
+        /* Recurse? */
+        if ( ci->split && cj->split &&
+             ci->h_max*2 < h && cj->h_max*2 < h ) {
+             
+            /* Different types of flags. */
+            switch ( sid ) {
+
+                /* Regular sub-cell interactions of a single cell. */
+                case 0: /* (  1 ,  1 ,  1 ) */
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    break;
+                    
+                case 1: /* (  1 ,  1 ,  0 ) */
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                    break;
+
+                case 2: /* (  1 ,  1 , -1 ) */
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    break;
+                    
+                case 3: /* (  1 ,  0 ,  1 ) */
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                    break;
+
+                case 4: /* (  1 ,  0 ,  0 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[3] , -1 );
+                    break;
+
+                case 5: /* (  1 ,  0 , -1 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                    break;
+
+                case 6: /* (  1 , -1 ,  1 ) */
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    break;
+                    
+                case 7: /* (  1 , -1 ,  0 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                    break;
+
+                case 8: /* (  1 , -1 , -1 ) */
+                    if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                    break;
+                    
+                case 9: /* (  0 ,  1 ,  1 ) */
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                    break;
+
+                case 10: /* (  0 ,  1 ,  0 ) */
+                    if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[5] , -1 );
+                    break;
+
+                case 11: /* (  0 ,  1 , -1 ) */
+                    if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                    if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                    break;
+
+                case 12: /* (  0 ,  0 ,  1 ) */
+                    if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[6] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[6] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[6] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                    if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[6] , -1 );
+                    break;
+
+                }
+            
+            }
+            
+        /* Otherwise, compute the pair directly. */
+        else
+            DOPAIR2( r , ci , cj );
     
         } /* otherwise, pair interaction. */
     

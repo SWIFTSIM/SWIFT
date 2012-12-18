@@ -325,6 +325,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     int i, k, redo, count = c->count;
     int *pid;
     float ihg, ihg2;
+    float dt_max = r->e->dt_max;
     TIMER_TIC
     
     /* Recurse? */
@@ -352,28 +353,42 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 
             /* Get a direct pointer on the part. */
             p = &c->parts[ pid[i] ];
-
-            /* Adjust the computed rho. */
-            ihg = kernel_igamma / p->h;
-            ihg2 = ihg * ihg;
-            p->rho *= ihg * ihg2;
-            p->rho_dh *= ihg2 * ihg2;
             
-            /* Update the smoothing length. */
-            p->h -= ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
+            /* Is this part within the timestep? */
+            if ( p->dt <= dt_max ) {
 
-            /* Did we get the right number density? */
-            if ( p->wcount + kernel_root > const_nwneigh + 1 ||
-                 p->wcount + kernel_root < const_nwneigh - 1 ) {
-                // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount + kernel_root ); fflush(stdout);
-                // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
-                pid[redo] = pid[i];
-                redo += 1;
-                p->wcount = 0.0;
-                p->wcount_dh = 0.0;
-                p->rho = 0.0;
-                p->rho_dh = 0.0;
-                continue;
+                /* Adjust the computed rho. */
+                ihg = kernel_igamma / p->h;
+                ihg2 = ihg * ihg;
+                p->rho *= ihg * ihg2;
+                p->rho_dh *= ihg2 * ihg2;
+
+                /* Update the smoothing length. */
+                p->h -= ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
+
+                /* Did we get the right number density? */
+                if ( p->wcount + kernel_root > const_nwneigh + 1 ||
+                     p->wcount + kernel_root < const_nwneigh - 1 ) {
+                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount + kernel_root ); fflush(stdout);
+                    // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
+                    pid[redo] = pid[i];
+                    redo += 1;
+                    p->wcount = 0.0;
+                    p->wcount_dh = 0.0;
+                    p->rho = 0.0;
+                    p->rho_dh = 0.0;
+                    continue;
+                    }
+                    
+                /* Compute this particle's time step. */
+                p->dt = const_cfl * p->h / sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
+
+                /* Compute the pressure. */
+                // p->P = p->rho * p->u * ( const_gamma - 1.0f );
+
+                /* Compute the P/Omega/rho2. */
+                p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+
                 }
 
             /* Reset the acceleration. */
@@ -383,15 +398,6 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Reset the time derivatives. */
             p->u_dt = 0.0f;
             p->h_dt = 0.0f;
-
-            /* Compute this particle's time step. */
-            p->dt = const_cfl * p->h / sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
-
-            /* Compute the pressure. */
-            // p->P = p->rho * p->u * ( const_gamma - 1.0f );
-
-            /* Compute the P/Omega/rho2. */
-            p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
 
             }
             
@@ -570,18 +576,18 @@ void *runner_main ( void *data ) {
             switch ( t->type ) {
                 case task_type_self:
                     if ( t->subtype == task_subtype_density )
-                        runner_doself_density( r , ci );
+                        runner_doself1_density( r , ci );
                     else if ( t->subtype == task_subtype_force )
-                        runner_doself_force( r , ci );
+                        runner_doself2_force( r , ci );
                     else
                         error( "Unknown task subtype." );
                     cell_unlocktree( ci );
                     break;
                 case task_type_pair:
                     if ( t->subtype == task_subtype_density )
-                        runner_dopair_density( r , ci , cj );
+                        runner_dopair1_density( r , ci , cj );
                     else if ( t->subtype == task_subtype_force )
-                        runner_dopair_force( r , ci , cj );
+                        runner_dopair2_force( r , ci , cj );
                     else
                         error( "Unknown task subtype." );
                     cell_unlocktree( ci );
@@ -592,9 +598,9 @@ void *runner_main ( void *data ) {
                     break;
                 case task_type_sub:
                     if ( t->subtype == task_subtype_density )
-                        runner_dosub_density( r , ci , cj , t->flags );
+                        runner_dosub1_density( r , ci , cj , t->flags );
                     else if ( t->subtype == task_subtype_force )
-                        runner_dosub_force( r , ci , cj , t->flags );
+                        runner_dosub2_force( r , ci , cj , t->flags );
                     else
                         error( "Unknown task subtype." );
                     cell_unlocktree( ci );

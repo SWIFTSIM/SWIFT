@@ -104,7 +104,7 @@ void space_rebuild_recycle ( struct space *s , struct cell *c ) {
 int space_rebuild_recurse ( struct space *s , struct cell *c ) {
     
     int k, count, changes = 0, wasmt[8];
-    float h, h_limit, h_max = 0.0f;
+    float h, h_limit, h_max = 0.0f, dt_min = c->parts[0].dt, dt_max = dt_min;
     struct cell *temp;
     
     /* If the cell is already split, check that the split is still ok. */
@@ -124,8 +124,14 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
                 count += 1;
             if ( h > h_max )
                 h_max = h;
+            if ( c->cparts[k].dt < dt_min )
+                dt_min = c->cparts[k].dt;
+            if ( c->cparts[k].dt > dt_max )
+                dt_max = c->cparts[k].dt;
             }
         c->h_max = h_max;
+        c->dt_min = dt_min;
+        c->dt_max = dt_max;
             
         /* Un-split? */
         if ( count < c->count*space_splitratio || c->count < space_splitsize ) {
@@ -209,7 +215,7 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
  
 int space_rebuild ( struct space *s , int force , double cell_max ) {
 
-    float h_max = s->parts[0].h, h_min = s->parts[0].h;
+    float h_max = s->cell_min, h_min = s->parts[0].h;
     int i, j, k, cdim[3];
     struct cell *c;
     struct part *finger;
@@ -235,19 +241,22 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
     
         /* Free the old cells, if they were allocated. */
         if ( s->cells != NULL ) {
-            for ( k = 0 ; k < s->nr_cells ; k++ )
+            for ( k = 0 ; k < s->nr_cells ; k++ ) {
                 space_rebuild_recycle( s , &s->cells[k] );
+                if ( s->cells[k].sort != NULL )
+                    free( s->cells[k].sort );
+                }
             free( s->cells );
             s->maxdepth = 0;
             }
             
-        /* Set the new cell dimensions. */
+        /* Set the new cell dimensions only if smaller. */
         for ( k = 0 ; k < 3 ; k++ ) {
             s->cdim[k] = cdim[k];
             s->h[k] = s->dim[k] / cdim[k];
             s->ih[k] = 1.0 / s->h[k];
             }
-    
+
         /* Allocate the highest level of cells. */
         s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
         if ( posix_memalign( (void *)&s->cells , 64 , s->nr_cells * sizeof(struct cell) ) != 0 )
@@ -274,7 +283,8 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         
         
     /* Run through the particles and get their cell index. */
-    ind = (int *)alloca( sizeof(int) * s->nr_parts );
+    if ( ( ind = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
+        error( "Failed to allocate temporary particle indices." );
     for ( k = 0 ; k < s->nr_cells ; k++ )
         s->cells[ k ].count = 0;
     for ( k = 0 ; k < s->nr_parts ; k++ )  {
@@ -283,7 +293,10 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         }
 
     /* Sort the parts according to their cells. */
-    parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );        
+    parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );    
+    
+    /* We no longer need the indices as of here. */
+    free( ind );    
 
     /* Update the condensed particle data. */         
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
@@ -295,7 +308,9 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         }
 
     /* Hook the cells up to the parts. */
-    for ( finger = s->parts , cfinger = s->cparts , k = 0 ; k < s->nr_cells ; k++ ) {
+    finger = s->parts;
+    cfinger = s->cparts;
+    for ( k = 0 ; k < s->nr_cells ; k++ ) {
         c = &s->cells[ k ];
         c->parts = finger;
         c->cparts = cfinger;
@@ -623,7 +638,7 @@ void space_splittasks ( struct space *s ) {
                 continue;
             
             /* Make a sub? */
-            if ( ci->count < space_subsize ) {
+            if ( space_dosub && ci->count < space_subsize ) {
             
                 /* convert to a self-subtask. */
                 t->type = task_type_sub;
@@ -701,22 +716,19 @@ void space_splittasks ( struct space *s ) {
                     sid = 26 - sid;
 
                 /* Replace by a single sub-task? */
-                if ( ci->count < space_subsize && cj->count < space_subsize &&
+                if ( space_dosub &&
+                     ci->count < space_subsize && cj->count < space_subsize &&
                      sid != 0 && sid != 2 && sid != 6 && sid != 8 ) {
                 
                     /* Make this task a sub task. */
                     t->type = task_type_sub;
                     t->flags = sid;
                     
-                    /* Make it depend on all the sorts of its sub-cells. */
-                    for ( j = 0 ; j < 8 ; j++ ) {
-                        if ( ci->progeny[j] != NULL )
-                            for ( k = 0 ; k < 14 ; k++ )
-                                task_addunlock( ci->progeny[j]->sorts[k] , t );
-                        if ( cj->progeny[j] != NULL )
-                            for ( k = 0 ; k < 14 ; k++ )
-                                task_addunlock( cj->progeny[j]->sorts[k] , t );
-                        }
+                    /* Make it depend on all the sorts of its two cells. */
+                    for ( k = 0 ; k < 14 ; k++ )
+                        task_addunlock( ci->sorts[k] , t );
+                    for ( k = 0 ; k < 14 ; k++ )
+                        task_addunlock( cj->sorts[k] , t );
                     
                     /* Don't go any further. */
                     continue;
@@ -1070,12 +1082,12 @@ void space_maketasks ( struct space *s , int do_sort ) {
         
         
     /* Allocate the task-list, if needed. */
-    if ( s->tasks == NULL || s->tasks_size < s->tot_cells * 43 ) {
+    if ( s->tasks == NULL || s->tasks_size < s->tot_cells * space_maxtaskspercell ) {
         if ( s->tasks != NULL )
             free( s->tasks );
         if ( s->tasks_ind != NULL )
             free( s->tasks_ind );
-        s->tasks_size = s->tot_cells * 43;
+        s->tasks_size = s->tot_cells * space_maxtaskspercell;
         if ( posix_memalign( (void *)&s->tasks , 64 , sizeof(struct task) * s->tasks_size ) != 0 )
             error( "Failed to allocate task list." );
         if ( ( s->tasks_ind = (int *)malloc( sizeof(int) * s->tasks_size ) ) == NULL )
@@ -1127,6 +1139,34 @@ void space_maketasks ( struct space *s , int do_sort ) {
 
     /* Split the tasks. */
     space_splittasks( s );
+    
+    /* Remove pairs and self-interactions for cells with no parts in dt. */
+    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+        t = &s->tasks[k];
+        if ( t->type == task_type_self ) {
+            if ( t->ci->dt_min > s->dt_max )
+                t->type = task_type_none;
+            }
+        else if ( t->type == task_type_pair ) {
+            if ( t->ci->dt_min > s->dt_max && t->cj->dt_min > s->dt_max ) {
+                t->type = task_type_none;
+                for ( j = 0 ; j < 13 ; j++ )
+                    task_rmunlock_blind( t->ci->sorts[j] , t );
+                for ( j = 0 ; j < 13 ; j++ )
+                    task_rmunlock_blind( t->cj->sorts[j] , t );
+                }
+            }
+        else if ( t->type == task_type_sub ) {
+            if ( t->ci->dt_min > s->dt_max && ( t->cj == NULL || t->cj->dt_min > s->dt_max ) ) {
+                t->type = task_type_none;
+                for ( j = 0 ; j < 13 ; j++ )
+                    task_rmunlock_blind( t->ci->sorts[j] , t );
+                if ( t->cj != NULL )
+                    for ( j = 0 ; j < 13 ; j++ )
+                        task_rmunlock_blind( t->cj->sorts[j] , t );
+                }
+            }
+        }
     
     /* Remove sort tasks with no dependencies. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
@@ -1247,7 +1287,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
 void space_split ( struct space *s , struct cell *c ) {
 
     int k, count;
-    double h, h_limit, h_max = 0.0;
+    double h, h_limit, h_max = 0.0, dt_min = c->parts[0].dt, dt_max = dt_min;
     struct cell *temp;
     
     /* Check the depth. */
@@ -1264,8 +1304,14 @@ void space_split ( struct space *s , struct cell *c ) {
             count += 1;
         if ( h > h_max )
             h_max = h;
+        if ( c->cparts[k].dt < dt_min )
+            dt_min = c->cparts[k].dt;
+        if ( c->cparts[k].dt > dt_max )
+            dt_max = c->cparts[k].dt;
         }
     c->h_max = h_max;
+    c->dt_min = dt_min;
+    c->dt_max = dt_max;
             
     /* Split or let it be? */
     if ( count > c->count*space_splitratio && c->count > space_splitsize ) {
@@ -1420,11 +1466,12 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->periodic = periodic;
     s->nr_parts = N;
     s->parts = parts;
+    s->cell_min = h_max;
     
     /* Allocate the cparts array. */
     if ( posix_memalign( (void *)&s->cparts , 32 ,  N * sizeof(struct cpart) ) != 0 )
         error( "Failed to allocate cparts." );
-    
+        
     /* Init the space lock. */
     if ( lock_init( &s->lock ) != 0 )
         error( "Failed to create space spin-lock." );

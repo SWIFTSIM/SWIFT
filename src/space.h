@@ -26,8 +26,9 @@
 #define space_splitratio                0.875
 #define space_splitsize_default         400
 #define space_subsize_default           1000
-#define space_dosub                     1
+#define space_dosub                     0
 #define space_stretch                   1.0
+#define space_maxtaskspercell           43
 
 
 /* Convert cell location to ID. */
@@ -58,10 +59,10 @@ struct space {
     double h[3], ih[3];
     
     /* The minimum and maximum cutoff radii. */
-    double h_min, h_max;
+    double h_min, h_max, cell_min;
     
     /* Current time step for particles. */
-    float dt;
+    float dt_max;
     
     /* Number of cells. */
     int nr_cells, tot_cells;
@@ -78,9 +79,6 @@ struct space {
     /* The particle data (cells have pointers to this). */
     struct part *parts;
     struct cpart *cparts;
-    
-    /* The sortlist data (cells hold pointers to these). */
-    struct entry *sortlist;
     
     /* The total number of parts in the space. */
     int nr_parts;

@@ -278,6 +278,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   /* Allocate memory to store particles */
   if(posix_memalign( (void*)parts , 32 , *N * sizeof(struct part)) != 0)
     error("Error while allocating memory for particles");
+  bzero( *parts , *N * sizeof(struct part) );
 
   printf("read_ic: Allocated %8.2f MB for particles.\n", *N * sizeof(struct part) / (1024.*1024.));
 		  

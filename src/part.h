@@ -48,9 +48,6 @@ struct part {
     /* Particle velocity. */
     float v[3];
     
-    /* Particle acceleration. */
-    float a[3];
-    
     /* Particle density. */
     float rho;
     
@@ -68,6 +65,9 @@ struct part {
     
     /* Derivative of the density with respect to this particle's smoothing length. */
     float rho_dh;
+    
+    /* Particle acceleration. */
+    float a[3];
     
     /* Particle number density. */
     // int icount;

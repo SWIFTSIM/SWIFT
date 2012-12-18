@@ -76,6 +76,10 @@ void engine_prepare ( struct engine *e , int force ) {
         /* Clear the queues. */
         for ( k = 0 ; k < e->nr_queues ; k++ )
             e->queues[k].count = 0;
+            
+        /* Re-allocate the queue buffers? */
+        for ( k = 0 ; k < e->nr_queues ; k++ )
+            queue_init( &e->queues[k] , s->nr_tasks , s->tasks );
         
         /* Fill the queues (round-robin). */
         for ( k = 0 ; k < s->nr_tasks ; k++ ) {
@@ -213,7 +217,7 @@ void engine_barrier( struct engine *e ) {
  * @param sort_queues Flag to try to sort the queues topologically.
  */
  
-void engine_run ( struct engine *e , int sort_queues ) {
+void engine_run ( struct engine *e , int sort_queues , float dt_max ) {
 
     int k;
 
@@ -225,6 +229,10 @@ void engine_run ( struct engine *e , int sort_queues ) {
             e->queues[k].next = 0;
             }
         }
+        
+    /* Set the maximum dt. */
+    e->dt_max = dt_max;
+    e->s->dt_max = dt_max;
     
     /* Cry havoc and let loose the dogs of war. */
     e->barrier_count = -e->barrier_count;

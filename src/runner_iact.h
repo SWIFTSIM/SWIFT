@@ -89,9 +89,10 @@ __attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , floa
     }
 
 
+#ifdef VECTORIZE
+
 __attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x , vector *w , vector *dw_dx ) {
     
-#ifdef VECTORIZE
     vector ind, c[kernel_degree+1];
     int j, k;
     
@@ -113,15 +114,9 @@ __attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x 
         w->v = ( x->v * w->v ) + c[k].v;
         }
         
-#else
-    
-    /* Fake vectorization, i.e. hope the compiler gets it. */
-    for ( int k = 0 ; k < VEC_SIZE ; k++ )
-        kernel_deval( x.f[k] , &w.f[k] , &dw_dx.f[k] );
-
-#endif
-    
     }
+    
+#endif
 
 
 __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float *W ) {

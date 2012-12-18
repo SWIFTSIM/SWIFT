@@ -41,6 +41,9 @@ struct cell {
     /* Max radii in this cell. */
     double h_max;
     
+    /* Minimum and maximum dt in this cell. */
+    double dt_min, dt_max;
+    
     /* The depth of this cell in the tree. */
     int depth, split;
     

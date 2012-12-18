@@ -75,6 +75,7 @@ enum {
     runner_counter_steal_stall,
     runner_counter_steal_empty,
     runner_counter_keep,
+    runner_counter_iact,
     runner_counter_count,
     };
 extern int runner_counter[ runner_counter_count ];
