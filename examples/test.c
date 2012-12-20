@@ -703,7 +703,7 @@ int main ( int argc , char *argv[] ) {
 	case 'd':
 	  if ( sscanf( optarg , "%f" , &dt_max ) != 1 )
 	    error( "Error parsing timestep." );
-	  printf( "main: dt set to %.3f.\n" , dt_max ); fflush(stdout);
+	  printf( "main: dt set to %e.\n" , dt_max ); fflush(stdout);
 	  break;
 	case 'f':
 	  if( !strcpy(ICfileName, optarg))
