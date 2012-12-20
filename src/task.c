@@ -45,6 +45,30 @@ const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" 
 
 
 /**
+ * @breif Remove all unlocks to tasks that are of the given type.
+ *
+ * @param t The #task.
+ * @param type The task type ID to remove.
+ */
+ 
+void task_cleanunlock ( struct task *t , int type ) {
+
+    int k;
+    
+    lock_lock( &t->lock );
+    
+    for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
+        if ( t->unlock_tasks[k]->type == type ) {
+            t->nr_unlock_tasks -= 1;
+            t->unlock_tasks[k] = t->unlock_tasks[ t->nr_unlock_tasks ];
+            }
+    
+    lock_unlock_blind( &t->lock );
+    
+    }
+
+
+/**
  * @brief Remove an unlock_task from the given task.
  *
  * @param ta The unlocking #task.
@@ -107,10 +131,6 @@ void task_rmunlock_blind( struct task *ta , struct task *tb ) {
 void task_addunlock( struct task *ta , struct task *tb ) {
 
     int k;
-    
-    /* Bogus? */
-    if ( ta == NULL || tb == NULL )
-        return;
     
     lock_lock( &ta->lock );
     

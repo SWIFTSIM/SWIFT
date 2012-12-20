@@ -178,7 +178,7 @@ typedef unsigned long long ticks;
 #  define INLINE inline
 # endif
 #endif
-INLINE ticks getticks(void)
+INLINE static ticks getticks(void)
 {
      ticks ret;
 
@@ -234,7 +234,7 @@ typedef unsigned long long ticks;
 #  define INLINE inline
 # endif
 #endif
-INLINE ticks getticks(void)
+INLINE static ticks getticks(void)
 {
      unsigned a, d; 
      asm volatile("rdtsc" : "=a" (a), "=d" (d)); 

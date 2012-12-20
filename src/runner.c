@@ -177,14 +177,8 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     int i, ind, off[8], inds[8], temp_i;
     // float shift[3];
     float buff[8], px[3];
-    struct cell *temp_c;
     TIMER_TIC
     
-    /* Does this cell even need to be sorted? */
-    for ( temp_c = c ; temp_c != NULL && temp_c->nr_pairs == 0 ; temp_c = temp_c->parent );
-    if ( temp_c == NULL )
-        return;
-
     /* start by allocating the entry arrays. */
     if ( lock_lock( &c->lock ) != 0 )
         error( "Failed to lock cell." );
@@ -204,6 +198,11 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
             if ( !( flags & (1 << j) ) )
                 continue;
                 
+            /* Sort any un-sorted progeny. */
+            for ( k = 0 ; k < 8 ; k++ )
+                if ( c->progeny[k] != NULL && ( c->progeny[k]->sorts[0] == NULL || !(c->progeny[k]->sorts[0]->flags & (1 << j)) ) )
+                    runner_dosort( r , c->progeny[k] , 1 << j );
+        
             /* Init the particle index offsets. */
             for ( off[0] = 0 , k = 1 ; k < 8 ; k++ )
                 if ( c->progeny[k-1] != NULL )
@@ -298,7 +297,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
                 error( "Sorting failed, indices borked." );
             }
         } */
-
+        
     #ifdef TIMER_VERBOSE
         printf( "runner_dosort[%02i]: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) took %.3f ms.\n" ,
             r->id , c->count , c->depth ,
@@ -335,7 +334,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 runner_doghost( r , c->progeny[k] );
         return;
         }
-    
+        
     /* Init the IDs that have to be updated. */
     if ( ( pid = (int *)alloca( sizeof(int) * count ) ) == NULL )
         error( "Call to alloca failed." );

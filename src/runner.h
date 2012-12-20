@@ -39,9 +39,15 @@ enum {
 extern ticks runner_timer[ runner_timer_count ];
 
 
+/* SID stuff. */
+extern const char runner_flip[];
+
+
 /* Define the timer macros. */
 #ifdef TIMER_VERBOSE
-    #define TIMER
+    #ifndef TIMER
+        #define TIMER
+    #endif
 #endif
 #ifdef TIMER
     #define TIMER_TIC ticks tic = getticks();
@@ -55,7 +61,7 @@ extern ticks runner_timer[ runner_timer_count ];
     #  define INLINE inline
     # endif
     #endif
-    INLINE ticks timer_toc ( int t , ticks tic ) {
+    INLINE static ticks timer_toc ( int t , ticks tic ) {
         ticks d = (getticks() - tic);
         __sync_add_and_fetch( &runner_timer[t] , d );
         return d;

@@ -58,7 +58,7 @@ struct cell {
     struct entry *sort;
     
     /* Number of pairs associated with this cell. */
-    int nr_pairs;
+    // int nr_pairs;
     
     /* Pointers to the next level of cells. */
     struct cell *progeny[8];

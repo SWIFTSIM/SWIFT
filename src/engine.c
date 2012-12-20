@@ -129,15 +129,16 @@ void engine_ranktasks ( struct engine *e ) {
     struct task *t;
     struct space *s = e->s;
     int *tid = s->tasks_ind;
-
+    
     /* Run throught the tasks and get all the waits right. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+        tid[k] = k;
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
             s->tasks[k].unlock_tasks[j]->wait += 1;
         }
         
     /* Main loop. */
-    for ( rank = 0 ; left < s->nr_tasks ; rank++ ) {
+    for ( j = 0 , rank = 0 ; left < s->nr_tasks ; rank++ ) {
         
         /* Load the tids of tasks with no waits. */
         for ( k = left ; k < s->nr_tasks ; k++ )
@@ -308,8 +309,8 @@ void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_
         }
         
     /* Sort the queues topologically. */
-    for ( k = 0 ; k < nr_queues ; k++ )
-        queue_sort( &e->queues[k] );
+    // for ( k = 0 ; k < nr_queues ; k++ )
+    //     queue_sort( &e->queues[k] );
         
     /* Allocate and init the threads. */
     if ( ( e->runners = (struct runner *)malloc( sizeof(struct runner) * nr_threads ) ) == NULL )

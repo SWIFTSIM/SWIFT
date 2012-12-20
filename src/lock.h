@@ -40,7 +40,7 @@
     #define lock_type volatile int
     #define lock_init( l ) ( *l = 0 )
     #define lock_destroy( l ) 0
-    INLINE int lock_lock ( volatile int *l ) {
+    INLINE static int lock_lock ( volatile int *l ) {
         while ( __sync_val_compare_and_swap( l , 0 , 1 ) != 0 )
             while( *l );
         return 0;

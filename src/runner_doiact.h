@@ -498,7 +498,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     #endif
         
     #ifdef TIMER_VERBOSE
-        printf( "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
+        printf( "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(runner_timer_dopair_subset);
     #endif
@@ -607,7 +607,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     #endif
         
     #ifdef TIMER_VERBOSE
-        printf( "runner_doself_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count_i , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
+        printf( "runner_doself_subset[%02i]: %i/%i parts at depth %i took %.3f ms.\n" , r->id , count , ci->count , ci->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(runner_timer_dopair_subset);
     #endif
@@ -624,12 +624,11 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
  * @param cj The second #cell.
  */
  
-void DOPAIR1 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj ) {
+void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
     struct engine *restrict e = r->e;
     int pid, pjd, k, sid;
     double rshift, shift[3] = { 0.0 , 0.0 , 0.0 };
-    struct cell *temp;
     struct entry *restrict sort_i, *restrict sort_j;
     struct part *restrict pi, *restrict pj, *restrict parts_i, *restrict parts_j;
     struct cpart *restrict cpi, *restrict cparts_i;
@@ -653,26 +652,9 @@ void DOPAIR1 ( struct runner *r , struct cell *restrict ci , struct cell *restri
     /* Anything to do here? */
     if ( ci->dt_min > dt_max && cj->dt_min > dt_max )
         return;
-    
-    /* Get the relative distance between the pairs, wrapping. */
-    for ( k = 0 ; k < 3 ; k++ ) {
-        if ( cj->loc[k] - ci->loc[k] < -e->s->dim[k]/2 )
-            shift[k] = e->s->dim[k];
-        else if ( cj->loc[k] - ci->loc[k] > e->s->dim[k]/2 )
-            shift[k] = -e->s->dim[k];
-        }
         
-    /* Get the sorting index. */
-    for ( sid = 0 , k = 0 ; k < 3 ; k++ )
-        sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
-
-    /* Switch the cells around? */
-    if ( runner_flip[sid] ) {
-        temp = ci; ci = cj; cj = temp;
-        for ( k = 0 ; k < 3 ; k++ )
-            shift[k] = -shift[k];
-        }
-    sid = sortlistID[sid];
+    /* Get the sort ID. */
+    sid = space_getsid( e->s , &ci , &cj , shift );
     
     /* Get the cutoff shift. */
     for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )
@@ -709,7 +691,8 @@ void DOPAIR1 ( struct runner *r , struct cell *restrict ci , struct cell *restri
     
     /* if ( ci->split && cj->split && sid == 4 )
         printf( "boing!\n" ); */
-    
+        
+
     /* Loop over the parts in ci. */
     for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max > dj_min ; pid-- ) {
     
@@ -857,12 +840,11 @@ void DOPAIR1 ( struct runner *r , struct cell *restrict ci , struct cell *restri
     }
 
 
-void DOPAIR2 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj ) {
+void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
     struct engine *restrict e = r->e;
     int pid, pjd, k, sid;
     double rshift, shift[3] = { 0.0 , 0.0 , 0.0 };
-    struct cell *temp;
     struct entry *restrict sort_i, *restrict sort_j;
     struct entry *restrict sortdt_i = NULL, *restrict sortdt_j = NULL;
     int countdt_i = 0, countdt_j = 0;
@@ -888,26 +870,9 @@ void DOPAIR2 ( struct runner *r , struct cell *restrict ci , struct cell *restri
     /* Anything to do here? */
     if ( ci->dt_min > dt_max && cj->dt_min > dt_max )
         return;
-    
-    /* Get the relative distance between the pairs, wrapping. */
-    for ( k = 0 ; k < 3 ; k++ ) {
-        if ( cj->loc[k] - ci->loc[k] < -e->s->dim[k]/2 )
-            shift[k] = e->s->dim[k];
-        else if ( cj->loc[k] - ci->loc[k] > e->s->dim[k]/2 )
-            shift[k] = -e->s->dim[k];
-        }
         
-    /* Get the sorting index. */
-    for ( sid = 0 , k = 0 ; k < 3 ; k++ )
-        sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
-
-    /* Switch the cells around? */
-    if ( runner_flip[sid] ) {
-        temp = ci; ci = cj; cj = temp;
-        for ( k = 0 ; k < 3 ; k++ )
-            shift[k] = -shift[k];
-        }
-    sid = sortlistID[sid];
+    /* Get the shift ID. */
+    sid = space_getsid( e->s , &ci , &cj , shift );
     
     /* Get the cutoff shift. */
     for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )
@@ -1262,7 +1227,7 @@ void DOSELF1 ( struct runner *r , struct cell *restrict c ) {
         pi = &parts[pid];
         if ( cpi->dt > dt_max )
             continue;
-    
+            
         /* Get the particle position and radius. */
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k];
@@ -1512,9 +1477,9 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
  * redundant computations to find the sid on-the-fly.
  */
 
-void DOSUB1 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int sid ) {
+void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
 
-    int j, k;
+    int j = 0, k;
     double shift[3];
     float h;
     struct space *s = r->e->s;
@@ -1551,31 +1516,9 @@ void DOSUB1 ( struct runner *r , struct cell *restrict ci , struct cell *restric
         h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
         
         /* Get the type of pair if not specified explicitly. */
-        if ( sid < 0 ) {
-        
-            /* Get the relative distance between the pairs, wrapping. */
-            for ( k = 0 ; k < 3 ; k++ ) {
-                if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
-                    shift[k] = s->dim[k];
-                else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
-                    shift[k] = -s->dim[k];
-                else
-                    shift[k] = 0.0;
-                }
-
-            /* Get the sorting index. */
-            for ( sid = 0 , k = 0 ; k < 3 ; k++ )
-                sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
-
-            /* Flip? */
-            if ( sid < 13 ) {
-                struct cell *temp = cj; cj = ci; ci = temp;
-                }
-            else
-                sid = 26 - sid;
-                
-            }
-    
+        // if ( sid < 0 )
+            sid = space_getsid( s , &ci , &cj , shift );
+            
         /* Recurse? */
         if ( ci->split && cj->split &&
              ci->h_max*2 < h && cj->h_max*2 < h ) {
@@ -1787,7 +1730,7 @@ void DOSUB1 ( struct runner *r , struct cell *restrict ci , struct cell *restric
     
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_DOSUB[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+        printf( "runner_dosub1[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOSUB);
     #endif
@@ -1795,7 +1738,7 @@ void DOSUB1 ( struct runner *r , struct cell *restrict ci , struct cell *restric
     }
 
 
-void DOSUB2 ( struct runner *r , struct cell *restrict ci , struct cell *restrict cj , int sid ) {
+void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
 
     int j, k;
     double shift[3];
@@ -1834,30 +1777,8 @@ void DOSUB2 ( struct runner *r , struct cell *restrict ci , struct cell *restric
         h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
         
         /* Get the type of pair if not specified explicitly. */
-        if ( sid < 0 ) {
-        
-            /* Get the relative distance between the pairs, wrapping. */
-            for ( k = 0 ; k < 3 ; k++ ) {
-                if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
-                    shift[k] = s->dim[k];
-                else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
-                    shift[k] = -s->dim[k];
-                else
-                    shift[k] = 0.0;
-                }
-
-            /* Get the sorting index. */
-            for ( sid = 0 , k = 0 ; k < 3 ; k++ )
-                sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
-
-            /* Flip? */
-            if ( sid < 13 ) {
-                struct cell *temp = cj; cj = ci; ci = temp;
-                }
-            else
-                sid = 26 - sid;
-                
-            }
+        if ( sid < 0 )
+            sid = space_getsid( s , &ci , &cj , shift );
     
         /* Recurse? */
         if ( ci->split && cj->split &&
@@ -2070,7 +1991,7 @@ void DOSUB2 ( struct runner *r , struct cell *restrict ci , struct cell *restric
     
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+        printf( "runner_dosub2[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOSUB);
     #endif
@@ -2518,7 +2439,7 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *p
     
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , flags , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
     #else
         TIMER_TOC(TIMER_DOSUB);
     #endif

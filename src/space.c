@@ -78,6 +78,54 @@ const int sortlistID[27] = {
     
     
 /**
+ * @brief Get the shift-id of the given pair of cells, swapping them
+ *      if need be.
+ *
+ * @param s The space
+ * @param ci Pointer to first #cell.
+ * @param cj Pointer second #cell.
+ * @param shift Vector from ci to cj.
+ *
+ * @return The shift ID and set shift, may or may not swap ci and cj.
+ */
+ 
+int space_getsid ( struct space *s , struct cell **ci , struct cell **cj , double *shift ) {
+
+    int k, sid = 0;
+    struct cell *temp;
+    double dx[3];
+
+    /* Get the relative distance between the pairs, wrapping. */
+    for ( k = 0 ; k < 3 ; k++ ) {
+        dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
+        if ( dx[k] < -s->dim[k]/2 )
+            shift[k] = s->dim[k];
+        else if ( dx[k] > s->dim[k]/2 )
+            shift[k] = -s->dim[k];
+        else
+            shift[k] = 0.0;
+        dx[k] += shift[k];
+        }
+        
+    /* Get the sorting index. */
+    for ( k = 0 ; k < 3 ; k++ )
+        sid = 3*sid + ( (dx[k] < 0.0) ? 0 : ( (dx[k] > 0.0) ? 2 : 1 ) );
+
+    /* Switch the cells around? */
+    if ( runner_flip[sid] ) {
+        temp = *ci; *ci = *cj; *cj = temp;
+        for ( k = 0 ; k < 3 ; k++ )
+            shift[k] = -shift[k];
+        }
+    sid = sortlistID[sid];
+    
+    /* Return the sort ID. */
+    return sid;
+
+    }
+
+
+/**
  * @breif Recursively dismantle a cell tree.
  *
  */
@@ -613,6 +661,7 @@ void space_splittasks ( struct space *s ) {
     struct cell *ci, *cj;
     double hi, hj, shift[3];
     struct task *t;
+    float dt_max = s->dt_max;
     int pts[7][8] = { { -1 , 12 , 10 , 9 , 4 , 3 , 1 , 0 } ,
                       { -1 , -1 , 11 , 10 , 5 , 4 , 2 , 1 } ,
                       { -1 , -1 , -1 , 12 , 7 , 6 , 4 , 3 } , 
@@ -633,6 +682,12 @@ void space_splittasks ( struct space *s ) {
             /* Get a handle on the cell involved. */
             ci = t->ci;
             
+            /* Ingore this task? */
+            if ( ci->dt_min > dt_max ) {
+                t->type = task_type_none;
+                continue;
+                }
+            
             /* Is this cell even split? */
             if ( !ci->split )
                 continue;
@@ -645,9 +700,7 @@ void space_splittasks ( struct space *s ) {
                 
                 /* Wait for this tasks sorts, as we will now have pairwise
                    components in this sub. */
-                for ( k = 0 ; k < 14 ; k++ )
-                    if ( k == 0 || ci->sorts[k] != ci->sorts[k-1] )
-                        task_addunlock( ci->sorts[k] , t );
+                space_addsorts( s , t , ci , NULL , -1 );
             
                 }
                 
@@ -662,19 +715,14 @@ void space_splittasks ( struct space *s ) {
                 t->ci = ci->progeny[k];
                 for ( k += 1 ; k < 8 ; k++ )
                     if ( ci->progeny[k] != NULL )
-                        t = space_addtask( s , task_type_self , task_subtype_density , 0 , 0 , ci->progeny[k] , NULL , NULL , 0 , NULL , 0 );
+                        space_addtask( s , task_type_self , task_subtype_density , 0 , 0 , ci->progeny[k] , NULL , NULL , 0 , NULL , 0 );
             
                 /* Make a task for each pair of progeny. */
                 for ( j = 0 ; j < 8 ; j++ )
-                    if ( ci->progeny[j] != NULL && ci->progeny[j]->count > 0 )
+                    if ( ci->progeny[j] != NULL )
                         for ( k = j + 1 ; k < 8 ; k++ )
-                            if ( ci->progeny[k] != NULL && ci->progeny[k]->count > 0 ) {
-                                t = space_addtask( s , task_type_pair , task_subtype_density , 0 , 0 , ci->progeny[j] , ci->progeny[k] , NULL , 0 , NULL , 0 );
-                                task_addunlock( ci->progeny[j]->sorts[ pts[j][k] ] , t );
-                                task_addunlock( ci->progeny[k]->sorts[ pts[j][k] ] , t );
-                                ci->progeny[k]->nr_pairs += 1;
-                                ci->progeny[j]->nr_pairs += 1;
-                                }
+                            if ( ci->progeny[k] != NULL )
+                                space_addtask( s , task_type_pair , task_subtype_density , pts[j][k] , 0 , ci->progeny[j] , ci->progeny[k] , NULL , 0 , NULL , 0 );
                 }
         
             }
@@ -688,33 +736,20 @@ void space_splittasks ( struct space *s ) {
             hi = fmax( ci->h[0] , fmax( ci->h[1] , ci->h[2] ) );
             hj = fmax( cj->h[0] , fmax( cj->h[1] , cj->h[2] ) );
 
+            /* Ingore this task? */
+            if ( ci->dt_min > dt_max && cj->dt_min > dt_max ) {
+                t->type = task_type_none;
+                continue;
+                }
+            
+            /* Get the sort ID, use space_getsid and not t->flags
+               to make sure we get ci and cj swapped if needed. */
+            sid = space_getsid( s , &ci , &cj , shift );
+                
             /* Should this task be split-up? */
             if ( ci->split && cj->split &&
                  ci->h_max*space_stretch < hi/2 && cj->h_max*space_stretch < hj/2 ) {
                  
-                /* Get the relative distance between the pairs, wrapping. */
-                for ( k = 0 ; k < 3 ; k++ ) {
-                    if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
-                        shift[k] = s->dim[k];
-                    else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
-                        shift[k] = -s->dim[k];
-                    else
-                        shift[k] = 0.0;
-                    }
-
-                /* Get the sorting index. */
-                for ( sid = 0 , k = 0 ; k < 3 ; k++ )
-                    sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
-
-                /* Flip? */
-                if ( sid < 13 ) {
-                    cj = t->ci;
-                    ci = t->cj;
-                    t->ci = ci; t->cj = cj;
-                    }
-                else
-                    sid = 26 - sid;
-
                 /* Replace by a single sub-task? */
                 if ( space_dosub &&
                      ci->count < space_subsize && cj->count < space_subsize &&
@@ -723,12 +758,10 @@ void space_splittasks ( struct space *s ) {
                     /* Make this task a sub task. */
                     t->type = task_type_sub;
                     t->flags = sid;
+                    t->ci = ci; t->cj = cj;
                     
-                    /* Make it depend on all the sorts of its two cells. */
-                    for ( k = 0 ; k < 14 ; k++ )
-                        task_addunlock( ci->sorts[k] , t );
-                    for ( k = 0 ; k < 14 ; k++ )
-                        task_addunlock( cj->sorts[k] , t );
+                    /* Create the sorts recursively. */
+                    space_addsorts( s , t , ci , cj , sid );
                     
                     /* Don't go any further. */
                     continue;
@@ -738,271 +771,341 @@ void space_splittasks ( struct space *s ) {
                 /* Take a step back (we're going to recycle the current task)... */
                 tid -= 1;
 
-                /* Remove the dependency of this task on the sorts of ci and cj. */
-                task_rmunlock( ci->sorts[sid] , t );
-                task_rmunlock( cj->sorts[sid] , t );
-                ci->nr_pairs -= 1;
-                cj->nr_pairs -= 1;
-                t->nr_unlock_cells = 0;
-
                 /* For each different sorting type... */
                 switch ( sid ) {
 
                     case 0: /* (  1 ,  1 ,  1 ) */
-                        t->ci = ci->progeny[7]; t->cj = cj->progeny[0];
-                        task_addunlock( ci->progeny[7]->sorts[0] , t ); task_addunlock( cj->progeny[0]->sorts[0] , t );
-                        ci->progeny[7]->nr_pairs += 1;
-                        cj->progeny[0]->nr_pairs += 1;
+                        t->ci = ci->progeny[7]; t->cj = cj->progeny[0]; t->flags = 0;
                         break;
 
                     case 1: /* (  1 ,  1 ,  0 ) */
-                        t->ci = ci->progeny[6]; t->cj = cj->progeny[0];
-                        task_addunlock( ci->progeny[6]->sorts[1] , t ); task_addunlock( cj->progeny[0]->sorts[1] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[1] , t ); task_addunlock( cj->progeny[1]->sorts[1] , t );
+                        t->ci = ci->progeny[6]; t->cj = cj->progeny[0]; t->flags = 1;
+                        t = space_addtask( s , task_type_pair , t->subtype , 1 , 0 , ci->progeny[7] , cj->progeny[1] , NULL , 0 , NULL , 0 );
                         t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[0] , t ); task_addunlock( cj->progeny[1]->sorts[0] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[2] , t ); task_addunlock( cj->progeny[0]->sorts[2] , t );
-                        ci->progeny[6]->nr_pairs += 2;
-                        ci->progeny[7]->nr_pairs += 2;
-                        cj->progeny[0]->nr_pairs += 2;
-                        cj->progeny[1]->nr_pairs += 2;
+                        t = space_addtask( s , task_type_pair , t->subtype , 2 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 2: /* (  1 ,  1 , -1 ) */
-                        t->ci = ci->progeny[6]; t->cj = cj->progeny[1];
-                        task_addunlock( ci->progeny[6]->sorts[2] , t ); task_addunlock( cj->progeny[1]->sorts[2] , t );
-                        ci->progeny[6]->nr_pairs += 1;
-                        cj->progeny[1]->nr_pairs += 1;
+                        t->ci = ci->progeny[6]; t->cj = cj->progeny[1]; t->flags = 2;
                         break;
 
                     case 3: /* (  1 ,  0 ,  1 ) */
-                        t->ci = ci->progeny[5]; t->cj = cj->progeny[0];
-                        task_addunlock( ci->progeny[5]->sorts[3] , t ); task_addunlock( cj->progeny[0]->sorts[3] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[3] , t ); task_addunlock( cj->progeny[2]->sorts[3] , t );
+                        t->ci = ci->progeny[5]; t->cj = cj->progeny[0]; t->flags = 3;
+                        t = space_addtask( s , task_type_pair , t->subtype , 3 , 0 , ci->progeny[7] , cj->progeny[2] , NULL , 0 , NULL , 0 );
                         t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[0] , t ); task_addunlock( cj->progeny[2]->sorts[0] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[6] , t ); task_addunlock( cj->progeny[0]->sorts[6] , t );
-                        ci->progeny[5]->nr_pairs += 2;
-                        ci->progeny[7]->nr_pairs += 2;
-                        cj->progeny[0]->nr_pairs += 2;
-                        cj->progeny[2]->nr_pairs += 2;
+                        t = space_addtask( s , task_type_pair , t->subtype , 6 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 4: /* (  1 ,  0 ,  0 ) */
-                        t->ci = ci->progeny[4]; t->cj = cj->progeny[0];
-                        task_addunlock( ci->progeny[4]->sorts[4] , t ); task_addunlock( cj->progeny[0]->sorts[4] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[5] , t ); task_addunlock( cj->progeny[0]->sorts[5] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[7] , t ); task_addunlock( cj->progeny[0]->sorts[7] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[8] , t ); task_addunlock( cj->progeny[0]->sorts[8] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[4] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[4]->sorts[3] , t ); task_addunlock( cj->progeny[1]->sorts[3] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[4] , t ); task_addunlock( cj->progeny[1]->sorts[4] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[6] , t ); task_addunlock( cj->progeny[1]->sorts[6] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[7] , t ); task_addunlock( cj->progeny[1]->sorts[7] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[4] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[4]->sorts[1] , t ); task_addunlock( cj->progeny[2]->sorts[1] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[2] , t ); task_addunlock( cj->progeny[2]->sorts[2] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[4] , t ); task_addunlock( cj->progeny[2]->sorts[4] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[5] , t ); task_addunlock( cj->progeny[2]->sorts[5] , t );
+                        t->ci = ci->progeny[4]; t->cj = cj->progeny[0]; t->flags = 4;
+                        t = space_addtask( s , task_type_pair , t->subtype , 5 , 0 , ci->progeny[5] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 7 , 0 , ci->progeny[6] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 8 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 3 , 0 , ci->progeny[4] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 4 , 0 , ci->progeny[5] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 6 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 7 , 0 , ci->progeny[7] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 1 , 0 , ci->progeny[4] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 2 , 0 , ci->progeny[5] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 4 , 0 , ci->progeny[6] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 5 , 0 , ci->progeny[7] , cj->progeny[2] , NULL , 0 , NULL , 0 );
                         t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[4] , cj->progeny[3] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[4]->sorts[0] , t ); task_addunlock( cj->progeny[3]->sorts[0] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[3] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[1] , t ); task_addunlock( cj->progeny[3]->sorts[1] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[3] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[3] , t ); task_addunlock( cj->progeny[3]->sorts[3] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[3] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[4] , t ); task_addunlock( cj->progeny[3]->sorts[4] , t );
-                        ci->progeny[4]->nr_pairs += 4;
-                        ci->progeny[5]->nr_pairs += 4;
-                        ci->progeny[6]->nr_pairs += 4;
-                        ci->progeny[7]->nr_pairs += 4;
-                        cj->progeny[0]->nr_pairs += 4;
-                        cj->progeny[1]->nr_pairs += 4;
-                        cj->progeny[2]->nr_pairs += 4;
-                        cj->progeny[3]->nr_pairs += 4;
+                        t = space_addtask( s , task_type_pair , t->subtype , 1 , 0 , ci->progeny[5] , cj->progeny[3] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 3 , 0 , ci->progeny[6] , cj->progeny[3] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 4 , 0 , ci->progeny[7] , cj->progeny[3] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 5: /* (  1 ,  0 , -1 ) */
-                        t->ci = ci->progeny[4]; t->cj = cj->progeny[1];
-                        task_addunlock( ci->progeny[4]->sorts[5] , t ); task_addunlock( cj->progeny[1]->sorts[5] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[3] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[5] , t ); task_addunlock( cj->progeny[3]->sorts[5] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[4] , cj->progeny[3] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[4]->sorts[2] , t ); task_addunlock( cj->progeny[3]->sorts[2] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[8] , t ); task_addunlock( cj->progeny[1]->sorts[8] , t );
-                        ci->progeny[4]->nr_pairs += 2;
-                        ci->progeny[6]->nr_pairs += 2;
-                        cj->progeny[1]->nr_pairs += 2;
-                        cj->progeny[3]->nr_pairs += 2;
+                        t->ci = ci->progeny[4]; t->cj = cj->progeny[1]; t->flags = 5;
+                        t = space_addtask( s , task_type_pair , t->subtype , 5 , 0 , ci->progeny[6] , cj->progeny[3] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 2 , 0 , ci->progeny[4] , cj->progeny[3] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 8 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 6: /* (  1 , -1 ,  1 ) */
-                        t->ci = ci->progeny[5]; t->cj = cj->progeny[2];
-                        task_addunlock( ci->progeny[5]->sorts[6] , t ); task_addunlock( cj->progeny[2]->sorts[6] , t );
-                        ci->progeny[5]->nr_pairs += 1;
-                        cj->progeny[2]->nr_pairs += 1;
+                        t->ci = ci->progeny[5]; t->cj = cj->progeny[2]; t->flags = 6;
                         break;
 
                     case 7: /* (  1 , -1 ,  0 ) */
-                        t->ci = ci->progeny[4]; t->cj = cj->progeny[3];
-                        task_addunlock( ci->progeny[4]->sorts[6] , t ); task_addunlock( cj->progeny[3]->sorts[6] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[8] , t ); task_addunlock( cj->progeny[2]->sorts[8] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[4] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[4]->sorts[7] , t ); task_addunlock( cj->progeny[2]->sorts[7] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[3] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[7] , t ); task_addunlock( cj->progeny[3]->sorts[7] , t );
-                        ci->progeny[4]->nr_pairs += 2;
-                        ci->progeny[5]->nr_pairs += 2;
-                        cj->progeny[2]->nr_pairs += 2;
-                        cj->progeny[3]->nr_pairs += 2;
+                        t->ci = ci->progeny[4]; t->cj = cj->progeny[3]; t->flags = 6;
+                        t = space_addtask( s , task_type_pair , t->subtype , 8 , 0 , ci->progeny[5] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 7 , 0 , ci->progeny[4] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 7 , 0 , ci->progeny[5] , cj->progeny[3] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 8: /* (  1 , -1 , -1 ) */
-                        t->ci = ci->progeny[4]; t->cj = cj->progeny[3];
-                        task_addunlock( ci->progeny[4]->sorts[8] , t ); task_addunlock( cj->progeny[3]->sorts[8] , t );
-                        ci->progeny[4]->nr_pairs += 1;
-                        cj->progeny[3]->nr_pairs += 1;
+                        t->ci = ci->progeny[4]; t->cj = cj->progeny[3]; t->flags = 8;
                         break;
 
                     case 9: /* (  0 ,  1 ,  1 ) */
-                        t->ci = ci->progeny[3]; t->cj = cj->progeny[0];
-                        task_addunlock( ci->progeny[3]->sorts[9] , t ); task_addunlock( cj->progeny[0]->sorts[9] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[9] , t ); task_addunlock( cj->progeny[4]->sorts[9] , t );
+                        t->ci = ci->progeny[3]; t->cj = cj->progeny[0]; t->flags = 9;
+                        t = space_addtask( s , task_type_pair , t->subtype , 9 , 0 , ci->progeny[7] , cj->progeny[4] , NULL , 0 , NULL , 0 );
                         t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[0] , t ); task_addunlock( cj->progeny[4]->sorts[0] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[8] , t ); task_addunlock( cj->progeny[0]->sorts[8] , t );
-                        ci->progeny[3]->nr_pairs += 2;
-                        ci->progeny[7]->nr_pairs += 2;
-                        cj->progeny[0]->nr_pairs += 2;
-                        cj->progeny[4]->nr_pairs += 2;
+                        t = space_addtask( s , task_type_pair , t->subtype , 8 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 10: /* (  0 ,  1 ,  0 ) */
-                        t->ci = ci->progeny[2]; t->cj = cj->progeny[0];
-                        task_addunlock( ci->progeny[2]->sorts[10] , t ); task_addunlock( cj->progeny[0]->sorts[10] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[11] , t ); task_addunlock( cj->progeny[0]->sorts[11] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[7] , t ); task_addunlock( cj->progeny[0]->sorts[7] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[6] , t ); task_addunlock( cj->progeny[0]->sorts[6] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[2] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[2]->sorts[9] , t ); task_addunlock( cj->progeny[1]->sorts[9] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[10] , t ); task_addunlock( cj->progeny[1]->sorts[10] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[8] , t ); task_addunlock( cj->progeny[1]->sorts[8] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[7] , t ); task_addunlock( cj->progeny[1]->sorts[7] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[2] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[2]->sorts[1] , t ); task_addunlock( cj->progeny[4]->sorts[1] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[2] , t ); task_addunlock( cj->progeny[4]->sorts[2] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[10] , t ); task_addunlock( cj->progeny[4]->sorts[10] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[11] , t ); task_addunlock( cj->progeny[4]->sorts[11] , t );
+                        t->ci = ci->progeny[2]; t->cj = cj->progeny[0]; t->flags = 10;
+                        t = space_addtask( s , task_type_pair , t->subtype , 11 , 0 , ci->progeny[3] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 7 , 0 , ci->progeny[6] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 6 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 9 , 0 , ci->progeny[2] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 10 , 0 , ci->progeny[3] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 8 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 7 , 0 , ci->progeny[7] , cj->progeny[1] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 1 , 0 , ci->progeny[2] , cj->progeny[4] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 2 , 0 , ci->progeny[3] , cj->progeny[4] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 10 , 0 , ci->progeny[6] , cj->progeny[4] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 11 , 0 , ci->progeny[7] , cj->progeny[4] , NULL , 0 , NULL , 0 );
                         t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[2] , cj->progeny[5] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[2]->sorts[0] , t ); task_addunlock( cj->progeny[5]->sorts[0] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[5] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[1] , t ); task_addunlock( cj->progeny[5]->sorts[1] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[5] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[9] , t ); task_addunlock( cj->progeny[5]->sorts[9] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[5] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[10] , t ); task_addunlock( cj->progeny[5]->sorts[10] , t );
-                        ci->progeny[2]->nr_pairs += 4;
-                        ci->progeny[3]->nr_pairs += 4;
-                        ci->progeny[6]->nr_pairs += 4;
-                        ci->progeny[7]->nr_pairs += 4;
-                        cj->progeny[0]->nr_pairs += 4;
-                        cj->progeny[1]->nr_pairs += 4;
-                        cj->progeny[4]->nr_pairs += 4;
-                        cj->progeny[5]->nr_pairs += 4;
+                        t = space_addtask( s , task_type_pair , t->subtype , 1 , 0 , ci->progeny[3] , cj->progeny[5] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 9 , 0 , ci->progeny[6] , cj->progeny[5] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 10 , 0 , ci->progeny[7] , cj->progeny[5] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 11: /* (  0 ,  1 , -1 ) */
-                        t->ci = ci->progeny[2]; t->cj = cj->progeny[1];
-                        task_addunlock( ci->progeny[2]->sorts[11] , t ); task_addunlock( cj->progeny[1]->sorts[11] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[5] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[11] , t ); task_addunlock( cj->progeny[5]->sorts[11] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[2] , cj->progeny[5] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[2]->sorts[2] , t ); task_addunlock( cj->progeny[5]->sorts[2] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[6]->sorts[6] , t ); task_addunlock( cj->progeny[1]->sorts[6] , t );
-                        ci->progeny[2]->nr_pairs += 2;
-                        ci->progeny[6]->nr_pairs += 2;
-                        cj->progeny[1]->nr_pairs += 2;
-                        cj->progeny[5]->nr_pairs += 2;
+                        t->ci = ci->progeny[2]; t->cj = cj->progeny[1]; t->flags = 11;
+                        t = space_addtask( s , task_type_pair , t->subtype , 11 , 0 , ci->progeny[6] , cj->progeny[5] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 2 , 0 , ci->progeny[2] , cj->progeny[5] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 6 , 0 , ci->progeny[6] , cj->progeny[1] , NULL , 0 , NULL , 0 );
                         break;
 
                     case 12: /* (  0 ,  0 ,  1 ) */
-                        t->ci = ci->progeny[1]; t->cj = cj->progeny[0];
-                        task_addunlock( ci->progeny[1]->sorts[12] , t ); task_addunlock( cj->progeny[0]->sorts[12] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[11] , t ); task_addunlock( cj->progeny[0]->sorts[11] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[5] , t ); task_addunlock( cj->progeny[0]->sorts[5] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[2] , t ); task_addunlock( cj->progeny[0]->sorts[2] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[1] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[1]->sorts[9] , t ); task_addunlock( cj->progeny[2]->sorts[9] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[12] , t ); task_addunlock( cj->progeny[2]->sorts[12] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[8] , t ); task_addunlock( cj->progeny[2]->sorts[8] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[2] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[5] , t ); task_addunlock( cj->progeny[2]->sorts[5] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[1] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[1]->sorts[3] , t ); task_addunlock( cj->progeny[4]->sorts[3] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[6] , t ); task_addunlock( cj->progeny[4]->sorts[6] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[12] , t ); task_addunlock( cj->progeny[4]->sorts[12] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[4] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[11] , t ); task_addunlock( cj->progeny[4]->sorts[11] , t );
+                        t->ci = ci->progeny[1]; t->cj = cj->progeny[0]; t->flags = 12;
+                        t = space_addtask( s , task_type_pair , t->subtype , 11 , 0 , ci->progeny[3] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 5 , 0 , ci->progeny[5] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 2 , 0 , ci->progeny[7] , cj->progeny[0] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 9 , 0 , ci->progeny[1] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 12 , 0 , ci->progeny[3] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 8 , 0 , ci->progeny[5] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 5 , 0 , ci->progeny[7] , cj->progeny[2] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 3 , 0 , ci->progeny[1] , cj->progeny[4] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 6 , 0 , ci->progeny[3] , cj->progeny[4] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 12 , 0 , ci->progeny[5] , cj->progeny[4] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 11 , 0 , ci->progeny[7] , cj->progeny[4] , NULL , 0 , NULL , 0 );
                         t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[1] , cj->progeny[6] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[1]->sorts[0] , t ); task_addunlock( cj->progeny[6]->sorts[0] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[3] , cj->progeny[6] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[3]->sorts[3] , t ); task_addunlock( cj->progeny[6]->sorts[3] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[5] , cj->progeny[6] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[5]->sorts[9] , t ); task_addunlock( cj->progeny[6]->sorts[9] , t );
-                        t = space_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[7] , cj->progeny[6] , NULL , 0 , NULL , 0 );
-                        task_addunlock( ci->progeny[7]->sorts[12] , t ); task_addunlock( cj->progeny[6]->sorts[12] , t );
-                        ci->progeny[1]->nr_pairs += 4;
-                        ci->progeny[3]->nr_pairs += 4;
-                        ci->progeny[5]->nr_pairs += 4;
-                        ci->progeny[7]->nr_pairs += 4;
-                        cj->progeny[0]->nr_pairs += 4;
-                        cj->progeny[2]->nr_pairs += 4;
-                        cj->progeny[4]->nr_pairs += 4;
-                        cj->progeny[6]->nr_pairs += 4;
+                        t = space_addtask( s , task_type_pair , t->subtype , 3 , 0 , ci->progeny[3] , cj->progeny[6] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 9 , 0 , ci->progeny[5] , cj->progeny[6] , NULL , 0 , NULL , 0 );
+                        t = space_addtask( s , task_type_pair , t->subtype , 12 , 0 , ci->progeny[7] , cj->progeny[6] , NULL , 0 , NULL , 0 );
                         break;
 
                     }
 
                 } /* split this task? */
                 
+            /* Otherwise, if not spilt, stitch-up the sorting. */
+            else {
+            
+                /* Create the sort for ci. */
+                if ( ci->sorts[0] == NULL )
+                    ci->sorts[0] = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , ci , NULL , NULL , 0 , NULL , 0 );
+                ci->sorts[0]->flags |= (1 << sid);
+                task_addunlock( ci->sorts[0] , t );
+                
+                /* Create the sort for cj. */
+                if ( cj->sorts[0] == NULL )
+                    cj->sorts[0] = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , cj , NULL , NULL , 0 , NULL , 0 );
+                cj->sorts[0]->flags |= (1 << sid);
+                task_addunlock( cj->sorts[0] , t );
+                
+                }
+                
             } /* pair interaction? */
     
         } /* loop over all tasks. */
         
+    }
+    
+    
+/**
+ * @brief Generate the sorts for a sub recursively.
+ *
+ * @param s The #space we are working in.
+ */
+ 
+void space_addsorts ( struct space *s , struct task *t , struct cell *ci , struct cell *cj , int sid ) {
+
+    float h;
+    double shift[3];
+    int j, k;
+
+    /* Get the cell dimensions. */
+    h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
+    
+    /* Single-cell sub? */
+    if ( cj == NULL ) {
+    
+        /* If there is further splitting, add the pairs recursively. */
+        if ( ci->split ) {
+        
+            /* Recurse for each progeny. */
+            for ( j = 0 ; j < 8 ; j++ )
+                if ( ci->progeny[j] != NULL )
+                    space_addsorts( s , t , ci->progeny[j] , NULL , -1 );
+
+            /* Recurse for each pair of progeny. */
+            for ( j = 0 ; j < 8 ; j++ )
+                if ( ci->progeny[j] != NULL )
+                    for ( k = j + 1 ; k < 8 ; k++ )
+                        if ( ci->progeny[k] != NULL )
+                            space_addsorts( s , t , ci->progeny[j] , ci->progeny[k] , -1 );
+
+            }
+
+        }
+        
+    /* Otherwise, it's a pair. */
+    else {
+        
+        /* Get the sort ID if not specified. */
+        // if ( sid < 0 )
+            sid = space_getsid( s , &ci , &cj , shift );
+        
+        /* If there is no further splitting, add the sorts. */
+        if ( !ci->split || !cj->split ||
+             ci->h_max*2 >= h || cj->h_max*2 >= h ) {
+            
+            /* Create and add the sort for ci. */
+            if ( ci->sorts[0] == NULL )
+                ci->sorts[0] = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , ci , NULL , NULL , 0 , NULL , 0 );
+            ci->sorts[0]->flags |= (1 << sid);
+            task_addunlock( ci->sorts[0] , t );
+            
+            /* Create and add the sort for cj. */
+            if ( cj->sorts[0] == NULL )
+                cj->sorts[0] = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , cj , NULL , NULL , 0 , NULL , 0 );
+            cj->sorts[0]->flags |= (1 << sid);
+            task_addunlock( cj->sorts[0] , t );
+
+            }
+
+        /* Otherwise, recurse. */
+        else {
+                
+            /* For each different sorting type... */
+            switch ( sid ) {
+
+                case 0: /* (  1 ,  1 ,  1 ) */
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[0] , 0 );
+                    break;
+
+                case 1: /* (  1 ,  1 ,  0 ) */
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[0] , 1 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[1] , 1 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[1] , 0 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[0] , 2 );
+                    break;
+
+                case 2: /* (  1 ,  1 , -1 ) */
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[1] , 2 );
+                    break;
+
+                case 3: /* (  1 ,  0 ,  1 ) */
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[0] , 3 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[2] , 3 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[2] , 0 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[0] , 6 );
+                    break;
+
+                case 4: /* (  1 ,  0 ,  0 ) */
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[0] , 4 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[0] , 5 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[0] , 7 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[0] , 8 );
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[1] , 3 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[1] , 4 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[1] , 6 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[1] , 7 );
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[2] , 1 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[2] , 2 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[2] , 4 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[2] , 5 );
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[3] , 0 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[3] , 1 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[3] , 3 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[3] , 4 );
+                    break;
+
+                case 5: /* (  1 ,  0 , -1 ) */
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[1] , 5 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[3] , 5 );
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[3] , 2 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[1] , 8 );
+                    break;
+
+                case 6: /* (  1 , -1 ,  1 ) */
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[2] , 6 );
+                    break;
+
+                case 7: /* (  1 , -1 ,  0 ) */
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[3] , 6 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[2] , 8 );
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[2] , 7 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[3] , 7 );
+                    break;
+
+                case 8: /* (  1 , -1 , -1 ) */
+                    space_addsorts( s , t , ci->progeny[4] , cj->progeny[3] , 8 );
+                    break;
+
+                case 9: /* (  0 ,  1 ,  1 ) */
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[0] , 9 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[4] , 9 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[4] , 0 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[0] , 8 );
+                    break;
+
+                case 10: /* (  0 ,  1 ,  0 ) */
+                    space_addsorts( s , t , ci->progeny[2] , cj->progeny[0] , 10 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[0] , 11 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[0] , 7 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[0] , 6 );
+                    space_addsorts( s , t , ci->progeny[2] , cj->progeny[1] , 9 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[1] , 10 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[1] , 8 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[1] , 7 );
+                    space_addsorts( s , t , ci->progeny[2] , cj->progeny[4] , 1 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[4] , 2 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[4] , 10 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[4] , 11 );
+                    space_addsorts( s , t , ci->progeny[2] , cj->progeny[5] , 0 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[5] , 1 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[5] , 9 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[5] , 10 );
+                    break;
+
+                case 11: /* (  0 ,  1 , -1 ) */
+                    space_addsorts( s , t , ci->progeny[2] , cj->progeny[1] , 11 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[5] , 11 );
+                    space_addsorts( s , t , ci->progeny[2] , cj->progeny[5] , 2 );
+                    space_addsorts( s , t , ci->progeny[6] , cj->progeny[1] , 6 );
+                    break;
+
+                case 12: /* (  0 ,  0 ,  1 ) */
+                    space_addsorts( s , t , ci->progeny[1] , cj->progeny[0] , 12 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[0] , 11 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[0] , 5 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[0] , 2 );
+                    space_addsorts( s , t , ci->progeny[1] , cj->progeny[2] , 9 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[2] , 12 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[2] , 8 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[2] , 5 );
+                    space_addsorts( s , t , ci->progeny[1] , cj->progeny[4] , 3 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[4] , 6 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[4] , 12 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[4] , 11 );
+                    space_addsorts( s , t , ci->progeny[1] , cj->progeny[6] , 0 );
+                    space_addsorts( s , t , ci->progeny[3] , cj->progeny[6] , 3 );
+                    space_addsorts( s , t , ci->progeny[5] , cj->progeny[6] , 9 );
+                    space_addsorts( s , t , ci->progeny[7] , cj->progeny[6] , 12 );
+                    break;
+
+                } /* switch. */
+
+            } /* recurse. */
+            
+        } /* it's a pair. */
+
     }
     
     
@@ -1015,72 +1118,13 @@ void space_splittasks ( struct space *s ) {
  
 void space_maketasks ( struct space *s , int do_sort ) {
 
-    int i, j, k, ii, jj, kk, iii, jjj, kkk, cid, cjd;
+    int i, j, k, ii, jj, kk, iii, jjj, kkk, cid, cjd, sid;
     int *cdim = s->cdim;
-    struct task *t , *t2;
+    struct task *t, *t2;
+    struct cell *ci, *cj;
+    // float dt_max = s->dt_max;
     int counts[task_type_count];
 
-    /* Recursive function to generate sorting tasks in the cell tree. */
-    void maketasks_sort_rec ( struct cell *c ) {
-
-        int j, k;
-        struct task *t;
-
-        /* Clear the waits on this cell. */
-        c->wait = 0;
-        
-        /* Start by generating the sort task. */
-        if ( c->count > 0 ) {
-        
-            if ( do_sort ) {
-                if ( c->count < 1000 ) {
-                    t = space_addtask( s , task_type_sort , task_subtype_none , 0x1fff , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    for ( k = 0 ; k < 13 ; k++ )
-                        c->sorts[k] = t;
-                    }
-                else if ( c->count < 5000 ) {
-                    t = space_addtask( s , task_type_sort , task_subtype_none , 0x7f , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    for ( k = 0 ; k < 7 ; k++ )
-                        c->sorts[k] = t;
-                    t = space_addtask( s , task_type_sort , task_subtype_none , 0x1f80 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    for ( k = 7 ; k < 14 ; k++ )
-                        c->sorts[k] = t;
-                    }
-                else {
-                    c->sorts[0] = c->sorts[1] = space_addtask( s , task_type_sort , task_subtype_none , 0x1 + 0x2 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    c->sorts[2] = c->sorts[3] = space_addtask( s , task_type_sort , task_subtype_none , 0x4 + 0x8 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    c->sorts[4] = c->sorts[5] = space_addtask( s , task_type_sort , task_subtype_none , 0x10 + 0x20 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    c->sorts[6] = c->sorts[7] = space_addtask( s , task_type_sort , task_subtype_none , 0x40 + 0x80 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    c->sorts[8] = c->sorts[9] = space_addtask( s , task_type_sort , task_subtype_none , 0x100 + 0x200 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    c->sorts[10] = c->sorts[11] = space_addtask( s , task_type_sort , task_subtype_none , 0x400 + 0x800 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    c->sorts[12] = c->sorts[13] = space_addtask( s , task_type_sort , task_subtype_none , 0x1000 , 0 , c , NULL , NULL , 0 , NULL , 0 );
-                    }
-                }
-
-            }
-            
-        /* Otherwise, add the interactions between progeny. */
-        if ( c->split ) {
-        
-            /* Loop over the progeny. */
-            for ( k = 0 ; k < 8 ; k++ )
-                if ( c->progeny[k] != NULL ) {
-                    
-                    /* Recurse. */
-                    maketasks_sort_rec( c->progeny[k] );
-                    
-                    /* Add dependencies between the sorts. */
-                    for ( j = 0 ; j < 14 ; j++ )
-                        if ( j == 0 || c->sorts[j] != c->sorts[j-1] )
-                            task_addunlock( c->progeny[k]->sorts[j] , c->sorts[j] );
-                            
-                    }
-                        
-            }
-
-        } /* void maketasks_sort_rec. */
-        
-        
     /* Allocate the task-list, if needed. */
     if ( s->tasks == NULL || s->tasks_size < s->tot_cells * space_maxtaskspercell ) {
         if ( s->tasks != NULL )
@@ -1095,10 +1139,6 @@ void space_maketasks ( struct space *s , int do_sort ) {
         }
     s->nr_tasks = 0;
     
-    /* Loop over the cells and generate their sorting tasks. */
-    for ( k = 0 ; k < s->nr_cells ; k++ )
-        maketasks_sort_rec( &s->cells[k] );
-
     /* Run through the highest level of cells and add pairs. */
     for ( i = 0 ; i < cdim[0] ; i++ )
         for ( j = 0 ; j < cdim[1] ; j++ )
@@ -1106,7 +1146,11 @@ void space_maketasks ( struct space *s , int do_sort ) {
                 cid = cell_getid( cdim , i , j , k );
                 if ( s->cells[cid].count == 0 )
                     continue;
-                space_addtask( s , task_type_self , task_subtype_density , 0 , 0 , &s->cells[cid] , NULL , NULL , 0 , NULL , 0 );
+                ci = &s->cells[cid];
+                if ( ci->count == 0 )
+                    continue;
+                // if ( ci->dt_min <= dt_max )
+                    space_addtask( s , task_type_self , task_subtype_density , 0 , 0 , ci , NULL , NULL , 0 , NULL , 0 );
                 for ( ii = -1 ; ii < 2 ; ii++ ) {
                     iii = i + ii;
                     if ( !s->periodic && ( iii < 0 || iii >= cdim[0] ) )
@@ -1123,15 +1167,12 @@ void space_maketasks ( struct space *s , int do_sort ) {
                                 continue;
                             kkk = ( kkk + cdim[2] ) % cdim[2];
                             cjd = cell_getid( cdim , iii , jjj , kkk );
-                            if ( s->cells[cjd].count == 0 )
+                            cj = &s->cells[cjd];
+                            if ( cid >= cjd || cj->count == 0 /* ||
+                                 ( ci->dt_min > dt_max && cj->dt_min > dt_max ) */ )
                                 continue;
-                            if ( cid >= cjd )
-                                continue;
-                            t = space_addtask( s , task_type_pair , task_subtype_density , 0 , 0 , &s->cells[cid] , &s->cells[cjd] , NULL , 0 , NULL , 0 );
-                            task_addunlock( s->cells[cid].sorts[ sortlistID[ (kk+1) + 3*( (jj+1) + 3*(ii+1) ) ] ] , t );
-                            task_addunlock( s->cells[cjd].sorts[ sortlistID[ (kk+1) + 3*( (jj+1) + 3*(ii+1) ) ] ] , t );
-                            s->cells[cid].nr_pairs += 1;
-                            s->cells[cjd].nr_pairs += 1;
+                            sid = sortlistID[ (kk+1) + 3*( (jj+1) + 3*(ii+1) ) ];
+                            t = space_addtask( s , task_type_pair , task_subtype_density , sid , 0 , ci , cj , NULL , 0 , NULL , 0 );
                             }
                         }
                     }
@@ -1140,50 +1181,15 @@ void space_maketasks ( struct space *s , int do_sort ) {
     /* Split the tasks. */
     space_splittasks( s );
     
-    /* Remove pairs and self-interactions for cells with no parts in dt. */
+    /* Make each sort depend on the sorts of its progeny. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         t = &s->tasks[k];
-        if ( t->type == task_type_self ) {
-            if ( t->ci->dt_min > s->dt_max )
-                t->type = task_type_none;
-            }
-        else if ( t->type == task_type_pair ) {
-            if ( t->ci->dt_min > s->dt_max && t->cj->dt_min > s->dt_max ) {
-                t->type = task_type_none;
-                for ( j = 0 ; j < 13 ; j++ )
-                    task_rmunlock_blind( t->ci->sorts[j] , t );
-                for ( j = 0 ; j < 13 ; j++ )
-                    task_rmunlock_blind( t->cj->sorts[j] , t );
-                }
-            }
-        else if ( t->type == task_type_sub ) {
-            if ( t->ci->dt_min > s->dt_max && ( t->cj == NULL || t->cj->dt_min > s->dt_max ) ) {
-                t->type = task_type_none;
-                for ( j = 0 ; j < 13 ; j++ )
-                    task_rmunlock_blind( t->ci->sorts[j] , t );
-                if ( t->cj != NULL )
-                    for ( j = 0 ; j < 13 ; j++ )
-                        task_rmunlock_blind( t->cj->sorts[j] , t );
-                }
-            }
+        if ( t->type == task_type_sort && t->ci->split )
+            for ( j = 0 ; j < 8 ; j++ )
+                if ( t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts[0] != NULL )
+                    task_addunlock( t->ci->progeny[j]->sorts[0] , t );
         }
     
-    /* Remove sort tasks with no dependencies. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        t = &s->tasks[k];
-        if ( t->type == task_type_sort && t->nr_unlock_tasks == 0 ) {
-            if ( t->ci->split )
-                for ( i = 0 ; i < 13 ; i++ )
-                    if ( t->flags & ( 1 << i ) ) {
-                        for ( j = 0 ; j < 8 ; j++ )
-                            if ( t->ci->progeny[j] != NULL )
-                                task_rmunlock_blind( t->ci->progeny[j]->sorts[i] , t );
-                        t->ci->sorts[i] = NULL;
-                        }
-            t->type = task_type_none;
-            }
-        }
-        
     /* Count the number of tasks associated with each cell and
        store the density tasks in each cell. */
     space_map_cells( s , 1 , &space_map_clearnrtasks , NULL );
@@ -1245,7 +1251,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
             task_addunlock( t->ci->ghost , t2 );
             task_addunlock( t->cj->ghost , t2 );
             }
-
+    
         /* Otherwise, sub interaction? */
         else if ( t->type == task_type_sub && t->subtype == task_subtype_density ) {
             task_addunlock( t , t->ci->super->ghost );
@@ -1272,7 +1278,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
     for ( k = 1 ; k < task_type_count ; k++ )
         printf( " %s=%i" , taskID_names[k] , counts[k] );
     printf( " ]\n" );
-        
+    
     }
     
     

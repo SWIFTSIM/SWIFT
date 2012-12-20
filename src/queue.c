@@ -43,7 +43,9 @@
 
 /* Define the timer macros. */
 #ifdef TIMER_VERBOSE
-    #define TIMER
+    #ifndef TIMER
+        #define TIMER
+    #endif
 #endif
 #ifdef TIMER
     #define TIMER_TIC ticks tic = getticks();
@@ -57,7 +59,7 @@
     #  define INLINE inline
     # endif
     #endif
-    INLINE ticks timer_toc ( int t , ticks tic ) {
+    INLINE static ticks timer_toc ( int t , ticks tic ) {
         ticks d = (getticks() - tic);
         __sync_add_and_fetch( &queue_timer[t] , d );
         return d;
@@ -445,6 +447,8 @@ void queue_sort ( struct queue *q ) {
     int *weight, *wait;
     int *data = q->tid;
     struct task *t;
+    
+    printf( "queue_sort: sorting queue with %i tasks.\n" , q->count );
         
     /* Allocate and pre-compute each task's weight. */
     if ( ( weight = (int *)alloca( sizeof(int) * q->count ) ) == NULL ||
