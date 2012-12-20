@@ -269,8 +269,10 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
     struct part *finger;
     struct cpart *cfinger;
     int *ind, changes = 0;
+    // ticks tic;
     
     /* Run through the parts and get the current h_max. */
+    // tic = getticks();
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
         if ( s->parts[k].h > h_max )
             h_max = s->parts[k].h;
@@ -279,12 +281,14 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         }
     s->h_min = h_min;
     s->h_max = h_max;
+    // printf( "space_rebuild: getting h_min and h_max took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Get the new putative cell dimensions. */
     for ( k = 0 ; k < 3 ; k++ )
         cdim[k] = floor( s->dim[k] / fmax( h_max*space_stretch , cell_max ) );
         
     /* Do we need to re-build the upper-level cells? */
+    // tic = getticks();
     if ( force || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ) {
     
         /* Free the old cells, if they were allocated. */
@@ -328,9 +332,11 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         changes = 1;
         
         } /* re-build upper-level cells? */
+    // printf( "space_rebuild: rebuilding upper-level cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
         
     /* Run through the particles and get their cell index. */
+    // tic = getticks();
     if ( ( ind = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
     for ( k = 0 ; k < s->nr_cells ; k++ )
@@ -339,14 +345,19 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         ind[k] = cell_getid( s->cdim , s->parts[k].x[0]*s->ih[0] , s->parts[k].x[1]*s->ih[1] , s->parts[k].x[2]*s->ih[2] );
         s->cells[ ind[k] ].count += 1;
         }
+    // printf( "space_rebuild: getting particle indices took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
     /* Sort the parts according to their cells. */
+    // tic = getticks();
     parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );    
+    // printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* We no longer need the indices as of here. */
     free( ind );    
 
     /* Update the condensed particle data. */         
+    // tic = getticks();
+    #pragma omp parallel for schedule(static)
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
         s->cparts[k].x[0] = s->parts[k].x[0];
         s->cparts[k].x[1] = s->parts[k].x[1];
@@ -354,8 +365,10 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         s->cparts[k].h = s->parts[k].h;
         s->cparts[k].dt = s->parts[k].dt;
         }
+    // printf( "space_rebuild: creating condensed parts took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
     /* Hook the cells up to the parts. */
+    // tic = getticks();
     finger = s->parts;
     cfinger = s->cparts;
     for ( k = 0 ; k < s->nr_cells ; k++ ) {
@@ -365,17 +378,22 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
         finger = &finger[ c->count ];
         cfinger = &cfinger[ c->count ];
         }
+    // printf( "space_rebuild: hooking up cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
         
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
-    #pragma omp parallel for shared(s) reduction(+:changes)
+    // tic = getticks();
+    #pragma omp parallel for schedule(dynamic) shared(s) reduction(+:changes)
     for ( k = 0 ; k < s->nr_cells ; k++ )
         changes += space_rebuild_recurse( s , &s->cells[k] );
+    // printf( "space_rebuild: space_rebuild_recurse took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
     /* Now that we have the cell structre, re-build the tasks. */
+    // tic = getticks();
     if ( changes )
         space_maketasks( s , 1 );
+    // printf( "space_rebuild: maketasks took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Return the number of changes. */
     return changes;
@@ -460,16 +478,16 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
             }
 
         else
-        #pragma omp parallel sections
+        // #pragma omp parallel sections
         {
 
             /* Recurse on the left? */
-            #pragma omp section
+            // #pragma omp section
             if ( j > 0 && pivot > min )
                 parts_sort( parts , ind , j+1 , min , pivot );
 
             /* Recurse on the right? */
-            #pragma omp section
+            // #pragma omp section
             if ( i < N && pivot+1 < max )
                 parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
 

@@ -60,55 +60,60 @@
  
 void engine_prepare ( struct engine *e , int force ) {
 
-    int j, k, qid, changes;
+    int j, k, qid, changes, count;
     struct space *s = e->s;
+    // ticks tic;
 
     /* Rebuild the space. */
+    // tic = getticks();
     changes = space_rebuild( e->s , force , 0 );
-    // printf( "engine_prepare: space_rebuild with %i changes.\n" , changes );
+    // printf( "engine_prepare: space_rebuild with %i changes took %.3f ms.\n" , changes , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Has anything changed? */
+    // tic = getticks();
     if ( changes ) {
     
         /* Rank the tasks in topological order. */
         engine_ranktasks( e );
     
-        /* Clear the queues. */
-        for ( k = 0 ; k < e->nr_queues ; k++ )
-            e->queues[k].count = 0;
-            
-        /* Re-allocate the queue buffers? */
-        for ( k = 0 ; k < e->nr_queues ; k++ )
-            queue_init( &e->queues[k] , s->nr_tasks , s->tasks );
-        
         /* Fill the queues (round-robin). */
-        for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-            if ( s->tasks[ s->tasks_ind[k] ].type == task_type_none )
-                continue;
-            qid = k % e->nr_queues;
-            e->queues[qid].tid[ e->queues[qid].count ] = s->tasks_ind[k];
-            e->queues[qid].count += 1;
+        #pragma omp parallel for schedule(static) private(count,k)
+        for ( qid = 0 ; qid < e->nr_queues ; qid++ ) {
+            queue_init( &e->queues[qid] , s->nr_tasks , s->tasks );
+            for ( count = 0 , k = qid ; k < s->nr_tasks ; k += e->nr_queues ) {
+                if ( s->tasks[ s->tasks_ind[k] ].type == task_type_none )
+                    continue;
+                e->queues[qid].tid[ count ] = s->tasks_ind[k];
+                count += 1;
+                }
+            e->queues[qid].count = count;
+            e->queues[qid].next = 0;
             }
             
         }
+    // printf( "engine_prepare: re-filling queues took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
     /* Re-set the particle data. */
-    #pragma omp parallel for
+    // tic = getticks();
+    #pragma omp parallel for schedule(static) 
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
         s->parts[k].wcount = 0.0f;
         s->parts[k].wcount_dh = 0.0f;
         s->parts[k].rho = 0.0f;
         s->parts[k].rho_dh = 0.0f;
         }
+    // printf( "engine_prepare: re-setting particle data took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Run throught the tasks and get all the waits right. */
-    #pragma omp parallel for private(j)
+    // tic = getticks();
+    #pragma omp parallel for schedule(static) private(j)
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
             __sync_add_and_fetch( &s->tasks[k].unlock_tasks[j]->wait , 1 );
         for ( j = 0 ; j < s->tasks[k].nr_unlock_cells ; j++ )
             __sync_add_and_fetch( &s->tasks[k].unlock_cells[j]->wait , 1 );
         }
+    // printf( "engine_prepare: preparing task dependencies took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Re-set the queues.*/
     for ( k = 0 ; k < e->nr_queues ; k++ )
