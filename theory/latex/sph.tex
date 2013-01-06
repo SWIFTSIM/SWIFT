@@ -118,6 +118,7 @@ Having a compilation option somewhere which activates a given form of $f$ and ch
 would be great.
 
 \section{First SPH loop (density)}
+\label{sec:density}
 
 In the first loop of the algorithm, the secondary quantities of particle $i$ are computed from the primary ones in the
 following way:
@@ -169,11 +170,13 @@ $\vec\nabla\times\vec v_i$ or $\vec\nabla\cdot\vec v_i$ are sometimes computed h
 loop.
 
 \section{Second SPH loop (forces)}
+\label{sec:forces}
 
 Once those quantities have been obtained, the force estimation loop can be started.
 First, the pressure has to be evaluated evaluated using the equation of state
 
 \begin{equation}
+\label{eq:pressure}
  P_i = \rho_i u_i (\gamma - 1)
 \end{equation}
 
@@ -183,7 +186,8 @@ The second loop is used to compute the accelerations (tertiary quantities). The 
 \begin{eqnarray}
  \vec{a_i} &=& - \sum_j m_j\left[\frac{P_i}{\Omega_i\rho_i^2}\vec{\nabla_r} W(\vec{r}_{ij}, h_i) +
 \frac{P_j}{\Omega_j\rho_j^2}\vec{\nabla_r}W(\vec{r}_{ij}, h_j) \right] \label{eq:acceleration}\\
- \frac{du_i}{dt} &=& \frac{P_i}{\rho_i^2} \sum_j m_j (\vec{v_i}-\vec{v_j})\cdot\vec{\nabla_r} W(\vec{r}_{ij}, h_i)
+ \frac{du_i}{dt} &=& \frac{P_i}{\textcolor{red}{\Omega_i}\rho_i^2} \sum_j m_j
+(\vec{v_i}-\vec{v_j})\cdot\vec{\nabla_r} W(\vec{r}_{ij}, h_i)
 \label{eq:dudt}\\
  \frac{dh_i}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right)
 \cdot\vec{\nabla_r}W(\vec{r}_{ij},
@@ -206,6 +210,7 @@ The time step is then given by the Courant relation:
 
 \begin{equation}
  \Delta t_i = C_{CFL} \frac{h_i}{c_i}
+\label{eq:dt}
 \end{equation}
 
 where the Courant parameter ($C_{DFL}$)usually takes a value between $0.2$ and $0.3$. The integration in time can then
@@ -263,7 +268,56 @@ first SPH loop. \\
  u_i &=& \tilde{u}_i + \textstyle\frac{1}{2}\Delta t ~\frac{du_i}{dt}
 \end{eqnarray*}
 
+\section{Multiple time steps}
 
+In most of the astrophysical applications, the range of time steps of the different particles is huge. In order to
+speed-up computations, multiple time steps are used at the cost of a slightly less precise outcome. \\
+The interval between the beginning of the simulation $t_{ini}$ and the end $t_{final}$ is decomposed in $2^N$ equal
+intervals (In GADGET, $N=29$). The smallest allowed time step is thus
+\begin{equation}
+ \Delta t_{\min} = \frac{t_{final} - t_{ini}}{2^N}
+\end{equation}
+\\
+The particles are then dispatched in different time bins according to their time steps $\Delta t_i$ (equation
+\ref{eq:dt}). A particle $i$ is in bin $n$ if it verifies the condition
+
+\begin{equation}
+2^{n-1} \Delta t_{\min}  < \Delta t_i < 2^n\Delta t_{\min} 
+\end{equation}
+
+Particles in bin $n=1$ will then all be evolved using $\Delta t_{\min}$ as their time steps, particles in bin $n=2$
+will use $2\Delta t_{\min}$ as their time steps, particles in bin $n=3$
+will use $4\Delta t_{\min}$ as their time steps and so on. \\
+
+At the beginning of the simulation (i.e. when $t=t_{ini}$), a density loop (section
+\ref{sec:density}) is performed to compute the time step of every particle. The particles are then assigned a time bin
+and the simulation starts using the smallest populated time bin. \\
+At every iteration, a set of time bins will be called \emph{active} and all the particles populating them will be
+integrated in time using the equations of section \ref{sec:density} and \ref{sec:forces}.\\
+ Over the course of the
+simulation, particles will have to move between time bins. Particles are only allowed to move to another bin if this
+new bin is active. In other words, particles can always move down the time bin hierarchy but can only go upwards if the
+two bins of interest are synchronized.\\
+
+When an active particles is integrated in time, it will probably have to interact with inactive neighbors. The state
+of these inactive particles has to be \emph{predicted} forward in time from the last time they have been active. To do
+so, the following approximate evolution equations are used:
+
+\begin{eqnarray}
+ \vec{x}_i &\leftarrow& \vec{x}_{i} + \vec{v}_i \cdot \Delta t \\
+ \vec{v}_{i,pred} &\leftarrow& \vec{v}_{i,pred} + \vec{a}_i \cdot \Delta t \\
+ \rho_i &\leftarrow& \rho_i \cdot \exp\left(\frac{-3}{h_i}  \frac{dh_i}{dt} \Delta t \right) \\
+  h_i &\leftarrow& h_i \cdot \exp\left(\frac{1}{h_i}  \frac{dh_i}{dt} \Delta t \right) \\
+  u_{i,pred} &\leftarrow& u_{i,pred} \cdot \exp\left(\frac{1}{u_i}\frac{du_i}{dt} \Delta t\right) \\
+  \Omega_i &\leftarrow& 1 
+\end{eqnarray}
+
+These predicted quantities are then used in equations \ref{eq:pressure}, \ref{eq:acceleration} and \ref{eq:dudt} to
+estimate the acceleration and change in internal energy of an active particle. In order to preserve the old value of
+the velocity and internal energy for accurate time integration, we need to add 2 additional variables to the particles,
+the predicted velocity $\vec{v}_{i,pred}$(vector) and the predicted internal energy $u_{i,pred}$(scalar). The true
+velocity $\vec{v}_i$ and true internal energy $u_i$ are NOT updated when predicting the state of a particle at an
+intermediate time step.
 
 
 \section{Conserved quantities}
@@ -281,6 +335,8 @@ The conservation of those quantities in the code depends on the quality of the t
 integrator of the previous section should preserve these quantities to machine precision.\\
 Notice that the entropic function $A(s)$ is not the ``physical'' entropy $s$ but is related to it through a monotonic
 function. It is just a more convenient way to represent entropy.
+THESE QUANTITIES ARE CONSERVED ONLY IF ONE SINGLE TIME STEP IS USED FOR ALL PARTICLES !!
+
 
 \section{Improved SPH equations}
 
