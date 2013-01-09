@@ -1,5 +1,5 @@
 
-# This file is part of GadgetSMP.
+# This file is part of SWIFT.
 # Coypright (c) 2012 pedro.gonnet@durham.ac.uk.
 # 
 # This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 AC_INIT(src/space.c)
 VERSION="0.0.1"
 AC_SUBST(VERSION)
-AM_INIT_AUTOMAKE(GadgetSMP,VERSION)
+AM_INIT_AUTOMAKE(SWIFT,VERSION)
 AC_GNU_SOURCE
 AC_PROG_LIBTOOL
 

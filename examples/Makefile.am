@@ -1,5 +1,5 @@
 
-# This file is part of GadgetSMP.
+# This file is part of SWIFT.
 # Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
 #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
 # 
@@ -30,5 +30,5 @@ bin_PROGRAMS = test
 # Sources for test
 test_SOURCES = test.c
 test_CFLAGS = -DCOUNTER -DTIMER $(AM_CFLAGS)
-test_LDADD =  ../src/.libs/libgadgetsmp.a $(HDF5_LDFLAGS)
+test_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
 

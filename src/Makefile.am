@@ -1,5 +1,5 @@
 
-# This file is part of GadgetSMP.
+# This file is part of SWIFT.
 # Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
 #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
 # 
@@ -27,11 +27,11 @@ AM_CFLAGS = -g -O3 -Wall -Werror -ffast-math -fstrict-aliasing -ftree-vectorize 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0
 
-# Build the libgadgetsmp library
-lib_LTLIBRARIES = libgadgetsmp.la
-libgadgetsmp_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c ic.c
+# Build the libswiftsim library
+lib_LTLIBRARIES = libswiftsim.la
+libswiftsim_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c ic.c
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
-    engine.h gadgetsmp.h ic.h
+    engine.h swift.h ic.h
 

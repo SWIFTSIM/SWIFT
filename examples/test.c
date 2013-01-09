@@ -1,5 +1,5 @@
 /*******************************************************************************
- * This file is part of GadgetSMP.
+ * This file is part of SWIFT.
  * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  * 
@@ -36,7 +36,7 @@
 #endif
 
 /* Local headers. */
-#include "gadgetsmp.h"
+#include "swift.h"
 
 /* Ticks per second on this machine. */
 #ifndef CPU_TPS

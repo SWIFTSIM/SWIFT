@@ -1,5 +1,5 @@
 /*******************************************************************************
- * This file is part of GadgetSMP.
+ * This file is part of SWIFT.
  * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  * 
  * This program is free software: you can redistribute it and/or modify
