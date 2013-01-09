@@ -384,7 +384,7 @@ int space_rebuild ( struct space *s , int force , double cell_max ) {
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
     // tic = getticks();
-    #pragma omp parallel for schedule(dynamic) shared(s) reduction(+:changes)
+    #pragma omp parallel for schedule(dynamic,1) shared(s) reduction(+:changes)
     for ( k = 0 ; k < s->nr_cells ; k++ )
         changes += space_rebuild_recurse( s , &s->cells[k] );
     // printf( "space_rebuild: space_rebuild_recurse took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );

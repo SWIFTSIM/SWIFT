@@ -174,7 +174,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     struct entry *fingers[8];
     struct cpart *cparts = c->cparts;
     int j, k, count = c->count;
-    int i, ind, off[8], inds[8], temp_i;
+    int i, ind, off[8], inds[8], temp_i, missing;
     // float shift[3];
     float buff[8], px[3];
     TIMER_TIC
@@ -183,7 +183,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     if ( lock_lock( &c->lock ) != 0 )
         error( "Failed to lock cell." );
     if ( c->sort == NULL )
-        if ( ( c->sort = (struct entry *)malloc( sizeof(struct entry) * (c->count + 1) * 14 ) ) == NULL )
+        if ( ( c->sort = (struct entry *)malloc( sizeof(struct entry) * (c->count + 1) * 13 ) ) == NULL )
             error( "Failed to allocate sort memory." );
     if ( lock_unlock( &c->lock ) != 0 )
         error( "Failed to unlock cell." );
@@ -191,18 +191,25 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     /* Does this cell have any progeny? */
     if ( c->split ) {
     
-        /* Loop over the 13+1 different sort arrays. */
-        for ( j = 0 ; j < 14 ; j++ ) {
+        /* Fill in the gaps within the progeny. */
+        for ( k = 0 ; k < 8 ; k++ ) {
+            if ( c->progeny[k] == NULL )
+                continue;
+            if ( c->progeny[k]->sorts[0] == NULL )
+                missing = flags;
+            else
+                missing = ( c->progeny[k]->sorts[0]->flags ^ flags ) & flags;
+            if ( missing )
+                runner_dosort( r , c->progeny[k] , missing );
+            }
+    
+        /* Loop over the 13 different sort arrays. */
+        for ( j = 0 ; j < 13 ; j++ ) {
         
             /* Has this sort array been flagged? */
             if ( !( flags & (1 << j) ) )
                 continue;
                 
-            /* Sort any un-sorted progeny. */
-            for ( k = 0 ; k < 8 ; k++ )
-                if ( c->progeny[k] != NULL && ( c->progeny[k]->sorts[0] == NULL || !(c->progeny[k]->sorts[0]->flags & (1 << j)) ) )
-                    runner_dosort( r , c->progeny[k] , 1 << j );
-        
             /* Init the particle index offsets. */
             for ( off[0] = 0 , k = 1 ; k < 8 ; k++ )
                 if ( c->progeny[k-1] != NULL )
@@ -269,14 +276,10 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
                     c->sort[ j*(count + 1) + k].i = k;
                     c->sort[ j*(count + 1) + k].d = px[0]*runner_shift[ 3*j + 0 ] + px[1]*runner_shift[ 3*j + 1 ] + px[2]*runner_shift[ 3*j + 2 ];
                     }
-            if ( flags & (1 << 14) ) {
-                c->sort[ 14*(count + 1) + k ].i = k;
-                c->sort[ 14*(count + 1) + k ].d = cparts[k].dt;
-                }
             }
 
         /* Add the sentinel and sort. */
-        for ( j = 0 ; j < 14 ; j++ )
+        for ( j = 0 ; j < 13 ; j++ )
             if ( flags & (1 << j) ) {
                 c->sort[ j*(count + 1) + c->count ].d = FLT_MAX;
                 c->sort[ j*(count + 1) + c->count ].i = 0;

@@ -70,7 +70,7 @@ struct cell {
     struct cell *super;
     
     /* The tasks computing this cell's sorts. */
-    struct task *sorts[14];
+    struct task *sorts[13];
     
     /* The tasks computing this cell's density. */
     struct task *density[27];
