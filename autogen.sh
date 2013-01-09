@@ -21,7 +21,7 @@
 libtoolize --force --copy
 
 # run aclocal
-aclocal -Im4/
+aclocal -I m4/
 
 # run autoconf
 autoconf -I m4
