@@ -4,18 +4,18 @@
 export OMP_WAIT_POLICY=PASSIVE
 
 # Re-build the code on the target architecture
-cd ..
-./configure --with-gcc-arch=native
-cd src
-make clean && make -j 8
-cd ../examples
-make clean && make -j 8
+# cd ..
+# ./configure --with-gcc-arch=native
+# cd src
+# make clean && make -j 8
+# cd ../examples
+# make clean && make -j 8
 
 # Clear up the memory first
 # ./memhog `free -g | grep Mem | awk '{print int(0.9*$2)}'`
 
 # loop over number of CPUs
-for cpu in {1..16}
+for cpu in {1..32}
 do
 
     # Set some environment variables for OpenMP
@@ -27,6 +27,6 @@ do
 
     # ./test -r 100 -t $cpu -b "100 100 100" -N 3558892 -c snap_C09/Coordinates.txt.gz -s "50 50 50" -p 0 -h snap_C09/SmoothingLength.txt.gz -m 6.138 > snap_C09_${cpu}.dump
 
-    ./test -r 100 -t $cpu -f scaling/snap_023_z000p503.hdf5 -m 0.5 -z 200 > scaling_${cpu}.dump
+    ./test -r 100 -t $cpu -f scaling/snap_023_z000p503.hdf5 -m 0.5 -z 400 -w 5000 -d 1.0 > scaling_${cpu}.dump
 
 done
