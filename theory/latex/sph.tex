@@ -227,46 +227,100 @@ bisection) scheme.
 
 \section{Time integration}
 
-The usual scheme uses a kick-drift-kick leap-frog integrator. A full time step of size $\Delta t$ consists of the
-following sub-steps: \\
+The usual scheme uses a kick-drift-kick leap-frog integrator. The various sub-steps are:
 
-\textbf{First kick} Compute velocity and internal energy at half step.
-
-\begin{eqnarray*}
- \tilde {\vec{v}}_i &=& \vec{v}_i + \textstyle\frac{1}{2}\Delta t ~\vec{a}_i \\
- \tilde u_i &=& u_i + \textstyle\frac{1}{2}\Delta t ~\frac{du_i}{dt}
-\end{eqnarray*}
-
-\textbf{Drift} Advance time and position by a full step.
+\textbf{First kick} Kick the particle for the first half-step.
 
 \begin{eqnarray*}
- t &\leftarrow& t + \Delta t \\
- \vec{x}_i &\leftarrow& \vec{x}_i + \Delta t \tilde {\vec{v}}_i\\
+ v_i^{n+1/2} &=& v_i^{n} + \frac{1}{2} a_i^{n}\Delta t^n \\
+ u_i^{n+1/2} &=& u_i^{n} + \frac{1}{2} \frac{du_i^n}{dt}\Delta t^n \\
 \end{eqnarray*}
 
-\textbf{Prediction} Estimate velocity, internal energy and smoothing length at full step
+\textbf{Particle drift} Advance particles by a full step
+
+\begin{equation*}
+ x_i^{n+1} = x_i^n + v_i^{n+{1/2}} \Delta t^n
+\end{equation*}
+
+\textbf{Prediction} Predict particles forward in time according to their old ``accelerations''
 
 \begin{eqnarray*}
-\vec{v}_i &\leftarrow& \vec{v}_i + \Delta t \vec{a}_i \\
-u_i &\leftarrow& u_i + \Delta t ~\frac{du_i}{dt} \\
-h_i &\leftarrow& h_i + \Delta t ~\frac{dh_i}{dt} \\
+ v_{i,pred} &=& v_{i,pred} + a_i^{n} \Delta t^n \\
+  u_{i,pred} &=& u_{i,pred} \cdot \exp\left(\frac{1}{u_i^n}\frac{du_i^{n}}{dt} \Delta t^n\right)\\
+ \rho_i^{n+1} &=& \rho_i^n \cdot \exp\left(\frac{-3}{h_i^n}  \frac{dh_i^{n}}{dt} \Delta t^n \right) \\
+  h_i^{n+1} &=& h_i^n \cdot \exp\left(\frac{1}{h_i^n}  \frac{dh_i^{n}}{dt} \Delta t^n \right)   \\
+  \Omega_i^{n+1} &=& \Omega_i
 \end{eqnarray*}
 
-\textbf{SPH loop 1} Compute $\rho_i$, correct $h_i$ if needed using bisection algorithm and compute $\Omega_i$ using the
-first SPH loop. \\
+\textbf{SPH loop 1} Correct $\rho_i^{n+1}$, $h_i^{n+1}$ and $\Omega_i^{n+1}$ if needed using bisection algorithm and the
+first SPH loop (Section \ref{sec:density}). \\
 
-\textbf{SPH loop 2} Compute $\vec{a_i}$, $\frac{du_i}{dt}$ and $\frac{dh_i}{dt}$ using the second SPH loop. \\
+\textbf{SPH loop 2} Compute $a_i^{n+1}$, $\frac{du_i^{n+1}}{dt}$ and $\frac{dh_i^{n+1}}{dt}$ using the second SPH
+loop (Section \ref{sec:forces}). This loop is ALWAYS performed using the PREDICTED velocity $v_{i,pred}$ and internal
+energy $u_{i,pred}$ for BOTH particles. \\
+
+\textbf{New time step} Calculate the next time step.
+
+\begin{equation*}
+ \Delta t^{n+1} = C_{CFL} \frac{h_i}{c_i}, \qquad c_i =\sqrt{\gamma (\gamma-1)u_{i,pred}}
+\end{equation*}
+
 
 \textbf{Gravity} Compute accelerations due to gravity. \\
 
 \textbf{Cooling} Compute the change in internal energy due to radiative cooling and heating. \\
 
-\textbf{Second kick} Compute velocity and internal energy at end of step. 
+\textbf{Second kick} Kick the particle for the second half-step.
 
 \begin{eqnarray*}
- \vec{v}_i &=& \tilde{\vec{v}}_i + \textstyle\frac{1}{2}\Delta t ~\vec{a}_i \\
- u_i &=& \tilde{u}_i + \textstyle\frac{1}{2}\Delta t ~\frac{du_i}{dt}
+ v_i^{n+1} &=& v_i^{n+1/2} + \frac{1}{2} a_i^{\textcolor{red}{n+1}}\Delta t^{\textcolor{red}{n}} \\
+ u_i^{n+1} &=& u_i^{n+1/2} + \frac{1}{2} \frac{du_i^{\textcolor{red}{n+1}}}{dt}\Delta t^{\textcolor{red}{n}} \\
+ v_{i,pred} &=& v_i^{n+1} \\
+ u_{i,pred} &=& u_i^{n+1} \\
 \end{eqnarray*}
+
+
+
+% A full time step of size $\Delta t$ consists of the
+% following sub-steps: \\
+% 
+% \textbf{First kick} Compute velocity and internal energy at half step.
+% 
+% \begin{eqnarray*}
+%  \vec{v}_i^{n+1/2} &=& \vec{v}_i^n + \textstyle\frac{1}{2}\Delta t^n ~\vec{a}_i\big|^{n-1/2} \\
+%  u_i^{n+1/2} &=& u_i^n + \textstyle\frac{1}{2}\Delta t^n ~\frac{du_i}{dt}\big|^{n-1/2}
+% \end{eqnarray*}
+% 
+% \textbf{Drift} Advance time and position by a full step.
+% 
+% \begin{eqnarray*}
+%  t &\leftarrow& t + \Delta t^n \\
+%  \vec{x}_i^{n+1} &\leftarrow& \vec{x}_i^{n+1} + \Delta t^n \tilde {\vec{v}}_i^{n}\\
+% \end{eqnarray*}
+% 
+% \textbf{Prediction} Estimate velocity, internal energy and smoothing length at full step
+% 
+% \begin{eqnarray*}
+% \vec{v}_i &\leftarrow& \vec{v}_i + \Delta t \vec{a}_i \\
+% u_i &\leftarrow& u_i + \Delta t ~\frac{du_i}{dt} \\
+% h_i &\leftarrow& h_i + \Delta t ~\frac{dh_i}{dt} \\
+% \end{eqnarray*}
+% 
+% \textbf{SPH loop 1} Compute $\rho_i$, correct $h_i$ if needed using bisection algorithm and compute $\Omega_i$ using the
+% first SPH loop. \\
+% 
+% \textbf{SPH loop 2} Compute $\vec{a_i}$, $\frac{du_i}{dt}$ and $\frac{dh_i}{dt}$ using the second SPH loop. \\
+% 
+% \textbf{Gravity} Compute accelerations due to gravity. \\
+% 
+% \textbf{Cooling} Compute the change in internal energy due to radiative cooling and heating. \\
+% 
+% \textbf{Second kick} Compute velocity and internal energy at end of step. 
+% 
+% \begin{eqnarray*}
+%  \vec{v}_i &=& \tilde{\vec{v}}_i + \textstyle\frac{1}{2}\Delta t ~\vec{a}_i \\
+%  u_i &=& \tilde{u}_i + \textstyle\frac{1}{2}\Delta t ~\frac{du_i}{dt}
+% \end{eqnarray*}
 
 \section{Multiple time steps}
 
@@ -300,24 +354,10 @@ new bin is active. In other words, particles can always move down the time bin h
 two bins of interest are synchronized.\\
 
 When an active particles is integrated in time, it will probably have to interact with inactive neighbors. The state
-of these inactive particles has to be \emph{predicted} forward in time from the last time they have been active. To do
-so, the following approximate evolution equations are used:
-
-\begin{eqnarray}
- \vec{x}_i &\leftarrow& \vec{x}_{i} + \vec{v}_i \cdot \Delta t \\
- \vec{v}_{i,pred} &\leftarrow& \vec{v}_{i,pred} + \vec{a}_i \cdot \Delta t \\
- \rho_i &\leftarrow& \rho_i \cdot \exp\left(\frac{-3}{h_i}  \frac{dh_i}{dt} \Delta t \right) \\
-  h_i &\leftarrow& h_i \cdot \exp\left(\frac{1}{h_i}  \frac{dh_i}{dt} \Delta t \right) \\
-  u_{i,pred} &\leftarrow& u_{i,pred} \cdot \exp\left(\frac{1}{u_i}\frac{du_i}{dt} \Delta t\right) \\
-  \Omega_i &\leftarrow& 1 
-\end{eqnarray}
-
-These predicted quantities are then used in equations \ref{eq:pressure}, \ref{eq:acceleration} and \ref{eq:dudt} to
-estimate the acceleration and change in internal energy of an active particle. In order to preserve the old value of
-the velocity and internal energy for accurate time integration, we need to add 2 additional variables to the particles,
-the predicted velocity $\vec{v}_{i,pred}$(vector) and the predicted internal energy $u_{i,pred}$(scalar). The true
-velocity $\vec{v}_i$ and true internal energy $u_i$ are NOT updated when predicting the state of a particle at an
-intermediate time step.
+of these inactive particles has to be predicted forward in time from the last time they have been active. To do
+so, the prediction part of the leapfrog algorithm is used. \\
+In other words, the drift and prediction parts of the leapfrog algorithm are performed for all particles whereas the
+other parts are only done for the active ones.
 
 
 \section{Conserved quantities}
