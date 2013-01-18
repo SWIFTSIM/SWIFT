@@ -49,6 +49,12 @@
 enum DATA_TYPE{INT, LONG, LONGLONG, UINT, ULONG, ULONGLONG, FLOAT, DOUBLE};
 
 /**
+ * @brief The two sorts of data present in the GADGET IC files: compulsory to start a run or optional.
+ *
+ */
+enum DATA_IMPORTANCE{COMPULSORY=1, OPTIONAL=0};
+
+/**
  * @brief Converts a C data type to the HDF5 equivalent. 
  *
  * This function is a trivial wrapper around the HDF5 types but allows
@@ -134,21 +140,50 @@ void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data)
  * @param N The number of particles.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurence of the field of interest in the parts array
+ * @param importance If COMPULSORY, the data must be present in the IC file. If OPTIONAL, the array will be zeroed when the data is not present.
  *
  * @todo A better version using HDF5 hyperslabs to read the file directly into the part array 
  * will be written once the strucutres have been stabilized.
  *  
  * Calls #error() if an error occurs.
  */
-void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, char* part_c)
+void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, char* part_c, enum DATA_IMPORTANCE importance)
 {
   hid_t h_data=0, h_err=0, h_type=0;
+  htri_t exist=0;
   void* temp;
   int i=0;
   size_t typeSize = sizeOfType(type);
   size_t copySize = typeSize * dim;
   size_t partSize = sizeof(struct part);
   char* temp_c = 0;
+
+  /* Check whether the dataspece exists or not */
+  exist = H5Lexists(grp, name, 0);
+  if(exist < 0)
+    {
+      char buf[100];
+      sprintf(buf, "Error while checking the existence of data set '%s'\n", name);
+      error(buf);
+    }
+  else if(exist == 0)
+    {
+      if(importance == COMPULSORY)
+	{
+	  char buf[100];
+	  sprintf(buf, "Compulsory data set '%s' not present in the file.\n", name);
+	  error(buf);
+	}
+      else
+	{
+	  printf("readArray: Optional data set '%s' not present. Zeroing this particle field...\n", name);	  
+	  
+	  for(i=0; i<N; ++i)
+	    memset(part_c+i*partSize, 0, copySize);
+	  
+	  return;
+	}
+   }
 
   printf("readArray: Reading '%s' array...\n", name);
 
@@ -205,9 +240,10 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part The array of particles to fill
  * @param field The name of the field (C code name as defined in part.h) to fill
+ * @param importance Is the data compulsory or not
  *
  */
-#define readArray(grp, name, type, N, dim, part, field) readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field))
+#define readArray(grp, name, type, N, dim, part, field, importance) readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field), importance)
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
@@ -246,15 +282,16 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
 
   /* Open header to read simulation properties */
   printf("read_ic: Reading runtime parameters...\n");
-  h_grp = H5Gopen(h_file, "/RuntimePars");
-  if(h_grp < 0)
-    error("Error while opening runtime parameters\n");
+  /* h_grp = H5Gopen(h_file, "/RuntimePars"); */
+  /* if(h_grp < 0) */
+  /*   error("Error while opening runtime parameters\n"); */
 
-  /* Read the relevant information */
-  readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
+  /* /\* Read the relevant information *\/ */
+  /* readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic); */
 
-  /* Close runtime parameters */
-  H5Gclose(h_grp);
+  /* /\* Close runtime parameters *\/ */
+  /* H5Gclose(h_grp); */
+  *periodic = 1;
 
   /* Open header to read simulation properties */
   printf("read_ic: Reading file header...\n");
@@ -289,12 +326,13 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
     error( "Error while opening particle group.\n");
 
   /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, x);
-  readArray(h_grp, "Velocity", FLOAT, *N, 3, *parts, v);
-  readArray(h_grp, "Mass", FLOAT, *N, 1, *parts, mass);
-  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id);
+  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, x, COMPULSORY);
+  readArray(h_grp, "Velocity", FLOAT, *N, 3, *parts, v, COMPULSORY);
+  readArray(h_grp, "Mass", FLOAT, *N, 1, *parts, mass, COMPULSORY);
+  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
+  readArray(h_grp, "TimeSteps", FLOAT, *N, 1, *parts, dt, OPTIONAL);
+  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
 
   /* Close particle group */
   H5Gclose(h_grp);
