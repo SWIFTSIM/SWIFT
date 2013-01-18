@@ -158,7 +158,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   size_t partSize = sizeof(struct part);
   char* temp_c = 0;
 
-  /* Check whether the dataspece exists or not */
+  /* Check whether the dataspace exists or not */
   exist = H5Lexists(grp, name, 0);
   if(exist < 0)
     {
@@ -331,7 +331,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   readArray(h_grp, "Mass", FLOAT, *N, 1, *parts, mass, COMPULSORY);
   readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
   readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
-  readArray(h_grp, "TimeSteps", FLOAT, *N, 1, *parts, dt, OPTIONAL);
+  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
 
   /* Close particle group */
