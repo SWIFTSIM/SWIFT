@@ -153,9 +153,9 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   htri_t exist=0;
   void* temp;
   int i=0;
-  size_t typeSize = sizeOfType(type);
-  size_t copySize = typeSize * dim;
-  size_t partSize = sizeof(struct part);
+  const size_t typeSize = sizeOfType(type);
+  const size_t copySize = typeSize * dim;
+  const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
 
   /* Check whether the dataspace exists or not */
@@ -185,7 +185,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 	}
    }
 
-  printf("readArray: Reading '%s' array...\n", name);
+  printf("readArray: Reading %s '%s' array...\n", importance == COMPULSORY ? "compulsory": "optional  ", name);
 
   /* Open data space */
   h_data = H5Dopen(grp, name);
@@ -282,17 +282,16 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
 
   /* Open header to read simulation properties */
   printf("read_ic: Reading runtime parameters...\n");
-  /* h_grp = H5Gopen(h_file, "/RuntimePars"); */
-  /* if(h_grp < 0) */
-  /*   error("Error while opening runtime parameters\n"); */
+  h_grp = H5Gopen(h_file, "/RuntimePars");
+  if(h_grp < 0)
+    error("Error while opening runtime parameters\n");
 
-  /* /\* Read the relevant information *\/ */
-  /* readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic); */
+  /* Read the relevant information */
+  readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
 
-  /* /\* Close runtime parameters *\/ */
-  /* H5Gclose(h_grp); */
-  *periodic = 1;
-
+  /* Close runtime parameters */
+  H5Gclose(h_grp);
+  
   /* Open header to read simulation properties */
   printf("read_ic: Reading file header...\n");
   h_grp = H5Gopen(h_file, "/Header");
