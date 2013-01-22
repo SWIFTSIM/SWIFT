@@ -515,13 +515,14 @@ void pairs_single ( double *dim , long long int pid , struct part *__restrict__ 
     // double maxratio = 1.0;
     double r2, dx[3];
     struct part *p;
-    double ih = 15.0/6.25;
+    double ih = 12.0/6.25;
     
     /* Find "our" part. */
     for ( k = 0 ; k < N && parts[k].id != pid ; k++ );
     if ( k == N )
         error( "Part not found." );
     p = &parts[k];
+    printf( "pairs_single: part[%i].id == %lli.\n" , k , pid );
     
     /* Loop over all particle pairs. */
     for ( k = 0 ; k < N ; k++ ) {
@@ -868,7 +869,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Get the brute-force number of pairs. */
     // pairs_n2( dim , parts , N , periodic );
-    // pairs_single( dim , 1168833436525 , parts , N , periodic );
+    // pairs_single( dim , 5245989477229 , parts , N , periodic );
     // fflush( stdout );
     
     /* Set default number of queues. */
@@ -894,20 +895,26 @@ int main ( int argc , char *argv[] ) {
     
     /* Verify that each particle is in it's propper cell. */
     icount = 0;
-    space_map_cells( &s , 0 , &map_cellcheck , &icount );
+    space_map_cells_pre( &s , 0 , &map_cellcheck , &icount );
     printf( "main: map_cellcheck picked up %i parts.\n" , icount );
     
     data[0] = s.maxdepth; data[1] = 0;
-    space_map_cells( &s , 0 , &map_maxdepth , data );
+    space_map_cells_pre( &s , 0 , &map_maxdepth , data );
     printf( "main: nr of cells at depth %i is %i.\n" , data[0] , data[1] );
     
     /* Dump the particle positions. */
     // space_map_parts( &s , &map_dump , shift );
     
+    /* Dump the acceleration of the first particle. */
+    printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ], wcount=%.3f.\n" , s.parts[103].id , s.parts[103].a[0] , s.parts[103].a[1] , s.parts[103].a[2] , s.parts[103].wcount + 32.0/3 );
+    
     /* Initialize the runner with this space. */
     tic = getticks();
     engine_init( &e , &s , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
     printf( "main: engine_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+    
+    /* set the time step. */
+    e.dt = dt_max;
     
     /* Init the runner history. */
     #ifdef HIST
@@ -917,29 +924,23 @@ int main ( int argc , char *argv[] ) {
     
     /* Let loose a runner on the space. */
     for ( j = 0 ; j < runs ; j++ ) {
+    
         printf( "main: starting run %i/%i with %i threads and %i queues...\n" , j+1 , runs , e.nr_threads , e.nr_queues ); fflush(stdout);
-        #ifdef TIMER
-            for ( k = 0 ; k < runner_timer_count ; k++ )
-                runner_timer[k] = 0;
-            for ( k = 0 ; k < queue_timer_count ; k++ )
-                queue_timer[k] = 0;
-            for ( k = 0 ; k < cell_timer_count ; k++ )
-                cell_timer[k] = 0;
-        #endif
+        timers_reset( timers_mask_all );
         #ifdef COUNTER
             for ( k = 0 ; k < runner_counter_count ; k++ )
                 runner_counter[k] = 0;
         #endif
-        tic = getticks();
-        engine_prepare( &e , 1 );
-        printf( "main: engine_prepare took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
-        tic = getticks();
-        engine_run( &e , 0 , dt_max );
+        
+        /* Take a step. */
+        engine_step( &e , 0 );
+        
+        /* Output. */
         #ifdef TIMER
-            printf( "main: runner timers are [ %.3f" , runner_timer[0]/CPU_TPS*1000 );
-            for ( k = 1 ; k < runner_timer_count ; k++ )
-                printf( " %.3f" , ((double)runner_timer[k])/CPU_TPS*1000 );
-            printf( " %.3f ] ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+            printf( "main: runner timers are [ %.3f" , timers[0]/CPU_TPS*1000 );
+            for ( k = 1 ; k < timer_count ; k++ )
+                printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
+            printf( " ] ms.\n" );
             printf( "main: queue timers are [ %.3f" , queue_timer[0]/CPU_TPS*1000 );
             for ( k = 1 ; k < queue_timer_count ; k++ )
                 printf( " %.3f" , ((double)queue_timer[k])/CPU_TPS*1000 );
@@ -962,6 +963,7 @@ int main ( int argc , char *argv[] ) {
             printf( " %i" , e.queues[k].count );
         printf( " ].\n" );
         fflush(stdout);
+        
         }
         
     /* Print the values of the runner histogram. */
@@ -989,39 +991,6 @@ int main ( int argc , char *argv[] ) {
     printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f.\n" ,
 	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 );
     
-    /* Loop over all the tasks and dump the ones containing p. */
-    /* for ( k = 0 ; k < s.nr_tasks ; k++ ) {
-        if ( s.tasks[k].type == task_type_self ) {
-            struct cell *c = s.tasks[k].ci;
-            if ( c->loc[0] <= p->x[0] && c->loc[1] <= p->x[1] && c->loc[2] <= p->x[2] &&
-                 c->loc[0]+c->h[0] >= p->x[0] && c->loc[1]+c->h[1] > p->x[1] && c->loc[2]+c->h[2] > p->x[2] ) {
-                printf( "main: found self-interaction for part %i!\n" , p->id );
-                // map_cells_plot( c , &c->depth );
-                }
-            }
-        else if ( s.tasks[k].type == task_type_pair ) {
-            struct cell *ci = s.tasks[k].ci;
-            struct cell *cj = s.tasks[k].cj;
-            if ( ( ci->loc[0] <= p->x[0] && ci->loc[1] <= p->x[1] && ci->loc[2] <= p->x[2] &&
-                   ci->loc[0]+ci->h[0] >= p->x[0] && ci->loc[1]+ci->h[1] > p->x[1] && ci->loc[2]+ci->h[2] > p->x[2] ) ||
-                 ( cj->loc[0] <= p->x[0] && cj->loc[1] <= p->x[1] && cj->loc[2] <= p->x[2] &&
-                   cj->loc[0]+cj->h[0] >= p->x[0] && cj->loc[1]+cj->h[1] > p->x[1] && cj->loc[2]+cj->h[2] > p->x[2] ) ) {
-                printf( "%e %e %e\n%e %e %e\n\n\n" ,
-                    ci->loc[0]+ci->h[0]/2 , ci->loc[1]+ci->h[1]/2 , ci->loc[2]+ci->h[2]/2 ,
-                    cj->loc[0]+cj->h[0]/2 , cj->loc[1]+cj->h[1]/2 , cj->loc[2]+cj->h[2]/2 );
-                // map_cells_plot( ci , &ci->depth );
-                // map_cells_plot( cj , &cj->depth );
-                }
-            }
-        }
-        
-    for ( int ii = -1 ; ii <= 1 ; ii++ )
-        for ( int jj = -1 ; jj <= 1 ; jj++ )
-            for ( int kk = -1 ; kk <= 1 ; kk++ ) {
-                int cid = cell_getid( s.cdim , ((int)(p->x[0]*s.ih[0])+ii+s.cdim[0]) % s.cdim[0] , ((int)(p->x[1]*s.ih[1])+jj+s.cdim[1]) % s.cdim[1] , ((int)(p->x[2]*s.ih[2])+kk+s.cdim[2]) % s.cdim[2] );
-                map_cells_plot( &s.cells[cid] , &s.maxdepth );
-                } */
-    
     /* Get the particle with the highest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_max , &p );
@@ -1034,11 +1003,11 @@ int main ( int argc , char *argv[] ) {
     // printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
     
     /* Dump the acceleration of the first particle. */
-    printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ].\n" , s.parts[6178].id , s.parts[6178].a[0] , s.parts[6178].a[1] , s.parts[6178].a[2] );
+    printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ], wcount=%.3f.\n" , s.parts[103].id , s.parts[103].a[0] , s.parts[103].a[1] , s.parts[103].a[2] , s.parts[103].wcount + 32.0/3 );
     
     /* Get all the cells of a certain depth. */
     // icount = 1;
-    // space_map_cells( &s , 0 , &map_cells_plot , &icount );
+    // space_map_cells_pre( &s , 0 , &map_cells_plot , &icount );
     
     /* Check for outliers. */
     // space_map_parts( &s , &map_check , NULL );

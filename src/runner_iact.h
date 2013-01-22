@@ -367,7 +367,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     
     /* Get the time derivative for h. */
     pi->h_dt += pj->mass / pj->rho * dvdr * wi_dr;
-    pj->h_dt += pi->mass / pi->rho * dvdr * wj_dr;
+    pj->h_dt -= pi->mass / pi->rho * dvdr * wj_dr;
         
     #ifdef HIST
     if ( hi > hj )

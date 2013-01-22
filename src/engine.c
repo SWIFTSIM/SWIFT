@@ -33,6 +33,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "timers.h"
 #include "const.h"
 #include "lock.h"
 #include "task.h"
@@ -58,38 +59,32 @@
  * @param force Flag to force re-building the cell and task structure.
  */
  
-void engine_prepare ( struct engine *e , int force ) {
+void engine_prepare ( struct engine *e ) {
 
-    int j, k, qid, changes, count;
+    int j, k, qid;
     struct space *s = e->s;
-    // ticks tic;
+    struct queue *q;
+    
+    TIMER_TIC
 
     /* Rebuild the space. */
     // tic = getticks();
-    changes = space_rebuild( e->s , force , 0 );
-    // printf( "engine_prepare: space_rebuild with %i changes took %.3f ms.\n" , changes , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    space_prepare( e->s );
+    // printf( "engine_prepare: space_prepare with %i changes took %.3f ms.\n" , changes , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
-    /* Has anything changed? */
     // tic = getticks();
-    if ( changes ) {
-    
-        /* Rank the tasks in topological order. */
-        engine_ranktasks( e );
-    
-        /* Fill the queues (round-robin). */
-        #pragma omp parallel for schedule(static) private(count,k)
-        for ( qid = 0 ; qid < e->nr_queues ; qid++ ) {
-            queue_init( &e->queues[qid] , s->nr_tasks , s->tasks );
-            for ( count = 0 , k = qid ; k < s->nr_tasks ; k += e->nr_queues ) {
-                if ( s->tasks[ s->tasks_ind[k] ].type == task_type_none )
-                    continue;
-                e->queues[qid].tid[ count ] = s->tasks_ind[k];
-                count += 1;
-                }
-            e->queues[qid].count = count;
-            e->queues[qid].next = 0;
-            }
-            
+    /* Init the queues (round-robin). */
+    for ( qid = 0 ; qid < e->nr_queues ; qid++ )
+        queue_init( &e->queues[qid] , s->nr_tasks , s->tasks );
+
+    /* Fill the queues (round-robin). */
+    for ( qid = 0 , k = 0 ; k < s->nr_tasks ; k++ ) {
+        if ( s->tasks[ s->tasks_ind[k] ].skip )
+            continue;
+        q = &e->queues[qid];
+        qid = ( qid + 1 ) % e->nr_queues;
+        q->tid[ q->count ] = s->tasks_ind[k];
+        q->count += 1;
         }
     // printf( "engine_prepare: re-filling queues took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
@@ -118,56 +113,9 @@ void engine_prepare ( struct engine *e , int force ) {
     /* Re-set the queues.*/
     for ( k = 0 ; k < e->nr_queues ; k++ )
         e->queues[k].next = 0;
+        
+    TIMER_TOC( timer_prepare );
     
-    }
-
-
-/** 
- * @brief Sort the tasks in topological order over all queues.
- *
- * @param e The #engine.
- */
- 
-void engine_ranktasks ( struct engine *e ) {
-
-    int i, j = 0, k, temp, left = 0, rank;
-    struct task *t;
-    struct space *s = e->s;
-    int *tid = s->tasks_ind;
-    
-    /* Run throught the tasks and get all the waits right. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        tid[k] = k;
-        for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
-            s->tasks[k].unlock_tasks[j]->wait += 1;
-        }
-        
-    /* Main loop. */
-    for ( j = 0 , rank = 0 ; left < s->nr_tasks ; rank++ ) {
-        
-        /* Load the tids of tasks with no waits. */
-        for ( k = left ; k < s->nr_tasks ; k++ )
-            if ( s->tasks[ tid[k] ].wait == 0 ) {
-                temp = tid[j]; tid[j] = tid[k]; tid[k] = temp;
-                j += 1;
-                }
-
-        /* Traverse the task tree and add tasks with no weight. */
-        for ( i = left ; i < j ; i++ ) {
-            t = &s->tasks[ tid[i] ];
-            t->rank = rank;
-            s->tasks_ind[i] = t - s->tasks;
-            /* printf( "engine_ranktasks: task %i of type %s has rank %i.\n" , i , 
-                (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ? "pair" : "sort" , rank ); */
-            for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
-                t->unlock_tasks[k]->wait -= 1;
-            }
-            
-        /* The new left (no, not tony). */
-        left = j;
-            
-        }
-        
     }
 
 
@@ -223,11 +171,66 @@ void engine_barrier( struct engine *e ) {
  * @param sort_queues Flag to try to sort the queues topologically.
  */
  
-void engine_run ( struct engine *e , int sort_queues , float dt_max ) {
+void engine_step ( struct engine *e , int sort_queues ) {
 
-    int k;
+    int k, nr_parts = e->s->nr_parts;
+    struct part *restrict parts = e->s->parts, *restrict p;
+    float *v_bar, *u_bar;
+    float dt = e->dt, hdt = 0.5*dt, dt_max;
 
-    /* Re-set the queues.*/
+    /* Get the maximum dt. */
+    dt_max = dt;
+    for ( k = 0 ; k < 32 && (e->step & (1 << k)) == 0 ; k++ )
+        dt_max *= 2;
+        
+    /* Set the maximum dt. */
+    e->dt_max = dt_max;
+    e->s->dt_max = dt_max;
+    printf( "engine_step: dt_max set to %.3e.\n" , dt_max ); fflush(stdout);
+    
+    /* Allocate a buffer for the old velocities. */
+    if ( ( v_bar = (float *)malloc( sizeof(float) * nr_parts * 3 ) ) == NULL )
+        error( "Failed to allocate v_old buffer." );
+    if ( ( u_bar = (float *)malloc( sizeof(float) * nr_parts ) ) == NULL )
+        error( "Failed to allocate v_old buffer." );
+        
+    /* First kick. */
+    #pragma omp parallel for schedule(static) private(p)
+    for ( k = 0 ; k < nr_parts ; k++ ) {
+        
+        /* Get a handle on the part. */
+        p = &parts[k];
+        
+        /* Step and store the velocity and internal energy. */
+        v_bar[3*k+0] = p->v[0] + hdt * p->a[0];
+        v_bar[3*k+1] = p->v[1] + hdt * p->a[1];
+        v_bar[3*k+2] = p->v[2] + hdt * p->a[2];
+        u_bar[k] = p->u + hdt * p->u_dt;
+        
+        /* Move the particles with the velocitie at the half-step. */
+        // p->x[0] += dt * v_bar[3*k+0];
+        // p->x[1] += dt * v_bar[3*k+1];
+        // p->x[2] += dt * v_bar[3*k+2];
+        
+        /* Update positions and energies at the half-step. */
+        p->v[0] += dt * p->a[0];
+        p->v[1] += dt * p->a[1];
+        p->v[2] += dt * p->a[2];
+        // p->u *= expf( p->u_dt / p->u * dt );
+        // p->h *= expf( -1.0f * p->h_dt / p->h * dt );
+        
+        /* Integrate other values if this particle will not be updated. */
+        if ( p->dt > dt_max ) {
+            p->rho *= expf( -3.0f * p->h_dt / p->h * dt );
+            p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+            }
+        
+        }
+        
+    /* Prepare the space. */
+    engine_prepare( e );
+    
+    /* Sort the queues?*/
     if ( sort_queues ) {
         #pragma omp parallel for default(none), shared(e)
         for ( k = 0 ; k < e->nr_queues ; k++ ) {
@@ -236,9 +239,8 @@ void engine_run ( struct engine *e , int sort_queues , float dt_max ) {
             }
         }
         
-    /* Set the maximum dt. */
-    e->dt_max = dt_max;
-    e->s->dt_max = dt_max;
+    /* Start the clock. */
+    TIMER_TIC
     
     /* Cry havoc and let loose the dogs of war. */
     e->barrier_count = -e->barrier_count;
@@ -249,6 +251,47 @@ void engine_run ( struct engine *e , int sort_queues , float dt_max ) {
     while ( e->barrier_count < e->nr_threads )
         if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
             error( "Error while waiting for barrier." );
+            
+    /* Stop the clock. */
+    TIMER_TOC(timer_step);
+    
+    /* Second kick. */
+    e->dt_min = FLT_MAX;
+    #pragma omp parallel private(p,k)
+    {
+        int threadID = omp_get_thread_num();
+        int nthreads = omp_get_num_threads();
+        float dt_min = FLT_MAX;
+        for ( k = nr_parts * threadID / nthreads ; k < nr_parts * (threadID + 1) / nthreads ; k++ ) {
+
+            /* Get a handle on the part. */
+            p = &parts[k];
+
+            /* Scale the derivatives. */
+            p->u_dt *= p->POrho2;
+            p->h_dt *= p->h * 0.333333333f;
+
+            /* Update positions and energies at the half-step. */
+            p->v[0] = v_bar[3*k+0] + hdt * p->a[0];
+            p->v[1] = v_bar[3*k+0] + hdt * p->a[1];
+            p->v[2] = v_bar[3*k+0] + hdt * p->a[2];
+            // p->u = u_bar[k] + hdt * p->u_dt;
+
+            /* Get the smallest dt. */
+            dt_min = fminf( dt_min , p->dt );
+
+            }
+        #pragma omp critical
+        e->dt_min = fminf( e->dt_min , dt_min );
+    }
+    printf( "engine_step: dt_min is %e.\n" , e->dt_min ); fflush(stdout);
+        
+    /* Clean up. */
+    free( v_bar );
+    free( u_bar );
+    
+    /* Increase the step counter. */
+    e->step += 1;
     
     }
     
@@ -276,6 +319,8 @@ void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_
     e->nr_threads = nr_threads;
     e->nr_queues = nr_queues;
     e->policy = policy;
+    e->dt_min = 0.0f;
+    e->step = 0;
     
     /* First of all, init the barrier and lock it. */
     if ( pthread_mutex_init( &e->barrier_mutex , NULL ) != 0 )
@@ -295,9 +340,6 @@ void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_
     for ( k = 0 ; k < nr_queues ; k++ )
         queue_init( &e->queues[k] , s->nr_tasks , s->tasks );
         
-    /* Rank the tasks in topological order. */
-    engine_ranktasks( e );
-    
     /* How many queues to fill initially? */
     for ( nrq = 0 , k = nr_queues ; k > 0 ; k = k / 2 )
         nrq += 1;

@@ -18,60 +18,8 @@
  ******************************************************************************/
 
 
-
-/* The timers themselves. */
-enum {
-    runner_timer_none = 0,
-    runner_timer_dosort,
-    runner_timer_doself_density,
-    runner_timer_doself_force,
-    runner_timer_dopair_density,
-    runner_timer_dopair_force,
-    runner_timer_dosub_density,
-    runner_timer_dosub_force,
-    runner_timer_dopair_subset,
-    runner_timer_doghost,
-    runner_timer_getpair,
-    runner_timer_steal,
-    runner_timer_stalled,
-    runner_timer_count,
-    };
-extern ticks runner_timer[ runner_timer_count ];
-
-
 /* SID stuff. */
 extern const char runner_flip[];
-
-
-/* Define the timer macros. */
-#ifdef TIMER_VERBOSE
-    #ifndef TIMER
-        #define TIMER
-    #endif
-#endif
-#ifdef TIMER
-    #define TIMER_TIC ticks tic = getticks();
-    #define TIMER_TOC(t) timer_toc( t , tic )
-    #define TIMER_TIC2 ticks tic2 = getticks();
-    #define TIMER_TOC2(t) timer_toc( t , tic2 )
-    #ifndef INLINE
-    # if __GNUC__ && !__GNUC_STDC_INLINE__
-    #  define INLINE extern inline
-    # else
-    #  define INLINE inline
-    # endif
-    #endif
-    INLINE static ticks timer_toc ( int t , ticks tic ) {
-        ticks d = (getticks() - tic);
-        __sync_add_and_fetch( &runner_timer[t] , d );
-        return d;
-        }
-#else
-    #define TIMER_TIC
-    #define TIMER_TOC(t)
-    #define TIMER_TIC2
-    #define TIMER_TOC2(t)
-#endif
 
 
 /* Counters. */

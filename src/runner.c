@@ -33,6 +33,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "timers.h"
 #include "const.h"
 #include "lock.h"
 #include "task.h"
@@ -49,9 +50,6 @@
 
 /* Convert cell location to ID. */
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
-
-/* The timers. */
-ticks runner_timer[ runner_timer_count ];
 
 /* The counters. */
 int runner_counter[ runner_counter_count ];
@@ -305,9 +303,9 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
         printf( "runner_dosort[%02i]: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) took %.3f ms.\n" ,
             r->id , c->count , c->depth ,
             (flags & 0x1000) >> 12 , (flags & 0x800) >> 11 , (flags & 0x400) >> 10 , (flags & 0x200) >> 9 , (flags & 0x100) >> 8 , (flags & 0x80) >> 7 , (flags & 0x40) >> 6 , (flags & 0x20) >> 5 , (flags & 0x10) >> 4 , (flags & 0x8) >> 3 , (flags & 0x4) >> 2 , (flags & 0x2) >> 1 , (flags & 0x1) >> 0 , 
-            ((double)TIMER_TOC(runner_timer_dosort)) / CPU_TPS * 1000 ); fflush(stdout);
+            ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000 ); fflush(stdout);
     #else
-        TIMER_TOC(runner_timer_dosort);
+        TIMER_TOC(timer_dosort);
     #endif
 
     }
@@ -371,7 +369,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Did we get the right number density? */
                 if ( p->wcount + kernel_root > const_nwneigh + 1 ||
                      p->wcount + kernel_root < const_nwneigh - 1 ) {
-                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount + kernel_root ); fflush(stdout);
+                    printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount + kernel_root ); fflush(stdout);
                     // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
@@ -452,9 +450,9 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     #ifdef TIMER_VERBOSE
         printf( "runner_doghost[%02i]: %i parts at depth %i took %.3f ms.\n" ,
             r->id , c->count , c->depth ,
-            ((double)TIMER_TOC(runner_timer_doghost)) / CPU_TPS * 1000 ); fflush(stdout);
+            ((double)TIMER_TOC(timer_doghost)) / CPU_TPS * 1000 ); fflush(stdout);
     #else
-        TIMER_TOC(runner_timer_doghost);
+        TIMER_TOC(timer_doghost);
     #endif
     
     }
@@ -537,7 +535,7 @@ void *runner_main ( void *data ) {
                     t = queue_gettask( queues[qid] , r->id , 0 , keep );
                     if ( t != NULL && keep )
                         queue_insert( myq , t );
-                    TIMER_TOC2(runner_timer_steal);
+                    TIMER_TOC2(timer_steal);
                     }
                 }
             else if ( e->policy & engine_policy_rand ) {
@@ -547,7 +545,7 @@ void *runner_main ( void *data ) {
             else {
                 t = queue_gettask( &e->queues[threadID] , r->id , e->policy & engine_policy_block , 0 );
                 }
-            TIMER_TOC(runner_timer_getpair);
+            TIMER_TOC(timer_getpair);
             
             /* Did I get anything? */
             if ( t == NULL ) {
@@ -560,8 +558,7 @@ void *runner_main ( void *data ) {
                 }
             #ifdef TIMER
             else if ( stalled ) {
-                stalled = getticks() - stalled;
-                __sync_add_and_fetch( &runner_timer[runner_timer_stalled] , stalled );
+                timers_toc( timer_stalled , stalled );
                 #ifdef TIMER_VERBOSE
                     printf( "runner_main[%02i]: stalled %.3f ms\n" , r->id , ((double)stalled) / CPU_TPS * 1000 );
                     fflush(stdout);
@@ -629,8 +626,7 @@ void *runner_main ( void *data ) {
     	/* Any leftover stalls? */    
         #ifdef TIMER
         if ( stalled ) {
-            stalled = getticks() - stalled;
-            __sync_add_and_fetch( &runner_timer[runner_timer_stalled] , stalled );
+            timers_toc( timer_stalled , stalled );
             #ifdef TIMER_VERBOSE
                 printf( "runner_main[%02i]: stalled %.3f ms\n" , r->id , ((double)stalled) / CPU_TPS * 1000 );
                 fflush(stdout);

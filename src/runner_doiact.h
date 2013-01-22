@@ -65,19 +65,19 @@
 #define _IACT(f) PASTE(runner_iact,f)
 #define IACT _IACT(FUNCTION)
 
-#define _TIMER_DOSELF(f) PASTE(runner_timer_doself,f)
+#define _TIMER_DOSELF(f) PASTE(timer_doself,f)
 #define TIMER_DOSELF _TIMER_DOSELF(FUNCTION)
 
-#define _TIMER_DOPAIR(f) PASTE(runner_timer_dopair,f)
+#define _TIMER_DOPAIR(f) PASTE(timer_dopair,f)
 #define TIMER_DOPAIR _TIMER_DOPAIR(FUNCTION)
 
-#define _TIMER_DOSUB(f) PASTE(runner_timer_dosub,f)
+#define _TIMER_DOSUB(f) PASTE(timer_dosub,f)
 #define TIMER_DOSUB _TIMER_DOSUB(FUNCTION)
 
-#define _TIMER_DOSELF_SUBSET(f) PASTE(runner_timer_doself_subset,f)
+#define _TIMER_DOSELF_SUBSET(f) PASTE(timer_doself_subset,f)
 #define TIMER_DOSELF_SUBSET _TIMER_DOSELF_SUBSET(FUNCTION)
 
-#define _TIMER_DOPAIR_SUBSET(f) PASTE(runner_timer_dopair_subset,f)
+#define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset,f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
 #define _IACT_NONSYM_VEC(f) PASTE(runner_iact_nonsym_vec,f)
@@ -500,7 +500,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     #ifdef TIMER_VERBOSE
         printf( "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
     #else
-        TIMER_TOC(runner_timer_dopair_subset);
+        TIMER_TOC(timer_dopair_subset);
     #endif
 
 
@@ -609,7 +609,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     #ifdef TIMER_VERBOSE
         printf( "runner_doself_subset[%02i]: %i/%i parts at depth %i took %.3f ms.\n" , r->id , count , ci->count , ci->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
     #else
-        TIMER_TOC(runner_timer_dopair_subset);
+        TIMER_TOC(timer_dopair_subset);
     #endif
 
 
@@ -661,16 +661,39 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         rshift += shift[k]*runner_shift[ 3*sid + k ];
         
     /* for ( k = 0 ; k < ci->count ; k++ )
-        if ( ci->parts[k].id == 561590 )
+        if ( ci->parts[k].id == 5245989477229 )
             break;
-    if ( k == ci->count )
-        for ( k = 0 ; k < cj->count ; k++ )
-            if ( cj->parts[k].id == 561590 )
-                break;
-    if ( k < cj->count )
+    if ( k < ci->count ) {
         printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts, h_max=%g/%g, and shift = [ %g %g %g ] (rshift=%g).\n" ,
             ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
-            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout); */
+            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout);
+        for ( pjd = 0 ; pjd < cj->count ; pjd++ ) {
+            pi = &ci->parts[k];
+            pj = &cj->parts[pjd];
+            r2 = sqrtf( (pi->x[0] - pj->x[0])*(pi->x[0] - pj->x[0]) + (pi->x[1] - pj->x[1])*(pi->x[1] - pj->x[1]) + (pi->x[2] - pj->x[2])*(pi->x[2] - pj->x[2]) );
+            printf( "runner_dopair1: inspecting particles %lli [%i,%i,%i] and %lli [%i,%i,%i], r=%e.\n" ,
+                pi->id , (int)(ci->loc[0]/ci->h[0]) , (int)(ci->loc[1]/ci->h[1]) , (int)(ci->loc[2]/ci->h[2]) ,
+                pj->id , (int)(cj->loc[0]/cj->h[0]) , (int)(cj->loc[1]/cj->h[1]) , (int)(cj->loc[2]/cj->h[2]) ,
+                r2 );
+            }
+        } */
+    /* for ( k = 0 ; k < cj->count ; k++ )
+        if ( cj->parts[k].id == 5245989477229 )
+            break;
+    if ( k < cj->count ) {
+        printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts, h_max=%g/%g, and shift = [ %g %g %g ] (rshift=%g).\n" ,
+            ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
+            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout);
+        for ( pjd = 0 ; pjd < ci->count ; pjd++ ) {
+            pj = &cj->parts[k];
+            pi = &ci->parts[pjd];
+            r2 = sqrtf( (pi->x[0] - pj->x[0])*(pi->x[0] - pj->x[0]) + (pi->x[1] - pj->x[1])*(pi->x[1] - pj->x[1]) + (pi->x[2] - pj->x[2])*(pi->x[2] - pj->x[2]) );
+            printf( "runner_dopair1: inspecting particles %lli [%i,%i,%i] and %lli [%i,%i,%i], r=%e.\n" ,
+                pi->id , (int)(ci->loc[0]/ci->h[0]) , (int)(ci->loc[1]/ci->h[1]) , (int)(ci->loc[2]/ci->h[2]) ,
+                pj->id , (int)(cj->loc[0]/cj->h[0]) , (int)(cj->loc[1]/cj->h[1]) , (int)(cj->loc[2]/cj->h[2]) ,
+                r2 );
+            }
+        } */
     /* for ( hi = 0 , k = 0 ; k < ci->count ; k++ )
         hi += ci->parts[k].r;
     for ( hj = 0 , k = 0 ; k < cj->count ; k++ )
@@ -1483,12 +1506,17 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
     double shift[3];
     float h;
     struct space *s = r->e->s;
+    float dt_max = r->e->dt_max;
 
     TIMER_TIC
     
     /* Is this a single cell? */
     if ( cj == NULL ) {
-    
+
+        /* Should we even bother? */    
+        if ( ci->dt_min > dt_max )
+            return;
+        
         /* Recurse? */
         if ( ci->split ) {
         
@@ -1505,13 +1533,17 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
         
         /* Otherwsie, compute self-interaction. */
         else
-            DOSELF2( r , ci );
+            DOSELF1( r , ci );
             
         } /* self-interaction. */
         
     /* Otherwise, it's a pair interaction. */
     else {
     
+        /* Should we even bother? */    
+        if ( ci->dt_min > dt_max && cj->dt_min > dt_max )
+            return;
+        
         /* Get the cell dimensions. */
         h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
         
@@ -1744,12 +1776,17 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
     double shift[3];
     float h;
     struct space *s = r->e->s;
+    float dt_max = r->e->dt_max;
 
     TIMER_TIC
     
     /* Is this a single cell? */
     if ( cj == NULL ) {
     
+        /* Should we even bother? */    
+        if ( ci->dt_min > dt_max )
+            return;
+        
         /* Recurse? */
         if ( ci->split ) {
         
@@ -1773,6 +1810,10 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
     /* Otherwise, it's a pair interaction. */
     else {
     
+        /* Should we even bother? */    
+        if ( ci->dt_min > dt_max && cj->dt_min > dt_max )
+            return;
+        
         /* Get the cell dimensions. */
         h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
         

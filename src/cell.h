@@ -44,6 +44,15 @@ struct cell {
     /* Minimum and maximum dt in this cell. */
     double dt_min, dt_max;
     
+    /* Minimum dimension, i.e. smallest edge of this cell. */
+    float dmin;
+    
+    /* Maximum slack allowed for particle movement. */
+    float slack;
+    
+    /* Maximum particle movement in this cell. */
+    float dx_max;
+    
     /* The depth of this cell in the tree. */
     int depth, split;
     

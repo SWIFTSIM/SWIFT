@@ -80,6 +80,9 @@ struct part {
     /* Particle ID. */
     unsigned long long id;
     
+    /* Old position, at last tree rebuild. */
+    double x_old[3];
+    
     /* Particle position. */
     double x[3];
     
