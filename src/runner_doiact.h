@@ -2053,12 +2053,14 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *p
     /* Find out in which sub-cell of ci the parts are. */
     for ( k = 0 ; k < 8 ; k++ )
         if ( ci->progeny[k] != NULL ) {
-            if ( parts[ ind[ 0 ] ].x[0] >= ci->progeny[k]->loc[0] &&
-                 parts[ ind[ 0 ] ].x[0] <= ci->progeny[k]->loc[0] + ci->progeny[k]->h[0] &&
-                 parts[ ind[ 0 ] ].x[1] >= ci->progeny[k]->loc[1] &&
-                 parts[ ind[ 0 ] ].x[1] <= ci->progeny[k]->loc[1] + ci->progeny[k]->h[1] &&
-                 parts[ ind[ 0 ] ].x[2] >= ci->progeny[k]->loc[2] &&
-                 parts[ ind[ 0 ] ].x[2] <= ci->progeny[k]->loc[2] + ci->progeny[k]->h[2] ) {
+            // if ( parts[ ind[ 0 ] ].x[0] >= ci->progeny[k]->loc[0] &&
+            //      parts[ ind[ 0 ] ].x[0] <= ci->progeny[k]->loc[0] + ci->progeny[k]->h[0] &&
+            //      parts[ ind[ 0 ] ].x[1] >= ci->progeny[k]->loc[1] &&
+            //      parts[ ind[ 0 ] ].x[1] <= ci->progeny[k]->loc[1] + ci->progeny[k]->h[1] &&
+            //      parts[ ind[ 0 ] ].x[2] >= ci->progeny[k]->loc[2] &&
+            //      parts[ ind[ 0 ] ].x[2] <= ci->progeny[k]->loc[2] + ci->progeny[k]->h[2] ) {
+            if ( &parts[ ind[0] ] >= &ci->progeny[k]->parts[0] &&
+                 &parts[ ind[0] ] <  &ci->progeny[k]->parts[ci->progeny[k]->count] ) {
                 sub = ci->progeny[k];
                 break;
                 }

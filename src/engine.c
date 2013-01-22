@@ -208,16 +208,16 @@ void engine_step ( struct engine *e , int sort_queues ) {
         u_bar[k] = p->u + hdt * p->u_dt;
         
         /* Move the particles with the velocitie at the half-step. */
-        // p->x[0] += dt * v_bar[3*k+0];
-        // p->x[1] += dt * v_bar[3*k+1];
-        // p->x[2] += dt * v_bar[3*k+2];
+        p->x[0] += dt * v_bar[3*k+0];
+        p->x[1] += dt * v_bar[3*k+1];
+        p->x[2] += dt * v_bar[3*k+2];
         
         /* Update positions and energies at the half-step. */
         p->v[0] += dt * p->a[0];
         p->v[1] += dt * p->a[1];
         p->v[2] += dt * p->a[2];
-        // p->u *= expf( p->u_dt / p->u * dt );
-        // p->h *= expf( -1.0f * p->h_dt / p->h * dt );
+        p->u *= expf( p->u_dt / p->u * dt );
+        p->h *= expf( -1.0f * p->h_dt / p->h * dt );
         
         /* Integrate other values if this particle will not be updated. */
         if ( p->dt > dt_max ) {
