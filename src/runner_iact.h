@@ -68,7 +68,8 @@ static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribu
     { 3.0/4.0*M_1_PI , -3.0/2.0*M_1_PI , 0.0 , M_1_PI , 
       -0.25*M_1_PI , 3.0/2.0*M_1_PI , -3.0*M_1_PI , M_2_PI , 
       0.0 , 0.0 , 0.0 , 0.0 };
-#define kernel_root ( 4.0/3.0*M_PI*kernel_igamma3*kernel_coeffs[ kernel_degree ] )
+#define kernel_root ( kernel_coeffs[ kernel_degree ] )
+#define kernel_wroot ( 4.0/3.0*M_PI*kernel_igamma3*kernel_coeffs[ kernel_degree ] )
       
       
 /**
@@ -148,7 +149,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         kernel_deval( xi , &wi , &wi_dx );
         
         pi->rho += pj->mass * wi;
-        pi->rho_dh += -pj->mass * ( 3.0*wi + xi*wi_dx );
+        pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
@@ -353,8 +354,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f = dx[k] * w;
-        pi->a[k] += pj->mass * f;
-        pj->a[k] += -pi->mass * f;
+        pi->a[k] -= pj->mass * f;
+        pj->a[k] += pi->mass * f;
         }
         
     /* Compute dv dot r. */
@@ -486,8 +487,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
         pi[k]->h_dt += pih_dt.f[k];
         pj[k]->h_dt += pjh_dt.f[k];
         for ( j = 0 ; j < 3 ; j++ ) {
-            pi[k]->a[j] += pia[j].f[k];
-            pj[k]->a[j] -= pja[j].f[k];
+            pi[k]->a[j] -= pia[j].f[k];
+            pj[k]->a[j] += pja[j].f[k];
             }
         }
         
@@ -532,7 +533,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f = dx[k] * w;
-        pi->a[k] += pj->mass * f;
+        pi->a[k] -= pj->mass * f;
         }
         
     /* Compute dv dot r. */
@@ -646,7 +647,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
         pi[k]->u_dt += piu_dt.f[k];
         pi[k]->h_dt += pih_dt.f[k];
         for ( j = 0 ; j < 3 ; j++ )
-            pi[k]->a[j] += pia[j].f[k];
+            pi[k]->a[j] -= pia[j].f[k];
         }
 
 #else

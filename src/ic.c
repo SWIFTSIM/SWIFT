@@ -333,7 +333,6 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
   readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
   readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL);
-  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL );
   readArray(h_grp, "Density", FLOAT, *N, 1, *parts, rho, OPTIONAL );
   readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL );
 

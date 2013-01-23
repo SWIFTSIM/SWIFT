@@ -360,16 +360,17 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Adjust the computed rho. */
                 ihg = kernel_igamma / p->h;
                 ihg2 = ihg * ihg;
-                p->rho *= ihg * ihg2;
+                p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
                 p->rho_dh *= ihg2 * ihg2;
+                p->wcount += kernel_wroot;
 
                 /* Update the smoothing length. */
-                p->h -= ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
+                p->h -= ( p->wcount - const_nwneigh ) / p->wcount_dh;
 
                 /* Did we get the right number density? */
-                if ( p->wcount + kernel_root > const_nwneigh + 1 ||
-                     p->wcount + kernel_root < const_nwneigh - 1 ) {
-                    printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount + kernel_root ); fflush(stdout);
+                if ( p->wcount > const_nwneigh + 1 ||
+                     p->wcount < const_nwneigh - 1 ) {
+                    printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount ); fflush(stdout);
                     // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
