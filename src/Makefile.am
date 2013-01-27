@@ -31,9 +31,9 @@ AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0
 
 # Build the libswiftsim library
 lib_LTLIBRARIES = libswiftsim.la
-libswiftsim_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c input.c timers.c
+libswiftsim_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c input.c timers.c debug.c
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
-    engine.h swift.h io.h timers.h
+    engine.h swift.h io.h timers.h debug.h
 

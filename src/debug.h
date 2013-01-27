@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,21 +17,7 @@
  * 
  ******************************************************************************/
 
-/* Config parameters. */
-#include "../config.h"
 
-/* Local headers. */
-#include "cycle.h"
-#include "timers.h"
-#include "const.h"
-#include "lock.h"
-#include "task.h"
-#include "part.h"
-#include "cell.h"
-#include "space.h"
-#include "queue.h"
-#include "runner.h"
-#include "runner_iact.h"
-#include "engine.h"
-#include "io.h"
-#include "debug.h"
+
+
+void printParticle(struct part *parts, int i);

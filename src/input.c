@@ -36,65 +36,7 @@
 #include "task.h"
 #include "part.h"
 #include "space.h"
-
-/* Error macro. */
-#define error(s) { fprintf( stderr , "%s:%s():%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
-
-
-/**
- * @brief The different types of data used in the GADGET IC files.
- *
- * (This is admittedly a poor substitute to C++ templates...)
- */
-enum DATA_TYPE{INT, LONG, LONGLONG, UINT, ULONG, ULONGLONG, FLOAT, DOUBLE};
-
-/**
- * @brief The two sorts of data present in the GADGET IC files: compulsory to start a run or optional.
- *
- */
-enum DATA_IMPORTANCE{COMPULSORY=1, OPTIONAL=0};
-
-/**
- * @brief Converts a C data type to the HDF5 equivalent. 
- *
- * This function is a trivial wrapper around the HDF5 types but allows
- * to change the exact storage types matching the code types in a transparent way.
- */
-hid_t hdf5Type(enum DATA_TYPE type)
-{
-  switch(type)
-    {
-    case INT: return H5T_NATIVE_INT;
-    case UINT: return H5T_NATIVE_UINT;
-    case LONG: return H5T_NATIVE_LONG;
-    case ULONG: return H5T_NATIVE_ULONG;
-    case LONGLONG: return H5T_NATIVE_LLONG;
-    case ULONGLONG: return H5T_NATIVE_ULLONG;
-    case FLOAT: return H5T_NATIVE_FLOAT;
-    case DOUBLE: return H5T_NATIVE_DOUBLE;
-    default: error("Unknown type");
-    }
-}
-
-
-/**
- * @brief Returns the memory size of the data type
- */
-size_t sizeOfType(enum DATA_TYPE type)
-{
-  switch(type)
-    {
-    case INT: return sizeof(int);
-    case UINT: return sizeof(unsigned int);
-    case LONG: return sizeof(long);
-    case ULONG: return sizeof(unsigned long);
-    case LONGLONG: return sizeof(long long);
-    case ULONGLONG: return sizeof(unsigned long long);
-    case FLOAT: return sizeof(float);
-    case DOUBLE: return sizeof(double);
-    default: error("Unknown type");
-    }
-}
+#include "io_types.h"
 
 
 /**

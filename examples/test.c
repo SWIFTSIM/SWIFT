@@ -862,6 +862,8 @@ int main ( int argc , char *argv[] ) {
 	    parts[k].x[2] += shift[2];
       }
 
+    for(k=0; k<10; ++k)
+      printParticle(parts, k);
             
     /* Dump the kernel to make sure its ok. */
     // kernel_dump( 100 );
