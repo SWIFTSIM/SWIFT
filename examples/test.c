@@ -864,6 +864,10 @@ int main ( int argc , char *argv[] ) {
 
     for(k=0; k<10; ++k)
       printParticle(parts, k);
+
+    tic = getticks();
+    write_output("output.hdf5", dim, parts, N, periodic);
+    printf( "main: writing particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
             
     /* Dump the kernel to make sure its ok. */
     // kernel_dump( 100 );
