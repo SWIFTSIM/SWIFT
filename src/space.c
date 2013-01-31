@@ -475,6 +475,9 @@ void space_rebuild ( struct space *s , double cell_max ) {
     int *ind;
     // ticks tic;
     
+    /* Be verbose about this. */
+    printf( "space_rebuild: (re)building space...\n" ); fflush(stdout);
+    
     /* Run through the parts and get the current h_max. */
     // tic = getticks();
     for ( k = 0 ; k < s->nr_parts ; k++ ) {

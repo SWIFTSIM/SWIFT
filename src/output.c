@@ -77,7 +77,7 @@ void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data, int 
       error(buf);
     }
 
-  h_attr = H5Acreate(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
+  h_attr = H5Acreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
   if(h_attr < 0)
     {
       char buf[100];
@@ -169,7 +169,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
     }
   
   /* Create dataset */
-  h_data = H5Dcreate(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
+  h_data = H5Dcreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
   if(h_data < 0)
     {
       char buf[100];
@@ -248,7 +248,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
 
   /* Open header to read simulation properties */
   printf("write_output: Writing runtime parameters...\n");
-  h_grp = H5Gcreate(h_file, "/RuntimePars", 0);
+  h_grp = H5Gcreate1(h_file, "/RuntimePars", 0);
   if(h_grp < 0)
     error("Error while creating runtime parameters group\n");
 
@@ -262,7 +262,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
   
   /* Open header to write simulation properties */
   printf("write_output: Writing file header...\n");
-  h_grp = H5Gcreate(h_file, "/Header", 0);
+  h_grp = H5Gcreate1(h_file, "/Header", 0);
   if(h_grp < 0)
     error("Error while creating file header\n");
     
@@ -275,7 +275,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
 		  
   /* Create SPH particles group */
   printf("write_output: Writing particle arrays...\n");
-  h_grp = H5Gcreate(h_file, "/PartType0", 0);
+  h_grp = H5Gcreate1(h_file, "/PartType0", 0);
   if(h_grp < 0)
     error( "Error while creating particle group.\n");
 

@@ -23,6 +23,8 @@
 enum {
     timer_none = 0,
     timer_prepare,
+    timer_kick1,
+    timer_kick2,
     timer_dosort,
     timer_doself_density,
     timer_doself_force,
@@ -53,6 +55,8 @@ extern ticks timers[ timer_count ];
     #endif
 #endif
 #ifdef TIMER
+    #define TIMER_TIC_ND tic = getticks();
+    #define TIMER_TIC2_ND ticks tic2 = getticks();
     #define TIMER_TIC ticks tic = getticks();
     #define TIMER_TOC(t) timers_toc( t , tic )
     #define TIMER_TIC2 ticks tic2 = getticks();

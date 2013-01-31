@@ -42,11 +42,11 @@ struct cpart {
 /* Data of a single particle. */
 struct part {
 
+    /* Particle velocity. */
+    float v[3] __attribute__((aligned (16)));
+    
     /* Particle mass. */
     float mass;
-    
-    /* Particle velocity. */
-    float v[3];
     
     /* Particle density. */
     float rho;
@@ -63,11 +63,11 @@ struct part {
     /* Change in smoothing length over time. */
     float h_dt;
     
+    /* Particle acceleration. */
+    float a[3] __attribute__((aligned (16)));
+    
     /* Derivative of the density with respect to this particle's smoothing length. */
     float rho_dh;
-    
-    /* Particle acceleration. */
-    float a[3];
     
     /* Particle number density. */
     // int icount;

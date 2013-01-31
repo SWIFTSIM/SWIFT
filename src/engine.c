@@ -35,6 +35,7 @@
 #include "cycle.h"
 #include "timers.h"
 #include "const.h"
+#include "vector.h"
 #include "lock.h"
 #include "task.h"
 #include "part.h"
@@ -175,8 +176,11 @@ void engine_step ( struct engine *e , int sort_queues ) {
 
     int k, nr_parts = e->s->nr_parts;
     struct part *restrict parts = e->s->parts, *restrict p;
-    float *v_bar, *u_bar;
+    float *restrict v_bar;
     float dt = e->dt, hdt = 0.5*dt, dt_max;
+    #ifdef __SSE2__
+        VEC_MACRO(4,float) hdtv = _mm_set1_ps( hdt );
+    #endif
 
     /* Get the maximum dt. */
     dt_max = dt;
@@ -189,12 +193,11 @@ void engine_step ( struct engine *e , int sort_queues ) {
     printf( "engine_step: dt_max set to %.3e.\n" , dt_max ); fflush(stdout);
     
     /* Allocate a buffer for the old velocities. */
-    if ( ( v_bar = (float *)malloc( sizeof(float) * nr_parts * 3 ) ) == NULL )
-        error( "Failed to allocate v_old buffer." );
-    if ( ( u_bar = (float *)malloc( sizeof(float) * nr_parts ) ) == NULL )
+    if ( posix_memalign( (void **)&v_bar , 16 , sizeof(float) * nr_parts * 4 ) != 0 )
         error( "Failed to allocate v_old buffer." );
         
     /* First kick. */
+    TIMER_TIC
     #pragma omp parallel for schedule(static) private(p)
     for ( k = 0 ; k < nr_parts ; k++ ) {
         
@@ -202,10 +205,14 @@ void engine_step ( struct engine *e , int sort_queues ) {
         p = &parts[k];
         
         /* Step and store the velocity and internal energy. */
-        v_bar[3*k+0] = p->v[0] + hdt * p->a[0];
-        v_bar[3*k+1] = p->v[1] + hdt * p->a[1];
-        v_bar[3*k+2] = p->v[2] + hdt * p->a[2];
-        u_bar[k] = p->u + hdt * p->u_dt;
+        #ifdef __SSE__
+            _mm_store_ps( &v_bar[4*k] , _mm_add_ps( _mm_load_ps( &p->v[0] ) , _mm_mul_ps( hdtv , _mm_load_ps( &p->a[0] ) ) ) );
+        #else
+            v_bar[4*k+0] = p->v[0] + hdt * p->a[0];
+            v_bar[4*k+1] = p->v[1] + hdt * p->a[1];
+            v_bar[4*k+2] = p->v[2] + hdt * p->a[2];
+        #endif
+        v_bar[4*k+3] = p->u + hdt * p->u_dt;
         
         /* Move the particles with the velocitie at the half-step. */
         // p->x[0] += dt * v_bar[3*k+0];
@@ -226,6 +233,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             }
         
         }
+    TIMER_TOC( timer_kick1 );
         
     /* Prepare the space. */
     engine_prepare( e );
@@ -240,7 +248,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         }
         
     /* Start the clock. */
-    TIMER_TIC
+    TIMER_TIC_ND
     
     /* Cry havoc and let loose the dogs of war. */
     e->barrier_count = -e->barrier_count;
@@ -256,6 +264,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
     TIMER_TOC(timer_step);
     
     /* Second kick. */
+    TIMER_TIC_ND
     e->dt_min = FLT_MAX;
     #pragma omp parallel private(p,k)
     {
@@ -272,10 +281,14 @@ void engine_step ( struct engine *e , int sort_queues ) {
             p->h_dt *= p->h * 0.333333333f;
 
             /* Update positions and energies at the half-step. */
-            p->v[0] = v_bar[3*k+0] + hdt * p->a[0];
-            p->v[1] = v_bar[3*k+0] + hdt * p->a[1];
-            p->v[2] = v_bar[3*k+0] + hdt * p->a[2];
-            // p->u = u_bar[k] + hdt * p->u_dt;
+            #ifdef __SSE__
+                _mm_store_ps( &p->v[0] , _mm_add_ps( _mm_load_ps( &v_bar[4*k] ) , _mm_mul_ps( hdtv , _mm_load_ps( &p->a[0] ) ) ) );
+            #else
+                p->v[0] = v_bar[4*k+0] + hdt * p->a[0];
+                p->v[1] = v_bar[4*k+1] + hdt * p->a[1];
+                p->v[2] = v_bar[4*k+2] + hdt * p->a[2];
+            #endif
+            // p->u = v_bar[4*k+3] + hdt * p->u_dt;
 
             /* Get the smallest dt. */
             dt_min = fminf( dt_min , p->dt );
@@ -284,11 +297,11 @@ void engine_step ( struct engine *e , int sort_queues ) {
         #pragma omp critical
         e->dt_min = fminf( e->dt_min , dt_min );
     }
+    TIMER_TOC( timer_kick2 );
     printf( "engine_step: dt_min is %e.\n" , e->dt_min ); fflush(stdout);
         
     /* Clean up. */
     free( v_bar );
-    free( u_bar );
     
     /* Increase the step counter. */
     e->step += 1;

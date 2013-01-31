@@ -80,6 +80,7 @@ struct cell {
     
     /* The tasks computing this cell's sorts. */
     struct task *sorts[13];
+    int sortsize;
     
     /* The tasks computing this cell's density. */
     struct task *density[27];

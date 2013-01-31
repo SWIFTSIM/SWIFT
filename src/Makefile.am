@@ -20,18 +20,19 @@
 AUTOMAKE_OPTIONS=gnu
 
 # Add the debug flag to the whole thing
-# AM_CFLAGS = -g -O3 -Wall -Werror -ffast-math -fstrict-aliasing -ftree-vectorize \
-#     -funroll-loops $(SIMD_FLAGS) $(OPENMP_CFLAGS) \
-#     -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
-AM_CFLAGS = -Wall -Werror $(OPENMP_CFLAGS) \
+AM_CFLAGS = -g -O3 -Wall -Werror -ffast-math -fstrict-aliasing -ftree-vectorize \
+    -funroll-loops $(SIMD_FLAGS) $(OPENMP_CFLAGS) \
     -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
+# AM_CFLAGS = -Wall -Werror $(OPENMP_CFLAGS) \
+#     -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0
 
 # Build the libswiftsim library
 lib_LTLIBRARIES = libswiftsim.la
-libswiftsim_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c input.c output.c timers.c debug.c
+libswiftsim_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
+    input.c output.c timers.c debug.c
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \

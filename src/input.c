@@ -130,7 +130,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   printf("readArray: Reading %s '%s' array...\n", importance == COMPULSORY ? "compulsory": "optional  ", name);
 
   /* Open data space */
-  h_data = H5Dopen(grp, name);
+  h_data = H5Dopen1(grp, name);
   if(h_data < 0)
     {
       char buf[100];
@@ -224,7 +224,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
 
   /* Open header to read simulation properties */
   printf("read_ic: Reading runtime parameters...\n");
-  h_grp = H5Gopen(h_file, "/RuntimePars");
+  h_grp = H5Gopen1(h_file, "/RuntimePars");
   if(h_grp < 0)
     error("Error while opening runtime parameters\n");
 
@@ -236,7 +236,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   
   /* Open header to read simulation properties */
   printf("read_ic: Reading file header...\n");
-  h_grp = H5Gopen(h_file, "/Header");
+  h_grp = H5Gopen1(h_file, "/Header");
   if(h_grp < 0)
     error("Error while opening file header\n");
     
@@ -262,7 +262,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
 		  
   /* Open SPH particles group */
   printf("read_ic: Reading particle arrays...\n");
-  h_grp = H5Gopen(h_file, "/PartType0");
+  h_grp = H5Gopen1(h_file, "/PartType0");
   if(h_grp < 0)
     error( "Error while opening particle group.\n");
 

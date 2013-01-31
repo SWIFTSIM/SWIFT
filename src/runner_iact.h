@@ -19,43 +19,44 @@
  
 
 /* Load the vector stuff. */
-#ifdef __SSE2__
-    #define VECTORIZE
-    #include <immintrin.h>
-    #ifdef __AVX__
-        typedef union {
-            __m256 v;
-            __m256i m;
-            float f[8];
-            int i[8];
-            } vector;
-        #define VEC_SIZE 8
-        #define vec_load(a) _mm256_load_ps(a)
-        #define vec_set1(a) _mm256_set1_ps(a)
-        #define vec_sqrt(a) _mm256_sqrt_ps(a)
-        #define vec_rcp(a) _mm256_rcp_ps(a)
-        #define vec_rsqrt(a) _mm256_rsqrt_ps(a)
-        #define vec_ftoi(a) _mm256_cvttps_epi32(a)
-        #define vec_fmin(a,b) _mm256_min_ps(a,b)
-    #else
-        typedef union {
-            __m128 v;
-            __m128i m;
-            float f[4];
-            int i[4];
-            } vector;
-        #define VEC_SIZE 4
-        #define vec_load(a) _mm_load_ps(a)
-        #define vec_set1(a) _mm_set1_ps(a)
-        #define vec_sqrt(a) _mm_sqrt_ps(a)
-        #define vec_rcp(a) _mm_rcp_ps(a)
-        #define vec_rsqrt(a) _mm_rsqrt_ps(a)
-        #define vec_ftoi(a) _mm_cvttps_epi32(a)
-        #define vec_fmin(a,b) _mm_min_ps(a,b)
-    #endif
-#else
-    #define VEC_SIZE 4
-#endif
+// #ifdef __SSE2__
+//     #define VECTORIZE
+//     #include <immintrin.h>
+//     #ifdef __AVX__
+//         typedef union {
+//             __m256 v;
+//             __m256i m;
+//             float f[8];
+//             int i[8];
+//             } vector;
+//         #define VEC_SIZE 8
+//         #define vec_load(a) _mm256_load_ps(a)
+//         #define vec_set1(a) _mm256_set1_ps(a)
+//         #define vec_sqrt(a) _mm256_sqrt_ps(a)
+//         #define vec_rcp(a) _mm256_rcp_ps(a)
+//         #define vec_rsqrt(a) _mm256_rsqrt_ps(a)
+//         #define vec_ftoi(a) _mm256_cvttps_epi32(a)
+//         #define vec_fmin(a,b) _mm256_min_ps(a,b)
+//     #else
+//         typedef union {
+//             __m128 v;
+//             __m128i m;
+//             float f[4];
+//             int i[4];
+//             } vector;
+//         #define VEC_SIZE 4
+//         #define vec_load(a) _mm_load_ps(a)
+//         #define vec_set1(a) _mm_set1_ps(a)
+//         #define vec_sqrt(a) _mm_sqrt_ps(a)
+//         #define vec_rcp(a) _mm_rcp_ps(a)
+//         #define vec_rsqrt(a) _mm_rsqrt_ps(a)
+//         #define vec_ftoi(a) _mm_cvttps_epi32(a)
+//         #define vec_fmin(a,b) _mm_min_ps(a,b)
+//     #endif
+// #else
+//     #define VEC_SIZE 4
+// #endif
+#include "vector.h"
 
 /* Coefficients for the kernel. */ 
 #define kernel_degree 3
@@ -164,7 +165,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         kernel_deval( xj , &wj , &wj_dx );
         
         pj->rho += pi->mass * wj;
-        pj->rho_dh += -pi->mass * ( 3.0*wj + xj*wj_dx );
+        pj->rho_dh -= pi->mass * ( 3.0*wj + xj*wj_dx );
         pj->wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pj->wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pj->icount += 1;
@@ -266,7 +267,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         kernel_deval( xi , &wi , &wi_dx );
         
         pi->rho += pj->mass * wi;
-        pi->rho_dh += -pj->mass * ( 3.0*wi + xi*wi_dx );
+        pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
