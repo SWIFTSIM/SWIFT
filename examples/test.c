@@ -233,7 +233,7 @@ void map_dump ( struct part *p , struct cell *c , void *data ) {
 void read_coords ( char *fname , struct part *parts , int N ) {
 
 #ifdef HAVE_LIBZ
-    gzFile *fd;
+    gzFile fd;
     char buff[1024];
     int k;
     
@@ -287,7 +287,7 @@ void read_coords ( char *fname , struct part *parts , int N ) {
 void read_cutoffs ( char *fname , struct part *parts , int N ) {
 
 #ifdef HAVE_LIBZ
-    gzFile *fd;
+    gzFile fd;
     char buff[1024];
     int k;
     
@@ -341,7 +341,7 @@ void read_cutoffs ( char *fname , struct part *parts , int N ) {
 void read_id ( char *fname , struct part *parts , int N ) {
 
 #ifdef HAVE_LIBZ
-    gzFile *fd;
+    gzFile fd;
     char buff[1024];
     int k;
     
@@ -371,7 +371,7 @@ void read_id ( char *fname , struct part *parts , int N ) {
         
     /* Read the coordinates into the part positions. */
     for ( k = 0 ; k < N ; k++ ) {
-        if ( fscanf( fd , "%i" , &parts[k].id ) != 1 ) {
+        if ( fscanf( fd , "%lli" , &parts[k].id ) != 1 ) {
             printf( "read_id: failed to read %ith entry.\n" , k );
             error( "Error reading id file." );
             }
@@ -395,7 +395,7 @@ void read_id ( char *fname , struct part *parts , int N ) {
 void read_dt ( char *fname , struct part *parts , int N ) {
 
 #ifdef HAVE_LIBZ
-    gzFile *fd;
+    gzFile fd;
     char buff[1024];
     int k;
     
@@ -912,7 +912,10 @@ int main ( int argc , char *argv[] ) {
     // space_map_parts( &s , &map_dump , shift );
     
     /* Dump the acceleration of the first particle. */
-    printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ], wcount=%.3f.\n" , s.parts[103].id , s.parts[103].a[0] , s.parts[103].a[1] , s.parts[103].a[2] , s.parts[103].wcount + 32.0/3 );
+    for ( k = 0 ; k < 3 ; k++ ) {
+        printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ].\n" , s.parts[k].id , s.parts[k].a[0] , s.parts[k].a[1] , s.parts[k].a[2] );
+        printf( "main: parts[%lli].a has h=%e, rho=%e, wcount=%.3f.\n" , s.parts[k].id , s.parts[k].h , s.parts[k].rho , s.parts[k].wcount + 32.0/3 );
+        }
     
     /* Initialize the runner with this space. */
     tic = getticks();
@@ -989,19 +992,19 @@ int main ( int argc , char *argv[] ) {
     /* Get the average interactions per particle. */
     rho = 0;
     space_map_parts( &s , &map_count , &rho );
-    printf( "main: average wcount per particle is %.3f.\n" , rho / s.nr_parts + 32.0/3 );
+    printf( "main: average wcount per particle is %.3f.\n" , rho / s.nr_parts );
     
     /* Get the particle with the lowest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_min , &p );
     printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f.\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 );
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount );
     
     /* Get the particle with the highest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_max , &p );
     printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f.\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount + 32.0/3 );
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount );
     
     /* Get the average interactions per particle. */
     // icount = 0;
@@ -1009,7 +1012,10 @@ int main ( int argc , char *argv[] ) {
     // printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
     
     /* Dump the acceleration of the first particle. */
-    printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ], wcount=%.3f.\n" , s.parts[103].id , s.parts[103].a[0] , s.parts[103].a[1] , s.parts[103].a[2] , s.parts[103].wcount + 32.0/3 );
+    for ( k = 0 ; k < 3 ; k++ ) {
+        printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ].\n" , s.parts[k].id , s.parts[k].a[0] , s.parts[k].a[1] , s.parts[k].a[2] );
+        printf( "main: parts[%lli].a has h=%e, rho=%e, wcount=%.3f.\n" , s.parts[k].id , s.parts[k].h , s.parts[k].rho , s.parts[k].wcount + 32.0/3 );
+        }
     
     /* Get all the cells of a certain depth. */
     // icount = 1;
