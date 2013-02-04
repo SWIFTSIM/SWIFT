@@ -19,6 +19,7 @@
  ##############################################################################
 
 import h5py
+import random
 from numpy import *
 
 # Generates a swift IC file for the Sedov blast test in a periodic cubic box
@@ -30,6 +31,7 @@ L = 101           # Number of particles along one axis
 rho = 1.          # Density
 P = 1.e-5         # Pressure
 E0= 1.e5          # Energy of the explosion
+pert = 0.1
 gamma = 5./3.     # Gas adiabatic index
 fileName = "sedov.hdf5" 
 
@@ -68,8 +70,12 @@ for i in range(L):
             h[index] = 1.2 * boxSize / L
             u[index] = internalEnergy
             ids[index] = index
-            if 2*x == boxSize and 2*y == boxSize and 2*z == boxSize:
-                u[index] = u[index] + E0
+            if sqrt((x - boxSize/2.)**2 + (y - boxSize/2.)**2 + (z - boxSize/2.)**2) < 2.01 * boxSize/L:
+                u[index] = u[index] + E0 / 33.
+            coords[index,0] = x + random.random() * pert * boxSize/(2.*L)
+            coords[index,1] = y + random.random() * pert * boxSize/(2.*L)
+            coords[index,2] = z + random.random() * pert * boxSize/(2.*L)
+
 
 #--------------------------------------------------
 
