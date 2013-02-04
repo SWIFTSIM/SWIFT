@@ -118,7 +118,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 	}
       else
 	{
-	  printf("readArray: Optional data set '%s' not present. Zeroing this particle field...\n", name);	  
+	  /* printf("readArray: Optional data set '%s' not present. Zeroing this particle field...\n", name);	   */
 	  
 	  for(i=0; i<N; ++i)
 	    memset(part_c+i*partSize, 0, copySize);
@@ -127,7 +127,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 	}
    }
 
-  printf("readArray: Reading %s '%s' array...\n", importance == COMPULSORY ? "compulsory": "optional  ", name);
+  /* printf("readArray: Reading %s '%s' array...\n", importance == COMPULSORY ? "compulsory": "optional  ", name); */
 
   /* Open data space */
   h_data = H5Dopen1(grp, name);
@@ -213,7 +213,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   int numParticles[6]={0};   /* GADGET has 6 particle types. We only keep the type 0*/
 
   /* Open file */
-  printf("read_ic: Opening file '%s' as IC.\n", fileName);
+  /* printf("read_ic: Opening file '%s' as IC.\n", fileName); */
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
   if(h_file < 0)
     {
@@ -223,7 +223,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
     }
 
   /* Open header to read simulation properties */
-  printf("read_ic: Reading runtime parameters...\n");
+  /* printf("read_ic: Reading runtime parameters...\n"); */
   h_grp = H5Gopen1(h_file, "/RuntimePars");
   if(h_grp < 0)
     error("Error while opening runtime parameters\n");
@@ -235,7 +235,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   H5Gclose(h_grp);
   
   /* Open header to read simulation properties */
-  printf("read_ic: Reading file header...\n");
+  /* printf("read_ic: Reading file header...\n"); */
   h_grp = H5Gopen1(h_file, "/Header");
   if(h_grp < 0)
     error("Error while opening file header\n");
@@ -247,8 +247,8 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   *N = numParticles[0];
   dim[0] = dim[1] = dim[2] = boxSize;
 
-  printf("read_ic: Found %d particles in a %speriodic box of size [%f %f %f]\n", 
-  	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]);
+  /* printf("read_ic: Found %d particles in a %speriodic box of size [%f %f %f]\n",  */
+  /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
 
   /* Close header */
   H5Gclose(h_grp);
@@ -258,10 +258,10 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
     error("Error while allocating memory for particles");
   bzero( *parts , *N * sizeof(struct part) );
 
-  printf("read_ic: Allocated %8.2f MB for particles.\n", *N * sizeof(struct part) / (1024.*1024.));
+  /* printf("read_ic: Allocated %8.2f MB for particles.\n", *N * sizeof(struct part) / (1024.*1024.)); */
 		  
   /* Open SPH particles group */
-  printf("read_ic: Reading particle arrays...\n");
+  /* printf("read_ic: Reading particle arrays...\n"); */
   h_grp = H5Gopen1(h_file, "/PartType0");
   if(h_grp < 0)
     error( "Error while opening particle group.\n");
@@ -280,7 +280,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   /* Close particle group */
   H5Gclose(h_grp);
 
-  printf("read_ic: Done Reading particles...\n");
+  /* printf("read_ic: Done Reading particles...\n"); */
 
   /* Close file */
   H5Fclose(h_file);

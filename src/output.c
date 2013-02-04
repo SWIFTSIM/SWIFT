@@ -127,7 +127,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   char* temp_c = 0;
   hsize_t shape[2];
 
-  printf("writeArray: Writing '%s' array...\n", name);
+  /* printf("writeArray: Writing '%s' array...\n", name); */
 
   /* Allocate temporary buffer */
   temp = malloc(N * dim * sizeOfType(type));
@@ -237,7 +237,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
   writeXMFheader(&xmfFile, fileName, N);
 
   /* Open file */
-  printf("write_output: Opening file '%s'.\n", fileName);
+  /* printf("write_output: Opening file '%s'.\n", fileName); */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT,H5P_DEFAULT);
   if(h_file < 0)
     {
@@ -247,7 +247,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
     }
 
   /* Open header to read simulation properties */
-  printf("write_output: Writing runtime parameters...\n");
+  /* printf("write_output: Writing runtime parameters...\n"); */
   h_grp = H5Gcreate1(h_file, "/RuntimePars", 0);
   if(h_grp < 0)
     error("Error while creating runtime parameters group\n");
@@ -261,7 +261,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
   (void) sizeOfType(INT);
   
   /* Open header to write simulation properties */
-  printf("write_output: Writing file header...\n");
+  /* printf("write_output: Writing file header...\n"); */
   h_grp = H5Gcreate1(h_file, "/Header", 0);
   if(h_grp < 0)
     error("Error while creating file header\n");
@@ -274,7 +274,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
   H5Gclose(h_grp);
 		  
   /* Create SPH particles group */
-  printf("write_output: Writing particle arrays...\n");
+  /* printf("write_output: Writing particle arrays...\n"); */
   h_grp = H5Gcreate1(h_file, "/PartType0", 0);
   if(h_grp < 0)
     error( "Error while creating particle group.\n");
@@ -296,7 +296,7 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
   /* Write LXMF file descriptor */
   writeXMFfooter(xmfFile);
 
-  printf("write_output: Done writing particles...\n");
+  /* printf("write_output: Done writing particles...\n"); */
 
   /* Close file */
   H5Fclose(h_file);
