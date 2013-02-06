@@ -562,7 +562,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );    
+    parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );
     // printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* We no longer need the indices as of here. */
@@ -628,7 +628,7 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
         for ( i = 1 ; i < N ; i++ )
             if ( ind[i] < ind[i-1] ) {
                 temp_i = ind[i];
-                temp_p = parts[j];
+                temp_p = parts[i];
                 for ( j = i ; j > 0 && ind[j-1] > temp_i ; j-- ) {
                     ind[j] = ind[j-1];
                     parts[j] = parts[j-1];
@@ -655,7 +655,7 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
             }
 
         /* Verify sort. */
-        for ( int k = 0 ; k <= j ; k++ )
+        /* for ( int k = 0 ; k <= j ; k++ )
             if ( ind[k] > pivot ) {
                 printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
                 error( "Sorting failed (<=pivot)." );
@@ -664,36 +664,15 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
             if ( ind[k] <= pivot ) {
                 printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
                 error( "Sorting failed (>pivot)." );
-                }
+                } */
 
-        /* Try to recurse in parallel. */
-        if ( N < 100 ) {
+        /* Recurse on the left? */
+        if ( j > 0  && pivot > min )
+            parts_sort( parts , ind , j+1 , min , pivot );
 
-            /* Recurse on the left? */
-            if ( j > 0 && pivot > min )
-                parts_sort( parts , ind , j+1 , min , pivot );
-
-            /* Recurse on the right? */
-            if ( i < N && pivot+1 < max )
-                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
-
-            }
-
-        else
-        // #pragma omp parallel sections
-        {
-
-            /* Recurse on the left? */
-            // #pragma omp section
-            if ( j > 0 && pivot > min )
-                parts_sort( parts , ind , j+1 , min , pivot );
-
-            /* Recurse on the right? */
-            // #pragma omp section
-            if ( i < N && pivot+1 < max )
-                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
-
-            }
+        /* Recurse on the right? */
+        if ( i < N && pivot+1 < max )
+            parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
             
         }
     
