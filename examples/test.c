@@ -897,7 +897,6 @@ int main ( int argc , char *argv[] ) {
     printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
     printf( "main: maximum depth is %d.\n" , s.maxdepth );
     printf( "main: cutoffs in [ %g %g ].\n" , s.h_min , s.h_max ); fflush(stdout);
-    printf( "main: generated %i tasks.\n" , s.nr_tasks );
     
     /* Verify that each particle is in it's propper cell. */
     icount = 0;
@@ -1014,7 +1013,7 @@ int main ( int argc , char *argv[] ) {
     /* Dump the acceleration of the first particle. */
     for ( k = 0 ; k < 3 ; k++ ) {
         printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ].\n" , s.parts[k].id , s.parts[k].a[0] , s.parts[k].a[1] , s.parts[k].a[2] );
-        printf( "main: parts[%lli].a has h=%e, rho=%e, wcount=%.3f.\n" , s.parts[k].id , s.parts[k].h , s.parts[k].rho , s.parts[k].wcount + 32.0/3 );
+        printf( "main: parts[%lli].a has h=%e, rho=%e, wcount=%.3f.\n" , s.parts[k].id , s.parts[k].h , s.parts[k].rho , s.parts[k].wcount );
         }
     
     /* Get all the cells of a certain depth. */
