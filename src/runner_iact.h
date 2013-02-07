@@ -368,7 +368,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     pj->u_dt += pi->mass * dvdr * wj_dr;
     
     /* Get the time derivative for h. */
-    pi->h_dt += pj->mass / pj->rho * dvdr * wi_dr;
+    pi->h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
     pj->h_dt -= pi->mass / pi->rho * dvdr * wj_dr;
         
     #ifdef HIST
@@ -485,8 +485,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->u_dt += piu_dt.f[k];
         pj[k]->u_dt += pju_dt.f[k];
-        pi[k]->h_dt += pih_dt.f[k];
-        pj[k]->h_dt += pjh_dt.f[k];
+        pi[k]->h_dt -= pih_dt.f[k];
+        pj[k]->h_dt -= pjh_dt.f[k];
         for ( j = 0 ; j < 3 ; j++ ) {
             pi[k]->a[j] -= pia[j].f[k];
             pj[k]->a[j] += pja[j].f[k];
@@ -545,7 +545,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     pi->u_dt += pj->mass * dvdr * wi_dr;
     
     /* Get the time derivative for h. */
-    pi->h_dt += pj->mass / pj->rho * dvdr * wi_dr;
+    pi->h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
         
     }
     
@@ -646,7 +646,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->u_dt += piu_dt.f[k];
-        pi[k]->h_dt += pih_dt.f[k];
+        pi[k]->h_dt -= pih_dt.f[k];
         for ( j = 0 ; j < 3 ; j++ )
             pi[k]->a[j] -= pia[j].f[k];
         }

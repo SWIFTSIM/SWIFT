@@ -28,6 +28,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <math.h>
+#include <fenv.h>
 #include <omp.h>
 
 /* Conditional headers. */
@@ -189,6 +190,24 @@ void map_wcount_max ( struct part *p , struct cell *c , void *data ) {
     struct part **p2 = (struct part **)data;
     
     if ( p->wcount > (*p2)->wcount )
+        *p2 = p;
+
+    }
+
+void map_h_min ( struct part *p , struct cell *c , void *data ) {
+
+    struct part **p2 = (struct part **)data;
+    
+    if ( p->h < (*p2)->h )
+        *p2 = p;
+
+    }
+
+void map_h_max ( struct part *p , struct cell *c , void *data ) {
+
+    struct part **p2 = (struct part **)data;
+    
+    if ( p->h > (*p2)->h )
         *p2 = p;
 
     }
@@ -689,6 +708,9 @@ int main ( int argc , char *argv[] ) {
     float dt_max = 0.0f;
     ticks tic;
     
+    /* Choke on FP-exceptions. */
+    feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+    
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
 
@@ -862,6 +884,7 @@ int main ( int argc , char *argv[] ) {
 	    parts[k].x[2] += shift[2];
       }
 
+    /* Dump the first few particles. */
     for(k=0; k<10; ++k)
       printParticle(parts, k);
 
@@ -910,12 +933,6 @@ int main ( int argc , char *argv[] ) {
     /* Dump the particle positions. */
     // space_map_parts( &s , &map_dump , shift );
     
-    /* Dump the acceleration of the first particle. */
-    for ( k = 0 ; k < 3 ; k++ ) {
-        printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ].\n" , s.parts[k].id , s.parts[k].a[0] , s.parts[k].a[1] , s.parts[k].a[2] );
-        printf( "main: parts[%lli].a has h=%e, rho=%e, wcount=%.3f.\n" , s.parts[k].id , s.parts[k].h , s.parts[k].rho , s.parts[k].wcount + 32.0/3 );
-        }
-    
     /* Initialize the runner with this space. */
     tic = getticks();
     engine_init( &e , &s , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
@@ -943,6 +960,23 @@ int main ( int argc , char *argv[] ) {
         /* Take a step. */
         engine_step( &e , 0 );
         
+        /* Dump the first few particles. */
+        for(k=0; k<10; ++k)
+          printParticle(parts, k);
+        printParticle( parts , 113531 );
+    
+        /* Get the particle with the lowest h. */
+        p = &s.parts[0];
+        space_map_parts( &s , &map_h_min , &p );
+        printf( "main: particle %lli/%i at [ %e %e %e ] has minimum h=%.3e (h_dt=%.3e).\n" ,
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->h_dt );
+
+        /* Get the particle with the highest h. */
+        p = &s.parts[0];
+        space_map_parts( &s , &map_h_max , &p );
+        printf( "main: particle %lli/%i at [ %e %e %e ] has maximum h=%.3e (h_dt=%.3e).\n" ,
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->h_dt );
+    
         /* Output. */
         #ifdef TIMER
             printf( "main: runner timers are [ %.3f" , timers[0]/CPU_TPS*1000 );
@@ -1010,11 +1044,9 @@ int main ( int argc , char *argv[] ) {
     // space_map_parts( &s , &map_icount , &icount );
     // printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
     
-    /* Dump the acceleration of the first particle. */
-    for ( k = 0 ; k < 3 ; k++ ) {
-        printf( "main: parts[%lli].a is [ %.16e %.16e %.16e ].\n" , s.parts[k].id , s.parts[k].a[0] , s.parts[k].a[1] , s.parts[k].a[2] );
-        printf( "main: parts[%lli].a has h=%e, rho=%e, wcount=%.3f.\n" , s.parts[k].id , s.parts[k].h , s.parts[k].rho , s.parts[k].wcount );
-        }
+    /* Dump the first few particles. */
+    for(k=0; k<10; ++k)
+      printParticle(parts, k);
     
     /* Get all the cells of a certain depth. */
     // icount = 1;

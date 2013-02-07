@@ -28,7 +28,7 @@ from numpy import *
 periodic= 1      # 1 For periodic box
 boxSize = 1.
 L = 50           # Number of particles along one axis
-rho = 1.         # Density
+rho = 2.         # Density
 P = 1.           # Pressure
 gamma = 5./3.    # Gas adiabatic index
 fileName = "uniformBox.hdf5" 

@@ -161,11 +161,16 @@ void space_prepare ( struct space *s ) {
 
     int k;
     struct task *t;
-    float dt_max = s->dt_max;
+    float dt_max = s->dt_max, dx_max = 0.0f;
     int counts[ task_type_count + 1 ];
     
     /* Traverse the cells and set their dt_min and dt_max. */
     space_map_cells_post( s , 1 , &space_map_prepare , NULL );
+    
+    /* Get the maximum displacement in the whole system. */
+    for ( k = 0 ; k < s->nr_cells ; k++ )
+        dx_max = fmaxf( dx_max , s->cells[k].dx_max );
+    printf( "space_prepare: dx_max is %e.\n" , dx_max );
     
     /* Run through the tasks and mark as skip or not. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
@@ -192,15 +197,6 @@ void space_prepare ( struct space *s ) {
         /* Traverse the cells and set their dt_min and dt_max. */
         space_map_cells_post( s , 1 , &space_map_prepare , NULL );
     
-        /* Run through the tasks and mark as skip or not. */
-        for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-            t = &s->tasks[k];
-            if ( t->type == task_type_sort || t->type == task_type_self || t->type == task_type_ghost )
-                t->skip = ( t->ci->dt_min > dt_max );
-            else if ( t->type == task_type_pair )
-                t->skip = ( t->ci->dt_min > dt_max && t->cj->dt_min > dt_max );
-            }
-            
         }
 
     /* Store the condensed particle data. */         
@@ -262,6 +258,10 @@ void space_ranktasks ( struct space *s ) {
                 temp = tid[j]; tid[j] = tid[k]; tid[k] = temp;
                 j += 1;
                 }
+                
+        /* Did we get anything? */
+        if ( j == left )
+            error( "Unsatisfiable task dependencies detected." );
 
         /* Traverse the task tree and add tasks with no weight. */
         for ( i = left ; i < j ; i++ ) {
@@ -488,6 +488,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
         }
     s->h_min = h_min;
     s->h_max = h_max;
+    printf( "space_rebuild: h_min/h_max is %.3e/%.3e.\n" , h_min , h_max );
     // printf( "space_rebuild: getting h_min and h_max took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Get the new putative cell dimensions. */
@@ -537,6 +538,9 @@ void space_rebuild ( struct space *s , double cell_max ) {
                     c->dmin = dmin;
                     c->depth = 0;
                     }
+           
+        /* Be verbose about the change. */         
+        printf( "space_rebuild: set cell dimensions to [ %i %i %i ].\n" , cdim[0] , cdim[1] , cdim[2] ); fflush(stdout);
                     
         } /* re-build upper-level cells? */
     // printf( "space_rebuild: rebuilding upper-level cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
@@ -844,7 +848,7 @@ struct task *space_addtask ( struct space *s , int type , int subtype , int flag
     t->ci = ci;
     t->cj = cj;
     t->skip = 0;
-    t->tight = 0;
+    t->tight = tight;
     t->nr_unlock_tasks = 0;
     t->nr_unlock_cells = 0;
     
@@ -1398,9 +1402,14 @@ void space_maketasks ( struct space *s , int do_sort ) {
         if ( t->skip )
             continue;
         if ( t->type == task_type_sort && t->ci->split )
-            for ( j = 0 ; j < 8 ; j++ )
-                if ( t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts[0] != NULL )
-                    task_addunlock( t->ci->progeny[j]->sorts[0] , t );
+            for ( j = 0 ; j < 8 ; j++ ) {
+                if ( t->ci->progeny[j] == NULL )
+                    continue;
+                if ( t->ci->progeny[j]->sorts[0] == NULL )
+                    t->ci->progeny[j]->sorts[0] = space_addtask( s , task_type_sort , task_subtype_none , 0 /* t->flags? */ , 0 , t->ci , NULL , 0 );
+                t->ci->progeny[j]->sorts[0]->skip = 0;
+                task_addunlock( t->ci->progeny[j]->sorts[0] , t );
+                }
         }
     
     /* Count the number of tasks associated with each cell and

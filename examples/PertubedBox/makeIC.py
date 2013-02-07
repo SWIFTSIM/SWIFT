@@ -32,7 +32,7 @@ L = 50           # Number of particles along one axis
 rho = 1.         # Density
 P = 1.           # Pressure
 gamma = 5./3.    # Gas adiabatic index
-pert = 0.1      # Perturbation scale (in units of the interparticle separation)
+pert = 0.01      # Perturbation scale (in units of the interparticle separation)
 fileName = "perturbedBox.hdf5" 
 
 

@@ -325,6 +325,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
 void runner_doghost ( struct runner *r , struct cell *c ) {
 
     struct part *p;
+    struct cpart *cp;
     struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
@@ -357,9 +358,10 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 
             /* Get a direct pointer on the part. */
             p = &c->parts[ pid[i] ];
+            cp = &c->cparts[ pid[i] ];
             
             /* Is this part within the timestep? */
-            if ( p->dt <= dt_max ) {
+            if ( cp->dt <= dt_max ) {
 
                 /* Adjust the computed rho. */
                 ihg = kernel_igamma / p->h;
@@ -370,11 +372,12 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 
                 /* Update the smoothing length. */
                 p->h -= ( p->wcount - const_nwneigh ) / p->wcount_dh;
+                cp->h = p->h;
 
                 /* Did we get the right number density? */
                 if ( p->wcount > const_nwneigh + 1 ||
                      p->wcount < const_nwneigh - 1 ) {
-                    printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%f.\n" , p->id , p->h , c->depth , p->wcount ); fflush(stdout);
+                    // printf( "runner_doghost: particle %lli (h=%e,h_dt=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , p->h_dt , c->depth , p->wcount ); fflush(stdout);
                     // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
@@ -387,6 +390,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     
                 /* Compute this particle's time step. */
                 p->dt = const_cfl * p->h / sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
+                cp->dt = p->dt;
 
                 /* Compute the pressure. */
                 // p->P = p->rho * p->u * ( const_gamma - 1.0f );
@@ -394,15 +398,15 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Compute the P/Omega/rho2. */
                 p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
 
+                /* Reset the acceleration. */
+                for ( k = 0 ; k < 3 ; k++ )
+                    p->a[k] = 0.0f;
+
+                /* Reset the time derivatives. */
+                p->u_dt = 0.0f;
+                p->h_dt = 0.0f;
+
                 }
-
-            /* Reset the acceleration. */
-            for ( k = 0 ; k < 3 ; k++ )
-                p->a[k] = 0.0f;
-
-            /* Reset the time derivatives. */
-            p->u_dt = 0.0f;
-            p->h_dt = 0.0f;
 
             }
             

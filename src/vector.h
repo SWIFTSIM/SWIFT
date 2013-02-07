@@ -27,8 +27,11 @@
     #define VEC_MACRO(elcount, type)  __attribute__((vector_size((elcount)*sizeof(type)))) type
 
     /* So what will the vector size be? */
-    #ifdef __AVX__
+    #ifdef NO__AVX__
+        #define VECTORIZE
         #define VEC_SIZE 8
+        #define VEC_FLOAT __m256
+        #define VEC_INT __m256i
         #define vec_load(a) _mm256_load_ps(a)
         #define vec_set1(a) _mm256_set1_ps(a)
         #define vec_sqrt(a) _mm256_sqrt_ps(a)
@@ -36,8 +39,11 @@
         #define vec_rsqrt(a) _mm256_rsqrt_ps(a)
         #define vec_ftoi(a) _mm256_cvttps_epi32(a)
         #define vec_fmin(a,b) _mm256_min_ps(a,b)
-    #else
+    #elif defined( NO__SSE2__ )
+        #define VECTORIZE
         #define VEC_SIZE 4
+        #define VEC_FLOAT __m128
+        #define VEC_INT __m128i
         #define vec_load(a) _mm_load_ps(a)
         #define vec_set1(a) _mm_set1_ps(a)
         #define vec_sqrt(a) _mm_sqrt_ps(a)
@@ -45,6 +51,8 @@
         #define vec_rsqrt(a) _mm_rsqrt_ps(a)
         #define vec_ftoi(a) _mm_cvttps_epi32(a)
         #define vec_fmin(a,b) _mm_min_ps(a,b)
+    #else
+        #define VEC_SIZE 4
     #endif
     // #ifdef __AVX__
     //     #define VEC_SIZE 8
@@ -61,8 +69,10 @@
     /* Define the composite types for element access. */
     #ifdef VECTORIZE
     typedef union {
-        VEC_MACRO(VEC_SIZE,float) v;
-        VEC_MACRO(VEC_SIZE,int) m;
+        // VEC_MACRO(VEC_SIZE,float) v;
+        // VEC_MACRO(VEC_SIZE,int) m;
+        VEC_FLOAT v;
+        VEC_INT m;
         float f[VEC_SIZE];
         int i[VEC_SIZE];
         } vector;
