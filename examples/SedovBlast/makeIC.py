@@ -26,11 +26,11 @@ from numpy import *
 
 # Parameters
 periodic= 1      # 1 For periodic box
-boxSize = 1.
+boxSize = 10.
 L = 101           # Number of particles along one axis
 rho = 1.          # Density
 P = 1.e-5         # Pressure
-E0= 1.e5          # Energy of the explosion
+E0= 1.e2          # Energy of the explosion
 pert = 0.1
 gamma = 5./3.     # Gas adiabatic index
 fileName = "sedov.hdf5" 
@@ -71,7 +71,7 @@ for i in range(L):
             u[index] = internalEnergy
             ids[index] = index
             if sqrt((x - boxSize/2.)**2 + (y - boxSize/2.)**2 + (z - boxSize/2.)**2) < 2.01 * boxSize/L:
-                u[index] = u[index] + E0 / 33.
+                u[index] = u[index] + E0 / (33. * mass)
             coords[index,0] = x + random.random() * pert * boxSize/(2.*L)
             coords[index,1] = y + random.random() * pert * boxSize/(2.*L)
             coords[index,2] = z + random.random() * pert * boxSize/(2.*L)
