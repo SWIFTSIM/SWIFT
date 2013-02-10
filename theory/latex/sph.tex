@@ -33,6 +33,7 @@ Every particle contains the following information:
  Smoothing length & Secondary &$h$ & $[m]$ \\
  Smoothing length derivative & Tertiary &$\frac{dh}{dt}$ & $[m\cdot s^{-1}]$ \\
  Time step & Secondary & $\Delta t$ & $[s]$ \\
+ Signal velocity & Secondary & $v_{sig}$& $[m\cdot s^{-1}]$ \\
 \hline
  Artificial viscosity & Primary & $\alpha$ & $[-]$\\
  Artificial conductivity & Primary & $\alpha_u$ & $[-]$\\
@@ -51,7 +52,7 @@ $\frac{P}{\rho\Omega}$ instead of $\Omega$ may be options worth exploring. \\
 The four quantities in the second part of the table are used in improved state-of-the-art implementations of SPH. In a
 first approximation, they can be neglected. \\
 
-In what follows, we will use $\vec{r}_{ij} = \vec{x_i} - \vec{x_j}$ and $\hat{r}_{ij} = \vec{r}_{ij}/x|\vec{r}_{ij}|$
+In what follows, we will use $\vec{r}_{ij} = \vec{x_i} - \vec{x_j}$ and $\hat{r}_{ij} = \vec{r}_{ij}/|\vec{r}_{ij}|$
 to simplify the notation.
 
 \section{Kernel function}
@@ -180,18 +181,24 @@ First, the pressure has to be evaluated evaluated using the equation of state
  P_i = \rho_i u_i (\gamma - 1)
 \end{equation}
 
-where $\gamma$ is the polytropic index. Usually, $\gamma = \frac{5}{3}$.
+where $\gamma$ is the polytropic index. Usually, $\gamma = \frac{5}{3}$. The speed of sound in the particle is then
+obtained using
+
+\begin{equation}
+ c_i = \sqrt{\frac{\gamma P_i}{\rho_i}} = \sqrt{\gamma (\gamma-1)u_i}.
+\end{equation}
+
 The second loop is used to compute the accelerations (tertiary quantities). The exact expressions are
 
 \begin{eqnarray}
  \vec{a_i} &=& - \sum_j m_j\left[\frac{P_i}{\Omega_i\rho_i^2}\vec{\nabla_r} W(\vec{r}_{ij}, h_i) +
 \frac{P_j}{\Omega_j\rho_j^2}\vec{\nabla_r}W(\vec{r}_{ij}, h_j) \right] \label{eq:acceleration}\\
- \frac{du_i}{dt} &=& \frac{P_i}{\textcolor{red}{\Omega_i}\rho_i^2} \sum_j m_j
+ \frac{du_i}{dt} &=& \frac{P_i}{\Omega_i\rho_i^2} \sum_j m_j
 (\vec{v_i}-\vec{v_j})\cdot\vec{\nabla_r} W(\vec{r}_{ij}, h_i)
 \label{eq:dudt}\\
  \frac{dh_i}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right)
-\cdot\vec{\nabla_r}W(\vec{r}_{ij},
-h_i)
+\cdot\vec{\nabla_r}W(\vec{r}_{ij}, h_i)\\
+ v_{sig,i} &=& c_i + c_j + \max_j(0, \hat{r}_{ij} \cdot (\vec{v}_j - \vec{v}_i))
 \end{eqnarray}
 
 In practice the loop is here performed over all pairs of particles such that $|\vec{r}_{ij}| < \zeta h_i$ or
@@ -200,20 +207,15 @@ h_j$. In general, the equations are more involved as they will contain terms to 
 thermal conduction. These terms are pure functions of the properties of particles $i$ and $j$ and are thus very simple
 to insert once the code is stabilized.\\
 
-The time steps are computed using the speed of sound inside each ``kernel volume'' surrounding the particle:
+The time step is given by the Courant relation where the cell size is the smoothing length and the velocitiy is the
+signal speed:
 
 \begin{equation}
- c_i = \sqrt{\frac{\gamma P_i}{\rho_i}} = \sqrt{\gamma (\gamma-1)u_i}
-\end{equation}
-
-The time step is then given by the Courant relation:
-
-\begin{equation}
- \Delta t_i = C_{CFL} \frac{h_i}{c_i}
+ \Delta t_i = C_{CFL} \frac{2h_i}{v_{sig,i}}.
 \label{eq:dt}
 \end{equation}
 
-where the Courant parameter ($C_{DFL}$)usually takes a value between $0.2$ and $0.3$. The integration in time can then
+The Courant parameter ($C_{DFL}$)usually takes a value between $0.2$ and $0.3$. The integration in time can then
 take place. The
 leapfrog integrator is usually used as it behaves well when coupled to gravity. \\
 In the case where only one global time step is used for all particles, the minimal time step of all particles is reduced
@@ -262,7 +264,7 @@ energy $u_{i,pred}$ for BOTH particles. \\
 \textbf{New time step} Calculate the next time step.
 
 \begin{equation*}
- \Delta t^{n+1} = C_{CFL} \frac{h_i}{c_i}, \qquad c_i =\sqrt{\gamma (\gamma-1)u_{i,pred}}
+ \Delta t^{n+1} = C_{CFL} \frac{2h_i}{v_{sig,i}}
 \end{equation*}
 
 
@@ -273,8 +275,8 @@ energy $u_{i,pred}$ for BOTH particles. \\
 \textbf{Second kick} Kick the particle for the second half-step.
 
 \begin{eqnarray*}
- v_i^{n+1} &=& v_i^{n+1/2} + \frac{1}{2} a_i^{\textcolor{red}{n+1}}\Delta t^{\textcolor{red}{n}} \\
- u_i^{n+1} &=& u_i^{n+1/2} + \frac{1}{2} \frac{du_i^{\textcolor{red}{n+1}}}{dt}\Delta t^{\textcolor{red}{n}} \\
+ v_i^{n+1} &=& v_i^{n+1/2} + \frac{1}{2} a_i^{n+1}\Delta t^{n} \\
+ u_i^{n+1} &=& u_i^{n+1/2} + \frac{1}{2} \frac{du_i^{n+1}}{dt}\Delta t^{n} \\
  v_{i,pred} &=& v_i^{n+1} \\
  u_{i,pred} &=& u_i^{n+1} \\
 \end{eqnarray*}
