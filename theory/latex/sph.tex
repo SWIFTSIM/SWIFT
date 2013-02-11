@@ -198,7 +198,7 @@ The second loop is used to compute the accelerations (tertiary quantities). The 
 \label{eq:dudt}\\
  \frac{dh_i}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right)
 \cdot\vec{\nabla_r}W(\vec{r}_{ij}, h_i)\\
- v_{sig,i} &=& c_i + c_j + \max_j(0, \hat{r}_{ij} \cdot (\vec{v}_j - \vec{v}_i))
+ v_{sig,i} &=& c_i + c_j + \max_j(0, 3\hat{r}_{ij} \cdot (\vec{v}_j - \vec{v}_i))
 \end{eqnarray}
 
 In practice the loop is here performed over all pairs of particles such that $|\vec{r}_{ij}| < \zeta h_i$ or
