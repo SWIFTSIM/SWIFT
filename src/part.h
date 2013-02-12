@@ -38,6 +38,21 @@ struct cpart {
     
     } __attribute__((aligned (32)));
     
+    
+/* Extra particle data not needed during the computation. */
+struct xpart {
+
+    /* Old position, at last tree rebuild. */
+    double x_old[3];
+    
+    /* Old velocity. */
+    float v_old[3];
+    
+    /* Old entropy. */
+    float u_old;
+    
+    } __attribute__((aligned (32)));
+    
 
 /* Data of a single particle. */
 struct part {
@@ -66,6 +81,9 @@ struct part {
     /* Particle acceleration. */
     float a[3] __attribute__((aligned (16)));
     
+    /* Maximum neighbouring u. */
+    float c, v_sig;
+    
     /* Derivative of the density with respect to this particle's smoothing length. */
     float rho_dh;
     
@@ -80,8 +98,8 @@ struct part {
     /* Particle ID. */
     unsigned long long id;
     
-    /* Old position, at last tree rebuild. */
-    double x_old[3];
+    /* Pointer to extra particle data. */
+    struct xpart *xtras;
     
     /* Particle position. */
     double x[3];

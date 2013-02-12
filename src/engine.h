@@ -50,8 +50,10 @@ struct engine {
     /* The queues. */
     struct queue *queues;
     
-    /* The maximum dt to step. */
-    float dt_max;
+    /* The maximum dt to step (current). */
+    float dt_step;
+    
+    /* The minimum dt over all particles in the system. */
     float dt_min;
     
     /* The system time step. */

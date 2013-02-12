@@ -62,7 +62,7 @@ struct space {
     double h_min, h_max, cell_min;
     
     /* Current time step for particles. */
-    float dt_max;
+    float dt_step;
     
     /* Number of cells. */
     int nr_cells, tot_cells;
@@ -79,6 +79,7 @@ struct space {
     /* The particle data (cells have pointers to this). */
     struct part *parts;
     struct cpart *cparts;
+    struct xpart *xparts;
     
     /* The total number of parts in the space. */
     int nr_parts;

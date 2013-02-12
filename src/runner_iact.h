@@ -329,26 +329,26 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
 
     float r = sqrtf( r2 ), ri = 1.0f / r;
     float xi, xj;
-    float hig_inv, hig2_inv;
-    float hjg_inv, hjg2_inv;
+    float hi_inv, hi2_inv;
+    float hj_inv, hj2_inv;
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
     float f;
     int k;
     
     /* Get the kernel for hi. */
-    hig_inv = kernel_igamma / hi;
-    hig2_inv = hig_inv * hig_inv;
-    xi = r * hig_inv;
+    hi_inv = 1.0f / hi;
+    hi2_inv = hi_inv * hi_inv;
+    xi = r * hi_inv * kernel_igamma;
     kernel_deval( xi , &wi , &wi_dx );
-    wi_dr = hig2_inv * hig2_inv * wi_dx;
+    wi_dr = hi2_inv * hi2_inv * wi_dx;
         
     /* Get the kernel for hj. */
-    hjg_inv = kernel_igamma / hj;
-    hjg2_inv = hjg_inv * hjg_inv;
-    xj = r * hjg_inv;
+    hj_inv = 1.0f / hj;
+    hj2_inv = hj_inv * hj_inv;
+    xj = r * hj_inv * kernel_igamma;
     kernel_deval( xj , &wj , &wj_dx );
-    wj_dr = hjg2_inv * hjg2_inv * wj_dx;
-    
+    wj_dr = hj2_inv * hj2_inv * wj_dx;
+        
     /* Get the common factor out. */
     w = ri * ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr );
         
@@ -370,7 +370,11 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     /* Get the time derivative for h. */
     pi->h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
     pj->h_dt -= pi->mass / pi->rho * dvdr * wj_dr;
-        
+    
+    /* Update the signal velocity. */
+    pi->v_sig = fmaxf( pi->v_sig , pj->c - 3*dvdr );
+    pj->v_sig = fmaxf( pj->v_sig , pi->c - 3*dvdr );
+    
     #ifdef HIST
     if ( hi > hj )
         runner_hist_hit( hi / hj );
@@ -388,8 +392,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     vector r, r2, ri;
     vector xi, xj;
     vector hi, hj, hi_inv, hj_inv;
-    vector hig_inv, hig2_inv;
-    vector hjg_inv, hjg2_inv;
+    vector hig_inv, hi2_inv;
+    vector hjg_inv, hj2_inv;
     vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
     vector w;
     vector piPOrho2, pjPOrho2, pirho, pjrho;
@@ -444,20 +448,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi.v * hi_inv.v - vec_set1( 1.0f ) );
     hig_inv.v = vec_set1( kernel_igamma ) * hi_inv.v;
-    hig2_inv.v = hig_inv.v * hig_inv.v;
+    hi2_inv.v = hi_inv.v * hi_inv.v;
     xi.v = r.v * hig_inv.v;
     kernel_deval_vec( &xi , &wi , &wi_dx );
-    wi_dr.v = hig2_inv.v * hig2_inv.v * wi_dx.v;
+    wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
         
     /* Get the kernel for hj. */
     hj.v = vec_load( Hj );
     hj_inv.v = vec_rcp( hj.v );
     hj_inv.v = hj_inv.v - hj_inv.v * ( hj.v * hj_inv.v - vec_set1( 1.0f ) );
     hjg_inv.v = vec_set1( kernel_igamma ) * hj_inv.v;
-    hjg2_inv.v = hjg_inv.v * hjg_inv.v;
+    hj2_inv.v = hj_inv.v * hj_inv.v;
     xj.v = r.v * hjg_inv.v;
     kernel_deval_vec( &xj , &wj , &wj_dx );
-    wj_dr.v = hjg2_inv.v * hjg2_inv.v * wj_dx.v;
+    wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
         
     /* Get the common factor out. */
     w.v = ri.v * ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v );
@@ -508,25 +512,25 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
 
     float r = sqrtf( r2 ), ri = 1.0f / r;
     float xi, xj;
-    float hig_inv, hig2_inv;
-    float hjg_inv, hjg2_inv;
+    float hi_inv, hi2_inv;
+    float hj_inv, hj2_inv;
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
     float f;
     int k;
     
     /* Get the kernel for hi. */
-    hig_inv = kernel_igamma / hi;
-    hig2_inv = hig_inv * hig_inv;
-    xi = r * hig_inv;
+    hi_inv = 1.0f / hi;
+    hi2_inv = hi_inv * hi_inv;
+    xi = r * hi_inv * kernel_igamma;
     kernel_deval( xi , &wi , &wi_dx );
-    wi_dr = hig2_inv * hig2_inv * wi_dx;
+    wi_dr = hi2_inv * hi2_inv * wi_dx;
         
     /* Get the kernel for hj. */
-    hjg_inv = kernel_igamma / hj;
-    hjg2_inv = hjg_inv * hjg_inv;
-    xj = r * hjg_inv;
+    hj_inv = 1.0f / hj;
+    hj2_inv = hj_inv * hj_inv;
+    xj = r * hj_inv * kernel_igamma;
     kernel_deval( xj , &wj , &wj_dx );
-    wj_dr = hjg2_inv * hjg2_inv * wj_dx;
+    wj_dr = hj2_inv * hj2_inv * wj_dx;
     
     /* Get the common factor out. */
     w = ri * ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr );
@@ -547,6 +551,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     /* Get the time derivative for h. */
     pi->h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
         
+    /* Update the signal velocity (this is always symmetrical). */
+    pi->v_sig = fmaxf( pi->v_sig , pj->c - 3*dvdr );
+    pj->v_sig = fmaxf( pj->v_sig , pi->c - 3*dvdr );
+    
     }
     
 
@@ -557,8 +565,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     vector r, r2, ri;
     vector xi, xj;
     vector hi, hj, hi_inv, hj_inv;
-    vector hig_inv, hig2_inv;
-    vector hjg_inv, hjg2_inv;
+    vector hig_inv, hi2_inv;
+    vector hjg_inv, hj2_inv;
     vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
     vector w;
     vector piPOrho2, pjPOrho2, pjrho;
@@ -609,20 +617,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi.v * hi_inv.v - vec_set1( 1.0f ) );
     hig_inv.v = vec_set1( kernel_igamma ) * hi_inv.v;
-    hig2_inv.v = hig_inv.v * hig_inv.v;
+    hi2_inv.v = hi_inv.v * hi_inv.v;
     xi.v = r.v * hig_inv.v;
     kernel_deval_vec( &xi , &wi , &wi_dx );
-    wi_dr.v = hig2_inv.v * hig2_inv.v * wi_dx.v;
+    wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
         
     /* Get the kernel for hj. */
     hj.v = vec_load( Hj );
     hj_inv.v = vec_rcp( hj.v );
     hj_inv.v = hj_inv.v - hj_inv.v * ( hj.v * hj_inv.v - vec_set1( 1.0f ) );
     hjg_inv.v = vec_set1( kernel_igamma ) * hj_inv.v;
-    hjg2_inv.v = hjg_inv.v * hjg_inv.v;
+    hj2_inv.v = hj_inv.v * hj_inv.v;
     xj.v = r.v * hjg_inv.v;
     kernel_deval_vec( &xj , &wj , &wj_dx );
-    wj_dr.v = hjg2_inv.v * hjg2_inv.v * wj_dx.v;
+    wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
         
     /* Get the common factor out. */
     w.v = ri.v * ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v );

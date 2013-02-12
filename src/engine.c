@@ -66,7 +66,7 @@ void engine_prepare ( struct engine *e ) {
     int j, k, qid;
     struct space *s = e->s;
     struct queue *q;
-    float dt_max = e->dt_max;
+    float dt_step = e->dt_step;
     
     TIMER_TIC
 
@@ -95,7 +95,7 @@ void engine_prepare ( struct engine *e ) {
     // tic = getticks();
     #pragma omp parallel for schedule(static) 
     for ( k = 0 ; k < s->nr_parts ; k++ )
-        if ( s->parts[k].dt <= dt_max ) {
+        if ( s->parts[k].dt <= dt_step ) {
             s->parts[k].wcount = 0.0f;
             s->parts[k].wcount_dh = 0.0f;
             s->parts[k].rho = 0.0f;
@@ -179,71 +179,70 @@ void engine_step ( struct engine *e , int sort_queues ) {
 
     int k, nr_parts = e->s->nr_parts;
     struct part *restrict parts = e->s->parts, *restrict p;
-    float *restrict v_bar;
-    float dt = e->dt, hdt = 0.5*dt, dt_max, dt_min, ldt_min, ldt_max;
-    double etot = 0.0, letot, lmom[3], mom[3] = { 0.0 , 0.0 , 0.0 };
-    int threadID, nthreads;
+    struct xpart *restrict xp;
+    float dt = e->dt, hdt = 0.5*dt, dt_step, dt_max, dt_min, ldt_min, ldt_max;
+    double epot = 0.0, ekin = 0.0, lepot, lekin, lmom[3], mom[3] = { 0.0 , 0.0 , 0.0 };
+    int threadID, nthreads, count = 0, lcount;
     // #ifdef __SSE2__
     //     VEC_MACRO(4,float) hdtv = _mm_set1_ps( hdt );
     // #endif
 
     /* Get the maximum dt. */
-    dt_max = 2.0f*dt;
+    dt_step = 2.0f*dt;
     for ( k = 0 ; k < 32 && (e->step & (1 << k)) == 0 ; k++ )
-        dt_max *= 2;
-    dt_max = 1;
+        dt_step *= 2;
+    // dt_step = FLT_MAX;
         
     /* Set the maximum dt. */
-    e->dt_max = dt_max;
-    e->s->dt_max = dt_max;
-    printf( "engine_step: dt_max set to %.3e.\n" , dt_max ); fflush(stdout);
+    e->dt_step = dt_step;
+    e->s->dt_step = dt_step;
+    printf( "engine_step: dt_step set to %.3e.\n" , dt_step ); fflush(stdout);
     
-    /* Allocate a buffer for the old velocities. */
-    if ( posix_memalign( (void **)&v_bar , 16 , sizeof(float) * nr_parts * 4 ) != 0 )
-        error( "Failed to allocate v_old buffer." );
-        
     /* First kick. */
     TIMER_TIC
-    // #pragma omp parallel for schedule(static) private(p)
+    #pragma omp parallel for schedule(static) private(p,xp)
     for ( k = 0 ; k < nr_parts ; k++ ) {
         
         /* Get a handle on the part. */
         p = &parts[k];
+        xp = p->xtras;
         
         /* Step and store the velocity and internal energy. */
         // #ifdef __SSE__
-        //     _mm_store_ps( &v_bar[4*k] , _mm_add_ps( _mm_load_ps( &p->v[0] ) , _mm_mul_ps( hdtv , _mm_load_ps( &p->a[0] ) ) ) );
+        //     _mm_store_ps( &v_bar[4*k] , _mm_load_ps( &p->v[0] ) + hdtv * _mm_load_ps( &p->a[0] ) );
         // #else
-            v_bar[4*k+0] = p->v[0] + hdt * p->a[0];
-            v_bar[4*k+1] = p->v[1] + hdt * p->a[1];
-            v_bar[4*k+2] = p->v[2] + hdt * p->a[2];
+            xp->v_old[0] = p->v[0] + hdt * p->a[0];
+            xp->v_old[1] = p->v[1] + hdt * p->a[1];
+            xp->v_old[2] = p->v[2] + hdt * p->a[2];
         // #endif
-        v_bar[4*k+3] = p->u + hdt * p->u_dt;
+        // xp->u_old = fmaxf( p->u + hdt * p->u_dt , FLT_EPSILON );
+        xp->u_old = p->u + hdt * p->u_dt;
         
         /* Move the particles with the velocitie at the half-step. */
-        p->x[0] += dt * v_bar[4*k+0];
-        p->x[1] += dt * v_bar[4*k+1];
-        p->x[2] += dt * v_bar[4*k+2];
+        p->x[0] += dt * xp->v_old[0];
+        p->x[1] += dt * xp->v_old[1];
+        p->x[2] += dt * xp->v_old[2];
         
         /* Update positions and energies at the half-step. */
         p->v[0] += dt * p->a[0];
         p->v[1] += dt * p->a[1];
         p->v[2] += dt * p->a[2];
         p->u *= expf( p->u_dt / p->u * dt );
-        // p->h *= expf( p->h_dt / p->h * dt );
+        p->h *= expf( p->h_dt / p->h * dt );
         
         /* Integrate other values if this particle will not be updated. */
-        // if ( p->dt > dt_max ) {
-        //     p->rho *= expf( -3.0f * p->h_dt / p->h * dt );
-        //     p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
-        //     }
+        if ( p->dt > dt_step ) {
+            p->rho *= expf( -3.0f * p->h_dt / p->h * dt );
+            p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+            }
         
         }
     TIMER_TOC( timer_kick1 );
         
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
-
+    // printParticle( parts , 494849 );
+ 
     /* Prepare the space. */
     engine_prepare( e );
     
@@ -274,44 +273,52 @@ void engine_step ( struct engine *e , int sort_queues ) {
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
+    // printParticle( parts , 494849 );
 
     /* Second kick. */
     TIMER_TIC_ND
     dt_min = FLT_MAX; dt_max = 0.0f;
-    #pragma omp parallel private(p,k,ldt_min,ldt_max,lmom,letot,threadID,nthreads)
+    #pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lekin,lepot,threadID,nthreads)
     {
         threadID = omp_get_thread_num();
         nthreads = omp_get_num_threads();
         ldt_min = FLT_MAX; ldt_max = 0.0f;
         lmom[0] = 0.0; lmom[1] = 0.0; lmom[2] = 0.0;
-        letot = 0.0;
+        lekin = 0.0; lepot = 0.0; lcount = 0;
         for ( k = nr_parts * threadID / nthreads ; k < nr_parts * (threadID + 1) / nthreads ; k++ ) {
 
             /* Get a handle on the part. */
             p = &parts[k];
+            xp = p->xtras;
 
             /* Scale the derivatives if they're freshly computed. */
-            if ( p->dt <= dt_max ) {
+            if ( p->dt <= dt_step ) {
                 p->u_dt *= p->POrho2;
                 p->h_dt *= p->h * 0.333333333f;
+                lcount += 1;
                 }
+                
+            /* Update the particle's time step. */
+            p->dt = const_cfl * p->h / ( p->c + p->v_sig );
 
             /* Update positions and energies at the half-step. */
             // #ifdef __SSE__
-            //     _mm_store_ps( &p->v[0] , _mm_add_ps( _mm_load_ps( &v_bar[4*k] ) , _mm_mul_ps( hdtv , _mm_load_ps( &p->a[0] ) ) ) );
+            //     _mm_store_ps( &p->v[0] , _mm_load_ps( &v_bar[4*k] ) + hdtv * _mm_load_ps( &p->a[0] )  );
             // #else
-                p->v[0] = v_bar[4*k+0] + hdt * p->a[0];
-                p->v[1] = v_bar[4*k+1] + hdt * p->a[1];
-                p->v[2] = v_bar[4*k+2] + hdt * p->a[2];
+                p->v[0] = xp->v_old[0] + hdt * p->a[0];
+                p->v[1] = xp->v_old[1] + hdt * p->a[1];
+                p->v[2] = xp->v_old[2] + hdt * p->a[2];
             // #endif
-            p->u = v_bar[4*k+3] + hdt * p->u_dt;
-
+            // p->u = fmaxf( xp->u_old + hdt * p->u_dt , FLT_EPSILON );
+            p->u = xp->u_old + hdt * p->u_dt;
+            
             /* Get the smallest/largest dt. */
             ldt_min = fminf( ldt_min , p->dt );
             ldt_max = fmaxf( ldt_max , p->dt );
             
             /* Collect total energy. */
-            letot += 0.5 * p->mass * ( p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2] ) + p->mass * p->u;
+            lekin += 0.5 * p->mass * ( p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2] );
+            lepot += p->mass * p->u;
 
             /* Collect momentum */
             lmom[0] += p->mass * p->v[0];
@@ -326,30 +333,32 @@ void engine_step ( struct engine *e , int sort_queues ) {
             mom[0] += lmom[0];
             mom[1] += lmom[1];
             mom[2] += lmom[2];
-            etot += letot;
+            epot += lepot;
+            ekin += lekin;
+            count += lcount;
         }
     }
     TIMER_TOC( timer_kick2 );
     e->dt_min = dt_min;
     printf( "engine_step: dt_min/dt_max is %e/%e.\n" , dt_min , dt_max ); fflush(stdout);
-    printf( "engine_step: etot is %e.\n" , etot ); fflush(stdout);
+    printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
     printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);
+    printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
         
-    /* Does the time step need adjusting? */
-    if ( dt_min < e->dt ) {
-        e->dt *= 0.5;
-        printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
-        }
-    else if ( dt_min > 2*e->dt ) {
-        e->dt *= 2.0;
-        printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
-        }
-    
-    /* Clean up. */
-    free( v_bar );
-    
     /* Increase the step counter. */
     e->step += 1;
+    
+    /* Does the time step need adjusting? */
+    while ( dt_min < e->dt ) {
+        e->dt *= 0.5;
+        e->step *= 2;
+        printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
+        }
+    while ( dt_min > 2*e->dt && (e->step & 1) == 0 ) {
+        e->dt *= 2.0;
+        e->step /= 2;
+        printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
+        }
     
     }
     

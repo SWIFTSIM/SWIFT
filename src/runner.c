@@ -329,8 +329,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
-    float ihg, ihg2;
-    float dt_max = r->e->dt_max;
+    float ihg, ihg2, h_corr;
+    float dt_step = r->e->dt_step;
     TIMER_TIC
     
     /* Recurse? */
@@ -361,7 +361,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             cp = &c->cparts[ pid[i] ];
             
             /* Is this part within the timestep? */
-            if ( cp->dt <= dt_max ) {
+            if ( cp->dt <= dt_step ) {
 
                 /* Adjust the computed rho. */
                 ihg = kernel_igamma / p->h;
@@ -370,8 +370,15 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 p->rho_dh *= ihg2 * ihg2;
                 p->wcount += kernel_wroot;
 
-                /* Update the smoothing length. */
-                p->h -= ( p->wcount - const_nwneigh ) / p->wcount_dh;
+                /* Compute the smoothing length update (Newton step). */
+                h_corr = ( const_nwneigh - p->wcount ) / p->wcount_dh;
+                
+                /* Truncate to the range [ -p->h/2 , p->h ]. */
+                h_corr = fminf( h_corr , p->h );
+                h_corr = fmaxf( h_corr , -p->h/2 );
+                
+                /* Apply the correction to p->h. */
+                p->h += h_corr;
                 cp->h = p->h;
 
                 /* Did we get the right number density? */
@@ -389,8 +396,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     }
                     
                 /* Compute this particle's time step. */
-                p->dt = const_cfl * p->h / sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
-                cp->dt = p->dt;
+                p->c = sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
 
                 /* Compute the pressure. */
                 // p->P = p->rho * p->u * ( const_gamma - 1.0f );
@@ -405,6 +411,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Reset the time derivatives. */
                 p->u_dt = 0.0f;
                 p->h_dt = 0.0f;
+                p->v_sig = 0.0f;
 
                 }
 

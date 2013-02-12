@@ -86,28 +86,31 @@ void space_map_prepare ( struct cell *c , void *data ) {
     int k;
     float dt_min, dt_max, h_max, dx_max;
     struct part *p;
+    struct xpart *xp;
 
     /* No children? */
     if ( !c->split ) {
     
         /* Init with first part. */
         p = &c->parts[0];
+        xp = p->xtras;
         dt_min = p->dt;
         dt_max = p->dt;
         h_max = p->h;
-        dx_max = sqrtf( (p->x[0] - p->x_old[0])*(p->x[0] - p->x_old[0]) +
-                        (p->x[1] - p->x_old[1])*(p->x[1] - p->x_old[1]) +
-                        (p->x[2] - p->x_old[2])*(p->x[2] - p->x_old[2]) )*2 + p->h;
+        dx_max = sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
+                        (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
+                        (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h;
     
         /* Loop over parts. */
         for ( k = 1 ; k < c->count ; k++ ) {
             p = &c->parts[k];
+            xp = p->xtras;
             dt_min = fminf( dt_min , p->dt );
             dt_max = fmaxf( dt_max , p->dt );
             h_max = fmaxf( h_max , p->h );
-            dx_max = fmaxf( dx_max , sqrtf( (p->x[0] - p->x_old[0])*(p->x[0] - p->x_old[0]) +
-                                            (p->x[1] - p->x_old[1])*(p->x[1] - p->x_old[1]) +
-                                            (p->x[2] - p->x_old[2])*(p->x[2] - p->x_old[2]) )*2 + p->h );
+            dx_max = fmaxf( dx_max , sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
+                                            (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
+                                            (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h );
             }
             
         }
@@ -161,10 +164,10 @@ void space_prepare ( struct space *s ) {
 
     int k;
     struct task *t;
-    float dt_max = s->dt_max, dx_max = 0.0f;
+    float dt_step = s->dt_step, dx_max = 0.0f;
     int counts[ task_type_count + 1 ];
     
-    /* Traverse the cells and set their dt_min and dt_max. */
+    /* Traverse the cells and set their dt_min and dx_max. */
     space_map_cells_post( s , 1 , &space_map_prepare , NULL );
     
     /* Get the maximum displacement in the whole system. */
@@ -179,9 +182,9 @@ void space_prepare ( struct space *s ) {
              t->type == task_type_self ||
              t->type == task_type_ghost ||
              ( t->type == task_type_sub && t->cj == NULL ) )
-            t->skip = ( t->ci->dt_min > dt_max );
+            t->skip = ( t->ci->dt_min > dt_step );
         else if ( t->type == task_type_pair || ( t->type == task_type_sub && t->cj != NULL ) ) {
-            t->skip = ( t->ci->dt_min > dt_max && t->cj->dt_min > dt_max );
+            t->skip = ( t->ci->dt_min > dt_step && t->cj->dt_min > dt_step );
             if ( !t->skip && t->tight &&
                  ( t->ci->dx_max > t->ci->dmin || t->cj->dx_max > t->cj->dmin ) )
                 break;
@@ -194,7 +197,7 @@ void space_prepare ( struct space *s ) {
         /* Re-build the space. */
         space_rebuild( s , 0.0 );
     
-        /* Traverse the cells and set their dt_min and dt_max. */
+        /* Traverse the cells and set their dt_min and dx_max. */
         space_map_cells_post( s , 1 , &space_map_prepare , NULL );
     
         }
@@ -576,9 +579,9 @@ void space_rebuild ( struct space *s , double cell_max ) {
     // tic = getticks();
     #pragma omp parallel for schedule(static)
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
-        s->parts[k].x_old[0] = s->parts[k].x[0];
-        s->parts[k].x_old[1] = s->parts[k].x[1];
-        s->parts[k].x_old[2] = s->parts[k].x[2];
+        s->parts[k].xtras->x_old[0] = s->parts[k].x[0];
+        s->parts[k].xtras->x_old[1] = s->parts[k].x[1];
+        s->parts[k].xtras->x_old[2] = s->parts[k].x[2];
         }
     // printf( "space_rebuild: storing old positions took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
@@ -877,7 +880,7 @@ void space_splittasks ( struct space *s ) {
     struct cell *ci, *cj;
     double hi, hj, shift[3];
     struct task *t;
-    float dt_max = s->dt_max;
+    float dt_step = s->dt_step;
     int pts[7][8] = { { -1 , 12 , 10 ,  9 ,  4 ,  3 ,  1 ,  0 } ,
                       { -1 , -1 , 11 , 10 ,  5 ,  4 ,  2 ,  1 } ,
                       { -1 , -1 , -1 , 12 ,  7 ,  6 ,  4 ,  3 } , 
@@ -899,7 +902,7 @@ void space_splittasks ( struct space *s ) {
             ci = t->ci;
             
             /* Ingore this task? */
-            if ( ci->dt_min > dt_max ) {
+            if ( ci->dt_min > dt_step ) {
                 t->skip = 1;
                 continue;
                 }
@@ -953,7 +956,7 @@ void space_splittasks ( struct space *s ) {
             hj = fmin( cj->h[0] , fmin( cj->h[1] , cj->h[2] ) );
 
             /* Ingore this task? */
-            if ( ci->dt_min > dt_max && cj->dt_min > dt_max ) {
+            if ( ci->dt_min > dt_step && cj->dt_min > dt_step ) {
                 t->skip = 1;
                 continue;
                 }
@@ -1338,7 +1341,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
     int *cdim = s->cdim;
     struct task *t, *t2;
     struct cell *ci, *cj;
-    // float dt_max = s->dt_max;
+    float dt_step = s->dt_step;
 
     /* Allocate the task-list, if needed. */
     if ( s->tasks == NULL || s->tasks_size < s->tot_cells * space_maxtaskspercell ) {
@@ -1364,7 +1367,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
                 ci = &s->cells[cid];
                 if ( ci->count == 0 )
                     continue;
-                // if ( ci->dt_min <= dt_max )
+                if ( ci->dt_min <= dt_step )
                     space_addtask( s , task_type_self , task_subtype_density , 0 , 0 , ci , NULL , 0 );
                 for ( ii = -1 ; ii < 2 ; ii++ ) {
                     iii = i + ii;
@@ -1383,8 +1386,8 @@ void space_maketasks ( struct space *s , int do_sort ) {
                             kkk = ( kkk + cdim[2] ) % cdim[2];
                             cjd = cell_getid( cdim , iii , jjj , kkk );
                             cj = &s->cells[cjd];
-                            if ( cid >= cjd || cj->count == 0 /* ||
-                                 ( ci->dt_min > dt_max && cj->dt_min > dt_max ) */ )
+                            if ( cid >= cjd || cj->count == 0 ||
+                                 ( ci->dt_min > dt_step && cj->dt_min > dt_step ) )
                                 continue;
                             sid = sortlistID[ (kk+1) + 3*( (jj+1) + 3*(ii+1) ) ];
                             t = space_addtask( s , task_type_pair , task_subtype_density , sid , 0 , ci , cj , 1 );
@@ -1688,6 +1691,8 @@ struct cell *space_getcell ( struct space *s ) {
 
 void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_max ) {
 
+    int k;
+
     /* Store eveything in the space. */
     s->dim[0] = dim[0]; s->dim[1] = dim[1]; s->dim[2] = dim[2];
     s->periodic = periodic;
@@ -1696,8 +1701,14 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->cell_min = h_max;
     
     /* Allocate the cparts array. */
-    if ( posix_memalign( (void *)&s->cparts , 32 ,  N * sizeof(struct cpart) ) != 0 )
+    if ( posix_memalign( (void *)&s->cparts , 32 , N * sizeof(struct cpart) ) != 0 )
         error( "Failed to allocate cparts." );
+        
+    /* Allocate and link the xtra parts array. */
+    if ( posix_memalign( (void *)&s->xparts , 32 , N * sizeof(struct xpart) ) != 0 )
+        error( "Failed to allocate xparts." );
+    for ( k = 0 ; k < N ; k++ )
+        s->parts[k].xtras = &s->xparts[k];
         
     /* Init the space lock. */
     if ( lock_init( &s->lock ) != 0 )
