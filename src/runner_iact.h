@@ -404,6 +404,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     vector pia[3], pja[3];
     vector piu_dt, pju_dt;
     vector pih_dt, pjh_dt;
+    vector ci, cj, vi_sig, vj_sig;
     int j, k;
 
     /* Load stuff. */
@@ -414,6 +415,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
         pjPOrho2.v = _mm256_set_ps( pj[7]->POrho2 , pj[6]->POrho2 , pj[5]->POrho2 , pj[4]->POrho2 , pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
         pirho.v = _mm256_set_ps( pi[7]->rho , pi[6]->rho , pi[5]->rho , pi[4]->rho , pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm256_set_ps( pj[7]->rho , pj[6]->rho , pj[5]->rho , pj[4]->rho , pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
+        ci.v = _mm256_set_ps( pi[7]->c , pi[6]->c , pi[5]->c , pi[4]->c , pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
+        cj.v = _mm256_set_ps( pj[7]->c , pj[6]->c , pj[5]->c , pj[4]->c , pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
+        vi_sig.v = _mm256_set_ps( pi[7]->v_sig , pi[6]->v_sig , pi[5]->v_sig , pi[4]->v_sig , pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
+        vj_sig.v = _mm256_set_ps( pj[7]->v_sig , pj[6]->v_sig , pj[5]->v_sig , pj[4]->v_sig , pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
@@ -427,6 +432,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
         pjPOrho2.v = _mm_set_ps( pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
         pirho.v = _mm_set_ps( pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm_set_ps( pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
+        ci.v = _mm_set_ps( pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
+        cj.v = _mm_set_ps( pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
+        vi_sig.v = _mm_set_ps( pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
+        vj_sig.v = _mm_set_ps( pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
@@ -485,12 +494,18 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
     pjh_dt.v = mi.v / pirho.v * dvdr.v * wj_dr.v;
     
+    /* compute the signal velocity (this is always symmetrical). */
+    vi_sig.v = vec_fmax( vi_sig.v , cj.v - 3.0f*dvdr.v );
+    vj_sig.v = vec_fmax( vj_sig.v , ci.v - 3.0f*dvdr.v );
+
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->u_dt += piu_dt.f[k];
         pj[k]->u_dt += pju_dt.f[k];
         pi[k]->h_dt -= pih_dt.f[k];
         pj[k]->h_dt -= pjh_dt.f[k];
+        pi[k]->v_sig = vi_sig.f[k];
+        pj[k]->v_sig = vj_sig.f[k];
         for ( j = 0 ; j < 3 ; j++ ) {
             pi[k]->a[j] -= pia[j].f[k];
             pj[k]->a[j] += pja[j].f[k];
@@ -577,6 +592,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     vector pia[3];
     vector piu_dt;
     vector pih_dt;
+    vector ci, cj, vi_sig, vj_sig;
     int j, k;
 
     /* Load stuff. */
@@ -585,6 +601,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
         piPOrho2.v = _mm256_set_ps( pi[7]->POrho2 , pi[6]->POrho2 , pi[5]->POrho2 , pi[4]->POrho2 , pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
         pjPOrho2.v = _mm256_set_ps( pj[7]->POrho2 , pj[6]->POrho2 , pj[5]->POrho2 , pj[4]->POrho2 , pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
         pjrho.v = _mm256_set_ps( pj[7]->rho , pj[6]->rho , pj[5]->rho , pj[4]->rho , pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
+        ci.v = _mm256_set_ps( pi[7]->c , pi[6]->c , pi[5]->c , pi[4]->c , pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
+        cj.v = _mm256_set_ps( pj[7]->c , pj[6]->c , pj[5]->c , pj[4]->c , pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
+        vi_sig.v = _mm256_set_ps( pi[7]->v_sig , pi[6]->v_sig , pi[5]->v_sig , pi[4]->v_sig , pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
+        vj_sig.v = _mm256_set_ps( pj[7]->v_sig , pj[6]->v_sig , pj[5]->v_sig , pj[4]->v_sig , pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
@@ -596,6 +616,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
         piPOrho2.v = _mm_set_ps( pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
         pjPOrho2.v = _mm_set_ps( pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
         pjrho.v = _mm_set_ps( pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
+        ci.v = _mm_set_ps( pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
+        cj.v = _mm_set_ps( pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
+        vi_sig.v = _mm_set_ps( pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
+        vj_sig.v = _mm_set_ps( pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
@@ -651,10 +675,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     /* Get the time derivative for h. */
     pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
     
+    /* compute the signal velocity (this is always symmetrical). */
+    vi_sig.v = vec_fmax( vi_sig.v , cj.v - 3.0f*dvdr.v );
+    vj_sig.v = vec_fmax( vj_sig.v , ci.v - 3.0f*dvdr.v );
+
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->u_dt += piu_dt.f[k];
         pi[k]->h_dt -= pih_dt.f[k];
+        pi[k]->v_sig = vi_sig.f[k];
+        pj[k]->v_sig = vj_sig.f[k];
         for ( j = 0 ; j < 3 ; j++ )
             pi[k]->a[j] -= pia[j].f[k];
         }
