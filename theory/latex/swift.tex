@@ -21,36 +21,41 @@
 \chapter{General properties}
 \label{chap:intro}
 
+This chapter focuses on the general description of the different objects entering the \swift code and a qualitative
+description of their interactions.
+
+\section{Particles and interactions}
+
 The \swift code follows the model of \eagle and uses four different types of particles to represent the different
 objects present in the Universe. These different types with their \gadget names are summarized in table
 \ref{tab:parttypes}.
 
 \begin{table}[h]
 \centering
-\label{tab:parttypes}
+
 \begin{tabular}{|l|l|l|}
 \hline
 \textbf{Object} & \textbf{\gadget name} & \textbf{Description} \\
 \hline
 Gas & PartType0 & Particles representing the gas.\\
 DM & PartType1 & Particles representing the dark matter.\\
-Star & PartType4 & Paricles representing the stars.\\
-BH & PartType5 & Particles representing the Black Holes.\\
+Star & PartType4 & Particles representing the stars.\\
+BH & PartType5 & Particles representing the black holes.\\
 \hline
 \end{tabular}
-\caption{The four types of particles present in the \swift code.}
+\caption{\label{tab:parttypes}The four types of particles present in the \swift code.}
 \end{table}
 
 All of these particles are affected by the gravitation force but additional interactions will exit for the non-DM
 particles. The number of DM particles is a constant but the number of gas, star and BH particles will vary
-over the simulation time. The latter two will tipically increase while the number of gas particles will usually
+over the simulation time. The latter two will typically increase while the number of gas particles will usually
 decrease. \\
 Depending on the exact variation of the \eagle physics used, the total number of particles will be a
 constant, implying that particles will change type but none will be spawned. \\
 In a typical cosmological simulation, 50\% of the particles are DM particles, 46\% are gas particles, 4\% are star
 particles and less than 0.001\% are BH particles. These numbers can change slightly when doing a ``zoom'' simulation.\\
 
-The gas particles interact throught SPH forces which are computed through two loops over the neighbouring particles
+The gas particles interact through SPH forces which are computed through two loops over the neighbouring particles
 (Chapter \ref{chap:SPH}). The first of these loop is over all the particles within a range $h_i$ of the particle $i$
 whereas the second on is over all particles within $h_i$ and over all particles that see particle $i$ within their
 search radius $h_j$. This second loop is in principle more expensive as more neighbours have to be found. \\
@@ -61,7 +66,7 @@ This is done by interpolating ``cooling tables'' which have been pre-computed an
 function of all the relevant quantities. This is a very cheap module in terms of computing.
 
 The star particles (Chapter \ref{chap:stars}) are created from gas particles when the right gas density and pressure
-criteria are met. This does not require any loop over neighbours as it is a particle by particle effect. Depdending on
+criteria are met. This does not require any loop over neighbours as it is a particle by particle effect. Depending on
 the options chosen, a gas particle can be transformed into a star particle or it can spawn one or more star particles.\\
 Once they have been created, these star particles cease to interact via SPH forces and only obey the gravity forces. \\
 The star particles evolve with time in order to reflect the change in chemical element composition of their cores.
@@ -77,14 +82,14 @@ using, once again, a loop over the neighbours. \\
 
 The Black Hole particles (Chapter \ref{chap:BHs}) are created from gas particles when they hit the bottom of a potential
 well of a given depth. These particles will then do feedback in the same way that stars do it, i.e. by dumping a certain
-amount of energy to one or more neighbouring gas particles. The black hole also swallowa (i.e. destroys) gas particles
+amount of energy to one or more neighbouring gas particles. The black hole also swallows (i.e. destroys) gas particles
 passing by under some circumstances. This is achieved in the same loop over the neighbouring gas particles. There is no
 interaction between the BHs and the stars or DM particles. \\
 
-In summary, the various loops over different particles can be written in a short table. The
+In summary, the various loops over different particles can be written in a short table (\ref{tab:interactions}). The
 exact equations happening in these loops are given in the corresponding sections of this document.
 
-\begin{table}[h]
+\begin{table}[!h]
 \centering
 \begin{tabular}{|l|c|c|c|c|}
 \hline
@@ -100,18 +105,91 @@ $ \nearrow$&\textbf{DM} & \textbf{Gas} & \textbf{Stars} & \textbf{BHs} \\
 \hline
 \end{tabular}
 \label{tab:interactions}
-\caption{The various loops over neighbours required by the \eagle model. For instance, gas particles are looping over
+\caption{\label{tab:interactions}The various loops over neighbours required by the \eagle model. For instance, gas
+particles are looping over
 their gas neighbours and (in another loop) over their DM neighbours. This table does not show the frequency of the
 loops. Only the gas-gas loop occurs at every time step.}
 \end{table}
 
-\textcolor{red}{DISCUSS UNIT SYSTEM !!}
+\section{A typical time step}
+
+All the different particles are arranged according to their time step size in different bins and the code will then
+evolve all particles in a given bin and then move to the next one. For a given set of active particles, the time step
+can be decomposed as follows:
+
+\begin{enumerate}
+ \item Compute next time step.
+ \item First kick for active particles.
+ \item Drift (active and inactive) particles.
+ \item Predict inactive particles forward in time.
+ \item Compute gravity accelerations for all particles.
+ \item *Compute SPH accelerations for gas particles.
+ \item Calculate the cooling for the gas particles. \eagle
+ \item Second kick for the active particles.
+ \item Create star particles if needed. \eagle
+ \item *Calculate the star's smoothing length. \eagle
+ \item Evolve stars' chemical content. \eagle
+ \item *Calculate the DM velocity dispersion for star particles. \eagle
+ \item *Calculate the weights used for the star feedback. \eagle
+ \item *Perform star feedback on gas particles. \eagle
+ \item *Perform stellar enrichment. \eagle
+ \item *Swallow gas particles into BH particles. \eagle
+ \item Merge BH particles that lie close-by. \eagle
+ \item *Perform BH feedback on gas particles. \eagle
+ \item Find halos. \eagle
+\end{enumerate}
+
+The details of these individual steps are described in the next chapters. The lines post-fixed with the term \eagle are
+specific of our implementation. The other elements are part of the standard \gadget code. Lines pre-fixed by an asterisk
+are the loops described in the previous section and table \ref{tab:interactions}. Apart from gravity, halo finding and
+the loops, all operations are performed on a particle-by-particle basis and are thus very cheap. Halo finding is only
+performed very rarely and is described in chapter \ref{chap:FOF}.
+
+\section{Units used in the code}
+
+\textcolor{red}{To be agreed on and written down.}
+
+
+
+
+
+
+
+
+
+% ##################################################################################################################
+
+
 
 \chapter{Dark Matter particles}
 \label{chap:DMs}
 
 This section describes the physics of the DM particles but as all particles are affected by gravity, the equations
 apply to all four types. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% ##################################################################################################################
 
 \chapter{Gas particles - SPH}
 \label{chap:SPH}
@@ -142,15 +220,15 @@ Every particle contains the following information:
  Artificial viscosity & Primary & $\alpha$ & $[-]$\\
  Artificial conductivity & Primary & $\alpha_u$ & $[-]$\\
  Velocity divergence & Secondary & $\nabla\cdot \vec{v}$ & $[s^{-1}]$ \\
- Internal energy laplacian & Secondary & $\nabla u$ & $[m\cdot s^{-2}]$\\
+ Internal energy Laplacian & Secondary & $\nabla u$ & $[m\cdot s^{-2}]$\\
 \hline
 \end{tabular} 
 \end{table}
 
-Secondary quantities are computed from the primary one in a loop (density loop) over all particle neighbors. Tertiary
+Secondary quantities are computed from the primary one in a loop (density loop) over all particle neighbours. Tertiary
 ones are computed from secondary ones in another loop (force loop). \\
 
-For optimization purposes, any function of these quantities could be stored. For instance, $1/h$ instead of $h$ or
+For optimisation purposes, any function of these quantities could be stored. For instance, $1/h$ instead of $h$ or
 $\frac{P}{\rho\Omega}$ instead of $\Omega$ may be options worth exploring. \\
 
 The four quantities in the second part of the table are used in improved state-of-the-art implementations of SPH. In a
@@ -237,7 +315,7 @@ where $\eta \approx 1.2$ is a constant. These two equations can be solved iterat
 bisection scheme. In practice, the loop is performed over all particles $j$ which are at a distance
 $|\vec{r}_{ij}|<\zeta
 h$ from the particle of interest. One has to iterate those two equations until their outcomes are stable.\\
-Another measure of the accuracy of $h$ is the weighted number of neighbors which (in 3D) reads
+Another measure of the accuracy of $h$ is the weighted number of neighbours which (in 3D) reads
 
 \begin{equation}
  N_{ngb} = \frac{4}{3}\pi \left(\zeta h\right)^3 \sum_j W(\vec{r}_{ij},h_i)
@@ -309,7 +387,7 @@ In practice the loop is here performed over all pairs of particles such that $|\
 $|\vec{r}_{ij}| < \zeta
 h_j$. In general, the equations are more involved as they will contain terms to mimic the effect of viscosity or
 thermal conduction. These terms are pure functions of the properties of particles $i$ and $j$ and are thus very simple
-to insert once the code is stabilized.\\
+to insert once the code is stabilised.\\
 
 The time step is given by the Courant relation where the cell size is the smoothing length and the velocity is the
 signal speed:
@@ -590,14 +668,36 @@ computed in the density loop and reads
 
 
 
+
+
+% ##################################################################################################################
+
 \chapter{Stars - EAGLE}
 \label{chap:stars}
 
 Blabla \eagle blablabla
 
+
+
+
+
+
+
+% ##################################################################################################################
+
 \chapter{Black Holes - EAGLE}
 \label{chap:BHs}
 
 Blabla \eagle blablabla
+
+
+
+
+
+% ##################################################################################################################
+\chapter{Halo finding}
+\label{chap:FOF}
+
+Blabla FOF balblabla
 
 \end{document}
