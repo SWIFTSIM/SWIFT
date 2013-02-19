@@ -382,8 +382,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 cp->h = p->h;
 
                 /* Did we get the right number density? */
-                if ( p->wcount > const_nwneigh + 1 ||
-                     p->wcount < const_nwneigh - 1 ) {
+                if ( p->wcount > const_nwneigh + const_delta_nwneigh ||
+                     p->wcount < const_nwneigh - const_delta_nwneigh ) {
                     // printf( "runner_doghost: particle %lli (h=%e,h_dt=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , p->h_dt , c->depth , p->wcount ); fflush(stdout);
                     // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
                     pid[redo] = pid[i];

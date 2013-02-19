@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +19,13 @@
  ******************************************************************************/
 
 
-/* Physical constants. */
+/* Hydrodynamical constants. */
 #define const_gamma             (5.0f/3.0f)
+#define const_viscosity_alpha   0.8
+
+/* Time integration constants. */
 #define const_cfl               0.25f
-#define const_nwneigh           48
+
+/* Neighbour search constants. */
+#define const_nwneigh           48.f
+#define const_delta_nwneigh     1.f
