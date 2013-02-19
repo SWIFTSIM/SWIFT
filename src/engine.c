@@ -100,6 +100,9 @@ void engine_prepare ( struct engine *e ) {
             s->parts[k].wcount_dh = 0.0f;
             s->parts[k].rho = 0.0f;
             s->parts[k].rho_dh = 0.0f;
+	    s->parts[k].div_v = 0.0f;
+	    for ( k = 0 ; k < 3 ; ++k)
+	      s->parts[k].curl_v[k] = 0.0f;
             }
     // printf( "engine_prepare: re-setting particle data took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     

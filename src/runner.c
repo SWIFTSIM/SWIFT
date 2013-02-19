@@ -363,11 +363,11 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Is this part within the timestep? */
             if ( cp->dt <= dt_step ) {
 
-                /* Adjust the computed rho. */
-                ihg = kernel_igamma / p->h;
+  	        /* Some smoothing length multiples*/
+	        ihg = kernel_igamma / p->h;
                 ihg2 = ihg * ihg;
-                p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
-                p->rho_dh *= ihg2 * ihg2;
+
+                /* Adjust the computed weighted number of neighbours. */
                 p->wcount += kernel_wroot;
 
                 /* Compute the smoothing length update (Newton step). */
@@ -392,17 +392,31 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     p->wcount_dh = 0.0;
                     p->rho = 0.0;
                     p->rho_dh = 0.0;
+		    p->div_v = 0.0;
+		    for ( k=0 ; k < 3 ; k++)
+		      p->curl_v[k] = 0.0;
                     continue;
                     }
-                    
-                /* Compute this particle's time step. */
-                p->c = sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
 
-                /* Compute the pressure. */
-                // p->P = p->rho * p->u * ( const_gamma - 1.0f );
+		/* Final operation on the density */
+                p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
+                p->rho_dh *= ihg2 * ihg2;
+                    
+                /* Compute this particle's sound speed. */
+                p->c = sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
 
                 /* Compute the P/Omega/rho2. */
                 p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+
+		/* Final operation on the velocity divergence */
+		p->div_v = p->div_v / p->rho;
+		p->div_v *= ihg2 * ihg2;
+
+		/* Final operation on the velocity curl */
+		for ( k=0 ; k < 3 ; k++ ){
+		    p->curl_v[k] = p->curl_v[k] / p->rho;
+		    p->curl_v[k] *= ihg2 * ihg2;
+		    }
 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )

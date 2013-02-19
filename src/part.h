@@ -65,7 +65,13 @@ struct part {
     
     /* Particle density. */
     float rho;
-    
+
+    /* Particle velocity divergence. */
+    float div_v;
+
+    /* Particle velocity curl. */
+    float curl_v[3] __attribute__((aligned (16)));
+        
     /* Particle pressure. */
     // float P;
     
@@ -81,8 +87,11 @@ struct part {
     /* Particle acceleration. */
     float a[3] __attribute__((aligned (16)));
     
-    /* Maximum neighbouring u. */
-    float c, v_sig;
+    /* Sound speed */
+    float c;
+
+    /* Signal velocity */
+    float v_sig;
     
     /* Derivative of the density with respect to this particle's smoothing length. */
     float rho_dh;

@@ -18,44 +18,7 @@
  ******************************************************************************/
  
 
-/* Load the vector stuff. */
-// #ifdef __SSE2__
-//     #define VECTORIZE
-//     #include <immintrin.h>
-//     #ifdef __AVX__
-//         typedef union {
-//             __m256 v;
-//             __m256i m;
-//             float f[8];
-//             int i[8];
-//             } vector;
-//         #define VEC_SIZE 8
-//         #define vec_load(a) _mm256_load_ps(a)
-//         #define vec_set1(a) _mm256_set1_ps(a)
-//         #define vec_sqrt(a) _mm256_sqrt_ps(a)
-//         #define vec_rcp(a) _mm256_rcp_ps(a)
-//         #define vec_rsqrt(a) _mm256_rsqrt_ps(a)
-//         #define vec_ftoi(a) _mm256_cvttps_epi32(a)
-//         #define vec_fmin(a,b) _mm256_min_ps(a,b)
-//     #else
-//         typedef union {
-//             __m128 v;
-//             __m128i m;
-//             float f[4];
-//             int i[4];
-//             } vector;
-//         #define VEC_SIZE 4
-//         #define vec_load(a) _mm_load_ps(a)
-//         #define vec_set1(a) _mm_set1_ps(a)
-//         #define vec_sqrt(a) _mm_sqrt_ps(a)
-//         #define vec_rcp(a) _mm_rcp_ps(a)
-//         #define vec_rsqrt(a) _mm_rsqrt_ps(a)
-//         #define vec_ftoi(a) _mm_cvttps_epi32(a)
-//         #define vec_fmin(a,b) _mm_min_ps(a,b)
-//     #endif
-// #else
-//     #define VEC_SIZE 4
-// #endif
+
 #include "vector.h"
 
 /* Coefficients for the kernel. */ 
@@ -132,16 +95,21 @@ __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float
 
 
 /**
- * @brief Density kernel
+ * @brief Density loop
  */
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
 
-    float r = sqrtf( r2 );
+    float r = sqrtf( r2 ), ri = 1.0f / r;
     float xi, xj;
     float h_inv, hg_inv;
     float wi, wj, wi_dx, wj_dx;
+    float dvdr;
     
+    /* Compute dv dot r */
+    dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+    dvdr *= ri;
+            
     if ( r2 < hi*hi && pi != NULL ) {
         
         h_inv = 1.0 / hi;
@@ -154,7 +122,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
-        
+
+	pi->div_v += pj->mass * dvdr * wi_dx;
         }
 
     if ( r2 < hj*hj && pj != NULL ) {
@@ -170,6 +139,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pj->wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pj->icount += 1;
         
+	pj->div_v = pi->mass * dvdr * wj_dx;
         }
         
     #ifdef HIST
@@ -181,24 +151,43 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     
     }
     
-
+/**
+ * @brief Density loop (Vectorized version)
+ */
 __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( float *R2 , float *Dx , float *Hi , float *Hj , struct part **pi , struct part **pj ) {
 
 #ifdef VECTORIZE
 
-    vector r, xi, xj, hi, hj, hi_inv, hj_inv, hig_inv, hjg_inv, wi, wj, wi_dx, wj_dx;
+    vector r, ri, xi, xj, hi, hj, hi_inv, hj_inv, hig_inv, hjg_inv, wi, wj, wi_dx, wj_dx;
     vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
     vector mi, mj, wscale;
+    vector dx[3];
+    vector vi[3], vj[3];    
+    vector dvdr, div_vi, div_vj;
     int k;
     
     r.v = vec_sqrt( vec_load( R2 ) );
+    ri.v = vec_rcp( r.v );
     #if VEC_SIZE==8
         mi.v = _mm256_set_ps( pi[7]->mass , pi[6]->mass , pi[5]->mass , pi[4]->mass , pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
         mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        for ( k = 0 ; k < 3 ; k++ ) {
+            vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
+            vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            }
+        for ( k = 0 ; k < 3 ; k++ )
+            dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
     #elif VEC_SIZE==4
         mi.v = _mm_set_ps( pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
         mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        for ( k = 0 ; k < 3 ; k++ ) {
+            vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
+            vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            }
+        for ( k = 0 ; k < 3 ; k++ )
+            dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
     #endif
+
     wscale.v = vec_set1( 4.0f * M_PI / 3.0f * kernel_igamma3 );
     
     hi.v = vec_load( Hi );
@@ -215,26 +204,34 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     
     kernel_deval_vec( &xi , &wi , &wi_dx );
     kernel_deval_vec( &xj , &wj , &wj_dx );
+
+    /* Compute dv dot r */
+    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
+    dvdr.v = dvdr.v * ri.v;
     
     rhoi.v = mj.v * wi.v;
     rhoi_dh.v = mj.v * ( vec_set1( 3.0f ) * wi.v + xi.v * wi_dx.v );
     wcounti.v = wi.v * wscale.v;
     wcounti_dh.v = xi.v * hi_inv.v * wi_dx.v * wscale.v;
+    div_vi.v = mj.v * dvdr.v * wi_dx.v;
         
     rhoj.v = mi.v * wj.v;
     rhoj_dh.v = mi.v * ( vec_set1( 3.0f ) * wj.v + xj.v * wj_dx.v );
     wcountj.v = wj.v * wscale.v;
     wcountj_dh.v = xj.v * hj_inv.v * wj_dx.v * wscale.v;
+    div_vj.v = mi.v * dvdr.v * wj_dx.v;
         
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->rho += rhoi.f[k];
         pi[k]->rho_dh -= rhoi_dh.f[k];
         pi[k]->wcount += wcounti.f[k];
         pi[k]->wcount_dh -= wcounti_dh.f[k];
+	pi[k]->div_v += div_vi.f[k];
         pj[k]->rho += rhoj.f[k];
         pj[k]->rho_dh -= rhoj_dh.f[k];
         pj[k]->wcount += wcountj.f[k];
         pj[k]->wcount_dh -= wcountj_dh.f[k];
+	pj[k]->div_v += div_vj.f[k];
         }
         
 #else
@@ -249,15 +246,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
 
 
 /**
- * @brief Density kernel
+ * @brief Density loop (non-symmetric version)
  */
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
 
-    float r = sqrtf( r2 );
+    float r = sqrtf( r2 ), ri = 1.0f / r;
     float xi;
     float h_inv, hg_inv;
     float wi, wi_dx;
+    float dvdr;
+
+    /* Compute dv dot r */
+    dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+    dvdr *= ri;
     
     if ( r2 < hi*hi && pi != NULL ) {
         
@@ -271,26 +273,46 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
-        
+
+	pi->div_v += pj->mass * dvdr * wi_dx;
         }
 
     }
     
+/**
+ * @brief Density loop (non-symmetric vectorized version)
+ */
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_density ( float *R2 , float *Dx , float *Hi , float *Hj , struct part **pi , struct part **pj ) {
 
 #ifdef VECTORIZE
 
-    vector r, xi, hi, hi_inv, hig_inv, wi, wi_dx;
-    vector rhoi, rhoi_dh, wcounti, wcounti_dh;
+    vector r, ri, xi, hi, hi_inv, hig_inv, wi, wi_dx;
+    vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
     vector mj, wscale;
+    vector dx[3];
+    vector vi[3], vj[3];
+    vector dvdr;
     int k;
     
     r.v = vec_sqrt( vec_load( R2 ) );
+    ri.v = vec_rcp( r.v );
     #if VEC_SIZE==8
         mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        for ( k = 0 ; k < 3 ; k++ ) {
+            vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
+            vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            }
+        for ( k = 0 ; k < 3 ; k++ )
+            dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
     #elif VEC_SIZE==4
         mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        for ( k = 0 ; k < 3 ; k++ ) {
+            vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
+            vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            }
+        for ( k = 0 ; k < 3 ; k++ )
+            dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
     #endif
     wscale.v = vec_set1( 4.0f * M_PI / 3.0f * kernel_igamma3 );
     
@@ -301,17 +323,23 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     xi.v = r.v * hig_inv.v;
 
     kernel_deval_vec( &xi , &wi , &wi_dx );
-    
+
+    /* Compute dv dot r */
+    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
+    dvdr.v = dvdr.v * ri.v;
+
     rhoi.v = mj.v * wi.v;
     rhoi_dh.v = mj.v * ( vec_set1( 3.0f ) * wi.v + xi.v * wi_dx.v );
     wcounti.v = wi.v * wscale.v;
     wcounti_dh.v = xi.v * hi_inv.v * wi_dx.v * wscale.v;
+    div_vi.v = mj.v * dvdr.v * wi_dx.v;
         
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->rho += rhoi.f[k];
         pi[k]->rho_dh -= rhoi_dh.f[k];
         pi[k]->wcount += wcounti.f[k];
         pi[k]->wcount_dh -= wcounti_dh.f[k];
+	pi[k]->div_v += div_vi.f[k];
         }
         
 #else
@@ -324,6 +352,9 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     }
     
 
+/**
+ * @brief Force loop
+ */
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
 
@@ -384,6 +415,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     
     }
     
+
+/**
+ * @brief Force loop (Vectorized version)
+ */
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float *R2 , float *Dx , float *Hi , float *Hj , struct part **pi , struct part **pj ) {
 
@@ -522,6 +557,9 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     }
     
 
+/**
+ * @brief Force loop (non-symmetric version)
+ */
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
 
@@ -572,6 +610,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     
     }
     
+
+/**
+ * @brief Force loop (Vectorized non-symmetric version)
+ */
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force ( float *R2 , float *Dx , float *Hi , float *Hj , struct part **pi , struct part **pj ) {
 
