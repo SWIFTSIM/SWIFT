@@ -495,8 +495,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     pjh_dt.v = mi.v / pirho.v * dvdr.v * wj_dr.v;
     
     /* compute the signal velocity (this is always symmetrical). */
-    vi_sig.v = vec_fmax( vi_sig.v , cj.v - 3.0f*dvdr.v );
-    vj_sig.v = vec_fmax( vj_sig.v , ci.v - 3.0f*dvdr.v );
+    vi_sig.v = vec_fmax( vi_sig.v , cj.v - vec_set1(3.0f)*dvdr.v );
+    vj_sig.v = vec_fmax( vj_sig.v , ci.v - vec_set1(3.0f)*dvdr.v );
 
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
@@ -676,8 +676,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
     
     /* compute the signal velocity (this is always symmetrical). */
-    vi_sig.v = vec_fmax( vi_sig.v , cj.v - 3.0f*dvdr.v );
-    vj_sig.v = vec_fmax( vj_sig.v , ci.v - 3.0f*dvdr.v );
+    vi_sig.v = vec_fmax( vi_sig.v , cj.v - vec_set1(3.0f)*dvdr.v );
+    vj_sig.v = vec_fmax( vj_sig.v , ci.v - vec_set1(3.0f)*dvdr.v );
 
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
