@@ -380,7 +380,7 @@ The second loop is used to compute the accelerations (tertiary quantities). The 
 \label{eq:dudt}\\
  \frac{dh_i}{dt} &=& \frac{h_i}{3}\sum_j \frac{m_j}{\rho_j} \left(\vec{v_j} - \vec{v_i} \right)
 \cdot\vec{\nabla_r}W(\vec{r}_{ij}, h_i)\\
- v_{sig,i} &=& c_i + c_j + \max_j(0, 3\hat{r}_{ij} \cdot (\vec{v}_j - \vec{v}_i))
+ v_{sig,i} &=& c_i + c_j + \max_j(0, 3\hat{r}_{ij} \cdot (\vec{v}_j - \vec{v}_i)) \label{eq:sigvel}
 \end{eqnarray}
 
 In practice the loop is here performed over all pairs of particles such that $|\vec{r}_{ij}| < \zeta h_i$ or
@@ -562,108 +562,140 @@ function. It is just a more convenient way to represent entropy.
 THESE QUANTITIES ARE CONSERVED ONLY IF ONE SINGLE TIME STEP IS USED FOR ALL PARTICLES !!
 
 
-\section{Improved SPH equations}
+\section{Gadget-2 Viscosity}
 
-The equations \ref{eq:acceleration} and \ref{eq:dudt} correspond to a non-physical system with no viscosity and no
-thermal conduction. The physical model can be improved by adding some terms which vary depending on the authors. We
-follow here, D. Price and W. Dehnen.
-These terms require second derivatives of the fields, which can be expressed in terms of the second derivative of $W$.
-However, due to discreteness effects computing the derivatives of a field using $\partial^2_{rr}W$ is very noisy even
-when using high-order polynomial. For this reason a wrong second derivative is used based on the first derivative. We
-first introduce $F(\vec{r}_{ij},h_i)$, the scalar part of the gradient of $W$. It is defined as
+ In \gadget, artificial viscosity is introduced by adding a term to both equation \ref{eq:acceleration} and
+\ref{eq:dudt}:
 
-\begin{equation}
- \nabla_r W(\vec{r}_{ij},h_i) = F(\vec{r}_{ij},h_i) \hat{r}_{ij}
-\end{equation}
+\begin{eqnarray*}
+  \vec{a_i} &\stackrel{visc}{=}& -\frac{1}{4}\sum_j m_j \Pi_{ij} \left(\vec{\nabla_r}W(\vec{r}_{ij},
+h_i)+\vec{\nabla_r}W(\vec{r}_{ij}, h_j)\right) (f_i+f_j)\\
+  \frac{du_i}{dt} &\stackrel{visc}{=}& \frac{1}{8} \sum_j m_j \Pi_{ij}(\vec{v}_i - \vec{v}_j)
+\left(\vec{\nabla_r}W(\vec{r}_{ij},
+h_i)+\vec{\nabla_r}W(\vec{r}_{ij}, h_j)\right) (f_i+f_j)
+\end{eqnarray*}
 
-which in 3D implies that
+The viscosity tensor $\Pi_{ij}$ is given by:
 
-\begin{equation}
- F_{ij}(h_i) \equiv F(\vec{r}_{ij},h_i) = \frac{1}{h_i^4}f'\left(\frac{|\vec{r}_{ij}|}{h_i}\right)
-\end{equation}
+\begin{eqnarray*}
+ \Pi_{ij} &=& -\alpha \frac{\left(c_i + c_j - 3w_{ij}\right)w_{ij}}{\rho_i + \rho_j} \\
+ w_{ij} &=& \min\left(0, \frac{(\vec{v}_i - \vec{v}_j)\cdot(\vec{r}_i - \vec{r}_j}{|r_{ij}|}\right)
+\end{eqnarray*}
 
-where $f$ is the dimensionless part of the kernel introduced earlier. For symmetry reasons, we will use
+The $w_{ij}$ term can be re-used to express the signal velocity \ref{eq:sigvel}. The viscosity parameter $\alpha$
+usually takes value in the range $[0.5, 2]$. The Balsara switch $(f_i+f_j)$ is built from two terms that are
+pre-computed in the density loop:
 
-\begin{eqnarray}
- \bar{F}_{ij} &=& \frac{1}{2} \left(F_{ij}(h_i) + F_{ij}(h_j)\right) \\
-	      &=& \frac{1}{2h_i^4}f'\left(\frac{|\vec{r}_{ij}|}{h_i}\right) +
-\frac{1}{2h_j^4}f'\left(\frac{|\vec{r}_{ij}|}{h_j}\right) \\
-\end{eqnarray}
+\begin{eqnarray*}
+ f_i &=& \frac{|\vec\nabla \times \vec{v}_i|}{|\vec\nabla \cdot \vec{v}_i| + |\vec\nabla \times \vec{v}_i| +
+10^{-4}\frac{c_j}{h_j}} \\
+ \vec\nabla \times \vec{v}_i &=& -\frac{1}{\rho_i}\sum_j m_j (\vec{v}_j - \vec{v}_i)\times
+\vec{\nabla_r}W(\vec{r}_{ij}, h_i) \\
+ \vec\nabla \cdot \vec{v}_i &=& \frac{1}{\rho_i}\sum_j m_j (\vec{v}_j - \vec{v}_i)\cdot \vec{\nabla_r}W(\vec{r}_{ij},
+h_i)
+\end{eqnarray*}
 
-in the equations. A decent place-holder for the second derivative of $W$ is then $-2F_{ij}/|\vec{r}_{ij}|$.
 
-\subsection{Artificial viscosity}
-
- Artificial viscosity can be introduced by adding a term to both equation \ref{eq:acceleration} and \ref{eq:dudt}:
-
-\begin{eqnarray}
-  \vec{a_i} &\stackrel{visc}{=}& 2\sum_j m_j \frac{\alpha v_{sig}\left(\vec{v}_i -
-\vec{v}_j\right)\cdot\hat{r}_{ij}}{\left(\rho_i + \rho_j\right)}\hat{r}_{ij}\cdot \bar{F}_{ij} \label{eq:visc}\\
- \frac{du_i}{dt} &\stackrel{visc}{=}& -\sum_j \frac{m_j}{(\rho_i + \rho_j)} \alpha
-v_{sig}\left[\left(\vec{v}_i-\vec{v}_j\right)\cdot\hat{r}_{ij}\right]^2 \bar{F}_{ij}
-\end{eqnarray}
-
-where $\alpha$ is the dimensionless artificial viscosity and
-
-\begin{equation}
- v_{sig} = \begin{cases}
-	    \frac{1}{2}\left[c_i + c_j - \beta\left(\vec{v}_i-\vec{v}_j\right)\cdot\hat{r}_{ij} \right] &
-\mbox{if} \quad \left(\vec{v}_i-\vec{v}_j\right)\cdot \hat{r}_{ij} < 0\\
-            0 & \mbox{if} \quad \left(\vec{v}_i-\vec{v}_j\right)\cdot \hat{r}_{ij} > 0
-            \end{cases}
-\end{equation}
-
-corresponds to the maximal (average) signal speed between pairs of particles.
-GADGET uses $\alpha=1$ (but can be changed) and $\beta=3\alpha$ (fixed). In addition, the Balsara switch is used. \\
-
-Modern implementations of SPH use a variable viscosity $\alpha_i$ for each particle. The idea behind this is to switch
-of viscosity in the part of the flows where the fluid is dissipation-less and to switch it on in shocks. This is done by
-using a shock detector and then a slow decay of the viscosity with time. Following Price, we use
-
-\begin{eqnarray}
- \frac{d\alpha_i}{dt} &=& \left(\alpha_{max}-\alpha_i\right)\mathcal{S}~+\frac{(\alpha_i-\alpha_{min})c_i\sigma}{h_i}\\
- \mathcal{S} &=& \max\left(0, -\nabla\cdot \vec{v}_i \right)
-\end{eqnarray}
-
-with (usually) $\alpha_{max} = 2$, $\alpha_{min} = 0.1$ and $\sigma=0.1$. The $\alpha$ term in (\ref{eq:visc}) is then
-replaced by $\bar\alpha = \frac{1}{2}(\alpha_i + \alpha_j)$. The same applies to $\beta$ which is now, $\beta =
-3\bar\alpha$.\\
-The divergence of the velocity field can be computed in the density loop and the exact expression is
-
-\begin{equation}
- \label{eq:div_v}
- \nabla\cdot v_i = \frac{1}{\rho_i}\sum_j m_j \left(\vec{v}_j - \vec{v}_i\right)\cdot \nabla_r W(\vec{r}_{ij},h_i) 
-\end{equation}
-
-\subsection{Thermal conductivity}
-
-The thermal conductivity  which dissipates energy at discontinuities in the energy field can be modeled by adding
-another term to the internal energy evolution equation (\ref{eq:dudt}). 
-
-\begin{equation}
- \frac{du_i}{dt} \stackrel{cond}{=} - \sum_j \alpha_u v_{sig,u}\left(u_i - u_j\right)\bar{F}_{ij}
-\end{equation}
-
-This time, the signal velocity must vanish when we are dealing with a contact discontinuity as no energy should flow
-between the two regions in this case. A good choice is to use
-
-\begin{equation}
- v_{sig,u} = \sqrt{\frac{2|P_i-P_j|}{\rho_i+\rho_j}}
-\end{equation}
-
-Once again, the $\alpha$-term is made to decay far from any discontinuity. In this case, the equation reads
-
-\begin{eqnarray}
- \frac{d\alpha_{u,i}}{dt} &=&  \mathcal{S}_u - \frac{\alpha_{u,i}c_i\sigma}{h_i}  \\
- \mathcal{S}_u &=& \frac{h_i \nabla^2 u_i}{10}
-\end{eqnarray}
-
-where again $\sigma=0.1$ as in the viscosity terms. As in the velocity divergence case, the laplacian of $u$ can be
-computed in the density loop and reads
-
-\begin{equation}
- \nabla^2 u_i = \frac{2}{\rho_i} \sum_j m_j \left(u_j - u_i\right) \frac{F_{ij}}{|\vec{r}_{ij}|}
-\end{equation}
+% The equations \ref{eq:acceleration} and \ref{eq:dudt} correspond to a non-physical system with no viscosity and no
+% thermal conduction. The physical model can be improved by adding some terms which vary depending on the authors. We
+% follow here, D. Price and W. Dehnen.
+% These terms require second derivatives of the fields, which can be expressed in terms of the second derivative of $W$.
+% However, due to discreteness effects computing the derivatives of a field using $\partial^2_{rr}W$ is very noisy even
+% when using high-order polynomial. For this reason a wrong second derivative is used based on the first derivative. We
+% first introduce $F(\vec{r}_{ij},h_i)$, the scalar part of the gradient of $W$. It is defined as
+% 
+% \begin{equation}
+%  \nabla_r W(\vec{r}_{ij},h_i) = F(\vec{r}_{ij},h_i) \hat{r}_{ij}
+% \end{equation}
+% 
+% which in 3D implies that
+% 
+% \begin{equation}
+%  F_{ij}(h_i) \equiv F(\vec{r}_{ij},h_i) = \frac{1}{h_i^4}f'\left(\frac{|\vec{r}_{ij}|}{h_i}\right)
+% \end{equation}
+% 
+% where $f$ is the dimensionless part of the kernel introduced earlier. For symmetry reasons, we will use
+% 
+% \begin{eqnarray}
+%  \bar{F}_{ij} &=& \frac{1}{2} \left(F_{ij}(h_i) + F_{ij}(h_j)\right) \\
+% 	      &=& \frac{1}{2h_i^4}f'\left(\frac{|\vec{r}_{ij}|}{h_i}\right) +
+% \frac{1}{2h_j^4}f'\left(\frac{|\vec{r}_{ij}|}{h_j}\right) \\
+% \end{eqnarray}
+% 
+% in the equations. A decent place-holder for the second derivative of $W$ is then $-2F_{ij}/|\vec{r}_{ij}|$.
+% 
+% \subsection{Artificial viscosity}
+% 
+%  Artificial viscosity can be introduced by adding a term to both equation \ref{eq:acceleration} and \ref{eq:dudt}:
+% 
+% \begin{eqnarray}
+%   \vec{a_i} &\stackrel{visc}{=}& 2\sum_j m_j \frac{\alpha v_{sig}\left(\vec{v}_i -
+% \vec{v}_j\right)\cdot\hat{r}_{ij}}{\left(\rho_i + \rho_j\right)}\hat{r}_{ij}\cdot \bar{F}_{ij} \label{eq:visc}\\
+%  \frac{du_i}{dt} &\stackrel{visc}{=}& -\sum_j \frac{m_j}{(\rho_i + \rho_j)} \alpha
+% v_{sig}\left[\left(\vec{v}_i-\vec{v}_j\right)\cdot\hat{r}_{ij}\right]^2 \bar{F}_{ij}
+% \end{eqnarray}
+% 
+% where $\alpha$ is the dimensionless artificial viscosity and
+% 
+% \begin{equation}
+%  v_{sig} = \begin{cases}
+% 	    \frac{1}{2}\left[c_i + c_j - \beta\left(\vec{v}_i-\vec{v}_j\right)\cdot\hat{r}_{ij} \right] &
+% \mbox{if} \quad \left(\vec{v}_i-\vec{v}_j\right)\cdot \hat{r}_{ij} < 0\\
+%             0 & \mbox{if} \quad \left(\vec{v}_i-\vec{v}_j\right)\cdot \hat{r}_{ij} > 0
+%             \end{cases}
+% \end{equation}
+% 
+% corresponds to the maximal (average) signal speed between pairs of particles.
+% GADGET uses $\alpha=1$ (but can be changed) and $\beta=3\alpha$ (fixed). In addition, the Balsara switch is used. \\
+% 
+% Modern implementations of SPH use a variable viscosity $\alpha_i$ for each particle. The idea behind this is to switch
+% of viscosity in the part of the flows where the fluid is dissipation-less and to switch it on in shocks. This is done by
+% using a shock detector and then a slow decay of the viscosity with time. Following Price, we use
+% 
+% \begin{eqnarray}
+%  \frac{d\alpha_i}{dt} &=& \left(\alpha_{max}-\alpha_i\right)\mathcal{S}~+\frac{(\alpha_i-\alpha_{min})c_i\sigma}{h_i}\\
+%  \mathcal{S} &=& \max\left(0, -\nabla\cdot \vec{v}_i \right)
+% \end{eqnarray}
+% 
+% with (usually) $\alpha_{max} = 2$, $\alpha_{min} = 0.1$ and $\sigma=0.1$. The $\alpha$ term in (\ref{eq:visc}) is then
+% replaced by $\bar\alpha = \frac{1}{2}(\alpha_i + \alpha_j)$. The same applies to $\beta$ which is now, $\beta =
+% 3\bar\alpha$.\\
+% The divergence of the velocity field can be computed in the density loop and the exact expression is
+% 
+% \begin{equation}
+%  \label{eq:div_v}
+%  \nabla\cdot v_i = \frac{1}{\rho_i}\sum_j m_j \left(\vec{v}_j - \vec{v}_i\right)\cdot \nabla_r W(\vec{r}_{ij},h_i) 
+% \end{equation}
+% 
+% \subsection{Thermal conductivity}
+% 
+% The thermal conductivity  which dissipates energy at discontinuities in the energy field can be modeled by adding
+% another term to the internal energy evolution equation (\ref{eq:dudt}). 
+% 
+% \begin{equation}
+%  \frac{du_i}{dt} \stackrel{cond}{=} - \sum_j \alpha_u v_{sig,u}\left(u_i - u_j\right)\bar{F}_{ij}
+% \end{equation}
+% 
+% This time, the signal velocity must vanish when we are dealing with a contact discontinuity as no energy should flow
+% between the two regions in this case. A good choice is to use
+% 
+% \begin{equation}
+%  v_{sig,u} = \sqrt{\frac{2|P_i-P_j|}{\rho_i+\rho_j}}
+% \end{equation}
+% 
+% Once again, the $\alpha$-term is made to decay far from any discontinuity. In this case, the equation reads
+% 
+% \begin{eqnarray}
+%  \frac{d\alpha_{u,i}}{dt} &=&  \mathcal{S}_u - \frac{\alpha_{u,i}c_i\sigma}{h_i}  \\
+%  \mathcal{S}_u &=& \frac{h_i \nabla^2 u_i}{10}
+% \end{eqnarray}
+% 
+% where again $\sigma=0.1$ as in the viscosity terms. As in the velocity divergence case, the laplacian of $u$ can be
+% computed in the density loop and reads
+% 
+% \begin{equation}
+%  \nabla^2 u_i = \frac{2}{\rho_i} \sum_j m_j \left(u_j - u_i\right) \frac{F_{ij}}{|\vec{r}_{ij}|}
+% \end{equation}
 
 
 
