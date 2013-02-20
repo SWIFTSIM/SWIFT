@@ -29,6 +29,8 @@
  * numerical coefficients as the Gadget-2 code. When used with the Spline-3 kernel, the results
  * should be equivalent to the ones obtained with Gadget-2 up to the rounding errors and interactions
  * missed by the Gadget-2 tree-code neighbours search.
+ *
+ * The code uses internal energy instead of entropy as a thermodynamical variable. 
  */
 
 
@@ -43,10 +45,19 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     float h_inv, hg_inv;
     float wi, wj, wi_dx, wj_dx;
     float dvdr;
+    float curlvr[3];
+    int k;
     
     /* Compute dv dot r */
     dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
     dvdr *= ri;
+
+    /* Compute dv cross r */
+    curlvr[0] = ( pi->v[1] - pj->v[1] ) * dx[2] - ( pi->v[2] - pj->v[2] ) * dx[1];
+    curlvr[1] = ( pi->v[2] - pj->v[2] ) * dx[0] - ( pi->v[0] - pj->v[0] ) * dx[2];
+    curlvr[2] = ( pi->v[0] - pj->v[0] ) * dx[1] - ( pi->v[1] - pj->v[1] ) * dx[0];
+    for ( k = 0 ; k < 3 ; k++ )
+        curlvr[k] *= ri;
             
     if ( r2 < hi*hi && pi != NULL ) {
         
@@ -62,6 +73,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         // pi->icount += 1;
 
 	pi->div_v += pj->mass * dvdr * wi_dx;
+	for ( k = 0 ; k < 3 ; k++ )
+	    pi->curl_v[k] += pj->mass * curlvr[k] * wi_dx;
         }
 
     if ( r2 < hj*hj && pj != NULL ) {
@@ -78,6 +91,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         // pj->icount += 1;
         
 	pj->div_v = pi->mass * dvdr * wj_dx;
+	for ( k = 0 ; k < 3 ; k++ )
+	    pj->curl_v[k] += pi->mass * curlvr[k] * wj_dx;
         }
         
     #ifdef HIST
@@ -102,7 +117,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     vector dx[3];
     vector vi[3], vj[3];    
     vector dvdr, div_vi, div_vj;
-    int k;
+    vector curlvr[3], curl_vi[3], curl_vj[3];
+    int k, j;
     
     r.v = vec_sqrt( vec_load( R2 ) );
     ri.v = vec_rcp( r.v );
@@ -146,18 +162,30 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     /* Compute dv dot r */
     dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
     dvdr.v = dvdr.v * ri.v;
-    
+
+    /* Compute dv cross r */
+    curlvr[0].v = ( vi[1].v - vj[1].v ) * dx[2].v - ( vi[2].v - vj[2].v ) * dx[1].v;
+    curlvr[1].v = ( vi[2].v - vj[2].v ) * dx[0].v - ( vi[0].v - vj[0].v ) * dx[2].v;
+    curlvr[2].v = ( vi[0].v - vj[0].v ) * dx[1].v - ( vi[1].v - vj[1].v ) * dx[0].v;
+    for ( k = 0 ; k < 3 ; k++ )
+        curlvr[k].v *= ri.v;    
+
     rhoi.v = mj.v * wi.v;
     rhoi_dh.v = mj.v * ( vec_set1( 3.0f ) * wi.v + xi.v * wi_dx.v );
     wcounti.v = wi.v * wscale.v;
     wcounti_dh.v = xi.v * hi_inv.v * wi_dx.v * wscale.v;
     div_vi.v = mj.v * dvdr.v * wi_dx.v;
+    for ( k = 0 ; k < 3 ; k++ )
+        curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
         
     rhoj.v = mi.v * wj.v;
     rhoj_dh.v = mi.v * ( vec_set1( 3.0f ) * wj.v + xj.v * wj_dx.v );
     wcountj.v = wj.v * wscale.v;
     wcountj_dh.v = xj.v * hj_inv.v * wj_dx.v * wscale.v;
     div_vj.v = mi.v * dvdr.v * wj_dx.v;
+    for ( k = 0 ; k < 3 ; k++ )
+        curl_vj[k].v = mi.v * curlvr[k].v * wj_dx.v;
+
         
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->rho += rhoi.f[k];
@@ -165,11 +193,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
         pi[k]->wcount += wcounti.f[k];
         pi[k]->wcount_dh -= wcounti_dh.f[k];
 	pi[k]->div_v += div_vi.f[k];
+	for( j = 0 ; j < 3 ; j++ )
+   	    pi[k]->curl_v[j] += curl_vi[j].f[k];
+
         pj[k]->rho += rhoj.f[k];
         pj[k]->rho_dh -= rhoj_dh.f[k];
         pj[k]->wcount += wcountj.f[k];
         pj[k]->wcount_dh -= wcountj_dh.f[k];
 	pj[k]->div_v += div_vj.f[k];
+	for( j = 0 ; j < 3 ; j++ )
+   	    pj[k]->curl_v[j] += curl_vj[j].f[k];
         }
         
 #else
@@ -194,11 +227,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
     float h_inv, hg_inv;
     float wi, wi_dx;
     float dvdr;
+    float curlvr[3];
+    int k;
 
     /* Compute dv dot r */
     dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
     dvdr *= ri;
-    
+
+    /* Compute dv cross r */
+    curlvr[0] = ( pi->v[1] - pj->v[1] ) * dx[2] - ( pi->v[2] - pj->v[2] ) * dx[1];
+    curlvr[1] = ( pi->v[2] - pj->v[2] ) * dx[0] - ( pi->v[0] - pj->v[0] ) * dx[2];
+    curlvr[2] = ( pi->v[0] - pj->v[0] ) * dx[1] - ( pi->v[1] - pj->v[1] ) * dx[0];
+    for ( k = 0 ; k < 3 ; k++ )
+        curlvr[k] *= ri;    
+
     if ( r2 < hi*hi && pi != NULL ) {
         
         h_inv = 1.0 / hi;
@@ -213,8 +255,9 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         // pi->icount += 1;
 
 	pi->div_v += pj->mass * dvdr * wi_dx;
+	for ( k = 0 ; k < 3 ; k++ )
+	    pi->curl_v[k] += pj->mass * curlvr[k] * wi_dx;
         }
-
     }
     
 /**
@@ -231,7 +274,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     vector dx[3];
     vector vi[3], vj[3];
     vector dvdr;
-    int k;
+    vector curlvr[3], curl_vi[3];
+    int k, j;
     
     r.v = vec_sqrt( vec_load( R2 ) );
     ri.v = vec_rcp( r.v );
@@ -266,11 +310,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
     dvdr.v = dvdr.v * ri.v;
 
+    /* Compute dv cross r */
+    curlvr[0].v = ( vi[1].v - vj[1].v ) * dx[2].v - ( vi[2].v - vj[2].v ) * dx[1].v;
+    curlvr[1].v = ( vi[2].v - vj[2].v ) * dx[0].v - ( vi[0].v - vj[0].v ) * dx[2].v;
+    curlvr[2].v = ( vi[0].v - vj[0].v ) * dx[1].v - ( vi[1].v - vj[1].v ) * dx[0].v;
+    for ( k = 0 ; k < 3 ; k++ )
+        curlvr[k].v *= ri.v;    
+
     rhoi.v = mj.v * wi.v;
     rhoi_dh.v = mj.v * ( vec_set1( 3.0f ) * wi.v + xi.v * wi_dx.v );
     wcounti.v = wi.v * wscale.v;
     wcounti_dh.v = xi.v * hi_inv.v * wi_dx.v * wscale.v;
     div_vi.v = mj.v * dvdr.v * wi_dx.v;
+    for ( k = 0 ; k < 3 ; k++ )
+        curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
         
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->rho += rhoi.f[k];
@@ -278,6 +331,9 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
         pi[k]->wcount += wcounti.f[k];
         pi[k]->wcount_dh -= wcounti_dh.f[k];
 	pi[k]->div_v += div_vi.f[k];
+	for( j = 0 ; j < 3 ; j++ )
+   	    pi[k]->curl_v[j] += curl_vi[j].f[k];
+
         }
         
 #else

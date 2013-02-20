@@ -71,7 +71,10 @@ struct part {
 
     /* Particle velocity curl. */
     float curl_v[3] __attribute__((aligned (16)));
-        
+
+    /* Balsara switch */
+    float Balsara;
+  
     /* Particle pressure. */
     // float P;
     

@@ -330,6 +330,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     int i, k, redo, count = c->count;
     int *pid;
     float ihg, ihg2, h_corr;
+    float normDiv_v, normCurl_v;
     float dt_step = r->e->dt_step;
     TIMER_TIC
     
@@ -409,14 +410,19 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
 
 		/* Final operation on the velocity divergence */
-		p->div_v = p->div_v / p->rho;
+		p->div_v /= p->rho;
 		p->div_v *= ihg2 * ihg2;
 
 		/* Final operation on the velocity curl */
 		for ( k=0 ; k < 3 ; k++ ){
-		    p->curl_v[k] = p->curl_v[k] / p->rho;
+		    p->curl_v[k] /= -p->rho;
 		    p->curl_v[k] *= ihg2 * ihg2;
 		    }
+
+		/* Balsara switch */
+		normDiv_v = fabs( p->div_v );
+		normCurl_v = sqrtf( p->curl_v[0] * p->curl_v[0] + p->curl_v[1] * p->curl_v[1] + p->curl_v[2] * p->curl_v[2] );
+		p->Balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * p->c / p->h );
 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
