@@ -93,7 +93,7 @@ void engine_prepare ( struct engine *e ) {
 
     /* Re-set the particle data. */
     // tic = getticks();
-    #pragma omp parallel for schedule(static) 
+#pragma omp parallel for schedule(static)  private(j)
     for ( k = 0 ; k < s->nr_parts ; k++ )
         if ( s->parts[k].dt <= dt_step ) {
             s->parts[k].wcount = 0.0f;
@@ -101,8 +101,8 @@ void engine_prepare ( struct engine *e ) {
             s->parts[k].rho = 0.0f;
             s->parts[k].rho_dh = 0.0f;
 	    s->parts[k].div_v = 0.0f;
-	    for ( k = 0 ; k < 3 ; ++k)
-	      s->parts[k].curl_v[k] = 0.0f;
+	    for ( j = 0 ; j < 3 ; ++j)
+	      s->parts[k].curl_v[j] = 0.0f;
             }
     // printf( "engine_prepare: re-setting particle data took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
