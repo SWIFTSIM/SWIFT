@@ -63,7 +63,7 @@ for i in range(L):
             coords[index,0] = x
             coords[index,1] = y
             coords[index,2] = z
-            v[index,0] = 0.
+            v[index,0] = 0.1
             v[index,1] = 0.
             v[index,2] = 0.
             m[index] = mass

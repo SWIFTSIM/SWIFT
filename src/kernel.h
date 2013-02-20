@@ -45,7 +45,7 @@ static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribu
       
       
 /**
- * @brief Computes the kernel and its derivative for a given distance x.
+ * @brief Computes the kernel and its derivative for a given distance x. Gives a sensible answer only if x<1.
  */
 
 __attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , float *W , float *dW_dx ) {
@@ -65,7 +65,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , floa
 #ifdef VECTORIZE
 
 /**
- * @brief Computes the kernel and its derivative for a given distance x (Vectorized version)
+ * @brief Computes the kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<1.
  */
 
 __attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x , vector *w , vector *dw_dx ) {
@@ -96,7 +96,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x 
 #endif
 
 /**
- * @brief Computes the kernel for a given distance x
+ * @brief Computes the kernel for a given distance x. Gives a sensible answer only if x<1.
  */
 
 __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float *W ) {

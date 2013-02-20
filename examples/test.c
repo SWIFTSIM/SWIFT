@@ -959,6 +959,13 @@ int main ( int argc , char *argv[] ) {
         
         /* Take a step. */
         engine_step( &e , 0 );
+
+	if(j % 10 == 0)
+	  {
+	    char fileName[200];
+	    sprintf(fileName, "output_%05i.hdf5", j); 
+	    write_output(fileName, dim, parts, N, periodic);
+	  }
         
         /* Dump the first few particles. */
         for(k=0; k<10; ++k)

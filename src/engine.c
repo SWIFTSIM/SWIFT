@@ -296,13 +296,12 @@ void engine_step ( struct engine *e , int sort_queues ) {
 
             /* Scale the derivatives if they're freshly computed. */
             if ( p->dt <= dt_step ) {
-                p->u_dt *= p->POrho2;
                 p->h_dt *= p->h * 0.333333333f;
                 lcount += 1;
                 }
                 
             /* Update the particle's time step. */
-            p->dt = const_cfl * p->h / ( p->c + p->v_sig );
+            p->dt = const_cfl * p->h / (  p->v_sig );
 
             /* Update positions and energies at the half-step. */
             // #ifdef __SSE__
