@@ -69,6 +69,10 @@ AX_FUNC_POSIX_MEMALIGN
 # Check for OpenMP
 AX_OPENMP
 AC_SUBST(OPENMP_CFLAGS)
+if test -z "${OPENMP_CFLAGS}"; then
+   echo $OPENMP_CFLAGS
+   AC_MSG_ERROR(Compiler does not support OpenMP, 1)
+fi
 
 # Check for HDF5
 AX_LIB_HDF5([serial])
