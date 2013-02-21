@@ -164,6 +164,7 @@ void runner_dosort_ascending ( struct entry *sort , int N ) {
  *
  * @param r The #runner.
  * @param c The #cell.
+ * @param flags Cell flag.
  */
  
 void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
@@ -319,7 +320,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
  * @brief Intermediate task between density and force
  *
  * @param r The runner thread.
- * @param ci THe cell.
+ * @param c THe cell.
  */
  
 void runner_doghost ( struct runner *r , struct cell *c ) {

@@ -334,7 +334,7 @@ int space_getsid ( struct space *s , struct cell **ci , struct cell **cj , doubl
 
 
 /**
- * @breif Recursively dismantle a cell tree.
+ * @brief Recursively dismantle a cell tree.
  *
  */
  
@@ -353,7 +353,7 @@ void space_rebuild_recycle ( struct space *s , struct cell *c ) {
     }
 
 /**
- * @breif Recursively rebuild a cell tree.
+ * @brief Recursively rebuild a cell tree.
  *
  */
  
@@ -461,10 +461,10 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
     }
 
 /**
- * @breif Re-build the cells as well as the tasks.
+ * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
- * @param force Flag to force re-building the cells and tasks.
+ * @param cell_max Maximal cell size.
  *
  */
  
@@ -736,6 +736,8 @@ void space_map_mkghosts ( struct cell *c , void *data ) {
  * @brief Map a function to all particles in a aspace.
  *
  * @param s The #space we are working in.
+ * @param fun Function pointer to apply on the cells.
+ * @param data Data passed to the function fun.
  */
  
 void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct cell *c , void *data ) , void *data ) {
@@ -771,6 +773,8 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
  *
  * @param s The #space we are working in.
  * @param full Map to all cells, including cells with sub-cells.
+ * @param fun Function pointer to apply on the cells.
+ * @param data Data passed to the function fun.
  */
  
 void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data ) {
@@ -831,6 +835,13 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
  * @brief Add a #task to the #space.
  *
  * @param s The #space we are working in.
+ * @param type The type of the task.
+ * @param subtype The sub-type of the task.
+ * @param flags The flags of the task.
+ * @param wait 
+ * @param ci The first cell to interact.
+ * @param cj The second cell to interact.
+ * @param tight
  */
  
 struct task *space_addtask ( struct space *s , int type , int subtype , int flags , int wait , struct cell *ci , struct cell *cj , int tight ) {
@@ -1140,6 +1151,10 @@ void space_splittasks ( struct space *s ) {
  * @brief Generate the sorts for a sub recursively.
  *
  * @param s The #space we are working in.
+ * @param t The #task.
+ * @param ci The first cell.
+ * @param cj The second cell.
+ * @param sid The sort ID.
  */
  
 void space_addsorts ( struct space *s , struct task *t , struct cell *ci , struct cell *cj , int sid ) {
@@ -1676,11 +1691,12 @@ struct cell *space_getcell ( struct space *s ) {
 /**
  * @brief Split the space into cells given the array of particles.
  *
- * @param The #space to initialize.
+ * @param s The #space to initialize.
  * @param dim Spatial dimensions of the domain.
  * @param parts Pointer to an array of #part.
  * @param N The number of parts in the space.
  * @param periodic flag whether the domain is periodic or not.
+ * @param h_max The maximal interaction radius.
  *
  * Makes a grid of edge length > r_max and fills the particles
  * into the respective cells. Cells containing more than #space_maxppc

@@ -522,7 +522,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurence of the field of interest in the parts array
+ * @param part A (char*) pointer on the first occurence of the field of interest in the parts array
+ * @param field The name (code name) of the field to read from.
  *
  */
 #define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, field) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, (char*)(&(part[0]).field))

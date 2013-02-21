@@ -513,10 +513,9 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param parts_i The #parts to interact with @c cj.
+ * @param parts The #parts to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
- * @param cj The second #cell.
  */
  
 void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *restrict parts , int *restrict ind , int count ) {
@@ -1602,9 +1601,11 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
  * @brief Compute grouped sub-cell interactions
  *
  * @param r The #runner.
- * @param c The #cell.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param sid
  *
- * TODO: Hard-code the sid on the recursive calls to avoid the
+ * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
 

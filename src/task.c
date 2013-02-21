@@ -45,7 +45,7 @@ const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" 
 
 
 /**
- * @breif Remove all unlocks to tasks that are of the given type.
+ * @brief Remove all unlocks to tasks that are of the given type.
  *
  * @param t The #task.
  * @param type The task type ID to remove.

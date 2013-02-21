@@ -58,7 +58,6 @@
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
- * @param force Flag to force re-building the cell and task structure.
  */
  
 void engine_prepare ( struct engine *e ) {
