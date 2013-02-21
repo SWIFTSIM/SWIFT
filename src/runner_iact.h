@@ -487,6 +487,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     #else
         #error
     #endif
+
+    #error Matthieu: Not yet implemented the visocisty switch in the vectorized version. Use scalar version instead !
     
     /* Get the radius and inverse radius. */
     r2.v = vec_load( R2 );
@@ -576,6 +578,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     float hj_inv, hj2_inv;
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
     float f;
+    float omega_ij, Pi_ij, v_sig;
     int k;
     
     /* Get the kernel for hi. */
@@ -591,29 +594,41 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     xj = r * hj_inv * kernel_igamma;
     kernel_deval( xj , &wj , &wj_dx );
     wj_dr = hj2_inv * hj2_inv * wj_dx;
+
+    /* Compute dv dot r. */
+    dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+    dvdr *= ri;
+
+    /* Compute the relative velocity. (This is 0 if the particles move away from each other and negative otherwise) */
+    omega_ij = fminf(dvdr, 0.f);
     
+    /* Compute signal velocity */
+    v_sig = pi->c + pj->c - 3.*omega_ij;
+
+    /* Compute viscosity tensor */
+    Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
+
+    /* Apply Balsara switch */
+    Pi_ij *= (pi->Balsara + pj->Balsara);
+
     /* Get the common factor out. */
-    w = ri * ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr );
-        
+    w = ri * ( ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
+
+            
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f = dx[k] * w;
         pi->a[k] -= pj->mass * f;
         }
-        
-    /* Compute dv dot r. */
-    dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
-    dvdr *= ri;
-        
+
     /* Get the time derivative for u. */
-    pi->u_dt += pj->mass * dvdr * wi_dr;
+    pi->u_dt += pi->POrho2 * pj->mass * dvdr * wi_dr + 0.125f * pj->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
     
     /* Get the time derivative for h. */
     pi->h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
-        
-    /* Update the signal velocity (this is always symmetrical). */
-    pi->v_sig = fmaxf( pi->v_sig , pj->c - 3*dvdr );
-    pj->v_sig = fmaxf( pj->v_sig , pi->c - 3*dvdr );
+    
+    /* Update the signal velocity. */
+    pi->v_sig = fmaxf( pi->v_sig , v_sig );
     
     }
     
@@ -678,6 +693,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     #else
         #error
     #endif
+
+    #error Matthieu: Not yet implemented the visocisty switch in the vectorized version. Use scalar version instead !
     
     /* Get the radius and inverse radius. */
     r2.v = vec_load( R2 );
