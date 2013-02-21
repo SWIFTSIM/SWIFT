@@ -184,6 +184,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
     struct xpart *restrict xp;
     float dt = e->dt, hdt = 0.5*dt, dt_step, dt_max, dt_min, ldt_min, ldt_max;
     double epot = 0.0, ekin = 0.0, lepot, lekin, lmom[3], mom[3] = { 0.0 , 0.0 , 0.0 };
+    double lang[3], ang[3] = { 0.0 , 0.0 , 0.0 };
+    double lent, ent = 0.0;
     int threadID, nthreads, count = 0, lcount;
     // #ifdef __SSE2__
     //     VEC_MACRO(4,float) hdtv = _mm_set1_ps( hdt );
@@ -280,13 +282,14 @@ void engine_step ( struct engine *e , int sort_queues ) {
     /* Second kick. */
     TIMER_TIC_ND
     dt_min = FLT_MAX; dt_max = 0.0f;
-    #pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lekin,lepot,threadID,nthreads)
+#pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lang,lent,lekin,lepot,threadID,nthreads)
     {
         threadID = omp_get_thread_num();
         nthreads = omp_get_num_threads();
         ldt_min = FLT_MAX; ldt_max = 0.0f;
         lmom[0] = 0.0; lmom[1] = 0.0; lmom[2] = 0.0;
-        lekin = 0.0; lepot = 0.0; lcount = 0;
+        lang[0] = 0.0; lang[1] = 0.0; lang[2] = 0.0;
+        lekin = 0.0; lepot = 0.0; lent=0.0; lcount = 0;
         for ( k = nr_parts * threadID / nthreads ; k < nr_parts * (threadID + 1) / nthreads ; k++ ) {
 
             /* Get a handle on the part. */
@@ -325,6 +328,14 @@ void engine_step ( struct engine *e , int sort_queues ) {
             lmom[0] += p->mass * p->v[0];
             lmom[1] += p->mass * p->v[1];
             lmom[2] += p->mass * p->v[2];
+	    
+	    /* Collect angular momentum */
+	    lang[0] += p->mass * ( p->x[1]*p->v[2] - p->v[2]*p->x[1] );
+	    lang[1] += p->mass * ( p->x[2]*p->v[0] - p->v[0]*p->x[2] );
+	    lang[2] += p->mass * ( p->x[0]*p->v[1] - p->v[1]*p->x[0] );
+
+	    /* Collect entropic function */
+	    lent += p->u * pow( p->rho, 1.f-const_gamma );
 
             }
         #pragma omp critical
@@ -334,6 +345,10 @@ void engine_step ( struct engine *e , int sort_queues ) {
             mom[0] += lmom[0];
             mom[1] += lmom[1];
             mom[2] += lmom[2];
+            ang[0] += lang[0];
+            ang[1] += lang[1];
+            ang[2] += lang[2];
+	    ent += (const_gamma -1.) * lent;
             epot += lepot;
             ekin += lekin;
             count += lcount;
@@ -344,6 +359,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
     printf( "engine_step: dt_min/dt_max is %e/%e.\n" , dt_min , dt_max ); fflush(stdout);
     printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
     printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);
+    printf( "engine_step: total angular momentum is [ %e , %e , %e ].\n" , ang[0] , ang[1] , ang[2] ); fflush(stdout);
+    printf( "engine_step: total entropic function is %e .\n", ent ); fflush(stdout);
     printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
         
     /* Increase the step counter. */
