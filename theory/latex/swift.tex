@@ -168,21 +168,98 @@ This section describes the physics of the DM particles but as all particles are 
 apply to all four types. 
 
 
+\section{Particle definition}
+Every particle contains the following information:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|c|l|}
+ \hline
+ \textbf{Quantity}  & \textbf{Symbol} & \textbf{Units} \\
+ \hline \hline
+ Position & $\vec{x}$ & $[m]$ \\
+ Velocity &$\vec{v}$ & $[m\cdot s^{-1}]$ \\
+ Acceleration &$\vec{a}$ & $[m\cdot s^{-2}]$ \\
+ Mass & $m$ & $[kg]$ \\
+ Softening length & $\epsilon$ & $[m]$ \\
+ Time step & $\Delta t$ & $[s]$ \\
+ Norm of old acceleration & $a_{old}$ & $[m\cdot s^{-2}]$ \\
+\hline
+\end{tabular} 
+\end{table}
 
 
+In what follows, we will use $\vec{r}_{ij} = \vec{x_i} - \vec{x_j}$ and $\hat{r}_{ij} = \vec{r}_{ij}/|\vec{r}_{ij}|$
+to simplify the notation.\\
+In most calculations, the mass and softening length of the particles are constants for a given type of particles but
+this is not true anymore when including the \eagle physics as the gas, star and BH particles will change mass over
+time. In cosmological simulations, the softening length is a function of time.
+
+\section{Gravity interactions}
+
+The interaction is computed between all pairs of particles. The acceleration of particle $i$ due to one other particle
+$j$ is given by:
+
+\begin{equation}
+ \vec{a_i} = \left\lbrace \begin{array}{rcl}
+	   \Bigg. G_N\dfrac{m_j}{|\vec{r}_{ij}|^3}\vec{r}_{ij}& \mbox{if} & \Big.\dfrac{|\vec{r}_{ij}|}{\epsilon}
+\geq 1 \\
+         \Bigg. G_N\dfrac{m_j}{\epsilon^3}\phi\left(\frac{|\vec{r}_{ij}|}{\epsilon}\right)\vec{r}_{ij} & \mbox{if} &
+\Big.\dfrac{|\vec{r}_{ij}|}{\epsilon} < 1 \\
+                     \end{array}
+\right.
+\end{equation}
+
+where the softened potential $\phi(u)$ is given by:
+
+\begin{equation}
+\phi(u) =  \left\lbrace \begin{array}{rcl}
+	     \frac{32}{3} - \frac{192}{5}u^2 + 32u^3& \mbox{if} & u < \Big.\frac{1}{2}\\
+	     \frac{64}{3} - 48u + \frac{192}{5} u^2 - \frac{32}{3}u^3  - \frac{2}{30}\dfrac{1}{u^3}& \mbox{if} & \Big.u
+\geq \frac{1}{2}\\
+                        \end{array}
+\right.
+\end{equation}
+
+and $G_N$ is Newton's constant for gravity. The softening length used in this equation is the maximum of the softening
+length of both particles, i.e. $\epsilon = \max(\epsilon_i, \epsilon_j)$. Notice that this softened potential is
+derived from the smoothing kernel used in the SPH part of the calculation with a smoothing length $h=1.4\epsilon$. This
+corresponds to a Plummer sphere of size $\epsilon$. \\
 
 
+\textcolor{red}{This is the softening potential used in GADGET. There is something weird about this function that I want
+to check but for now it should be sufficient.}\\
+
+The maximal time step a particle is allowed to have is related to the acceleration by:
+
+\begin{equation}
+ \Delta t_i = \sqrt{\frac{2\eta \epsilon_i}{|\vec{a_i}|}}
+\end{equation}
+
+where $\eta$ is some accuracy constant which generally takes a value around $\eta \approx 0.025$.
+
+\section{Periodic boundary conditions}
+
+In most cases, the simulations are run with periodic boundary conditions. The simplest way to treat the formally
+infinite number of interactions in a tree code is to use the Ewald summation technique. In this case, the acceleration
+of a particle gets a new term:
+
+\begin{equation}
+ \vec{a_i} = \vec{a_i} + \sum_j m_j \vec{f}_c(\vec{r}_{ij}).
+\end{equation}
+
+The correction terms $\vec{f}_c$ are expensive to compute but are constant in time and only depend on the distance
+between the particles. This means that the values can be pre-computed and stored in a table. A simple 3D interpolation
+of the values in this table is then used when actually computing the force. \gadget and other code use a $64^3$
+elements table representing one octant. The other ones can be obtained thanks to the symmetry properties of the term. \\
+
+\textcolor{red}{Add here the calculation of the Ewald correction table.}\\
 
 
+\section{Fast Multipole Method}
 
 
-
-
-
-
-
-
-
+\textcolor{red}{To be done.}
 
 
 
@@ -193,6 +270,8 @@ apply to all four types.
 
 \chapter{Gas particles - SPH}
 \label{chap:SPH}
+
+This chapter presents the equations used to simulate gas interactions.
 
 \section{Particle definition}
 Every particle contains the following information:
@@ -217,10 +296,9 @@ Every particle contains the following information:
  Time step & Secondary & $\Delta t$ & $[s]$ \\
  Signal velocity & Secondary & $v_{sig}$& $[m\cdot s^{-1}]$ \\
 \hline
- Artificial viscosity & Primary & $\alpha$ & $[-]$\\
- Artificial conductivity & Primary & $\alpha_u$ & $[-]$\\
+ Velocity curl & Secondary & $\nabla\times \vec{v}$ & $[s^{-1}]$ \\
  Velocity divergence & Secondary & $\nabla\cdot \vec{v}$ & $[s^{-1}]$ \\
- Internal energy Laplacian & Secondary & $\nabla u$ & $[m\cdot s^{-2}]$\\
+ Balsara switch & Secondary & $f$ & $[-]$ \\
 \hline
 \end{tabular} 
 \end{table}
@@ -230,12 +308,6 @@ ones are computed from secondary ones in another loop (force loop). \\
 
 For optimisation purposes, any function of these quantities could be stored. For instance, $1/h$ instead of $h$ or
 $\frac{P}{\rho\Omega}$ instead of $\Omega$ may be options worth exploring. \\
-
-The four quantities in the second part of the table are used in improved state-of-the-art implementations of SPH. In a
-first approximation, they can be neglected. \\
-
-In what follows, we will use $\vec{r}_{ij} = \vec{x_i} - \vec{x_j}$ and $\hat{r}_{ij} = \vec{r}_{ij}/|\vec{r}_{ij}|$
-to simplify the notation.
 
 \section{Kernel function}
 
