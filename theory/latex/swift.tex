@@ -250,11 +250,36 @@ of a particle gets a new term:
 
 The correction terms $\vec{f}_c$ are expensive to compute but are constant in time and only depend on the distance
 between the particles. This means that the values can be pre-computed and stored in a table. A simple 3D interpolation
-of the values in this table is then used when actually computing the force. \gadget and other code use a $64^3$
-elements table representing one octant. The other ones can be obtained thanks to the symmetry properties of the term. \\
+of the values in this table is then used when actually computing the force. \gadget and other code use a $N_e=64$
+elements per dimension table representing one octant. The other ones can be obtained thanks to the symmetry properties
+of the terms. \\
 
-\textcolor{red}{Add here the calculation of the Ewald correction table.}\\
+The table is computed as follows. For every element $i <N_e, j<N_e,k<N_e$, we compute the vector $\vec{x} =
+(\frac{i}{2N_e}, \frac{j}{2N_e}, \frac{k}{2N_e})$. The table element $(i,j,k)$ is then:
 
+\begin{eqnarray*}
+ \vec{E}_{ijk} &=& \frac{1}{L^2}\frac{\vec{x}}{|\vec{x}|} \\
+         & & -\frac{1}{L^2}\sum_{n_x=-l_n}^{l_n}\sum_{n_z=-l_n}^{l_n}\sum_{n_z=-l_n}^{l_n}
+\frac{\vec{x}-\vec{n}}{|\vec{x}-\vec{n}|}\left[\mathrm{erfc}\left(\alpha|\vec{x}-\vec{n}|\right) +
+\frac{2\alpha}{\sqrt{\pi}}|\vec{x}-\vec{n}|\cdot e^{-\alpha^2|\vec{x}-\vec{n}|^2}\right]\\
+         & & -\frac{1}{L^2}\sum_{h_x=-l_h}^{l_h}\sum_{h_z=-l_h}^{l_h}\sum_{h_z=-l_h}^{l_h} 2\frac{\vec{h}}{|\vec{h}|^2}
+\cdot e^{-\pi^2|\vec{h}|^2} \cdot \sin\left(2\pi\cdot \vec{h}\cdot\vec{x}\right)
+\end{eqnarray*}
+
+where $L$ is the size of the box, $\alpha$ is an arbitrary number and the vectors $\vec{n}$ and $\vec{h}$ are defined
+as $\vec{n} = (n_x,n_y,n_z)$ and $\vec{h} = (h_x,h_y,h_z)$. \gadget uses $\alpha=2$ and $l_n=l_h=4$. The higher these
+last two values and $N_e$ are, the better the approximation. The result does not depend on $\alpha$ but depending on
+the value, the convergence of the serires toward the exact solution can vary. \\
+These tables are computed at the start of the simulation or read from a file to speed-up initialization. \\
+
+Once the table has been computed, the values can be used to get the corrections $\vec{f}_c(\vec{r}_{ij})$.
+
+\begin{equation}
+ \vec{f}_c(\vec{r}_{ij}) = \vec{E}_{abc}
+\end{equation}
+
+where the indices $a$, $b$ and $c$ are rounded down integer values $(a,b,c) = \left\lfloor\frac{2N}{L}
+\vec{r}_{ij}\right\rfloor$ of the distance between particle $i$ and $j$.
 
 \section{Fast Multipole Method}
 
