@@ -330,7 +330,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
-    float ihg, ihg2, h_corr;
+    float ihg, ihg2, ihg4, h_corr;
     float normDiv_v, normCurl_v;
     float dt_step = r->e->dt_step;
     TIMER_TIC
@@ -365,15 +365,16 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Is this part within the timestep? */
             if ( cp->dt <= dt_step ) {
 
-  	            /* Some smoothing length multiples*/
+  	            /* Some smoothing length multiples. */
 	            ihg = kernel_igamma / p->h;
                 ihg2 = ihg * ihg;
+                ihg4 = ihg2 * ihg2;
 
                 /* Adjust the computed weighted number of neighbours. */
                 p->wcount += kernel_wroot;
 
                 /* Compute the smoothing length update (Newton step). */
-                h_corr = ( const_nwneigh - p->wcount ) / p->wcount_dh;
+                h_corr = ( const_nwneigh - p->wcount ) / p->density.wcount_dh;
                 
                 /* Truncate to the range [ -p->h/2 , p->h ]. */
                 h_corr = fminf( h_corr , p->h );
@@ -387,52 +388,44 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 if ( p->wcount > const_nwneigh + const_delta_nwneigh ||
                      p->wcount < const_nwneigh - const_delta_nwneigh ) {
                     // printf( "runner_doghost: particle %lli (h=%e,h_dt=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , p->h_dt , c->depth , p->wcount ); fflush(stdout);
-                    // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->wcount_dh;
+                    // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->density.wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
                     p->wcount = 0.0;
-                    p->wcount_dh = 0.0;
+                    p->density.wcount_dh = 0.0;
                     p->rho = 0.0;
                     p->rho_dh = 0.0;
-		            p->div_v = 0.0;
+		            p->density.div_v = 0.0;
 		            for ( k=0 ; k < 3 ; k++)
-		                p->curl_v[k] = 0.0;
+		                p->density.curl_v[k] = 0.0;
                     continue;
                     }
 
-		        /* Final operation on the density */
+		        /* Final operation on the density. */
                 p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
-                p->rho_dh *= ihg2 * ihg2;
+                p->rho_dh *= ihg4;
                     
+                /* Pre-compute some stuff for the balsara switch. */
+		        normDiv_v = fabs( p->density.div_v / p->rho * ihg4 );
+		        normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / p->rho * ihg4;
+                
                 /* Compute this particle's sound speed. */
-                p->c = sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
+                p->force.c = sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
 
                 /* Compute the P/Omega/rho2. */
-                p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
-
-		        /* Final operation on the velocity divergence */
-		        p->div_v /= p->rho;
-		        p->div_v *= ihg2 * ihg2;
-
-		        /* Final operation on the velocity curl */
-		        for ( k=0 ; k < 3 ; k++ ){
-		            p->curl_v[k] /= -p->rho;
-		            p->curl_v[k] *= ihg2 * ihg2;
-                    }
+                p->force.POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
 
 		        /* Balsara switch */
-		        normDiv_v = fabs( p->div_v );
-		        normCurl_v = sqrtf( p->curl_v[0] * p->curl_v[0] + p->curl_v[1] * p->curl_v[1] + p->curl_v[2] * p->curl_v[2] );
-		        p->balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * p->c / p->h );
+		        p->force.balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * p->force.c / p->h );
 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
                     p->a[k] = 0.0f;
 
                 /* Reset the time derivatives. */
-                p->u_dt = 0.0f;
-                p->h_dt = 0.0f;
-                p->v_sig = 0.0f;
+                p->force.u_dt = 0.0f;
+                p->force.h_dt = 0.0f;
+                p->force.v_sig = 0.0f;
 
                 }
 

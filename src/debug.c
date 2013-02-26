@@ -37,12 +37,12 @@ void printParticle ( struct part *parts , long long int id ) {
 	 parts[i].v[0], parts[i].v[1], parts[i].v[2],
 	 parts[i].a[0], parts[i].a[1], parts[i].a[2],
 	 parts[i].h,
-	 parts[i].h_dt,
+	 parts[i].force.h_dt,
 	 parts[i].wcount,
 	 parts[i].mass,
 	 parts[i].rho,
 	 parts[i].u,
-     parts[i].u_dt,
+     parts[i].force.u_dt,
 	 parts[i].dt
 	 );
 }

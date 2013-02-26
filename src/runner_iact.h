@@ -69,12 +69,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pi->rho += pj->mass * wi;
         pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
-	    pi->div_v += pj->mass * dvdr * wi_dx;
+	    pi->density.div_v += pj->mass * dvdr * wi_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
-	        pi->curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+	        pi->density.curl_v[k] += pj->mass * curlvr[k] * wi_dx;
             
         }
 
@@ -88,12 +88,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pj->rho += pi->mass * wj;
         pj->rho_dh -= pi->mass * ( 3.0*wj + xj*wj_dx );
         pj->wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pj->wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pj->density.wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pj->icount += 1;
         
-	    pj->div_v = pi->mass * dvdr * wj_dx;
+	    pj->density.div_v = pi->mass * dvdr * wj_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
-	        pj->curl_v[k] += pi->mass * curlvr[k] * wj_dx;
+	        pj->density.curl_v[k] += pi->mass * curlvr[k] * wj_dx;
             
         }
         
@@ -193,17 +193,17 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
         pi[k]->rho += rhoi.f[k];
         pi[k]->rho_dh -= rhoi_dh.f[k];
         pi[k]->wcount += wcounti.f[k];
-        pi[k]->wcount_dh -= wcounti_dh.f[k];
-	    pi[k]->div_v += div_vi.f[k];
+        pi[k]->density.wcount_dh -= wcounti_dh.f[k];
+	    pi[k]->density.div_v += div_vi.f[k];
 	    for( j = 0 ; j < 3 ; j++ )
-   	        pi[k]->curl_v[j] += curl_vi[j].f[k];
+   	        pi[k]->density.curl_v[j] += curl_vi[j].f[k];
         pj[k]->rho += rhoj.f[k];
         pj[k]->rho_dh -= rhoj_dh.f[k];
         pj[k]->wcount += wcountj.f[k];
-        pj[k]->wcount_dh -= wcountj_dh.f[k];
-	    pj[k]->div_v += div_vj.f[k];
+        pj[k]->density.wcount_dh -= wcountj_dh.f[k];
+	    pj[k]->density.div_v += div_vj.f[k];
 	    for( j = 0 ; j < 3 ; j++ )
-   	        pj[k]->curl_v[j] += curl_vj[j].f[k];
+   	        pj[k]->density.curl_v[j] += curl_vj[j].f[k];
         }
         
 #else
@@ -252,12 +252,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         pi->rho += pj->mass * wi;
         pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
         pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
-	pi->div_v += pj->mass * dvdr * wi_dx;
+	pi->density.div_v += pj->mass * dvdr * wi_dx;
 	for ( k = 0 ; k < 3 ; k++ )
-	    pi->curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+	    pi->density.curl_v[k] += pj->mass * curlvr[k] * wi_dx;
         }
     }
     
@@ -330,10 +330,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
         pi[k]->rho += rhoi.f[k];
         pi[k]->rho_dh -= rhoi_dh.f[k];
         pi[k]->wcount += wcounti.f[k];
-        pi[k]->wcount_dh -= wcounti_dh.f[k];
-	    pi[k]->div_v += div_vi.f[k];
+        pi[k]->density.wcount_dh -= wcounti_dh.f[k];
+	    pi[k]->density.div_v += div_vi.f[k];
 	    for( j = 0 ; j < 3 ; j++ )
-   	        pi[k]->curl_v[j] += curl_vi[j].f[k];
+   	        pi[k]->density.curl_v[j] += curl_vi[j].f[k];
         }
         
 #else
@@ -383,16 +383,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     omega_ij = fminf(dvdr, 0.f);
     
     /* Compute signal velocity */
-    v_sig = pi->c + pj->c - 3.*omega_ij;
+    v_sig = pi->force.c + pj->force.c - 3.*omega_ij;
 
     /* Compute viscosity tensor */
     Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
 
     /* Apply balsara switch */
-    Pi_ij *= (pi->balsara + pj->balsara);
+    Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
     /* Get the common factor out. */
-    w = ri * ( ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
+    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
 
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
@@ -402,16 +402,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
         }
                 
     /* Get the time derivative for u. */
-    pi->u_dt += pi->POrho2 * pj->mass * dvdr * wi_dr + 0.125f * pj->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
-    pj->u_dt += pj->POrho2 * pi->mass * dvdr * wj_dr + 0.125f * pi->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
+    pi->force.u_dt += pi->force.POrho2 * pj->mass * dvdr * wi_dr + 0.125f * pj->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
+    pj->force.u_dt += pj->force.POrho2 * pi->mass * dvdr * wj_dr + 0.125f * pi->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
     
     /* Get the time derivative for h. */
-    pi->h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
-    pj->h_dt -= pi->mass / pi->rho * dvdr * wj_dr;
+    pi->force.h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
+    pj->force.h_dt -= pi->mass / pi->rho * dvdr * wj_dr;
     
     /* Update the signal velocity. */
-    pi->v_sig = fmaxf( pi->v_sig , v_sig );
-    pj->v_sig = fmaxf( pj->v_sig , v_sig );
+    pi->force.v_sig = fmaxf( pi->force.v_sig , v_sig );
+    pj->force.v_sig = fmaxf( pj->force.v_sig , v_sig );
     
     #ifdef HIST
     if ( hi > hj )
@@ -454,41 +454,41 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     #if VEC_SIZE==8
         mi.v = _mm256_set_ps( pi[7]->mass , pi[6]->mass , pi[5]->mass , pi[4]->mass , pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
         mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm256_set_ps( pi[7]->POrho2 , pi[6]->POrho2 , pi[5]->POrho2 , pi[4]->POrho2 , pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
-        pjPOrho2.v = _mm256_set_ps( pj[7]->POrho2 , pj[6]->POrho2 , pj[5]->POrho2 , pj[4]->POrho2 , pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
+        piPOrho2.v = _mm256_set_ps( pi[7]->force.POrho2 , pi[6]->force.POrho2 , pi[5]->force.POrho2 , pi[4]->force.POrho2 , pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
+        pjPOrho2.v = _mm256_set_ps( pj[7]->force.POrho2 , pj[6]->force.POrho2 , pj[5]->force.POrho2 , pj[4]->force.POrho2 , pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
         pirho.v = _mm256_set_ps( pi[7]->rho , pi[6]->rho , pi[5]->rho , pi[4]->rho , pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm256_set_ps( pj[7]->rho , pj[6]->rho , pj[5]->rho , pj[4]->rho , pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm256_set_ps( pi[7]->c , pi[6]->c , pi[5]->c , pi[4]->c , pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
-        cj.v = _mm256_set_ps( pj[7]->c , pj[6]->c , pj[5]->c , pj[4]->c , pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
-        vi_sig.v = _mm256_set_ps( pi[7]->v_sig , pi[6]->v_sig , pi[5]->v_sig , pi[4]->v_sig , pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
-        vj_sig.v = _mm256_set_ps( pj[7]->v_sig , pj[6]->v_sig , pj[5]->v_sig , pj[4]->v_sig , pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
+        ci.v = _mm256_set_ps( pi[7]->force.c , pi[6]->force.c , pi[5]->force.c , pi[4]->force.c , pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
+        cj.v = _mm256_set_ps( pj[7]->force.c , pj[6]->force.c , pj[5]->force.c , pj[4]->force.c , pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
+        vi_sig.v = _mm256_set_ps( pi[7]->force.v_sig , pi[6]->force.v_sig , pi[5]->force.v_sig , pi[4]->force.v_sig , pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
+        vj_sig.v = _mm256_set_ps( pj[7]->force.v_sig , pj[6]->force.v_sig , pj[5]->force.v_sig , pj[4]->force.v_sig , pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm256_set_ps( pi[7]->balsara , pi[6]->balsara , pi[5]->balsara , pi[4]->balsara , pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
-                    _mm256_set_ps( pj[7]->balsara , pj[6]->balsara , pj[5]->balsara , pj[4]->balsara , pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
+        balsara.v = _mm256_set_ps( pi[7]->force.balsara , pi[6]->force.balsara , pi[5]->force.balsara , pi[4]->force.balsara , pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
+                    _mm256_set_ps( pj[7]->force.balsara , pj[6]->force.balsara , pj[5]->force.balsara , pj[4]->force.balsara , pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
     #elif VEC_SIZE==4
         mi.v = _mm_set_ps( pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
         mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm_set_ps( pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
-        pjPOrho2.v = _mm_set_ps( pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
+        piPOrho2.v = _mm_set_ps( pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
+        pjPOrho2.v = _mm_set_ps( pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
         pirho.v = _mm_set_ps( pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm_set_ps( pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm_set_ps( pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
-        cj.v = _mm_set_ps( pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
-        vi_sig.v = _mm_set_ps( pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
-        vj_sig.v = _mm_set_ps( pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
+        ci.v = _mm_set_ps( pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
+        cj.v = _mm_set_ps( pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
+        vi_sig.v = _mm_set_ps( pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
+        vj_sig.v = _mm_set_ps( pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm_set_ps( pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
-                    _mm_set_ps( pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
+        balsara.v = _mm_set_ps( pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
+                    _mm_set_ps( pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
     #else
         #error
     #endif
@@ -557,12 +557,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
 
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
-        pi[k]->u_dt += piu_dt.f[k];
-        pj[k]->u_dt += pju_dt.f[k];
-        pi[k]->h_dt -= pih_dt.f[k];
-        pj[k]->h_dt -= pjh_dt.f[k];
-        pi[k]->v_sig = vi_sig.f[k];
-        pj[k]->v_sig = vj_sig.f[k];
+        pi[k]->force.u_dt += piu_dt.f[k];
+        pj[k]->force.u_dt += pju_dt.f[k];
+        pi[k]->force.h_dt -= pih_dt.f[k];
+        pj[k]->force.h_dt -= pjh_dt.f[k];
+        pi[k]->force.v_sig = vi_sig.f[k];
+        pj[k]->force.v_sig = vj_sig.f[k];
         for ( j = 0 ; j < 3 ; j++ ) {
             pi[k]->a[j] -= pia[j].f[k];
             pj[k]->a[j] += pja[j].f[k];
@@ -616,16 +616,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     omega_ij = fminf(dvdr, 0.f);
     
     /* Compute signal velocity */
-    v_sig = pi->c + pj->c - 3.*omega_ij;
+    v_sig = pi->force.c + pj->force.c - 3.*omega_ij;
 
     /* Compute viscosity tensor */
     Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
 
     /* Apply balsara switch */
-    Pi_ij *= (pi->balsara + pj->balsara);
+    Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
     /* Get the common factor out. */
-    w = ri * ( ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
+    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
 
             
     /* Use the force, Luke! */
@@ -635,14 +635,14 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
         }
 
     /* Get the time derivative for u. */
-    pi->u_dt += pi->POrho2 * pj->mass * dvdr * wi_dr + 0.125f * pj->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
+    pi->force.u_dt += pi->force.POrho2 * pj->mass * dvdr * wi_dr + 0.125f * pj->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
     
     /* Get the time derivative for h. */
-    pi->h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
+    pi->force.h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
     
     /* Update the signal velocity. */
-    pi->v_sig = fmaxf( pi->v_sig , v_sig );
-    pj->v_sig = fmaxf( pj->v_sig , v_sig );
+    pi->force.v_sig = fmaxf( pi->force.v_sig , v_sig );
+    pj->force.v_sig = fmaxf( pj->force.v_sig , v_sig );
     
     }
     
@@ -677,40 +677,40 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     /* Load stuff. */
     #if VEC_SIZE==8
         mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm256_set_ps( pi[7]->POrho2 , pi[6]->POrho2 , pi[5]->POrho2 , pi[4]->POrho2 , pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
-        pjPOrho2.v = _mm256_set_ps( pj[7]->POrho2 , pj[6]->POrho2 , pj[5]->POrho2 , pj[4]->POrho2 , pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
+        piPOrho2.v = _mm256_set_ps( pi[7]->force.POrho2 , pi[6]->force.POrho2 , pi[5]->force.POrho2 , pi[4]->force.POrho2 , pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
+        pjPOrho2.v = _mm256_set_ps( pj[7]->force.POrho2 , pj[6]->force.POrho2 , pj[5]->force.POrho2 , pj[4]->force.POrho2 , pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
         pirho.v = _mm256_set_ps( pi[7]->rho , pi[6]->rho , pi[5]->rho , pi[4]->rho , pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm256_set_ps( pj[7]->rho , pj[6]->rho , pj[5]->rho , pj[4]->rho , pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm256_set_ps( pi[7]->c , pi[6]->c , pi[5]->c , pi[4]->c , pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
-        cj.v = _mm256_set_ps( pj[7]->c , pj[6]->c , pj[5]->c , pj[4]->c , pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
-        vi_sig.v = _mm256_set_ps( pi[7]->v_sig , pi[6]->v_sig , pi[5]->v_sig , pi[4]->v_sig , pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
-        vj_sig.v = _mm256_set_ps( pj[7]->v_sig , pj[6]->v_sig , pj[5]->v_sig , pj[4]->v_sig , pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
+        ci.v = _mm256_set_ps( pi[7]->force.c , pi[6]->force.c , pi[5]->force.c , pi[4]->force.c , pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
+        cj.v = _mm256_set_ps( pj[7]->force.c , pj[6]->force.c , pj[5]->force.c , pj[4]->force.c , pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
+        vi_sig.v = _mm256_set_ps( pi[7]->force.v_sig , pi[6]->force.v_sig , pi[5]->force.v_sig , pi[4]->force.v_sig , pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
+        vj_sig.v = _mm256_set_ps( pj[7]->force.v_sig , pj[6]->force.v_sig , pj[5]->force.v_sig , pj[4]->force.v_sig , pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm256_set_ps( pi[7]->balsara , pi[6]->balsara , pi[5]->balsara , pi[4]->balsara , pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
-                    _mm256_set_ps( pj[7]->balsara , pj[6]->balsara , pj[5]->balsara , pj[4]->balsara , pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
+        balsara.v = _mm256_set_ps( pi[7]->force.balsara , pi[6]->force.balsara , pi[5]->force.balsara , pi[4]->force.balsara , pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
+                    _mm256_set_ps( pj[7]->force.balsara , pj[6]->force.balsara , pj[5]->force.balsara , pj[4]->force.balsara , pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
     #elif VEC_SIZE==4
         mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm_set_ps( pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
-        pjPOrho2.v = _mm_set_ps( pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
+        piPOrho2.v = _mm_set_ps( pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
+        pjPOrho2.v = _mm_set_ps( pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
         pirho.v = _mm_set_ps( pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm_set_ps( pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm_set_ps( pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
-        cj.v = _mm_set_ps( pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
-        vi_sig.v = _mm_set_ps( pi[3]->v_sig , pi[2]->v_sig , pi[1]->v_sig , pi[0]->v_sig );
-        vj_sig.v = _mm_set_ps( pj[3]->v_sig , pj[2]->v_sig , pj[1]->v_sig , pj[0]->v_sig );
+        ci.v = _mm_set_ps( pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
+        cj.v = _mm_set_ps( pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
+        vi_sig.v = _mm_set_ps( pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
+        vj_sig.v = _mm_set_ps( pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
             vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
             vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm_set_ps( pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
-                    _mm_set_ps( pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
+        balsara.v = _mm_set_ps( pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
+                    _mm_set_ps( pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
     #else
         #error
     #endif
@@ -776,10 +776,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
 
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
-        pi[k]->u_dt += piu_dt.f[k];
-        pi[k]->h_dt -= pih_dt.f[k];
-        pi[k]->v_sig = vi_sig.f[k];
-        pj[k]->v_sig = vj_sig.f[k];
+        pi[k]->force.u_dt += piu_dt.f[k];
+        pi[k]->force.h_dt -= pih_dt.f[k];
+        pi[k]->force.v_sig = vi_sig.f[k];
+        pj[k]->force.v_sig = vj_sig.f[k];
         for ( j = 0 ; j < 3 ; j++ )
             pi[k]->a[j] -= pia[j].f[k];
         }

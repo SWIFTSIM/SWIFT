@@ -96,12 +96,12 @@ void engine_prepare ( struct engine *e ) {
     for ( k = 0 ; k < s->nr_parts ; k++ )
         if ( s->parts[k].dt <= dt_step ) {
             s->parts[k].wcount = 0.0f;
-            s->parts[k].wcount_dh = 0.0f;
+            s->parts[k].density.wcount_dh = 0.0f;
             s->parts[k].rho = 0.0f;
             s->parts[k].rho_dh = 0.0f;
-	    s->parts[k].div_v = 0.0f;
-	    for ( j = 0 ; j < 3 ; ++j)
-	      s->parts[k].curl_v[j] = 0.0f;
+	        s->parts[k].density.div_v = 0.0f;
+	        for ( j = 0 ; j < 3 ; ++j)
+	            s->parts[k].density.curl_v[j] = 0.0f;
             }
     // printf( "engine_prepare: re-setting particle data took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
@@ -212,7 +212,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         xp->v_old[0] = p->v[0] + hdt * p->a[0];
         xp->v_old[1] = p->v[1] + hdt * p->a[1];
         xp->v_old[2] = p->v[2] + hdt * p->a[2];
-        xp->u_old = p->u + hdt * p->u_dt;
+        xp->u_old = p->u + hdt * p->force.u_dt;
         
         /* Move the particles with the velocitie at the half-step. */
         p->x[0] += dt * xp->v_old[0];
@@ -223,13 +223,13 @@ void engine_step ( struct engine *e , int sort_queues ) {
         p->v[0] += dt * p->a[0];
         p->v[1] += dt * p->a[1];
         p->v[2] += dt * p->a[2];
-        p->u *= expf( p->u_dt / p->u * dt );
-        p->h *= expf( p->h_dt / p->h * dt );
+        p->u *= expf( p->force.u_dt / p->u * dt );
+        p->h *= expf( p->force.h_dt / p->h * dt );
         
         /* Integrate other values if this particle will not be updated. */
         if ( p->dt > dt_step ) {
-            p->rho *= expf( -3.0f * p->h_dt / p->h * dt );
-            p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+            p->rho *= expf( -3.0f * p->force.h_dt / p->h * dt );
+            p->force.POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
             }
         
         }
@@ -290,18 +290,18 @@ void engine_step ( struct engine *e , int sort_queues ) {
 
             /* Scale the derivatives if they're freshly computed. */
             if ( p->dt <= dt_step ) {
-                p->h_dt *= p->h * 0.333333333f;
+                p->force.h_dt *= p->h * 0.333333333f;
                 lcount += 1;
                 }
                 
             /* Update the particle's time step. */
-            p->dt = const_cfl * p->h / (  p->v_sig );
+            p->dt = const_cfl * p->h / (  p->force.v_sig );
 
             /* Update positions and energies at the half-step. */
             p->v[0] = xp->v_old[0] + hdt * p->a[0];
             p->v[1] = xp->v_old[1] + hdt * p->a[1];
             p->v[2] = xp->v_old[2] + hdt * p->a[2];
-            p->u = xp->u_old + hdt * p->u_dt;
+            p->u = xp->u_old + hdt * p->force.u_dt;
             
             /* Get the smallest/largest dt. */
             ldt_min = fminf( ldt_min , p->dt );

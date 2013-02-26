@@ -58,7 +58,7 @@ struct xpart {
 struct part {
 
     /* Particle velocity. */
-    float v[3] __attribute__((aligned (16)));
+    float v[3];
     
     /* Particle mass. */
     float mass;
@@ -66,43 +66,57 @@ struct part {
     /* Particle density. */
     float rho;
 
-    /* Particle velocity divergence. */
-    float div_v;
-
-    /* Particle velocity curl. */
-    float curl_v[3] __attribute__((aligned (16)));
-
-    /* Balsara switch */
-    float balsara;
-  
-    /* Particle pressure. */
-    // float P;
-    
-    /* Aggregate quantities. */
-    float POrho2;
-    
-    /* Change in particle energy over time. */
-    float u_dt;
-    
-    /* Change in smoothing length over time. */
-    float h_dt;
-    
-    /* Particle acceleration. */
-    float a[3] __attribute__((aligned (16)));
-    
-    /* Sound speed */
-    float c;
-
-    /* Signal velocity */
-    float v_sig;
-    
     /* Derivative of the density with respect to this particle's smoothing length. */
     float rho_dh;
     
+    /* Store density/force specific stuff. */
+    union {
+    
+        struct {
+        
+            /* Particle velocity divergence. */
+            float div_v;
+
+            /* Derivative of particle number density. */
+            float wcount_dh;
+            
+            /* Particle velocity curl. */
+            float curl_v[3];
+    
+            } density;
+            
+        struct {
+        
+            /* Balsara switch */
+            float balsara;
+  
+            /* Aggregate quantities. */
+            float POrho2;
+    
+            /* Change in particle energy over time. */
+            float u_dt;
+
+            /* Change in smoothing length over time. */
+            float h_dt;
+    
+            /* Signal velocity */
+            float v_sig;
+    
+            /* Sound speed */
+            float c;
+
+            } force;
+            
+        };
+
+    /* Particle pressure. */
+    // float P;
+    
+    /* Particle acceleration. */
+    float a[3];
+    
     /* Particle number density. */
-    // int icount;
     float wcount;
-    float wcount_dh;
     
     /* Particle internal energy. */
     float u;
