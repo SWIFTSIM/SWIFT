@@ -72,9 +72,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pi->wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
-	pi->div_v += pj->mass * dvdr * wi_dx;
-	for ( k = 0 ; k < 3 ; k++ )
-	    pi->curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+	    pi->div_v += pj->mass * dvdr * wi_dx;
+	    for ( k = 0 ; k < 3 ; k++ )
+	        pi->curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+            
         }
 
     if ( r2 < hj*hj && pj != NULL ) {
@@ -90,9 +91,10 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pj->wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pj->icount += 1;
         
-	pj->div_v = pi->mass * dvdr * wj_dx;
-	for ( k = 0 ; k < 3 ; k++ )
-	    pj->curl_v[k] += pi->mass * curlvr[k] * wj_dx;
+	    pj->div_v = pi->mass * dvdr * wj_dx;
+	    for ( k = 0 ; k < 3 ; k++ )
+	        pj->curl_v[k] += pi->mass * curlvr[k] * wj_dx;
+            
         }
         
     #ifdef HIST
@@ -192,17 +194,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
         pi[k]->rho_dh -= rhoi_dh.f[k];
         pi[k]->wcount += wcounti.f[k];
         pi[k]->wcount_dh -= wcounti_dh.f[k];
-	pi[k]->div_v += div_vi.f[k];
-	for( j = 0 ; j < 3 ; j++ )
-   	    pi[k]->curl_v[j] += curl_vi[j].f[k];
-
+	    pi[k]->div_v += div_vi.f[k];
+	    for( j = 0 ; j < 3 ; j++ )
+   	        pi[k]->curl_v[j] += curl_vi[j].f[k];
         pj[k]->rho += rhoj.f[k];
         pj[k]->rho_dh -= rhoj_dh.f[k];
         pj[k]->wcount += wcountj.f[k];
         pj[k]->wcount_dh -= wcountj_dh.f[k];
-	pj[k]->div_v += div_vj.f[k];
-	for( j = 0 ; j < 3 ; j++ )
-   	    pj[k]->curl_v[j] += curl_vj[j].f[k];
+	    pj[k]->div_v += div_vj.f[k];
+	    for( j = 0 ; j < 3 ; j++ )
+   	        pj[k]->curl_v[j] += curl_vj[j].f[k];
         }
         
 #else
@@ -330,10 +331,9 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
         pi[k]->rho_dh -= rhoi_dh.f[k];
         pi[k]->wcount += wcounti.f[k];
         pi[k]->wcount_dh -= wcounti_dh.f[k];
-	pi[k]->div_v += div_vi.f[k];
-	for( j = 0 ; j < 3 ; j++ )
-   	    pi[k]->curl_v[j] += curl_vi[j].f[k];
-
+	    pi[k]->div_v += div_vi.f[k];
+	    for( j = 0 ; j < 3 ; j++ )
+   	        pi[k]->curl_v[j] += curl_vi[j].f[k];
         }
         
 #else
@@ -388,8 +388,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     /* Compute viscosity tensor */
     Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
 
-    /* Apply Balsara switch */
-    Pi_ij *= (pi->Balsara + pj->Balsara);
+    /* Apply balsara switch */
+    Pi_ij *= (pi->balsara + pj->balsara);
 
     /* Get the common factor out. */
     w = ri * ( ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
@@ -446,7 +446,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     vector pia[3], pja[3];
     vector piu_dt, pju_dt;
     vector pih_dt, pjh_dt;
-    vector ci, cj, vi_sig, vj_sig;
+    vector ci, cj, v_sig, vi_sig, vj_sig;
+    vector omega_ij, Pi_ij, balsara;
     int j, k;
 
     /* Load stuff. */
@@ -467,6 +468,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+        balsara.v = _mm256_set_ps( pi[7]->balsara , pi[6]->balsara , pi[5]->balsara , pi[4]->balsara , pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
+                    _mm256_set_ps( pj[7]->balsara , pj[6]->balsara , pj[5]->balsara , pj[4]->balsara , pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
     #elif VEC_SIZE==4
         mi.v = _mm_set_ps( pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
         mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
@@ -484,12 +487,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+        balsara.v = _mm_set_ps( pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
+                    _mm_set_ps( pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
     #else
         #error
     #endif
 
-    #error Matthieu: Not yet implemented the visocisty switch in the vectorized version. Use scalar version instead !
-    
     /* Get the radius and inverse radius. */
     r2.v = vec_load( R2 );
     ri.v = vec_rsqrt( r2.v );
@@ -516,9 +519,27 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     kernel_deval_vec( &xj , &wj , &wj_dx );
     wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
         
-    /* Get the common factor out. */
-    w.v = ri.v * ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v );
+    /* Compute dv dot r. */
+    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
+    dvdr.v = dvdr.v * ri.v;
         
+    /* Get the time derivative for h. */
+    pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
+    pjh_dt.v = mi.v / pirho.v * dvdr.v * wj_dr.v;
+    
+    /* Compute the relative velocity. (This is 0 if the particles move away from each other and negative otherwise) */
+    omega_ij.v = vec_fmin( dvdr.v , vec_set1( 0.0f ) );
+    
+    /* Compute signal velocity */
+    v_sig.v = ci.v + cj.v - vec_set1( 3.0f )*omega_ij.v;
+
+    /* Compute viscosity tensor */
+    Pi_ij.v = -balsara.v * vec_set1( const_viscosity_alpha ) * v_sig.v * omega_ij.v / (pirho.v + pjrho.v);
+    Pi_ij.v *= ( wi_dr.v + wj_dr.v );
+
+    /* Get the common factor out. */
+    w.v = ri.v * ( ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v ) - vec_set1( 0.25f ) * Pi_ij.v );
+
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f.v = dx[k].v * w.v;
@@ -526,21 +547,13 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
         pja[k].v = mi.v * f.v;
         }
         
-    /* Compute dv dot r. */
-    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
-    dvdr.v = dvdr.v * ri.v;
-        
     /* Get the time derivative for u. */
-    piu_dt.v = mj.v * dvdr.v * wi_dr.v;
-    pju_dt.v = mi.v * dvdr.v * wj_dr.v;
-    
-    /* Get the time derivative for h. */
-    pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
-    pjh_dt.v = mi.v / pirho.v * dvdr.v * wj_dr.v;
+    piu_dt.v = mj.v * dvdr.v * ( piPOrho2.v * wi_dr.v + vec_set1( 0.125f ) * Pi_ij.v );
+    pju_dt.v = mi.v * dvdr.v * ( pjPOrho2.v * wj_dr.v + vec_set1( 0.125f ) * Pi_ij.v );
     
     /* compute the signal velocity (this is always symmetrical). */
-    vi_sig.v = vec_fmax( vi_sig.v , cj.v - vec_set1(3.0f)*dvdr.v );
-    vj_sig.v = vec_fmax( vj_sig.v , ci.v - vec_set1(3.0f)*dvdr.v );
+    vi_sig.v = vec_fmax( vi_sig.v , v_sig.v );
+    vj_sig.v = vec_fmax( vj_sig.v , v_sig.v );
 
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
@@ -608,8 +621,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     /* Compute viscosity tensor */
     Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
 
-    /* Apply Balsara switch */
-    Pi_ij *= (pi->Balsara + pj->Balsara);
+    /* Apply balsara switch */
+    Pi_ij *= (pi->balsara + pj->balsara);
 
     /* Get the common factor out. */
     w = ri * ( ( pi->POrho2 * wi_dr + pj->POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
@@ -629,6 +642,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     
     /* Update the signal velocity. */
     pi->v_sig = fmaxf( pi->v_sig , v_sig );
+    pj->v_sig = fmaxf( pj->v_sig , v_sig );
     
     }
     
@@ -648,7 +662,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     vector hjg_inv, hj2_inv;
     vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
     vector w;
-    vector piPOrho2, pjPOrho2, pjrho;
+    vector piPOrho2, pjPOrho2, pirho, pjrho;
     vector mj;
     vector f;
     vector dx[3];
@@ -656,7 +670,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     vector pia[3];
     vector piu_dt;
     vector pih_dt;
-    vector ci, cj, vi_sig, vj_sig;
+    vector ci, cj, v_sig, vi_sig, vj_sig;
+    vector omega_ij, Pi_ij, balsara;
     int j, k;
 
     /* Load stuff. */
@@ -664,6 +679,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
         mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
         piPOrho2.v = _mm256_set_ps( pi[7]->POrho2 , pi[6]->POrho2 , pi[5]->POrho2 , pi[4]->POrho2 , pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
         pjPOrho2.v = _mm256_set_ps( pj[7]->POrho2 , pj[6]->POrho2 , pj[5]->POrho2 , pj[4]->POrho2 , pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
+        pirho.v = _mm256_set_ps( pi[7]->rho , pi[6]->rho , pi[5]->rho , pi[4]->rho , pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm256_set_ps( pj[7]->rho , pj[6]->rho , pj[5]->rho , pj[4]->rho , pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
         ci.v = _mm256_set_ps( pi[7]->c , pi[6]->c , pi[5]->c , pi[4]->c , pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
         cj.v = _mm256_set_ps( pj[7]->c , pj[6]->c , pj[5]->c , pj[4]->c , pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
@@ -675,10 +691,13 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+        balsara.v = _mm256_set_ps( pi[7]->balsara , pi[6]->balsara , pi[5]->balsara , pi[4]->balsara , pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
+                    _mm256_set_ps( pj[7]->balsara , pj[6]->balsara , pj[5]->balsara , pj[4]->balsara , pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
     #elif VEC_SIZE==4
         mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
         piPOrho2.v = _mm_set_ps( pi[3]->POrho2 , pi[2]->POrho2 , pi[1]->POrho2 , pi[0]->POrho2 );
         pjPOrho2.v = _mm_set_ps( pj[3]->POrho2 , pj[2]->POrho2 , pj[1]->POrho2 , pj[0]->POrho2 );
+        pirho.v = _mm_set_ps( pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
         pjrho.v = _mm_set_ps( pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
         ci.v = _mm_set_ps( pi[3]->c , pi[2]->c , pi[1]->c , pi[0]->c );
         cj.v = _mm_set_ps( pj[3]->c , pj[2]->c , pj[1]->c , pj[0]->c );
@@ -690,12 +709,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+        balsara.v = _mm_set_ps( pi[3]->balsara , pi[2]->balsara , pi[1]->balsara , pi[0]->balsara ) +
+                    _mm_set_ps( pj[3]->balsara , pj[2]->balsara , pj[1]->balsara , pj[0]->balsara );
     #else
         #error
     #endif
 
-    #error Matthieu: Not yet implemented the visocisty switch in the vectorized version. Use scalar version instead !
-    
     /* Get the radius and inverse radius. */
     r2.v = vec_load( R2 );
     ri.v = vec_rsqrt( r2.v );
@@ -722,28 +741,38 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     kernel_deval_vec( &xj , &wj , &wj_dx );
     wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
         
-    /* Get the common factor out. */
-    w.v = ri.v * ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v );
+    /* Compute dv dot r. */
+    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
+    dvdr.v = dvdr.v * ri.v;
         
+    /* Get the time derivative for h. */
+    pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
+    
+    /* Compute the relative velocity. (This is 0 if the particles move away from each other and negative otherwise) */
+    omega_ij.v = vec_fmin( dvdr.v , vec_set1( 0.0f ) );
+    
+    /* Compute signal velocity */
+    v_sig.v = ci.v + cj.v - vec_set1( 3.0f )*omega_ij.v;
+
+    /* Compute viscosity tensor */
+    Pi_ij.v = -balsara.v * vec_set1( const_viscosity_alpha ) * v_sig.v * omega_ij.v / (pirho.v + pjrho.v);
+    Pi_ij.v *= ( wi_dr.v + wj_dr.v );
+
+    /* Get the common factor out. */
+    w.v = ri.v * ( ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v ) - vec_set1( 0.25f ) * Pi_ij.v );
+
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f.v = dx[k].v * w.v;
         pia[k].v = mj.v * f.v;
         }
         
-    /* Compute dv dot r. */
-    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
-    dvdr.v = dvdr.v * ri.v;
-        
     /* Get the time derivative for u. */
-    piu_dt.v = mj.v * dvdr.v * wi_dr.v;
-    
-    /* Get the time derivative for h. */
-    pih_dt.v = mj.v / pjrho.v * dvdr.v * wi_dr.v;
+    piu_dt.v = mj.v * dvdr.v * ( piPOrho2.v * wi_dr.v + vec_set1( 0.125f ) * Pi_ij.v );
     
     /* compute the signal velocity (this is always symmetrical). */
-    vi_sig.v = vec_fmax( vi_sig.v , cj.v - vec_set1(3.0f)*dvdr.v );
-    vj_sig.v = vec_fmax( vj_sig.v , ci.v - vec_set1(3.0f)*dvdr.v );
+    vi_sig.v = vec_fmax( vi_sig.v , v_sig.v );
+    vj_sig.v = vec_fmax( vj_sig.v , v_sig.v );
 
     /* Store the forces back on the particles. */
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {

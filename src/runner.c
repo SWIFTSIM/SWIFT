@@ -365,8 +365,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Is this part within the timestep? */
             if ( cp->dt <= dt_step ) {
 
-  	        /* Some smoothing length multiples*/
-	        ihg = kernel_igamma / p->h;
+  	            /* Some smoothing length multiples*/
+	            ihg = kernel_igamma / p->h;
                 ihg2 = ihg * ihg;
 
                 /* Adjust the computed weighted number of neighbours. */
@@ -394,13 +394,13 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     p->wcount_dh = 0.0;
                     p->rho = 0.0;
                     p->rho_dh = 0.0;
-		    p->div_v = 0.0;
-		    for ( k=0 ; k < 3 ; k++)
-		      p->curl_v[k] = 0.0;
+		            p->div_v = 0.0;
+		            for ( k=0 ; k < 3 ; k++)
+		                p->curl_v[k] = 0.0;
                     continue;
                     }
 
-		/* Final operation on the density */
+		        /* Final operation on the density */
                 p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
                 p->rho_dh *= ihg2 * ihg2;
                     
@@ -410,20 +410,20 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Compute the P/Omega/rho2. */
                 p->POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
 
-		/* Final operation on the velocity divergence */
-		p->div_v /= p->rho;
-		p->div_v *= ihg2 * ihg2;
+		        /* Final operation on the velocity divergence */
+		        p->div_v /= p->rho;
+		        p->div_v *= ihg2 * ihg2;
 
-		/* Final operation on the velocity curl */
-		for ( k=0 ; k < 3 ; k++ ){
-		    p->curl_v[k] /= -p->rho;
-		    p->curl_v[k] *= ihg2 * ihg2;
-		    }
+		        /* Final operation on the velocity curl */
+		        for ( k=0 ; k < 3 ; k++ ){
+		            p->curl_v[k] /= -p->rho;
+		            p->curl_v[k] *= ihg2 * ihg2;
+                    }
 
-		/* Balsara switch */
-		normDiv_v = fabs( p->div_v );
-		normCurl_v = sqrtf( p->curl_v[0] * p->curl_v[0] + p->curl_v[1] * p->curl_v[1] + p->curl_v[2] * p->curl_v[2] );
-		p->Balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * p->c / p->h );
+		        /* Balsara switch */
+		        normDiv_v = fabs( p->div_v );
+		        normCurl_v = sqrtf( p->curl_v[0] * p->curl_v[0] + p->curl_v[1] * p->curl_v[1] + p->curl_v[2] * p->curl_v[2] );
+		        p->balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * p->c / p->h );
 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )

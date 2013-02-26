@@ -187,9 +187,6 @@ void engine_step ( struct engine *e , int sort_queues ) {
     double lang[3], ang[3] = { 0.0 , 0.0 , 0.0 };
     double lent, ent = 0.0;
     int threadID, nthreads, count = 0, lcount;
-    // #ifdef __SSE2__
-    //     VEC_MACRO(4,float) hdtv = _mm_set1_ps( hdt );
-    // #endif
 
     /* Get the maximum dt. */
     dt_step = 2.0f*dt;
@@ -212,14 +209,9 @@ void engine_step ( struct engine *e , int sort_queues ) {
         xp = p->xtras;
         
         /* Step and store the velocity and internal energy. */
-        // #ifdef __SSE__
-        //     _mm_store_ps( &v_bar[4*k] , _mm_load_ps( &p->v[0] ) + hdtv * _mm_load_ps( &p->a[0] ) );
-        // #else
-            xp->v_old[0] = p->v[0] + hdt * p->a[0];
-            xp->v_old[1] = p->v[1] + hdt * p->a[1];
-            xp->v_old[2] = p->v[2] + hdt * p->a[2];
-        // #endif
-        // xp->u_old = fmaxf( p->u + hdt * p->u_dt , FLT_EPSILON );
+        xp->v_old[0] = p->v[0] + hdt * p->a[0];
+        xp->v_old[1] = p->v[1] + hdt * p->a[1];
+        xp->v_old[2] = p->v[2] + hdt * p->a[2];
         xp->u_old = p->u + hdt * p->u_dt;
         
         /* Move the particles with the velocitie at the half-step. */
@@ -306,14 +298,9 @@ void engine_step ( struct engine *e , int sort_queues ) {
             p->dt = const_cfl * p->h / (  p->v_sig );
 
             /* Update positions and energies at the half-step. */
-            // #ifdef __SSE__
-            //     _mm_store_ps( &p->v[0] , _mm_load_ps( &v_bar[4*k] ) + hdtv * _mm_load_ps( &p->a[0] )  );
-            // #else
-                p->v[0] = xp->v_old[0] + hdt * p->a[0];
-                p->v[1] = xp->v_old[1] + hdt * p->a[1];
-                p->v[2] = xp->v_old[2] + hdt * p->a[2];
-            // #endif
-            // p->u = fmaxf( xp->u_old + hdt * p->u_dt , FLT_EPSILON );
+            p->v[0] = xp->v_old[0] + hdt * p->a[0];
+            p->v[1] = xp->v_old[1] + hdt * p->a[1];
+            p->v[2] = xp->v_old[2] + hdt * p->a[2];
             p->u = xp->u_old + hdt * p->u_dt;
             
             /* Get the smallest/largest dt. */
