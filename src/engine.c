@@ -72,7 +72,7 @@ void engine_prepare ( struct engine *e ) {
     /* Rebuild the space. */
     // tic = getticks();
     space_prepare( e->s );
-    // printf( "engine_prepare: space_prepare with %i changes took %.3f ms.\n" , changes , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    // printf( "engine_prepare: space_prepare took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     // tic = getticks();
     /* Init the queues (round-robin). */
@@ -92,7 +92,7 @@ void engine_prepare ( struct engine *e ) {
 
     /* Re-set the particle data. */
     // tic = getticks();
-#pragma omp parallel for schedule(static)  private(j)
+    #pragma omp parallel for schedule(static)  private(j)
     for ( k = 0 ; k < s->nr_parts ; k++ )
         if ( s->parts[k].dt <= dt_step ) {
             s->parts[k].wcount = 0.0f;
@@ -171,6 +171,127 @@ void engine_barrier( struct engine *e ) {
     
     
 /**
+ * @brief Mapping function to set dt_min and dt_max, do the first
+ * kick.
+ */
+
+void engine_map_kick_first ( struct cell *c , void *data ) {
+
+    int j, k;
+    struct engine *e = (struct engine *)data;
+    float dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
+    float dt_min, dt_max, h_max, dx_max;
+    struct part *restrict p;
+    struct xpart *restrict xp;
+    struct cpart *restrict cp;
+
+    /* No children? */
+    if ( !c->split ) {
+    
+        /* Init the min/max counters. */
+        dt_min = FLT_MAX;
+        dt_max = 0.0f;
+        h_max = 0.0f;
+        dx_max = 0.0f;
+    
+        /* Loop over parts. */
+        for ( k = 0 ; k < c->count ; k++ ) {
+            
+            /* Get a handle on the kth particle. */
+            p = &c->parts[k];
+            xp = p->xtras;
+            cp = &c->cparts[k];
+            
+            /* Store the min/max dt. */
+            dt_min = fminf( dt_min , p->dt );
+            dt_max = fmaxf( dt_max , p->dt );
+            
+            /* Step and store the velocity and internal energy. */
+            xp->v_old[0] = p->v[0] + hdt * p->a[0];
+            xp->v_old[1] = p->v[1] + hdt * p->a[1];
+            xp->v_old[2] = p->v[2] + hdt * p->a[2];
+            xp->u_old = p->u + hdt * p->force.u_dt;
+
+            /* Move the particles with the velocitie at the half-step. */
+            p->x[0] += dt * xp->v_old[0];
+            p->x[1] += dt * xp->v_old[1];
+            p->x[2] += dt * xp->v_old[2];
+            dx_max = fmaxf( dx_max , sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
+                                            (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
+                                            (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h );
+
+            /* Update positions and energies at the half-step. */
+            p->v[0] += dt * p->a[0];
+            p->v[1] += dt * p->a[1];
+            p->v[2] += dt * p->a[2];
+            p->u *= expf( p->force.u_dt / p->u * dt );
+            p->h *= expf( p->force.h_dt / p->h * dt );
+            h_max = fmaxf( h_max , p->h );
+
+            /* Integrate other values if this particle will not be updated. */
+            if ( p->dt > dt_step ) {
+                p->rho *= expf( -3.0f * p->force.h_dt / p->h * dt );
+                p->force.POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+                }
+        
+            /* Fill the cpart. */
+            cp->x[0] = p->x[0];
+            cp->x[1] = p->x[1];
+            cp->x[2] = p->x[2];
+            cp->h = p->h;
+            cp->dt = p->dt;
+            
+            /* Init fields for density calculation. */
+            if ( p->dt <= dt_step ) {
+                p->wcount = 0.0f;
+                p->density.wcount_dh = 0.0f;
+                p->rho = 0.0f;
+                p->rho_dh = 0.0f;
+	            p->density.div_v = 0.0f;
+	            for ( j = 0 ; j < 3 ; ++j)
+	                p->density.curl_v[j] = 0.0f;
+                }
+                
+            }
+            
+        }
+        
+    /* Otherwise, agregate data from children. */
+    else {
+    
+        /* Init with the first non-null child. */
+        for ( k = 0 ; c->progeny[k] == 0 ; k++ );
+        dt_min = c->progeny[k]->dt_min;
+        dt_max = c->progeny[k]->dt_max;
+        h_max = c->progeny[k]->h_max;
+        dx_max = c->progeny[k]->dx_max;
+        
+        /* Loop over the remaining progeny. */
+        for ( k += 1 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL ) {
+                dt_min = fminf( dt_min , c->progeny[k]->dt_min );
+                dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
+                h_max = fmaxf( h_max , c->progeny[k]->h_max );
+                dx_max = fmaxf( dx_max , c->progeny[k]->dx_max );
+                }
+    
+        }
+
+    /* Store the values. */
+    c->dt_min = dt_min;
+    c->dt_max = dt_max;
+    c->h_max = h_max;
+    c->dx_max = dx_max;
+    
+    /* Clean out the task pointers. */
+    c->sorts[0] = NULL;
+    c->nr_tasks = 0;
+    c->nr_density = 0;
+    
+    }
+
+
+/**
  * @brief Let the #engine loose to compute the forces.
  *
  * @param e The #engine.
@@ -201,38 +322,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
     
     /* First kick. */
     TIMER_TIC
-    #pragma omp parallel for schedule(static) private(p,xp)
-    for ( k = 0 ; k < nr_parts ; k++ ) {
-        
-        /* Get a handle on the part. */
-        p = &parts[k];
-        xp = p->xtras;
-        
-        /* Step and store the velocity and internal energy. */
-        xp->v_old[0] = p->v[0] + hdt * p->a[0];
-        xp->v_old[1] = p->v[1] + hdt * p->a[1];
-        xp->v_old[2] = p->v[2] + hdt * p->a[2];
-        xp->u_old = p->u + hdt * p->force.u_dt;
-        
-        /* Move the particles with the velocitie at the half-step. */
-        p->x[0] += dt * xp->v_old[0];
-        p->x[1] += dt * xp->v_old[1];
-        p->x[2] += dt * xp->v_old[2];
-        
-        /* Update positions and energies at the half-step. */
-        p->v[0] += dt * p->a[0];
-        p->v[1] += dt * p->a[1];
-        p->v[2] += dt * p->a[2];
-        p->u *= expf( p->force.u_dt / p->u * dt );
-        p->h *= expf( p->force.h_dt / p->h * dt );
-        
-        /* Integrate other values if this particle will not be updated. */
-        if ( p->dt > dt_step ) {
-            p->rho *= expf( -3.0f * p->force.h_dt / p->h * dt );
-            p->force.POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
-            }
-        
-        }
+    space_map_cells_post( e->s , 1 , &engine_map_kick_first , e );
     TIMER_TOC( timer_kick1 );
         
     // for(k=0; k<10; ++k)

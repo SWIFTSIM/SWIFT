@@ -85,8 +85,9 @@ void space_map_prepare ( struct cell *c , void *data ) {
 
     int k;
     float dt_min, dt_max, h_max, dx_max;
-    struct part *p;
-    struct xpart *xp;
+    struct part *restrict p;
+    struct xpart *restrict xp;
+    struct cpart *restrict cp;
 
     /* No children? */
     if ( !c->split ) {
@@ -94,23 +95,36 @@ void space_map_prepare ( struct cell *c , void *data ) {
         /* Init with first part. */
         p = &c->parts[0];
         xp = p->xtras;
+        cp = &c->cparts[0];
+        
         dt_min = p->dt;
         dt_max = p->dt;
         h_max = p->h;
         dx_max = sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
                         (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
                         (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h;
+        cp->x[0] = p->x[0];
+        cp->x[1] = p->x[1];
+        cp->x[2] = p->x[2];
+        cp->h = p->h;
+        cp->dt = p->dt;
     
         /* Loop over parts. */
         for ( k = 1 ; k < c->count ; k++ ) {
             p = &c->parts[k];
             xp = p->xtras;
+            cp = &c->cparts[0];
             dt_min = fminf( dt_min , p->dt );
             dt_max = fmaxf( dt_max , p->dt );
             h_max = fmaxf( h_max , p->h );
             dx_max = fmaxf( dx_max , sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
                                             (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
                                             (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h );
+            cp->x[0] = p->x[0];
+            cp->x[1] = p->x[1];
+            cp->x[2] = p->x[2];
+            cp->h = p->h;
+            cp->dt = p->dt;
             }
             
         }
@@ -166,9 +180,12 @@ void space_prepare ( struct space *s ) {
     struct task *t;
     float dt_step = s->dt_step, dx_max = 0.0f;
     int counts[ task_type_count + 1 ];
+    ticks tic;
     
     /* Traverse the cells and set their dt_min and dx_max. */
-    space_map_cells_post( s , 1 , &space_map_prepare , NULL );
+    // tic = getticks();
+    // space_map_cells_post( s , 1 , &space_map_prepare , NULL );
+    // printf( "space_prepare: space_map_prepare took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
     /* Get the maximum displacement in the whole system. */
     for ( k = 0 ; k < s->nr_cells ; k++ )
@@ -176,6 +193,7 @@ void space_prepare ( struct space *s ) {
     printf( "space_prepare: dx_max is %e.\n" , dx_max );
     
     /* Run through the tasks and mark as skip or not. */
+    tic = getticks();
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         t = &s->tasks[k];
         if ( t->type == task_type_sort ||
@@ -190,34 +208,30 @@ void space_prepare ( struct space *s ) {
                 break;
             }
         }
+    printf( "space_prepare: checking tasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Did this not go through? */
     if ( k < s->nr_tasks ) {
     
         /* Re-build the space. */
+        tic = getticks();
         space_rebuild( s , 0.0 );
+        printf( "space_prepare: space_rebuild took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
         /* Traverse the cells and set their dt_min and dx_max. */
+        tic = getticks();
         space_map_cells_post( s , 1 , &space_map_prepare , NULL );
+        printf( "space_prepare: space_map_prepare took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
-        }
-
-    /* Store the condensed particle data. */         
-    #pragma omp parallel for schedule(static)
-    for ( k = 0 ; k < s->nr_parts ; k++ ) {
-        s->cparts[k].x[0] = s->parts[k].x[0];
-        s->cparts[k].x[1] = s->parts[k].x[1];
-        s->cparts[k].x[2] = s->parts[k].x[2];
-        s->cparts[k].h = s->parts[k].h;
-        s->cparts[k].dt = s->parts[k].dt;
         }
 
     /* Now that we have the cell structre, re-build the tasks. */
-    // tic = getticks();
+    tic = getticks();
     space_maketasks( s , 1 );
-    // printf( "space_prepare: maketasks took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    printf( "space_prepare: maketasks took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Count the number of each task type. */
+    tic = getticks();
     for ( k = 0 ; k <= task_type_count ; k++ )
         counts[k] = 0;
     for ( k = 0 ; k < s->nr_tasks ; k++ )
@@ -229,6 +243,7 @@ void space_prepare ( struct space *s ) {
     for ( k = 1 ; k < task_type_count ; k++ )
         printf( " %s=%i" , taskID_names[k] , counts[k] );
     printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout);
+    printf( "space_prepare: task counting took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     }
     
@@ -762,6 +777,7 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
         }
         
     /* Call the recursive function on all higher-level cells. */
+    #pragma omp parallel for schedule(dynamic,1)
     for ( i = 0 ; i < s->nr_cells ; i++ )
         rec_map( &s->cells[i] );
 
@@ -798,6 +814,7 @@ void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cel
         }
         
     /* Call the recursive function on all higher-level cells. */
+    #pragma omp parallel for schedule(dynamic,1)
     for ( i = 0 ; i < s->nr_cells ; i++ )
         rec_map( &s->cells[i] );
 
@@ -825,6 +842,7 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
         }
         
     /* Call the recursive function on all higher-level cells. */
+    #pragma omp parallel for schedule(dynamic,1)
     for ( i = 0 ; i < s->nr_cells ; i++ )
         rec_map( &s->cells[i] );
 
