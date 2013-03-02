@@ -298,7 +298,7 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
         /* Grab the task lock. */
         // if ( blocking ) {
             if ( lock_lock( qlock ) != 0 )
-                error( "Locking the task_lock failed.\n" );
+                error( "Locking the qlock failed.\n" );
         //     }
         // else {
         //     if ( lock_trylock( qlock ) != 0 )
@@ -412,7 +412,7 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
     
         /* Release the task lock. */
         if ( lock_unlock( qlock ) != 0 )
-            error( "Unlocking the task_lock failed.\n" );
+            error( "Unlocking the qlock failed.\n" );
             
         /* Leave? */
         if ( tid >= 0 ) {

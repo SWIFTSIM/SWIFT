@@ -65,6 +65,7 @@ struct cell {
     
     /* Pointers for the sorted indices. */
     struct entry *sort;
+    int sorted;
     
     /* Number of pairs associated with this cell. */
     // int nr_pairs;
@@ -79,7 +80,7 @@ struct cell {
     struct cell *super;
     
     /* The tasks computing this cell's sorts. */
-    struct task *sorts[13];
+    struct task *sorts;
     int sortsize;
     
     /* The tasks computing this cell's density. */

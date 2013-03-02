@@ -65,7 +65,6 @@ void engine_prepare ( struct engine *e ) {
     int j, k, qid;
     struct space *s = e->s;
     struct queue *q;
-    float dt_step = e->dt_step;
     
     TIMER_TIC
 
@@ -90,25 +89,12 @@ void engine_prepare ( struct engine *e ) {
         }
     // printf( "engine_prepare: re-filling queues took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
-    /* Re-set the particle data. */
-    // tic = getticks();
-    #pragma omp parallel for schedule(static)  private(j)
-    for ( k = 0 ; k < s->nr_parts ; k++ )
-        if ( s->parts[k].dt <= dt_step ) {
-            s->parts[k].wcount = 0.0f;
-            s->parts[k].density.wcount_dh = 0.0f;
-            s->parts[k].rho = 0.0f;
-            s->parts[k].rho_dh = 0.0f;
-	        s->parts[k].density.div_v = 0.0f;
-	        for ( j = 0 ; j < 3 ; ++j)
-	            s->parts[k].density.curl_v[j] = 0.0f;
-            }
-    // printf( "engine_prepare: re-setting particle data took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
-    
     /* Run throught the tasks and get all the waits right. */
     // tic = getticks();
     #pragma omp parallel for schedule(static) private(j)
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+        if ( s->tasks[k].skip )
+            continue;
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
             __sync_add_and_fetch( &s->tasks[k].unlock_tasks[j]->wait , 1 );
         for ( j = 0 ; j < s->tasks[k].nr_unlock_cells ; j++ )
@@ -260,7 +246,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     else {
     
         /* Init with the first non-null child. */
-        for ( k = 0 ; c->progeny[k] == 0 ; k++ );
+        for ( k = 0 ; c->progeny[k] == NULL ; k++ );
         dt_min = c->progeny[k]->dt_min;
         dt_max = c->progeny[k]->dt_max;
         h_max = c->progeny[k]->h_max;
@@ -282,11 +268,12 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     c->dt_max = dt_max;
     c->h_max = h_max;
     c->dx_max = dx_max;
+    c->sorted = 0;
     
     /* Clean out the task pointers. */
-    c->sorts[0] = NULL;
-    c->nr_tasks = 0;
-    c->nr_density = 0;
+    // c->sorts[0] = NULL;
+    // c->nr_tasks = 0;
+    // c->nr_density = 0;
     
     }
 
@@ -474,7 +461,7 @@ void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_
     #if defined(HAVE_SETAFFINITY)
         cpu_set_t cpuset;
     #endif
-    int k, qid, nrq;
+    int k;
     
     /* Store the values. */
     e->s = s;
@@ -497,25 +484,6 @@ void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_
     if ( posix_memalign( (void *)(&e->queues) , 64 , nr_queues * sizeof(struct queue) ) != 0 )
         error( "Failed to allocate queues." );
     bzero( e->queues , nr_queues * sizeof(struct queue) );
-        
-    /* Init the queues. */
-    for ( k = 0 ; k < nr_queues ; k++ )
-        queue_init( &e->queues[k] , s->nr_tasks , s->tasks );
-        
-    /* How many queues to fill initially? */
-    for ( nrq = 0 , k = nr_queues ; k > 0 ; k = k / 2 )
-        nrq += 1;
-        
-    /* Fill the queues (round-robin). */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        if ( s->tasks[ s->tasks_ind[k] ].type == task_type_none )
-            continue;
-        // qid = 0;
-        // qid = k % nrq;
-        qid = k % nr_queues;
-        e->queues[qid].tid[ e->queues[qid].count ] = s->tasks_ind[k];
-        e->queues[qid].count += 1;
-        }
         
     /* Sort the queues topologically. */
     // for ( k = 0 ; k < nr_queues ; k++ )

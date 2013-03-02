@@ -41,8 +41,8 @@
     #define lock_init( l ) ( *l = 0 )
     #define lock_destroy( l ) 0
     INLINE static int lock_lock ( volatile int *l ) {
-        while ( __sync_val_compare_and_swap( l , 0 , 1 ) != 0 )
-            while( *l );
+        while ( __sync_val_compare_and_swap( l , 0 , 1 ) != 0 );
+            // while( *l );
         return 0;
         }
     #define lock_trylock( l ) ( ( *(l) ) ? 1 : __sync_val_compare_and_swap( l , 0 , 1 ) )

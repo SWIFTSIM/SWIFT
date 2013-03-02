@@ -655,6 +655,10 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     /* Get the sort ID. */
     sid = space_getsid( e->s , &ci , &cj , shift );
     
+    /* Have the cells been sorted? */
+    if ( !(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid) ) )
+        error( "Trying to interact unsorted cells." );
+    
     /* Get the cutoff shift. */
     for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )
         rshift += shift[k]*runner_shift[ 3*sid + k ];
@@ -901,6 +905,10 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         
     /* Get the shift ID. */
     sid = space_getsid( e->s , &ci , &cj , shift );
+    
+    /* Have the cells been sorted? */
+    if ( !(ci->sorted & (1 << sid)) || !(cj->sorted & (1 << sid) ) )
+        error( "Trying to interact unsorted cells." );
     
     /* Get the cutoff shift. */
     for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )

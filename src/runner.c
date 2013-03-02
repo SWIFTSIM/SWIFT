@@ -198,10 +198,10 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
         for ( k = 0 ; k < 8 ; k++ ) {
             if ( c->progeny[k] == NULL )
                 continue;
-            if ( c->progeny[k]->sorts[0] == NULL )
+            if ( c->progeny[k]->sorts == NULL )
                 missing = flags;
             else
-                missing = ( c->progeny[k]->sorts[0]->flags ^ flags ) & flags;
+                missing = ( c->progeny[k]->sorts->flags ^ flags ) & flags;
             if ( missing )
                 runner_dosort( r , c->progeny[k] , missing );
             }
@@ -262,6 +262,9 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
             c->sort[ j*(c->count + 1) + c->count ].d = FLT_MAX;
             c->sort[ j*(c->count + 1) + c->count ].i = 0;
             
+            /* Mark as sorted. */
+            c->sorted |= ( 1 << j );
+            
             } /* loop over sort arrays. */
     
         } /* progeny? */
@@ -287,6 +290,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
                 c->sort[ j*(count + 1) + c->count ].d = FLT_MAX;
                 c->sort[ j*(count + 1) + c->count ].i = 0;
                 runner_dosort_ascending( &c->sort[ j*(count + 1) ] , c->count );
+                c->sorted |= ( 1 << j );
                 }
             
         }
