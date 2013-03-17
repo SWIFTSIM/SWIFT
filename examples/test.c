@@ -976,13 +976,13 @@ int main ( int argc , char *argv[] ) {
         p = &s.parts[0];
         space_map_parts( &s , &map_h_min , &p );
         printf( "main: particle %lli/%i at [ %e %e %e ] has minimum h=%.3e (h_dt=%.3e).\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->h_dt );
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt );
 
         /* Get the particle with the highest h. */
         p = &s.parts[0];
         space_map_parts( &s , &map_h_max , &p );
         printf( "main: particle %lli/%i at [ %e %e %e ] has maximum h=%.3e (h_dt=%.3e).\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->h_dt );
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt );
     
         /* Output. */
         #ifdef TIMER
