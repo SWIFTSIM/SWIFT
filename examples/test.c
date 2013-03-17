@@ -886,7 +886,7 @@ int main ( int argc , char *argv[] ) {
 
     /* Dump the first few particles. */
     for(k=0; k<10; ++k)
-      printParticle(parts, k);
+      printParticle(parts, k, N);
 
     tic = getticks();
     write_output("output.hdf5", dim, parts, N, periodic);
@@ -969,8 +969,8 @@ int main ( int argc , char *argv[] ) {
         
         /* Dump the first few particles. */
         for(k=0; k<10; ++k)
-          printParticle(parts, k);
-        printParticle( parts , 113531 );
+          printParticle(parts, k, N );
+        printParticle( parts , 113531, N );
     
         /* Get the particle with the lowest h. */
         p = &s.parts[0];
@@ -1053,7 +1053,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Dump the first few particles. */
     for(k=0; k<10; ++k)
-      printParticle(parts, k);
+      printParticle(parts, k, N);
     
     /* Get all the cells of a certain depth. */
     // icount = 1;

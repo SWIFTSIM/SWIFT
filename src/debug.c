@@ -23,13 +23,24 @@
 
 #include "part.h"
 
-void printParticle ( struct part *parts , long long int id ) {
+
+/**
+ * @brief Looks for the particle with the given id and prints its information to the standard output.
+ * 
+ * @param parts The array of particles.
+ * @param id The id too look for.
+ * @param N The size of the array of particles.
+ *
+ * (Should be used for debugging only as it runs in O(N).)
+ */
+void printParticle ( struct part *parts , long long int id, int N ) {
 
     int i;
 
     /* Look for the particle. */
-    for ( i = 0 ; parts[i].id != id ; i++ );
+    for ( i = 0 ; i < N && parts[i].id != id; i++ );
 
+    if(i < N)
   printf("## Particle[%d]: id=%lld, x=[%.3e,%.3e,%.3e], v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e, rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, v_sig=%.3e, dt=%.3e\n",
 	 i,
 	 parts[i].id,
@@ -49,5 +60,7 @@ void printParticle ( struct part *parts , long long int id ) {
      parts[i].force.v_sig,
 	 parts[i].dt
 	 );
+    else
+      printf("## Particles[???] id=%lld not found\n", id);
 }
 

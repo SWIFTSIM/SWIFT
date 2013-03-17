@@ -20,4 +20,4 @@
 
 
 
-void printParticle(struct part *parts, long long int i);
+void printParticle(struct part *parts, long long int i, int N);
