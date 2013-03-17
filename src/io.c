@@ -331,8 +331,8 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
 
   /* Read arrays */
   readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, x, COMPULSORY);
-  readArray(h_grp, "Velocity", FLOAT, *N, 3, *parts, v, COMPULSORY);
-  readArray(h_grp, "Mass", FLOAT, *N, 1, *parts, mass, COMPULSORY);
+  readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, v, COMPULSORY);
+  readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, mass, COMPULSORY);
   readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
   readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
@@ -598,8 +598,8 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
 
   /* Write arrays */
   writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, x);
-  writeArray(h_grp, fileName, xmfFile, "Velocity", FLOAT, N, 3, parts, v);
-  writeArray(h_grp, fileName, xmfFile, "Mass", FLOAT, N, 1, parts, mass);
+  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, v);
+  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, mass);
   writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, h);
   writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, u);
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, id);

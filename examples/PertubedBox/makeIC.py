@@ -77,6 +77,13 @@ file = h5py.File(fileName, 'w')
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
+grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
+grp.attrs["Time"] = 0.0
+grp.attrs["NumFilesPerSnapshot"] = 1
+grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total"] = numPart
 
 #Runtime parameters
@@ -87,9 +94,9 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 grp = file.create_group("/PartType0")
 ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
 ds[()] = coords
-ds = grp.create_dataset('Velocity', (numPart, 3), 'f')
+ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v
-ds = grp.create_dataset('Mass', (numPart,1), 'f')
+ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
 ds[()] = h
