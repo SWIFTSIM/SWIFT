@@ -334,7 +334,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
-    float ihg, ihg2, ihg4, h_corr;
+    float h, hg, ihg, ihg2, ihg4, h_corr;
     float normDiv_v, normCurl_v;
     float dt_step = r->e->dt_step;
     TIMER_TIC
@@ -368,21 +368,27 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             
             /* Is this part within the timestep? */
             if ( cp->dt <= dt_step ) {
-
+            
   	            /* Some smoothing length multiples. */
-	            ihg = kernel_igamma / p->h;
+	            h = p->h;
+                hg = kernel_gamma * h;
+                ihg = 1.0f / hg;
                 ihg2 = ihg * ihg;
                 ihg4 = ihg2 * ihg2;
 
                 /* Adjust the computed weighted number of neighbours. */
                 p->wcount += kernel_wroot;
 
+		        /* Final operation on the density. */
+                p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
+                p->rho_dh *= ihg4;
+                    
                 /* Compute the smoothing length update (Newton step). */
                 h_corr = ( const_nwneigh - p->wcount ) / p->density.wcount_dh;
                 
                 /* Truncate to the range [ -p->h/2 , p->h ]. */
-                h_corr = fminf( h_corr , p->h );
-                h_corr = fmaxf( h_corr , -p->h/2 );
+                h_corr = fminf( h_corr , h );
+                h_corr = fmaxf( h_corr , -h/2 );
                 
                 /* Apply the correction to p->h. */
                 p->h += h_corr;
@@ -391,7 +397,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Did we get the right number density? */
                 if ( p->wcount > const_nwneigh + const_delta_nwneigh ||
                      p->wcount < const_nwneigh - const_delta_nwneigh ) {
-                    // printf( "runner_doghost: particle %lli (h=%e,h_dt=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , p->h_dt , c->depth , p->wcount ); fflush(stdout);
+                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , c->depth , p->wcount ); fflush(stdout);
                     // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->density.wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
@@ -405,22 +411,24 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     continue;
                     }
 
-		        /* Final operation on the density. */
-                p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
-                p->rho_dh *= ihg4;
-                    
+                if ( p->id == 432626 )
+                    printf( "runner_doghost: updating particle %lli.\n" , p->id );
+
                 /* Pre-compute some stuff for the balsara switch. */
 		        normDiv_v = fabs( p->density.div_v / p->rho * ihg4 );
 		        normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / p->rho * ihg4;
+                
+                /* As of here, particle force variables will be set. Do _NOT_
+                   try to read any particle density variables! */
                 
                 /* Compute this particle's sound speed. */
                 p->force.c = sqrtf( const_gamma * ( const_gamma - 1.0f ) * p->u );
 
                 /* Compute the P/Omega/rho2. */
-                p->force.POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
+                p->force.POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + hg * p->rho_dh / 3.0f );
 
 		        /* Balsara switch */
-		        p->force.balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * p->force.c / p->h );
+		        p->force.balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * p->force.c * ihg );
 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
@@ -652,8 +660,6 @@ void *runner_main ( void *data ) {
             for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
                 if ( __sync_fetch_and_sub( &t->unlock_tasks[k]->wait , 1 ) == 0 )
                     abort();
-            for ( k = 0 ; k < t->nr_unlock_cells ; k++ )
-                __sync_fetch_and_sub( &t->unlock_cells[k]->wait , 1 );
         
             } /* main loop. */
             

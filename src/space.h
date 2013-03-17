@@ -27,7 +27,7 @@
 #define space_splitsize_default         400
 #define space_subsize_default           1000
 #define space_dosub                     1
-#define space_stretch                   1.0
+#define space_stretch                   1.05
 #define space_maxtaskspercell           30
 
 

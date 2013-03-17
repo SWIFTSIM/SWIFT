@@ -52,17 +52,14 @@ struct task {
     char type, subtype, skip, tight;
     int flags, wait, rank;
     
-    float dt_min;
-    
     lock_type lock;
+    
+    struct cell *ci, *cj;
     
     int nr_unlock_tasks;
     struct task *unlock_tasks[ task_maxunlock ];
 
-    int nr_unlock_cells;
-    struct cell *ci, *cj, *unlock_cells[2];
-    
-    } __attribute__((aligned (64)));
+    };
 
 
 /* Function prototypes. */

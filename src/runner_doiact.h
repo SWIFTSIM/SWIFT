@@ -663,46 +663,6 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )
         rshift += shift[k]*runner_shift[ 3*sid + k ];
         
-    /* for ( k = 0 ; k < ci->count ; k++ )
-        if ( ci->parts[k].id == 5245989477229 )
-            break;
-    if ( k < ci->count ) {
-        printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts, h_max=%g/%g, and shift = [ %g %g %g ] (rshift=%g).\n" ,
-            ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
-            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout);
-        for ( pjd = 0 ; pjd < cj->count ; pjd++ ) {
-            pi = &ci->parts[k];
-            pj = &cj->parts[pjd];
-            r2 = sqrtf( (pi->x[0] - pj->x[0])*(pi->x[0] - pj->x[0]) + (pi->x[1] - pj->x[1])*(pi->x[1] - pj->x[1]) + (pi->x[2] - pj->x[2])*(pi->x[2] - pj->x[2]) );
-            printf( "runner_dopair1: inspecting particles %lli [%i,%i,%i] and %lli [%i,%i,%i], r=%e.\n" ,
-                pi->id , (int)(ci->loc[0]/ci->h[0]) , (int)(ci->loc[1]/ci->h[1]) , (int)(ci->loc[2]/ci->h[2]) ,
-                pj->id , (int)(cj->loc[0]/cj->h[0]) , (int)(cj->loc[1]/cj->h[1]) , (int)(cj->loc[2]/cj->h[2]) ,
-                r2 );
-            }
-        } */
-    /* for ( k = 0 ; k < cj->count ; k++ )
-        if ( cj->parts[k].id == 5245989477229 )
-            break;
-    if ( k < cj->count ) {
-        printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts, h_max=%g/%g, and shift = [ %g %g %g ] (rshift=%g).\n" ,
-            ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
-            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout);
-        for ( pjd = 0 ; pjd < ci->count ; pjd++ ) {
-            pj = &cj->parts[k];
-            pi = &ci->parts[pjd];
-            r2 = sqrtf( (pi->x[0] - pj->x[0])*(pi->x[0] - pj->x[0]) + (pi->x[1] - pj->x[1])*(pi->x[1] - pj->x[1]) + (pi->x[2] - pj->x[2])*(pi->x[2] - pj->x[2]) );
-            printf( "runner_dopair1: inspecting particles %lli [%i,%i,%i] and %lli [%i,%i,%i], r=%e.\n" ,
-                pi->id , (int)(ci->loc[0]/ci->h[0]) , (int)(ci->loc[1]/ci->h[1]) , (int)(ci->loc[2]/ci->h[2]) ,
-                pj->id , (int)(cj->loc[0]/cj->h[0]) , (int)(cj->loc[1]/cj->h[1]) , (int)(cj->loc[2]/cj->h[2]) ,
-                r2 );
-            }
-        } */
-    /* for ( hi = 0 , k = 0 ; k < ci->count ; k++ )
-        hi += ci->parts[k].r;
-    for ( hj = 0 , k = 0 ; k < cj->count ; k++ )
-        hj += cj->parts[k].r;
-    printf( "runner_dopair: avg. radii %g/%g for h=%g at depth=%i.\n" , hi/ci->count , hj/cj->count , ci->h[0] , ci->depth ); fflush(stdout); */
-    
     /* Pick-out the sorted lists. */
     sort_i = &ci->sort[ sid*(ci->count + 1) ];
     sort_j = &cj->sort[ sid*(cj->count + 1) ];
@@ -914,23 +874,6 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     for ( rshift = 0.0 , k = 0 ; k < 3 ; k++ )
         rshift += shift[k]*runner_shift[ 3*sid + k ];
         
-    /* for ( k = 0 ; k < ci->count ; k++ )
-        if ( ci->parts[k].id == 561590 )
-            break;
-    if ( k == ci->count )
-        for ( k = 0 ; k < cj->count ; k++ )
-            if ( cj->parts[k].id == 561590 )
-                break;
-    if ( k < cj->count )
-        printf( "runner_dopair: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts, h_max=%g/%g, and shift = [ %g %g %g ] (rshift=%g).\n" ,
-            ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
-            ci->count , cj->count , ci->h_max , cj->h_max , shift[0] , shift[1] , shift[2] , rshift ); fflush(stdout); */
-    /* for ( hi = 0 , k = 0 ; k < ci->count ; k++ )
-        hi += ci->parts[k].r;
-    for ( hj = 0 , k = 0 ; k < cj->count ; k++ )
-        hj += cj->parts[k].r;
-    printf( "runner_dopair: avg. radii %g/%g for h=%g at depth=%i.\n" , hi/ci->count , hj/cj->count , ci->h[0] , ci->depth ); fflush(stdout); */
-    
     /* Pick-out the sorted lists. */
     sort_i = &ci->sort[ sid*(ci->count + 1) ];
     sort_j = &cj->sort[ sid*(cj->count + 1) ];
@@ -970,9 +913,6 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                 countdt_j += 1;
                 }
         }
-    
-    /* if ( ci->split && cj->split && sid == 4 )
-        printf( "boing!\n" ); */
     
     /* Loop over the parts in ci. */
     for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max > dj_min ; pid-- ) {

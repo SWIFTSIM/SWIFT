@@ -59,7 +59,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     for ( k = 0 ; k < 3 ; k++ )
         curlvr[k] *= ri;
             
-    if ( r2 < hi*hi && pi != NULL ) {
+    if ( r2 < hi*hi ) {
         
         h_inv = 1.0 / hi;
         hg_inv = kernel_igamma * h_inv;
@@ -78,7 +78,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
             
         }
 
-    if ( r2 < hj*hj && pj != NULL ) {
+    if ( r2 < hj*hj ) {
         
         h_inv = 1.0 / hj;
         hg_inv = kernel_igamma * h_inv;
@@ -242,7 +242,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
     for ( k = 0 ; k < 3 ; k++ )
         curlvr[k] *= ri;    
 
-    if ( r2 < hi*hi && pi != NULL ) {
+    if ( r2 < hi*hi ) {
         
         h_inv = 1.0 / hi;
         hg_inv = kernel_igamma * h_inv;
@@ -255,9 +255,9 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
-	pi->density.div_v += pj->mass * dvdr * wi_dx;
-	for ( k = 0 ; k < 3 ; k++ )
-	    pi->density.curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+	    pi->density.div_v += pj->mass * dvdr * wi_dx;
+	    for ( k = 0 ; k < 3 ; k++ )
+	        pi->density.curl_v[k] += pj->mass * curlvr[k] * wi_dx;
         }
     }
     
@@ -380,7 +380,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     dvdr *= ri;
 
     /* Compute the relative velocity. (This is 0 if the particles move away from each other and negative otherwise) */
-    omega_ij = fminf(dvdr, 0.f);
+    omega_ij = fminf( dvdr , 0.f );
     
     /* Compute signal velocity */
     v_sig = pi->force.c + pj->force.c - 3.*omega_ij;
@@ -392,7 +392,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
     /* Get the common factor out. */
-    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
+    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
 
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
@@ -402,12 +402,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
         }
                 
     /* Get the time derivative for u. */
-    pi->force.u_dt += pi->force.POrho2 * pj->mass * dvdr * wi_dr + 0.125f * pj->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
-    pj->force.u_dt += pj->force.POrho2 * pi->mass * dvdr * wj_dr + 0.125f * pi->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
+    pi->force.u_dt += pj->mass * dvdr * ( pi->force.POrho2 * wi_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
+    pj->force.u_dt += pi->mass * dvdr * ( pj->force.POrho2 * wj_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
     
     /* Get the time derivative for h. */
-    pi->force.h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
-    pj->force.h_dt -= pi->mass / pi->rho * dvdr * wj_dr;
+    pi->force.h_dt -= pj->mass * dvdr / pj->rho * wi_dr;
+    pj->force.h_dt -= pi->mass * dvdr / pi->rho * wj_dr;
     
     /* Update the signal velocity. */
     pi->force.v_sig = fmaxf( pi->force.v_sig , v_sig );
@@ -538,7 +538,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     Pi_ij.v *= ( wi_dr.v + wj_dr.v );
 
     /* Get the common factor out. */
-    w.v = ri.v * ( ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v ) - vec_set1( 0.25f ) * Pi_ij.v );
+    w.v = ri.v * ( ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v ) + vec_set1( 0.25f ) * Pi_ij.v );
 
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
@@ -590,8 +590,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     float hi_inv, hi2_inv;
     float hj_inv, hj2_inv;
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
+    float v_sig, omega_ij, Pi_ij;
     float f;
-    float omega_ij, Pi_ij, v_sig;
     int k;
     
     /* Get the kernel for hi. */
@@ -607,13 +607,13 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     xj = r * hj_inv * kernel_igamma;
     kernel_deval( xj , &wj , &wj_dx );
     wj_dr = hj2_inv * hj2_inv * wj_dx;
-
+                
     /* Compute dv dot r. */
     dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
     dvdr *= ri;
 
     /* Compute the relative velocity. (This is 0 if the particles move away from each other and negative otherwise) */
-    omega_ij = fminf(dvdr, 0.f);
+    omega_ij = fminf( dvdr , 0.f );
     
     /* Compute signal velocity */
     v_sig = pi->force.c + pj->force.c - 3.*omega_ij;
@@ -625,24 +625,30 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
     /* Get the common factor out. */
-    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) - 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
+    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
 
-            
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f = dx[k] * w;
         pi->a[k] -= pj->mass * f;
         }
-
+                
     /* Get the time derivative for u. */
-    pi->force.u_dt += pi->force.POrho2 * pj->mass * dvdr * wi_dr + 0.125f * pj->mass * Pi_ij * dvdr * ( wi_dr + wj_dr );
+    pi->force.u_dt += pj->mass * dvdr * ( pi->force.POrho2 * wi_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
     
     /* Get the time derivative for h. */
-    pi->force.h_dt -= pj->mass / pj->rho * dvdr * wi_dr;
+    pi->force.h_dt -= pj->mass * dvdr / pj->rho * wi_dr;
     
     /* Update the signal velocity. */
     pi->force.v_sig = fmaxf( pi->force.v_sig , v_sig );
     pj->force.v_sig = fmaxf( pj->force.v_sig , v_sig );
+    
+    #ifdef HIST
+    if ( hi > hj )
+        runner_hist_hit( hi / hj );
+    else
+        runner_hist_hit( hj / hi );
+    #endif
     
     }
     
@@ -759,7 +765,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     Pi_ij.v *= ( wi_dr.v + wj_dr.v );
 
     /* Get the common factor out. */
-    w.v = ri.v * ( ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v ) - vec_set1( 0.25f ) * Pi_ij.v );
+    w.v = ri.v * ( ( piPOrho2.v * wi_dr.v + pjPOrho2.v * wj_dr.v ) + vec_set1( 0.25f ) * Pi_ij.v );
 
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {

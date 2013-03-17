@@ -97,8 +97,6 @@ void engine_prepare ( struct engine *e ) {
             continue;
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
             __sync_add_and_fetch( &s->tasks[k].unlock_tasks[j]->wait , 1 );
-        for ( j = 0 ; j < s->tasks[k].nr_unlock_cells ; j++ )
-            __sync_add_and_fetch( &s->tasks[k].unlock_cells[j]->wait , 1 );
         }
     // printf( "engine_prepare: preparing task dependencies took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
@@ -278,6 +276,59 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     }
 
 
+void engine_single2 ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
+
+    int i, k;
+    double r2, dx[3];
+    float fdx[3], ihg;
+    struct part p, p2;
+    
+    /* Find "our" part. */
+    for ( k = 0 ; k < N && parts[k].id != pid ; k++ );
+    if ( k == N )
+        error( "Part not found." );
+    p = parts[k];
+    
+    /* Clear accumulators. */
+    ihg = kernel_igamma / p.h;
+    p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
+    p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
+            
+    /* Loop over all particle pairs (force). */
+    for ( k = 0 ; k < N ; k++ ) {
+        if ( parts[k].id == p.id )
+            continue;
+        for ( i = 0 ; i < 3 ; i++ ) {
+            dx[i] = p.x[i] - parts[k].x[i];
+            if ( periodic ) {
+                if ( dx[i] < -dim[i]/2 )
+                    dx[i] += dim[i];
+                else if ( dx[i] > dim[i]/2 )
+                    dx[i] -= dim[i];
+                }
+            fdx[i] = dx[i];
+            }
+        r2 = fdx[0]*fdx[0] + fdx[1]*fdx[1] + fdx[2]*fdx[2];
+        if ( r2 < p.h*p.h || r2 < parts[k].h*parts[k].h ) {
+            p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
+            p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
+            p2 = parts[k];
+            runner_iact_nonsym_force( r2 , fdx , p.h , p2.h , &p , &p2 );
+            printf( "pairs_simple: interacting particles %lli and %lli (rho=%.3e,r=%e): a=[%.3e,%.3e,%.3e], u_dt=%.3e, h_dt=%.3e, v_sig=%.3e.\n" ,
+                pid , p2.id , p2.rho , sqrtf(r2) ,
+                p.a[0] , p.a[1] , p.a[2] ,
+                p.force.u_dt , p.force.h_dt , p.force.v_sig );
+            }
+        }
+        
+    /* Dump the result. */
+    ihg = kernel_igamma / p.h;
+    printf( "pairs_single: part %lli (h=%e) has wcount=%f, rho=%f.\n" , p.id , p.h , p.wcount + 32.0/3 , ihg * ihg * ihg * ( p.rho + p.mass*kernel_root ) );
+    fflush(stdout);
+    
+    }
+
+
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -307,6 +358,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
     e->s->dt_step = dt_step;
     printf( "engine_step: dt_step set to %.3e.\n" , dt_step ); fflush(stdout);
     
+    // printParticle( parts , 432626 );
+    
     /* First kick. */
     TIMER_TIC
     space_map_cells_post( e->s , 1 , &engine_map_kick_first , e );
@@ -314,7 +367,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
         
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
-    // printParticle( parts , 494849 );
+    // printParticle( parts , 432626 );
+    // printParticle( parts , 432628 );
  
     /* Prepare the space. */
     engine_prepare( e );
@@ -346,12 +400,14 @@ void engine_step ( struct engine *e , int sort_queues ) {
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
-    // printParticle( parts , 494849 );
+    // engine_single2( e->s->dim , 432626 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // printParticle( parts , 432626 );
+    // printParticle( parts , 432628 );
 
     /* Second kick. */
     TIMER_TIC_ND
     dt_min = FLT_MAX; dt_max = 0.0f;
-#pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lang,lent,lekin,lepot,threadID,nthreads)
+    #pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lang,lent,lekin,lepot,threadID,nthreads)
     {
         threadID = omp_get_thread_num();
         nthreads = omp_get_num_threads();
@@ -372,7 +428,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
                 }
                 
             /* Update the particle's time step. */
-            p->dt = const_cfl * p->h / (  p->force.v_sig );
+            p->dt = const_cfl * p->h / ( p->force.v_sig );
 
             /* Update positions and energies at the half-step. */
             p->v[0] = xp->v_old[0] + hdt * p->a[0];
@@ -393,13 +449,13 @@ void engine_step ( struct engine *e , int sort_queues ) {
             lmom[1] += p->mass * p->v[1];
             lmom[2] += p->mass * p->v[2];
 	    
-	    /* Collect angular momentum */
-	    lang[0] += p->mass * ( p->x[1]*p->v[2] - p->v[2]*p->x[1] );
-	    lang[1] += p->mass * ( p->x[2]*p->v[0] - p->v[0]*p->x[2] );
-	    lang[2] += p->mass * ( p->x[0]*p->v[1] - p->v[1]*p->x[0] );
+	        /* Collect angular momentum */
+	        lang[0] += p->mass * ( p->x[1]*p->v[2] - p->v[2]*p->x[1] );
+	        lang[1] += p->mass * ( p->x[2]*p->v[0] - p->v[0]*p->x[2] );
+	        lang[2] += p->mass * ( p->x[0]*p->v[1] - p->v[1]*p->x[0] );
 
-	    /* Collect entropic function */
-	    lent += p->u * pow( p->rho, 1.f-const_gamma );
+	        /* Collect entropic function */
+	        lent += p->u * pow( p->rho, 1.f-const_gamma );
 
             }
         #pragma omp critical
@@ -412,7 +468,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             ang[0] += lang[0];
             ang[1] += lang[1];
             ang[2] += lang[2];
-	    ent += (const_gamma -1.) * lent;
+	        ent += (const_gamma -1.) * lent;
             epot += lepot;
             ekin += lekin;
             count += lcount;
@@ -420,6 +476,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
     }
     TIMER_TOC( timer_kick2 );
     e->dt_min = dt_min;
+    // printParticle( parts , 432626 );
     printf( "engine_step: dt_min/dt_max is %e/%e.\n" , dt_min , dt_max ); fflush(stdout);
     printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
     printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);

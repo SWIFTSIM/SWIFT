@@ -134,7 +134,7 @@ int space_marktasks ( struct space *s ) {
             /* Too much particle movement? */
             if ( !t->skip && t->tight &&
                  ( t->ci->dx_max > t->ci->dmin || t->cj->dx_max > t->cj->dmin ) )
-                break;
+                return 1;
                 
             /* Set the sort flags. */
             if ( !t->skip ) {
@@ -153,10 +153,6 @@ int space_marktasks ( struct space *s ) {
             t->skip = 1;
             
         }
-        
-    /* Did this not go through? */
-    if ( k < s->nr_tasks )
-        return 1;
         
     /* Run through the tasks and mark as skip or not. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
@@ -295,7 +291,7 @@ void space_prepare ( struct space *s ) {
     /* Run through the tasks and mark as skip or not. */
     tic = getticks();
     rebuild = space_marktasks( s );
-    printf( "space_prepare: space_marktasks tasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+    printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Did this not go through? */
     if ( rebuild ) {
@@ -305,15 +301,11 @@ void space_prepare ( struct space *s ) {
         space_rebuild( s , 0.0 );
         printf( "space_prepare: space_rebuild took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
-        /* Traverse the cells and set their dt_min and dx_max. */
-        tic = getticks();
-        space_map_cells_post( s , 1 , &space_map_prepare , NULL );
-        printf( "space_prepare: space_map_prepare took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
-    
         /* Run through the tasks and mark as skip or not. */
         tic = getticks();
-        rebuild = space_marktasks( s );
-        printf( "space_prepare: space_marktasks tasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+        if ( space_marktasks( s ) )
+            error( "space_marktasks failed after space_rebuild." );
+        printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
         }
 
@@ -503,6 +495,7 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
         c->h_max = h_max;
         c->dt_min = dt_min;
         c->dt_max = dt_max;
+        c->dx_max = 0;
             
         /* Un-split? */
         if ( count < c->count*space_splitratio || c->count < space_splitsize ) {
@@ -529,6 +522,7 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
                     temp->h[0] = c->h[0]/2;
                     temp->h[1] = c->h[1]/2;
                     temp->h[2] = c->h[2]/2;
+                    temp->dmin = c->dmin/2;
                     if ( k & 4 )
                         temp->loc[0] += temp->h[0];
                     if ( k & 2 )
@@ -538,6 +532,7 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
                     temp->depth = c->depth + 1;
                     temp->split = 0;
                     temp->h_max = 0.0;
+                    temp->dx_max = 0.0;
                     temp->parent = c;
                     c->progeny[k] = temp;
                     }
@@ -589,7 +584,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     int i, j, k, cdim[3];
     struct cell *restrict c;
     struct part *restrict finger, *restrict p;
-    struct cpart *restrict cfinger;
+    struct cpart *restrict cp, *restrict cfinger;
     int *ind;
     ticks tic;
     
@@ -664,6 +659,20 @@ void space_rebuild ( struct space *s , double cell_max ) {
         } /* re-build upper-level cells? */
     // printf( "space_rebuild: rebuilding upper-level cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
+    /* Otherwise, just clean up the cells. */
+    else {
+    
+        /* Free the old cells, if they were allocated. */
+        for ( k = 0 ; k < s->nr_cells ; k++ ) {
+            space_rebuild_recycle( s , &s->cells[k] );
+            s->cells[k].sorts = NULL;
+            s->cells[k].nr_tasks = 0;
+            s->cells[k].nr_density = 0;
+            s->cells[k].dx_max = 0.0f;
+            }
+        s->maxdepth = 0;
+    
+        }
         
     /* Run through the particles and get their cell index. */
     // tic = getticks();
@@ -691,16 +700,6 @@ void space_rebuild ( struct space *s , double cell_max ) {
     /* We no longer need the indices as of here. */
     free( ind );    
 
-    /* Store the current positions. */         
-    // tic = getticks();
-    #pragma omp parallel for schedule(static)
-    for ( k = 0 ; k < s->nr_parts ; k++ ) {
-        s->parts[k].xtras->x_old[0] = s->parts[k].x[0];
-        s->parts[k].xtras->x_old[1] = s->parts[k].x[1];
-        s->parts[k].xtras->x_old[2] = s->parts[k].x[2];
-        }
-    // printf( "space_rebuild: storing old positions took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
-
     /* Hook the cells up to the parts. */
     // tic = getticks();
     finger = s->parts;
@@ -714,15 +713,31 @@ void space_rebuild ( struct space *s , double cell_max ) {
         }
     // printf( "space_rebuild: hooking up cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
-        
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
     // tic = getticks();
     #pragma omp parallel for schedule(dynamic,1) shared(s)
     for ( k = 0 ; k < s->nr_cells ; k++ )
-        space_rebuild_recurse( s , &s->cells[k] );
+        space_split( s , &s->cells[k] );
     // printf( "space_rebuild: space_rebuild_recurse took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
+    /* Store the current positions. */         
+    // tic = getticks();
+    #pragma omp parallel for schedule(static) private(p,cp)
+    for ( k = 0 ; k < s->nr_parts ; k++ ) {
+        p = &s->parts[k];
+        cp = &s->cparts[k];
+        p->xtras->x_old[0] = p->x[0];
+        p->xtras->x_old[1] = p->x[1];
+        p->xtras->x_old[2] = p->x[2];
+        cp->x[0] = p->x[0];
+        cp->x[1] = p->x[1];
+        cp->x[2] = p->x[2];
+        cp->h = p->h;
+        cp->dt = p->dt;
+        }
+    // printf( "space_rebuild: storing old positions took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+
     /* Now that we have the cell structre, re-build the tasks. */
     tic = getticks();
     space_maketasks( s , 1 );
@@ -988,7 +1003,6 @@ struct task *space_addtask ( struct space *s , int type , int subtype , int flag
     t->skip = 0;
     t->tight = tight;
     t->nr_unlock_tasks = 0;
-    t->nr_unlock_cells = 0;
     
     /* Init the lock. */
     lock_init( &t->lock );
@@ -1684,7 +1698,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
     /* Append a ghost task to each cell. */
     space_map_cells_pre( s , 1 , &space_map_mkghosts , s );
     
-    /* Run through the tasks and make iacts for each density task. */
+    /* Run through the tasks and make force tasks for each density task. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
     
         /* Get a pointer to the task. */
@@ -1792,6 +1806,7 @@ void space_split ( struct space *s , struct cell *c ) {
             temp->depth = c->depth + 1;
             temp->split = 0;
             temp->h_max = 0.0;
+            temp->dx_max = 0.0;
             temp->parent = c;
             c->progeny[k] = temp;
             }
@@ -1800,8 +1815,8 @@ void space_split ( struct space *s , struct cell *c ) {
         cell_split( c );
             
         /* Recurse? */
-        for ( k = 0 ; k < 8 ; k++ )
-            space_split( s , c->progeny[k] );
+        // for ( k = 0 ; k < 8 ; k++ )
+        //     space_split( s , c->progeny[k] );
             
         /* Remove any progeny with zero parts. */
         for ( k = 0 ; k < 8 ; k++ )
@@ -1809,6 +1824,8 @@ void space_split ( struct space *s , struct cell *c ) {
                 space_recycle( s , c->progeny[k] );
                 c->progeny[k] = NULL;
                 }
+            else
+                space_split( s , c->progeny[k] );
                 
         }
         

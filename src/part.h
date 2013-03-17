@@ -70,7 +70,7 @@ struct part {
     float rho_dh;
     
     /* Store density/force specific stuff. */
-    union {
+    // union {
     
         struct {
         
@@ -107,7 +107,7 @@ struct part {
 
             } force;
             
-        };
+    //     };
 
     /* Particle pressure. */
     // float P;
