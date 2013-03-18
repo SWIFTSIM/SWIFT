@@ -163,8 +163,9 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
 
     int j, k;
     struct engine *e = (struct engine *)data;
-    float dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
-    float dt_min, dt_max, h_max, dx_max;
+    float pdt, dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
+    float dt_min, dt_max, h_max, dx_max, a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3];
+    double x[3], x_old[3];
     struct part *restrict p;
     struct xpart *restrict xp;
     struct cpart *restrict cp;
@@ -186,47 +187,59 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             xp = p->xtras;
             cp = &c->cparts[k];
             
+            /* Load the data locally. */
+            a[0] = p->a[0]; a[1] = p->a[1]; a[2] = p->a[2];
+            v[0] = p->v[0]; v[1] = p->v[1]; v[2] = p->v[2];
+            x[0] = p->x[0]; x[1] = p->x[1]; x[2] = p->x[2];
+            x_old[0] = xp->x_old[0]; x_old[1] = xp->x_old[1]; x_old[2] = xp->x_old[2];
+            h = p->h;
+            u = p->u;
+            h_dt = p->force.h_dt;
+            u_dt = p->force.u_dt;
+            pdt = p->dt;
+            
             /* Store the min/max dt. */
-            dt_min = fminf( dt_min , p->dt );
-            dt_max = fmaxf( dt_max , p->dt );
+            dt_min = fminf( dt_min , pdt );
+            dt_max = fmaxf( dt_max , pdt );
             
             /* Step and store the velocity and internal energy. */
-            xp->v_old[0] = p->v[0] + hdt * p->a[0];
-            xp->v_old[1] = p->v[1] + hdt * p->a[1];
-            xp->v_old[2] = p->v[2] + hdt * p->a[2];
+            xp->v_old[0] = v_old[0] = v[0] + hdt * a[0];
+            xp->v_old[1] = v_old[1] = v[1] + hdt * a[1];
+            xp->v_old[2] = v_old[2] = v[2] + hdt * a[2];
             xp->u_old = p->u + hdt * p->force.u_dt;
 
             /* Move the particles with the velocitie at the half-step. */
-            p->x[0] += dt * xp->v_old[0];
-            p->x[1] += dt * xp->v_old[1];
-            p->x[2] += dt * xp->v_old[2];
-            dx_max = fmaxf( dx_max , sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
-                                            (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
-                                            (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h );
+            p->x[0] = x[0] += dt * v_old[0];
+            p->x[1] = x[1] += dt * v_old[1];
+            p->x[2] = x[2] += dt * v_old[2];
+            dx_max = fmaxf( dx_max , sqrtf( (x[0] - x_old[0])*(x[0] - x_old[0]) +
+                                            (x[1] - x_old[1])*(x[1] - x_old[1]) +
+                                            (x[2] - x_old[2])*(x[2] - x_old[2]) )*2 + h );
 
             /* Update positions and energies at the half-step. */
-            p->v[0] += dt * p->a[0];
-            p->v[1] += dt * p->a[1];
-            p->v[2] += dt * p->a[2];
-            p->u *= expf( p->force.u_dt / p->u * dt );
-            p->h *= expf( p->force.h_dt / p->h * dt );
-            h_max = fmaxf( h_max , p->h );
+            p->v[0] = v[0] += dt * a[0];
+            p->v[1] = v[1] += dt * a[1];
+            p->v[2] = v[2] += dt * a[2];
+            p->u = u += u_dt * dt;
+            p->h = h += h_dt * dt;
+            h_max = fmaxf( h_max , h );
 
-            /* Integrate other values if this particle will not be updated. */
-            if ( p->dt > dt_step ) {
-                p->rho *= expf( -3.0f * p->force.h_dt / p->h * dt );
-                p->force.POrho2 = p->u * ( const_gamma - 1.0f ) / ( p->rho + p->h * p->rho_dh / 3.0f );
-                }
         
             /* Fill the cpart. */
-            cp->x[0] = p->x[0];
-            cp->x[1] = p->x[1];
-            cp->x[2] = p->x[2];
-            cp->h = p->h;
-            cp->dt = p->dt;
+            cp->x[0] = x[0];
+            cp->x[1] = x[1];
+            cp->x[2] = x[2];
+            cp->h = h;
+            cp->dt = pdt;
             
+            /* Integrate other values if this particle will not be updated. */
             /* Init fields for density calculation. */
-            if ( p->dt <= dt_step ) {
+            if ( pdt > dt_step ) {
+                rho = p->rho *= expf( -3.0f * h_dt / h * dt );
+                // rho = p->rho += cbrt( h_dt ) * dt;
+                p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * p->rho_dh / 3.0f );
+                }
+            else {
                 p->wcount = 0.0f;
                 p->density.wcount_dh = 0.0f;
                 p->rho = 0.0f;
@@ -276,7 +289,11 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     }
 
 
-void engine_single2 ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
+/**
+ * @brief Compute the force on a single particle brute-force.
+ */
+
+void engine_single ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
 
     int i, k;
     double r2, dx[3];
@@ -342,9 +359,11 @@ void engine_step ( struct engine *e , int sort_queues ) {
     struct part *restrict parts = e->s->parts, *restrict p;
     struct xpart *restrict xp;
     float dt = e->dt, hdt = 0.5*dt, dt_step, dt_max, dt_min, ldt_min, ldt_max;
+    float pdt, h, m, v[3], u;
+    double x[3];
     double epot = 0.0, ekin = 0.0, lepot, lekin, lmom[3], mom[3] = { 0.0 , 0.0 , 0.0 };
     double lang[3], ang[3] = { 0.0 , 0.0 , 0.0 };
-    double lent, ent = 0.0;
+    // double lent, ent = 0.0;
     int threadID, nthreads, count = 0, lcount;
 
     /* Get the maximum dt. */
@@ -400,62 +419,68 @@ void engine_step ( struct engine *e , int sort_queues ) {
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
-    // engine_single2( e->s->dim , 432626 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single( e->s->dim , 432626 , e->s->parts , e->s->nr_parts , e->s->periodic );
     // printParticle( parts , 432626 );
     // printParticle( parts , 432628 );
 
     /* Second kick. */
     TIMER_TIC_ND
     dt_min = FLT_MAX; dt_max = 0.0f;
-    #pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lang,lent,lekin,lepot,threadID,nthreads)
+    #pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lang,lekin,lepot,threadID,nthreads,pdt,v,h,m,x,u)
     {
         threadID = omp_get_thread_num();
         nthreads = omp_get_num_threads();
         ldt_min = FLT_MAX; ldt_max = 0.0f;
         lmom[0] = 0.0; lmom[1] = 0.0; lmom[2] = 0.0;
         lang[0] = 0.0; lang[1] = 0.0; lang[2] = 0.0;
-        lekin = 0.0; lepot = 0.0; lent=0.0; lcount = 0;
+        lekin = 0.0; lepot = 0.0; /* lent=0.0; */ lcount = 0;
         for ( k = nr_parts * threadID / nthreads ; k < nr_parts * (threadID + 1) / nthreads ; k++ ) {
 
             /* Get a handle on the part. */
             p = &parts[k];
             xp = p->xtras;
+            
+            /* Get local copies of particle data. */
+            pdt = p->dt;
+            h = p->h;
+            m = p->mass;
+            x[0] = p->x[0]; x[1] = p->x[1]; x[2] = p->x[2];
 
             /* Scale the derivatives if they're freshly computed. */
-            if ( p->dt <= dt_step ) {
-                p->force.h_dt *= p->h * 0.333333333f;
+            if ( pdt <= dt_step ) {
+                p->force.h_dt *= h * 0.333333333f;
                 lcount += 1;
                 }
                 
             /* Update the particle's time step. */
-            p->dt = const_cfl * p->h / ( p->force.v_sig );
+            p->dt = pdt = const_cfl * h / ( p->force.v_sig );
 
             /* Update positions and energies at the half-step. */
-            p->v[0] = xp->v_old[0] + hdt * p->a[0];
-            p->v[1] = xp->v_old[1] + hdt * p->a[1];
-            p->v[2] = xp->v_old[2] + hdt * p->a[2];
-            p->u = xp->u_old + hdt * p->force.u_dt;
+            p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];
+            p->v[1] = v[1] = xp->v_old[1] + hdt * p->a[1];
+            p->v[2] = v[2] = xp->v_old[2] + hdt * p->a[2];
+            p->u = u = xp->u_old + hdt * p->force.u_dt;
             
             /* Get the smallest/largest dt. */
-            ldt_min = fminf( ldt_min , p->dt );
-            ldt_max = fmaxf( ldt_max , p->dt );
+            ldt_min = fminf( ldt_min , pdt );
+            ldt_max = fmaxf( ldt_max , pdt );
             
             /* Collect total energy. */
-            lekin += 0.5 * p->mass * ( p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2] );
-            lepot += p->mass * p->u;
+            lekin += 0.5 * m * ( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
+            lepot += m * u;
 
             /* Collect momentum */
-            lmom[0] += p->mass * p->v[0];
-            lmom[1] += p->mass * p->v[1];
-            lmom[2] += p->mass * p->v[2];
+            lmom[0] += m * p->v[0];
+            lmom[1] += m * p->v[1];
+            lmom[2] += m * p->v[2];
 	    
 	        /* Collect angular momentum */
-	        lang[0] += p->mass * ( p->x[1]*p->v[2] - p->v[2]*p->x[1] );
-	        lang[1] += p->mass * ( p->x[2]*p->v[0] - p->v[0]*p->x[2] );
-	        lang[2] += p->mass * ( p->x[0]*p->v[1] - p->v[1]*p->x[0] );
+	        lang[0] += m * ( x[1]*v[2] - v[2]*x[1] );
+	        lang[1] += m * ( x[2]*v[0] - v[0]*x[2] );
+	        lang[2] += m * ( x[0]*v[1] - v[1]*x[0] );
 
 	        /* Collect entropic function */
-	        lent += p->u * pow( p->rho, 1.f-const_gamma );
+	        // lent += u * pow( p->rho, 1.f-const_gamma );
 
             }
         #pragma omp critical
@@ -468,7 +493,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             ang[0] += lang[0];
             ang[1] += lang[1];
             ang[2] += lang[2];
-	        ent += (const_gamma -1.) * lent;
+	        // ent += (const_gamma -1.) * lent;
             epot += lepot;
             ekin += lekin;
             count += lcount;
@@ -481,7 +506,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
     printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
     printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);
     printf( "engine_step: total angular momentum is [ %e , %e , %e ].\n" , ang[0] , ang[1] , ang[2] ); fflush(stdout);
-    printf( "engine_step: total entropic function is %e .\n", ent ); fflush(stdout);
+    // printf( "engine_step: total entropic function is %e .\n", ent ); fflush(stdout);
     printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
         
     /* Increase the step counter. */

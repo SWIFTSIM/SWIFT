@@ -411,9 +411,6 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     continue;
                     }
 
-                if ( p->id == 432626 )
-                    printf( "runner_doghost: updating particle %lli.\n" , p->id );
-
                 /* Pre-compute some stuff for the balsara switch. */
 		        normDiv_v = fabs( p->density.div_v / p->rho * ihg4 );
 		        normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / p->rho * ihg4;
