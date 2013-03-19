@@ -37,6 +37,7 @@ enum {
     timer_getpair,
     timer_steal,
     timer_stalled,
+    timer_runners,
     timer_step,
     timer_count,
     };

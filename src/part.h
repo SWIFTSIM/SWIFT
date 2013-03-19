@@ -57,11 +57,23 @@ struct xpart {
 /* Data of a single particle. */
 struct part {
 
+    /* Particle acceleration. */
+    float a[3];
+    
     /* Particle velocity. */
     float v[3];
     
-    /* Particle mass. */
-    float mass;
+    /* Particle position. */
+    double x[3];
+    
+    /* Particle cutoff radius. */
+    float h;
+    
+    /* Particle time-step. */
+    float dt;
+    
+    /* Particle internal energy. */
+    float u;
     
     /* Particle density. */
     float rho;
@@ -82,6 +94,9 @@ struct part {
             
             /* Particle velocity curl. */
             float curl_v[3];
+    
+            /* Particle number density. */
+            float wcount;
     
             } density;
             
@@ -112,29 +127,14 @@ struct part {
     /* Particle pressure. */
     // float P;
     
-    /* Particle acceleration. */
-    float a[3];
-    
-    /* Particle number density. */
-    float wcount;
-    
-    /* Particle internal energy. */
-    float u;
+    /* Particle mass. */
+    float mass;
     
     /* Particle ID. */
     unsigned long long id;
     
     /* Pointer to extra particle data. */
     struct xpart *xtras;
-    
-    /* Particle position. */
-    double x[3];
-    
-    /* Particle cutoff radius. */
-    float h;
-    
-    /* Particle time-step. */
-    float dt;
     
     } __attribute__((aligned (32)));
     

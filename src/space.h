@@ -26,7 +26,7 @@
 #define space_splitratio                0.875
 #define space_splitsize_default         400
 #define space_subsize_default           1000
-#define space_dosub                     1
+#define space_dosub                     0
 #define space_stretch                   1.05
 #define space_maxtaskspercell           30
 
@@ -63,6 +63,9 @@ struct space {
     
     /* Current time step for particles. */
     float dt_step;
+    
+    /* Current maximum displacement for particles. */
+    float dx_max;
     
     /* Number of cells. */
     int nr_cells, tot_cells;

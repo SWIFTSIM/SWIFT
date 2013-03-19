@@ -51,7 +51,7 @@ struct cell {
     float slack;
     
     /* Maximum particle movement in this cell. */
-    float dx_max;
+    float dx_max, h2dx_max;
     
     /* The depth of this cell in the tree. */
     int depth, split;

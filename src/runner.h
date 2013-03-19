@@ -81,5 +81,5 @@ void runner_doghost ( struct runner *r , struct cell *c );
 void runner_dopair_density ( struct runner *r , struct cell *ci , struct cell *cj );
 void runner_doself_density ( struct runner *r , struct cell *c );
 void runner_dosub_density ( struct runner *r , struct cell *ci , struct cell *cj , int flags );
-void runner_dosort ( struct runner *r , struct cell *c , int flag );
+void runner_dosort ( struct runner *r , struct cell *c , int flag , int clock );
 void *runner_main ( void *data );

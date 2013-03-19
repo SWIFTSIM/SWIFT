@@ -165,9 +165,11 @@ void runner_dosort_ascending ( struct entry *sort , int N ) {
  * @param r The #runner.
  * @param c The #cell.
  * @param flags Cell flag.
+ * @param clock Flag indicating whether to record the timing or not, needed
+ *      for recursive calls.
  */
  
-void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
+void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock ) {
 
     struct entry *finger;
     struct entry *fingers[8];
@@ -176,7 +178,13 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
     int i, ind, off[8], inds[8], temp_i, missing;
     // float shift[3];
     float buff[8], px[3];
+    
     TIMER_TIC
+    
+    /* Clean-up the flags, i.e. filter out what's already been sorted. */
+    flags &= ~c->sorted;
+    if ( flags == 0 )
+        return;
     
     /* start by allocating the entry arrays. */
     if ( lock_lock( &c->lock ) != 0 )
@@ -203,7 +211,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
             else
                 missing = ( c->progeny[k]->sorts->flags ^ flags ) & flags;
             if ( missing )
-                runner_dosort( r , c->progeny[k] , missing );
+                runner_dosort( r , c->progeny[k] , missing , 0 );
             }
     
         /* Loop over the 13 different sort arrays. */
@@ -314,7 +322,8 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags ) {
             (flags & 0x1000) >> 12 , (flags & 0x800) >> 11 , (flags & 0x400) >> 10 , (flags & 0x200) >> 9 , (flags & 0x100) >> 8 , (flags & 0x80) >> 7 , (flags & 0x40) >> 6 , (flags & 0x20) >> 5 , (flags & 0x10) >> 4 , (flags & 0x8) >> 3 , (flags & 0x4) >> 2 , (flags & 0x2) >> 1 , (flags & 0x1) >> 0 , 
             ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000 ); fflush(stdout);
     #else
-        TIMER_TOC(timer_dosort);
+        if ( clock )
+            TIMER_TOC(timer_dosort);
     #endif
 
     }
@@ -377,31 +386,35 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 ihg4 = ihg2 * ihg2;
 
                 /* Adjust the computed weighted number of neighbours. */
-                p->wcount += kernel_wroot;
+                p->density.wcount += kernel_wroot;
 
 		        /* Final operation on the density. */
                 p->rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
                 p->rho_dh *= ihg4;
                     
                 /* Compute the smoothing length update (Newton step). */
-                h_corr = ( const_nwneigh - p->wcount ) / p->density.wcount_dh;
-                
-                /* Truncate to the range [ -p->h/2 , p->h ]. */
-                h_corr = fminf( h_corr , h );
-                h_corr = fmaxf( h_corr , -h/2 );
+                if ( p->density.wcount_dh == 0.0f )
+                    h_corr = p->h;
+                else {
+                    h_corr = ( const_nwneigh - p->density.wcount ) / p->density.wcount_dh;
+
+                    /* Truncate to the range [ -p->h/2 , p->h ]. */
+                    h_corr = fminf( h_corr , h );
+                    h_corr = fmaxf( h_corr , -h/2 );
+                    }
                 
                 /* Apply the correction to p->h. */
                 p->h += h_corr;
                 cp->h = p->h;
 
                 /* Did we get the right number density? */
-                if ( p->wcount > const_nwneigh + const_delta_nwneigh ||
-                     p->wcount < const_nwneigh - const_delta_nwneigh ) {
-                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , c->depth , p->wcount ); fflush(stdout);
-                    // p->h += ( p->wcount + kernel_root - const_nwneigh ) / p->density.wcount_dh;
+                if ( p->density.wcount > const_nwneigh + const_delta_nwneigh ||
+                     p->density.wcount < const_nwneigh - const_delta_nwneigh ) {
+                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , c->depth , p->density.wcount ); fflush(stdout);
+                    // p->h += ( p->density.wcount + kernel_root - const_nwneigh ) / p->density.wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
-                    p->wcount = 0.0;
+                    p->density.wcount = 0.0;
                     p->density.wcount_dh = 0.0;
                     p->rho = 0.0;
                     p->rho_dh = 0.0;
@@ -632,7 +645,7 @@ void *runner_main ( void *data ) {
                     cell_unlocktree( cj );
                     break;
                 case task_type_sort:
-                    runner_dosort( r , ci , t->flags );
+                    runner_dosort( r , ci , t->flags , 1 );
                     break;
                 case task_type_sub:
                     if ( t->subtype == task_subtype_density )

@@ -49,7 +49,7 @@ void printParticle ( struct part *parts , long long int id, int N ) {
             parts[i].a[0], parts[i].a[1], parts[i].a[2],
             parts[i].h,
             parts[i].force.h_dt,
-            parts[i].wcount,
+            parts[i].density.wcount,
             parts[i].mass,
             parts[i].rho, parts[i].rho_dh,
             parts[i].density.div_v,

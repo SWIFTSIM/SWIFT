@@ -328,7 +328,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     struct part *restrict pi, *restrict parts_j = cj->parts;
     struct cpart *restrict cpj, *restrict cparts_j = cj->cparts;
     double pix[3];
-    float dx[3], hi, hi2, r2, di;
+    float dx[3], hi, hi2, r2, di, dxj;
     struct entry *sort_j;
     #ifdef VECTORIZE
         int icount = 0;
@@ -363,6 +363,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     
     /* Pick-out the sorted lists. */
     sort_j = &cj->sort[ sid*(cj->count + 1) ];
+    dxj = cj->dx_max;
     
     /* Parts are on the left? */
     if ( !flipped ) {
@@ -376,7 +377,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                 pix[k] = pi->x[k] - shift[k];
             hi = pi->h;
             hi2 = hi * hi;
-            di = hi + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
+            di = hi + dxj + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
 
             /* Loop over the parts in cj. */
             for ( pjd = 0 ; pjd < count_j && sort_j[ pjd ].d < di ; pjd++ ) {
@@ -439,7 +440,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                 pix[k] = pi->x[k] - shift[k];
             hi = pi->h;
             hi2 = hi * hi;
-            di = -hi + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
+            di = -hi - dxj + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
 
             /* Loop over the parts in cj. */
             for ( pjd = count_j-1 ; pjd >= 0 && di < sort_j[ pjd ].d ; pjd-- ) {
@@ -633,7 +634,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     struct cpart *restrict cpi, *restrict cparts_i;
     struct cpart *restrict cpj, *restrict cparts_j;
     double pix[3], pjx[3], di, dj;
-    float dx[3], hi, hi2, hj, hj2, r2;
+    float dx[3], hi, hi2, hj, hj2, r2, dx_max;
     double hi_max, hj_max;
     double di_max, dj_min;
     int count_i, count_j;
@@ -674,13 +675,14 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     cparts_i = ci->cparts; cparts_j = cj->cparts;
     di_max = sort_i[count_i-1].d - rshift;
     dj_min = sort_j[0].d;
+    dx_max = ( ci->dx_max + cj->dx_max );
     
     /* if ( ci->split && cj->split && sid == 4 )
         printf( "boing!\n" ); */
         
 
     /* Loop over the parts in ci. */
-    for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max > dj_min ; pid-- ) {
+    for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min ; pid-- ) {
     
         /* Get a hold of the ith part in ci. */
         pi = &parts_i[ sort_i[ pid ].i ];
@@ -688,7 +690,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         if ( cpi->dt > dt_step )
             continue;
         hi = cpi->h;
-        di = sort_i[pid].d + hi - rshift;
+        di = sort_i[pid].d + hi + dx_max - rshift;
         if ( di < dj_min )
             continue;
             
@@ -747,7 +749,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     tic = getticks(); */
 
     /* Loop over the parts in cj. */
-    for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max < di_max ; pjd++ ) {
+    for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max ; pjd++ ) {
     
         /* Get a hold of the jth part in cj. */
         pj = &parts_j[ sort_j[ pjd ].i ];
@@ -755,7 +757,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         if ( cpj->dt > dt_step )
             continue;
         hj = cpj->h;
-        dj = sort_j[pjd].d - hj - rshift;
+        dj = sort_j[pjd].d - hj - dx_max - rshift;
         if ( dj > di_max )
             continue;
             
@@ -838,7 +840,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     struct cpart *restrict cpi, *restrict cparts_i;
     struct cpart *restrict cpj, *restrict cparts_j;
     double pix[3], pjx[3], di, dj;
-    float dx[3], hi, hi2, hj, hj2, r2;
+    float dx[3], hi, hi2, hj, hj2, r2, dx_max;
     double hi_max, hj_max;
     double di_max, dj_min;
     int count_i, count_j;
@@ -885,6 +887,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     cparts_i = ci->cparts; cparts_j = cj->cparts;
     di_max = sort_i[count_i-1].d - rshift;
     dj_min = sort_j[0].d;
+    dx_max = ( ci->dx_max + cj->dx_max );
     
     /* Collect the number of parts left and right below dt. */
     if ( ci->dt_max <= dt_step ) {
@@ -915,13 +918,13 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         }
     
     /* Loop over the parts in ci. */
-    for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max > dj_min ; pid-- ) {
+    for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min ; pid-- ) {
     
         /* Get a hold of the ith part in ci. */
         pi = &parts_i[ sort_i[ pid ].i ];
         cpi = &cparts_i[ sort_i[ pid ].i ];
         hi = cpi->h;
-        di = sort_i[pid].d + hi - rshift;
+        di = sort_i[pid].d + hi + dx_max - rshift;
         if ( di < dj_min )
             continue;
             
@@ -1065,13 +1068,13 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     tic = getticks(); */
 
     /* Loop over the parts in cj. */
-    for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max < di_max ; pjd++ ) {
+    for ( pjd = 0 ; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max ; pjd++ ) {
     
         /* Get a hold of the jth part in cj. */
         pj = &parts_j[ sort_j[ pjd ].i ];
         cpj = &cparts_j[ sort_j[ pjd ].i ];
         hj = cpj->h;
-        dj = sort_j[pjd].d - hj - rshift;
+        dj = sort_j[pjd].d - hj - dx_max - rshift;
         if ( dj > di_max )
             continue;
             

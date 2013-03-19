@@ -133,7 +133,7 @@ int space_marktasks ( struct space *s ) {
             
             /* Too much particle movement? */
             if ( !t->skip && t->tight &&
-                 ( t->ci->dx_max > t->ci->dmin || t->cj->dx_max > t->cj->dmin ) )
+                 ( t->ci->h2dx_max > t->ci->dmin || t->cj->h2dx_max > t->cj->dmin ) )
                 return 1;
                 
             /* Set the sort flags. */
@@ -172,94 +172,6 @@ int space_marktasks ( struct space *s ) {
         
     /* All is well... */
     return 0;
-    
-    }
-
-
-/**
- * @brief Mapping function to set dt_min and dt_max.
- */
-
-void space_map_prepare ( struct cell *c , void *data ) {
-
-    int k;
-    float dt_min, dt_max, h_max, dx_max;
-    struct part *restrict p;
-    struct xpart *restrict xp;
-    struct cpart *restrict cp;
-
-    /* No children? */
-    if ( !c->split ) {
-    
-        /* Init with first part. */
-        p = &c->parts[0];
-        xp = p->xtras;
-        cp = &c->cparts[0];
-        
-        dt_min = p->dt;
-        dt_max = p->dt;
-        h_max = p->h;
-        dx_max = sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
-                        (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
-                        (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h;
-        cp->x[0] = p->x[0];
-        cp->x[1] = p->x[1];
-        cp->x[2] = p->x[2];
-        cp->h = p->h;
-        cp->dt = p->dt;
-    
-        /* Loop over parts. */
-        for ( k = 1 ; k < c->count ; k++ ) {
-            p = &c->parts[k];
-            xp = p->xtras;
-            cp = &c->cparts[k];
-            dt_min = fminf( dt_min , p->dt );
-            dt_max = fmaxf( dt_max , p->dt );
-            h_max = fmaxf( h_max , p->h );
-            dx_max = fmaxf( dx_max , sqrtf( (p->x[0] - xp->x_old[0])*(p->x[0] - xp->x_old[0]) +
-                                            (p->x[1] - xp->x_old[1])*(p->x[1] - xp->x_old[1]) +
-                                            (p->x[2] - xp->x_old[2])*(p->x[2] - xp->x_old[2]) )*2 + p->h );
-            cp->x[0] = p->x[0];
-            cp->x[1] = p->x[1];
-            cp->x[2] = p->x[2];
-            cp->h = p->h;
-            cp->dt = p->dt;
-            }
-            
-        }
-        
-    /* Otherwise, agregate from children. */
-    else {
-    
-        /* Init with the first non-null child. */
-        for ( k = 0 ; c->progeny[k] == NULL ; k++ );
-        dt_min = c->progeny[k]->dt_min;
-        dt_max = c->progeny[k]->dt_max;
-        h_max = c->progeny[k]->h_max;
-        dx_max = c->progeny[k]->dx_max;
-        
-        /* Loop over the remaining progeny. */
-        for ( k += 1 ; k < 8 ; k++ )
-            if ( c->progeny[k] != NULL ) {
-                dt_min = fminf( dt_min , c->progeny[k]->dt_min );
-                dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
-                h_max = fmaxf( h_max , c->progeny[k]->h_max );
-                dx_max = fmaxf( dx_max , c->progeny[k]->dx_max );
-                }
-    
-        }
-
-    /* Store the values. */
-    c->dt_min = dt_min;
-    c->dt_max = dt_max;
-    c->h_max = h_max;
-    c->dx_max = dx_max;
-    c->sorted = 0;
-    
-    /* Clean out the task pointers. */
-    // c->sorts = NULL;
-    // c->nr_tasks = 0;
-    // c->nr_density = 0;
     
     }
 
@@ -669,6 +581,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
             s->cells[k].nr_tasks = 0;
             s->cells[k].nr_density = 0;
             s->cells[k].dx_max = 0.0f;
+            s->cells[k].h2dx_max = 0.0f;
+            s->cells[k].sorted = 0;
             }
         s->maxdepth = 0;
     

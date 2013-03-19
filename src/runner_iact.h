@@ -68,7 +68,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         
         pi->rho += pj->mass * wi;
         pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
-        pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pi->density.wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
@@ -87,7 +87,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         
         pj->rho += pi->mass * wj;
         pj->rho_dh -= pi->mass * ( 3.0*wj + xj*wj_dx );
-        pj->wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pj->density.wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pj->density.wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pj->icount += 1;
         
@@ -192,14 +192,14 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->rho += rhoi.f[k];
         pi[k]->rho_dh -= rhoi_dh.f[k];
-        pi[k]->wcount += wcounti.f[k];
+        pi[k]->density.wcount += wcounti.f[k];
         pi[k]->density.wcount_dh -= wcounti_dh.f[k];
 	    pi[k]->density.div_v += div_vi.f[k];
 	    for( j = 0 ; j < 3 ; j++ )
    	        pi[k]->density.curl_v[j] += curl_vi[j].f[k];
         pj[k]->rho += rhoj.f[k];
         pj[k]->rho_dh -= rhoj_dh.f[k];
-        pj[k]->wcount += wcountj.f[k];
+        pj[k]->density.wcount += wcountj.f[k];
         pj[k]->density.wcount_dh -= wcountj_dh.f[k];
 	    pj[k]->density.div_v += div_vj.f[k];
 	    for( j = 0 ; j < 3 ; j++ )
@@ -251,7 +251,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         
         pi->rho += pj->mass * wi;
         pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
-        pi->wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
+        pi->density.wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
@@ -329,7 +329,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     for ( k = 0 ; k < VEC_SIZE ; k++ ) {
         pi[k]->rho += rhoi.f[k];
         pi[k]->rho_dh -= rhoi_dh.f[k];
-        pi[k]->wcount += wcounti.f[k];
+        pi[k]->density.wcount += wcounti.f[k];
         pi[k]->density.wcount_dh -= wcounti_dh.f[k];
 	    pi[k]->density.div_v += div_vi.f[k];
 	    for( j = 0 ; j < 3 ; j++ )

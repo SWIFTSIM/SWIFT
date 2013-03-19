@@ -164,7 +164,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     int j, k;
     struct engine *e = (struct engine *)data;
     float pdt, dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
-    float dt_min, dt_max, h_max, dx_max, a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3];
+    float dt_min, dt_max, h_max, dx, h2dx_max, dx_max, a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3];
     double x[3], x_old[3];
     struct part *restrict p;
     struct xpart *restrict xp;
@@ -178,6 +178,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
         dt_max = 0.0f;
         h_max = 0.0f;
         dx_max = 0.0f;
+        h2dx_max = 0.0f;
     
         /* Loop over parts. */
         for ( k = 0 ; k < c->count ; k++ ) {
@@ -212,9 +213,11 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             p->x[0] = x[0] += dt * v_old[0];
             p->x[1] = x[1] += dt * v_old[1];
             p->x[2] = x[2] += dt * v_old[2];
-            dx_max = fmaxf( dx_max , sqrtf( (x[0] - x_old[0])*(x[0] - x_old[0]) +
-                                            (x[1] - x_old[1])*(x[1] - x_old[1]) +
-                                            (x[2] - x_old[2])*(x[2] - x_old[2]) )*2 + h );
+            dx = sqrtf( (x[0] - x_old[0])*(x[0] - x_old[0]) +
+                        (x[1] - x_old[1])*(x[1] - x_old[1]) +
+                        (x[2] - x_old[2])*(x[2] - x_old[2]) );
+            dx_max = fmaxf( dx_max , dx );
+            h2dx_max = fmaxf( h2dx_max , dx*2 + h );
 
             /* Update positions and energies at the half-step. */
             p->v[0] = v[0] += dt * a[0];
@@ -236,11 +239,10 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             /* Init fields for density calculation. */
             if ( pdt > dt_step ) {
                 rho = p->rho *= expf( -3.0f * h_dt / h * dt );
-                // rho = p->rho += cbrt( h_dt ) * dt;
                 p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * p->rho_dh / 3.0f );
                 }
             else {
-                p->wcount = 0.0f;
+                p->density.wcount = 0.0f;
                 p->density.wcount_dh = 0.0f;
                 p->rho = 0.0f;
                 p->rho_dh = 0.0f;
@@ -262,6 +264,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
         dt_max = c->progeny[k]->dt_max;
         h_max = c->progeny[k]->h_max;
         dx_max = c->progeny[k]->dx_max;
+        h2dx_max = c->progeny[k]->h2dx_max;
         
         /* Loop over the remaining progeny. */
         for ( k += 1 ; k < 8 ; k++ )
@@ -270,6 +273,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
                 dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
                 h_max = fmaxf( h_max , c->progeny[k]->h_max );
                 dx_max = fmaxf( dx_max , c->progeny[k]->dx_max );
+                h2dx_max = fmaxf( h2dx_max , c->progeny[k]->h2dx_max );
                 }
     
         }
@@ -279,7 +283,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     c->dt_max = dt_max;
     c->h_max = h_max;
     c->dx_max = dx_max;
-    c->sorted = 0;
+    c->h2dx_max = h2dx_max;
     
     /* Clean out the task pointers. */
     // c->sorts[0] = NULL;
@@ -340,7 +344,7 @@ void engine_single ( double *dim , long long int pid , struct part *__restrict__
         
     /* Dump the result. */
     ihg = kernel_igamma / p.h;
-    printf( "pairs_single: part %lli (h=%e) has wcount=%f, rho=%f.\n" , p.id , p.h , p.wcount + 32.0/3 , ihg * ihg * ihg * ( p.rho + p.mass*kernel_root ) );
+    printf( "pairs_single: part %lli (h=%e) has wcount=%f, rho=%f.\n" , p.id , p.h , p.density.wcount + 32.0/3 , ihg * ihg * ihg * ( p.rho + p.mass*kernel_root ) );
     fflush(stdout);
     
     }
@@ -365,6 +369,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
     double lang[3], ang[3] = { 0.0 , 0.0 , 0.0 };
     // double lent, ent = 0.0;
     int threadID, nthreads, count = 0, lcount;
+    
+    TIMER_TIC2
 
     /* Get the maximum dt. */
     dt_step = 2.0f*dt;
@@ -375,7 +381,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
     /* Set the maximum dt. */
     e->dt_step = dt_step;
     e->s->dt_step = dt_step;
-    printf( "engine_step: dt_step set to %.3e.\n" , dt_step ); fflush(stdout);
+    printf( "engine_step: dt_step set to %.3e (dt=%.3e).\n" , dt_step , e->dt ); fflush(stdout);
     
     // printParticle( parts , 432626 );
     
@@ -415,7 +421,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             error( "Error while waiting for barrier." );
             
     /* Stop the clock. */
-    TIMER_TOC(timer_step);
+    TIMER_TOC(timer_runners);
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
@@ -523,6 +529,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
         e->step /= 2;
         printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
         }
+        
+    TIMER_TOC2(timer_step);
     
     }
     
@@ -533,12 +541,13 @@ void engine_step ( struct engine *e , int sort_queues ) {
  *
  * @param e The #engine.
  * @param s The #space in which this #runner will run.
+ * @param dt The initial time step to use.
  * @param nr_threads The number of threads to spawn.
  * @param nr_queues The number of task queues to create.
  * @param policy The queueing policy to use.
  */
  
-void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_queues , int policy ) {
+void engine_init ( struct engine *e , struct space *s , float dt , int nr_threads , int nr_queues , int policy ) {
 
     #if defined(HAVE_SETAFFINITY)
         cpu_set_t cpuset;
@@ -550,7 +559,6 @@ void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_
     e->nr_threads = nr_threads;
     e->nr_queues = nr_queues;
     e->policy = policy;
-    e->dt_min = 0.0f;
     e->step = 0;
     
     /* First of all, init the barrier and lock it. */
@@ -561,6 +569,13 @@ void engine_init ( struct engine *e , struct space *s , int nr_threads , int nr_
     if ( pthread_mutex_lock( &e->barrier_mutex ) != 0 )
         error( "Failed to lock barrier mutex." );
     e->barrier_count = 0;
+    
+    /* Run through the parts and get the minimum time step. */
+    for ( k = 0 ; k < s->nr_parts ; k++ )
+        if ( s->parts[k].dt > 0.0f )
+            while ( s->parts[k].dt < dt )
+                dt *= 0.5;
+    e->dt_min = dt;
     
     /* Allocate the queues. */
     if ( posix_memalign( (void *)(&e->queues) , 64 , nr_queues * sizeof(struct queue) ) != 0 )
