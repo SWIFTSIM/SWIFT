@@ -72,6 +72,7 @@ for i in range(L):
             ids[index] = index
             if sqrt((x - boxSize/2.)**2 + (y - boxSize/2.)**2 + (z - boxSize/2.)**2) < 2.01 * boxSize/L:
                 u[index] = u[index] + E0 / (33. * mass)
+                print "Particle " , index , " set to detonate."
             coords[index,0] = x + random.random() * pert * boxSize/(2.*L)
             coords[index,1] = y + random.random() * pert * boxSize/(2.*L)
             coords[index,2] = z + random.random() * pert * boxSize/(2.*L)

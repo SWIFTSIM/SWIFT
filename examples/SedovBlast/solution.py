@@ -209,6 +209,6 @@ def test3():
     pl.show()
 
 if __name__=='__main__':
-    #test()
+    test()
     #test2()
-    test3()
+    # test3()

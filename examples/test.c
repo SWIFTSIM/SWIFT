@@ -172,7 +172,7 @@ void map_count ( struct part *p , struct cell *c , void *data ) {
     
     // printf( "%i %e %e\n" , p->id , p->count , p->count_dh );
 
-    *wcount += p->wcount;
+    *wcount += p->density.wcount;
 
     }
 
@@ -180,7 +180,7 @@ void map_wcount_min ( struct part *p , struct cell *c , void *data ) {
 
     struct part **p2 = (struct part **)data;
     
-    if ( p->wcount < (*p2)->wcount )
+    if ( p->density.wcount < (*p2)->density.wcount )
         *p2 = p;
 
     }
@@ -189,7 +189,7 @@ void map_wcount_max ( struct part *p , struct cell *c , void *data ) {
 
     struct part **p2 = (struct part **)data;
     
-    if ( p->wcount > (*p2)->wcount )
+    if ( p->density.wcount > (*p2)->density.wcount )
         *p2 = p;
 
     }
@@ -510,9 +510,9 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
     /* Aggregate the results. */
     for ( k = 0 ; k < N ; k++ ) {
         // count += parts[k].icount;
-        rho += parts[k].wcount;
-        rho_min = fmin( parts[k].wcount , rho_min );
-        rho_min = fmax( parts[k].wcount , rho_max );
+        rho += parts[k].density.wcount;
+        rho_min = fmin( parts[k].density.wcount , rho_min );
+        rho_min = fmax( parts[k].density.wcount , rho_max );
         }
             
     /* Dump the result. */
@@ -533,51 +533,50 @@ void pairs_single ( double *dim , long long int pid , struct part *__restrict__ 
     // int mj, mk;
     // double maxratio = 1.0;
     double r2, dx[3];
-    struct part *p;
-    double ih = 12.0/6.25;
+    float fdx[3];
+    struct part p;
+    // double ih = 12.0/6.25;
     
     /* Find "our" part. */
     for ( k = 0 ; k < N && parts[k].id != pid ; k++ );
     if ( k == N )
         error( "Part not found." );
-    p = &parts[k];
+    p = parts[k];
     printf( "pairs_single: part[%i].id == %lli.\n" , k , pid );
     
+    p.rho = 0.0;
+    p.density.wcount = 0.0;
+    // p.icount = 0;
+    p.rho_dh = 0.0;
+            
     /* Loop over all particle pairs. */
     for ( k = 0 ; k < N ; k++ ) {
-        if ( &parts[k] == p )
+        if ( parts[k].id == p.id )
             continue;
         for ( i = 0 ; i < 3 ; i++ ) {
-            dx[i] = p->x[i] - parts[k].x[i];
+            dx[i] = p.x[i] - parts[k].x[i];
             if ( periodic ) {
                 if ( dx[i] < -dim[i]/2 )
                     dx[i] += dim[i];
                 else if ( dx[i] > dim[i]/2 )
                     dx[i] -= dim[i];
                 }
+            fdx[i] = dx[i];
             }
-        r2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2];
-        if ( r2 < p->h*p->h ) {
-            runner_iact_density( r2 , NULL , p->h , parts[k].h , p , &parts[k] );
-            printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli [%i,%i,%i], r=%e.\n" ,
-                pid , (int)(p->x[0]*ih) , (int)(p->x[1]*ih) , (int)(p->x[2]*ih) ,
+        r2 = fdx[0]*fdx[0] + fdx[1]*fdx[1] + fdx[2]*fdx[2];
+        if ( r2 < p.h*p.h ) {
+            runner_iact_nonsym_density( r2 , fdx , p.h , parts[k].h , &p , &parts[k] );
+            /* printf( "pairs_simple: interacting particles %lli [%i,%i,%i] and %lli [%i,%i,%i], r=%e.\n" ,
+                pid , (int)(p.x[0]*ih) , (int)(p.x[1]*ih) , (int)(p.x[2]*ih) ,
                 parts[k].id , (int)(parts[k].x[0]*ih) , (int)(parts[k].x[1]*ih) , (int)(parts[k].x[2]*ih) ,
-                sqrtf(r2) );
-            parts[k].rho = 0.0;
-            parts[k].wcount = 0.0;
-            parts[k].rho_dh = 0.0;
+                sqrtf(r2) ); */
             }
         }
         
     /* Dump the result. */
-    printf( "pairs_single: wcount of part %lli (h=%e) is %.3f.\n" , p->id , p->h , p->wcount + 32.0/3 );
+    printf( "pairs_single: wcount of part %lli (h=%e) is %f.\n" , p.id , p.h , p.density.wcount + 32.0/3 );
     fflush(stdout);
     
-    p->rho = 0.0;
-    p->wcount = 0.0;
-    // p->icount = 0;
-    p->rho_dh = 0.0;
-            
     }
 
 
@@ -664,8 +663,8 @@ void density_dump ( int N ) {
     
     /* Init the interaction parameters. */
     for ( k = 0 ; k < 4 ; k++ ) {
-        Pi[k].mass = 1.0f; Pi[k].rho = 0.0f; Pi[k].wcount = 0.0f;
-        Pj[k].mass = 1.0f; Pj[k].rho = 0.0f; Pj[k].wcount = 0.0f;
+        Pi[k].mass = 1.0f; Pi[k].rho = 0.0f; Pi[k].density.wcount = 0.0f;
+        Pj[k].mass = 1.0f; Pj[k].rho = 0.0f; Pj[k].density.wcount = 0.0f;
         hi[k] = 1.0;
         hj[k] = 1.0;
         pi[k] = &Pi[k];
@@ -675,15 +674,15 @@ void density_dump ( int N ) {
     for ( k = 0 ; k <= N ; k++ ) {
         r2[3] = r2[2]; r2[2] = r2[1]; r2[1] = r2[0];
         r2[0] = ((float)k) / N;
-        Pi[0].wcount = 0; Pj[0].wcount = 0;
+        Pi[0].density.wcount = 0; Pj[0].density.wcount = 0;
         runner_iact_density( r2[0] , NULL , hi[0] , hj[0] , &Pi[0] , &Pj[0] );
-        printf( " %e %e %e" , r2[0] , Pi[0].wcount , Pj[0].wcount );
-        Pi[0].wcount = 0; Pj[0].wcount = 0;
-        Pi[1].wcount = 0; Pj[1].wcount = 0;
-        Pi[2].wcount = 0; Pj[2].wcount = 0;
-        Pi[3].wcount = 0; Pj[3].wcount = 0;
+        printf( " %e %e %e" , r2[0] , Pi[0].density.wcount , Pj[0].density.wcount );
+        Pi[0].density.wcount = 0; Pj[0].density.wcount = 0;
+        Pi[1].density.wcount = 0; Pj[1].density.wcount = 0;
+        Pi[2].density.wcount = 0; Pj[2].density.wcount = 0;
+        Pi[3].density.wcount = 0; Pj[3].density.wcount = 0;
         runner_iact_vec_density( r2 , NULL , hi , hj , pi , pj );
-        printf( " %e %e %e %e\n" , Pi[0].wcount , Pi[1].wcount , Pi[2].wcount , Pi[3].wcount );
+        printf( " %e %e %e %e\n" , Pi[0].density.wcount , Pi[1].density.wcount , Pi[2].density.wcount , Pi[3].density.wcount );
         }
 
     }
@@ -771,96 +770,6 @@ int main ( int argc , char *argv[] ) {
 	  break;
 
 	}
-
-    /* while ( ( c = getopt( argc , argv  , "a:b:p:d:N:c:h:v:m:s:t:q:r:i:m:z:" ) ) != -1 ) */
-    /*     switch ( c ) { */
-    /*         case 'N': */
-    /*             if ( sscanf( optarg , "%d" , &N ) != 1 ) */
-    /*                 error( "Error parsing number of particles." ); */
-    /*             if ( posix_memalign( (void *)&parts , 32 , N * sizeof(struct part) ) != 0 ) */
-    /*                 error( "Call to posix_memalign failed." ); */
-    /*             for ( k = 0 ; k < N ; k++ ) { */
-    /*                 parts[k].x[0] = ((double)rand()) / RAND_MAX * dim[0]; */
-    /*                 parts[k].x[1] = ((double)rand()) / RAND_MAX * dim[1]; */
-    /*                 parts[k].x[2] = ((double)rand()) / RAND_MAX * dim[2]; */
-    /*                 parts[k].id = k; */
-    /*                 parts[k].h = r_min + ((r_max - r_min)*rand())/RAND_MAX; */
-    /*                 parts[k].mass = 1.0f; */
-    /*                 parts[k].u = 1.0f; */
-    /*                 } */
-    /*             printf( "main: allocated memory for %i parts.\n" , N ); fflush(stdout); */
-    /*             break; */
-    /*         case 'a': */
-    /*             if ( sscanf( optarg , "%lf" , &scaling ) != 1 ) */
-    /*                 error( "Error parsing cutoff scaling." ); */
-    /*             printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout); */
-    /*             for ( k = 0 ; k < N ; k++ ) */
-    /*                 parts[k].h *= scaling; */
-    /*             break; */
-    /*         case 'b': */
-    /*             if ( sscanf( optarg , "%lf %lf %lf" , &dim[0] , &dim[1] , &dim[2] ) != 3 ) */
-    /*                 error( "Error parsing box dimensions." ); */
-    /*             break; */
-    /*         case 'c': */
-    /*             printf( "main: reading parts from %s...\n" , optarg ); fflush(stdout); */
-    /*             if ( parts == NULL && posix_memalign( (void *)&parts , 16 , N * sizeof(struct part) ) != 0 ) */
-    /*                 error( "Call to calloc failed." ); */
-    /*             read_coords( optarg , parts , N ); */
-    /*             break; */
-    /*         case 'd': */
-    /*             printf( "main: reading dt from %s...\n" , optarg ); fflush(stdout); */
-    /*             read_dt( optarg , parts , N ); */
-    /*             break; */
-    /*         case 'h': */
-    /*             printf( "main: reading cutoffs from %s...\n" , optarg ); fflush(stdout); */
-    /*             read_cutoffs( optarg , parts , N ); */
-    /*             break; */
-    /*         case 'i': */
-    /*             printf( "main: reading ids from %s...\n" , optarg ); fflush(stdout); */
-    /*             read_id( optarg , parts , N ); */
-    /*             break; */
-    /*         case 'm': */
-    /*             if ( sscanf( optarg , "%lf" , &h_max ) != 1 ) */
-    /*                 error( "Error parsing h_max." ); */
-    /*             printf( "main: maximum h set to %e.\n" , h_max ); */
-    /*             break; */
-    /*         case 'p': */
-    /*             if ( sscanf( optarg , "%d" , &periodic ) != 1 ) */
-    /*                 error( "Error parsing periodicity." ); */
-    /*             printf( "main: periodicity switched %s.\n" , periodic ? "on" : "off" ); */
-    /*             break; */
-    /*         case 'q': */
-    /*             if ( sscanf( optarg , "%d" , &nr_queues ) != 1 ) */
-    /*                 error( "Error parsing number of queues." ); */
-    /*             break; */
-    /*         case 'r': */
-    /*             if ( sscanf( optarg , "%d" , &runs ) != 1 ) */
-    /*                 error( "Error parsing number of runs." ); */
-    /*             break; */
-    /*         case 's': */
-    /*             if ( sscanf( optarg , "%lf %lf %lf" , &shift[0] , &shift[1] , &shift[2] ) != 3 ) */
-    /*                 error( "Error parsing shift." ); */
-    /*             for ( k = 0 ; k < N ; k++ ) { */
-    /*                 parts[k].x[0] += shift[0]; */
-    /*                 parts[k].x[1] += shift[1]; */
-    /*                 parts[k].x[2] += shift[2]; */
-    /*                 } */
-    /*             printf( "main: shifted parts by [ %.3f %.3f %.3f ].\n" , shift[0] , shift[1] , shift[2] ); */
-    /*             break; */
-    /*         case 't': */
-    /*             if ( sscanf( optarg , "%d" , &nr_threads ) != 1 ) */
-    /*                 error( "Error parsing number of threads." ); */
-    /*             omp_set_num_threads( nr_threads ); */
-    /*             break; */
-    /*         case 'z': */
-    /*             if ( sscanf( optarg , "%d" , &space_splitsize ) != 1 ) */
-    /*                 error( "Error parsing split size." ); */
-    /*             printf( "main: split size set to %i.\n" , space_splitsize ); */
-    /*             break; */
-    /*         case '?': */
-    /*             error( "Unknown option." ); */
-    /*             break; */
-    /*         } */
             
 
     /* How large are the parts? */
@@ -885,8 +794,12 @@ int main ( int argc , char *argv[] ) {
       }
 
     /* Dump the first few particles. */
-    for(k=0; k<10; ++k)
-      printParticle(parts, k, N);
+    // for(k=0; k<10; ++k)
+    //   printParticle(parts, k);
+    // printParticle( parts , 6178 , N );
+    // pairs_single( dim , 8525152967533 , parts , N , periodic );
+    // printParticle( parts , 515150 );
+    // printParticle( parts , 494849 );
 
     tic = getticks();
     write_output("output.hdf5", dim, parts, N, periodic);
@@ -935,7 +848,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Initialize the runner with this space. */
     tic = getticks();
-    engine_init( &e , &s , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
+    engine_init( &e , &s , dt_max , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
     printf( "main: engine_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* set the time step. */
@@ -960,30 +873,40 @@ int main ( int argc , char *argv[] ) {
         /* Take a step. */
         engine_step( &e , 0 );
 
-	if(j % 10 == 0)
-	  {
-	    char fileName[200];
-	    sprintf(fileName, "output_%05i.hdf5", j); 
-	    write_output(fileName, dim, parts, N, periodic);
-	  }
+        if(j % 100 == 0) {
+            char fileName[200];
+            sprintf(fileName, "output_%05i.hdf5", j); 
+            write_output(fileName, dim, parts, N, periodic);
+            }
         
         /* Dump the first few particles. */
-        for(k=0; k<10; ++k)
-          printParticle(parts, k, N );
-        printParticle( parts , 113531, N );
+        // for(k=0; k<10; ++k)
+        //   printParticle(parts, k);
+        // printParticle( parts , 6178 , N );
+        // printParticle( parts , 515150 );
+        // printParticle( parts , 494849 );
+        // pairs_single( dim , 432732 , parts , N , periodic );
     
         /* Get the particle with the lowest h. */
-        p = &s.parts[0];
+        /* p = &s.parts[0];
         space_map_parts( &s , &map_h_min , &p );
         printf( "main: particle %lli/%i at [ %e %e %e ] has minimum h=%.3e (h_dt=%.3e).\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt );
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt ); */
 
         /* Get the particle with the highest h. */
-        p = &s.parts[0];
+        /* p = &s.parts[0];
         space_map_parts( &s , &map_h_max , &p );
         printf( "main: particle %lli/%i at [ %e %e %e ] has maximum h=%.3e (h_dt=%.3e).\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt );
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt ); */
     
+        /* Get the particle with the lowest dt. */
+        /* p = &s.parts[0];
+        for ( k = 0 ; k < s.nr_parts ; k++ )
+            if ( s.parts[k].dt < p->dt )
+                p = &s.parts[k];
+        printf( "main: particle %lli/%i at [ %e %e %e ] has smallest dt=%.3e (h=%.3e,u=%.3e).\n" ,
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->dt , p->h , p->u ); */
+        
         /* Output. */
         #ifdef TIMER
             printf( "main: runner timers are [ %.3f" , timers[0]/CPU_TPS*1000 );
@@ -991,12 +914,16 @@ int main ( int argc , char *argv[] ) {
                 printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
             printf( " ] ms.\n" );
             printf( "main: queue timers are [ %.3f" , queue_timer[0]/CPU_TPS*1000 );
-            for ( k = 1 ; k < queue_timer_count ; k++ )
+            for ( k = 1 ; k < queue_timer_count ; k++ ) 
                 printf( " %.3f" , ((double)queue_timer[k])/CPU_TPS*1000 );
+            for ( k = 0 ; k < queue_timer_count ; k++ )
+                queue_timer[k] = 0;
             printf( " ] ms.\n" );
             printf( "main: cell timers are [ %.3f" , cell_timer[0]/CPU_TPS*1000 );
-            for ( k = 1 ; k < cell_timer_count ; k++ )
+            for ( k = 1 ; k < cell_timer_count ; k++ ) 
                 printf( " %.3f" , ((double)cell_timer[k])/CPU_TPS*1000 );
+            for ( k = 0 ; k < cell_timer_count ; k++ )
+                cell_timer[k] = 0;
             printf( " ] ms.\n" );
         #else
             printf( "main: engine_run with %i threads took %.3f ms.\n" , nr_threads , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
@@ -1038,13 +965,13 @@ int main ( int argc , char *argv[] ) {
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_min , &p );
     printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f.\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount );
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->density.wcount );
     
     /* Get the particle with the highest wcount. */
     p = &s.parts[0];
     space_map_parts( &s , &map_wcount_max , &p );
     printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f.\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->wcount );
+	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->density.wcount );
     
     /* Get the average interactions per particle. */
     // icount = 0;
@@ -1052,8 +979,8 @@ int main ( int argc , char *argv[] ) {
     // printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
     
     /* Dump the first few particles. */
-    for(k=0; k<10; ++k)
-      printParticle(parts, k, N);
+    // for(k=0; k<10; ++k)
+    //   printParticle(parts, k);
     
     /* Get all the cells of a certain depth. */
     // icount = 1;

@@ -29,4 +29,8 @@ do
 
     ./test -r 100 -t $cpu -f scaling/snap_023_z000p503.hdf5 -m 0.5 -z 400 -w 5000 -d 1.0 > scaling_${cpu}.dump
 
+    ./test -r 2000 -t $cpu -f SedovBlast/sedov.hdf5 -m 5e-1 -d 5.0e-4 > sedov_${cpu}.dump
+    
+    ./test -r 2000 -t $cpu -f PertubedBox/perturbedBox.hdf5 -m 0.05 -d 4e-3 > perturbed_${cpu}.dump
+
 done
