@@ -37,13 +37,13 @@ fileName = "sodShock.hdf5"
 #---------------------------------------------------
 
 #Read in high density glass
-glass1 = h5py.File("../Glass/glass_12500.hdf5")
-pos1 = glass1["/PartType0/Coordinates"][:,:]
+glass1 = h5py.File("../Glass/glass_200000.hdf5")
+pos1 = glass1["/PartType1/Coordinates"][:,:]
 pos1 = pos1 / 20. # Particles are in [0:0.5, 0:0.5, 0:0.5]
 
 #Read in high density glass
-glass2 = h5py.File("../Glass/glass_3125.hdf5")
-pos2 = glass2["/PartType0/Coordinates"][:,:]
+glass2 = h5py.File("../Glass/glass_50000.hdf5")
+pos2 = glass2["/PartType1/Coordinates"][:,:]
 pos2 = pos2 / 20. # Particles are in [0:0.5, 0:0.5, 0:0.5]
 
 #Generate high density region
