@@ -851,9 +851,6 @@ int main ( int argc , char *argv[] ) {
     engine_init( &e , &s , dt_max , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
     printf( "main: engine_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
-    /* set the time step. */
-    e.dt = dt_max;
-    
     /* Init the runner history. */
     #ifdef HIST
     for ( k = 0 ; k < runner_hist_N ; k++ )
