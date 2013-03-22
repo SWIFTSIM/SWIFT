@@ -57,10 +57,13 @@ struct engine {
     float dt_min;
     
     /* The system time step. */
-    float dt;
+    float dt, dt_orig;
     
     /* The current step number. */
     int step;
+    
+    /* The current system time. */
+    float time;
     
     /* Data for the threads' barrier. */
     pthread_mutex_t barrier_mutex;

@@ -519,6 +519,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
     e->step += 1;
     
     /* Does the time step need adjusting? */
+    if ( e->dt == 0 )
+        e->dt = e->dt_orig;
     while ( dt_min < e->dt ) {
         e->dt *= 0.5;
         e->step *= 2;
@@ -529,6 +531,9 @@ void engine_step ( struct engine *e , int sort_queues ) {
         e->step /= 2;
         printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
         }
+    
+    /* Set the system time. */
+    e->time = e->dt * e->step;
         
     TIMER_TOC2(timer_step);
     
@@ -553,6 +558,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         cpu_set_t cpuset;
     #endif
     int k;
+    float dt_min = dt;
     
     /* Store the values. */
     e->s = s;
@@ -571,11 +577,16 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     e->barrier_count = 0;
     
     /* Run through the parts and get the minimum time step. */
+    e->dt_orig = dt;
     for ( k = 0 ; k < s->nr_parts ; k++ )
-        if ( s->parts[k].dt > 0.0f )
-            while ( s->parts[k].dt < dt )
-                dt *= 0.5;
-    e->dt_min = dt;
+        if ( s->parts[k].dt < dt_min )
+            dt_min = s->parts[k].dt;
+    if ( dt_min == 0.0f )
+        dt = 0.0f;
+    else
+        while ( dt > dt_min )
+            dt *= 0.5f;
+    e->dt = dt;
     
     /* Allocate the queues. */
     if ( posix_memalign( (void *)(&e->queues) , 64 , nr_queues * sizeof(struct queue) ) != 0 )
