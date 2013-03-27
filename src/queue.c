@@ -385,9 +385,13 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
             if ( keep ) {
             
                 /* Bubble-up. */
-                q->count = qcount - 1;
+                /* q->count = qcount - 1;
                 for ( k = ind_best ; k < qcount - 1 ; k++ )
-                    qtid[k] = qtid[k+1];
+                    qtid[k] = qtid[k+1]; */
+                    
+                /* Swap with last task. */
+                q->count = qcount - 1;
+                qtid[ ind_best ] = qtid[ q->count ];
             
                 }
                 
@@ -397,9 +401,15 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
                 TIMER_TIC2
 
                 /* Bubble-down the task. */
-                for ( k = ind_best ; k > q->next ; k-- )
+                /* for ( k = ind_best ; k > q->next ; k-- )
                     qtid[ k ] = qtid[ k-1 ];
-                qtid[ q->next ] = tid;
+                qtid[ q->next ] = tid; */
+                
+                /* Swap with the first task. */
+                if ( ind_best != q->next ) {
+                    qtid[ ind_best ] = qtid[ q->next ];
+                    qtid[ q->next ] = tid;
+                    }
                 
                 /* up the counter. */
                 q->next += 1;
