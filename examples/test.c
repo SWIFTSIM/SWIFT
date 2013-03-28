@@ -860,7 +860,7 @@ int main ( int argc , char *argv[] ) {
     /* Let loose a runner on the space. */
     for ( j = 0 ; j < runs ; j++ ) {
     
-        printf( "main: starting run %i/%i with %i threads and %i queues...\n" , j+1 , runs , e.nr_threads , e.nr_queues ); fflush(stdout);
+        printf( "main: starting run %i/%i (t=%.3e) with %i threads and %i queues...\n" , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
         timers_reset( timers_mask_all );
         #ifdef COUNTER
             for ( k = 0 ; k < runner_counter_count ; k++ )
