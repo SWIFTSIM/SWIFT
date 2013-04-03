@@ -59,7 +59,7 @@ struct space {
     double h[3], ih[3];
     
     /* The minimum and maximum cutoff radii. */
-    double h_min, h_max, cell_min;
+    double h_max, cell_min;
     
     /* Current time step for particles. */
     float dt_step;
@@ -92,7 +92,8 @@ struct space {
     
     /* The list of tasks. */
     struct task *tasks;
-    int nr_tasks, tasks_size;
+    int nr_tasks, tasks_next;
+    int tasks_size;
     int *tasks_ind;
     
     /* General-purpose lock for this space. */

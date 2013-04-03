@@ -1815,8 +1815,18 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
             }
             
         /* Otherwise, compute the pair directly. */
-        else
+        else {
+        
+            /* Do any of the cells need to be sorted first? */
+            if ( !(ci->sorted & (1 << sid) ) )
+                runner_dosort( r , ci , (1 << sid) , 0 );
+            if ( !(cj->sorted & (1 << sid) ) )
+                runner_dosort( r , cj , (1 << sid) , 0 );
+        
+            /* Compute the interactions. */
             DOPAIR1( r , ci , cj );
+            
+            }
     
         } /* otherwise, pair interaction. */
     
@@ -2085,8 +2095,18 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
             }
             
         /* Otherwise, compute the pair directly. */
-        else
+        else {
+        
+            /* Do any of the cells need to be sorted first? */
+            if ( !(ci->sorted & (1 << sid) ) )
+                runner_dosort( r , ci , (1 << sid) , 0 );
+            if ( !(cj->sorted & (1 << sid) ) )
+                runner_dosort( r , cj , (1 << sid) , 0 );
+        
+            /* Compute the interactions. */
             DOPAIR2( r , ci , cj );
+            
+            }
     
         } /* otherwise, pair interaction. */
     

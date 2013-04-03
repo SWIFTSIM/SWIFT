@@ -31,6 +31,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "atomic.h"
 #include "lock.h"
 #include "task.h"
 #include "part.h"
@@ -85,34 +86,28 @@ const int sortlistID[27] = {
  
 int space_marktasks ( struct space *s ) {
 
-    int k;
-    struct task *t;
+    int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
+    struct task *t, *tasks = s->tasks;
     float dt_step = s->dt_step;
     
-    /* Run through the tasks and clear the sort flags. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+    /* Run through the tasks and mark as skip or not. */
+    for ( k = 0 ; k < nr_tasks ; k++ ) {
     
         /* Get a handle on the kth task. */
-        t = &s->tasks[k];
+        t = &tasks[ ind[k] ];
         
-        /* Sort task? */
+        /* Sort-task? Note that due to the task ranking, the sorts
+           will all come before the pairs and/or subs. */
         if ( t->type == task_type_sort ) {
         
             /* Re-set the flags. */
             t->flags = 0;
-            
+            t->skip = 1;
+        
             }
-            
-        }
-            
-    /* Run through the tasks and mark as skip or not. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-    
-        /* Get a handle on the kth task. */
-        t = &s->tasks[k];
         
         /* Single-cell task? */
-        if ( t->type == task_type_self ||
+        else if ( t->type == task_type_self ||
              t->type == task_type_ghost ||
              ( t->type == task_type_sub && t->cj == NULL ) ) {
              
@@ -137,13 +132,11 @@ int space_marktasks ( struct space *s ) {
                 return 1;
                 
             /* Set the sort flags. */
-            if ( !t->skip ) {
-                if ( t->type == task_type_pair ) {
-                    t->ci->sorts->flags |= (1 << t->flags);
-                    t->cj->sorts->flags |= (1 << t->flags);
-                    }
-                else
-                    space_addsorts( s , t , t->ci , t->cj , t->flags );
+            if ( !t->skip && t->type == task_type_pair ) {
+                t->ci->sorts->flags |= (1 << t->flags);
+                t->ci->sorts->skip = 0;
+                t->cj->sorts->flags |= (1 << t->flags);
+                t->cj->sorts->skip = 0;
                 }
                 
             }
@@ -152,22 +145,6 @@ int space_marktasks ( struct space *s ) {
         else if ( t->type == task_type_none )
             t->skip = 1;
             
-        }
-        
-    /* Run through the tasks and mark as skip or not. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-    
-        /* Get a handle on the kth task. */
-        t = &s->tasks[k];
-        
-        /* Sort task? */
-        if ( t->type == task_type_sort ) {
-        
-            /* If this sort has no flags, skip it. */
-            t->skip = ( t->flags == 0 );
-
-            }
-                        
         }
         
     /* All is well... */
@@ -192,18 +169,18 @@ void space_prepare ( struct space *s ) {
     // struct task *t;
     // float dt_step = s->dt_step;
     float dx_max = 0.0f;
-    int counts[ task_type_count + 1 ];
+    // int counts[ task_type_count + 1 ];
     ticks tic;
     
     /* Get the maximum displacement in the whole system. */
     for ( k = 0 ; k < s->nr_cells ; k++ )
         dx_max = fmaxf( dx_max , s->cells[k].dx_max );
-    printf( "space_prepare: dx_max is %e.\n" , dx_max );
+    // printf( "space_prepare: dx_max is %e.\n" , dx_max );
     
     /* Run through the tasks and mark as skip or not. */
-    tic = getticks();
+    // tic = getticks();
     rebuild = space_marktasks( s );
-    printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+    // printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Did this not go through? */
     if ( rebuild ) {
@@ -214,10 +191,10 @@ void space_prepare ( struct space *s ) {
         printf( "space_prepare: space_rebuild took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
         /* Run through the tasks and mark as skip or not. */
-        tic = getticks();
+        // tic = getticks();
         if ( space_marktasks( s ) )
             error( "space_marktasks failed after space_rebuild." );
-        printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+        // printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
         }
 
@@ -227,7 +204,7 @@ void space_prepare ( struct space *s ) {
     // printf( "space_prepare: maketasks took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Count the number of each task type. */
-    tic = getticks();
+    /* tic = getticks();
     for ( k = 0 ; k <= task_type_count ; k++ )
         counts[k] = 0;
     for ( k = 0 ; k < s->nr_tasks ; k++ )
@@ -239,7 +216,7 @@ void space_prepare ( struct space *s ) {
     for ( k = 1 ; k < task_type_count ; k++ )
         printf( " %s=%i" , taskID_names[k] , counts[k] );
     printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout);
-    printf( "space_prepare: task counting took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    printf( "space_prepare: task counting took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 ); */
     
     }
     
@@ -492,28 +469,33 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
  
 void space_rebuild ( struct space *s , double cell_max ) {
 
-    float h_max = s->cell_min, h_min = s->parts[0].h, dmin;
-    int i, j, k, cdim[3];
+    float h_max = s->cell_min, dmin;
+    int i, j, k, cdim[3], nr_parts = s->nr_parts;
     struct cell *restrict c;
-    struct part *restrict finger, *restrict p;
-    struct cpart *restrict cp, *restrict cfinger;
+    struct part *restrict finger, *restrict p, *parts = s->parts;
+    struct cpart *restrict cfinger;
     int *ind;
-    ticks tic;
+    // ticks tic;
     
     /* Be verbose about this. */
     printf( "space_rebuild: (re)building space...\n" ); fflush(stdout);
     
     /* Run through the parts and get the current h_max. */
     // tic = getticks();
-    for ( k = 0 ; k < s->nr_parts ; k++ ) {
-        if ( s->parts[k].h > h_max )
-            h_max = s->parts[k].h;
-        else if ( s->parts[k].h < h_min )
-            h_min = s->parts[k].h;
+    if ( s->cells != NULL ) {
+        for ( k = 0 ; k < s->nr_cells ; k++ ) {
+            if ( s->cells[k].h_max > h_max )
+                h_max = s->cells[k].h_max;
+            }
         }
-    s->h_min = h_min;
-    s->h_max = h_max;
-    printf( "space_rebuild: h_min/h_max is %.3e/%.3e.\n" , h_min , h_max );
+    else {
+        for ( k = 0 ; k < nr_parts ; k++ ) {
+            if ( s->parts[k].h > h_max )
+                h_max = s->parts[k].h;
+            }
+        s->h_max = h_max;
+        }
+    // printf( "space_rebuild: h_max is %.3e.\n" , h_max );
     // printf( "space_rebuild: getting h_min and h_max took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Get the new putative cell dimensions. */
@@ -594,21 +576,22 @@ void space_rebuild ( struct space *s , double cell_max ) {
         error( "Failed to allocate temporary particle indices." );
     for ( k = 0 ; k < s->nr_cells ; k++ )
         s->cells[ k ].count = 0;
-    for ( k = 0 ; k < s->nr_parts ; k++ )  {
-        p = &s->parts[k];
+    #pragma omp parallel for private(p,j)
+    for ( k = 0 ; k < nr_parts ; k++ )  {
+        p = &parts[k];
         for ( j = 0 ; j < 3 ; j++ )
             if ( p->x[j] < 0.0 )
                 p->x[j] += s->dim[j];
             else if ( p->x[j] >= s->dim[j] )
                 p->x[j] -= s->dim[j];
         ind[k] = cell_getid( s->cdim , p->x[0]*s->ih[0] , p->x[1]*s->ih[1] , p->x[2]*s->ih[2] );
-        s->cells[ ind[k] ].count += 1;
+        atomic_inc( &s->cells[ ind[k] ].count );
         }
     // printf( "space_rebuild: getting particle indices took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    parts_sort( s->parts , ind , s->nr_parts , 0 , s->nr_cells );
+    parts_sort( parts , ind , s->nr_parts , 0 , s->nr_cells );
     // printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* We no longer need the indices as of here. */
@@ -635,27 +618,10 @@ void space_rebuild ( struct space *s , double cell_max ) {
         space_split( s , &s->cells[k] );
     // printf( "space_rebuild: space_rebuild_recurse took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
-    /* Store the current positions. */         
-    // tic = getticks();
-    #pragma omp parallel for schedule(static) private(p,cp)
-    for ( k = 0 ; k < s->nr_parts ; k++ ) {
-        p = &s->parts[k];
-        cp = &s->cparts[k];
-        p->xtras->x_old[0] = p->x[0];
-        p->xtras->x_old[1] = p->x[1];
-        p->xtras->x_old[2] = p->x[2];
-        cp->x[0] = p->x[0];
-        cp->x[1] = p->x[1];
-        cp->x[2] = p->x[2];
-        cp->h = p->h;
-        cp->dt = p->dt;
-        }
-    // printf( "space_rebuild: storing old positions took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
-
     /* Now that we have the cell structre, re-build the tasks. */
-    tic = getticks();
+    // tic = getticks();
     space_maketasks( s , 1 );
-    printf( "space_rebuild: maketasks took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    // printf( "space_rebuild: maketasks took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     }
 
@@ -672,7 +638,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
  * This function calls itself recursively.
  */
  
-void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
+void parts_sort_rec ( struct part *parts , int *ind , int N , int min , int max ) {
 
     int pivot = (min + max) / 2;
     int i = 0, j = N-1;
@@ -724,14 +690,30 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
                 } */
 
         /* Recurse on the left? */
-        if ( j > 0  && pivot > min )
+        if ( j > 0  && pivot > min ) {
+            #pragma omp task untied
             parts_sort( parts , ind , j+1 , min , pivot );
+            }
 
         /* Recurse on the right? */
-        if ( i < N && pivot+1 < max )
+        if ( i < N && pivot+1 < max ) {
+            #pragma omp task untied
             parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+            }
             
         }
+    
+    }
+
+
+void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
+
+    /* Call the first sort as an OpenMP task. */
+    #pragma omp parallel
+    {
+        #pragma omp single nowait
+        parts_sort_rec( parts , ind , N , min , max );
+    }
     
     }
 
@@ -899,13 +881,12 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
  
 struct task *space_addtask ( struct space *s , int type , int subtype , int flags , int wait , struct cell *ci , struct cell *cj , int tight ) {
 
+    int ind;
     struct task *t;
     
-    /* Lock the space. */
-    lock_lock( &s->lock );
-    
     /* Get the next free task. */
-    t = &s->tasks[ s->nr_tasks ];
+    ind = atomic_inc( &s->tasks_next );
+    t = &s->tasks[ ind ];
     
     /* Copy the data. */
     t->type = type;
@@ -922,12 +903,9 @@ struct task *space_addtask ( struct space *s , int type , int subtype , int flag
     lock_init( &t->lock );
     
     /* Add an index for it. */
-    s->tasks_ind[ s->nr_tasks ] = s->nr_tasks;
-    
-    /* Increase the task counter. */
+    lock_lock( &s->lock );
+    s->tasks_ind[ s->nr_tasks ] = ind;
     s->nr_tasks += 1;
-    
-    /* Unock the space. */
     lock_unlock_blind( &s->lock );
     
     /* Return a pointer to the new task. */
@@ -945,10 +923,10 @@ struct task *space_addtask ( struct space *s , int type , int subtype , int flag
  
 void space_splittasks ( struct space *s ) {
 
-    int j, k, sid, tid;
+    int j, k, ind, sid, tid = 0, redo;
     struct cell *ci, *cj;
     double hi, hj, shift[3];
-    struct task *t;
+    struct task *t, *t_old;
     // float dt_step = s->dt_step;
     int pts[7][8] = { { -1 , 12 , 10 ,  9 ,  4 ,  3 ,  1 ,  0 } ,
                       { -1 , -1 , 11 , 10 ,  5 ,  4 ,  2 ,  1 } ,
@@ -959,10 +937,21 @@ void space_splittasks ( struct space *s ) {
                       { -1 , -1 , -1 , -1 , -1 , -1 , -1 , 12 } };
 
     /* Loop through the tasks... */
-    for ( tid = 0 ; tid < s->nr_tasks ; tid++ ) {
+    #pragma omp parallel shared(s,tid,pts) private(ind,j,k,t,t_old,redo,ci,cj,hi,hj,sid,shift)
+    {
+    redo = 0; t_old = t = NULL;
+    while ( redo || tid < s->nr_tasks ) {
     
         /* Get a pointer on the task. */
-        t = &s->tasks[tid];
+        if ( redo ) {
+            redo = 0;
+            t = t_old;
+            }
+        else {
+            if ( ( ind = atomic_inc( &tid ) ) >= s->nr_tasks )
+                break;
+            t_old = t = &s->tasks[ s->tasks_ind[ ind ] ];
+            }
         
         /* Empty task? */
         if ( t->ci == NULL || ( t->type == task_type_pair && t->cj == NULL ) ) {
@@ -1003,7 +992,7 @@ void space_splittasks ( struct space *s ) {
             else {
             
                 /* Take a step back (we're going to recycle the current task)... */
-                tid -= 1;
+                redo = 1;
 
                 /* Add the self taks. */
                 for ( k = 0 ; ci->progeny[k] == NULL ; k++ );
@@ -1056,7 +1045,7 @@ void space_splittasks ( struct space *s ) {
                     t->ci = ci; t->cj = cj;
                     
                     /* Create the sorts recursively. */
-                    space_addsorts( s , t , ci , cj , sid );
+                    // space_addsorts( s , t , ci , cj , sid );
                     
                     /* Don't go any further. */
                     continue;
@@ -1064,7 +1053,7 @@ void space_splittasks ( struct space *s ) {
                     }
 
                 /* Take a step back (we're going to recycle the current task)... */
-                tid -= 1;
+                redo = 1;
 
                 /* For each different sorting type... */
                 switch ( sid ) {
@@ -1192,15 +1181,19 @@ void space_splittasks ( struct space *s ) {
             else {
             
                 /* Create the sort for ci. */
+                lock_lock( &ci->lock );
                 if ( ci->sorts == NULL )
                     ci->sorts = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , ci , NULL , 0 );
                 ci->sorts->flags |= (1 << sid);
+                lock_unlock_blind( &ci->lock );
                 task_addunlock( ci->sorts , t );
                 
                 /* Create the sort for cj. */
+                lock_lock( &cj->lock );
                 if ( cj->sorts == NULL )
                     cj->sorts = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , cj , NULL , 0 );
                 cj->sorts->flags |= (1 << sid);
+                lock_unlock_blind( &cj->lock );
                 task_addunlock( cj->sorts , t );
                 
                 }
@@ -1208,6 +1201,8 @@ void space_splittasks ( struct space *s ) {
             } /* pair interaction? */
     
         } /* loop over all tasks. */
+        
+        }
         
     }
     
@@ -1514,6 +1509,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
             error( "Failed to allocate task indices." );
         }
     s->nr_tasks = 0;
+    s->tasks_next = 0;
     
     /* Run through the highest level of cells and add pairs. */
     for ( i = 0 ; i < cdim[0] ; i++ )
@@ -1555,7 +1551,10 @@ void space_maketasks ( struct space *s , int do_sort ) {
     /* Split the tasks. */
     space_splittasks( s );
     
-    /* Make each sort depend on the sorts of its progeny. */
+    /* Count the number of tasks associated with each cell and
+       store the density tasks in each cell, and make each sort
+       depend on the sorts of its progeny. */
+    #pragma omp parallel for private(t,j)
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         t = &s->tasks[k];
         if ( t->skip )
@@ -1569,41 +1568,33 @@ void space_maketasks ( struct space *s , int do_sort ) {
                 t->ci->progeny[j]->sorts->skip = 0;
                 task_addunlock( t->ci->progeny[j]->sorts , t );
                 }
-        }
-    
-    /* Count the number of tasks associated with each cell and
-       store the density tasks in each cell. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        t = &s->tasks[k];
-        if ( t->skip )
-            continue;
         if ( t->type == task_type_self ) {
-            t->ci->nr_tasks += 1;
+            atomic_inc( &t->ci->nr_tasks );
             if ( t->subtype == task_subtype_density ) {
-                t->ci->density[ t->ci->nr_density ] = t;
-                t->ci->nr_density += 1;
+                t->ci->density[ atomic_inc( &t->ci->nr_density ) ] = t;
+                // t->ci->nr_density += 1;
                 }
             }
         else if ( t->type == task_type_pair ) {
-            t->ci->nr_tasks += 1;
-            t->cj->nr_tasks += 1;
+            atomic_inc( &t->ci->nr_tasks );
+            atomic_inc( &t->cj->nr_tasks );
             if ( t->subtype == task_subtype_density ) {
-                t->ci->density[ t->ci->nr_density ] = t;
-                t->ci->nr_density += 1;
-                t->cj->density[ t->cj->nr_density ] = t;
-                t->cj->nr_density += 1;
+                t->ci->density[ atomic_inc( &t->ci->nr_density ) ] = t;
+                // t->ci->nr_density += 1;
+                t->cj->density[ atomic_inc( &t->cj->nr_density ) ] = t;
+                // t->cj->nr_density += 1;
                 }
             }
         else if ( t->type == task_type_sub ) {
-            t->ci->nr_tasks += 1;
+            atomic_inc( &t->ci->nr_tasks );
             if ( t->cj != NULL )
-                t->cj->nr_tasks += 1;
+                atomic_inc( &t->cj->nr_tasks );
             if ( t->subtype == task_subtype_density ) {
-                t->ci->density[ t->ci->nr_density ] = t;
-                t->ci->nr_density += 1;
+                t->ci->density[ atomic_inc( &t->ci->nr_density ) ] = t;
+                // t->ci->nr_density += 1;
                 if ( t->cj != NULL ) {
-                    t->cj->density[ t->cj->nr_density ] = t;
-                    t->cj->nr_density += 1;
+                    t->cj->density[ atomic_inc( &t->cj->nr_density ) ] = t;
+                    // t->cj->nr_density += 1;
                     }
                 }
             }
@@ -1613,7 +1604,9 @@ void space_maketasks ( struct space *s , int do_sort ) {
     space_map_cells_pre( s , 1 , &space_map_mkghosts , s );
     
     /* Run through the tasks and make force tasks for each density task. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
+    kk = s->nr_tasks;
+    #pragma omp parallel for private(t,t2)
+    for ( k = 0 ; k < kk ; k++ ) {
     
         /* Get a pointer to the task. */
         t = &s->tasks[k];
@@ -1632,7 +1625,8 @@ void space_maketasks ( struct space *s , int do_sort ) {
         /* Otherwise, pair interaction? */
         else if ( t->type == task_type_pair && t->subtype == task_subtype_density ) {
             task_addunlock( t , t->ci->super->ghost );
-            task_addunlock( t , t->cj->super->ghost );
+            if ( t->ci->super != t->cj->super )
+                task_addunlock( t , t->cj->super->ghost );
             t2 = space_addtask( s , task_type_pair , task_subtype_force , 0 , 0 , t->ci , t->cj , 0 );
             task_addunlock( t->ci->ghost , t2 );
             task_addunlock( t->cj->ghost , t2 );
@@ -1666,6 +1660,116 @@ void space_maketasks ( struct space *s , int do_sort ) {
  */
  
 void space_split ( struct space *s , struct cell *c ) {
+
+    int k, count = c->count;
+    float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
+    double x[3];
+    struct cell *temp;
+    struct part *p, *parts = c->parts;
+    struct cpart *cp, *cparts = c->cparts;
+    struct xpart *xp;
+    
+    /* Check the depth. */
+    if ( c->depth > s->maxdepth )
+        s->maxdepth = c->depth;
+    
+    /* Split or let it be? */
+    if ( count > space_splitsize ) {
+    
+        /* No longer just a leaf. */
+        c->split = 1;
+        
+        /* Create the cell's progeny. */
+        for ( k = 0 ; k < 8 ; k++ ) {
+            temp = space_getcell( s );
+            temp->count = 0;
+            temp->loc[0] = c->loc[0];
+            temp->loc[1] = c->loc[1];
+            temp->loc[2] = c->loc[2];
+            temp->h[0] = c->h[0]/2;
+            temp->h[1] = c->h[1]/2;
+            temp->h[2] = c->h[2]/2;
+            temp->dmin = c->dmin/2;
+            if ( k & 4 )
+                temp->loc[0] += temp->h[0];
+            if ( k & 2 )
+                temp->loc[1] += temp->h[1];
+            if ( k & 1 )
+                temp->loc[2] += temp->h[2];
+            temp->depth = c->depth + 1;
+            temp->split = 0;
+            temp->h_max = 0.0;
+            temp->dx_max = 0.0;
+            temp->parent = c;
+            c->progeny[k] = temp;
+            }
+            
+        /* Split the cell data. */
+        cell_split( c );
+            
+        /* Recurse? */
+        // for ( k = 0 ; k < 8 ; k++ )
+        //     space_split( s , c->progeny[k] );
+            
+        /* Remove any progeny with zero parts. */
+        for ( k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k]->count == 0 ) {
+                space_recycle( s , c->progeny[k] );
+                c->progeny[k] = NULL;
+                }
+            else {
+                space_split( s , c->progeny[k] );
+                if ( c->progeny[k]->h_max > h_max )
+                    h_max = c->progeny[k]->h_max;
+                if ( c->progeny[k]->dt_min < dt_min )
+                    dt_min = c->progeny[k]->dt_min;
+                if ( c->progeny[k]->dt_max > dt_max )
+                    dt_max = c->progeny[k]->dt_max;
+                }
+            c->h_max = h_max;
+            c->dt_min = dt_min;
+            c->dt_max = dt_max;
+                
+        }
+        
+    /* Otherwise, collect the data for this cell. */
+    else {
+    
+        /* Clear the progeny. */
+        bzero( c->progeny , sizeof(struct cell *) * 8 );
+        c->split = 0;
+        
+        /* Get dt_min/dt_max. */
+        
+        for ( k = 0 ; k < count ; k++ ) {
+            p = &parts[k];
+            cp = &cparts[k];
+            xp = p->xtras;
+            xp->x_old[0] = x[0] = p->x[0];
+            xp->x_old[1] = x[1] = p->x[1];
+            xp->x_old[2] = x[2] = p->x[2];
+            cp->x[0] = x[0];
+            cp->x[1] = x[1];
+            cp->x[2] = x[2];
+            cp->h = h = p->h;
+            cp->dt = dt = p->dt;
+            if ( h > h_max )
+                h_max = h;
+            if ( dt < dt_min )
+                dt_min = dt;
+            if ( dt > dt_max )
+                dt_max = dt;
+            }
+        c->h_max = h_max;
+        c->dt_min = dt_min;
+        c->dt_max = dt_max;
+            
+        }
+
+    }
+
+
+void space_split_old ( struct space *s , struct cell *c ) {
 
     int k, count;
     double h, h_limit, h_max = 0.0, dt_min = c->parts[0].dt, dt_max = dt_min;

@@ -75,7 +75,7 @@ void task_cleanunlock ( struct task *t , int type ) {
  * @param tb The #task that will be unlocked.
  */
  
-void task_rmunlock( struct task *ta , struct task *tb ) {
+void task_rmunlock ( struct task *ta , struct task *tb ) {
 
     int k;
     
@@ -103,7 +103,7 @@ void task_rmunlock( struct task *ta , struct task *tb ) {
  * the task @c tb is not in the unlocks of @c ta.
  */
  
-void task_rmunlock_blind( struct task *ta , struct task *tb ) {
+void task_rmunlock_blind ( struct task *ta , struct task *tb ) {
 
     int k;
     
@@ -128,7 +128,19 @@ void task_rmunlock_blind( struct task *ta , struct task *tb ) {
  * @param tb The #task that will be unlocked.
  */
  
-void task_addunlock( struct task *ta , struct task *tb ) {
+void task_addunlock ( struct task *ta , struct task *tb ) {
+
+    /* Add the lock atomically. */
+    ta->unlock_tasks[ __sync_fetch_and_add( &ta->nr_unlock_tasks, 1 ) ] = tb;
+
+    /* Check a posteriori if we did not overshoot. */
+    if ( ta->nr_unlock_tasks > task_maxunlock )
+        error( "Too many unlock_tasks in task." );
+        
+    }
+    
+
+void task_addunlock_old ( struct task *ta , struct task *tb ) {
 
     int k;
     
@@ -137,6 +149,7 @@ void task_addunlock( struct task *ta , struct task *tb ) {
     /* Check if ta already unlocks tb. */
     for ( k = 0 ; k < ta->nr_unlock_tasks ; k++ )
         if ( ta->unlock_tasks[k] == tb ) {
+            error( "Duplicate unlock." );
             lock_unlock_blind( &ta->lock );
             return;
             }

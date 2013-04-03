@@ -17,22 +17,16 @@
  * 
  ******************************************************************************/
 
-/* Config parameters. */
-#include "../config.h"
 
-/* Local headers. */
-#include "cycle.h"
-#include "timers.h"
-#include "const.h"
-#include "atomic.h"
-#include "lock.h"
-#include "task.h"
-#include "part.h"
-#include "cell.h"
-#include "space.h"
-#include "queue.h"
-#include "runner.h"
-#include "runner_iact.h"
-#include "engine.h"
-#include "io.h"
-#include "debug.h"
+
+/* Get the inlining right. */
+#ifndef INLINE
+# if __GNUC__ && !__GNUC_STDC_INLINE__
+#  define INLINE extern inline
+# else
+#  define INLINE inline
+# endif
+#endif
+    
+#define atomic_add(v,i) __sync_fetch_and_add( v , i )
+#define atomic_inc(v) atomic_add( v , 1 )

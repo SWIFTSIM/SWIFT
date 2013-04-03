@@ -238,7 +238,9 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             /* Integrate other values if this particle will not be updated. */
             /* Init fields for density calculation. */
             if ( pdt > dt_step ) {
-                rho = p->rho *= expf( -3.0f * h_dt / h * dt );
+                // rho = p->rho *= expf( -3.0f * h_dt / h * dt );
+                float w = -3.0f * h_dt / h * dt;
+                rho = p->rho *= 1.0f + w*( -1.0f + w*( 0.5f - 1.0f/6.0f*w ) );
                 p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * p->rho_dh / 3.0f );
                 }
             else {
@@ -284,11 +286,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     c->h_max = h_max;
     c->dx_max = dx_max;
     c->h2dx_max = h2dx_max;
-    
-    /* Clean out the task pointers. */
-    // c->sorts[0] = NULL;
-    // c->nr_tasks = 0;
-    // c->nr_density = 0;
     
     }
 
@@ -519,17 +516,25 @@ void engine_step ( struct engine *e , int sort_queues ) {
     e->step += 1;
     
     /* Does the time step need adjusting? */
-    if ( e->dt == 0 )
+    if ( e->dt == 0 ) {
         e->dt = e->dt_orig;
-    while ( dt_min < e->dt ) {
-        e->dt *= 0.5;
-        e->step *= 2;
-        printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
+        while ( dt_min < e->dt )
+            e->dt *= 0.5;
+        while ( dt_min > 2*e->dt )
+            e->dt *= 2.0;
+        printf( "engine_step: dt_min=%.3e, adjusting time step to dt=%e.\n" , dt_min , e->dt );
         }
-    while ( dt_min > 2*e->dt && (e->step & 1) == 0 ) {
-        e->dt *= 2.0;
-        e->step /= 2;
-        printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
+    else {
+        while ( dt_min < e->dt ) {
+            e->dt *= 0.5;
+            e->step *= 2;
+            printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
+            }
+        while ( dt_min > 2*e->dt && (e->step & 1) == 0 ) {
+            e->dt *= 2.0;
+            e->step /= 2;
+            printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
+            }
         }
     
     /* Set the system time. */
