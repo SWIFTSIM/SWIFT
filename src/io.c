@@ -36,6 +36,7 @@
 #include "task.h"
 #include "part.h"
 #include "space.h"
+#include "engine.h"
 
 /**
  * @brief Error macro
@@ -545,10 +546,16 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * Calls #error() if an error occurs.
  *
  */
-void write_output ( char* fileName, double dim[3], struct part *parts,  int N, int periodic)
+void write_output ( char* fileName, struct engine *e)
 {
+  
   hid_t h_file=0, h_grp=0;
+  int N = e->s->nr_parts;
+  int periodic = e->s->periodic;
   int numParticles[6]={N,0};
+  int numParticlesHighWord[6]={0};
+  int numFiles = 1;
+  struct part* parts = e->s->parts;
   FILE* xmfFile;
 
   writeXMFheader(&xmfFile, fileName, N);
@@ -584,9 +591,16 @@ void write_output ( char* fileName, double dim[3], struct part *parts,  int N, i
     error("Error while creating file header\n");
     
   /* Read the relevant information and print status */
-  writeAttribute(h_grp, "BoxSize", DOUBLE, &dim[0], 1);
-  writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
+  writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 1);
+  writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
+  writeAttribute(h_grp, "Time", DOUBLE, &e->time, 1);
 
+  /* GADGET-2 legacy values */
+  writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
+  writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord, 6);
+  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
+  writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
+  
   /* Close header */
   H5Gclose(h_grp);
 		  

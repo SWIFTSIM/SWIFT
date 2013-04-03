@@ -22,6 +22,6 @@
 
 void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic);
 
-void write_output ( char* fileName, double dim[3], struct part *parts,  int N, int periodic);
+void write_output ( char* fileName, struct engine* e);
 
 

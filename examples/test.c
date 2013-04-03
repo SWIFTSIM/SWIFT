@@ -795,15 +795,11 @@ int main ( int argc , char *argv[] ) {
 
     /* Dump the first few particles. */
     // for(k=0; k<10; ++k)
-    //   printParticle(parts, k);
+    //   printParticle(parts, k, N);
     // printParticle( parts , 6178 , N );
     // pairs_single( dim , 8525152967533 , parts , N , periodic );
     // printParticle( parts , 515150 );
     // printParticle( parts , 494849 );
-
-    tic = getticks();
-    write_output("output.hdf5", dim, parts, N, periodic);
-    printf( "main: writing particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
             
     /* Dump the kernel to make sure its ok. */
     // kernel_dump( 100 );
@@ -822,7 +818,7 @@ int main ( int argc , char *argv[] ) {
     tic = getticks();
     space_init( &s , dim , parts , N , periodic , h_max );
     printf( "main: space_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
-    
+
     /* Set the default time step to 1.0f. */
     printf( "main: dt_max is %f.\n" , dt_max );
     
@@ -850,6 +846,11 @@ int main ( int argc , char *argv[] ) {
     tic = getticks();
     engine_init( &e , &s , dt_max , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
     printf( "main: engine_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+
+    /* Write the state of the system as it is before starting time integration. */
+    tic = getticks();
+    write_output("output.hdf5", &e);
+    printf( "main: writing particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Init the runner history. */
     #ifdef HIST
@@ -873,7 +874,7 @@ int main ( int argc , char *argv[] ) {
         if(j % 100 == 0) {
             char fileName[200];
             sprintf(fileName, "output_%05i.hdf5", j); 
-            write_output(fileName, dim, parts, N, periodic);
+            write_output(fileName, &e);
             }
         
         /* Dump the first few particles. */
