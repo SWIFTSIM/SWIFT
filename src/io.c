@@ -598,6 +598,8 @@ void write_output ( char* fileName, struct engine *e)
   /* GADGET-2 legacy values */
   writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
   writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord, 6);
+  double MassTable[6] = {0., 0., 0., 0., 0., 0.};
+  writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
   writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
   
