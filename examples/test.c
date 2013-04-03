@@ -832,7 +832,7 @@ int main ( int argc , char *argv[] ) {
     printf( "main: highest-level cell dimensions are [ %i %i %i ].\n" , s.cdim[0] , s.cdim[1] , s.cdim[2] );
     printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
     printf( "main: maximum depth is %d.\n" , s.maxdepth );
-    printf( "main: cutoffs in [ %g %g ].\n" , s.h_min , s.h_max ); fflush(stdout);
+    // printf( "main: cutoffs in [ %g %g ].\n" , s.h_min , s.h_max ); fflush(stdout);
     
     /* Verify that each particle is in it's propper cell. */
     icount = 0;
