@@ -1654,9 +1654,8 @@ struct cell *space_getcell ( struct space *s ) {
     
     /* Init some things in the cell. */
     bzero( c , sizeof(struct cell) );
-    if ( lock_init( &c->lock ) != 0 ||
-         lock_init( &c->mlock ) != 0 )
-        error( "Failed to initialize cell spinlocks." );
+    if ( lock_init( &c->lock ) != 0 )
+        error( "Failed to initialize cell spinlock." );
         
     /* Unlock the space. */
     lock_unlock_blind( &s->lock );

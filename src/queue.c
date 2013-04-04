@@ -187,7 +187,7 @@ struct task *queue_gettask_old ( struct queue *q , int blocking , int keep ) {
                 continue;
             
             /* Different criteria for different types. */
-            if ( res->type == task_type_self || (res->type == task_type_sub && res->cj == NULL) ) {
+            if ( res->type == task_type_self || res->type == task_type_sort || (res->type == task_type_sub && res->cj == NULL) ) {
                 if ( res->ci->hold || cell_locktree( res->ci ) != 0 )
                     continue;
                 }
@@ -317,7 +317,9 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
                 continue;
                 
             /* Try to lock ci. */
-            if ( res->type == task_type_self || (res->type == task_type_sub && res->cj == NULL) ) {
+            if ( res->type == task_type_self || 
+                 res->type == task_type_sort || 
+                 (res->type == task_type_sub && res->cj == NULL) ) {
                 if ( res->ci != ci_best && res->ci != cj_best && cell_locktree( res->ci ) != 0 )
                     continue;
                 }
@@ -336,7 +338,7 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
             /* If we owned a previous task, unlock it. */
             if ( ind_best >= 0 ) {
                 res = &qtasks[ qtid[ ind_best ] ];
-                if ( res->type == task_type_self || res->type == task_type_pair || res->type == task_type_sub )
+                if ( res->type == task_type_self || res->type == task_type_sort || res->type == task_type_pair || res->type == task_type_sub )
                     if ( res->ci != ci_best && res->ci != cj_best )
                         cell_unlocktree( res->ci );
                 if ( res->type == task_type_pair || (res->type == task_type_sub && res->cj != NULL) )

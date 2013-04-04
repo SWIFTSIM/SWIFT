@@ -100,7 +100,7 @@ struct cell {
     int hold;
     
     /* Spin lock for various uses. */
-    lock_type lock, mlock;
+    lock_type lock;
     
     /* ID of the previous owner, e.g. runner. */
     int owner;

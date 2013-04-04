@@ -186,8 +186,6 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
         return;
     
     /* start by allocating the entry arrays. */
-    if ( lock_lock( &c->mlock ) != 0 )
-        error( "Failed to lock cell." );
     if ( c->sort == NULL || c->sortsize < c->count ) {
         if ( c->sort != NULL )
             free( c->sort );
@@ -195,8 +193,6 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
         if ( ( c->sort = (struct entry *)malloc( sizeof(struct entry) * (c->sortsize + 1) * 13 ) ) == NULL )
             error( "Failed to allocate sort memory." );
         }
-    if ( lock_unlock( &c->mlock ) != 0 )
-        error( "Failed to unlock cell." );
         
     /* Does this cell have any progeny? */
     if ( c->split ) {
@@ -205,10 +201,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
         for ( k = 0 ; k < 8 ; k++ ) {
             if ( c->progeny[k] == NULL )
                 continue;
-            if ( c->progeny[k]->sorts == NULL )
-                missing = flags;
-            else
-                missing = ( c->progeny[k]->sorts->flags ^ flags ) & flags;
+            missing = flags & ~c->progeny[k]->sorted;
             if ( missing )
                 runner_dosort( r , c->progeny[k] , missing , 0 );
             }
@@ -735,6 +728,7 @@ void *runner_main ( void *data ) {
                     break;
                 case task_type_sort:
                     runner_dosort( r , ci , t->flags , 1 );
+                    cell_unlocktree( ci );
                     break;
                 case task_type_sub:
                     if ( t->subtype == task_subtype_density )
