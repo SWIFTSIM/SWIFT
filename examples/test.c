@@ -28,6 +28,8 @@
 #include <string.h>
 #include <pthread.h>
 #include <math.h>
+#include <float.h>
+#include <limits.h>
 #include <fenv.h>
 #include <omp.h>
 
@@ -696,10 +698,11 @@ void density_dump ( int N ) {
 int main ( int argc , char *argv[] ) {
 
     int c, icount, j, k, N = 100, periodic = 1;
-    int nr_threads = 1, nr_queues = -1, runs = 1;
+    int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
     int data[2];
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
     double /*r_min = 0.01, r_max = 0.1,*/ h_max = -1.0 , scaling = 1.0, rho = 0.0;
+    double clock = DBL_MAX;
     struct part *parts = NULL, *p;
     struct space s;
     struct engine e;
@@ -714,13 +717,18 @@ int main ( int argc , char *argv[] ) {
     bzero( &s , sizeof(struct space) );
 
     /* Parse the options */
-    while ( ( c = getopt( argc , argv  , "a:d:f:m:q:r:s:t:w:z:" ) ) != -1 )
+    while ( ( c = getopt( argc , argv  , "a:c:d:f:m:q:r:s:t:w:z:" ) ) != -1 )
       switch( c )
 	{
 	case 'a':
 	  if ( sscanf( optarg , "%lf" , &scaling ) != 1 )
 	    error( "Error parsing cutoff scaling." );
 	  printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout);
+	  break;
+	case 'c':
+	  if ( sscanf( optarg , "%lf" , &clock ) != 1 )
+	    error( "Error parsing clock." );
+	  printf( "main: clock set to %.3e.\n" , clock ); fflush(stdout);
 	  break;
 	case 'd':
 	  if ( sscanf( optarg , "%f" , &dt_max ) != 1 )
@@ -859,7 +867,7 @@ int main ( int argc , char *argv[] ) {
     #endif
     
     /* Let loose a runner on the space. */
-    for ( j = 0 ; j < runs ; j++ ) {
+    for ( j = 0 ; j < runs && e.time < clock ; j++ ) {
     
         printf( "main: starting run %i/%i (t=%.3e) with %i threads and %i queues...\n" , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
         timers_reset( timers_mask_all );
