@@ -30,13 +30,13 @@ from numpy import *
 # Parameters
 rho_0 = 1.          # Background Density
 P_0 = 1.e-5         # Background Pressure
-E_0 = 1.e5          # Energy of the explosion
+E_0 = 1.e2          # Energy of the explosion
 gamma = 5./3.     # Gas polytropic index
 
-t = 0.1           # Time of the solution
+t = 0.15           # Time of the solution
 
 N = 1000          # Number of radial points
-R_max = 5.        # Maximal radius
+R_max = 3.        # Maximal radius
 
 # ---------------------------------------------------------------
 # Don't touch anything after this.
