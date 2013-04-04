@@ -31,6 +31,7 @@ enum task_types {
     task_type_pair,
     task_type_sub,
     task_type_ghost,
+    task_type_kick2,
     task_type_count
     };
     

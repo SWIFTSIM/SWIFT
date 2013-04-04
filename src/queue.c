@@ -309,8 +309,8 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
                 continue;
                 
             /* Get the score for this task. */
-            if ( res->type == task_type_self || res->type == task_type_ghost || res->type == task_type_sort || ( res->type == task_type_sub && res->cj == NULL ) )
-                score = ( res->ci->owner == rid );
+            if ( res->cj == NULL )
+                score = 2 * ( res->ci->owner == rid );
             else
                 score = ( res->ci->owner == rid ) + ( res->cj->owner == rid );
             if ( score <= score_best )
@@ -352,8 +352,7 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
             hits += 1;
             
             /* Should we bother looking any farther? */
-            if ( ( qtasks[ qtid[ ind_best ] ].cj == NULL && score_best == 1 ) ||
-                score_best == 2 );
+            if ( score_best == 2 );
                 break;
         
             } /* loop over the task IDs. */

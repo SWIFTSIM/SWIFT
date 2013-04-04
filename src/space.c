@@ -106,8 +106,8 @@ int space_marktasks ( struct space *s ) {
         
         /* Single-cell task? */
         else if ( t->type == task_type_self ||
-             t->type == task_type_ghost ||
-             ( t->type == task_type_sub && t->cj == NULL ) ) {
+                  t->type == task_type_ghost ||
+                ( t->type == task_type_sub && t->cj == NULL ) ) {
              
             /* Set this task's skip. */
             t->skip = ( t->ci->dt_min > dt_step );
@@ -736,6 +736,8 @@ void space_map_clearsort ( struct cell *c , void *data ) {
  * Looks for the super cell, e.g. the highest-level cell above each
  * cell for which a pair is defined. All ghosts below this cell will
  * depend on the ghost of their parents (sounds spooky, but it isn't).
+ *
+ * A kick2-task is appended to each super cell.
  */
 
 void space_map_mkghosts ( struct cell *c , void *data ) {
@@ -754,11 +756,15 @@ void space_map_mkghosts ( struct cell *c , void *data ) {
     if ( c->super != c || c->nr_tasks > 0 )
         c->ghost = space_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , 0 );
 
+    /* Append a kick task if we are the active super cell. */
+    if ( c->super == c && c->nr_tasks > 0 )
+        c->kick2 = space_addtask( s , task_type_kick2 , task_subtype_none , 0 , 0 , c , NULL , 0 );
+    
     /* If we are not the super cell ourselves, make our ghost depend
        on our parent cell. */
     if ( c->super != c )
         task_addunlock( c->parent->ghost , c->ghost );
-    
+        
     }
 
 
@@ -1601,7 +1607,9 @@ void space_maketasks ( struct space *s , int do_sort ) {
     /* Append a ghost task to each cell. */
     space_map_cells_pre( s , 1 , &space_map_mkghosts , s );
     
-    /* Run through the tasks and make force tasks for each density task. */
+    /* Run through the tasks and make force tasks for each density task.
+       Each force task depends on the cell ghosts and unlocks the kick2 task
+       of its super-cell. */
     kk = s->nr_tasks;
     #pragma omp parallel for private(t,t2)
     for ( k = 0 ; k < kk ; k++ ) {
@@ -1618,6 +1626,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
             task_addunlock( t , t->ci->super->ghost );
             t2 = space_addtask( s , task_type_self , task_subtype_force , 0 , 0 , t->ci , NULL , 0 );
             task_addunlock( t->ci->ghost , t2 );
+            task_addunlock( t2 , t->ci->super->kick2 );
             }
             
         /* Otherwise, pair interaction? */
@@ -1628,17 +1637,23 @@ void space_maketasks ( struct space *s , int do_sort ) {
             t2 = space_addtask( s , task_type_pair , task_subtype_force , 0 , 0 , t->ci , t->cj , 0 );
             task_addunlock( t->ci->ghost , t2 );
             task_addunlock( t->cj->ghost , t2 );
+            task_addunlock( t2 , t->ci->super->kick2 );
+            if ( t->ci->super != t->cj->super )
+                task_addunlock( t2 , t->cj->super->kick2 );
             }
     
         /* Otherwise, sub interaction? */
         else if ( t->type == task_type_sub && t->subtype == task_subtype_density ) {
             task_addunlock( t , t->ci->super->ghost );
-            if ( t->cj != NULL )
+            if ( t->cj != NULL && t->ci->super != t->cj->super )
                 task_addunlock( t , t->cj->super->ghost );
             t2 = space_addtask( s , task_type_sub , task_subtype_force , t->flags , 0 , t->ci , t->cj , 0 );
             task_addunlock( t->ci->ghost , t2 );
             if ( t->cj != NULL )
                 task_addunlock( t->cj->ghost , t2 );
+            task_addunlock( t2 , t->ci->super->kick2 );
+            if ( t->cj != NULL && t->ci->super != t->cj->super )
+                task_addunlock( t2 , t->cj->super->kick2 );
             }
             
         }

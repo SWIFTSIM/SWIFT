@@ -33,6 +33,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "atomic.h"
 #include "timers.h"
 #include "const.h"
 #include "vector.h"
@@ -94,7 +95,7 @@ void engine_prepare ( struct engine *e ) {
         if ( s->tasks[k].skip )
             continue;
         for ( j = 0 ; j < s->tasks[k].nr_unlock_tasks ; j++ )
-            __sync_add_and_fetch( &s->tasks[k].unlock_tasks[j]->wait , 1 );
+            atomic_inc( &s->tasks[k].unlock_tasks[j]->wait );
         }
     // printf( "engine_prepare: preparing task dependencies took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
@@ -289,6 +290,51 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
 
 
 /**
+ * @brief Mapping function to collect the data from the second kick.
+ */
+
+void engine_collect_kick2 ( struct cell *c ) {
+
+    int k, updated = 0;
+    float dt_min = FLT_MAX, dt_max = 0.0f, ekin = 0.0f, epot = 0.0f;
+    float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
+    struct cell *cp;
+    
+    /* If I am a super-cell, return immediately. */
+    if ( c->kick2 != NULL )
+        return;
+        
+    /* If this cell is not split, I'm in trouble. */
+    if ( !c->split )
+        error( "Cell has no super-cell." );
+        
+    /* Collect the values from the progeny. */
+    for ( k = 0 ; k < 8 ; k++ )
+        if ( c->progeny[k] != NULL ) {
+            cp = c->progeny[k];
+            engine_collect_kick2( cp );
+            dt_min = fminf( dt_min , cp->dt_min );
+            dt_max = fmaxf( dt_max , cp->dt_max );
+            updated += cp->updated;
+            ekin += cp->ekin;
+            epot += cp->epot;
+            mom[0] += cp->mom[0]; mom[1] += cp->mom[1]; mom[2] += cp->mom[2];
+            ang[0] += cp->ang[0]; ang[1] += cp->ang[1]; ang[2] += cp->ang[2];
+            }
+    
+    /* Store the collected values in the cell. */
+    c->dt_min = dt_min;
+    c->dt_max = dt_max;
+    c->updated = updated;
+    c->ekin = ekin;
+    c->epot = epot;
+    c->mom[0] = mom[0]; c->mom[1] = mom[1]; c->mom[2] = mom[2];
+    c->ang[0] = ang[0]; c->ang[1] = ang[1]; c->ang[2] = ang[2];
+        
+    }
+
+
+/**
  * @brief Compute the force on a single particle brute-force.
  */
 
@@ -354,16 +400,13 @@ void engine_single ( double *dim , long long int pid , struct part *__restrict__
  
 void engine_step ( struct engine *e , int sort_queues ) {
 
-    int k, nr_parts = e->s->nr_parts;
-    struct part *restrict parts = e->s->parts, *restrict p;
-    struct xpart *restrict xp;
-    float dt = e->dt, hdt = 0.5*dt, dt_step, dt_max, dt_min, ldt_min, ldt_max;
-    float pdt, h, m, v[3], u;
-    double x[3];
-    double epot = 0.0, ekin = 0.0, lepot, lekin, lmom[3], mom[3] = { 0.0 , 0.0 , 0.0 };
-    double lang[3], ang[3] = { 0.0 , 0.0 , 0.0 };
+    int k;
+    float dt = e->dt, dt_step, dt_max = 0.0f, dt_min = FLT_MAX;
+    float epot = 0.0, ekin = 0.0, mom[3] = { 0.0 , 0.0 , 0.0 };
+    float ang[3] = { 0.0 , 0.0 , 0.0 };
     // double lent, ent = 0.0;
-    int threadID, nthreads, count = 0, lcount;
+    int count = 0;
+    struct cell *c;
     
     TIMER_TIC2
 
@@ -424,83 +467,19 @@ void engine_step ( struct engine *e , int sort_queues ) {
     // printParticle( parts , 432626 );
     // printParticle( parts , 432628 );
 
-    /* Second kick. */
-    TIMER_TIC_ND
-    dt_min = FLT_MAX; dt_max = 0.0f;
-    #pragma omp parallel private(p,xp,k,ldt_min,lcount,ldt_max,lmom,lang,lekin,lepot,threadID,nthreads,pdt,v,h,m,x,u)
-    {
-        threadID = omp_get_thread_num();
-        nthreads = omp_get_num_threads();
-        ldt_min = FLT_MAX; ldt_max = 0.0f;
-        lmom[0] = 0.0; lmom[1] = 0.0; lmom[2] = 0.0;
-        lang[0] = 0.0; lang[1] = 0.0; lang[2] = 0.0;
-        lekin = 0.0; lepot = 0.0; /* lent=0.0; */ lcount = 0;
-        for ( k = nr_parts * threadID / nthreads ; k < nr_parts * (threadID + 1) / nthreads ; k++ ) {
-
-            /* Get a handle on the part. */
-            p = &parts[k];
-            xp = p->xtras;
-            
-            /* Get local copies of particle data. */
-            pdt = p->dt;
-            h = p->h;
-            m = p->mass;
-            x[0] = p->x[0]; x[1] = p->x[1]; x[2] = p->x[2];
-
-            /* Scale the derivatives if they're freshly computed. */
-            if ( pdt <= dt_step ) {
-                p->force.h_dt *= h * 0.333333333f;
-                lcount += 1;
-                }
-                
-            /* Update the particle's time step. */
-            p->dt = pdt = const_cfl * h / ( p->force.v_sig );
-
-            /* Update positions and energies at the half-step. */
-            p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];
-            p->v[1] = v[1] = xp->v_old[1] + hdt * p->a[1];
-            p->v[2] = v[2] = xp->v_old[2] + hdt * p->a[2];
-            p->u = u = xp->u_old + hdt * p->force.u_dt;
-            
-            /* Get the smallest/largest dt. */
-            ldt_min = fminf( ldt_min , pdt );
-            ldt_max = fmaxf( ldt_max , pdt );
-            
-            /* Collect total energy. */
-            lekin += 0.5 * m * ( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
-            lepot += m * u;
-
-            /* Collect momentum */
-            lmom[0] += m * p->v[0];
-            lmom[1] += m * p->v[1];
-            lmom[2] += m * p->v[2];
-	    
-	        /* Collect angular momentum */
-	        lang[0] += m * ( x[1]*v[2] - v[2]*x[1] );
-	        lang[1] += m * ( x[2]*v[0] - v[0]*x[2] );
-	        lang[2] += m * ( x[0]*v[1] - v[1]*x[0] );
-
-	        /* Collect entropic function */
-	        // lent += u * pow( p->rho, 1.f-const_gamma );
-
-            }
-        #pragma omp critical
-        {
-            dt_min = fminf( dt_min , ldt_min );
-            dt_max = fmaxf( dt_max , ldt_max );
-            mom[0] += lmom[0];
-            mom[1] += lmom[1];
-            mom[2] += lmom[2];
-            ang[0] += lang[0];
-            ang[1] += lang[1];
-            ang[2] += lang[2];
-	        // ent += (const_gamma -1.) * lent;
-            epot += lepot;
-            ekin += lekin;
-            count += lcount;
+    /* Collect the cell data from the second kick. */
+    for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
+        c = &e->s->cells[k];
+        engine_collect_kick2( c );
+        dt_min = fminf( dt_min , c->dt_min );
+        dt_max = fmaxf( dt_max , c->dt_max );
+        ekin += c->ekin;
+        epot += c->epot;
+        count += c->updated;
+        mom[0] += c->mom[0]; mom[1] += c->mom[1]; mom[2] += c->mom[2];
+        ang[0] += c->ang[0]; ang[1] += c->ang[1]; ang[2] += c->ang[2];
         }
-    }
-    TIMER_TOC( timer_kick2 );
+    
     e->dt_min = dt_min;
     // printParticle( parts , 432626 );
     printf( "engine_step: dt_min/dt_max is %e/%e.\n" , dt_min , dt_max ); fflush(stdout);

@@ -88,7 +88,7 @@ struct cell {
     int nr_density;
     
     /* The ghost task to link density to interactions. */
-    struct task *ghost;
+    struct task *ghost, *kick2;
     
     /* Number of tasks that are associated with this cell. */
     int nr_tasks;
@@ -104,6 +104,15 @@ struct cell {
     
     /* ID of the previous owner, e.g. runner. */
     int owner;
+    
+    /* Momentum of particles in cell. */
+    float mom[3], ang[3];
+    
+    /* Potential and kinetic energy of particles in this cell. */
+    float epot, ekin;
+    
+    /* Number of particles updated in this cell. */
+    int updated;
     
     /* Linking pointer for "memory management". */
     struct cell *next;

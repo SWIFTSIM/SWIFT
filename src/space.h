@@ -28,7 +28,7 @@
 #define space_subsize_default           1000
 #define space_dosub                     0
 #define space_stretch                   1.05
-#define space_maxtaskspercell           30
+#define space_maxtaskspercell           31
 
 
 /* Convert cell location to ID. */

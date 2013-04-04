@@ -33,6 +33,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "atomic.h"
 #include "timers.h"
 #include "const.h"
 #include "lock.h"
@@ -331,7 +332,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
  * @brief Intermediate task between density and force
  *
  * @param r The runner thread.
- * @param c THe cell.
+ * @param c The cell.
  */
  
 void runner_doghost ( struct runner *r , struct cell *c ) {
@@ -506,6 +507,96 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     #endif
     
     }
+    
+    
+/**
+ * @brief Compute the second kick of the given cell.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+ 
+void runner_dokick2 ( struct runner *r , struct cell *c ) {
+
+    int k, count = 0, nr_parts = c->count;
+    float dt_min = FLT_MAX, dt_max = 0.0f, ekin = 0.0f, epot = 0.0f;
+    float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
+    float x[3], v[3], u, h, pdt, m;
+    float dt_step = r->e->dt_step, dt = r->e->dt, hdt = 0.5f*dt;
+    struct part *p, *parts = c->parts;
+    struct xpart *xp;
+    
+    TIMER_TIC
+    
+    /* Loop over the particles and kick them. */
+    for ( k = 0 ; k < nr_parts ; k++ ) {
+
+        /* Get a handle on the part. */
+        p = &parts[k];
+        xp = p->xtras;
+
+        /* Get local copies of particle data. */
+        pdt = p->dt;
+        h = p->h;
+        m = p->mass;
+        x[0] = p->x[0]; x[1] = p->x[1]; x[2] = p->x[2];
+
+        /* Scale the derivatives if they're freshly computed. */
+        if ( pdt <= dt_step ) {
+            p->force.h_dt *= h * 0.333333333f;
+            count += 1;
+            }
+
+        /* Update the particle's time step. */
+        p->dt = pdt = const_cfl * h / ( p->force.v_sig );
+
+        /* Update positions and energies at the half-step. */
+        p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];
+        p->v[1] = v[1] = xp->v_old[1] + hdt * p->a[1];
+        p->v[2] = v[2] = xp->v_old[2] + hdt * p->a[2];
+        p->u = u = xp->u_old + hdt * p->force.u_dt;
+
+        /* Get the smallest/largest dt. */
+        dt_min = fminf( dt_min , pdt );
+        dt_max = fmaxf( dt_max , pdt );
+
+        /* Collect total energy. */
+        ekin += 0.5 * m * ( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
+        epot += m * u;
+
+        /* Collect momentum */
+        mom[0] += m * p->v[0];
+        mom[1] += m * p->v[1];
+        mom[2] += m * p->v[2];
+
+	    /* Collect angular momentum */
+	    ang[0] += m * ( x[1]*v[2] - v[2]*x[1] );
+	    ang[1] += m * ( x[2]*v[0] - v[0]*x[2] );
+	    ang[2] += m * ( x[0]*v[1] - v[1]*x[0] );
+
+	    /* Collect entropic function */
+	    // lent += u * pow( p->rho, 1.f-const_gamma );
+
+        }
+
+    #ifdef TIMER_VERBOSE
+        printf( "runner_dokick2[%02i]: %i parts at depth %i took %.3f ms.\n" ,
+            r->id , c->count , c->depth ,
+            ((double)TIMER_TOC(timer_kick2)) / CPU_TPS * 1000 ); fflush(stdout);
+    #else
+        TIMER_TOC(timer_kick2);
+    #endif
+        
+    /* Store the computed values in the cell. */
+    c->dt_min = dt_min;
+    c->dt_max = dt_max;
+    c->updated = count;
+    c->ekin = ekin;
+    c->epot = epot;
+    c->mom[0] = mom[0]; c->mom[1] = mom[1]; c->mom[2] = mom[2];
+    c->ang[0] = ang[0]; c->ang[1] = ang[1]; c->ang[2] = ang[2];
+        
+    }
 
 
 /**
@@ -660,14 +751,17 @@ void *runner_main ( void *data ) {
                     if ( ci->super == ci )
                         runner_doghost( r , ci );
                     break;
+                case task_type_kick2:
+                    runner_dokick2( r , ci );
+                    break;
                 default:
                     error( "Unknown task type." );
                 }
                 
             /* Resolve any dependencies. */
             for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
-                if ( __sync_fetch_and_sub( &t->unlock_tasks[k]->wait , 1 ) == 0 )
-                    abort();
+                if ( atomic_dec( &t->unlock_tasks[k]->wait ) == 0 )
+                    error( "Task negative wait." );
         
             } /* main loop. */
             
