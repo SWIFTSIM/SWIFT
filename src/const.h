@@ -24,7 +24,7 @@
 #define const_viscosity_alpha   0.8
 
 /* Time integration constants. */
-#define const_cfl               0.25f
+#define const_cfl               0.3f
 
 /* Neighbour search constants. */
 #define const_nwneigh           48.f
