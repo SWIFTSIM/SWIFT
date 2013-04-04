@@ -46,9 +46,7 @@
 #include "engine.h"
 #include "runner.h"
 #include "runner_iact.h"
-
-/* Error macro. */
-#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#include "error.h"
 
 /* Convert cell location to ID. */
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )

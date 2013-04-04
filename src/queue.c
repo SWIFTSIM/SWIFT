@@ -37,9 +37,8 @@
 #include "task.h"
 #include "cell.h"
 #include "queue.h"
-
-/* Error macro. */
-#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#include "error.h"
+#include "inline.h"
 
 /* Define the timer macros. */
 #ifdef TIMER_VERBOSE
@@ -52,13 +51,6 @@
     #define TIMER_TOC(t) timer_toc( t , tic )
     #define TIMER_TIC2 ticks tic2 = getticks();
     #define TIMER_TOC2(t) timer_toc( t , tic2 )
-    #ifndef INLINE
-    # if __GNUC__ && !__GNUC_STDC_INLINE__
-    #  define INLINE extern inline
-    # else
-    #  define INLINE inline
-    # endif
-    #endif
     INLINE static ticks timer_toc ( int t , ticks tic ) {
         ticks d = (getticks() - tic);
         __sync_add_and_fetch( &queue_timer[t] , d );

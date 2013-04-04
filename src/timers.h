@@ -17,7 +17,7 @@
  * 
  ******************************************************************************/
 
-
+#include "inline.h"
 
 /* The timers themselves. */
 enum {
@@ -62,13 +62,6 @@ extern ticks timers[ timer_count ];
     #define TIMER_TOC(t) timers_toc( t , tic )
     #define TIMER_TIC2 ticks tic2 = getticks();
     #define TIMER_TOC2(t) timers_toc( t , tic2 )
-    #ifndef INLINE
-    # if __GNUC__ && !__GNUC_STDC_INLINE__
-    #  define INLINE extern inline
-    # else
-    #  define INLINE inline
-    # endif
-    #endif
     INLINE static ticks timers_toc ( int t , ticks tic ) {
         ticks d = (getticks() - tic);
         __sync_add_and_fetch( &timers[t] , d );

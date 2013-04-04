@@ -17,6 +17,7 @@
  * 
  ******************************************************************************/
 
+#include "inline.h"
 
 /* SID stuff. */
 extern const char runner_flip[];
@@ -50,15 +51,6 @@ extern int runner_counter[ runner_counter_count ];
 long long int runner_hist_bins[ runner_hist_N ];
 #define runner_hist_hit( x ) __sync_add_and_fetch( &runner_hist_bins[ (int)fmax( 0.0 , fmin( runner_hist_N-1 , ((x) - runner_hist_a) / (runner_hist_b - runner_hist_a) * runner_hist_N ) ) ] , 1 )
 
-
-/* Get the inlining right. */
-#ifndef INLINE
-# if __GNUC__ && !__GNUC_STDC_INLINE__
-#  define INLINE extern inline
-# else
-#  define INLINE inline
-# endif
-#endif
 
 
 /* A struct representing a runner's thread and its data. */

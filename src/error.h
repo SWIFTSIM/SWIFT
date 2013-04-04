@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,8 +18,10 @@
  * 
  ******************************************************************************/
 
+#include <stdio.h>
 
-#include "inline.h"
-    
-#define atomic_add(v,i) __sync_fetch_and_add( v , i )
-#define atomic_inc(v) atomic_add( v , 1 )
+/**
+ * @brief Error macro. Prints the message given in argument and aborts.
+ *
+ */
+#define error(s) { fprintf( stderr , "%s:%s():%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }

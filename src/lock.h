@@ -19,14 +19,7 @@
 
 
 
-/* Get the inlining right. */
-#ifndef INLINE
-# if __GNUC__ && !__GNUC_STDC_INLINE__
-#  define INLINE extern inline
-# else
-#  define INLINE inline
-# endif
-#endif
+#include "inline.h"
     
 #ifdef PTHREAD_LOCK
     #define lock_type pthread_spinlock_t

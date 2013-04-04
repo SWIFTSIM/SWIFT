@@ -35,13 +35,10 @@
 #include "cycle.h"
 #include "lock.h"
 #include "task.h"
-
+#include "error.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" , "sub" , "ghost" };
-
-/* Error macro. */
-#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 
 /**

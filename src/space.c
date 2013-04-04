@@ -38,9 +38,7 @@
 #include "cell.h"
 #include "space.h"
 #include "runner.h"
-
-/* Error macro. */
-#define error(s) { fprintf( stderr , "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#include "error.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;

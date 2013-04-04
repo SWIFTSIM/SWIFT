@@ -37,12 +37,7 @@
 #include "part.h"
 #include "space.h"
 #include "engine.h"
-
-/**
- * @brief Error macro
- *
- */
-#define error(s) { fprintf( stderr , "%s:%s():%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
+#include "error.h"
 
 /**
  * @brief The different types of data used in the GADGET IC files.
@@ -533,15 +528,11 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
  *
  * @param fileName The file to write.
- * @param dim The dimension of the volume written to the file.
- * @param parts The array of #part to write in the file.
- * @param N The number of particles to write.
- * @param periodic 1 if the volume is periodic, 0 if not.
+ * @param e The engine containing all the system.
  *
  * Creates the HDF5 file fileName and writess the particles contained
- * in the parts array. If such a file already exists, it is erased and replaced
+ * in the engine. If such a file already exists, it is erased and replaced
  * by the new one.
- *
  *
  * Calls #error() if an error occurs.
  *
