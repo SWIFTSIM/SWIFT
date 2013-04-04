@@ -186,7 +186,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
         return;
     
     /* start by allocating the entry arrays. */
-    if ( lock_lock( &c->lock ) != 0 )
+    if ( lock_lock( &c->mlock ) != 0 )
         error( "Failed to lock cell." );
     if ( c->sort == NULL || c->sortsize < c->count ) {
         if ( c->sort != NULL )
@@ -195,7 +195,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
         if ( ( c->sort = (struct entry *)malloc( sizeof(struct entry) * (c->sortsize + 1) * 13 ) ) == NULL )
             error( "Failed to allocate sort memory." );
         }
-    if ( lock_unlock( &c->lock ) != 0 )
+    if ( lock_unlock( &c->mlock ) != 0 )
         error( "Failed to unlock cell." );
         
     /* Does this cell have any progeny? */

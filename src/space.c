@@ -113,8 +113,8 @@ int space_marktasks ( struct space *s ) {
             t->skip = ( t->ci->dt_min > dt_step );
             
             /* Set the sort flags. */
-            if ( !t->skip && t->type == task_type_sub )
-                space_addsorts( s , t , t->ci , t->cj , t->flags );
+            // if ( !t->skip && t->type == task_type_sub )
+            //     space_addsorts( s , t , t->ci , t->cj , t->flags );
             
             }
         
@@ -941,10 +941,10 @@ void space_splittasks ( struct space *s ) {
                       { -1 , -1 , -1 , -1 , -1 , -1 , -1 , 12 } };
 
     /* Loop through the tasks... */
-    #pragma omp parallel shared(s,tid,pts) private(ind,j,k,t,t_old,redo,ci,cj,hi,hj,sid,shift)
+    #pragma omp parallel default(none) shared(s,tid,pts,space_subsize) private(ind,j,k,t,t_old,redo,ci,cj,hi,hj,sid,shift)
     {
     redo = 0; t_old = t = NULL;
-    while ( redo || tid < s->nr_tasks ) {
+    while ( 1 ) {
     
         /* Get a pointer on the task. */
         if ( redo ) {
@@ -952,9 +952,10 @@ void space_splittasks ( struct space *s ) {
             t = t_old;
             }
         else {
-            if ( ( ind = atomic_inc( &tid ) ) >= s->nr_tasks )
+            if ( ( ind = atomic_inc( &tid ) ) < s->nr_tasks )
+                t_old = t = &s->tasks[ s->tasks_ind[ ind ] ];
+            else
                 break;
-            t_old = t = &s->tasks[ s->tasks_ind[ ind ] ];
             }
         
         /* Empty task? */
@@ -988,7 +989,7 @@ void space_splittasks ( struct space *s ) {
                 
                 /* Wait for this tasks sorts, as we will now have pairwise
                    components in this sub. */
-                space_addsorts( s , t , ci , NULL , -1 );
+                // space_addsorts( s , t , ci , NULL , -1 );
             
                 }
                 
@@ -1934,8 +1935,9 @@ struct cell *space_getcell ( struct space *s ) {
     
     /* Init some things in the cell. */
     bzero( c , sizeof(struct cell) );
-    if ( lock_init( &c->lock ) != 0 )
-        error( "Failed to initialize cell spinlock." );
+    if ( lock_init( &c->lock ) != 0 ||
+         lock_init( &c->mlock ) != 0 )
+        error( "Failed to initialize cell spinlocks." );
         
     /* Unlock the space. */
     lock_unlock_blind( &s->lock );

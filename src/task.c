@@ -33,6 +33,7 @@
 
 /* Local headers. */
 #include "cycle.h"
+#include "atomic.h"
 #include "lock.h"
 #include "task.h"
 #include "error.h"
@@ -125,10 +126,10 @@ void task_rmunlock_blind ( struct task *ta , struct task *tb ) {
  * @param tb The #task that will be unlocked.
  */
  
-void task_addunlock ( struct task *ta , struct task *tb ) {
+void task_addunlock_new ( struct task *ta , struct task *tb ) {
 
     /* Add the lock atomically. */
-    ta->unlock_tasks[ __sync_fetch_and_add( &ta->nr_unlock_tasks, 1 ) ] = tb;
+    ta->unlock_tasks[ atomic_inc( &ta->nr_unlock_tasks ) ] = tb;
 
     /* Check a posteriori if we did not overshoot. */
     if ( ta->nr_unlock_tasks > task_maxunlock )
@@ -137,7 +138,7 @@ void task_addunlock ( struct task *ta , struct task *tb ) {
     }
     
 
-void task_addunlock_old ( struct task *ta , struct task *tb ) {
+void task_addunlock ( struct task *ta , struct task *tb ) {
 
     int k;
     
