@@ -126,7 +126,7 @@ void task_rmunlock_blind ( struct task *ta , struct task *tb ) {
  * @param tb The #task that will be unlocked.
  */
  
-void task_addunlock_new ( struct task *ta , struct task *tb ) {
+void task_addunlock ( struct task *ta , struct task *tb ) {
 
     /* Add the lock atomically. */
     ta->unlock_tasks[ atomic_inc( &ta->nr_unlock_tasks ) ] = tb;
@@ -138,7 +138,7 @@ void task_addunlock_new ( struct task *ta , struct task *tb ) {
     }
     
 
-void task_addunlock ( struct task *ta , struct task *tb ) {
+void task_addunlock_old ( struct task *ta , struct task *tb ) {
 
     int k;
     
