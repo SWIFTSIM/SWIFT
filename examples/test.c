@@ -849,7 +849,7 @@ int main ( int argc , char *argv[] ) {
 
     /* Write the state of the system as it is before starting time integration. */
     tic = getticks();
-    write_output("output.hdf5", &e);
+    write_output(&e);
     printf( "main: writing particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Init the runner history. */
@@ -871,11 +871,9 @@ int main ( int argc , char *argv[] ) {
         /* Take a step. */
         engine_step( &e , 0 );
 
-        if(j % 100 == 0) {
-            char fileName[200];
-            sprintf(fileName, "output_%05i.hdf5", j); 
-            write_output(fileName, &e);
-            }
+        if(j % 100 == 0)
+	  write_output(&e);
+	
         
         /* Dump the first few particles. */
         // for(k=0; k<10; ++k)

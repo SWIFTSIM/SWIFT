@@ -352,8 +352,10 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
 
 
 /* File descriptor output routine */
-void writeXMFheader(FILE** xmfFile, char* hdf5fileName, int N);
+void createXMFfile();
+FILE* prepareXMFfile();
 void writeXMFfooter(FILE* xmfFile);
+void writeXMFheader(FILE* xmfFile, int Nparts, char* hdfFileName,  float time);
 void writeXMFline(FILE* xmfFile, char* fileName, char* name, int N, int dim, enum DATA_TYPE type);
 
 
@@ -527,17 +529,17 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
  *
- * @param fileName The file to write.
  * @param e The engine containing all the system.
  *
- * Creates the HDF5 file fileName and writess the particles contained
+ * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
- * by the new one.
+ * by the new one. 
+ * The companion XMF file is also updated accordingly.
  *
  * Calls #error() if an error occurs.
  *
  */
-void write_output ( char* fileName, struct engine *e)
+void write_output (struct engine *e)
 {
   
   hid_t h_file=0, h_grp=0;
@@ -547,9 +549,23 @@ void write_output ( char* fileName, struct engine *e)
   int numParticlesHighWord[6]={0};
   int numFiles = 1;
   struct part* parts = e->s->parts;
-  FILE* xmfFile;
+  FILE* xmfFile = 0;
+  static int outputCount = 0;
+  
+  /* File name */
+  char fileName[200];
+  sprintf(fileName, "output_%03i.hdf5", outputCount);
 
-  writeXMFheader(&xmfFile, fileName, N);
+  /* First time, we need to create the XMF file */
+  if(outputCount == 0)
+    createXMFfile();
+  
+  /* Prepare the XMF file for the new entry */
+  xmfFile = prepareXMFfile();
+
+  /* Write the part corresponding to this specific output */
+  writeXMFheader(xmfFile, N, fileName, e->time);
+
 
   /* Open file */
   /* printf("write_output: Opening file '%s'.\n", fileName); */
@@ -624,6 +640,8 @@ void write_output ( char* fileName, struct engine *e)
 
   /* Close file */
   H5Fclose(h_file);
+
+  ++outputCount;
 }
 
 
@@ -654,37 +672,105 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* name, int N, int dim, enu
   fprintf(xmfFile, "</Attribute>\n");
 }
 
+
+/**
+ * @brief Prepares the XMF file for the new entry
+ *
+ * Creates a temporary file on the disk in order to copy the right lines.
+ *
+ * @todo Use a proper XML library to avoid stupid copies.
+ */
+FILE* prepareXMFfile()
+{
+  char buffer[1024];
+
+  FILE* xmfFile = fopen("output.xmf", "r");
+  FILE* tempFile = fopen("output_temp.xmf", "w");
+
+  if(xmfFile == NULL)
+    error("Unable to open current XMF file.");
+
+  if(tempFile == NULL)
+    error("Unable to open temporary file.");
+
+
+  /* First we make a temporary copy of the XMF file and count the lines */
+  int counter = 0;
+  while (fgets(buffer, 1024, xmfFile) != NULL)
+    {
+      counter++;
+      fprintf(tempFile, "%s", buffer);
+    }
+  fclose(tempFile);
+  fclose(xmfFile);
+  
+  /* We then copy the XMF file back up to the closing lines */
+  xmfFile = fopen("output.xmf", "w");
+  tempFile = fopen("output_temp.xmf", "r");
+
+  if(xmfFile == NULL)
+    error("Unable to open current XMF file.");
+
+  if(tempFile == NULL)
+    error("Unable to open temporary file.");
+
+  int i = 0;
+  while (fgets(buffer, 1024, tempFile) != NULL && i < counter - 3)
+    {
+      i++;
+      fprintf(xmfFile, "%s", buffer);
+    }
+  fprintf(xmfFile, "\n");
+  fclose(tempFile);
+  remove("output_temp.xmf");
+ 
+  return xmfFile;
+}
+
 /**
  * @brief Writes the begin of the XMF file
  *
- * @param xmfFile The file to write in.
- * @param hdf5FileName The name of the HDF5 file associated to this XMF descriptor.
- * @param N The number of particles to write.
- *
  * @todo Exploit the XML nature of the XMF format to write a proper XML writer and simplify all the XMF-related stuff.
  */
-void writeXMFheader(FILE** xmfFile, char* hdf5FileName, int N)
+void createXMFfile()
 {
-  char buf[500];
-  sprintf(buf, "%s.xmf", hdf5FileName);
-  *xmfFile = fopen(buf, "w");
+  FILE* xmfFile = fopen("output.xmf", "w");
 
-  /* Write header */
-  fprintf(*xmfFile, "<?xml version=\"1.0\" ?> \n");
-  fprintf(*xmfFile, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []> \n");
-  fprintf(*xmfFile, "<Xdmf xmlns:xi=\"http://www.w3.org/2003/XInclude\" Version=\"2.1\">\n");
-  fprintf(*xmfFile, "<Domain>\n");
-  fprintf(*xmfFile, "<Grid GridType=\"Collection\" CollectionType=\"Spatial\">\n");
-  fprintf(*xmfFile, "<Time Type=\"Single\" Value=\"%f\"/>\n", 0.);
-  fprintf(*xmfFile, "<Grid Name=\"Gas\" GridType=\"Uniform\">\n");
-  fprintf(*xmfFile, "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%d\"/>\n", N);
+  fprintf(xmfFile, "<?xml version=\"1.0\" ?> \n");
+  fprintf(xmfFile, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []> \n");
+  fprintf(xmfFile, "<Xdmf xmlns:xi=\"http://www.w3.org/2003/XInclude\" Version=\"2.1\">\n");
+  fprintf(xmfFile, "<Domain>\n");
+  fprintf(xmfFile, "<Grid Name=\"TimeSeries\" GridType=\"Collection\" CollectionType=\"Temporal\">\n\n");
 
-  /* Write coordinates info */
-  fprintf(*xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
-  fprintf(*xmfFile, "<DataItem Dimensions=\"%d 3\" NumberType=\"Double\" Precision=\"8\" Format=\"HDF\">%s:/PartType0/Coordinates</DataItem>\n", N, hdf5FileName);
-  fprintf(*xmfFile, "</Geometry>\n");
+  fprintf(xmfFile, "</Grid>\n");
+  fprintf(xmfFile, "</Domain>\n");
+  fprintf(xmfFile, "</Xdmf>\n");
 
+  fclose(xmfFile);
 }
+
+
+/**
+ * @brief Writes the part of the XMF entry presenting the geometry of the snapshot
+ *
+ * @param xmfFile The file to write in.
+ * @param Nparts The number of particles.
+ * @param hdfFileName The name of the HDF5 file corresponding to this output.
+ * @param time The current simulation time.
+ */
+void writeXMFheader(FILE* xmfFile, int Nparts, char* hdfFileName, float time)
+{
+  /* Write end of file */
+  
+  fprintf(xmfFile, "<Grid GridType=\"Collection\" CollectionType=\"Spatial\">\n");
+  fprintf(xmfFile, "<Time Type=\"Single\" Value=\"%f\"/>\n", time);
+  fprintf(xmfFile, "<Grid Name=\"Gas\" GridType=\"Uniform\">\n");
+  fprintf(xmfFile, "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%d\"/>\n", Nparts);
+  fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
+  fprintf(xmfFile, "<DataItem Dimensions=\"%d 3\" NumberType=\"Double\" Precision=\"8\" Format=\"HDF\">%s:/PartType0/Coordinates</DataItem>\n", Nparts, hdfFileName);
+  fprintf(xmfFile, "</Geometry>");
+}
+
 
 /**
  * @brief Writes the end of the XMF file (closes all open markups)
@@ -693,10 +779,11 @@ void writeXMFheader(FILE** xmfFile, char* hdf5FileName, int N)
  */
 void writeXMFfooter(FILE* xmfFile)
 {
-  /* Write end of file */
+  /* Write end of the section of this time step */
   
+  fprintf(xmfFile, "\n</Grid>\n");
   fprintf(xmfFile, "</Grid>\n");
-  fprintf(xmfFile, "</Grid>\n");
+  fprintf(xmfFile, "\n</Grid>\n");
   fprintf(xmfFile, "</Domain>\n");
   fprintf(xmfFile, "</Xdmf>\n");
   
