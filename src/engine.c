@@ -251,7 +251,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             if ( pdt > dt_step ) {
                 // rho = p->rho *= expf( -3.0f * h_dt / h * dt );
                 float w = -3.0f * h_dt / h * dt;
-                rho = p->rho *= 1.0f + w*( -1.0f + w*( 0.5f - 1.0f/6.0f*w ) );
+                rho = p->rho *= 1.0f + w*( -1.0f + w*( 0.5f + w*(-1.0f/6.0f + 1.0f/24.0*w ) ) );
                 p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * p->rho_dh / 3.0f );
                 }
             else {
@@ -531,7 +531,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
                 }
             e->step += 1;
             }
-        }
+        } 
     
     /* Set the system time. */
     e->time = e->dt * e->step;
