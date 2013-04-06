@@ -1815,7 +1815,7 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
             }
             
         /* Otherwise, compute the pair directly. */
-        else {
+        else if ( ci->dt_min < dt_step || cj->dt_min < dt_step ) {
         
             /* Do any of the cells need to be sorted first? */
             if ( !(ci->sorted & (1 << sid) ) )
@@ -2095,7 +2095,7 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
             }
             
         /* Otherwise, compute the pair directly. */
-        else {
+        else if ( ci->dt_min < dt_step || cj->dt_min < dt_step ) {
         
             /* Do any of the cells need to be sorted first? */
             if ( !(ci->sorted & (1 << sid) ) )
