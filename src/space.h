@@ -114,7 +114,7 @@ void space_maketasks ( struct space *s , int do_sort );
 void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data );
 void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct cell *c , void *data ) , void *data );
 void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data );
-void space_prepare ( struct space *s );
+int space_prepare ( struct space *s );
 void space_ranktasks ( struct space *s );
 void space_rebuild ( struct space *s , double h_max );
 void space_recycle ( struct space *s , struct cell *c );

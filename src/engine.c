@@ -61,7 +61,7 @@
  
 void engine_prepare ( struct engine *e ) {
 
-    int j, k, qid;
+    int j, k, qid, rebuild;
     struct space *s = e->s;
     struct queue *q;
     
@@ -69,24 +69,36 @@ void engine_prepare ( struct engine *e ) {
 
     /* Rebuild the space. */
     // tic = getticks();
-    space_prepare( e->s );
+    rebuild = ( space_prepare( e->s ) || e->step == 0 );
     // printf( "engine_prepare: space_prepare took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
-    // tic = getticks();
-    /* Init the queues (round-robin). */
-    for ( qid = 0 ; qid < e->nr_queues ; qid++ )
-        queue_init( &e->queues[qid] , s->nr_tasks , s->tasks );
+    /* The queues only need to be re-built if we have variable time-steps
+       or the space was rebuilt. */
+    if ( !(e->policy & engine_policy_fixdt) || rebuild ) {
+    
+        // tic = getticks();
+        /* Init the queues (round-robin). */
+        for ( qid = 0 ; qid < e->nr_queues ; qid++ )
+            queue_init( &e->queues[qid] , s->nr_tasks , s->tasks );
 
-    /* Fill the queues (round-robin). */
-    for ( qid = 0 , k = 0 ; k < s->nr_tasks ; k++ ) {
-        if ( s->tasks[ s->tasks_ind[k] ].skip )
-            continue;
-        q = &e->queues[qid];
-        qid = ( qid + 1 ) % e->nr_queues;
-        q->tid[ q->count ] = s->tasks_ind[k];
-        q->count += 1;
+        /* Fill the queues (round-robin). */
+        for ( qid = 0 , k = 0 ; k < s->nr_tasks ; k++ ) {
+            if ( s->tasks[ s->tasks_ind[k] ].skip )
+                continue;
+            q = &e->queues[qid];
+            qid = ( qid + 1 ) % e->nr_queues;
+            q->tid[ q->count ] = s->tasks_ind[k];
+            q->count += 1;
+            }
+        // printf( "engine_prepare: re-filling queues took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+        
         }
-    // printf( "engine_prepare: re-filling queues took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+        
+    /* Otherwise, just re-set them. */
+    else {
+        for ( qid = 0 ; qid < e->nr_queues ; qid++ )
+            e->queues[qid].next = 0;
+        }
 
     /* Run throught the tasks and get all the waits right. */
     // tic = getticks();
@@ -492,12 +504,11 @@ void engine_step ( struct engine *e , int sort_queues ) {
     // printf( "engine_step: total entropic function is %e .\n", ent ); fflush(stdout);
     printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
         
-    /* Increase the step counter. */
-    e->step += 1;
-    
     /* Does the time step need adjusting? */
-    if ( e->policy & engine_policy_fixdt )
+    if ( e->policy & engine_policy_fixdt ) {
         e->dt = e->dt_orig;
+        e->step += 1;
+        }
     else {
         if ( e->dt == 0 ) {
             e->dt = e->dt_orig;
@@ -518,6 +529,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
                 e->step /= 2;
                 printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
                 }
+            e->step += 1;
             }
         }
     

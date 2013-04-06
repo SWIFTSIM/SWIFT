@@ -161,7 +161,7 @@ int space_marktasks ( struct space *s ) {
  * cell tree for those tasks and triggers a rebuild if necessary.
  */
  
-void space_prepare ( struct space *s ) {
+int space_prepare ( struct space *s ) {
 
     int k, rebuild;
     // struct task *t;
@@ -215,6 +215,9 @@ void space_prepare ( struct space *s ) {
         printf( " %s=%i" , taskID_names[k] , counts[k] );
     printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout);
     printf( "space_prepare: task counting took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 ); */
+    
+    /* Let whoever cares know if we rebuilt. */
+    return rebuild;
     
     }
     
