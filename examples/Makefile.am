@@ -25,10 +25,15 @@ AM_CFLAGS = -g -Wall -Werror -I../src $(OPENMP_CFLAGS) -DCPU_TPS=2.67e9
 AM_LDFLAGS =
 
 # Set-up the library
-bin_PROGRAMS = test
+bin_PROGRAMS = test test_fixed
 
 # Sources for test
 test_SOURCES = test.c
 test_CFLAGS = -DCOUNTER -DTIMER $(AM_CFLAGS)
 test_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
+
+# Sources for test_fixed
+test_fixed_SOURCES = test.c
+test_fixed_CFLAGS = -DCOUNTER -DTIMER $(AM_CFLAGS) -DENGINE_FLAGS=engine_policy_fixdt
+test_fixed_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
 

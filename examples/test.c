@@ -46,6 +46,11 @@
     #define CPU_TPS 2.67e9
 #endif
 
+/* Engine policy flags. */
+#ifndef ENGINE_POLICY
+    #define ENGINE_POLICY engine_policy_none
+#endif
+
 /* Error macro. */
 #define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
@@ -852,7 +857,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Initialize the runner with this space. */
     tic = getticks();
-    engine_init( &e , &s , dt_max , nr_threads , nr_queues , engine_policy_steal | engine_policy_keep );
+    engine_init( &e , &s , dt_max , nr_threads , nr_queues , ENGINE_POLICY | engine_policy_steal );
     printf( "main: engine_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
 
     /* Write the state of the system as it is before starting time integration. */
