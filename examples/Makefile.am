@@ -34,6 +34,6 @@ test_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
 
 # Sources for test_fixed
 test_fixed_SOURCES = test.c
-test_fixed_CFLAGS = -DCOUNTER -DTIMER $(AM_CFLAGS) -DENGINE_FLAGS=engine_policy_fixdt
+test_fixed_CFLAGS = -DCOUNTER -DTIMER $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep"
 test_fixed_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
 
