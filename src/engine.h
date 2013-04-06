@@ -25,6 +25,7 @@
 #define engine_policy_steal         2
 #define engine_policy_keep          4
 #define engine_policy_block         8
+#define engine_policy_fixdt         16
 
 #define engine_queue_scale          1.2
 

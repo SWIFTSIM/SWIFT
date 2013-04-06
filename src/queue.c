@@ -89,17 +89,14 @@ int queue_counter[ queue_counter_count ];
  
 void queue_insert ( struct queue *q , struct task *t ) {
 
-    int k;
-
     /* Lock the queue. */
     if ( lock_lock( &q->lock ) != 0 )
         error( "Failed to get queue lock." );
         
-    /* Bubble-up the tasks. */
-    for ( k = q->count ; k > q->next ; k-- )
-        q->tid[k] = q->tid[k-1];
-    q->tid[ q->next ] = t - q->tasks;
+    /* Swap next task to end. */
+    q->tid[ q->count ] = q->tid[ q->next ];
     q->count += 1;
+    q->tid[ q->next ] = t - q->tasks;
     q->next += 1;
     
     /* Unlock the queue. */

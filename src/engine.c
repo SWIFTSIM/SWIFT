@@ -411,10 +411,13 @@ void engine_step ( struct engine *e , int sort_queues ) {
     TIMER_TIC2
 
     /* Get the maximum dt. */
-    dt_step = 2.0f*dt;
-    for ( k = 0 ; k < 32 && (e->step & (1 << k)) == 0 ; k++ )
-        dt_step *= 2;
-    // dt_step = FLT_MAX;
+    if ( e->policy & engine_policy_fixdt )
+        dt_step = FLT_MAX;
+    else {
+        dt_step = 2.0f*dt;
+        for ( k = 0 ; k < 32 && (e->step & (1 << k)) == 0 ; k++ )
+            dt_step *= 2;
+        }
         
     /* Set the maximum dt. */
     e->dt_step = dt_step;
@@ -493,24 +496,28 @@ void engine_step ( struct engine *e , int sort_queues ) {
     e->step += 1;
     
     /* Does the time step need adjusting? */
-    if ( e->dt == 0 ) {
+    if ( e->policy & engine_policy_fixdt )
         e->dt = e->dt_orig;
-        while ( dt_min < e->dt )
-            e->dt *= 0.5;
-        while ( dt_min > 2*e->dt )
-            e->dt *= 2.0;
-        printf( "engine_step: dt_min=%.3e, adjusting time step to dt=%e.\n" , dt_min , e->dt );
-        }
     else {
-        while ( dt_min < e->dt ) {
-            e->dt *= 0.5;
-            e->step *= 2;
-            printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
+        if ( e->dt == 0 ) {
+            e->dt = e->dt_orig;
+            while ( dt_min < e->dt )
+                e->dt *= 0.5;
+            while ( dt_min > 2*e->dt )
+                e->dt *= 2.0;
+            printf( "engine_step: dt_min=%.3e, adjusting time step to dt=%e.\n" , dt_min , e->dt );
             }
-        while ( dt_min > 2*e->dt && (e->step & 1) == 0 ) {
-            e->dt *= 2.0;
-            e->step /= 2;
-            printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
+        else {
+            while ( dt_min < e->dt ) {
+                e->dt *= 0.5;
+                e->step *= 2;
+                printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
+                }
+            while ( dt_min > 2*e->dt && (e->step & 1) == 0 ) {
+                e->dt *= 2.0;
+                e->step /= 2;
+                printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
+                }
             }
         }
     
