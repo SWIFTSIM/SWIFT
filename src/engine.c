@@ -235,7 +235,11 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             p->v[1] = v[1] += dt * a[1];
             p->v[2] = v[2] += dt * a[2];
             p->u = u += u_dt * dt;
-            p->h = h += h_dt * dt;
+            // p->h = h += h_dt * dt;
+            {
+                float w = h_dt / h *dt;
+                p->h = h *= 1.0f + w*( -1.0f + w*( 0.5f + w*(-1.0f/6.0f + 1.0f/24.0*w ) ) );
+            }
             h_max = fmaxf( h_max , h );
 
         
@@ -504,10 +508,12 @@ void engine_step ( struct engine *e , int sort_queues ) {
     // printf( "engine_step: total entropic function is %e .\n", ent ); fflush(stdout);
     printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
         
+    /* Increase the step. */
+    e->step += 1;
+
     /* Does the time step need adjusting? */
     if ( e->policy & engine_policy_fixdt ) {
         e->dt = e->dt_orig;
-        e->step += 1;
         }
     else {
         if ( e->dt == 0 ) {
@@ -529,7 +535,6 @@ void engine_step ( struct engine *e , int sort_queues ) {
                 e->step /= 2;
                 printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
                 }
-            e->step += 1;
             }
         } 
     

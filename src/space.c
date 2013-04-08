@@ -944,7 +944,7 @@ void space_splittasks ( struct space *s ) {
                       { -1 , -1 , -1 , -1 , -1 , -1 , -1 , 12 } };
 
     /* Loop through the tasks... */
-    #pragma omp parallel default(none) shared(s,tid,pts,space_subsize) private(ind,j,k,t,t_old,redo,ci,cj,hi,hj,sid,shift)
+    // #pragma omp parallel default(none) shared(s,tid,pts,space_subsize) private(ind,j,k,t,t_old,redo,ci,cj,hi,hj,sid,shift)
     {
     redo = 0; t_old = t = NULL;
     while ( 1 ) {
@@ -1334,7 +1334,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
        Each force task depends on the cell ghosts and unlocks the kick2 task
        of its super-cell. */
     kk = s->nr_tasks;
-    #pragma omp parallel for private(t,t2)
+    // #pragma omp parallel for private(t,t2)
     for ( k = 0 ; k < kk ; k++ ) {
     
         /* Get a pointer to the task. */
