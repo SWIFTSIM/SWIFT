@@ -125,7 +125,7 @@ int space_marktasks ( struct space *s ) {
             t->skip = ( t->ci->dt_min > dt_step && t->cj->dt_min > dt_step );
             
             /* Too much particle movement? */
-            if ( !t->skip && t->tight &&
+            if ( t->tight &&
                  ( t->ci->h2dx_max > t->ci->dmin || t->cj->h2dx_max > t->cj->dmin ) )
                 return 1;
                 
@@ -1040,7 +1040,7 @@ void space_splittasks ( struct space *s ) {
                 
             /* Should this task be split-up? */
             if ( ci->split && cj->split &&
-                 ci->h_max < hi/2 && cj->h_max < hj/2 ) {
+                 ci->h_max*space_stretch < hi/2 && cj->h_max*space_stretch < hj/2 ) {
                  
                 /* Replace by a single sub-task? */
                 if ( space_dosub &&
