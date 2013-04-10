@@ -175,7 +175,8 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     int j, k;
     struct engine *e = (struct engine *)data;
     float pdt, dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
-    float dt_min, dt_max, h_max, dx, h2dx_max, dx_max, a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3];
+    float dt_min, dt_max, h_max, dx, h2dx_max, dx_max;
+    float a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3];
     double x[3], x_old[3];
     struct part *restrict p;
     struct xpart *restrict xp;
