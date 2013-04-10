@@ -774,7 +774,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
             /* Compute the pairwise distance. */
             r2 = 0.0f;
             for ( k = 0 ; k < 3 ; k++ ) {
-                dx[k] = cpi->x[k] - pjx[k];
+                dx[k] = pjx[k] - cpi->x[k];
                 r2 += dx[k]*dx[k];
                 }
                 
@@ -1094,7 +1094,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
                 for ( k = 0 ; k < 3 ; k++ ) {
-                    dx[k] = pjx[k] - cpi->x[k];
+                    dx[k] = cpi->x[k] - pjx[k];
                     r2 += dx[k]*dx[k];
                     }
 
@@ -1143,7 +1143,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
                 for ( k = 0 ; k < 3 ; k++ ) {
-                    dx[k] = cpi->x[k] - pjx[k];
+                    dx[k] = pjx[k] - cpi->x[k];
                     r2 += dx[k]*dx[k];
                     }
 
