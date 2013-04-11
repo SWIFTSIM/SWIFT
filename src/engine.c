@@ -176,7 +176,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     struct engine *e = (struct engine *)data;
     float pdt, dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
     float dt_min, dt_max, h_max, dx, h2dx_max, dx_max;
-    float a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3];
+    float a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3], w;
     double x[3], x_old[3];
     struct part *restrict p;
     struct xpart *restrict xp;
@@ -235,12 +235,16 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             p->v[0] = v[0] += dt * a[0];
             p->v[1] = v[1] += dt * a[1];
             p->v[2] = v[2] += dt * a[2];
-            p->u = u += u_dt * dt;
-            // p->h = h += h_dt * dt;
-            {
-                float w = h_dt / h *dt;
-                p->h = h *= 1.0f + w*( -1.0f + w*( 0.5f + w*(-1.0f/6.0f + 1.0f/24.0*w ) ) );
-            }
+            w = u_dt / u * dt;
+            if ( w > 0.9f && w < 1.1f )
+                p->u = u *= 1.0f + w*( -1.0f + w*( 0.5f - w*1.0f/6.0f ) );
+            else
+                p->u = u *= expf( w );
+            w = h_dt / h * dt;
+            if ( w > 0.9f && w < 1.1f )
+                p->h = h *= 1.0f + w*( -1.0f + w*( 0.5f - w*1.0f/6.0f ) );
+            else
+                p->h = h *= expf( w );
             h_max = fmaxf( h_max , h );
 
         
@@ -421,7 +425,6 @@ void engine_step ( struct engine *e , int sort_queues ) {
     float dt = e->dt, dt_step, dt_max = 0.0f, dt_min = FLT_MAX;
     float epot = 0.0, ekin = 0.0, mom[3] = { 0.0 , 0.0 , 0.0 };
     float ang[3] = { 0.0 , 0.0 , 0.0 };
-    // double lent, ent = 0.0;
     int count = 0;
     struct cell *c;
     
@@ -518,6 +521,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         }
     else {
         if ( e->dt == 0 ) {
+            // e->nullstep += 1;
             e->dt = e->dt_orig;
             while ( dt_min < e->dt )
                 e->dt *= 0.5;
@@ -540,7 +544,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         } 
     
     /* Set the system time. */
-    e->time = e->dt * e->step;
+    e->time = e->dt * (e->step - e->nullstep);
         
     TIMER_TOC2(timer_step);
     
@@ -573,6 +577,8 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     e->nr_queues = nr_queues;
     e->policy = policy;
     e->step = 0;
+    e->nullstep = 0;
+    e->time = 0.0;
     
     /* First of all, init the barrier and lock it. */
     if ( pthread_mutex_init( &e->barrier_mutex , NULL ) != 0 )

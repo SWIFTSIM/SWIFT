@@ -27,7 +27,7 @@
     #define VEC_MACRO(elcount, type)  __attribute__((vector_size((elcount)*sizeof(type)))) type
 
     /* So what will the vector size be? */
-    #ifdef NO__AVX__
+    #ifdef __AVX__
         #define VECTORIZE
         #define VEC_SIZE 8
         #define VEC_FLOAT __m256
@@ -54,7 +54,7 @@
         #define vec_dbl_ftoi(a) _mm256_cvttpd_epi32(a)
         #define vec_dbl_fmin(a,b) _mm256_min_pd(a,b)
         #define vec_dbl_fmax(a,b) _mm256_max_pd(a,b)
-    #elif defined( NO__SSE2__ )
+    #elif defined( __SSE2__ )
         #define VECTORIZE
         #define VEC_SIZE 4
         #define VEC_FLOAT __m128

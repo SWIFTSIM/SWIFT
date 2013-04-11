@@ -362,16 +362,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     int k;
     
     /* Get the kernel for hi. */
-    hi_inv = 1.0f / hi;
+    hi_inv = kernel_igamma / hi;
     hi2_inv = hi_inv * hi_inv;
-    xi = r * hi_inv * kernel_igamma;
+    xi = r * hi_inv;
     kernel_deval( xi , &wi , &wi_dx );
     wi_dr = hi2_inv * hi2_inv * wi_dx;
         
     /* Get the kernel for hj. */
-    hj_inv = 1.0f / hj;
+    hj_inv = kernel_igamma / hj;
     hj2_inv = hj_inv * hj_inv;
-    xj = r * hj_inv * kernel_igamma;
+    xj = r * hj_inv;
     kernel_deval( xj , &wj , &wj_dx );
     wj_dr = hj2_inv * hj2_inv * wj_dx;
                 
@@ -389,7 +389,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
 
     /* Apply balsara switch */
-    Pi_ij *= (pi->force.balsara + pj->force.balsara);
+    Pi_ij *= ( pi->force.balsara + pj->force.balsara );
 
     /* Get the common factor out. */
     w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
@@ -434,8 +434,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     vector r, r2, ri;
     vector xi, xj;
     vector hi, hj, hi_inv, hj_inv;
-    vector hig_inv, hi2_inv;
-    vector hjg_inv, hj2_inv;
+    vector hi2_inv, hj2_inv;
     vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
     vector w;
     vector piPOrho2, pjPOrho2, pirho, pjrho;
@@ -500,22 +499,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     r.v = r2.v * ri.v;
     
     /* Get the kernel for hi. */
-    hi.v = vec_load( Hi );
+    hi.v = vec_set1( kernel_gamma ) * vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi.v * hi_inv.v - vec_set1( 1.0f ) );
-    hig_inv.v = vec_set1( kernel_igamma ) * hi_inv.v;
     hi2_inv.v = hi_inv.v * hi_inv.v;
-    xi.v = r.v * hig_inv.v;
+    xi.v = r.v * hi_inv.v;
     kernel_deval_vec( &xi , &wi , &wi_dx );
     wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
         
     /* Get the kernel for hj. */
-    hj.v = vec_load( Hj );
+    hj.v = vec_set1( kernel_gamma ) * vec_load( Hj );
     hj_inv.v = vec_rcp( hj.v );
     hj_inv.v = hj_inv.v - hj_inv.v * ( hj.v * hj_inv.v - vec_set1( 1.0f ) );
-    hjg_inv.v = vec_set1( kernel_igamma ) * hj_inv.v;
     hj2_inv.v = hj_inv.v * hj_inv.v;
-    xj.v = r.v * hjg_inv.v;
+    xj.v = r.v * hj_inv.v;
     kernel_deval_vec( &xj , &wj , &wj_dx );
     wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
         
@@ -595,16 +592,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     int k;
     
     /* Get the kernel for hi. */
-    hi_inv = 1.0f / hi;
+    hi_inv = kernel_igamma / hi;
     hi2_inv = hi_inv * hi_inv;
-    xi = r * hi_inv * kernel_igamma;
+    xi = r * hi_inv;
     kernel_deval( xi , &wi , &wi_dx );
     wi_dr = hi2_inv * hi2_inv * wi_dx;
         
     /* Get the kernel for hj. */
-    hj_inv = 1.0f / hj;
+    hj_inv = kernel_igamma / hj;
     hj2_inv = hj_inv * hj_inv;
-    xj = r * hj_inv * kernel_igamma;
+    xj = r * hj_inv;
     kernel_deval( xj , &wj , &wj_dx );
     wj_dr = hj2_inv * hj2_inv * wj_dx;
                 
@@ -664,8 +661,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     vector r, r2, ri;
     vector xi, xj;
     vector hi, hj, hi_inv, hj_inv;
-    vector hig_inv, hi2_inv;
-    vector hjg_inv, hj2_inv;
+    vector hi2_inv, hj2_inv;
     vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
     vector w;
     vector piPOrho2, pjPOrho2, pirho, pjrho;
@@ -728,22 +724,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     r.v = r2.v * ri.v;
     
     /* Get the kernel for hi. */
-    hi.v = vec_load( Hi );
+    hi.v = vec_set1( kernel_gamma ) * vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi.v * hi_inv.v - vec_set1( 1.0f ) );
-    hig_inv.v = vec_set1( kernel_igamma ) * hi_inv.v;
     hi2_inv.v = hi_inv.v * hi_inv.v;
-    xi.v = r.v * hig_inv.v;
+    xi.v = r.v * hi_inv.v;
     kernel_deval_vec( &xi , &wi , &wi_dx );
     wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
         
     /* Get the kernel for hj. */
-    hj.v = vec_load( Hj );
+    hj.v = vec_set1( kernel_gamma ) * vec_load( Hj );
     hj_inv.v = vec_rcp( hj.v );
     hj_inv.v = hj_inv.v - hj_inv.v * ( hj.v * hj_inv.v - vec_set1( 1.0f ) );
-    hjg_inv.v = vec_set1( kernel_igamma ) * hj_inv.v;
     hj2_inv.v = hj_inv.v * hj_inv.v;
-    xj.v = r.v * hjg_inv.v;
+    xj.v = r.v * hj_inv.v;
     kernel_deval_vec( &xj , &wj , &wj_dx );
     wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
         

@@ -432,7 +432,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 
 		        /* Balsara switch */
 		        p->force.balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ihg );
-
+                
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
                     p->a[k] = 0.0f;

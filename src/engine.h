@@ -61,7 +61,7 @@ struct engine {
     float dt, dt_orig;
     
     /* The current step number. */
-    int step;
+    int step, nullstep;
     
     /* The current system time. */
     float time;
