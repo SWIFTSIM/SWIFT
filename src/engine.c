@@ -521,7 +521,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         }
     else {
         if ( e->dt == 0 ) {
-            // e->nullstep += 1;
+            e->nullstep += 1;
             e->dt = e->dt_orig;
             while ( dt_min < e->dt )
                 e->dt *= 0.5;
