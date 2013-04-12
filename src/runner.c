@@ -431,7 +431,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + hg * rho_dh / 3.0f );
 
 		        /* Balsara switch */
-		        p->force.balsara = normCurl_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ihg );
+		        p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ihg );
                 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
