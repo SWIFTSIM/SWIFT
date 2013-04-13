@@ -236,13 +236,13 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             p->v[1] = v[1] += dt * a[1];
             p->v[2] = v[2] += dt * a[2];
             w = u_dt / u * dt;
-            if ( w > 0.9f && w < 1.1f )
-                p->u = u *= 1.0f + w*( -1.0f + w*( 0.5f - w*1.0f/6.0f ) );
+            if ( fabsf( w ) < 0.05f )
+                p->u = u *= 1.0f + w*( 1.0f + w*( -0.5f + w*1.0f/6.0f ) );
             else
                 p->u = u *= expf( w );
             w = h_dt / h * dt;
-            if ( w > 0.9f && w < 1.1f )
-                p->h = h *= 1.0f + w*( -1.0f + w*( 0.5f - w*1.0f/6.0f ) );
+            if ( fabsf( w ) < 0.05f )
+                p->h = h *= 1.0f + w*( 1.0f + w*( -0.5f + w*1.0f/6.0f ) );
             else
                 p->h = h *= expf( w );
             h_max = fmaxf( h_max , h );
@@ -258,9 +258,11 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             /* Integrate other values if this particle will not be updated. */
             /* Init fields for density calculation. */
             if ( pdt > dt_step ) {
-                // rho = p->rho *= expf( -3.0f * h_dt / h * dt );
                 float w = -3.0f * h_dt / h * dt;
-                rho = p->rho *= 1.0f + w*( -1.0f + w*( 0.5f + w*(-1.0f/6.0f + 1.0f/24.0*w ) ) );
+                if ( fabsf( w ) < 0.1f )
+                    rho = p->rho *= 1.0f + w*( 1.0f + w*( -0.5f + w*(1.0f/6.0f - 1.0f/24.0*w ) ) );
+                else
+                    rho = p->rho *= expf( w );
                 p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * p->rho_dh / 3.0f );
                 }
             else {
