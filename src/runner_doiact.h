@@ -1613,7 +1613,7 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
             
         /* Recurse? */
         if ( ci->split && cj->split &&
-             ci->h_max*2 < h && cj->h_max*2 < h ) {
+             ci->h2dx_max*2 < h && cj->h2dx_max*2 < h ) {
              
             /* Different types of flags. */
             switch ( sid ) {
@@ -1893,7 +1893,7 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
     
         /* Recurse? */
         if ( ci->split && cj->split &&
-             ci->h_max*2 < h && cj->h_max*2 < h ) {
+             ci->h2dx_max*2 < h && cj->h2dx_max*2 < h ) {
              
             /* Different types of flags. */
             switch ( sid ) {
@@ -2175,7 +2175,7 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *p
 
         /* Recurse? */
         if ( ci->split && cj->split &&
-             ci->h_max*2 < h && cj->h_max*2 < h ) {
+             ci->h2dx_max*2 < h && cj->h2dx_max*2 < h ) {
              
             /* Get the type of pair if not specified explicitly. */
             if ( sid < 0 ) {
