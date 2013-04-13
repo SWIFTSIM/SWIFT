@@ -223,7 +223,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
 
 __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( float r2 , float *dx , float hi , float hj , struct part *pi , struct part *pj ) {
 
-    float r = sqrtf( r2 ), ri = 1.0f / r;
+    float r, ri;
     float xi;
     float h_inv, hg_inv;
     float wi, wi_dx;
@@ -231,19 +231,23 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
     float curlvr[3];
     int k;
 
-    /* Compute dv dot r */
-    dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
-    dvdr *= ri;
-
-    /* Compute dv cross r */
-    curlvr[0] = ( pi->v[1] - pj->v[1] ) * dx[2] - ( pi->v[2] - pj->v[2] ) * dx[1];
-    curlvr[1] = ( pi->v[2] - pj->v[2] ) * dx[0] - ( pi->v[0] - pj->v[0] ) * dx[2];
-    curlvr[2] = ( pi->v[0] - pj->v[0] ) * dx[1] - ( pi->v[1] - pj->v[1] ) * dx[0];
-    for ( k = 0 ; k < 3 ; k++ )
-        curlvr[k] *= ri;    
-
     if ( r2 < hi*hi ) {
         
+        /* Get r and r inverse. */
+        r = sqrtf( r2 );
+        ri = 1.0f / r;
+    
+        /* Compute dv dot r */
+        dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+        dvdr *= ri;
+
+        /* Compute dv cross r */
+        curlvr[0] = ( pi->v[1] - pj->v[1] ) * dx[2] - ( pi->v[2] - pj->v[2] ) * dx[1];
+        curlvr[1] = ( pi->v[2] - pj->v[2] ) * dx[0] - ( pi->v[0] - pj->v[0] ) * dx[2];
+        curlvr[2] = ( pi->v[0] - pj->v[0] ) * dx[1] - ( pi->v[1] - pj->v[1] ) * dx[0];
+        for ( k = 0 ; k < 3 ; k++ )
+            curlvr[k] *= ri;
+            
         h_inv = 1.0 / hi;
         hg_inv = kernel_igamma * h_inv;
         xi = r * hg_inv;
@@ -258,7 +262,9 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
 	    pi->density.div_v += pj->mass * dvdr * wi_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
 	        pi->density.curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+            
         }
+
     }
     
 /**
