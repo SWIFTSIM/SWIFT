@@ -91,19 +91,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         pj->density.wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pj->icount += 1;
         
-	    pj->density.div_v = pi->mass * dvdr * wj_dx;
+	    pj->density.div_v += pi->mass * dvdr * wj_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
 	        pj->density.curl_v[k] += pi->mass * curlvr[k] * wj_dx;
             
         }
         
-    #ifdef HIST
-    if ( hi > hj )
-        runner_hist_hit( hi / hj );
-    else
-        runner_hist_hit( hj / hi );
-    #endif
-    
     }
     
 /**
