@@ -430,8 +430,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Compute the P/Omega/rho2. */
                 p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + hg * rho_dh / 3.0f );
 
-		        /* Balsara switch */
-		        p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ihg );
+		/* Balsara switch */
+		p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ihg );
                 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
@@ -513,7 +513,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 void runner_dokick2 ( struct runner *r , struct cell *c ) {
 
     int k, count = 0, nr_parts = c->count;
-    float dt_min = FLT_MAX, dt_max = 0.0f, ekin = 0.0f, epot = 0.0f;
+    float dt_min = FLT_MAX, dt_max = 0.0f;
+    double ekin = 0.0, epot = 0.0;
     float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
     float x[3], v[3], u, h, pdt, m;
     float dt_step = r->e->dt_step, dt = r->e->dt, hdt = 0.5f*dt;

@@ -109,7 +109,7 @@ struct cell {
     float mom[3], ang[3];
     
     /* Potential and kinetic energy of particles in this cell. */
-    float epot, ekin;
+    double epot, ekin;
     
     /* Number of particles updated in this cell. */
     int updated;

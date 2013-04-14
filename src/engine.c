@@ -319,7 +319,8 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
 void engine_collect_kick2 ( struct cell *c ) {
 
     int k, updated = 0;
-    float dt_min = FLT_MAX, dt_max = 0.0f, ekin = 0.0f, epot = 0.0f;
+    float dt_min = FLT_MAX, dt_max = 0.0f;
+    double ekin = 0.0, epot = 0.0;
     float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
     struct cell *cp;
     
@@ -425,7 +426,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
 
     int k;
     float dt = e->dt, dt_step, dt_max = 0.0f, dt_min = FLT_MAX;
-    float epot = 0.0, ekin = 0.0, mom[3] = { 0.0 , 0.0 , 0.0 };
+    double epot = 0.0, ekin = 0.0;
+    float mom[3] = { 0.0 , 0.0 , 0.0 };
     float ang[3] = { 0.0 , 0.0 , 0.0 };
     int count = 0;
     struct cell *c;

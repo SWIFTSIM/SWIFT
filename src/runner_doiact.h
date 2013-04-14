@@ -1888,7 +1888,7 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
         h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
         
         /* Get the type of pair if not specified explicitly. */
-        if ( sid < 0 )
+        // if ( sid < 0 )
             sid = space_getsid( s , &ci , &cj , shift );
     
         /* Recurse? */

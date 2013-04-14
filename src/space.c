@@ -112,10 +112,6 @@ int space_marktasks ( struct space *s ) {
             /* Set this task's skip. */
             t->skip = ( t->ci->dt_min > dt_step );
             
-            /* Set the sort flags. */
-            // if ( !t->skip && t->type == task_type_sub )
-            //     space_addsorts( s , t , t->ci , t->cj , t->flags );
-            
             }
         
         /* Pair? */
@@ -196,25 +192,6 @@ int space_prepare ( struct space *s ) {
         
         }
 
-    /* Now that we have the cell structre, re-build the tasks. */
-    // tic = getticks();
-    // space_maketasks( s , 1 );
-    // printf( "space_prepare: maketasks took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
-    
-    /* Count the number of each task type. */
-    /* tic = getticks();
-    for ( k = 0 ; k <= task_type_count ; k++ )
-        counts[k] = 0;
-    for ( k = 0 ; k < s->nr_tasks ; k++ )
-        if ( !s->tasks[k].skip )
-            counts[ (int)s->tasks[k].type ] += 1;
-        else
-            counts[ task_type_count ] += 1;
-    printf( "space_prepare: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
-    for ( k = 1 ; k < task_type_count ; k++ )
-        printf( " %s=%i" , taskID_names[k] , counts[k] );
-    printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout);
-    printf( "space_prepare: task counting took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 ); */
     
     /* Let whoever cares know if we rebuilt. */
     return rebuild;
@@ -981,8 +958,7 @@ void space_splittasks ( struct space *s ) {
                 } */
             
             /* Is this cell even split? */
-            if ( !ci->split )
-                continue;
+            if ( ci->split ) {
             
             /* Make a sub? */
             if ( space_dosub && ci->count < space_subsize ) {
@@ -990,10 +966,6 @@ void space_splittasks ( struct space *s ) {
                 /* convert to a self-subtask. */
                 t->type = task_type_sub;
                 
-                /* Wait for this tasks sorts, as we will now have pairwise
-                   components in this sub. */
-                // space_addsorts( s , t , ci , NULL , -1 );
-            
                 }
                 
             /* Otherwise, make tasks explicitly. */
@@ -1015,6 +987,8 @@ void space_splittasks ( struct space *s ) {
                         for ( k = j + 1 ; k < 8 ; k++ )
                             if ( ci->progeny[k] != NULL )
                                 space_addtask( s , task_type_pair , task_subtype_density , pts[j][k] , 0 , ci->progeny[j] , ci->progeny[k] , 0 );
+                }
+
                 }
         
             }
@@ -1049,12 +1023,7 @@ void space_splittasks ( struct space *s ) {
                 
                     /* Make this task a sub task. */
                     t->type = task_type_sub;
-                    t->flags = sid;
-                    t->ci = ci; t->cj = cj;
-                    
-                    /* Create the sorts recursively. */
-                    // space_addsorts( s , t , ci , cj , sid );
-                    
+
                     }
                     
                 /* Otherwise, split it. */
@@ -1387,7 +1356,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
     space_ranktasks( s );
             
     /* Count the number of each task type. */
-    /* int counts[ task_type_count+1 ];
+    int counts[ task_type_count+1 ];
     for ( k = 0 ; k <= task_type_count ; k++ )
         counts[k] = 0;
     for ( k = 0 ; k < s->nr_tasks ; k++ )
@@ -1398,7 +1367,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
     printf( "space_maketasks: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
     for ( k = 1 ; k < task_type_count ; k++ )
         printf( " %s=%i" , taskID_names[k] , counts[k] );
-    printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout); */
+    printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout); 
     
     }
     
