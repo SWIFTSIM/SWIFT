@@ -44,18 +44,25 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     float xi, xj;
     float h_inv, hg_inv;
     float wi, wj, wi_dx, wj_dx;
+    float mi, mj;
     float dvdr;
-    float curlvr[3];
+    float dv[3], curlvr[3];
     int k;
     
+    /* Get the masses. */
+    mi = pi->mass; mj = pj->mass;
+    
     /* Compute dv dot r */
-    dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+    dv[0] = pi->v[0] - pj->v[0];
+    dv[1] = pi->v[1] - pj->v[1];
+    dv[2] = pi->v[2] - pj->v[2];
+    dvdr = dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2];
     dvdr *= ri;
 
     /* Compute dv cross r */
-    curlvr[0] = ( pi->v[1] - pj->v[1] ) * dx[2] - ( pi->v[2] - pj->v[2] ) * dx[1];
-    curlvr[1] = ( pi->v[2] - pj->v[2] ) * dx[0] - ( pi->v[0] - pj->v[0] ) * dx[2];
-    curlvr[2] = ( pi->v[0] - pj->v[0] ) * dx[1] - ( pi->v[1] - pj->v[1] ) * dx[0];
+    curlvr[0] = dv[1]*dx[2] - dv[2]*dx[1];
+    curlvr[1] = dv[2]*dx[0] - dv[0]*dx[2];
+    curlvr[2] = dv[0]*dx[1] - dv[1]*dx[0];
     for ( k = 0 ; k < 3 ; k++ )
         curlvr[k] *= ri;
             
@@ -66,15 +73,15 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         xi = r * hg_inv;
         kernel_deval( xi , &wi , &wi_dx );
         
-        pi->rho += pj->mass * wi;
-        pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
+        pi->rho += mj * wi;
+        pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
         pi->density.wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
-	    pi->density.div_v += pj->mass * dvdr * wi_dx;
+	    pi->density.div_v += mj * dvdr * wi_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
-	        pi->density.curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+	        pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
             
         }
 
@@ -85,15 +92,15 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
         xj = r * hg_inv;
         kernel_deval( xj , &wj , &wj_dx );
         
-        pj->rho += pi->mass * wj;
-        pj->rho_dh -= pi->mass * ( 3.0*wj + xj*wj_dx );
+        pj->rho += mi * wj;
+        pj->rho_dh -= mi * ( 3.0*wj + xj*wj_dx );
         pj->density.wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pj->density.wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pj->icount += 1;
         
-	    pj->density.div_v += pi->mass * dvdr * wj_dx;
+	    pj->density.div_v += mi * dvdr * wj_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
-	        pj->density.curl_v[k] += pi->mass * curlvr[k] * wj_dx;
+	        pj->density.curl_v[k] += mi * curlvr[k] * wj_dx;
             
         }
         
@@ -109,7 +116,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     vector r, ri, xi, xj, hi, hj, hi_inv, hj_inv, hig_inv, hjg_inv, wi, wj, wi_dx, wj_dx;
     vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
     vector mi, mj, wscale;
-    vector dx[3];
+    vector dx[3], dv[3];
     vector vi[3], vj[3];    
     vector dvdr, div_vi, div_vj;
     vector curlvr[3], curl_vi[3], curl_vj[3];
@@ -154,14 +161,19 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     kernel_deval_vec( &xi , &wi , &wi_dx );
     kernel_deval_vec( &xj , &wj , &wj_dx );
 
+    /* Compute dv. */
+    dv[0].v = vi[0].v - vj[0].v;
+    dv[1].v = vi[1].v - vj[1].v;
+    dv[2].v = vi[2].v - vj[2].v;
+
     /* Compute dv dot r */
-    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
+    dvdr.v = ( dv[0].v * dx[0].v ) + ( dv[1].v * dx[1].v ) + ( dv[2].v * dx[2].v );
     dvdr.v = dvdr.v * ri.v;
 
     /* Compute dv cross r */
-    curlvr[0].v = ( vi[1].v - vj[1].v ) * dx[2].v - ( vi[2].v - vj[2].v ) * dx[1].v;
-    curlvr[1].v = ( vi[2].v - vj[2].v ) * dx[0].v - ( vi[0].v - vj[0].v ) * dx[2].v;
-    curlvr[2].v = ( vi[0].v - vj[0].v ) * dx[1].v - ( vi[1].v - vj[1].v ) * dx[0].v;
+    curlvr[0].v = dv[1].v * dx[2].v - dv[2].v * dx[1].v;
+    curlvr[1].v = dv[2].v * dx[0].v - dv[0].v * dx[2].v;
+    curlvr[2].v = dv[0].v * dx[1].v - dv[1].v * dx[0].v;
     for ( k = 0 ; k < 3 ; k++ )
         curlvr[k].v *= ri.v;    
 
@@ -220,24 +232,31 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
     float xi;
     float h_inv, hg_inv;
     float wi, wi_dx;
+    float mj;
     float dvdr;
-    float curlvr[3];
+    float dv[3], curlvr[3];
     int k;
 
     if ( r2 < hi*hi ) {
         
+        /* Get the masses. */
+        mj = pj->mass;
+    
         /* Get r and r inverse. */
         r = sqrtf( r2 );
         ri = 1.0f / r;
     
         /* Compute dv dot r */
-        dvdr = ( pi->v[0] - pj->v[0] ) * dx[0] + ( pi->v[1] - pj->v[1] ) * dx[1] + ( pi->v[2] - pj->v[2] ) * dx[2];
+        dv[0] = pi->v[0] - pj->v[0];
+        dv[1] = pi->v[1] - pj->v[1];
+        dv[2] = pi->v[2] - pj->v[2];
+        dvdr = dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2];
         dvdr *= ri;
 
         /* Compute dv cross r */
-        curlvr[0] = ( pi->v[1] - pj->v[1] ) * dx[2] - ( pi->v[2] - pj->v[2] ) * dx[1];
-        curlvr[1] = ( pi->v[2] - pj->v[2] ) * dx[0] - ( pi->v[0] - pj->v[0] ) * dx[2];
-        curlvr[2] = ( pi->v[0] - pj->v[0] ) * dx[1] - ( pi->v[1] - pj->v[1] ) * dx[0];
+        curlvr[0] = dv[1]*dx[2] - dv[2]*dx[1];
+        curlvr[1] = dv[2]*dx[0] - dv[0]*dx[2];
+        curlvr[2] = dv[0]*dx[1] - dv[1]*dx[0];
         for ( k = 0 ; k < 3 ; k++ )
             curlvr[k] *= ri;
             
@@ -246,15 +265,15 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
         xi = r * hg_inv;
         kernel_deval( xi , &wi , &wi_dx );
         
-        pi->rho += pj->mass * wi;
-        pi->rho_dh -= pj->mass * ( 3.0*wi + xi*wi_dx );
+        pi->rho += mj * wi;
+        pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
         pi->density.wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
         // pi->icount += 1;
 
-	    pi->density.div_v += pj->mass * dvdr * wi_dx;
+	    pi->density.div_v += mj * dvdr * wi_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
-	        pi->density.curl_v[k] += pj->mass * curlvr[k] * wi_dx;
+	        pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
             
         }
 
@@ -271,7 +290,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     vector r, ri, xi, hi, hi_inv, hig_inv, wi, wi_dx;
     vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
     vector mj, wscale;
-    vector dx[3];
+    vector dx[3], dv[3];
     vector vi[3], vj[3];
     vector dvdr;
     vector curlvr[3], curl_vi[3];
@@ -305,15 +324,20 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     xi.v = r.v * hig_inv.v;
 
     kernel_deval_vec( &xi , &wi , &wi_dx );
+    
+    /* Compute dv. */
+    dv[0].v = vi[0].v - vj[0].v;
+    dv[1].v = vi[1].v - vj[1].v;
+    dv[2].v = vi[2].v - vj[2].v;
 
     /* Compute dv dot r */
-    dvdr.v = ( (vi[0].v - vj[0].v) * dx[0].v ) + ( (vi[1].v - vj[1].v) * dx[1].v ) + ( (vi[2].v - vj[2].v) * dx[2].v );
+    dvdr.v = ( dv[0].v * dx[0].v ) + ( dv[1].v * dx[1].v ) + ( dv[2].v * dx[2].v );
     dvdr.v = dvdr.v * ri.v;
 
     /* Compute dv cross r */
-    curlvr[0].v = ( vi[1].v - vj[1].v ) * dx[2].v - ( vi[2].v - vj[2].v ) * dx[1].v;
-    curlvr[1].v = ( vi[2].v - vj[2].v ) * dx[0].v - ( vi[0].v - vj[0].v ) * dx[2].v;
-    curlvr[2].v = ( vi[0].v - vj[0].v ) * dx[1].v - ( vi[1].v - vj[1].v ) * dx[0].v;
+    curlvr[0].v = dv[1].v * dx[2].v - dv[2].v * dx[1].v;
+    curlvr[1].v = dv[2].v * dx[0].v - dv[0].v * dx[2].v;
+    curlvr[2].v = dv[0].v * dx[1].v - dv[1].v * dx[0].v;
     for ( k = 0 ; k < 3 ; k++ )
         curlvr[k].v *= ri.v;    
 
@@ -356,9 +380,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     float hi_inv, hi2_inv;
     float hj_inv, hj2_inv;
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
+    float mi, mj, POrho2i, POrho2j, rhoi, rhoj;
     float v_sig, omega_ij, Pi_ij;
     float f;
     int k;
+    
+    /* Get some values in local variables. */
+    mi = pi->mass; mj = pj->mass;
+    rhoi = pi->rho; rhoj = pj->rho;
+    POrho2i = pi->force.POrho2;
+    POrho2j = pj->force.POrho2;
     
     /* Get the kernel for hi. */
     hi_inv = kernel_igamma / hi;
@@ -382,42 +413,35 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     omega_ij = fminf( dvdr , 0.f );
     
     /* Compute signal velocity */
-    v_sig = pi->force.c + pj->force.c - 3.*omega_ij;
+    v_sig = pi->force.c + pj->force.c - 3.0f*omega_ij;
 
     /* Compute viscosity tensor */
-    Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
+    Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / ( rhoi + rhoj );
 
     /* Apply balsara switch */
     Pi_ij *= ( pi->force.balsara + pj->force.balsara );
 
     /* Get the common factor out. */
-    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
+    w = ri * ( ( POrho2i * wi_dr + POrho2j * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
 
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f = dx[k] * w;
-        pi->a[k] -= pj->mass * f;
-        pj->a[k] += pi->mass * f;
+        pi->a[k] -= mj * f;
+        pj->a[k] += mi * f;
         }
                 
     /* Get the time derivative for u. */
-    pi->force.u_dt += pj->mass * dvdr * ( pi->force.POrho2 * wi_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
-    pj->force.u_dt += pi->mass * dvdr * ( pj->force.POrho2 * wj_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
+    pi->force.u_dt += mj * dvdr * ( POrho2i * wi_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
+    pj->force.u_dt += mi * dvdr * ( POrho2j * wj_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
     
     /* Get the time derivative for h. */
-    pi->force.h_dt -= pj->mass * dvdr / pj->rho * wi_dr;
-    pj->force.h_dt -= pi->mass * dvdr / pi->rho * wj_dr;
+    pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
+    pj->force.h_dt -= mi * dvdr / rhoi * wj_dr;
     
     /* Update the signal velocity. */
     pi->force.v_sig = fmaxf( pi->force.v_sig , v_sig );
     pj->force.v_sig = fmaxf( pj->force.v_sig , v_sig );
-    
-    #ifdef HIST
-    if ( hi > hj )
-        runner_hist_hit( hi / hj );
-    else
-        runner_hist_hit( hj / hi );
-    #endif
     
     }
     
@@ -586,9 +610,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     float hi_inv, hi2_inv;
     float hj_inv, hj2_inv;
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
+    float mj, POrho2i, POrho2j, rhoi, rhoj;
     float v_sig, omega_ij, Pi_ij;
     float f;
     int k;
+    
+    /* Get some values in local variables. */
+    mj = pj->mass;
+    rhoi = pi->rho; rhoj = pj->rho;
+    POrho2i = pi->force.POrho2;
+    POrho2j = pj->force.POrho2;
     
     /* Get the kernel for hi. */
     hi_inv = kernel_igamma / hi;
@@ -612,39 +643,32 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     omega_ij = fminf( dvdr , 0.f );
     
     /* Compute signal velocity */
-    v_sig = pi->force.c + pj->force.c - 3.*omega_ij;
+    v_sig = pi->force.c + pj->force.c - 3.0f*omega_ij;
 
     /* Compute viscosity tensor */
-    Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (pi->rho + pj->rho);
+    Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / ( rhoi + rhoj );
 
     /* Apply balsara switch */
-    Pi_ij *= (pi->force.balsara + pj->force.balsara);
+    Pi_ij *= ( pi->force.balsara + pj->force.balsara );
 
     /* Get the common factor out. */
-    w = ri * ( ( pi->force.POrho2 * wi_dr + pj->force.POrho2 * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
+    w = ri * ( ( POrho2i * wi_dr + POrho2j * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
 
     /* Use the force, Luke! */
     for ( k = 0 ; k < 3 ; k++ ) {
         f = dx[k] * w;
-        pi->a[k] -= pj->mass * f;
+        pi->a[k] -= mj * f;
         }
                 
     /* Get the time derivative for u. */
-    pi->force.u_dt += pj->mass * dvdr * ( pi->force.POrho2 * wi_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
+    pi->force.u_dt += mj * dvdr * ( POrho2i * wi_dr + 0.125f * Pi_ij * ( wi_dr + wj_dr ) );
     
     /* Get the time derivative for h. */
-    pi->force.h_dt -= pj->mass * dvdr / pj->rho * wi_dr;
+    pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
     
     /* Update the signal velocity. */
     pi->force.v_sig = fmaxf( pi->force.v_sig , v_sig );
     pj->force.v_sig = fmaxf( pj->force.v_sig , v_sig );
-    
-    #ifdef HIST
-    if ( hi > hj )
-        runner_hist_hit( hi / hj );
-    else
-        runner_hist_hit( hj / hi );
-    #endif
     
     }
     
