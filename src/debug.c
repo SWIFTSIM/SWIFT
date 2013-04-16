@@ -65,3 +65,34 @@ void printParticle ( struct part *parts , long long int id, int N ) {
     
     }
 
+/**
+ * @brief Looks for the particle with the given id and prints its information to the standard output.
+ * 
+ * @param parts The array of particles.
+ * @param id The id too look for.
+ * @param N The size of the array of particles.
+ *
+ * (Should be used for debugging only as it runs in O(N).)
+ */
+void printParticle_single ( struct part *p ) {
+
+    printf("## Particle: id=%lld, x=[%e,%e,%e], v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e, rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, v_sig=%.3e, dt=%.3e\n",
+        p->id,
+        p->x[0], p->x[1], p->x[2],
+        p->v[0], p->v[1], p->v[2],
+        p->a[0], p->a[1], p->a[2],
+        p->h,
+        p->force.h_dt,
+        p->density.wcount,
+        p->mass,
+        p->rho, p->rho_dh,
+        p->density.div_v,
+        p->u,
+        p->force.u_dt,
+        p->force.balsara,
+        p->force.POrho2,
+        p->force.v_sig,
+        p->dt
+        );
+    }
+
