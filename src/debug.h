@@ -21,3 +21,4 @@
 
 
 void printParticle(struct part *parts, long long int i, int N);
+void printParticle_single ( struct part *p );

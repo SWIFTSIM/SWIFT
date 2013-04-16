@@ -119,7 +119,7 @@ struct part {
     
             /* Sound speed */
             float c;
-
+            
             } force;
             
         };

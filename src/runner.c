@@ -382,18 +382,21 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 wcount = ( p->density.wcount + kernel_root ) * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
                 wcount_dh = p->density.wcount_dh * ih * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
                     
-                /* Compute the smoothing length update (Newton step). */
+                /* If no derivative, double the smoothing length. */
                 if ( wcount_dh == 0.0f )
                     h_corr = p->h;
+                    
+                /* Otherwise, compute the smoothing length update (Newton step). */
                 else {
                     h_corr = ( const_nwneigh - wcount ) / wcount_dh;
 
                     /* Truncate to the range [ -p->h/2 , p->h ]. */
                     h_corr = fminf( h_corr , h );
                     h_corr = fmaxf( h_corr , -h/2 );
+                    
                     }
                 
-                /* Apply the correction to p->h. */
+                /* Apply the correction to p->h and to the compact part. */
                 p->h += h_corr;
                 cp->h = p->h;
 

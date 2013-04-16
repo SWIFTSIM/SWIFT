@@ -506,8 +506,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
-    // printParticle( parts , 432626 );
-    // printParticle( parts , 432628 );
+    // printParticle( e->s->parts , 382557 , e->s->nr_parts );
  
     /* Prepare the space. */
     engine_prepare( e );
@@ -538,7 +537,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             
     /* Stop the clock. */
     TIMER_TOC(timer_runners);
-    
+
     // engine_single_force( e->s->dim , 6178 , e->s->parts , e->s->nr_parts , e->s->periodic );
     
     // for(k=0; k<10; ++k)
@@ -560,7 +559,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         }
     
     e->dt_min = dt_min;
-    // printParticle( parts , 432626 );
+    // printParticle( e->s->parts , 382557 , e->s->nr_parts );
     printf( "engine_step: dt_min/dt_max is %e/%e.\n" , dt_min , dt_max ); fflush(stdout);
     printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
     printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);
