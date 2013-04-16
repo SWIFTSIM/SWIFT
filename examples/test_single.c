@@ -64,15 +64,15 @@ int main ( int argc , char *argv[] ) {
 
     int k, N = 100;
     struct part p1, p2;
-    float r2, dx[3] = { 0.0f , 0.0f , 0.0f };
+    float x, w, dwdx, r2, dx[3] = { 0.0f , 0.0f , 0.0f };
     
     /* Init the particles. */
     for ( k = 0 ; k < 3 ; k++ ) {
         p1.a[k] = 0.0f; p1.v[k] = 0.0f; p1.x[k] = 0.0;
         p2.a[k] = 0.0f; p2.v[k] = 0.0f; p2.x[k] = 0.0;
         }
-    p1.rho = 1.0f; p1.mass = 9.7059e-4; p1.h = 0.222871287;
-    p2.rho = 1.0f; p2.mass = 9.7059e-4; p2.h = 0.222871287;
+    p1.rho = 1.0f; p1.mass = 9.7059e-4; p1.h = 0.222871287 / 2;
+    p2.rho = 1.0f; p2.mass = 9.7059e-4; p2.h = 0.222871287 / 2;
     p1.force.c = 0.0f; p1.force.balsara = 0.0f;
     p2.force.c = 0.0f; p2.force.balsara = 0.0f;
     p1.u = 1.e-5 / ((const_gamma - 1.)*p1.rho);
@@ -87,19 +87,32 @@ int main ( int argc , char *argv[] ) {
     for ( k = 1 ; k <= N ; k++ ) {
     
         /* Set the distance/radius. */
-        dx[0] = -((float)k)/N * fmaxf( p1.h , p2.h );
+        dx[0] = -((float)k)/N * fmaxf( p1.h , p2.h ) * kernel_gamma;
         r2 = dx[0]*dx[0];
         
         /* Clear the particle fields. */
-        p1.a[0] = 0.0f; p1.force.u_dt = 0.0f;
-        p2.a[0] = 0.0f; p2.force.u_dt = 0.0f;
+        /* p1.a[0] = 0.0f; p1.force.u_dt = 0.0f;
+        p2.a[0] = 0.0f; p2.force.u_dt = 0.0f; */
         
         /* Interact the particles. */
-        runner_iact_force( r2 , dx , p1.h , p2.h , &p1 , &p2 );
+        // runner_iact_force( r2 , dx , p1.h , p2.h , &p1 , &p2 );
+        
+        /* Clear the particle fields. */
+        p1.rho = 0.0f; p1.density.wcount = 0.0f;
+        p2.rho = 0.0f; p2.density.wcount = 0.0f;
+        
+        /* Interact the particles. */
+        runner_iact_density( r2 , dx , p1.h , p2.h , &p1 , &p2 );
+        
+        /* Evaluate just the kernel. */
+        x = fabsf( dx[0] ) / p1.h;
+        kernel_deval( x , &w , &dwdx );
         
         /* Output the results. */
-        printf( "%.3e %.3e %.3e %.3e %.3e\n" ,
-            -dx[0] , p1.a[0] , p1.force.u_dt , p2.a[0] , p2.force.u_dt );
+        printf( "%.3e %.3e %.3e %.3e %.3e %.3e %.3e\n" ,
+            // -dx[0] , p1.a[0] , p1.force.u_dt , p2.a[0] , p2.force.u_dt ,
+            -dx[0] , p1.rho , p1.density.wcount , p2.rho , p2.density.wcount ,
+            w , dwdx );
     
         } /* loop over radii. */
     

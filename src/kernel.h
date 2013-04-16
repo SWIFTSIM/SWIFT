@@ -32,16 +32,15 @@
 /* Coefficients for the kernel. */ 
 #define kernel_degree 3
 #define kernel_ivals 2
-#define kernel_gamma 0.5f
-#define kernel_igamma 2.0f
-#define kernel_igamma3 8.0f
-#define kernel_igamma4 16.0f
+#define kernel_gamma 2.0f
+#define kernel_gamma2 4.0f
+#define kernel_gamma3 8.0f
 static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
     { 3.0/4.0*M_1_PI , -3.0/2.0*M_1_PI , 0.0 , M_1_PI , 
       -0.25*M_1_PI , 3.0/2.0*M_1_PI , -3.0*M_1_PI , M_2_PI , 
       0.0 , 0.0 , 0.0 , 0.0 };
 #define kernel_root ( kernel_coeffs[ kernel_degree ] )
-#define kernel_wroot ( 4.0/3.0*M_PI*kernel_igamma3*kernel_coeffs[ kernel_degree ] )
+#define kernel_wroot ( 4.0/3.0*M_PI*kernel_coeffs[ kernel_degree ] )
       
       
 /**

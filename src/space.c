@@ -34,6 +34,7 @@
 #include "atomic.h"
 #include "lock.h"
 #include "task.h"
+#include "kernel.h"
 #include "part.h"
 #include "cell.h"
 #include "space.h"
@@ -321,123 +322,6 @@ void space_rebuild_recycle ( struct space *s , struct cell *c ) {
     }
 
 /**
- * @brief Recursively rebuild a cell tree.
- *
- */
- 
-int space_rebuild_recurse ( struct space *s , struct cell *c ) {
-    
-    int k, count, changes = 0, wasmt[8];
-    float h, h_limit, h_max = 0.0f, dt_min = c->parts[0].dt, dt_max = dt_min;
-    struct cell *temp;
-    
-    /* Clean out the task pointers. */
-    c->sorts = NULL;
-    c->nr_tasks = 0;
-    c->nr_density = 0;
-    c->dx_max = 0.0;
-    
-    /* If the cell is already split, check that the split is still ok. */
-    if ( c->split ) {
-    
-        /* Check the depth. */
-        if ( c->depth > s->maxdepth )
-            s->maxdepth = c->depth;
-
-        /* Set the minimum cutoff. */
-        h_limit = fmin( c->h[0] , fmin( c->h[1] , c->h[2] ) ) / 2;
-
-        /* Count the particles below that. */
-        for ( count = 0 , k = 0 ; k < c->count ; k++ ) {
-            h = c->parts[k].h;
-            if ( h <= h_limit )
-                count += 1;
-            if ( h > h_max )
-                h_max = h;
-            if ( c->parts[k].dt < dt_min )
-                dt_min = c->parts[k].dt;
-            if ( c->parts[k].dt > dt_max )
-                dt_max = c->parts[k].dt;
-            }
-        c->h_max = h_max;
-        c->dt_min = dt_min;
-        c->dt_max = dt_max;
-        c->dx_max = 0;
-            
-        /* Un-split? */
-        if ( count < c->count*space_splitratio || c->count < space_splitsize ) {
-        
-            /* Get rid of the progeny. */
-            space_rebuild_recycle( s , c );
-            
-            /* Re-set the split flag. */
-            c->split = 0;
-        
-            }
-        
-        /* Otherwise, recurse on the kids. */
-        else {
-        
-            /* Populate all progeny. */
-            for ( k = 0 ; k < 8 ; k++ )
-                if ( ( wasmt[k] = ( c->progeny[k] == NULL ) ) ) {
-                    temp = space_getcell( s );
-                    temp->count = 0;
-                    temp->loc[0] = c->loc[0];
-                    temp->loc[1] = c->loc[1];
-                    temp->loc[2] = c->loc[2];
-                    temp->h[0] = c->h[0]/2;
-                    temp->h[1] = c->h[1]/2;
-                    temp->h[2] = c->h[2]/2;
-                    temp->dmin = c->dmin/2;
-                    if ( k & 4 )
-                        temp->loc[0] += temp->h[0];
-                    if ( k & 2 )
-                        temp->loc[1] += temp->h[1];
-                    if ( k & 1 )
-                        temp->loc[2] += temp->h[2];
-                    temp->depth = c->depth + 1;
-                    temp->split = 0;
-                    temp->h_max = 0.0;
-                    temp->dx_max = 0.0;
-                    temp->parent = c;
-                    c->progeny[k] = temp;
-                    }
-        
-            /* Make sure each part is in its place. */
-            cell_split( c );
-            
-            /* Remove empty progeny. */
-            for ( k = 0 ; k < 8 ; k++ )
-                if ( c->progeny[k]->count == 0 ) {
-                    changes += !wasmt[k];
-                    space_recycle( s , c->progeny[k] );
-                    c->progeny[k] = NULL;
-                    }
-                else
-                    changes += wasmt[k];
-        
-            /* Recurse. */
-            for ( k = 0 ; k < 8 ; k++ )
-                if ( c->progeny[k] != NULL )
-                    changes += space_rebuild_recurse( s , c->progeny[k] );
-                    
-            }
-    
-        }
-        
-    /* Otherwise, try to split it anyway. */
-    else {
-        space_split( s , c );
-        changes += c->split;
-        }
-        
-    /* Return the grand total. */
-    return changes;
-    
-    }
-
-/**
  * @brief Re-build the cells as well as the tasks.
  *
  * @param s The #space in which to update the cells.
@@ -447,7 +331,7 @@ int space_rebuild_recurse ( struct space *s , struct cell *c ) {
  
 void space_rebuild ( struct space *s , double cell_max ) {
 
-    float h_max = s->cell_min, dmin;
+    float h_max = s->cell_min / kernel_gamma, dmin;
     int i, j, k, cdim[3], nr_parts = s->nr_parts;
     struct cell *restrict c;
     struct part *restrict finger, *restrict p, *parts = s->parts;
@@ -473,12 +357,12 @@ void space_rebuild ( struct space *s , double cell_max ) {
             }
         s->h_max = h_max;
         }
-    // printf( "space_rebuild: h_max is %.3e.\n" , h_max );
+    // printf( "space_rebuild: h_max is %.3e (cell_max=%.3e).\n" , h_max , cell_max );
     // printf( "space_rebuild: getting h_min and h_max took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Get the new putative cell dimensions. */
     for ( k = 0 ; k < 3 ; k++ )
-        cdim[k] = floor( s->dim[k] / fmax( h_max*space_stretch , cell_max ) );
+        cdim[k] = floor( s->dim[k] / fmax( h_max*kernel_gamma*space_stretch , cell_max ) );
         
     /* Do we need to re-build the upper-level cells? */
     // tic = getticks();
@@ -1014,7 +898,8 @@ void space_splittasks ( struct space *s ) {
                 
             /* Should this task be split-up? */
             if ( ci->split && cj->split &&
-                 ci->h_max*space_stretch < hi/2 && cj->h_max*space_stretch < hj/2 ) {
+                 ci->h_max*kernel_gamma*space_stretch < hi/2 &&
+                 cj->h_max*kernel_gamma*space_stretch < hj/2 ) {
                  
                 /* Replace by a single sub-task? */
                 if ( space_dosub &&
@@ -1421,16 +1306,13 @@ void space_split ( struct space *s , struct cell *c ) {
             temp->split = 0;
             temp->h_max = 0.0;
             temp->dx_max = 0.0;
+            temp->h2dx_max = 0.0;
             temp->parent = c;
             c->progeny[k] = temp;
             }
             
         /* Split the cell data. */
         cell_split( c );
-            
-        /* Recurse? */
-        // for ( k = 0 ; k < 8 ; k++ )
-        //     space_split( s , c->progeny[k] );
             
         /* Remove any progeny with zero parts. */
         for ( k = 0 ; k < 8 ; k++ )

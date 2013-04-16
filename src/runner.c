@@ -335,7 +335,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
-    float h, hg, ihg, ihg2, ihg4, h_corr, rho, rho_dh, u, fc;
+    float h, ih, ih2, ih4, h_corr, rho, wcount, rho_dh, wcount_dh, u, fc;
     float normDiv_v, normCurl_v;
     float dt_step = r->e->dt_step;
     TIMER_TIC
@@ -372,23 +372,21 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             
   	            /* Some smoothing length multiples. */
 	            h = p->h;
-                hg = kernel_gamma * h;
-                ihg = 1.0f / hg;
-                ihg2 = ihg * ihg;
-                ihg4 = ihg2 * ihg2;
-
-                /* Adjust the computed weighted number of neighbours. */
-                p->density.wcount += kernel_wroot;
+                ih = 1.0f / h;
+                ih2 = ih * ih;
+                ih4 = ih2 * ih2;
 
 		        /* Final operation on the density. */
-                p->rho = rho = ihg * ihg2 * ( p->rho + p->mass*kernel_root );
-                p->rho_dh = rho_dh = p->rho_dh * ihg4;
+                p->rho = rho = ih * ih2 * ( p->rho + p->mass*kernel_root );
+                p->rho_dh = rho_dh = p->rho_dh * ih4;
+                wcount = ( p->density.wcount + kernel_root ) * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
+                wcount_dh = p->density.wcount_dh * ih * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
                     
                 /* Compute the smoothing length update (Newton step). */
-                if ( p->density.wcount_dh == 0.0f )
+                if ( wcount_dh == 0.0f )
                     h_corr = p->h;
                 else {
-                    h_corr = ( const_nwneigh - p->density.wcount ) / p->density.wcount_dh;
+                    h_corr = ( const_nwneigh - wcount ) / wcount_dh;
 
                     /* Truncate to the range [ -p->h/2 , p->h ]. */
                     h_corr = fminf( h_corr , h );
@@ -400,9 +398,9 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 cp->h = p->h;
 
                 /* Did we get the right number density? */
-                if ( p->density.wcount > const_nwneigh + const_delta_nwneigh ||
-                     p->density.wcount < const_nwneigh - const_delta_nwneigh ) {
-                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , c->depth , p->density.wcount ); fflush(stdout);
+                if ( wcount > const_nwneigh + const_delta_nwneigh ||
+                     wcount < const_nwneigh - const_delta_nwneigh ) {
+                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , c->depth , wcount ); fflush(stdout);
                     // p->h += ( p->density.wcount + kernel_root - const_nwneigh ) / p->density.wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
@@ -417,8 +415,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     }
 
                 /* Pre-compute some stuff for the balsara switch. */
-		        normDiv_v = fabs( p->density.div_v / rho * ihg4 );
-		        normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / rho * ihg4;
+		        normDiv_v = fabs( p->density.div_v / rho * ih4 );
+		        normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / rho * ih4;
                 
                 /* As of here, particle force variables will be set. Do _NOT_
                    try to read any particle density variables! */
@@ -428,10 +426,10 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 p->force.c = fc = sqrtf( const_gamma * ( const_gamma - 1.0f ) * u );
 
                 /* Compute the P/Omega/rho2. */
-                p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + hg * rho_dh / 3.0f );
+                p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * rho_dh / 3.0f );
 
-		/* Balsara switch */
-		p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ihg );
+		        /* Balsara switch */
+		        p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
                 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
@@ -543,7 +541,7 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
             }
 
         /* Update the particle's time step. */
-        p->dt = pdt = const_cfl * kernel_gamma * h / ( p->force.v_sig );
+        p->dt = pdt = const_cfl * h / p->force.v_sig;
 
         /* Update positions and energies at the half-step. */
         p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];
@@ -565,9 +563,9 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
         mom[2] += m * p->v[2];
 
 	    /* Collect angular momentum */
-	    ang[0] += m * ( x[1]*v[2] - v[2]*x[1] );
-	    ang[1] += m * ( x[2]*v[0] - v[0]*x[2] );
-	    ang[2] += m * ( x[0]*v[1] - v[1]*x[0] );
+	    ang[0] += m * ( x[1]*v[2] - x[2]*v[1] );
+	    ang[1] += m * ( x[2]*v[0] - x[0]*v[2] );
+	    ang[2] += m * ( x[0]*v[1] - x[1]*v[0] );
 
 	    /* Collect entropic function */
 	    // lent += u * pow( p->rho, 1.f-const_gamma );

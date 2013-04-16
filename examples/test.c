@@ -646,7 +646,7 @@ void kernel_dump ( int N ) {
     // float dw_dx4[4] __attribute__ ((aligned (16)));
 
     for ( k = 0 ; k <= N ; k++ ) {
-        x = ((float)k) / N * kernel_igamma;
+        x = ((float)k) / N;
         x4[3] = x4[2]; x4[2] = x4[1]; x4[1] = x4[0]; x4[0] = x;
         kernel_deval( x , &w , &dw_dx );
         // kernel_deval_vec( (vector *)x4 , (vector *)w4 , (vector *)dw_dx4 );
@@ -790,13 +790,13 @@ int main ( int argc , char *argv[] ) {
 
     /* Read particles and space information from (GADGET) IC */
     tic = getticks();
-    read_ic(ICfileName, dim, &parts, &N, &periodic);
+    read_ic( ICfileName , dim , &parts , &N , &periodic );
     printf( "main: reading particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Apply h scaling */
     if(scaling != 1.0)
       for ( k = 0 ; k < N ; k++ )
-	parts[k].h *= scaling;
+	    parts[k].h *= scaling;
     
     /* Apply shift */
     if(shift[0] !=0 || shift[1] !=0 || shift[2] !=0 )

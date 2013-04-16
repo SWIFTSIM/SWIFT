@@ -229,7 +229,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
                         (x[1] - x_old[1])*(x[1] - x_old[1]) +
                         (x[2] - x_old[2])*(x[2] - x_old[2]) );
             dx_max = fmaxf( dx_max , dx );
-            h2dx_max = fmaxf( h2dx_max , dx*2 + h );
+            h2dx_max = fmaxf( h2dx_max , dx*2 + h*kernel_gamma );
 
             /* Update positions and energies at the half-step. */
             p->v[0] = v[0] += dt * a[0];
@@ -362,12 +362,12 @@ void engine_collect_kick2 ( struct cell *c ) {
  * @brief Compute the force on a single particle brute-force.
  */
 
-void engine_single ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
+void engine_single_density ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
 
     int i, k;
     double r2, dx[3];
-    float fdx[3], ihg;
-    struct part p, p2;
+    float fdx[3], ih;
+    struct part p;
     
     /* Find "our" part. */
     for ( k = 0 ; k < N && parts[k].id != pid ; k++ );
@@ -376,9 +376,12 @@ void engine_single ( double *dim , long long int pid , struct part *__restrict__
     p = parts[k];
     
     /* Clear accumulators. */
-    ihg = kernel_igamma / p.h;
-    p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
-    p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
+    ih = 1.0f / p.h;
+    p.rho = 0.0f; p.rho_dh = 0.0f;
+    p.density.wcount = 0.0f; p.density.wcount_dh = 0.0f;
+	p.density.div_v = 0.0;
+	for ( k=0 ; k < 3 ; k++)
+		p.density.curl_v[k] = 0.0;
             
     /* Loop over all particle pairs (force). */
     for ( k = 0 ; k < N ; k++ ) {
@@ -395,21 +398,67 @@ void engine_single ( double *dim , long long int pid , struct part *__restrict__
             fdx[i] = dx[i];
             }
         r2 = fdx[0]*fdx[0] + fdx[1]*fdx[1] + fdx[2]*fdx[2];
-        if ( r2 < p.h*p.h || r2 < parts[k].h*parts[k].h ) {
-            p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
-            p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
-            p2 = parts[k];
-            runner_iact_nonsym_force( r2 , fdx , p.h , p2.h , &p , &p2 );
-            printf( "pairs_simple: interacting particles %lli and %lli (rho=%.3e,r=%e): a=[%.3e,%.3e,%.3e], u_dt=%.3e, h_dt=%.3e, v_sig=%.3e.\n" ,
-                pid , p2.id , p2.rho , sqrtf(r2) ,
-                p.a[0] , p.a[1] , p.a[2] ,
-                p.force.u_dt , p.force.h_dt , p.force.v_sig );
+        if ( r2 < p.h*p.h*kernel_gamma2 ) {
+            runner_iact_nonsym_density( r2 , fdx , p.h , parts[k].h , &p , &parts[k] );
             }
         }
         
     /* Dump the result. */
-    ihg = kernel_igamma / p.h;
-    printf( "pairs_single: part %lli (h=%e) has wcount=%f, rho=%f.\n" , p.id , p.h , p.density.wcount + 32.0/3 , ihg * ihg * ihg * ( p.rho + p.mass*kernel_root ) );
+    p.rho = ih * ih * ih * ( p.rho + p.mass*kernel_root );
+    p.rho_dh = p.rho_dh * ih * ih * ih * ih;
+    p.density.wcount = ( p.density.wcount + kernel_root ) * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
+    printf( "pairs_single: part %lli (h=%e) has wcount=%e, rho=%e, rho_dh=%e.\n" , p.id , p.h , p.density.wcount , p.rho , p.rho_dh );
+    fflush(stdout);
+    
+    }
+
+
+void engine_single_force ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
+
+    int i, k;
+    double r2, dx[3];
+    float fdx[3];
+    struct part p;
+    
+    /* Find "our" part. */
+    for ( k = 0 ; k < N && parts[k].id != pid ; k++ );
+    if ( k == N )
+        error( "Part not found." );
+    p = parts[k];
+    
+    /* Clear accumulators. */
+    p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
+    p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
+            
+    /* Loop over all particle pairs (force). */
+    // for ( k = 0 ; k < N ; k++ ) {
+    for ( k = N-1 ; k >= 0 ; k-- ) {
+        if ( parts[k].id == p.id )
+            continue;
+        for ( i = 0 ; i < 3 ; i++ ) {
+            dx[i] = p.x[i] - parts[k].x[i];
+            if ( periodic ) {
+                if ( dx[i] < -dim[i]/2 )
+                    dx[i] += dim[i];
+                else if ( dx[i] > dim[i]/2 )
+                    dx[i] -= dim[i];
+                }
+            fdx[i] = dx[i];
+            }
+        r2 = fdx[0]*fdx[0] + fdx[1]*fdx[1] + fdx[2]*fdx[2];
+        if ( r2 < p.h*p.h*kernel_gamma2 || r2 < parts[k].h*parts[k].h*kernel_gamma2 ) {
+            p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
+            p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
+            runner_iact_nonsym_force( r2 , fdx , p.h , parts[k].h , &p , &parts[k] );
+            /* printf( "pairs_simple: interacting particles %lli and %lli (rho=%.3e,r=%e): a=[%.3e,%.3e,%.3e], u_dt=%.3e, h_dt=%.3e, v_sig=%.3e.\n" ,
+                pid , p2.id , p2.rho , sqrtf(r2) ,
+                p.a[0] , p.a[1] , p.a[2] ,
+                p.force.u_dt , p.force.h_dt , p.force.v_sig ); */
+            }
+        }
+        
+    /* Dump the result. */
+    printf( "pairs_single: part %lli (h=%e) has a=[%.3e,%.3e,%.3e], udt=%e.\n" , p.id , p.h , p.a[0] , p.a[1] , p.a[2] , p.force.u_dt );
     fflush(stdout);
     
     }
@@ -472,6 +521,8 @@ void engine_step ( struct engine *e , int sort_queues ) {
             }
         }
         
+    // engine_single_density( e->s->dim , 6178 , e->s->parts , e->s->nr_parts , e->s->periodic );
+
     /* Start the clock. */
     TIMER_TIC_ND
     
@@ -488,11 +539,12 @@ void engine_step ( struct engine *e , int sort_queues ) {
     /* Stop the clock. */
     TIMER_TOC(timer_runners);
     
+    // engine_single_force( e->s->dim , 6178 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
-    // engine_single( e->s->dim , 432626 , e->s->parts , e->s->nr_parts , e->s->periodic );
     // printParticle( parts , 432626 );
-    // printParticle( parts , 432628 );
+    // printParticle( e->s->parts , 6178 , e->s->nr_parts );
 
     /* Collect the cell data from the second kick. */
     for ( k = 0 ; k < e->s->nr_cells ; k++ ) {

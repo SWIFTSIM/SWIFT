@@ -21,7 +21,7 @@
 
 /* Hydrodynamical constants. */
 #define const_gamma             (5.0f/3.0f)
-#define const_viscosity_alpha   0.8
+#define const_viscosity_alpha   0.8f
 
 /* Time integration constants. */
 #define const_cfl               0.3f

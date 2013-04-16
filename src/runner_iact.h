@@ -42,7 +42,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
 
     float r = sqrtf( r2 ), ri = 1.0f / r;
     float xi, xj;
-    float h_inv, hg_inv;
+    float h_inv;
     float wi, wj, wi_dx, wj_dx;
     float mi, mj;
     float dvdr;
@@ -66,18 +66,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     for ( k = 0 ; k < 3 ; k++ )
         curlvr[k] *= ri;
             
-    if ( r2 < hi*hi ) {
+    if ( r2 < hi*hi*kernel_gamma2 ) {
         
         h_inv = 1.0 / hi;
-        hg_inv = kernel_igamma * h_inv;
-        xi = r * hg_inv;
+        xi = r * h_inv;
         kernel_deval( xi , &wi , &wi_dx );
         
         pi->rho += mj * wi;
         pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
-        pi->density.wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        // pi->icount += 1;
+        pi->density.wcount += wi;
+        pi->density.wcount_dh -= xi * wi_dx;
 
 	    pi->density.div_v += mj * dvdr * wi_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
@@ -85,18 +83,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
             
         }
 
-    if ( r2 < hj*hj ) {
+    if ( r2 < hj*hj*kernel_gamma2 ) {
         
         h_inv = 1.0 / hj;
-        hg_inv = kernel_igamma * h_inv;
-        xj = r * hg_inv;
+        xj = r * h_inv;
         kernel_deval( xj , &wj , &wj_dx );
         
         pj->rho += mi * wj;
         pj->rho_dh -= mi * ( 3.0*wj + xj*wj_dx );
-        pj->density.wcount += wj * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pj->density.wcount_dh -= xj * h_inv * wj_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        // pj->icount += 1;
+        pj->density.wcount += wj;
+        pj->density.wcount_dh -= xj * wj_dx;
         
 	    pj->density.div_v += mi * dvdr * wj_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
@@ -115,7 +111,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
 
     vector r, ri, xi, xj, hi, hj, hi_inv, hj_inv, hig_inv, hjg_inv, wi, wj, wi_dx, wj_dx;
     vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
-    vector mi, mj, wscale;
+    vector mi, mj;
     vector dx[3], dv[3];
     vector vi[3], vj[3];    
     vector dvdr, div_vi, div_vj;
@@ -144,19 +140,15 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
             dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
     #endif
 
-    wscale.v = vec_set1( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-    
     hi.v = vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi_inv.v * hi.v  - vec_set1( 1.0f ) );
-    hig_inv.v = hi_inv.v * vec_set1( kernel_igamma );
-    xi.v = r.v * hig_inv.v;
+    xi.v = r.v * hi_inv.v;
 
     hj.v = vec_load( Hj );
     hj_inv.v = vec_rcp( hj.v );
     hj_inv.v = hj_inv.v - hj_inv.v * ( hj_inv.v * hj.v  - vec_set1( 1.0f ) );
-    hjg_inv.v = hj_inv.v * vec_set1( kernel_igamma );
-    xj.v = r.v * hjg_inv.v;
+    xj.v = r.v * hj_inv.v;
     
     kernel_deval_vec( &xi , &wi , &wi_dx );
     kernel_deval_vec( &xj , &wj , &wj_dx );
@@ -179,16 +171,16 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
 
     rhoi.v = mj.v * wi.v;
     rhoi_dh.v = mj.v * ( vec_set1( 3.0f ) * wi.v + xi.v * wi_dx.v );
-    wcounti.v = wi.v * wscale.v;
-    wcounti_dh.v = xi.v * hi_inv.v * wi_dx.v * wscale.v;
+    wcounti.v = wi.v;
+    wcounti_dh.v = xi.v * wi_dx.v;
     div_vi.v = mj.v * dvdr.v * wi_dx.v;
     for ( k = 0 ; k < 3 ; k++ )
         curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
         
     rhoj.v = mi.v * wj.v;
     rhoj_dh.v = mi.v * ( vec_set1( 3.0f ) * wj.v + xj.v * wj_dx.v );
-    wcountj.v = wj.v * wscale.v;
-    wcountj_dh.v = xj.v * hj_inv.v * wj_dx.v * wscale.v;
+    wcountj.v = wj.v;
+    wcountj_dh.v = xj.v * wj_dx.v;
     div_vj.v = mi.v * dvdr.v * wj_dx.v;
     for ( k = 0 ; k < 3 ; k++ )
         curl_vj[k].v = mi.v * curlvr[k].v * wj_dx.v;
@@ -230,14 +222,14 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
 
     float r, ri;
     float xi;
-    float h_inv, hg_inv;
+    float h_inv;
     float wi, wi_dx;
     float mj;
     float dvdr;
     float dv[3], curlvr[3];
     int k;
 
-    if ( r2 < hi*hi ) {
+    if ( r2 < hi*hi*kernel_gamma2 ) {
         
         /* Get the masses. */
         mj = pj->mass;
@@ -261,15 +253,13 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
             curlvr[k] *= ri;
             
         h_inv = 1.0 / hi;
-        hg_inv = kernel_igamma * h_inv;
-        xi = r * hg_inv;
+        xi = r * h_inv;
         kernel_deval( xi , &wi , &wi_dx );
         
         pi->rho += mj * wi;
         pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
-        pi->density.wcount += wi * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        pi->density.wcount_dh -= xi * h_inv * wi_dx * ( 4.0f * M_PI / 3.0f * kernel_igamma3 );
-        // pi->icount += 1;
+        pi->density.wcount += wi;
+        pi->density.wcount_dh -= xi * wi_dx;
 
 	    pi->density.div_v += mj * dvdr * wi_dx;
 	    for ( k = 0 ; k < 3 ; k++ )
@@ -289,7 +279,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
 
     vector r, ri, xi, hi, hi_inv, hig_inv, wi, wi_dx;
     vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
-    vector mj, wscale;
+    vector mj;
     vector dx[3], dv[3];
     vector vi[3], vj[3];
     vector dvdr;
@@ -315,13 +305,11 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
     #endif
-    wscale.v = vec_set1( 4.0f * M_PI / 3.0f * kernel_igamma3 );
     
     hi.v = vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi_inv.v * hi.v  - vec_set1( 1.0f ) );
-    hig_inv.v = hi_inv.v * vec_set1( kernel_igamma );
-    xi.v = r.v * hig_inv.v;
+    xi.v = r.v * hi_inv.v;
 
     kernel_deval_vec( &xi , &wi , &wi_dx );
     
@@ -343,8 +331,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
 
     rhoi.v = mj.v * wi.v;
     rhoi_dh.v = mj.v * ( vec_set1( 3.0f ) * wi.v + xi.v * wi_dx.v );
-    wcounti.v = wi.v * wscale.v;
-    wcounti_dh.v = xi.v * hi_inv.v * wi_dx.v * wscale.v;
+    wcounti.v = wi.v;
+    wcounti_dh.v = xi.v * wi_dx.v;
     div_vi.v = mj.v * dvdr.v * wi_dx.v;
     for ( k = 0 ; k < 3 ; k++ )
         curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
@@ -392,14 +380,14 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     POrho2j = pj->force.POrho2;
     
     /* Get the kernel for hi. */
-    hi_inv = kernel_igamma / hi;
+    hi_inv = 1.0f / hi;
     hi2_inv = hi_inv * hi_inv;
     xi = r * hi_inv;
     kernel_deval( xi , &wi , &wi_dx );
     wi_dr = hi2_inv * hi2_inv * wi_dx;
         
     /* Get the kernel for hj. */
-    hj_inv = kernel_igamma / hj;
+    hj_inv = 1.0f / hj;
     hj2_inv = hj_inv * hj_inv;
     xj = r * hj_inv;
     kernel_deval( xj , &wj , &wj_dx );
@@ -522,7 +510,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     r.v = r2.v * ri.v;
     
     /* Get the kernel for hi. */
-    hi.v = vec_set1( kernel_gamma ) * vec_load( Hi );
+    hi.v = vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi.v * hi_inv.v - vec_set1( 1.0f ) );
     hi2_inv.v = hi_inv.v * hi_inv.v;
@@ -531,7 +519,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
     wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
         
     /* Get the kernel for hj. */
-    hj.v = vec_set1( kernel_gamma ) * vec_load( Hj );
+    hj.v = vec_load( Hj );
     hj_inv.v = vec_rcp( hj.v );
     hj_inv.v = hj_inv.v - hj_inv.v * ( hj.v * hj_inv.v - vec_set1( 1.0f ) );
     hj2_inv.v = hj_inv.v * hj_inv.v;
@@ -622,14 +610,14 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     POrho2j = pj->force.POrho2;
     
     /* Get the kernel for hi. */
-    hi_inv = kernel_igamma / hi;
+    hi_inv = 1.0f / hi;
     hi2_inv = hi_inv * hi_inv;
     xi = r * hi_inv;
     kernel_deval( xi , &wi , &wi_dx );
     wi_dr = hi2_inv * hi2_inv * wi_dx;
         
     /* Get the kernel for hj. */
-    hj_inv = kernel_igamma / hj;
+    hj_inv = 1.0f / hj;
     hj2_inv = hj_inv * hj_inv;
     xj = r * hj_inv;
     kernel_deval( xj , &wj , &wj_dx );
@@ -747,7 +735,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     r.v = r2.v * ri.v;
     
     /* Get the kernel for hi. */
-    hi.v = vec_set1( kernel_gamma ) * vec_load( Hi );
+    hi.v = vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi.v * hi_inv.v - vec_set1( 1.0f ) );
     hi2_inv.v = hi_inv.v * hi_inv.v;
@@ -756,7 +744,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
     wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
         
     /* Get the kernel for hj. */
-    hj.v = vec_set1( kernel_gamma ) * vec_load( Hj );
+    hj.v = vec_load( Hj );
     hj_inv.v = vec_rcp( hj.v );
     hj_inv.v = hj_inv.v - hj_inv.v * ( hj.v * hj_inv.v - vec_set1( 1.0f ) );
     hj2_inv.v = hj_inv.v * hj_inv.v;

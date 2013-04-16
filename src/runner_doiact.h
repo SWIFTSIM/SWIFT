@@ -105,7 +105,7 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
     struct cpart *restrict cpj, *restrict cparts_j = cj->cparts;
     struct cpart *restrict cpi, *restrict cparts_i = ci->cparts;
     double pix[3];
-    float dx[3], hi, hi2, r2;
+    float dx[3], hi, hig2, r2;
     float dt_step = e->dt_step;
     #ifdef VECTORIZE
         int icount = 0;
@@ -142,7 +142,7 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k] - shift[k];
         hi = cpi->h;
-        hi2 = hi * hi;
+        hig2 = hi * hi * kernel_gamma2;
         
         /* Loop over the parts in cj. */
         for ( pjd = 0 ; pjd < count_j ; pjd++ ) {
@@ -158,7 +158,7 @@ void DOPAIR_NAIVE ( struct runner *r , struct cell *restrict ci , struct cell *r
                 }
                 
             /* Hit or miss? */
-            if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+            if ( r2 < hig2 || r2 < cpj->h*cpj->h*kernel_gamma2 ) {
             
                 #ifndef VECTORIZE
                         
@@ -214,7 +214,7 @@ void DOSELF_NAIVE ( struct runner *r , struct cell *restrict c ) {
     struct part *restrict parts = c->parts;
     struct cpart *restrict cpi,  *restrict cpj,*restrict cparts = c->cparts;
     double pix[3];
-    float dx[3], hi, hi2, r2;
+    float dx[3], hi, hig2, r2;
     float dt_step = r->e->dt_step;
     #ifdef VECTORIZE
         int icount = 0;
@@ -243,7 +243,7 @@ void DOSELF_NAIVE ( struct runner *r , struct cell *restrict c ) {
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k];
         hi = cpi->h;
-        hi2 = hi * hi;
+        hig2 = hi * hi * kernel_gamma2;
         
         /* Loop over the parts in cj. */
         for ( pjd = pid+1 ; pjd < count ; pjd++ ) {
@@ -259,7 +259,7 @@ void DOSELF_NAIVE ( struct runner *r , struct cell *restrict c ) {
                 }
                 
             /* Hit or miss? */
-            if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+            if ( r2 < hig2 || r2 < cpj->h*cpj->h*kernel_gamma2 ) {
             
                 #ifndef VECTORIZE
                         
@@ -328,7 +328,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     struct part *restrict pi, *restrict parts_j = cj->parts;
     struct cpart *restrict cpj, *restrict cparts_j = cj->cparts;
     double pix[3];
-    float dx[3], hi, hi2, r2, di, dxj;
+    float dx[3], hi, hig2, r2, di, dxj;
     struct entry *sort_j;
     #ifdef VECTORIZE
         int icount = 0;
@@ -376,8 +376,8 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
             for ( k = 0 ; k < 3 ; k++ )
                 pix[k] = pi->x[k] - shift[k];
             hi = pi->h;
-            hi2 = hi * hi;
-            di = hi + dxj + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
+            hig2 = hi * hi * kernel_gamma2;
+            di = hi*kernel_gamma + dxj + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
 
             /* Loop over the parts in cj. */
             for ( pjd = 0 ; pjd < count_j && sort_j[ pjd ].d < di ; pjd++ ) {
@@ -393,7 +393,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hi2 ) {
+                if ( r2 < hig2 ) {
 
                     #ifndef VECTORIZE
                         
@@ -439,8 +439,8 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
             for ( k = 0 ; k < 3 ; k++ )
                 pix[k] = pi->x[k] - shift[k];
             hi = pi->h;
-            hi2 = hi * hi;
-            di = -hi - dxj + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
+            hig2 = hi * hi * kernel_gamma2;
+            di = -hi*kernel_gamma - dxj + pix[0]*runner_shift[ 3*sid + 0 ] + pix[1]*runner_shift[ 3*sid + 1 ] + pix[2]*runner_shift[ 3*sid + 2 ];
 
             /* Loop over the parts in cj. */
             for ( pjd = count_j-1 ; pjd >= 0 && di < sort_j[ pjd ].d ; pjd-- ) {
@@ -456,7 +456,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hi2 ) {
+                if ( r2 < hig2 ) {
 
                     #ifndef VECTORIZE
                         
@@ -526,7 +526,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     struct part *restrict pi;
     struct cpart *restrict cpj, *restrict cparts = ci->cparts;
     double pix[3];
-    float dx[3], hi, hi2, r2;
+    float dx[3], hi, hig2, r2;
     #ifdef VECTORIZE
         int icount = 0;
         float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
@@ -550,7 +550,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = pi->x[k];
         hi = pi->h;
-        hi2 = hi * hi;
+        hig2 = hi * hi * kernel_gamma2;
         
         /* Loop over the parts in cj. */
         for ( pjd = 0 ; pjd < count_i ; pjd++ ) {
@@ -566,7 +566,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
                 }
                 
             /* Hit or miss? */
-            if ( r2 > 0.0f && r2 < hi2 ) {
+            if ( r2 > 0.0f && r2 < hig2 ) {
             
                 #ifndef VECTORIZE
 
@@ -634,7 +634,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     struct cpart *restrict cpi, *restrict cparts_i;
     struct cpart *restrict cpj, *restrict cparts_j;
     double pix[3], pjx[3], di, dj;
-    float dx[3], hi, hi2, hj, hj2, r2, dx_max;
+    float dx[3], hi, hig2, hj, hjg2, r2, dx_max;
     double hi_max, hj_max;
     double di_max, dj_min;
     int count_i, count_j;
@@ -669,7 +669,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     sort_j = &cj->sort[ sid*(cj->count + 1) ];
     
     /* Get some other useful values. */
-    hi_max = ci->h_max - rshift; hj_max = cj->h_max;
+    hi_max = ci->h_max*kernel_gamma - rshift; hj_max = cj->h_max*kernel_gamma;
     count_i = ci->count; count_j = cj->count;
     parts_i = ci->parts; parts_j = cj->parts;
     cparts_i = ci->cparts; cparts_j = cj->cparts;
@@ -690,11 +690,11 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         if ( cpi->dt > dt_step )
             continue;
         hi = cpi->h;
-        di = sort_i[pid].d + hi + dx_max - rshift;
+        di = sort_i[pid].d + hi*kernel_gamma + dx_max - rshift;
         if ( di < dj_min )
             continue;
             
-        hi2 = hi * hi;
+        hig2 = hi * hi * kernel_gamma2;
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k] - shift[k];
         
@@ -712,7 +712,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                 }
                 
             /* Hit or miss? */
-            if ( r2 < hi2 ) {
+            if ( r2 < hig2 ) {
             
                 #ifndef VECTORIZE
                         
@@ -757,13 +757,13 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         if ( cpj->dt > dt_step )
             continue;
         hj = cpj->h;
-        dj = sort_j[pjd].d - hj - dx_max - rshift;
+        dj = sort_j[pjd].d - hj*kernel_gamma - dx_max - rshift;
         if ( dj > di_max )
             continue;
             
         for ( k = 0 ; k < 3 ; k++ )
             pjx[k] = cpj->x[k] + shift[k];
-        hj2 = hj * hj;
+        hjg2 = hj * hj * kernel_gamma2;
         
         /* Loop over the parts in ci. */
         for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d > dj ; pid-- ) {
@@ -779,7 +779,7 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                 }
                 
             /* Hit or miss? */
-            if ( r2 < hj2 ) {
+            if ( r2 < hjg2 ) {
             
                 #ifndef VECTORIZE
                         
@@ -840,7 +840,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     struct cpart *restrict cpi, *restrict cparts_i;
     struct cpart *restrict cpj, *restrict cparts_j;
     double pix[3], pjx[3], di, dj;
-    float dx[3], hi, hi2, hj, hj2, r2, dx_max;
+    float dx[3], hi, hig2, hj, hjg2, r2, dx_max;
     double hi_max, hj_max;
     double di_max, dj_min;
     int count_i, count_j;
@@ -881,7 +881,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     sort_j = &cj->sort[ sid*(cj->count + 1) ];
     
     /* Get some other useful values. */
-    hi_max = ci->h_max - rshift; hj_max = cj->h_max;
+    hi_max = ci->h_max*kernel_gamma - rshift; hj_max = cj->h_max*kernel_gamma;
     count_i = ci->count; count_j = cj->count;
     parts_i = ci->parts; parts_j = cj->parts;
     cparts_i = ci->cparts; cparts_j = cj->cparts;
@@ -924,11 +924,11 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         pi = &parts_i[ sort_i[ pid ].i ];
         cpi = &cparts_i[ sort_i[ pid ].i ];
         hi = cpi->h;
-        di = sort_i[pid].d + hi + dx_max - rshift;
+        di = sort_i[pid].d + hi*kernel_gamma + dx_max - rshift;
         if ( di < dj_min )
             continue;
             
-        hi2 = hi * hi;
+        hig2 = hi * hi * kernel_gamma2;
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k] - shift[k];
             
@@ -949,7 +949,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hi2 ) {
+                if ( r2 < hig2 ) {
 
                     #ifndef VECTORIZE
 
@@ -999,7 +999,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hi2 ) {
+                if ( r2 < hig2 ) {
 
                     #ifndef VECTORIZE
 
@@ -1074,13 +1074,13 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
         pj = &parts_j[ sort_j[ pjd ].i ];
         cpj = &cparts_j[ sort_j[ pjd ].i ];
         hj = cpj->h;
-        dj = sort_j[pjd].d - hj - dx_max - rshift;
+        dj = sort_j[pjd].d - hj*kernel_gamma - dx_max - rshift;
         if ( dj > di_max )
             continue;
             
         for ( k = 0 ; k < 3 ; k++ )
             pjx[k] = cpj->x[k] + shift[k];
-        hj2 = hj * hj;
+        hjg2 = hj * hj * kernel_gamma2;
         
         /* Is this particle outside the dt? */
         if ( cpj->dt > dt_step ) {
@@ -1099,7 +1099,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hj2 && r2 > cpi->h*cpi->h ) {
+                if ( r2 < hjg2 && r2 > cpi->h*cpi->h*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
@@ -1148,7 +1148,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hj2 && r2 > cpi->h*cpi->h ) {
+                if ( r2 < hjg2 && r2 > cpi->h*cpi->h*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
@@ -1243,7 +1243,7 @@ void DOSELF1 ( struct runner *r , struct cell *restrict c ) {
 
     int k, pid, pjd, count = c->count;
     double pix[3];
-    float dx[3], hi, hi2, r2;
+    float dx[3], hi, hig2, r2;
     struct part *restrict parts = c->parts, *restrict pi;
     struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
     float dt_step = r->e->dt_step;
@@ -1274,7 +1274,7 @@ void DOSELF1 ( struct runner *r , struct cell *restrict c ) {
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k];
         hi = cpi->h;
-        hi2 = hi * hi;
+        hig2 = hi * hi * kernel_gamma2;
             
         /* Loop over the other particles .*/
         for ( pjd = 0 ; pjd < count ; pjd++ ) {
@@ -1294,7 +1294,7 @@ void DOSELF1 ( struct runner *r , struct cell *restrict c ) {
                 }
                 
             /* Hit or miss? */
-            if ( r2 < hi2 ) {
+            if ( r2 < hig2 ) {
             
                 #ifndef VECTORIZE
                         
@@ -1347,7 +1347,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
 
     int k, pid, pjd, count = c->count;
     double pix[3];
-    float dx[3], hi, hi2, r2;
+    float dx[3], hi, hig2, r2;
     struct part *restrict parts = c->parts, *restrict pi;
     struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
     float dt_step = r->e->dt_step;
@@ -1392,7 +1392,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k];
         hi = cpi->h;
-        hi2 = hi * hi;
+        hig2 = hi * hi * kernel_gamma2;
         
         /* Is the ith particle not active? */
         if ( cpi->dt > dt_step ) {
@@ -1411,7 +1411,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+                if ( r2 < hig2 || r2 < cpj->h*cpj->h*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
@@ -1464,7 +1464,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hi2 || r2 < cpj->h*cpj->h ) {
+                if ( r2 < hig2 || r2 < cpj->h*cpj->h*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
@@ -2120,7 +2120,7 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
     }
 
 
-void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *parts , int *ind , int count , struct cell *restrict cj , int sid ) {
+void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , int *ind , int count , struct cell *cj , int sid ) {
 
     int j, k;
     double shift[3];
@@ -2178,31 +2178,8 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *p
              ci->h2dx_max*2 < h && cj->h2dx_max*2 < h ) {
              
             /* Get the type of pair if not specified explicitly. */
-            if ( sid < 0 ) {
+            sid = space_getsid( s , &ci , &cj , shift );
 
-                /* Get the relative distance between the pairs, wrapping. */
-                for ( k = 0 ; k < 3 ; k++ ) {
-                    if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
-                        shift[k] = s->dim[k];
-                    else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
-                        shift[k] = -s->dim[k];
-                    else
-                        shift[k] = 0.0;
-                    }
-
-                /* Get the sorting index. */
-                for ( sid = 0 , k = 0 ; k < 3 ; k++ )
-                    sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
-
-                /* Flip? */
-                if ( sid < 13 ) {
-                    struct cell *temp = cj; cj = ci; ci = temp;
-                    }
-                else
-                    sid = 26 - sid;
-
-                }
-    
             /* Different types of flags. */
             switch ( sid ) {
 
