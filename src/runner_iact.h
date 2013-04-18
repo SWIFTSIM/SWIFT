@@ -366,6 +366,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
     float mi, mj, POrho2i, POrho2j, rhoi, rhoj;
     float v_sig, omega_ij, Pi_ij;
+    float dt_max;
     float f;
     int k;
     
@@ -404,6 +405,11 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
 
     /* Apply balsara switch */
     Pi_ij *= ( pi->force.balsara + pj->force.balsara );
+
+    /* Volker's modified viscosity */
+    dt_max = fmaxf(pi->dt, pj->dt);
+    if(dt_max > 0 && (wi_dr + wj_dr) < 0.)
+      Pi_ij = fminf( Pi_ij, 2.f * omega_ij / ( ( mi + mj ) * ( wi_dr + wj_dr ) * dt_max ) );
 
     /* Get the common factor out. */
     w = ri * ( ( POrho2i * wi_dr + POrho2j * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
@@ -594,13 +600,14 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
     float hi_inv, hi2_inv;
     float hj_inv, hj2_inv;
     float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
-    float mj, POrho2i, POrho2j, rhoi, rhoj;
+    float mi, mj, POrho2i, POrho2j, rhoi, rhoj;
     float v_sig, omega_ij, Pi_ij;
+    float dt_max;
     float f;
     int k;
     
     /* Get some values in local variables. */
-    mj = pj->mass;
+    mi = pi->mass; mj = pj->mass;
     rhoi = pi->rho; rhoj = pj->rho;
     POrho2i = pi->force.POrho2;
     POrho2j = pj->force.POrho2;
@@ -634,6 +641,11 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
 
     /* Apply balsara switch */
     Pi_ij *= ( pi->force.balsara + pj->force.balsara );
+
+    /* Volker's modified viscosity */
+    dt_max = fmaxf(pi->dt, pj->dt);
+    if(dt_max > 0 && (wi_dr + wj_dr) < 0.)
+      Pi_ij = fminf( Pi_ij, 2.f * omega_ij / ( ( mi + mj ) * ( wi_dr + wj_dr ) * dt_max ) );
 
     /* Get the common factor out. */
     w = ri * ( ( POrho2i * wi_dr + POrho2j * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
