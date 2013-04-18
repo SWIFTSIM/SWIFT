@@ -37,36 +37,21 @@ fileName = "sodShock.hdf5"
 #---------------------------------------------------
 
 #Read in high density glass
-glass1 = h5py.File("../Glass/glass_200000.hdf5")
-pos1 = glass1["/PartType1/Coordinates"][:,:]
-pos1 = pos1 / 20. # Particles are in [0:0.5, 0:0.5, 0:0.5]
-
-toRemove = array(0)
-for i in range(size(pos1)/3-1):
-    if pos1[i,0] == pos1[i+1,0]:
-        if pos1[i,1] == pos1[i+1,1]:
-            if pos1[i,2] == pos1[i+1,2]:
-                toRemove = append(toRemove, i)
-
-pos1 = delete(pos1, toRemove, 0)
+# glass1 = h5py.File("../Glass/glass_200000.hdf5")
+glass1 = h5py.File("glass_001.hdf5")
+pos1 = glass1["/PartType0/Coordinates"][:,:]
+pos1 = pos1 / 2. # Particles are in [0:0.5, 0:0.5, 0:0.5]
 
 
 #Read in high density glass
-glass2 = h5py.File("../Glass/glass_50000.hdf5")
-pos2 = glass2["/PartType1/Coordinates"][:,:]
-pos2 = pos2 / 20. # Particles are in [0:0.5, 0:0.5, 0:0.5]
-
-toRemove = array(0)
-for i in range(size(pos2)/3-1):
-    if pos2[i,0] == pos2[i+1,0]:
-        if pos2[i,1] == pos2[i+1,1]:
-            if pos2[i,2] == pos2[i+1,2]:
-                toRemove = append(toRemove, i)
-pos2 = delete(pos2, toRemove, 0)
+# glass2 = h5py.File("../Glass/glass_50000.hdf5")
+glass2 = h5py.File("glass_002.hdf5")
+pos2 = glass2["/PartType0/Coordinates"][:,:]
+pos2 = pos2 / 2. # Particles are in [0:0.5, 0:0.5, 0:0.5]
 
 
 #Generate high density region
-rho1 = size(pos1) / size(pos2) 
+rho1 = 1.
 coord1 = append(pos1, pos1 + [0, 0.5, 0], 0)
 coord1 = append(coord1, pos1 + [0, 0, 0.5], 0)
 coord1 = append(coord1, pos1 + [0, 0.5, 0.5], 0)
@@ -77,7 +62,7 @@ u1 = ones((N1, 1)) * P1 / ((gamma - 1.) * rho1)
 m1 = ones((N1, 1)) * 0.5 * rho1 / N1
 
 #Generate low density region
-rho2 = 1.
+rho2 = 0.25
 coord2 = append(pos2, pos2 + [0, 0.5, 0], 0)
 coord2 = append(coord2, pos2 + [0, 0, 0.5], 0)
 coord2 = append(coord2, pos2 + [0, 0.5, 0.5], 0)
@@ -132,5 +117,8 @@ ds = grp.create_dataset('ParticleIDs', (numPart,1), 'L')
 ds[()] = ids[:]
 
 file.close()
+
+print "particle 31075: " , coords[31075,:]
+print "particle 31076: " , coords[31076,:]
 
 

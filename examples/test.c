@@ -885,7 +885,7 @@ int main ( int argc , char *argv[] ) {
         engine_step( &e , 0 );
 
         if(j % 100 == 0)
-	  write_output(&e);
+            write_output(&e);
 	
         
         /* Dump the first few particles. */
@@ -913,7 +913,7 @@ int main ( int argc , char *argv[] ) {
         for ( k = 0 ; k < s.nr_parts ; k++ )
             if ( s.parts[k].dt < p->dt )
                 p = &s.parts[k];
-        printf( "main: particle %lli/%i at [ %e %e %e ] has smallest dt=%.3e (h=%.3e,u=%.3e).\n" ,
+        printf( "main: particle %lli/%i at [ %e %e %e ] has smallest dt=%e (h=%.3e,u=%.3e).\n" ,
 	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->dt , p->h , p->u ); */
         
         /* Output. */
@@ -981,6 +981,9 @@ int main ( int argc , char *argv[] ) {
     space_map_parts( &s , &map_wcount_max , &p );
     printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f.\n" ,
 	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->density.wcount );
+    
+    /* Write final output. */
+    write_output( &e );
     
     /* Get the average interactions per particle. */
     // icount = 0;

@@ -64,23 +64,28 @@ int main ( int argc , char *argv[] ) {
 
     int k, N = 100;
     struct part p1, p2;
-    float x, w, dwdx, r2, dx[3] = { 0.0f , 0.0f , 0.0f };
+    float x, w, dwdx, r2, dx[3] = { 0.0f , 0.0f , 0.0f }, gradw[3];
     
     /* Init the particles. */
     for ( k = 0 ; k < 3 ; k++ ) {
         p1.a[k] = 0.0f; p1.v[k] = 0.0f; p1.x[k] = 0.0;
         p2.a[k] = 0.0f; p2.v[k] = 0.0f; p2.x[k] = 0.0;
         }
+    p1.v[0] = 100.0f;
+    p1.id = 0; p2.id = 1;
+    p1.density.wcount = 48.0f; p2.density.wcount = 48.0f;
     p1.rho = 1.0f; p1.mass = 9.7059e-4; p1.h = 0.222871287 / 2;
     p2.rho = 1.0f; p2.mass = 9.7059e-4; p2.h = 0.222871287 / 2;
-    p1.force.c = 0.0f; p1.force.balsara = 0.0f;
-    p2.force.c = 0.0f; p2.force.balsara = 0.0f;
+    p1.force.c = 0.0040824829f; p1.force.balsara = 0.0f;
+    p2.force.c = 58.8972740361f; p2.force.balsara = 0.0f;
     p1.u = 1.e-5 / ((const_gamma - 1.)*p1.rho);
     p2.u = 1.e-5 / ((const_gamma - 1.)*p2.rho) + 100.0f / ( 33 * p2.mass );
     p1.force.POrho2 = p1.u * ( const_gamma - 1.0f ) / p1.rho;
     p2.force.POrho2 = p2.u * ( const_gamma - 1.0f ) / p2.rho;
     
     /* Dump a header. */
+    printParticle_single( &p1 );
+    printParticle_single( &p2 );
     printf( "# r a_1 udt_1 a_2 udt_2\n" );
     
     /* Loop over the different radii. */
@@ -91,28 +96,31 @@ int main ( int argc , char *argv[] ) {
         r2 = dx[0]*dx[0];
         
         /* Clear the particle fields. */
-        /* p1.a[0] = 0.0f; p1.force.u_dt = 0.0f;
-        p2.a[0] = 0.0f; p2.force.u_dt = 0.0f; */
+        p1.a[0] = 0.0f; p1.force.u_dt = 0.0f;
+        p2.a[0] = 0.0f; p2.force.u_dt = 0.0f;
         
         /* Interact the particles. */
-        // runner_iact_force( r2 , dx , p1.h , p2.h , &p1 , &p2 );
+        runner_iact_force( r2 , dx , p1.h , p2.h , &p1 , &p2 );
         
         /* Clear the particle fields. */
-        p1.rho = 0.0f; p1.density.wcount = 0.0f;
-        p2.rho = 0.0f; p2.density.wcount = 0.0f;
+        /* p1.rho = 0.0f; p1.density.wcount = 0.0f;
+        p2.rho = 0.0f; p2.density.wcount = 0.0f; */
         
         /* Interact the particles. */
-        runner_iact_density( r2 , dx , p1.h , p2.h , &p1 , &p2 );
+        // runner_iact_density( r2 , dx , p1.h , p2.h , &p1 , &p2 );
         
         /* Evaluate just the kernel. */
         x = fabsf( dx[0] ) / p1.h;
         kernel_deval( x , &w , &dwdx );
+        gradw[0] = dwdx / (p1.h*p1.h*p1.h*p1.h) * dx[0] / sqrtf( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
+        gradw[1] = dwdx / (p1.h*p1.h*p1.h*p1.h) * dx[1] / sqrtf( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
+        gradw[2] = dwdx / (p1.h*p1.h*p1.h*p1.h) * dx[2] / sqrtf( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
         
         /* Output the results. */
-        printf( "%.3e %.3e %.3e %.3e %.3e %.3e %.3e\n" ,
-            // -dx[0] , p1.a[0] , p1.force.u_dt , p2.a[0] , p2.force.u_dt ,
-            -dx[0] , p1.rho , p1.density.wcount , p2.rho , p2.density.wcount ,
-            w , dwdx );
+        printf( "%.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n" ,
+            -dx[0] , p1.a[0] , p1.a[1] , p1.a[2] , p1.force.u_dt , 
+            /// -dx[0] , p1.rho , p1.density.wcount , p2.rho , p2.density.wcount ,
+            w , dwdx , gradw[0] , gradw[1] , gradw[2] );
     
         } /* loop over radii. */
     

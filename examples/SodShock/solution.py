@@ -29,11 +29,11 @@ from numpy import *
 
 
 # Parameters
-rho_L = 4.
-P_L = 1.
+rho_L = 1
+P_L = 1
 v_L = 0.
 
-rho_R = 1.
+rho_R = 0.25
 P_R = 0.1795
 v_R = 0.
 
@@ -42,8 +42,8 @@ gamma = 5./3. # Polytropic index
 t = 0.12  # Time of the evolution
 
 N = 1000  # Number of points
-x_min = -0.15
-x_max = 0.15
+x_min = -0.25
+x_max = 0.25
 
 
 # ---------------------------------------------------------------
