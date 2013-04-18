@@ -431,8 +431,8 @@ void engine_single_force ( double *dim , long long int pid , struct part *__rest
     p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
             
     /* Loop over all particle pairs (force). */
-    // for ( k = 0 ; k < N ; k++ ) {
-    for ( k = N-1 ; k >= 0 ; k-- ) {
+    for ( k = 0 ; k < N ; k++ ) {
+    // for ( k = N-1 ; k >= 0 ; k-- ) {
         if ( parts[k].id == p.id )
             continue;
         for ( i = 0 ; i < 3 ; i++ ) {
@@ -447,13 +447,7 @@ void engine_single_force ( double *dim , long long int pid , struct part *__rest
             }
         r2 = fdx[0]*fdx[0] + fdx[1]*fdx[1] + fdx[2]*fdx[2];
         if ( r2 < p.h*p.h*kernel_gamma2 || r2 < parts[k].h*parts[k].h*kernel_gamma2 ) {
-            p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
-            p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
             runner_iact_nonsym_force( r2 , fdx , p.h , parts[k].h , &p , &parts[k] );
-            /* printf( "pairs_simple: interacting particles %lli and %lli (rho=%.3e,r=%e): a=[%.3e,%.3e,%.3e], u_dt=%.3e, h_dt=%.3e, v_sig=%.3e.\n" ,
-                pid , p2.id , p2.rho , sqrtf(r2) ,
-                p.a[0] , p.a[1] , p.a[2] ,
-                p.force.u_dt , p.force.h_dt , p.force.v_sig ); */
             }
         }
         
@@ -520,7 +514,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             }
         }
         
-    // engine_single_density( e->s->dim , 6178 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single_density( e->s->dim , 494748 , e->s->parts , e->s->nr_parts , e->s->periodic );
 
     /* Start the clock. */
     TIMER_TIC_ND
@@ -538,12 +532,12 @@ void engine_step ( struct engine *e , int sort_queues ) {
     /* Stop the clock. */
     TIMER_TOC(timer_runners);
 
-    // engine_single_force( e->s->dim , 6178 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single_force( e->s->dim , 494748 , e->s->parts , e->s->nr_parts , e->s->periodic );
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
     // printParticle( parts , 432626 );
-    // printParticle( e->s->parts , 6178 , e->s->nr_parts );
+    // printParticle( e->s->parts , 494748 , e->s->nr_parts );
 
     /* Collect the cell data from the second kick. */
     for ( k = 0 ; k < e->s->nr_cells ; k++ ) {

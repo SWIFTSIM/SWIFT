@@ -229,44 +229,40 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_density ( 
     float dv[3], curlvr[3];
     int k;
 
-    if ( r2 < hi*hi*kernel_gamma2 ) {
-        
-        /* Get the masses. */
-        mj = pj->mass;
-    
-        /* Get r and r inverse. */
-        r = sqrtf( r2 );
-        ri = 1.0f / r;
-    
-        /* Compute dv dot r */
-        dv[0] = pi->v[0] - pj->v[0];
-        dv[1] = pi->v[1] - pj->v[1];
-        dv[2] = pi->v[2] - pj->v[2];
-        dvdr = dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2];
-        dvdr *= ri;
+    /* Get the masses. */
+    mj = pj->mass;
 
-        /* Compute dv cross r */
-        curlvr[0] = dv[1]*dx[2] - dv[2]*dx[1];
-        curlvr[1] = dv[2]*dx[0] - dv[0]*dx[2];
-        curlvr[2] = dv[0]*dx[1] - dv[1]*dx[0];
-        for ( k = 0 ; k < 3 ; k++ )
-            curlvr[k] *= ri;
+    /* Get r and r inverse. */
+    r = sqrtf( r2 );
+    ri = 1.0f / r;
+
+    /* Compute dv dot r */
+    dv[0] = pi->v[0] - pj->v[0];
+    dv[1] = pi->v[1] - pj->v[1];
+    dv[2] = pi->v[2] - pj->v[2];
+    dvdr = dv[0]*dx[0] + dv[1]*dx[1] + dv[2]*dx[2];
+    dvdr *= ri;
+
+    /* Compute dv cross r */
+    curlvr[0] = dv[1]*dx[2] - dv[2]*dx[1];
+    curlvr[1] = dv[2]*dx[0] - dv[0]*dx[2];
+    curlvr[2] = dv[0]*dx[1] - dv[1]*dx[0];
+    for ( k = 0 ; k < 3 ; k++ )
+        curlvr[k] *= ri;
+
+    h_inv = 1.0 / hi;
+    xi = r * h_inv;
+    kernel_deval( xi , &wi , &wi_dx );
+
+    pi->rho += mj * wi;
+    pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
+    pi->density.wcount += wi;
+    pi->density.wcount_dh -= xi * wi_dx;
+
+	pi->density.div_v += mj * dvdr * wi_dx;
+	for ( k = 0 ; k < 3 ; k++ )
+	    pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
             
-        h_inv = 1.0 / hi;
-        xi = r * h_inv;
-        kernel_deval( xi , &wi , &wi_dx );
-        
-        pi->rho += mj * wi;
-        pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
-        pi->density.wcount += wi;
-        pi->density.wcount_dh -= xi * wi_dx;
-
-	    pi->density.div_v += mj * dvdr * wi_dx;
-	    for ( k = 0 ; k < 3 ; k++ )
-	        pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
-            
-        }
-
     }
     
 /**
