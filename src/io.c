@@ -70,7 +70,7 @@ static hid_t hdf5Type(enum DATA_TYPE type)
     case ULONGLONG: return H5T_NATIVE_ULLONG;
     case FLOAT: return H5T_NATIVE_FLOAT;
     case DOUBLE: return H5T_NATIVE_DOUBLE;
-    default: error("Unknown type");
+    default: error("Unknown type"); return 0;
     }
 }
 
@@ -89,7 +89,7 @@ static size_t sizeOfType(enum DATA_TYPE type)
     case ULONGLONG: return sizeof(unsigned long long);
     case FLOAT: return sizeof(float);
     case DOUBLE: return sizeof(double);
-    default: error("Unknown type");
+    default: error("Unknown type"); return 0;
     }
 }
 
