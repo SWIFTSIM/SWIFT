@@ -378,7 +378,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 
 		        /* Final operation on the density. */
                 p->rho = rho = ih * ih2 * ( p->rho + p->mass*kernel_root );
-                p->rho_dh = rho_dh = p->rho_dh * ih4;
+                p->rho_dh = rho_dh = ( p->rho_dh - 3.0f*p->mass*kernel_root ) * ih4;
                 wcount = ( p->density.wcount + kernel_root ) * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
                 wcount_dh = p->density.wcount_dh * ih * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
                     
