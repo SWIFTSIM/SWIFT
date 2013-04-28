@@ -26,8 +26,14 @@
  * @brief SPH kernel functions. Compute W(x,h) and the gradient of W(x,h).
  */
 
-
 #include "vector.h"
+#include "const.h"
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+#if defined(CUBIC_SPLINE_KERNEL)
+
+/* -------------------------------------------------------------------------------------------------------------------- */
 
 /* Coefficients for the kernel. */ 
 #define kernel_degree 3
@@ -46,7 +52,7 @@ static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribu
       
       
 /**
- * @brief Computes the kernel and its derivative for a given distance x. Gives a sensible answer only if x<1.
+ * @brief Computes the cubic spline kernel and its derivative for a given distance x. Gives a sensible answer only if x<2.
  */
 
 __attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , float *W , float *dW_dx ) {
@@ -66,7 +72,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , floa
 #ifdef VECTORIZE
 
 /**
- * @brief Computes the kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<1.
+ * @brief Computes the cubic spline kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<2.
  */
 
 __attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x , vector *w , vector *dw_dx ) {
@@ -97,7 +103,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x 
 #endif
 
 /**
- * @brief Computes the kernel for a given distance x. Gives a sensible answer only if x<1.
+ * @brief Computes the cubic spline kernel for a given distance x. Gives a sensible answer only if x<2.
  */
 
 __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float *W ) {
@@ -109,5 +115,204 @@ __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float
     *W = w;
     }
 
+
+
+
+
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+#elif defined(QUARTIC_SPLINE_KERNEL)
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+/* Coefficients for the kernel. */ 
+#define kernel_degree 4
+#define kernel_ivals 3
+#define kernel_gamma 2.5f
+#define kernel_gamma2 6.25f
+#define kernel_gamma3 15.625f
+#define kernel_igamma 0.4f
+#define kernel_nwneigh 4.0/3.0*M_PI*kernel_gamma3*const_eta_kernel*const_eta_kernel*const_eta_kernel
+static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
+  { 3.0/10.0*M_1_PI , 0.0  , -3.0/4.0*M_1_PI , 0.0 , 23.0/32.0*M_1_PI , 
+    -1.0/5.0*M_1_PI , M_1_PI , -3.0/2.0*M_1_PI , 0.25*M_1_PI , 11.0/16.0*M_1_PI ,
+    1.0/20.0*M_1_PI , -0.5*M_1_PI , 15.0/8.0*M_1_PI , -25.0/8.0*M_1_PI , 125.0/64.0*M_1_PI ,
+    0.0 , 0.0 , 0.0 , 0.0 , 0.0 };
+#define kernel_root ( kernel_coeffs[ kernel_degree ] )
+#define kernel_wroot ( 4.0/3.0*M_PI*kernel_coeffs[ kernel_degree ] )
+      
+      
+/**
+ * @brief Computes the quartic spline kernel and its derivative for a given distance x. Gives a sensible answer only if x<2.5
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , float *W , float *dW_dx ) {
+    int ind = fminf( x + 0.5, kernel_ivals);
+    float *coeffs = &kernel_coeffs[ ind*(kernel_degree + 1) ];
+    float w = coeffs[0]*x + coeffs[1];
+    float dw_dx = coeffs[0];
+    for ( int k = 2 ; k <= kernel_degree ; k++ ) {
+        dw_dx = dw_dx*x + w;
+        w = x*w + coeffs[k];
+        }
+    *W = w;
+    *dW_dx = dw_dx;
+    }
+
+
+#ifdef VECTORIZE
+
+/**
+ * @brief Computes the quartic spline kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<2.5
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x , vector *w , vector *dw_dx ) {
+    
+    vector ind, c[kernel_degree+1];
+    int j, k;
+    
+    /* Load x and get the interval id. */
+    ind.m = vec_ftoi( vec_fmin( x->v + 0.5f, vec_set1( (float)kernel_ivals ) ) );
+    
+    /* load the coefficients. */
+    for ( k = 0 ; k < VEC_SIZE ; k++ )
+        for ( j = 0 ; j < kernel_degree+1 ; j++ )
+            c[j].f[k] = kernel_coeffs[ ind.i[k]*(kernel_degree + 1) + j ];
+
+    /* Init the iteration for Horner's scheme. */
+    w->v = ( c[0].v * x->v ) + c[1].v;
+    dw_dx->v = c[0].v;
+    
+    /* And we're off! */
+    for ( int k = 2 ; k <= kernel_degree ; k++ ) {
+        dw_dx->v = ( dw_dx->v * x->v ) + w->v;
+        w->v = ( x->v * w->v ) + c[k].v;
+        }
+        
+    }
+    
+#endif
+
+/**
+ * @brief Computes the quartic spline kernel for a given distance x. Gives a sensible answer only if x<2.5
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float *W ) {
+    int ind = fmin( x + 0.5f, kernel_ivals );
+    float *coeffs = &kernel_coeffs[ ind*(kernel_degree + 1) ];
+    float w = coeffs[0]*x + coeffs[1];
+    for ( int k = 2 ; k <= kernel_degree ; k++ )
+        w = x*w + coeffs[k];
+    *W = w;
+    }
+
+
+
+
+
+
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+#elif defined(QUINTIC_SPLINE_KERNEL)
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+/* Coefficients for the kernel. */ 
+#define kernel_degree 5
+#define kernel_ivals 3
+#define kernel_gamma 3.f
+#define kernel_gamma2 9.f
+#define kernel_gamma3 27.f
+#define kernel_igamma 1.0f/3.0f
+#define kernel_nwneigh 4.0/3.0*M_PI*kernel_gamma3*const_eta_kernel*const_eta_kernel*const_eta_kernel
+static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
+{ -1.0/12.0*M_1_PI  ,  1.0/4.0*M_1_PI ,  0.0            , -1.0/2.0*M_1_PI ,  0.0             , 11.0/20.0*M_1_PI,
+  1.0/24.0*M_1_PI  , -3.0/8.0*M_1_PI ,  5.0/4.0*M_1_PI , -7.0/4.0*M_1_PI ,   5.0/8.0*M_1_PI , 17.0/40.0*M_1_PI ,
+  -1.0/120.0*M_1_PI ,  1.0/8.0*M_1_PI , -3.0/4.0*M_1_PI ,  9.0/4.0*M_1_PI , -27.0/8.0*M_1_PI , 81.0/40.0*M_1_PI,
+  0.0              , 0.0             , 0.0             , 0.0             ,   0.0            , 0.0};
+#define kernel_root ( kernel_coeffs[ kernel_degree ] )
+#define kernel_wroot ( 4.0/3.0*M_PI*kernel_coeffs[ kernel_degree ] )
+      
+      
+/**
+ * @brief Computes the quintic spline kernel and its derivative for a given distance x. Gives a sensible answer only if x<3.
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , float *W , float *dW_dx ) {
+    int ind = fminf( x, kernel_ivals);
+    float *coeffs = &kernel_coeffs[ ind*(kernel_degree + 1) ];
+    float w = coeffs[0]*x + coeffs[1];
+    float dw_dx = coeffs[0];
+    for ( int k = 2 ; k <= kernel_degree ; k++ ) {
+        dw_dx = dw_dx*x + w;
+        w = x*w + coeffs[k];
+        }
+    *W = w;
+    *dW_dx = dw_dx;
+    }
+
+
+#ifdef VECTORIZE
+
+/**
+ * @brief Computes the 1uintic spline kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<3.
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x , vector *w , vector *dw_dx ) {
+    
+    vector ind, c[kernel_degree+1];
+    int j, k;
+    
+    /* Load x and get the interval id. */
+    ind.m = vec_ftoi( vec_fmin( x->v, vec_set1( (float)kernel_ivals ) ) );
+    
+    /* load the coefficients. */
+    for ( k = 0 ; k < VEC_SIZE ; k++ )
+        for ( j = 0 ; j < kernel_degree+1 ; j++ )
+            c[j].f[k] = kernel_coeffs[ ind.i[k]*(kernel_degree + 1) + j ];
+
+    /* Init the iteration for Horner's scheme. */
+    w->v = ( c[0].v * x->v ) + c[1].v;
+    dw_dx->v = c[0].v;
+    
+    /* And we're off! */
+    for ( int k = 2 ; k <= kernel_degree ; k++ ) {
+        dw_dx->v = ( dw_dx->v * x->v ) + w->v;
+        w->v = ( x->v * w->v ) + c[k].v;
+        }
+        
+    }
+    
+#endif
+
+/**
+ * @brief Computes the quintic spline kernel for a given distance x. Gives a sensible answer only if x<3.
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float *W ) {
+    int ind = fmin( x, kernel_ivals );
+    float *coeffs = &kernel_coeffs[ ind*(kernel_degree + 1) ];
+    float w = coeffs[0]*x + coeffs[1];
+    for ( int k = 2 ; k <= kernel_degree ; k++ )
+        w = x*w + coeffs[k];
+    *W = w;
+    }
+
+
+
+
+
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+#else
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+#error "A kernel function must be chosen in const.h !!"
+
+#endif // Kernel choice
 
 #endif //KERNEL_H
