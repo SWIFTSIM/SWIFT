@@ -34,7 +34,7 @@ ticks timers[ timer_count ];
  *
  * @param mask A bitmask of the timers to re-set.
  *
- * To reset all timers, use the mask #timer_mask_all.
+ * To reset all timers, use the mask #timers_mask_all.
  */
  
 void timers_reset ( unsigned int mask ) {

@@ -66,13 +66,10 @@ void printParticle ( struct part *parts , long long int id, int N ) {
     }
 
 /**
- * @brief Looks for the particle with the given id and prints its information to the standard output.
+ * @brief Prints the details of a given particle to stdout
  * 
- * @param parts The array of particles.
- * @param id The id too look for.
- * @param N The size of the array of particles.
- *
- * (Should be used for debugging only as it runs in O(N).)
+ * @param p The particle to print
+ * 
  */
 void printParticle_single ( struct part *p ) {
 
