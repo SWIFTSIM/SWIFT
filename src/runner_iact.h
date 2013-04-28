@@ -109,7 +109,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
 
 #ifdef VECTORIZE
 
-    vector r, ri, xi, xj, hi, hj, hi_inv, hj_inv, hig_inv, hjg_inv, wi, wj, wi_dx, wj_dx;
+    vector r, ri, xi, xj, hi, hj, hi_inv, hj_inv,  wi, wj, wi_dx, wj_dx;
     vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
     vector mi, mj;
     vector dx[3], dv[3];
@@ -273,7 +273,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
 
 #ifdef VECTORIZE
 
-    vector r, ri, xi, hi, hi_inv, hig_inv, wi, wi_dx;
+    vector r, ri, xi, hi, hi_inv, wi, wi_dx;
     vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
     vector mj;
     vector dx[3], dv[3];
