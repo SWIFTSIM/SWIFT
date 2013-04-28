@@ -519,6 +519,7 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
     float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
     float x[3], v[3], u, h, pdt, m;
     float dt_step = r->e->dt_step, dt = r->e->dt, hdt = 0.5f*dt;
+    float dt_cfl, dt_h_change;
     struct part *p, *parts = c->parts;
     struct xpart *xp;
     
@@ -544,7 +545,9 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
             }
 
         /* Update the particle's time step. */
-        p->dt = pdt = const_cfl * h / p->force.v_sig;
+	dt_cfl = const_cfl * h / p->force.v_sig;
+	dt_h_change = const_ln_max_h_change * h / p->force.h_dt;
+	p->dt = pdt = fminf(dt_cfl, dt_h_change); 
 
         /* Update positions and energies at the half-step. */
         p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];
@@ -561,9 +564,9 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
         epot += m * u;
 
         /* Collect momentum */
-        mom[0] += m * p->v[0];
-        mom[1] += m * p->v[1];
-        mom[2] += m * p->v[2];
+        mom[0] += m * v[0];
+        mom[1] += m * v[1];
+        mom[2] += m * v[2];
 
 	    /* Collect angular momentum */
 	    ang[0] += m * ( x[1]*v[2] - x[2]*v[1] );

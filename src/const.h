@@ -25,6 +25,7 @@
 
 /* Time integration constants. */
 #define const_cfl               0.3f
+#define const_ln_max_h_change   log(1.26f)    /* Particle can't change volume by more than a factor of 2=1.26^3 over one time step */
 
 /* Neighbour search constants. */
 #define const_nwneigh           48.f
