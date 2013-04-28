@@ -36,6 +36,7 @@
 #define kernel_gamma2 4.0f
 #define kernel_gamma3 8.0f
 #define kernel_igamma 0.5f
+#define kernel_nwneigh 4.0/3.0*M_PI*kernel_gamma3*const_eta_kernel*const_eta_kernel*const_eta_kernel
 static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
     { 3.0/4.0*M_1_PI , -3.0/2.0*M_1_PI , 0.0 , M_1_PI , 
       -0.25*M_1_PI , 3.0/2.0*M_1_PI , -3.0*M_1_PI , M_2_PI , 

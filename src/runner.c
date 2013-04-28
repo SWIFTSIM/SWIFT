@@ -388,11 +388,11 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     
                 /* Otherwise, compute the smoothing length update (Newton step). */
                 else {
-                    h_corr = ( const_nwneigh - wcount ) / wcount_dh;
+                    h_corr = ( kernel_nwneigh - wcount ) / wcount_dh;
 
                     /* Truncate to the range [ -p->h/2 , p->h ]. */
                     h_corr = fminf( h_corr , h );
-                    h_corr = fmaxf( h_corr , -h/2 );
+                    h_corr = fmaxf( h_corr , -h/2.f );
                     
                     }
                 
@@ -401,10 +401,10 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 cp->h = p->h;
 
                 /* Did we get the right number density? */
-                if ( wcount > const_nwneigh + const_delta_nwneigh ||
-                     wcount < const_nwneigh - const_delta_nwneigh ) {
+                if ( wcount > kernel_nwneigh + const_delta_nwneigh ||
+                     wcount < kernel_nwneigh - const_delta_nwneigh ) {
                     // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , c->depth , wcount ); fflush(stdout);
-                    // p->h += ( p->density.wcount + kernel_root - const_nwneigh ) / p->density.wcount_dh;
+                    // p->h += ( p->density.wcount + kernel_root - kernel_nwneigh ) / p->density.wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
                     p->density.wcount = 0.0;
