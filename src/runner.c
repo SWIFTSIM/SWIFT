@@ -545,9 +545,14 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
             }
 
         /* Update the particle's time step. */
-	dt_cfl = const_cfl * h / p->force.v_sig;
-	dt_h_change = const_ln_max_h_change * h / p->force.h_dt;
-	p->dt = pdt = fminf(dt_cfl, dt_h_change); 
+        dt_cfl = const_cfl * h / p->force.v_sig;
+        dt_h_change = fabsf( const_ln_max_h_change * h / p->force.h_dt );
+        if ( pdt == 0.0f )
+            p->dt = pdt = fminf( dt_cfl , dt_h_change );
+        else if ( pdt <= dt_step )
+            p->dt = pdt = fminf( fminf( dt_cfl , dt_h_change ) , 2.0f*pdt );
+        else
+            p->dt = pdt = fminf( fminf( dt_cfl , dt_h_change ) , pdt );
 
         /* Update positions and energies at the half-step. */
         p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];

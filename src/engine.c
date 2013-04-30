@@ -514,7 +514,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             }
         }
         
-    // engine_single_density( e->s->dim , 494748 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single_density( e->s->dim , 7503966371841 , e->s->parts , e->s->nr_parts , e->s->periodic );
 
     /* Start the clock. */
     TIMER_TIC_ND
@@ -532,12 +532,12 @@ void engine_step ( struct engine *e , int sort_queues ) {
     /* Stop the clock. */
     TIMER_TOC(timer_runners);
 
-    // engine_single_force( e->s->dim , 494748 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single_force( e->s->dim , 7503966371841 , e->s->parts , e->s->nr_parts , e->s->periodic );
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
     // printParticle( parts , 432626 );
-    // printParticle( e->s->parts , 494748 , e->s->nr_parts );
+    // printParticle( e->s->parts , 7503966371841 , e->s->nr_parts );
 
     /* Collect the cell data from the second kick. */
     for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
