@@ -42,7 +42,7 @@
 #define kernel_gamma2 4.0f
 #define kernel_gamma3 8.0f
 #define kernel_igamma 0.5f
-#define kernel_nwneigh 4.0/3.0*M_PI*kernel_gamma3*const_eta_kernel*const_eta_kernel*const_eta_kernel
+#define kernel_nwneigh ( 4.0/3.0*M_PI*const_eta_kernel*const_eta_kernel*const_eta_kernel*6.0858f ) 
 static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
     { 3.0/4.0*M_1_PI , -3.0/2.0*M_1_PI , 0.0 , M_1_PI , 
       -0.25*M_1_PI , 3.0/2.0*M_1_PI , -3.0*M_1_PI , M_2_PI , 
@@ -133,7 +133,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float
 #define kernel_gamma2 6.25f
 #define kernel_gamma3 15.625f
 #define kernel_igamma 0.4f
-#define kernel_nwneigh 4.0/3.0*M_PI*kernel_gamma3*const_eta_kernel*const_eta_kernel*const_eta_kernel
+#define kernel_nwneigh ( 4.0/3.0*M_PI*const_eta_kernel*const_eta_kernel*const_eta_kernel*8.2293f )
 static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
   { 3.0/10.0*M_1_PI , 0.0  , -3.0/4.0*M_1_PI , 0.0 , 23.0/32.0*M_1_PI , 
     -1.0/5.0*M_1_PI , M_1_PI , -3.0/2.0*M_1_PI , 0.25*M_1_PI , 11.0/16.0*M_1_PI ,
@@ -226,7 +226,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float
 #define kernel_gamma2 9.f
 #define kernel_gamma3 27.f
 #define kernel_igamma 1.0f/3.0f
-#define kernel_nwneigh 4.0/3.0*M_PI*kernel_gamma3*const_eta_kernel*const_eta_kernel*const_eta_kernel
+#define kernel_nwneigh ( 4.0/3.0*M_PI*const_eta_kernel*const_eta_kernel*const_eta_kernel*10.5868f )
 static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
 { -1.0/12.0*M_1_PI  ,  1.0/4.0*M_1_PI ,  0.0            , -1.0/2.0*M_1_PI ,  0.0             , 11.0/20.0*M_1_PI,
   1.0/24.0*M_1_PI  , -3.0/8.0*M_1_PI ,  5.0/4.0*M_1_PI , -7.0/4.0*M_1_PI ,   5.0/8.0*M_1_PI , 17.0/40.0*M_1_PI ,
