@@ -794,7 +794,7 @@ int main ( int argc , char *argv[] ) {
     printf( "main: reading particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Apply h scaling */
-    if(scaling != 1.0)
+    if( scaling != 1.0 )
       for ( k = 0 ; k < N ; k++ )
 	    parts[k].h *= scaling;
     
@@ -871,10 +871,20 @@ int main ( int argc , char *argv[] ) {
         runner_hist_bins[k] = 0;
     #endif
     
+    /* Inauguration speech. */
+    if ( runs < INT_MAX )
+        printf( "main: starting for %i steps with %i threads and %i queues...\n" , runs , e.nr_threads , e.nr_queues );
+    else
+        printf( "main: starting for t=%.3e with %i threads and %i queues...\n" , clock , e.nr_threads , e.nr_queues );
+    fflush(stdout);
+    
+    /* Legend. */
+    printf( "# step time e_tot e_kin e_temp dt dt_step count dt_min dt_max\n" );
+    
     /* Let loose a runner on the space. */
     for ( j = 0 ; j < runs && e.time < clock ; j++ ) {
     
-        printf( "main: starting run %i/%i (t=%.3e) with %i threads and %i queues...\n" , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
+        // printf( "main: starting run %i/%i (t=%.3e) with %i threads and %i queues...\n" , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
         timers_reset( timers_mask_all );
         #ifdef COUNTER
             for ( k = 0 ; k < runner_counter_count ; k++ )
@@ -916,13 +926,26 @@ int main ( int argc , char *argv[] ) {
         printf( "main: particle %lli/%i at [ %e %e %e ] has smallest dt=%e (h=%.3e,u=%.3e).\n" ,
 	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->dt , p->h , p->u ); */
         
+        /* Get the particle with the highest e_kin. */
+        p = &s.parts[0];
+        double a2, a2_max = p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2];
+        for ( k = 0 ; k < s.nr_parts ; k++ ) {
+            a2 = s.parts[k].a[0]*s.parts[k].a[0] + s.parts[k].a[1]*s.parts[k].a[1] + s.parts[k].a[2]*s.parts[k].a[2];
+            if ( a2 > a2_max ) {
+                p = &s.parts[k];
+                a2_max = a2;
+                }
+            }
+        /* printf( "main: particle %lli/%i at [ %e %e %e ] has largest ekin=%e.\n" ,
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , ekin_max ); */
+        
         /* Output. */
         #ifdef TIMER
-            printf( "main: runner timers are [ %.3f" , timers[0]/CPU_TPS*1000 );
+            /* printf( "main: runner timers are [ %.3f" , timers[0]/CPU_TPS*1000 );
             for ( k = 1 ; k < timer_count ; k++ )
                 printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
-            printf( " ] ms.\n" );
-            printf( "main: queue timers are [ %.3f" , queue_timer[0]/CPU_TPS*1000 );
+            printf( " ] ms.\n" ); */
+            /* printf( "main: queue timers are [ %.3f" , queue_timer[0]/CPU_TPS*1000 );
             for ( k = 1 ; k < queue_timer_count ; k++ ) 
                 printf( " %.3f" , ((double)queue_timer[k])/CPU_TPS*1000 );
             for ( k = 0 ; k < queue_timer_count ; k++ )
@@ -933,7 +956,7 @@ int main ( int argc , char *argv[] ) {
                 printf( " %.3f" , ((double)cell_timer[k])/CPU_TPS*1000 );
             for ( k = 0 ; k < cell_timer_count ; k++ )
                 cell_timer[k] = 0;
-            printf( " ] ms.\n" );
+            printf( " ] ms.\n" ); */
         #else
             printf( "main: engine_run with %i threads took %.3f ms.\n" , nr_threads , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
         #endif
@@ -943,11 +966,21 @@ int main ( int argc , char *argv[] ) {
                 printf( " %d" , runner_counter[k] );
             printf( " ].\n" );
         #endif
-        printf( "main: engine queue lengths are [ %i" , e.queues[0].count );
+        /* printf( "main: engine queue lengths are [ %i" , e.queues[0].count );
         for ( k = 1 ; k < e.nr_queues ; k++ )
             printf( " %i" , e.queues[k].count );
         printf( " ].\n" );
-        fflush(stdout);
+        fflush(stdout); */
+        
+        /* Dump a line of agregate output. */
+        printf( "%i %e %e %e %e %e %e %i %e %e" ,
+            j , e.time ,
+            e.ekin+e.epot , e.ekin , e.epot ,
+            e.dt , e.dt_step , e.count_step ,
+            e.dt_min , e.dt_max );
+        for ( k = 0 ; k < timer_count ; k++ )
+            printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
+        printf( " %lli %e\n" , p->id , a2_max ); fflush(stdout);
         
         }
         

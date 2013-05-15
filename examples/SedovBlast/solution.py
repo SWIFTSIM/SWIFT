@@ -33,7 +33,7 @@ P_0 = 1.e-5         # Background Pressure
 E_0 = 1.e2          # Energy of the explosion
 gamma = 5./3.     # Gas polytropic index
 
-t = 0.15           # Time of the solution
+t = 0.275           # Time of the solution
 
 N = 1000          # Number of radial points
 R_max = 3.        # Maximal radius
