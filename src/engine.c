@@ -176,7 +176,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     struct engine *e = (struct engine *)data;
     float pdt, dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
     float dt_min, dt_max, h_max, dx, h2dx_max, dx_max;
-    float a[3], v[3], u, u_dt, h, h_dt, rho, v_old[3], w;
+    float a[3], v[3], u, u_dt, h, h_dt, v_old[3], w, rho;
     double x[3], x_old[3];
     struct part *restrict p;
     struct xpart *restrict xp;
@@ -236,14 +236,14 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             p->v[1] = v[1] += dt * a[1];
             p->v[2] = v[2] += dt * a[2];
             w = u_dt / u * dt;
-            if ( fabsf( w ) < 0.05f )
+            /* if ( fabsf( w ) < 0.05f )
                 p->u = u *= 1.0f + w*( 1.0f + w*( -0.5f + w*1.0f/6.0f ) );
-            else
+            else */
                 p->u = u *= expf( w );
             w = h_dt / h * dt;
-            if ( fabsf( w ) < 0.05f )
+            /* if ( fabsf( w ) < 0.05f )
                 p->h = h *= 1.0f + w*( 1.0f + w*( -0.5f + w*1.0f/6.0f ) );
-            else
+            else */
                 p->h = h *= expf( w );
             h_max = fmaxf( h_max , h );
 
@@ -259,11 +259,11 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             /* Init fields for density calculation. */
             if ( pdt > dt_step ) {
                 float w = -3.0f * h_dt / h * dt;
-                if ( fabsf( w ) < 0.1f )
+                /* if ( fabsf( w ) < 0.1f )
                     rho = p->rho *= 1.0f + w*( 1.0f + w*( -0.5f + w*(1.0f/6.0f - 1.0f/24.0*w ) ) );
-                else
+                else */
                     rho = p->rho *= expf( w );
-                p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * p->rho_dh / 3.0f );
+                p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho * rho );
                 }
             else {
                 p->density.wcount = 0.0f;
@@ -407,7 +407,7 @@ void engine_single_density ( double *dim , long long int pid , struct part *__re
     p.rho = ih * ih * ih * ( p.rho + p.mass*kernel_root );
     p.rho_dh = p.rho_dh * ih * ih * ih * ih;
     p.density.wcount = ( p.density.wcount + kernel_root ) * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
-    printf( "pairs_single: part %lli (h=%e) has wcount=%e, rho=%e, rho_dh=%e.\n" , p.id , p.h , p.density.wcount , p.rho , p.rho_dh );
+    printf( "pairs_single_density: part %lli (h=%e) has wcount=%e, rho=%e, rho_dh=%e.\n" , p.id , p.h , p.density.wcount , p.rho , p.rho_dh );
     fflush(stdout);
     
     }
@@ -447,12 +447,17 @@ void engine_single_force ( double *dim , long long int pid , struct part *__rest
             }
         r2 = fdx[0]*fdx[0] + fdx[1]*fdx[1] + fdx[2]*fdx[2];
         if ( r2 < p.h*p.h*kernel_gamma2 || r2 < parts[k].h*parts[k].h*kernel_gamma2 ) {
+            p.a[0] = 0.0f; p.a[1] = 0.0f; p.a[2] = 0.0f;
+            p.force.u_dt = 0.0f; p.force.h_dt = 0.0f; p.force.v_sig = 0.0f;
             runner_iact_nonsym_force( r2 , fdx , p.h , parts[k].h , &p , &parts[k] );
+            double dvdr = ( (p.v[0]-parts[k].v[0])*fdx[0] + (p.v[1]-parts[k].v[1])*fdx[1] + (p.v[2]-parts[k].v[2])*fdx[2] ) / sqrt(r2);
+            printf( "pairs_single_force: part %lli and %lli interact (r=%.3e,dvdr=%.3e) with a=[%.3e,%.3e,%.3e], dudt=%.3e.\n" ,
+                p.id , parts[k].id , sqrt(r2) , dvdr , p.a[0] , p.a[1], p.a[2] , p.force.u_dt );
             }
         }
         
     /* Dump the result. */
-    printf( "pairs_single: part %lli (h=%e) has a=[%.3e,%.3e,%.3e], udt=%e.\n" , p.id , p.h , p.a[0] , p.a[1] , p.a[2] , p.force.u_dt );
+    // printf( "pairs_single_force: part %lli (h=%e) has a=[%.3e,%.3e,%.3e], udt=%e.\n" , p.id , p.h , p.a[0] , p.a[1] , p.a[2] , p.force.u_dt );
     fflush(stdout);
     
     }
@@ -478,18 +483,18 @@ void engine_step ( struct engine *e , int sort_queues ) {
     TIMER_TIC2
 
     /* Get the maximum dt. */
-    if ( e->policy & engine_policy_fixdt )
-        dt_step = FLT_MAX;
-    else {
+    if ( e->policy & engine_policy_multistep ) {
         dt_step = 2.0f*dt;
         for ( k = 0 ; k < 32 && (e->step & (1 << k)) == 0 ; k++ )
             dt_step *= 2;
         }
+    else
+        dt_step = FLT_MAX;
         
     /* Set the maximum dt. */
     e->dt_step = dt_step;
     e->s->dt_step = dt_step;
-    printf( "engine_step: dt_step set to %.3e (dt=%.3e).\n" , dt_step , e->dt ); fflush(stdout);
+    // printf( "engine_step: dt_step set to %.3e (dt=%.3e).\n" , dt_step , e->dt ); fflush(stdout);
     
     // printParticle( parts , 432626 );
     
@@ -500,7 +505,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
         
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
-    // printParticle( e->s->parts , 382557 , e->s->nr_parts );
+    // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
  
     /* Prepare the space. */
     engine_prepare( e );
@@ -514,7 +519,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
             }
         }
         
-    // engine_single_density( e->s->dim , 7503966371841 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single_density( e->s->dim , 3392063069037 , e->s->parts , e->s->nr_parts , e->s->periodic );
 
     /* Start the clock. */
     TIMER_TIC_ND
@@ -532,12 +537,13 @@ void engine_step ( struct engine *e , int sort_queues ) {
     /* Stop the clock. */
     TIMER_TOC(timer_runners);
 
-    // engine_single_force( e->s->dim , 7503966371841 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single_force( e->s->dim , 5497479945069 , e->s->parts , e->s->nr_parts , e->s->periodic );
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
     // printParticle( parts , 432626 );
-    // printParticle( e->s->parts , 7503966371841 , e->s->nr_parts );
+    // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
+    // printParticle( e->s->parts , 5497479945069 , e->s->nr_parts );
 
     /* Collect the cell data from the second kick. */
     for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
@@ -553,13 +559,17 @@ void engine_step ( struct engine *e , int sort_queues ) {
         }
     
     e->dt_min = dt_min;
+    e->dt_max = dt_max;
+    e->count_step = count;
+    e->ekin = ekin;
+    e->epot = epot;
     // printParticle( e->s->parts , 382557 , e->s->nr_parts );
-    printf( "engine_step: dt_min/dt_max is %e/%e.\n" , dt_min , dt_max ); fflush(stdout);
-    printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
-    printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);
-    printf( "engine_step: total angular momentum is [ %e , %e , %e ].\n" , ang[0] , ang[1] , ang[2] ); fflush(stdout);
+    // printf( "engine_step: dt_min/dt_max is %e/%e.\n" , dt_min , dt_max ); fflush(stdout);
+    // printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
+    // printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);
+    // printf( "engine_step: total angular momentum is [ %e , %e , %e ].\n" , ang[0] , ang[1] , ang[2] ); fflush(stdout);
     // printf( "engine_step: total entropic function is %e .\n", ent ); fflush(stdout);
-    printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
+    // printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
         
     /* Increase the step. */
     e->step += 1;
@@ -576,18 +586,20 @@ void engine_step ( struct engine *e , int sort_queues ) {
                 e->dt *= 0.5;
             while ( dt_min > 2*e->dt )
                 e->dt *= 2.0;
-            printf( "engine_step: dt_min=%.3e, adjusting time step to dt=%e.\n" , dt_min , e->dt );
+            // printf( "engine_step: dt_min=%.3e, adjusting time step to dt=%e.\n" , dt_min , e->dt );
             }
         else {
             while ( dt_min < e->dt ) {
                 e->dt *= 0.5;
                 e->step *= 2;
-                printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
+                e->nullstep *= 2;
+                // printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
                 }
             while ( dt_min > 2*e->dt && (e->step & 1) == 0 ) {
                 e->dt *= 2.0;
                 e->step /= 2;
-                printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
+                e->nullstep /= 2;
+                // printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
                 }
             }
         } 

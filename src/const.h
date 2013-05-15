@@ -26,6 +26,7 @@
 /* Time integration constants. */
 #define const_cfl               0.3f
 #define const_ln_max_h_change   0.231111721f    /* Particle can't change volume by more than a factor of 2=1.26^3 over one time step */
+#define const_max_u_change      0.1f    
 
 /* Neighbour search constants. */
 #define const_eta_kernel        1.2348f         /* Corresponds to 48 ngbs with the cubic spline kernel */

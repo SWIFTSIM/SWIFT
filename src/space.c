@@ -88,6 +88,7 @@ int space_marktasks ( struct space *s ) {
     int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
     struct task *t, *tasks = s->tasks;
     float dt_step = s->dt_step;
+    struct cell *ci, *cj;
     
     /* Run through the tasks and mark as skip or not. */
     for ( k = 0 ; k < nr_tasks ; k++ ) {
@@ -121,17 +122,22 @@ int space_marktasks ( struct space *s ) {
             /* Set this task's skip. */
             t->skip = ( t->ci->dt_min > dt_step && t->cj->dt_min > dt_step );
             
+            /* Local pointers. */
+            ci = t->ci;
+            cj = t->cj;
+            
             /* Too much particle movement? */
             if ( t->tight &&
-                 ( t->ci->h2dx_max > t->ci->dmin || t->cj->h2dx_max > t->cj->dmin ) )
+                 ( ci->h2dx_max > ci->dmin || cj->h2dx_max > cj->dmin ||
+                   ci->dx_max > space_maxreldx*ci->h_max || cj->dx_max > space_maxreldx*cj->h_max ) )
                 return 1;
                 
             /* Set the sort flags. */
             if ( !t->skip && t->type == task_type_pair ) {
-                t->ci->sorts->flags |= (1 << t->flags);
-                t->ci->sorts->skip = 0;
-                t->cj->sorts->flags |= (1 << t->flags);
-                t->cj->sorts->skip = 0;
+                ci->sorts->flags |= (1 << t->flags);
+                ci->sorts->skip = 0;
+                cj->sorts->flags |= (1 << t->flags);
+                cj->sorts->skip = 0;
                 }
                 
             }

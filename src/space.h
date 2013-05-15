@@ -29,6 +29,7 @@
 #define space_dosub                     1
 #define space_stretch                   1.05
 #define space_maxtaskspercell           31
+#define space_maxreldx                  0.2f
 
 
 /* Convert cell location to ID. */

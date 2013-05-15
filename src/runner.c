@@ -519,7 +519,8 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
     float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
     float x[3], v[3], u, h, pdt, m;
     float dt_step = r->e->dt_step, dt = r->e->dt, hdt = 0.5f*dt;
-    float dt_cfl, dt_h_change;
+    float dt_cfl, dt_h_change, dt_u_change, dt_new;
+    float h_dt, u_dt;
     struct part *p, *parts = c->parts;
     struct xpart *xp;
     
@@ -534,31 +535,36 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
 
         /* Get local copies of particle data. */
         pdt = p->dt;
+        u_dt = p->force.u_dt;
         h = p->h;
         m = p->mass;
         x[0] = p->x[0]; x[1] = p->x[1]; x[2] = p->x[2];
 
         /* Scale the derivatives if they're freshly computed. */
         if ( pdt <= dt_step ) {
-            p->force.h_dt *= h * 0.333333333f;
+            h_dt = p->force.h_dt *= h * 0.333333333f;
             count += 1;
             }
+        else
+            h_dt = p->force.h_dt;
 
         /* Update the particle's time step. */
         dt_cfl = const_cfl * h / p->force.v_sig;
-        dt_h_change = fabsf( const_ln_max_h_change * h / p->force.h_dt );
+        dt_h_change = ( h_dt != 0.0f ) ? fabsf( const_ln_max_h_change * h / h_dt ) : FLT_MAX;
+        dt_u_change = ( u_dt != 0.0f ) ? fabsf( const_max_u_change * p->u / u_dt ) : FLT_MAX;
+        dt_new = fminf( dt_cfl , fminf( dt_h_change , dt_u_change ) );
         if ( pdt == 0.0f )
-            p->dt = pdt = fminf( dt_cfl , dt_h_change );
+            p->dt = pdt = dt_new;
         else if ( pdt <= dt_step )
-            p->dt = pdt = fminf( fminf( dt_cfl , dt_h_change ) , 2.0f*pdt );
+            p->dt = pdt = fminf( dt_new , 2.0f*pdt );
         else
-            p->dt = pdt = fminf( fminf( dt_cfl , dt_h_change ) , pdt );
+            p->dt = pdt = fminf( dt_new , pdt );
 
         /* Update positions and energies at the half-step. */
         p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];
         p->v[1] = v[1] = xp->v_old[1] + hdt * p->a[1];
         p->v[2] = v[2] = xp->v_old[2] + hdt * p->a[2];
-        p->u = u = xp->u_old + hdt * p->force.u_dt;
+        p->u = u = xp->u_old + hdt * u_dt;
 
         /* Get the smallest/largest dt. */
         dt_min = fminf( dt_min , pdt );

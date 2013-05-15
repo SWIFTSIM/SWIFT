@@ -26,6 +26,7 @@
 #define engine_policy_keep          4
 #define engine_policy_block         8
 #define engine_policy_fixdt         16
+#define engine_policy_multistep     32
 
 #define engine_queue_scale          1.2
 
@@ -55,13 +56,19 @@ struct engine {
     float dt_step;
     
     /* The minimum dt over all particles in the system. */
-    float dt_min;
+    float dt_min, dt_max;
     
     /* The system time step. */
     float dt, dt_orig;
     
+    /* The system energies from the previous step. */
+    double ekin, epot;
+    
     /* The current step number. */
     int step, nullstep;
+    
+    /* The number of particles updated in the previous step. */
+    int count_step;
     
     /* The current system time. */
     float time;
