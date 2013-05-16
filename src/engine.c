@@ -175,7 +175,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     int j, k;
     struct engine *e = (struct engine *)data;
     float pdt, dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
-    float dt_min, dt_max, h_max, dx, h2dx_max, dx_max;
+    float dt_min, dt_max, h_max, dx, dx_max;
     float a[3], v[3], u, u_dt, h, h_dt, v_old[3], w, rho;
     double x[3], x_old[3];
     struct part *restrict p;
@@ -190,7 +190,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
         dt_max = 0.0f;
         h_max = 0.0f;
         dx_max = 0.0f;
-        h2dx_max = 0.0f;
     
         /* Loop over parts. */
         for ( k = 0 ; k < c->count ; k++ ) {
@@ -229,7 +228,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
                         (x[1] - x_old[1])*(x[1] - x_old[1]) +
                         (x[2] - x_old[2])*(x[2] - x_old[2]) );
             dx_max = fmaxf( dx_max , dx );
-            h2dx_max = fmaxf( h2dx_max , dx*2 + h*kernel_gamma );
 
             /* Update positions and energies at the half-step. */
             p->v[0] = v[0] += dt * a[0];
@@ -263,7 +261,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
                     rho = p->rho *= 1.0f + w*( 1.0f + w*( -0.5f + w*(1.0f/6.0f - 1.0f/24.0*w ) ) );
                 else */
                     rho = p->rho *= expf( w );
-                p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho * rho );
+                p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho * xp->omega );
                 }
             else {
                 p->density.wcount = 0.0f;
@@ -288,7 +286,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
         dt_max = c->progeny[k]->dt_max;
         h_max = c->progeny[k]->h_max;
         dx_max = c->progeny[k]->dx_max;
-        h2dx_max = c->progeny[k]->h2dx_max;
         
         /* Loop over the remaining progeny. */
         for ( k += 1 ; k < 8 ; k++ )
@@ -297,7 +294,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
                 dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
                 h_max = fmaxf( h_max , c->progeny[k]->h_max );
                 dx_max = fmaxf( dx_max , c->progeny[k]->dx_max );
-                h2dx_max = fmaxf( h2dx_max , c->progeny[k]->h2dx_max );
                 }
     
         }
@@ -307,7 +303,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     c->dt_max = dt_max;
     c->h_max = h_max;
     c->dx_max = dx_max;
-    c->h2dx_max = h2dx_max;
     
     }
 
@@ -334,8 +329,7 @@ void engine_collect_kick2 ( struct cell *c ) {
         
     /* Collect the values from the progeny. */
     for ( k = 0 ; k < 8 ; k++ )
-        if ( c->progeny[k] != NULL ) {
-            cp = c->progeny[k];
+        if ( ( cp = c->progeny[k] ) != NULL ) {
             engine_collect_kick2( cp );
             dt_min = fminf( dt_min , cp->dt_min );
             dt_max = fmaxf( dt_max , cp->dt_max );
@@ -479,6 +473,7 @@ void engine_step ( struct engine *e , int sort_queues ) {
     float ang[3] = { 0.0 , 0.0 , 0.0 };
     int count = 0;
     struct cell *c;
+    struct space *s = e->s;
     
     TIMER_TIC2
 
@@ -537,17 +532,17 @@ void engine_step ( struct engine *e , int sort_queues ) {
     /* Stop the clock. */
     TIMER_TOC(timer_runners);
 
-    // engine_single_force( e->s->dim , 5497479945069 , e->s->parts , e->s->nr_parts , e->s->periodic );
+    // engine_single_force( e->s->dim , 8328423931905 , e->s->parts , e->s->nr_parts , e->s->periodic );
     
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
     // printParticle( parts , 432626 );
     // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
-    // printParticle( e->s->parts , 5497479945069 , e->s->nr_parts );
+    // printParticle( e->s->parts , 8328423931905 , e->s->nr_parts );
 
     /* Collect the cell data from the second kick. */
-    for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
-        c = &e->s->cells[k];
+    for ( k = 0 ; k < s->nr_cells ; k++ ) {
+        c = &s->cells[k];
         engine_collect_kick2( c );
         dt_min = fminf( dt_min , c->dt_min );
         dt_max = fmaxf( dt_max , c->dt_max );

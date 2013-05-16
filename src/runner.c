@@ -544,6 +544,7 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
         if ( pdt <= dt_step ) {
             h_dt = p->force.h_dt *= h * 0.333333333f;
             count += 1;
+            xp->omega = 1.0f + h * p->rho_dh / p->rho * 0.3333333333f;
             }
         else
             h_dt = p->force.h_dt;
@@ -561,10 +562,10 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
             p->dt = pdt = fminf( dt_new , pdt );
 
         /* Update positions and energies at the half-step. */
-        p->v[0] = v[0] = xp->v_old[0] + hdt * p->a[0];
-        p->v[1] = v[1] = xp->v_old[1] + hdt * p->a[1];
-        p->v[2] = v[2] = xp->v_old[2] + hdt * p->a[2];
-        p->u = u = xp->u_old + hdt * u_dt;
+        p->v[0] = ( v[0] = xp->v_old[0] + hdt * p->a[0] );
+        p->v[1] = ( v[1] = xp->v_old[1] + hdt * p->a[1] );
+        p->v[2] = ( v[2] = xp->v_old[2] + hdt * p->a[2] );
+        p->u = ( u = xp->u_old + hdt * u_dt );
 
         /* Get the smallest/largest dt. */
         dt_min = fminf( dt_min , pdt );

@@ -51,6 +51,9 @@ struct xpart {
     /* Old entropy. */
     float u_old;
     
+    /* Old density. */
+    float omega;
+    
     } __attribute__((aligned (32)));
     
 

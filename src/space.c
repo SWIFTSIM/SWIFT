@@ -119,16 +119,16 @@ int space_marktasks ( struct space *s ) {
         /* Pair? */
         else if ( t->type == task_type_pair || ( t->type == task_type_sub && t->cj != NULL ) ) {
             
-            /* Set this task's skip. */
-            t->skip = ( t->ci->dt_min > dt_step && t->cj->dt_min > dt_step );
-            
             /* Local pointers. */
             ci = t->ci;
             cj = t->cj;
             
+            /* Set this task's skip. */
+            t->skip = ( ci->dt_min > dt_step && cj->dt_min > dt_step );
+            
             /* Too much particle movement? */
             if ( t->tight &&
-                 ( ci->h2dx_max > ci->dmin || cj->h2dx_max > cj->dmin ||
+                 ( fmaxf( ci->h_max , cj->h_max ) + ci->dx_max + cj->dx_max > cj->dmin || 
                    ci->dx_max > space_maxreldx*ci->h_max || cj->dx_max > space_maxreldx*cj->h_max ) )
                 return 1;
                 
@@ -141,6 +141,10 @@ int space_marktasks ( struct space *s ) {
                 }
                 
             }
+            
+        /* Kick2? */
+        else if ( t->type == task_type_kick2 )
+            t->skip = 0;
             
         /* None? */
         else if ( t->type == task_type_none )
@@ -343,6 +347,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     struct part *restrict finger, *restrict p, *parts = s->parts;
     struct cpart *restrict cfinger;
     int *ind;
+    double ih[3], dim[3];
     // ticks tic;
     
     /* Be verbose about this. */
@@ -412,6 +417,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
                     c->h[0] = s->h[0]; c->h[1] = s->h[1]; c->h[2] = s->h[2];
                     c->dmin = dmin;
                     c->depth = 0;
+                    c->count = 0;
                     lock_init( &c->lock );
                     }
            
@@ -431,8 +437,9 @@ void space_rebuild ( struct space *s , double cell_max ) {
             s->cells[k].nr_tasks = 0;
             s->cells[k].nr_density = 0;
             s->cells[k].dx_max = 0.0f;
-            s->cells[k].h2dx_max = 0.0f;
             s->cells[k].sorted = 0;
+            s->cells[k].count = 0;
+            s->cells[k].kick2 = NULL;
             }
         s->maxdepth = 0;
     
@@ -442,25 +449,34 @@ void space_rebuild ( struct space *s , double cell_max ) {
     // tic = getticks();
     if ( ( ind = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
-    for ( k = 0 ; k < s->nr_cells ; k++ )
-        s->cells[ k ].count = 0;
+    ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
+    dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
     #pragma omp parallel for private(p,j)
     for ( k = 0 ; k < nr_parts ; k++ )  {
         p = &parts[k];
         for ( j = 0 ; j < 3 ; j++ )
             if ( p->x[j] < 0.0 )
-                p->x[j] += s->dim[j];
-            else if ( p->x[j] >= s->dim[j] )
-                p->x[j] -= s->dim[j];
-        ind[k] = cell_getid( s->cdim , p->x[0]*s->ih[0] , p->x[1]*s->ih[1] , p->x[2]*s->ih[2] );
+                p->x[j] += dim[j];
+            else if ( p->x[j] >= dim[j] )
+                p->x[j] -= dim[j];
+        ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
         atomic_inc( &s->cells[ ind[k] ].count );
         }
     // printf( "space_rebuild: getting particle indices took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    parts_sort( parts , ind , s->nr_parts , 0 , s->nr_cells );
+    parts_sort( parts , ind , s->nr_parts , 0 , s->nr_cells-1 );
     // printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    
+    /* Verify sort. */
+    /* for ( k = 1 ; k < nr_parts ; k++ ) {
+        if ( ind[k-1] > ind[k] ) {
+            error( "Sort failed!" );
+            }
+        else if ( ind[k] != cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) )
+            error( "Incorrect indices!" );
+        } */
     
     /* We no longer need the indices as of here. */
     free( ind );    
@@ -527,6 +543,11 @@ void parts_sort_rec ( struct part *parts , int *ind , int N , int min , int max 
                 ind[j] = temp_i;
                 parts[j] = temp_p;
                 }
+                
+        /* Verify sort. */
+        /* for ( i = 1 ; i < N ; i++ )
+            if ( ind[i-1] > ind[i] )
+                error( "Insert-sort failed!" ); */
     
         }
         
@@ -1312,7 +1333,6 @@ void space_split ( struct space *s , struct cell *c ) {
             temp->split = 0;
             temp->h_max = 0.0;
             temp->dx_max = 0.0;
-            temp->h2dx_max = 0.0;
             temp->parent = c;
             c->progeny[k] = temp;
             }

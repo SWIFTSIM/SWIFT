@@ -23,11 +23,11 @@
 /* Some constants. */
 #define space_maxdepth                  10
 #define space_cellallocchunk            1000
-#define space_splitratio                0.875
+#define space_splitratio                0.875f
 #define space_splitsize_default         400
 #define space_subsize_default           5000
-#define space_dosub                     1
-#define space_stretch                   1.05
+#define space_dosub                     0
+#define space_stretch                   1.05f
 #define space_maxtaskspercell           31
 #define space_maxreldx                  0.2f
 

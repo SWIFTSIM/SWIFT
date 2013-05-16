@@ -253,6 +253,15 @@ void cell_split ( struct cell *c  ) {
         c->progeny[k]->cparts = &c->cparts[ left[k] ];
         }
         
+    /* Verify that _all_ the parts have been assigned to a cell. */
+    /* for ( k = 1 ; k < 8 ; k++ )
+        if ( &c->progeny[k-1]->parts[ c->progeny[k-1]->count ] != c->progeny[k]->parts )
+            error( "Particle sorting failed (internal consistency)." );
+    if ( c->progeny[0]->parts != c->parts )
+        error( "Particle sorting failed (left edge)." );
+    if ( &c->progeny[7]->parts[ c->progeny[7]->count ] != &c->parts[ c->count ] )
+        error( "Particle sorting failed (right edge)." ); */
+        
     /* Verify a few sub-cells. */
     /* for ( k = 0 ; k < c->progeny[0]->count ; k++ )
         if ( c->progeny[0]->parts[k].x[0] > pivot[0] ||
