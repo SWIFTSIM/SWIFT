@@ -377,7 +377,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
         
     /* Do we need to re-build the upper-level cells? */
     // tic = getticks();
-    if ( 1 || s->cells == NULL ||
+    if ( s->cells == NULL ||
          cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ) {
     
         /* Free the old cells, if they were allocated. */
