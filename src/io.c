@@ -30,7 +30,7 @@
 #include <string.h>
 #include <stddef.h>
 #include <hdf5.h>
-
+#include <math.h>
 
 #include "lock.h"
 #include "task.h"
@@ -38,13 +38,14 @@
 #include "space.h"
 #include "engine.h"
 #include "error.h"
+#include "kernel.h"
 
 /**
  * @brief The different types of data used in the GADGET IC files.
  *
  * (This is admittedly a poor substitute to C++ templates...)
  */
-enum DATA_TYPE{INT, LONG, LONGLONG, UINT, ULONG, ULONGLONG, FLOAT, DOUBLE};
+enum DATA_TYPE{INT, LONG, LONGLONG, UINT, ULONG, ULONGLONG, FLOAT, DOUBLE, CHAR};
 
 /**
  * @brief The two sorts of data present in the GADGET IC files: compulsory to start a run or optional.
@@ -70,6 +71,7 @@ static hid_t hdf5Type(enum DATA_TYPE type)
     case ULONGLONG: return H5T_NATIVE_ULLONG;
     case FLOAT: return H5T_NATIVE_FLOAT;
     case DOUBLE: return H5T_NATIVE_DOUBLE;
+    case CHAR: return H5T_C_S1;
     default: error("Unknown type"); return 0;
     }
 }
@@ -89,6 +91,7 @@ static size_t sizeOfType(enum DATA_TYPE type)
     case ULONGLONG: return sizeof(unsigned long long);
     case FLOAT: return sizeof(float);
     case DOUBLE: return sizeof(double);
+    case CHAR: return sizeof(char);
     default: error("Unknown type"); return 0;
     }
 }
@@ -411,6 +414,120 @@ void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data, int 
   H5Aclose(h_attr);
 }
 
+/**
+ * @brief Write a string as an attribute to a given HDF5 group.
+ *
+ * @param grp The group in which to write.
+ * @param name The name of the attribute to write.
+ * @param str The string to write.
+ * @param length The length of the string
+ *
+ * Calls #error() if an error occurs.
+ */
+void writeStringAttribute(hid_t grp, char* name, char* str, int length)
+{
+  hid_t h_space=0, h_attr=0, h_err=0, h_type=0;
+
+  h_space = H5Screate(H5S_SCALAR);
+  if(h_space < 0)
+    {
+      char buf[100];
+      sprintf(buf, "Error while creating dataspace for attribute '%s'\n", name);
+      error(buf);
+    }
+
+  h_type = H5Tcopy(H5T_C_S1);
+  if(h_type < 0)
+    {
+      char buf[100];
+      sprintf(buf, "Error while copying datatype 'H5T_C_S1'\n");
+      error(buf);
+    }
+
+  h_err = H5Tset_size(h_type, length);
+  if(h_err < 0)
+    {
+      char buf[100];
+      sprintf(buf, "Error while resizing attribute tyep to '%i'\n", length);
+      error(buf);
+    }
+
+  h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
+  if(h_attr < 0)
+    {
+      char buf[100];
+      sprintf(buf, "Error while creating attribute '%s'\n", name);
+      error(buf);
+    }
+
+  h_err = H5Awrite(h_attr, h_type, str );
+  if(h_err < 0)
+    {
+      char buf[100];
+      sprintf(buf, "Error while reading attribute '%s'\n", name);
+      error(buf);
+    }
+
+  H5Tclose(h_type);
+  H5Sclose(h_space);
+  H5Aclose(h_attr);
+}
+
+/**
+ * @brief Writes a double value as an attribute
+ * @param grp The groupm in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void writeAttribute_d(hid_t grp, char* name, double data)
+{
+  writeAttribute(grp, name, DOUBLE, &data, 1);
+}
+
+/**
+ * @brief Writes a float value as an attribute
+ * @param grp The groupm in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void writeAttribute_f(hid_t grp, char* name, float data)
+{
+  writeAttribute(grp, name, FLOAT, &data, 1);
+}
+
+/**
+ * @brief Writes an int value as an attribute
+ * @param grp The groupm in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+
+void writeAttribute_i(hid_t grp, char* name, int data)
+{
+  writeAttribute(grp, name, INT, &data, 1);
+}
+
+/**
+ * @brief Writes a long value as an attribute
+ * @param grp The groupm in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void writeAttribute_l(hid_t grp, char* name, long data)
+{
+  writeAttribute(grp, name, LONG, &data, 1);
+}
+
+/**
+ * @brief Writes a string value as an attribute
+ * @param grp The groupm in which to write
+ * @param name The name of the attribute
+ * @param str The string to write
+ */
+void writeAttribute_s(hid_t grp, char* name, char* str)
+{
+  writeStringAttribute(grp, name, str, strlen(str));
+}
 
 
 /**
@@ -542,7 +659,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
 void write_output (struct engine *e)
 {
   
-  hid_t h_file=0, h_grp=0;
+  hid_t h_file=0, h_grp=0, h_grpsph=0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
   int numParticles[6]={N,0};
@@ -588,8 +705,6 @@ void write_output (struct engine *e)
 
   /* Close runtime parameters */
   H5Gclose(h_grp);
-
-  (void) sizeOfType(INT);
   
   /* Open header to write simulation properties */
   /* printf("write_output: Writing file header...\n"); */
@@ -597,7 +712,7 @@ void write_output (struct engine *e)
   if(h_grp < 0)
     error("Error while creating file header\n");
     
-  /* Read the relevant information and print status */
+  /* Print the relevant information and print status */
   writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 1);
   writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
   writeAttribute(h_grp, "Time", DOUBLE, &e->time, 1);
@@ -609,8 +724,25 @@ void write_output (struct engine *e)
   writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
   writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
-  
-  /* Close header */
+
+  /* Print the SPH parameters */
+  h_grpsph = H5Gcreate1(h_file, "/Header/SPH", 0);
+  if(h_grpsph < 0)
+    error("Error while creating SPH header\n");
+
+  writeAttribute_f(h_grpsph, "Kernel eta", const_eta_kernel);
+  writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
+  writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
+  writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
+  writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);  
+  writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);  
+  writeAttribute_f(h_grpsph, "Maximal ln(Delta h) change over dt", const_ln_max_h_change);  
+  writeAttribute_f(h_grpsph, "Maximal Delta h change over dt", exp(const_ln_max_h_change));  
+  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt", const_max_u_change);  
+  writeAttribute_s(h_grpsph, "Kernel", kernel_name);
+
+  /* Close headers */
+  H5Gclose(h_grpsph);
   H5Gclose(h_grp);
 		  
   /* Create SPH particles group */

@@ -426,13 +426,13 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 
                 /* Compute this particle's sound speed. */
                 u = p->u;
-                p->force.c = fc = sqrtf( const_gamma * ( const_gamma - 1.0f ) * u );
+                p->force.c = fc = sqrtf( const_hydro_gamma * ( const_hydro_gamma - 1.0f ) * u );
 
                 /* Compute the P/Omega/rho2. */
-                p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho + h * rho_dh / 3.0f );
+                p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho + h * rho_dh / 3.0f );
 
-		        /* Balsara switch */
-		        p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
+		/* Balsara switch */
+		p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
                 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )

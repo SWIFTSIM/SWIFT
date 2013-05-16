@@ -263,7 +263,7 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
                     rho = p->rho *= 1.0f + w*( 1.0f + w*( -0.5f + w*(1.0f/6.0f - 1.0f/24.0*w ) ) );
                 else */
                     rho = p->rho *= expf( w );
-                p->force.POrho2 = u * ( const_gamma - 1.0f ) / ( rho * rho );
+                p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho * rho );
                 }
             else {
                 p->density.wcount = 0.0f;

@@ -36,6 +36,7 @@
 /* -------------------------------------------------------------------------------------------------------------------- */
 
 /* Coefficients for the kernel. */ 
+#define kernel_name "Cubic spline"
 #define kernel_degree 3
 #define kernel_ivals 2
 #define kernel_gamma 2.0f
@@ -127,6 +128,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float
 /* -------------------------------------------------------------------------------------------------------------------- */
 
 /* Coefficients for the kernel. */ 
+#define kernel_name "Quartic spline"
 #define kernel_degree 4
 #define kernel_ivals 3
 #define kernel_gamma 2.5f
@@ -220,6 +222,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float
 /* -------------------------------------------------------------------------------------------------------------------- */
 
 /* Coefficients for the kernel. */ 
+#define kernel_name "Quintic spline"
 #define kernel_degree 5
 #define kernel_ivals 3
 #define kernel_gamma 3.f

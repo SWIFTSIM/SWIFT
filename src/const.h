@@ -20,7 +20,7 @@
 
 
 /* Hydrodynamical constants. */
-#define const_gamma             (5.0f/3.0f)
+#define const_hydro_gamma       (5.0f/3.0f)
 #define const_viscosity_alpha   0.8f
 
 /* Time integration constants. */
@@ -29,6 +29,6 @@
 #define const_max_u_change      0.1f    
 
 /* Neighbour search constants. */
-#define const_eta_kernel        1.2348f         /* Corresponds to 48 ngbs with the cubic spline kernel */
+#define const_eta_kernel        1.2349f         /* Corresponds to 48 ngbs with the cubic spline kernel */
 #define const_delta_nwneigh     1.f
 #define CUBIC_SPLINE_KERNEL
