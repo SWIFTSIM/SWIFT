@@ -271,7 +271,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic)
 {
   hid_t h_file=0, h_grp=0;
-  double boxSize[3]={0.,-1,-1};         /* GADGET has only cubic boxes (in cosmological mode) */
+  double boxSize[3]={0.0,-1.0,-1.0};         /* GADGET has only cubic boxes (in cosmological mode) */
   int numParticles[6]={0};   /* GADGET has 6 particle types. We only keep the type 0*/
 
   /* Open file */
@@ -308,10 +308,8 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
 
   *N = numParticles[0];
   dim[0] = boxSize[0];
-  if ( boxSize[1] < 0 )
-    dim[1] = boxSize[0];
-  if ( boxSize[2] < 0 )
-    dim[2] = boxSize[0];
+  dim[1] = ( boxSize[1] < 0 ) ? boxSize[0] : boxSize[1];
+  dim[2] = ( boxSize[2] < 0 ) ? boxSize[0] : boxSize[2];
 
   /* printf("read_ic: Found %d particles in a %speriodic box of size [%f %f %f]\n",  */
   /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */

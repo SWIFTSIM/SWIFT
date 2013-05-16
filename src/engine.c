@@ -320,7 +320,7 @@ void engine_collect_kick2 ( struct cell *c ) {
     struct cell *cp;
     
     /* If I am a super-cell, return immediately. */
-    if ( c->kick2 != NULL )
+    if ( c->kick2 != NULL || c->count == 0 )
         return;
         
     /* If this cell is not split, I'm in trouble. */
