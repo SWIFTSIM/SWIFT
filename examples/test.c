@@ -135,9 +135,10 @@ void map_cellcheck ( struct cell *c , void *data ) {
     int k, *count = (int *)data;
     struct part *p;
     
+    __sync_fetch_and_add( count , c->count );
+    
     /* Loop over all parts and check if they are in the cell. */
     for ( k = 0 ; k < c->count ; k++ ) {
-        *count += 1;
         p = &c->parts[k];
         if ( p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
              p->x[0] > c->loc[0] + c->h[0] || p->x[1] > c->loc[1] + c->h[1] || p->x[2] > c->loc[2] + c->h[2] ) {
@@ -927,7 +928,20 @@ int main ( int argc , char *argv[] ) {
 	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->dt , p->h , p->u ); */
         
         /* Get the particle with the highest e_kin. */
-        p = &s.parts[0];
+        /* p = &s.parts[0];
+        double v2, v2_max = 0.5 * ( p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2] ) * p->mass;
+        for ( k = 0 ; k < s.nr_parts ; k++ ) {
+            v2 = 0.5 * ( s.parts[k].v[0]*s.parts[k].v[0] + s.parts[k].v[1]*s.parts[k].v[1] + s.parts[k].v[2]*s.parts[k].v[2] ) * p->mass;
+            if ( v2 > v2_max ) {
+                p = &s.parts[k];
+                v2_max = v2;
+                }
+            } */
+        /* printf( "main: particle %lli/%i at [ %e %e %e ] has largest ekin=%e.\n" ,
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , ekin_max ); */
+        
+        /* Get the particle with the highest acceleration. */
+        /* p = &s.parts[0];
         double a2, a2_max = p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2];
         for ( k = 0 ; k < s.nr_parts ; k++ ) {
             a2 = s.parts[k].a[0]*s.parts[k].a[0] + s.parts[k].a[1]*s.parts[k].a[1] + s.parts[k].a[2]*s.parts[k].a[2];
@@ -936,8 +950,29 @@ int main ( int argc , char *argv[] ) {
                 a2_max = a2;
                 }
             }
+        printf( "main: particle %lli/%i at [ %e %e %e ] has largest ekin=%e.\n" ,
+	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , ekin_max ); */
+        
+        /* Get the particle with the highest energy. */
+        /* p = &s.parts[0];
+        double dudt, dudt_max = fabsf( p->u - p->xtras->u_old );
+        for ( k = 0 ; k < s.nr_parts ; k++ ) {
+            dudt = fabsf( p->u - p->xtras->u_old  );
+            if ( dudt > dudt_max ) {
+                p = &s.parts[k];
+                dudt_max = dudt;
+                }
+            } */
         /* printf( "main: particle %lli/%i at [ %e %e %e ] has largest ekin=%e.\n" ,
 	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , ekin_max ); */
+            
+        /* Compute the energies by hand. */
+        /* double epot = 0.0, ekin = 0.0;
+        for ( k = 0 ; k < s.nr_parts ; k++ ) {
+            p = &s.parts[k];
+            ekin += 0.5 * p->mass * ( p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2] );
+            epot += p->mass * p->u;
+            } */
         
         /* Output. */
         #ifdef TIMER
@@ -973,14 +1008,14 @@ int main ( int argc , char *argv[] ) {
         fflush(stdout); */
         
         /* Dump a line of agregate output. */
-        printf( "%i %e %e %e %e %e %e %i %e %e" ,
+        printf( "%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e" ,
             j , e.time ,
             e.ekin+e.epot , e.ekin , e.epot ,
             e.dt , e.dt_step , e.count_step ,
             e.dt_min , e.dt_max );
         for ( k = 0 ; k < timer_count ; k++ )
             printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
-        printf( " %lli %e\n" , p->id , a2_max ); fflush(stdout);
+        printf( "\n" ); fflush(stdout);
         
         }
         
