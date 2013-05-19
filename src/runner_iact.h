@@ -406,11 +406,6 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_force ( float r2 
     /* Apply balsara switch */
     Pi_ij *= ( pi->force.balsara + pj->force.balsara );
 
-    /* Volker's modified viscosity */
-    /* dt_max = fmaxf(pi->dt, pj->dt);
-    if( dt_max > 0 && (wi_dr + wj_dr) < 0. )
-        Pi_ij = fminf( Pi_ij, 2.f * omega_ij / ( ( mi + mj ) * ( wi_dr + wj_dr ) * dt_max ) ); */
-
     /* Get the common factor out. */
     w = ri * ( ( POrho2i * wi_dr + POrho2j * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
 
@@ -642,11 +637,6 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_force ( fl
 
     /* Apply balsara switch */
     Pi_ij *= ( pi->force.balsara + pj->force.balsara );
-
-    /* Volker's modified viscosity */
-    /* dt_max = fmaxf(pi->dt, pj->dt);
-    if(dt_max > 0 && (wi_dr + wj_dr) < 0.)
-        Pi_ij = fminf( Pi_ij, 2.f * omega_ij / ( ( mi + mj ) * ( wi_dr + wj_dr ) * dt_max ) ); */
 
     /* Get the common factor out. */
     w = ri * ( ( POrho2i * wi_dr + POrho2j * wj_dr ) + 0.25f * Pi_ij * ( wi_dr + wj_dr ) );
