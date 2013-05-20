@@ -26,53 +26,61 @@ from numpy import *
 
 # Parameters
 periodic= 1      # 1 For periodic box
-boxSize = 1.
+factor = 8
+boxSize = [ 1.0 , 1.0/factor , 1.0/factor ]
 L = 100           # Number of particles along one axis
 P1 = 1.           # Pressure left state
 P2 = 0.1795       # Pressure right state
 gamma = 5./3.     # Gas adiabatic index
 fileName = "sodShock.hdf5" 
+vol = boxSize[0] * boxSize[1] * boxSize[2]
 
 
 #---------------------------------------------------
 
 #Read in high density glass
-glass1 = h5py.File("../Glass/glass_200000.hdf5")
+# glass1 = h5py.File("../Glass/glass_200000.hdf5")
+glass1 = h5py.File("glass_001.hdf5")
 pos1 = glass1["/PartType0/Coordinates"][:,:]
-pos1 = pos1 / 2. # Particles are in [0:0.5, 0:0.5, 0:0.5]
+pos1 = pos1 / factor # Particles are in [0:0.25, 0:0.25, 0:0.25]
 
 
 #Read in high density glass
-glass2 = h5py.File("../Glass/glass_50000.hdf5")
+# glass2 = h5py.File("../Glass/glass_50000.hdf5")
+glass2 = h5py.File("glass_002.hdf5")
 pos2 = glass2["/PartType0/Coordinates"][:,:]
-pos2 = pos2 / 2. # Particles are in [0:0.5, 0:0.5, 0:0.5]
+pos2 = pos2 / factor # Particles are in [0:0.25, 0:0.25, 0:0.25]
 
 
 #Generate high density region
 rho1 = 1.
-coord1 = append(pos1, pos1 + [0.5, 0., 0], 0)
-#coord1 = append(coord1, pos1 + [0, 0, 0.5], 0)
-#coord1 = append(coord1, pos1 + [0, 0.5, 0.5], 0)
+coord1 = append(pos1, pos1 + [0.125, 0, 0], 0)
+coord1 = append(coord1, coord1 + [0.25, 0, 0], 0)
+# coord1 = append(pos1, pos1 + [0, 0.5, 0], 0)
+# coord1 = append(coord1, pos1 + [0, 0, 0.5], 0)
+# coord1 = append(coord1, pos1 + [0, 0.5, 0.5], 0)
 N1 = size(coord1)/3
 v1 = zeros((N1, 3))
-h1 = ones((N1, 1)) * 2.251 * 0.5 / (size(pos1)/3)**(1./3.)
+h1 = ones((N1, 1)) * 2.251 * 0.5 * vol / (size(pos1)/3)**(1./3.)
 u1 = ones((N1, 1)) * P1 / ((gamma - 1.) * rho1)
-m1 = ones((N1, 1)) * 0.5 * rho1 / N1
+m1 = ones((N1, 1)) * vol * 0.5 * rho1 / N1
 
 #Generate low density region
 rho2 = 0.25
-coord2 = append(pos2, pos2 + [0.5, 0, 0], 0)
-#coord2 = append(coord2, pos2 + [0, 0, 0.5], 0)
-#coord2 = append(coord2, pos2 + [0, 0.5, 0.5], 0)
+coord2 = append(pos2, pos2 + [0.125, 0, 0], 0)
+coord2 = append(coord2, coord2 + [0.25, 0, 0], 0)
+# coord2 = append(pos2, pos2 + [0, 0.5, 0], 0)
+# coord2 = append(coord2, pos2 + [0, 0, 0.5], 0)
+# coord2 = append(coord2, pos2 + [0, 0.5, 0.5], 0)
 N2 = size(coord2)/3
 v2 = zeros((N2, 3))
-h2 = ones((N2, 1)) * 2.251 * 0.5 / (size(pos2)/3)**(1./3.)
+h2 = ones((N2, 1)) * 2.251 * 0.5 * vol / (size(pos2)/3)**(1./3.)
 u2 = ones((N2, 1)) * P2 / ((gamma - 1.) * rho2)
-m2 = ones((N2, 1)) * 0.5 * rho2 / N2
+m2 = ones((N2, 1)) * vol * 0.5 * rho2 / N2
 
 #Merge arrays
 numPart = N1 + N2
-coords = append(coord1, coord2+[1, 0., 0.], 0)
+coords = append(coord1, coord2+[0.5, 0., 0.], 0)
 v = append(v1, v2,0)
 h = append(h1, h2,0)
 u = append(u1, u2,0)
@@ -86,7 +94,7 @@ file = h5py.File(fileName, 'w')
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [2,0.5,0.5]
+grp.attrs["BoxSize"] = boxSize
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
@@ -115,8 +123,5 @@ ds = grp.create_dataset('ParticleIDs', (numPart,1), 'L')
 ds[()] = ids[:]
 
 file.close()
-
-print "particle 31075: " , coords[31075,:]
-print "particle 31076: " , coords[31076,:]
 
 
