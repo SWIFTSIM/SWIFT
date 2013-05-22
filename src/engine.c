@@ -234,14 +234,14 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             p->v[1] = v[1] += dt * a[1];
             p->v[2] = v[2] += dt * a[2];
             w = u_dt / u * dt;
-            /* if ( fabsf( w ) < 0.05f )
-                p->u = u *= 1.0f + w*( 1.0f + w*( -0.5f + w*1.0f/6.0f ) );
-            else */
+            if ( fabsf( w ) < 0.01f )
+                p->u = u *= 1.0f + w*( 1.0f + w*( 0.5f + w*( 1.0f/6.0f + 1.0f/24.0f*w ) ) );
+            else
                 p->u = u *= expf( w );
             w = h_dt / h * dt;
-            /* if ( fabsf( w ) < 0.05f )
-                p->h = h *= 1.0f + w*( 1.0f + w*( -0.5f + w*1.0f/6.0f ) );
-            else */
+            if ( fabsf( w ) < 0.01f )
+                p->h = h *= 1.0f + w*( 1.0f + w*( 0.5f + w*( 1.0f/6.0f + 1.0f/24.0f*w ) ) );
+            else
                 p->h = h *= expf( w );
             h_max = fmaxf( h_max , h );
 
@@ -257,9 +257,9 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             /* Init fields for density calculation. */
             if ( pdt > dt_step ) {
                 float w = -3.0f * h_dt / h * dt;
-                /* if ( fabsf( w ) < 0.1f )
-                    rho = p->rho *= 1.0f + w*( 1.0f + w*( -0.5f + w*(1.0f/6.0f - 1.0f/24.0*w ) ) );
-                else */
+                if ( fabsf( w ) < 0.1f )
+                    rho = p->rho *= 1.0f + w*( 1.0f + w*( 0.5f + w*(1.0f/6.0f + 1.0f/24.0f*w ) ) );
+                else
                     rho = p->rho *= expf( w );
                 p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho * xp->omega );
                 }
