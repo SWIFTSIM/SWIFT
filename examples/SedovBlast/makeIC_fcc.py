@@ -26,12 +26,12 @@ from numpy import *
 
 # Parameters
 periodic= 1      # 1 For periodic box
-boxSize = 10.
+boxSize = 5.
 L = 64            # Number of particles boxes along one axis
 rho = 1.          # Density
 P = 1.e-5         # Pressure
 E0= 1.e2          # Energy of the explosion
-pert = 0.05
+pert = 0.025
 gamma = 5./3.     # Gas adiabatic index
 fileName = "sedov.hdf5" 
 
