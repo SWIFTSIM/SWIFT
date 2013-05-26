@@ -725,7 +725,7 @@ void *runner_main ( void *data ) {
             t->rid = r->id;
             
             /* Different types of tasks... */
-            t->tic = gettics();
+            t->tic = getticks();
             switch ( t->type ) {
                 case task_type_self:
                     if ( t->subtype == task_subtype_density )
@@ -771,7 +771,7 @@ void *runner_main ( void *data ) {
                 default:
                     error( "Unknown task type." );
                 }
-            t->toc = gettics();
+            t->toc = getticks();
                 
             /* Resolve any dependencies. */
             for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )

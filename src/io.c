@@ -32,6 +32,7 @@
 #include <hdf5.h>
 #include <math.h>
 
+#include "cycle.h"
 #include "lock.h"
 #include "task.h"
 #include "part.h"
