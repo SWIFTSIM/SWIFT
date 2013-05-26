@@ -57,6 +57,9 @@ struct task {
     
     struct cell *ci, *cj;
     
+    int rid;
+    ticks tic, toc;
+    
     int nr_unlock_tasks;
     struct task *unlock_tasks[ task_maxunlock ];
 
