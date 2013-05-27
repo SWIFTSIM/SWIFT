@@ -452,7 +452,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
     cdim[0] = s->cdim[0]; cdim[1] = s->cdim[1]; cdim[2] = s->cdim[2];
-    #pragma omp parallel for private(p,j)
+    // #pragma omp parallel for private(p,j)
     for ( k = 0 ; k < nr_parts ; k++ )  {
         p = &parts[k];
         for ( j = 0 ; j < 3 ; j++ )
@@ -498,9 +498,19 @@ void space_rebuild ( struct space *s , double cell_max ) {
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
     // tic = getticks();
-    #pragma omp parallel for schedule(dynamic,1) shared(s)
-    for ( k = 0 ; k < s->nr_cells ; k++ )
-        space_split( s , &s->cells[k] );
+    k = 0;
+    #pragma omp parallel shared(s,k)
+    {
+        while ( 1 ) {
+            int myk;
+            #pragma omp critical
+            myk = k++;
+            if ( myk < s->nr_cells )
+                space_split( s , &s->cells[myk] );
+            else
+                break;
+            }
+        }
     // printf( "space_rebuild: space_rebuild_recurse took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
     /* Now that we have the cell structre, re-build the tasks. */
