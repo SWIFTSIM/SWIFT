@@ -799,10 +799,10 @@ struct task *space_addtask ( struct space *s , int type , int subtype , int flag
     lock_init( &t->lock );
     
     /* Add an index for it. */
-    lock_lock( &s->lock );
+    // lock_lock( &s->lock );
     s->tasks_ind[ s->nr_tasks ] = ind;
     s->nr_tasks += 1;
-    lock_unlock_blind( &s->lock );
+    // lock_unlock_blind( &s->lock );
     
     /* Return a pointer to the new task. */
     return t;
@@ -1073,19 +1073,19 @@ void space_splittasks ( struct space *s ) {
             else {
             
                 /* Create the sort for ci. */
-                lock_lock( &ci->lock );
+                // lock_lock( &ci->lock );
                 if ( ci->sorts == NULL )
                     ci->sorts = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , ci , NULL , 0 );
                 ci->sorts->flags |= (1 << sid);
-                lock_unlock_blind( &ci->lock );
+                // lock_unlock_blind( &ci->lock );
                 task_addunlock( ci->sorts , t );
                 
                 /* Create the sort for cj. */
-                lock_lock( &cj->lock );
+                // lock_lock( &cj->lock );
                 if ( cj->sorts == NULL )
                     cj->sorts = space_addtask( s , task_type_sort , 0 , 1 << sid , 0 , cj , NULL , 0 );
                 cj->sorts->flags |= (1 << sid);
-                lock_unlock_blind( &cj->lock );
+                // lock_unlock_blind( &cj->lock );
                 task_addunlock( cj->sorts , t );
                 
                 }
