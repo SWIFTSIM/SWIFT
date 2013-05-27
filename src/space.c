@@ -827,8 +827,7 @@ struct task *space_addtask ( struct space *s , int type , int subtype , int flag
     
     /* Add an index for it. */
     // lock_lock( &s->lock );
-    s->tasks_ind[ s->nr_tasks ] = ind;
-    s->nr_tasks += 1;
+    s->tasks_ind[ atomic_inc( s->nr_tasks ) ] = ind;
     // lock_unlock_blind( &s->lock );
     
     /* Return a pointer to the new task. */
