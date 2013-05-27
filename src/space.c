@@ -589,16 +589,33 @@ void parts_sort_rec ( struct part *parts , int *ind , int N , int min , int max 
                 error( "Sorting failed (>pivot)." );
                 } */
 
-        /* Recurse on the left? */
-        if ( j > 0  && pivot > min ) {
-            #pragma omp task untied
-            parts_sort( parts , ind , j+1 , min , pivot );
-            }
+        /* Bother going parallel? */
+        if ( N < 100 ) {
+        
+            /* Recurse on the left? */
+            if ( j > 0  && pivot > min )
+                parts_sort( parts , ind , j+1 , min , pivot );
 
-        /* Recurse on the right? */
-        if ( i < N && pivot+1 < max ) {
-            #pragma omp task untied
-            parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+            /* Recurse on the right? */
+            if ( i < N && pivot+1 < max )
+                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+                
+            }
+            
+        else {
+        
+            /* Recurse on the left? */
+            if ( j > 0  && pivot > min ) {
+                #pragma omp task untied
+                parts_sort( parts , ind , j+1 , min , pivot );
+                }
+
+            /* Recurse on the right? */
+            if ( i < N && pivot+1 < max ) {
+                #pragma omp task untied
+                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
+                }
+                
             }
             
         }
