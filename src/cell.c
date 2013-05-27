@@ -187,12 +187,12 @@ void cell_split ( struct cell *c  ) {
             temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
             }
         }
-    for ( k = 0 ; k <= j ; k++ )
+    /* for ( k = 0 ; k <= j ; k++ )
         if ( parts[k].x[0] > pivot[0] )
             error( "cell_split: sorting failed." );
     for ( k = i ; k < c->count ; k++ )
         if ( parts[k].x[0] < pivot[0] )
-            error( "cell_split: sorting failed." );
+            error( "cell_split: sorting failed." ); */
     left[1] = i; right[1] = c->count - 1;
     left[0] = 0; right[0] = j;
     
@@ -208,14 +208,14 @@ void cell_split ( struct cell *c  ) {
                 temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
                 }
             }
-        for ( kk = left[k] ; kk <= j ; kk++ )
+        /* for ( int kk = left[k] ; kk <= j ; kk++ )
             if ( parts[kk].x[1] > pivot[1] ) {
                 printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
                 error( "sorting failed (left)." );
                 }
-        for ( kk = i ; kk <= right[k] ; kk++ )
+        for ( int kk = i ; kk <= right[k] ; kk++ )
             if ( parts[kk].x[1] < pivot[1] )
-                error( "sorting failed (right)." );
+                error( "sorting failed (right)." ); */
         left[2*k+1] = i; right[2*k+1] = right[k];
         left[2*k] = left[k]; right[2*k] = j;
         }
@@ -232,16 +232,16 @@ void cell_split ( struct cell *c  ) {
                 temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
                 }
             }
-        for ( kk = left[k] ; kk <= j ; kk++ )
+        /* for ( int kk = left[k] ; kk <= j ; kk++ )
             if ( parts[kk].x[2] > pivot[2] ) {
                 printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
                 error( "sorting failed (left)." );
                 }
-        for ( kk = i ; kk <= right[k] ; kk++ )
+        for ( int kk = i ; kk <= right[k] ; kk++ )
             if ( parts[kk].x[2] < pivot[2] ) {
                 printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
                 error( "sorting failed (right)." );
-                }
+                } */
         left[2*k+1] = i; right[2*k+1] = right[k];
         left[2*k] = left[k]; right[2*k] = j;
         }
