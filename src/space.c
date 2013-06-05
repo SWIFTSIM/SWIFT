@@ -697,7 +697,7 @@ void space_map_mkghosts ( struct cell *c , void *data ) {
  
 void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct cell *c , void *data ) , void *data ) {
 
-    int i;
+    int i, cid = 0;
 
     void rec_map ( struct cell *c ) {
     
@@ -717,9 +717,18 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
         }
         
     /* Call the recursive function on all higher-level cells. */
-    #pragma omp parallel for schedule(dynamic,1)
-    for ( i = 0 ; i < s->nr_cells ; i++ )
-        rec_map( &s->cells[i] );
+    #pragma omp parallel shared(cid)
+    {
+        int mycid;
+        while ( 1 ) {
+            #pragma omp critical
+            mycid = cid++;
+            if ( mycid < s->nr_cells )
+                rec_map( &s->cells[i] );
+            else
+                break;
+            }
+        }
 
     }
 
@@ -735,7 +744,7 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
  
 void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data ) {
 
-    int i;
+    int i, cid;
 
     void rec_map ( struct cell *c ) {
     
@@ -754,9 +763,18 @@ void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cel
         }
         
     /* Call the recursive function on all higher-level cells. */
-    #pragma omp parallel for schedule(dynamic,1)
-    for ( i = 0 ; i < s->nr_cells ; i++ )
-        rec_map( &s->cells[i] );
+    #pragma omp parallel shared(cid)
+    {
+        int mycid;
+        while ( 1 ) {
+            #pragma omp critical
+            mycid = cid++;
+            if ( mycid < s->nr_cells )
+                rec_map( &s->cells[i] );
+            else
+                break;
+            }
+        }
 
     }
 
