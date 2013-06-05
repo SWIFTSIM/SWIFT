@@ -495,7 +495,20 @@ void engine_step ( struct engine *e , int sort_queues ) {
     
     /* First kick. */
     TIMER_TIC
-    space_map_cells_post( e->s , 1 , &engine_map_kick_first , e );
+    // space_map_cells_post( e->s , 1 , &engine_map_kick_first , e );
+    k = 0;
+    #pragma omp parallel shared(k,e)
+    {
+        int myk;
+        while ( 1 ) {
+            #pragma omp critical
+            myk = k++;
+            if ( myk < e->s->nr_cells )
+                engine_map_kick_first( &e->s->cells[myk] , e );
+            else
+                break;
+            }
+        }
     TIMER_TOC( timer_kick1 );
         
     // for(k=0; k<10; ++k)
