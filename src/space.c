@@ -697,7 +697,7 @@ void space_map_mkghosts ( struct cell *c , void *data ) {
  
 void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct cell *c , void *data ) , void *data ) {
 
-    int i, cid = 0;
+    int cid = 0;
 
     void rec_map ( struct cell *c ) {
     
@@ -724,7 +724,7 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
             #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
-                rec_map( &s->cells[i] );
+                rec_map( &s->cells[mycid] );
             else
                 break;
             }
@@ -744,7 +744,7 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
  
 void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data ) {
 
-    int i, cid = 0;
+    int cid = 0;
 
     void rec_map ( struct cell *c ) {
     
@@ -770,7 +770,7 @@ void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cel
             #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
-                rec_map( &s->cells[i] );
+                rec_map( &s->cells[mycid] );
             else
                 break;
             }
@@ -781,7 +781,7 @@ void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cel
 
 void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data ) {
 
-    int i, cid = 0;
+    int cid = 0;
 
     void rec_map ( struct cell *c ) {
     
@@ -807,7 +807,7 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
             #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
-                rec_map( &s->cells[i] );
+                rec_map( &s->cells[mycid] );
             else
                 break;
             }
