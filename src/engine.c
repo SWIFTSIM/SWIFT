@@ -281,15 +281,15 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     else {
     
         /* Init with the first non-null child. */
-        for ( k = 0 ; c->progeny[k] == NULL ; k++ );
-        dt_min = c->progeny[k]->dt_min;
-        dt_max = c->progeny[k]->dt_max;
-        h_max = c->progeny[k]->h_max;
-        dx_max = c->progeny[k]->dx_max;
+        dt_min = FLT_MAX;
+        dt_max = 0.0f;
+        h_max = 0.0f;
+        dx_max = 0.0f;
         
         /* Loop over the remaining progeny. */
-        for ( k += 1 ; k < 8 ; k++ )
+        for ( k = 0 ; k < 8 ; k++ )
             if ( c->progeny[k] != NULL ) {
+                engine_map_kick_first( c->progeny[k] , e );
                 dt_min = fminf( dt_min , c->progeny[k]->dt_min );
                 dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
                 h_max = fmaxf( h_max , c->progeny[k]->h_max );
