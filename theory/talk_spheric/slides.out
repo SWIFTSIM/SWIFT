@@ -1,0 +1,17 @@
+\BOOKMARK [2][]{Outline0.1}{Title}{}% 1
+\BOOKMARK [2][]{Outline0.2}{Take-home messages}{}% 2
+\BOOKMARK [3][]{Outline0.2.1.2}{What this talk is all about}{Outline0.2}% 3
+\BOOKMARK [3][]{Outline0.2.2.12}{Case in point}{Outline0.2}% 4
+\BOOKMARK [2][]{Outline0.3}{Task-based parallelism}{}% 5
+\BOOKMARK [3][]{Outline0.3.1.19}{Main idea}{Outline0.3}% 6
+\BOOKMARK [3][]{Outline0.3.2.33}{Main advantages}{Outline0.3}% 7
+\BOOKMARK [2][]{Outline0.4}{Task-based algorithms for SPH}{}% 8
+\BOOKMARK [3][]{Outline0.4.1.40}{Neighbour-finding with trees}{Outline0.4}% 9
+\BOOKMARK [3][]{Outline0.4.2.49}{Hierarchical cell pairs}{Outline0.4}% 10
+\BOOKMARK [3][]{Outline0.4.3.60}{Task hierarchy}{Outline0.4}% 11
+\BOOKMARK [3][]{Outline0.4.4.69}{Dynamic task allocation}{Outline0.4}% 12
+\BOOKMARK [3][]{Outline0.4.5.72}{Parallel efficiency and scaling}{Outline0.4}% 13
+\BOOKMARK [3][]{Outline0.4.6.77}{Further work}{Outline0.4}% 14
+\BOOKMARK [2][]{Outline0.5}{Conclusions}{}% 15
+\BOOKMARK [3][]{Outline0.5.1.89}{Take-home messages}{Outline0.5}% 16
+\BOOKMARK [3][]{Outline0.5.2.92}{Thanks}{Outline0.5}% 17

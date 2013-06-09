@@ -1,0 +1,18 @@
+\beamer@endinputifotherversion {3.10pt}
+\beamer@sectionintoc {1}{Title}{1}{0}{1}
+\beamer@sectionintoc {2}{Take-home messages}{2}{0}{2}
+\beamer@subsectionintoc {2}{1}{What this talk is all about}{2}{0}{2}
+\beamer@subsectionintoc {2}{2}{Case in point}{12}{0}{2}
+\beamer@sectionintoc {3}{Task-based parallelism}{19}{0}{3}
+\beamer@subsectionintoc {3}{1}{Main idea}{19}{0}{3}
+\beamer@subsectionintoc {3}{2}{Main advantages}{33}{0}{3}
+\beamer@sectionintoc {4}{Task-based algorithms for SPH}{40}{0}{4}
+\beamer@subsectionintoc {4}{1}{Neighbour-finding with trees}{40}{0}{4}
+\beamer@subsectionintoc {4}{2}{Hierarchical cell pairs}{49}{0}{4}
+\beamer@subsectionintoc {4}{3}{Task hierarchy}{60}{0}{4}
+\beamer@subsectionintoc {4}{4}{Dynamic task allocation}{69}{0}{4}
+\beamer@subsectionintoc {4}{5}{Parallel efficiency and scaling}{72}{0}{4}
+\beamer@subsectionintoc {4}{6}{Further work}{77}{0}{4}
+\beamer@sectionintoc {5}{Conclusions}{89}{0}{5}
+\beamer@subsectionintoc {5}{1}{Take-home messages}{89}{0}{5}
+\beamer@subsectionintoc {5}{2}{Thanks}{92}{0}{5}

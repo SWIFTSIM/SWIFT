@@ -1,0 +1,909 @@
+\documentclass{beamer}
+% \documentclass[handout]{beamer}
+
+
+%% Some packages
+\usepackage{epsfig}
+\usepackage{algorithmic}
+\usepackage{array}
+\usepackage{eurosym}
+\usepackage{listings}
+\lstset{basicstyle=\small\tt}
+\usepackage[orientation=landscape,size=custom,width=16.8,height=10.5,scale=0.5]{beamerposter} 
+%\usepackage[T1]{fontenc}
+
+
+%% Some macros
+\newcommand\dx{\,\mbox{d}x}
+
+
+%% Table column types
+\newcommand\PBS[1]{\let\temp=\\%
+    #1%
+    \let\\=\temp}
+\newcolumntype{x}[1]
+    {>{\PBS\raggedright\hspace{0pt}}p{#1}}
+
+%% ETH font
+\renewcommand{\familydefault}{let}
+\renewcommand{\sfdefault}{let}
+%\setbeamerfont{normal text}{family=\sffamily}
+
+
+%% Colors
+\xdefinecolor{grey}{rgb}{0.95,0.95,0.9375}
+\xdefinecolor{myblue}{rgb}{0.664,0.762,0.867}
+\xdefinecolor{myred}{rgb}{1.0,0.0,0.328}
+
+\setbeamercolor{background canvas}{fg=black,bg=grey}
+\setbeamercolor{normal text}{fg=black,bg=grey}
+\setbeamercolor{itemize item}{fg=myblue}
+\setbeamercolor{itemize subitem}{fg=myblue}
+\setbeamercolor{itemize subsubitem}{fg=myblue}
+\setbeamercolor{alert}{fg=myred}
+
+\setbeamercolor{section in head/foot}{fg=white,bg=black}
+\setbeamerfont{section in head/foot}{size=\LARGE}
+
+\setbeamercolor{subsection in head/foot}{fg=white,bg=black}
+\setbeamerfont{subsection in head/foot}{size=\normalsize}
+
+\setbeamercolor{title in head/foot}{fg=white,bg=black}
+\setbeamerfont{title in head/foot}{size=\tiny}
+
+\setbeamercolor{date in head/foot}{fg=white,bg=black}
+\setbeamerfont{date in head/foot}{size=\tiny}
+
+\setbeamerfont{itemize subitem}{size=\normalsize}
+
+\setbeamerfont{footnote}{size=\tiny}
+
+
+%% Margins
+\setbeamersize{text margin left=3ex}
+\setbeamersize{text margin right=5ex}
+\setbeamersize{sidebar width left=0ex}
+\setbeamersize{sidebar width right=0ex}
+
+
+%% Define the bullet
+\setbeamertemplate{itemize item}[square]
+
+
+%% Define the Headline
+% \setbeamertemplate{headline}{
+% \begin{beamercolorbox}[wd=0.8\paperwidth,ht=8ex,dp=2ex,leftskip=3ex]{section in head/foot}
+%     \usebeamerfont{section in head/foot}\insertsection
+% \end{beamercolorbox}
+% \begin{beamercolorbox}[wd=0.8\paperwidth,ht=4ex,dp=3.5ex,leftskip=3ex,rightskip=3ex]{subsection in head/foot}
+%     \usebeamerfont{subsection in head/foot}\insertsubsection
+% \end{beamercolorbox}
+% \begin{beamercolorbox}[right,wd=0.2\paperwidth,ht=12ex,dp=2ex,rightskip=3ex]{section in head/foot}
+%     \includegraphics[width=10ex]{logo.pdf}
+% \end{beamercolorbox}
+% }
+\setbeamertemplate{headline}{
+\hbox{\begin{beamercolorbox}[wd=0.75\paperwidth,ht=14ex]{}
+\begin{beamercolorbox}[wd=0.75\paperwidth,ht=8ex,dp=2ex,leftskip=3ex]{section in head/foot}
+    \usebeamerfont{section in head/foot}\insertsection
+\end{beamercolorbox}
+\begin{beamercolorbox}[wd=0.75\paperwidth,ht=4ex,dp=3.5ex,leftskip=3ex,rightskip=3ex]{subsection in head/foot}
+    \usebeamerfont{subsection in head/foot}\insertsubsection
+\end{beamercolorbox}\end{beamercolorbox}%
+\begin{beamercolorbox}[right,wd=0.25\paperwidth,ht=14ex,dp=3.5ex,rightskip=3ex]{section in head/foot}
+    \vspace{-1ex}\includegraphics[height=12ex]{DU_W_O_med.png}
+\end{beamercolorbox}}
+}
+
+
+%% Define the Footline
+\setbeamertemplate{footline}{
+\hbox{\begin{beamercolorbox}[wd=0.7\paperwidth,ht=3ex,dp=1.4ex,leftskip=3ex]{title in head/foot}
+    \usebeamerfont{title in head/foot} \insertauthor: \inserttitle
+\end{beamercolorbox}%
+\begin{beamercolorbox}[right,wd=0.3\paperwidth,ht=3ex,dp=1.4ex,rightskip=3ex]{date in head/foot}
+    \usebeamerfont{date in head/foot}\insertdate\hspace{1ex}\insertframenumber/\inserttotalframenumber
+\end{beamercolorbox}}
+}
+
+
+%% Title
+\title{Algorithms for shared-memory parallel high-performance computing}
+\subtitle{Or how to get more out of existing hardware today}
+\author{Pedro Gonnet}
+\date{May 30, 2013}
+
+
+%% Slides
+\begin{document}
+
+    {
+    \setbeamercolor{background canvas}{fg=white,bg=black}
+    % \usebackgroundtemplate{\includegraphics[width=\paperwidth]{eagle_50.png}}
+        
+    \section{Title}
+    
+    \begin{frame}[plain]
+        \color{white}
+        \vspace{15ex}
+        {\bf\huge \inserttitle \\}
+        \vspace{1.5ex}
+        \Large \insertsubtitle \\
+        \vspace{4ex}
+        \large \insertauthor \\
+        \vspace{0.2ex} School of Engineering and Computing Sciences, Durham University \\
+        \vspace{0.2ex} Universit\"at Basel, \insertdate \\
+    \end{frame}
+    }
+    
+    \setbeamercolor{background canvas}{fg=black,bg=grey}
+    
+    
+    \section{Take-home messages}
+    \subsection{What my research is all about}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+        
+            \item<+-> In order to continue getting \alert<.>{\em faster}, programs
+                need to become \alert<+>{\em more parallel}.
+                
+                \vspace{0.5ex}
+                
+                \uncover<+->{$\longrightarrow$
+                    If a program has reached its \alert<.>{maximum degree of parallelism},
+                    it won't get any faster.} \uncover<+->{\alert<.>{Ever}.}
+                
+                \vspace{0.5ex}
+                
+            \item<+-> On shared-memory systems,
+                asynchronous \alert<.>{task-based parallelism} solves most
+                problems with concurrency and scaling.
+                \uncover<+->{\alert<.>{Even on GPUs}.}
+                    
+                \vspace{0.5ex}
+                
+                \uncover<+->{$\longrightarrow$
+                    But we still need to develop task-based algorithms
+                    for \alert<.>{specific problems}.}
+                
+                \vspace{0.5ex}
+                
+            \item<+-> My own work in Molecular Dynamics and Smoothed
+                Particle Hydrodynamics simulations show that speedups
+                of \alert<.>{more than a factor of ten} are possible.
+                
+                \vspace{0.5ex}
+                
+                \uncover<+->{$\longrightarrow$
+                    Better use of both \alert<.>{existing} and \alert<+>{future}
+                    infrastructure.}
+                    
+                \vspace{0.5ex}
+                
+            \item<+-> The goal is to free HPC from the grip of expensive
+                clusters and specialized hardware, thus making it
+                \alert<.>{more accessible} to a wider audience of users.
+                    
+        \end{itemize}
+    \end{frame}
+        
+    
+    \section{Parallel programming paradigms}
+    \subsection{Distributed-memory parallelism}
+    
+    \begin{frame}
+    
+        \pause
+        
+        \begin{columns}[c]
+            \column{0.6\textwidth}
+                \begin{itemize}
+
+                    \item<+-> \alert<.>{Distributed-memory parallelism},
+                        e.g.~using MPI, is based on \alert<+>{data decomposition},
+                        i.e.~each processor is assigned part of the problem
+                        to work on and communicates with its neighbours.
+
+                    \item<+-> \alert<.>{Surface-to-volume
+                        ratio problem}: As the
+                        number of cores increases,
+                        the amount of
+                        \alert<+>{computation per core (volume) decreases} while the
+                        relative amount of
+                        \alert<+>{communication (surface) increases}.
+                        
+                    \item<+-> The entire computation is eventually
+                        \alert<.>{dominated by communication},
+                        thus seriously degrading
+                        parallel efficiency.
+                        
+                \end{itemize}
+                
+            \column{0.4\textwidth}
+                \uncover<2>{\only<-2>{\centerline{\epsfig{file=MPIScaling001.pdf,width=0.65\textwidth}}}}%
+                \only<3-4>{\centerline{\epsfig{file=MPIScaling003.pdf,width=0.65\textwidth}}}%
+                % \only<5>{\centerline{\epsfig{file=MPIScaling002.pdf,width=0.65\textwidth}}}%
+                \only<5->{\centerline{\epsfig{file=MPIScaling004.pdf,width=0.65\textwidth}}}%
+        \end{columns}
+
+    \end{frame}
+    
+    
+    \subsection{OpenMP}
+    
+    \begin{frame}
+    
+        \pause
+        
+        \begin{columns}[c]
+            \column{0.6\textwidth}
+                \begin{itemize}
+
+                    \item<+-> \alert<.>{Shared-memory parallelism} using OpenMP,
+                        i.e.~\alert<+>{annotating an inherently serial code},
+                        is often hampered by \alert<+>{frequent synchronization}.
+                        
+                    \item<+-> \alert<.>{Concurrency problems} need to be
+                        addressed explicitly, e.g.~using barriers
+                        or atomic instructions.
+                        
+                    \item<+-> These costs associated with these two
+                        problems \alert<.>{only get worse}
+                        as the number of cores increases.
+                
+                \end{itemize}
+                
+            \column{0.4\textwidth}
+                \only<2>{\centerline{\epsfig{file=OMPCode_003.pdf,width=0.7\textwidth}}}%
+                \only<3>{\centerline{\epsfig{file=OMPCode_002.pdf,width=0.7\textwidth}}}%
+                \only<4>{\centerline{\epsfig{file=OMPScaling003.pdf,width=0.7\textwidth}}}%
+                \only<5->{\centerline{\epsfig{file=OMPCode_001.pdf,width=0.7\textwidth}}}%
+                
+        \end{columns}
+        
+    \end{frame}
+    
+    
+    \subsection{Case in point}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+        
+            \item<+-> \alert<.>{Cosmological simulation} (galaxy formation) with
+                \alert<+>{1.8\,M particles}
+                in a cubic box of 6.25\,Mpc on a 4~$\times$ Intel Xeon X7550 with
+                \alert<+>{32 cores}, 2\,GHz.
+                
+            \item<+-> \alert<.>{{\sc gadget}-2}, MPI-based,
+               used for multi-billion particle simulations. 
+                
+            \item<+-> \alert<.>{\sc swift}, my own code for the same problem.
+               % developed with the Institute of Computational Cosmology at
+               % Durham University.
+               %
+               \uncover<+->{\alert<.>{13$\times$ faster} on 32 cores.}
+                
+        \end{itemize}
+        
+        \vspace{1ex}
+        
+        \uncover<5->{\only<-5>{\centerline{\epsfig{file=scaling_gadget.pdf, width=0.9\textwidth}}}}%
+        \only<6>{\centerline{\epsfig{file=scaling.pdf, width=0.9\textwidth}}}%
+        \only<7->{\centerline{\epsfig{file=scaling_red.pdf, width=0.9\textwidth}}}%
+        
+    \end{frame}
+    
+    
+    \subsection{Task-based parallelism}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+        \pause
+
+        \item<+-> \alert<.>{Shared-memory parallel programming paradigm}
+            in which the computation is formulated in an
+            \alert<+>{implicitly parallelizable} way that
+            automatically avoids most of the problems associated
+            with \alert<+>{concurrency and load-balancing}.
+            
+        \end{itemize}
+        
+        \vspace{-1.5ex}
+                
+        \begin{columns}
+        
+            \column{0.55\textwidth}
+            \begin{itemize}
+            
+                \item<+-> We first reduce the problem to a set of inter-dependent
+                    \alert<.>{tasks}.
+
+                \item<+-> For each task, we need to know:
+                    
+                    \begin{itemize}
+                        \item<+-> Which tasks it \alert<.>{depends} on,
+                        \item<+-> Which tasks it \alert<.>{conflicts} with.
+                    \end{itemize}
+                    
+                \item<+-> Each thread then \alert<.>{picks up a task} which
+                    has no unresolved dependencies or conflicts and computes it.
+                    
+            \end{itemize}
+            
+            \column{0.45\textwidth}
+                \only<5>{\centerline{\epsfig{file=img008.pdf,width=0.9\textwidth}}}%
+                \only<6>{\centerline{\epsfig{file=img008h.pdf,width=0.9\textwidth}}}%
+                \only<7>{\centerline{\epsfig{file=img008b.pdf,width=0.9\textwidth}}}%
+                \only<8>{\centerline{\epsfig{file=img008c.pdf,width=0.9\textwidth}}}%
+                \only<9>{\centerline{\epsfig{file=img008.pdf,width=0.9\textwidth}}}%
+                \only<10>{\centerline{\epsfig{file=img008d.pdf,width=0.9\textwidth}}}%
+                \only<11>{\centerline{\epsfig{file=img008e.pdf,width=0.9\textwidth}}}%
+                \only<12>{\centerline{\epsfig{file=img008e2.pdf,width=0.9\textwidth}}}%
+                \only<13>{\centerline{\epsfig{file=img008f.pdf,width=0.9\textwidth}}}%
+                \only<14>{\centerline{\epsfig{file=img008f2.pdf,width=0.9\textwidth}}}%
+            
+        \end{columns}
+    \end{frame}
+    
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+            
+            \item<+-> The order in which the tasks are processed is
+                \alert<.>{dynamic} and
+                adapts automatically to load imbalances.
+                
+            \item<+-> If the dependencies and conflicts are specified correctly,
+                we \alert<.>{do not have to worry about concurrency} at the level
+                of the individual tasks.
+                
+                \uncover<+->{$\longrightarrow$ No need for expensive
+                    \alert<.>{explicit}
+                    locking, synchronization, or atomic operations.}
+                    
+            \item<+-> Each task has exclusive access to the data it
+                is working on, thus \alert<.>{improving cache efficiency}.
+            
+            \item<+-> The same approach can be applied to more
+                \alert<.>{unconventional many-core systems} such as GPUs.
+            
+            \item<+-> However, this usually means that
+                we have to \alert<.>{re-think our entire computation},
+                e.g.~redesign it from scratch to make it task-based.
+                
+        \end{itemize}
+    \end{frame}
+    
+    
+    \subsection{Task-based parallelism on GPUs}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+        
+            \item<+-> Although general-purpose \alert<.>{Graphics Processing
+                Units} (GPUs) are usually treated as
+                \alert<+>{large vector machines},
+                the hardware is more reminiscent of a
+                \alert<+>{vectorized multi-core}.
+                
+            \item<+-> Each GPU is split into several \alert<.>{\em Streaming
+                Multiprocessors} which execute several \alert<+>{\em blocks}
+                of threads independently.
+                
+            \item<+-> It is therefore possible to use task-based parallelism
+                in which \alert<.>{every block works on a separate task} with
+                a small number of threads.
+                
+                \uncover<+->{$\longrightarrow$ Opens up the GPU for
+                    \alert<.>{inhomogeneous} workloads.}
+                    
+            \item<+-> Requires extremely efficient, non-blocking data
+                structures for the \alert<.>{task queue}.
+                    
+            \item<+-> Instead of \alert<.>{vectorizing the entire computation},
+                we only have to \alert<+>{vectorize each task} independently.
+
+        \end{itemize}
+    \end{frame}
+    
+    
+    \subsection{My work in this area}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+        
+            % \item<+-> \alert<.>{Task-based computational models},
+            %     i.e.~develop memory-efficient, task-based algorithms
+            %     for specific computational problems.
+
+            \item<+-> \alert<.>{Algorithms for task-based parallelism},
+                i.e.~task sorting, task clustering, task selection,
+                and efficient task queues.
+                
+            \item<+-> \alert<.>{Task-based parallelism on GPUs},
+                i.e.~specific data-structures for fast, non-blocking queues.
+
+            \item<+-> \alert<.>{New architectures}, i.e.~algorithms
+                for emerging high-performance/low-cost many-core architectures,
+                e.g.~the Intel~Phi, or Adapteva's Epiphany~IV.
+
+            \item<+-> \alert<.>{Hybrid shared/distributed-memory schemes},
+                i.e.~use both MPI and task-based parallelism on clusters
+                of multi-cores, interleaving communication
+                and computation such as to hide communication latencies.
+
+        \end{itemize}
+    \end{frame}
+    
+    
+    \section{Algorithms for SPH}
+    \subsection{Smoothed Particle Hydrodynamics}
+    
+    \begin{frame}
+    
+        \pause
+
+        \begin{columns}
+        
+            \column{0.65\textwidth}
+            \begin{itemize}
+
+                \item<+-> \alert<.>{Smoothed Particle Hydrodynamics} (SPH) is a
+                    computational method for simulating fluid flows and is used
+                    in many areas, e.g.~in Astrophysics or avalanche simulations.
+
+                \item<+-> Fluids are modelled using \alert<.>{particles} which
+                    interact with their neighbours in a two-stage process:
+                    
+                    \begin{itemize}
+                        \item<+-> Compute the particle \alert<.>{density},
+                        \item<+-> Compute the particle \alert<.>{forces}.
+                    \end{itemize}
+
+                \item<+-> In each step, the \alert<.>{neighbours} of
+                    each particle within its smoothing length $h_i$
+                    need to be identified.
+
+            \end{itemize}
+            
+            \column{0.35\textwidth}
+                \only<3-5>{\centerline{\epsfig{file=SPH_001.pdf,width=0.7\textwidth}}}%
+                \only<6->{\centerline{\epsfig{file=SPH_002.pdf,width=0.7\textwidth}}}%
+                \uncover<4->{\begin{eqnarray*}
+                    \alert<4>{\rho_i} & = & \sum_{\alert<6>{r_{ij}<h_i}} m_jW(r_{ij}) \\
+                    \alert<5>{\mathbf f_i} & = & -\sum_{\alert<6>{r_{ij}<h_i}} m_j \mathbf F(\rho_i,\rho_j,\dots)
+                \end{eqnarray*}}
+            
+        \end{columns}
+    \end{frame}
+    
+    
+    \subsection{Neighbour-finding with trees}
+    
+    \begin{frame}
+    
+        \begin{columns}
+        
+            \column{0.65\textwidth}
+            \begin{itemize}
+
+                \item<+-> \alert<.>{\alert<+>{Spatial trees}} are the most commonly used
+                    approach to neighbour-finding, as the particle distribution
+                    can be irregular.
+                    
+                \item<+-> Neighbour-finding up and down the tree is
+                    \alert<.>{\alert<+>{simple}}, but has some problems:
+                    
+                    \begin{itemize}
+                        \item<+-> Worst-case cost in 
+                            \alert<.>{$\mathcal O(N^{2/3})$} per particle.
+                        \item<+-> \alert<.>{Low cache efficiency} due to scattered
+                            memory access.
+                        \item<+-> Symmetries cannot be exploited, i.e.~each
+                            particle pair is \alert<.>{found twice}.
+                    \end{itemize}
+                    
+                \item<+-> Parallelization is \alert<.>{trivial}, but only because
+                    symmetries are not exploited.
+
+            \end{itemize}
+            
+            \column{0.35\textwidth}
+                \only<1>{\centerline{\epsfig{file=Octree.pdf,width=0.8\textwidth}}}%
+                \only<2>{\centerline{\epsfig{file=SearchTree_001.pdf,width=0.8\textwidth}}}%
+                \only<3>{\centerline{\epsfig{file=SearchTree_002.pdf,width=0.8\textwidth}}}%
+                \only<4->{\centerline{\epsfig{file=SearchTree_003.pdf,width=0.8\textwidth}}}%
+            
+        \end{columns}
+    \end{frame}
+    
+    
+    \subsection{Hierarchical cell pairs}
+    
+    \begin{frame}
+    
+        \pause
+
+        \begin{columns}
+        
+            \column{0.65\textwidth}
+            \begin{itemize}
+
+                \item<+-> We start by splitting the simulation domain into
+                    rectangular \alert<.>{cells} of edge length at least
+                    $h_\mathsf{max}$.
+                    
+                \item<+-> All interacting particle pairs are then in either
+                    in the \alert<.>{same cell}, or in a
+                    \alert<+>{pair of neighbouring cells}.
+                    
+                \item<+-> Finding the neighbours between each such cell or
+                    pair of cells can be used as a \alert<.>{task}.
+                    
+                \item<+-> If the particles in the cell or cell pair
+                    are sufficiently small, the task
+                    can be \alert<.>{split}.
+                    
+                \item<+-> Finally, the particles in each cell pair are
+                    \alert<.>{first sorted} along the cell pair axis to speed-up
+                    neighbour-finding.
+
+            \end{itemize}
+            
+            \column{0.35\textwidth}
+                \only<2>{\centerline{\epsfig{file=InitialDecomp_001.pdf,width=0.8\textwidth}}}%
+                \only<3-4>{\centerline{\epsfig{file=InitialDecomp_002.pdf,width=0.8\textwidth}}}%
+                \only<5>{\centerline{\epsfig{file=InitialDecomp_004.pdf,width=0.8\textwidth}}}%
+                \only<6>{\centerline{\epsfig{file=SplitCell.pdf,width=0.8\textwidth}}
+                    
+                    \vspace{2ex}
+                
+                    \centerline{\epsfig{file=SplitPair.pdf,width=\textwidth}}}%
+                \only<7>{\centerline{\epsfig{file=SortedInteractions.pdf,width=0.8\textwidth}}}%
+         
+        \end{columns}
+    \end{frame}
+    
+    
+    \subsection{Task hierarchy}
+    
+    \begin{frame}
+    
+        \pause
+
+        \begin{columns}
+        
+            \column{0.65\textwidth}
+            \begin{itemize}
+
+                \item<+-> \alert<.>{Three main task types}: \alert<+>{Sorting},
+                    \alert<+>{self-interactions},
+                    and \alert<+>{pair-interactions}.
+                    
+                \item<+-> \alert<.>{``Ghost'' tasks} are added to group dependencies
+                    between the density and force tasks.
+                    
+                \item<+-> Each \alert<.>{sorting task} depends on the sorting tasks
+                    of its sub-cells (merge-sort).
+                    
+                \item<+-> Each \alert<.>{pair-interaction} task depends on the sort tasks
+                    of the cells involved.
+                    
+                \item<+-> Tasks on \alert<.>{overlapping cells conflict}, i.e.~they can
+                    not execute concurrently.
+
+            \end{itemize}
+            
+            \column{0.35\textwidth}
+                \only<2>{\centerline{\epsfig{file=Hierarchy2.pdf,height=0.8\textheight}}}%
+                \only<3>{\centerline{\epsfig{file=Hierarchy2_005.pdf,height=0.8\textheight}}}%
+                \only<4>{\centerline{\epsfig{file=Hierarchy2_007.pdf,height=0.8\textheight}}}%
+                \only<5>{\centerline{\epsfig{file=Hierarchy2_006.pdf,height=0.8\textheight}}}%
+                \only<6>{\centerline{\epsfig{file=Hierarchy2_008.pdf,height=0.8\textheight}}}%
+                \only<7>{\centerline{\epsfig{file=Hierarchy2_001.pdf,height=0.8\textheight}}}%
+                \only<8>{\centerline{\epsfig{file=Hierarchy2_002.pdf,height=0.8\textheight}}}%
+                \only<9>{\centerline{\epsfig{file=Hierarchy2_004.pdf,height=0.8\textheight}}}%
+         
+        \end{columns}
+    \end{frame}
+    
+    
+    \subsection{Dynamic task allocation}
+    
+    \begin{frame}
+    
+        \centerline{\epsfig{file=tasks_dynamic.pdf,width=\textwidth}}
+        
+        \pause
+        
+        \begin{itemize}
+        
+            \item<+-> Each core has it's own task queue and uses
+                \alert<.>{work-stealing} when empty.
+                
+            \item<+-> Each core has a \alert<.>{preference} for tasks involving
+                cells which were used previously to improve cache re-use.
+
+        \end{itemize}
+    \end{frame}
+    
+    
+    \subsection{Parallel efficiency and scaling}
+    
+    \begin{frame}
+    
+        \pause
+        
+        \centerline{\epsfig{file=scaling.pdf,width=0.8\textwidth}}
+        
+        \pause
+        
+        \begin{itemize}
+        
+            \item<+-> Parallel efficiency of \alert<.>{$75\%$} on 32 cores of
+                an $4\times$ Intel Xeon X7550 shared-memory machine.
+                
+            \item<+-> \alert<.>{No NUMA-related effects}: Each
+                task operates exclusively on a small contiguous region
+                of memory which usually
+                fits in the \alert<+>{lower level caches}.
+
+        \end{itemize}
+    \end{frame}
+    
+    
+    \subsection{A hierarchy of parallel methods}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+        
+            \item<+-> Many problems of interest will be \alert<.>{too large}
+                to simulate on a single machine.
+                
+            \item<+-> \alert<.>{Hybrid} shared/distributed-memory parallelism:
+            
+                \begin{itemize}
+                    \item<+-> \alert<.>{Distributed-memory parallelism} between the
+                        nodes of a cluster, using a spatial decomposition.
+                    \item<+-> \alert<.>{Task-based shared-memory parallelism} between
+                        the cores of a single node.
+                    \item<+-> \alert<.>{SIMD/SIMT parallelism} within each task
+                        on a single core.
+                \end{itemize}
+                
+            \item<+-> In a task-based hybrid setup, sending and receiving
+                data asynchronously can be implemented as tasks to
+                \alert<.>{hide communication latencies}.
+                
+            \item<+-> SIMD/SIMT parallelism is \alert<.>{very similar} for
+                large vectors, e.g.~AVX2 on the Intel~Phi/MIC, and the threads
+                of a GPU.
+                
+            \item<+-> Tasks can also be \alert<.>{shared between the
+                CPU and a GPU}.
+                
+        \end{itemize}
+    \end{frame}
+    
+    
+    \subsection{My work in this area}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+        
+            \item<+-> These algorithms have all been implemented
+                as part of \alert<.>{\sc swift}, an Open-Source
+                platform independent library for SPH simulations.
+                
+            \item<+-> Ongoing development and \alert<.>{tight collaboration}
+                with the Institute of Computational Cosmology in Durham.
+                
+                \uncover<+->{$\longrightarrow$
+                    Goal is to produce not just \alert<.>{good algorithms}, but
+                    also a simulation code that they
+                    can use for their own research.}
+                
+            \item<+-> Use of \alert<.>{mixed-precision} floating point
+                arithmetic and algorithms that \alert<.>{vectorize naturally}
+                to better exploit SIMD/SIMT parallelism.
+                
+            \item<+-> Further work on \alert<.>{improving neighbour finding}
+                and task hierarchy, as well as new algorithms for
+                \alert<+>{long-range interactions}, e.g.~gravity.
+                
+            \item<+-> Currently working on porting {\sc swift} to
+                CUDA-based \alert<.>{GPUs}.
+                
+        \end{itemize}
+    \end{frame}
+    
+    
+    \section{Molecular Dynamics simulations}
+    \subsection{{\tt mdcore}}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+            
+            \item<+-> \alert<.>{\tt mdcore} is an Open-Source library
+                for hybrid shared/distributed-memory parallel
+                Molecular Dynamics (MD) simulations on both \alert<+>{multi-cores
+                and GPUs}.
+                
+            \item<+-> Similar problem as SPH, yet instead of doing
+                \alert<.>{millions of time steps on billions of particles},
+                MD involves doing \alert<+>{billions of time steps on millions
+                of particles}.
+                
+                \uncover<+->{$\longrightarrow$ Fine-grained parallel
+                    scaling is \alert<.>{crucial}!}
+                    
+            \item<+-> Currently being used as a \alert<.>{test-bed} for:
+                
+                \begin{itemize}
+                    \item<+-> \alert<.>{Asynchronous} distributed-memory
+                        parallelism within a task-based scheme.
+                    \item<+-> \alert<.>{Multiple GPU} setups.
+                    \item<+-> Better use of \alert<.>{SIMD/SIMT} parallelism.
+                    \item<+-> New architectures such as the \alert<.>{Intel Phi}
+                        or \alert<+>{Adapeva's Epiphany III}.
+                \end{itemize}
+                
+            \item<+-> Despite being a research code, it is currently
+                \alert<.>{faster than NAMD}, the most popular Open-Source
+                MD code currently available.
+                
+        \end{itemize}
+    \end{frame}
+        
+    
+    \subsection{{\tt mdcore} on a GPU}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+        
+            \item<+-> {\tt mdcore} currently implements task-based parallelism
+                \alert<.>{directly on GPUs}.
+                
+            \item<+-> For the standard JAC benchmark (23'558 atoms), the GPU code is
+                \alert<.>{amost three times as fast} as a 16-core workstation. 
+                %
+                \uncover<+->{And \alert<.>{costs about a tenth} as much.}
+                
+        \end{itemize}
+        
+        \vspace{1ex}
+        
+        \uncover<3->{\centerline{\epsfig{file=mdcore.pdf, width=0.9\textwidth}}}%
+        
+    \end{frame}
+        
+
+    \section{Interdisciplinary projects}
+    \subsection{Creating useful collaborations}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+            
+            \item<+-> Tight coupling between \alert<.>{theory and practice}:
+                all algorithms are implemented as part of
+                \alert<+>{specific interdisciplinary applications}.
+                
+            \uncover<+->{$\longrightarrow$
+                There is a huge different between \alert<.>{knowing
+                how} to solve a problem, and actually \alert<+>{solving it}.}
+        
+            \item<+-> Interdisciplinary projects require
+                \alert<.>{close collaboration} with a 
+                counterpart in the domain of application
+                such as to make the results \alert<+>{immediately useful}.
+                
+            \item<+-> Actual implementations require work, but the payoff
+                can be massive in terms of interesting \alert<.>{new problems,
+                contributions, and impact}.
+                
+        \end{itemize}
+    \end{frame}
+        
+    
+    \section{Teaching}
+    \subsection{Parallel programming as a basic skill}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \pause
+            
+            \item<+-> Shared-memory parallelism is rapidly becoming
+                a \alert<.>{ubiquitous reality}, both in high-performance and
+                consumer products.
+                
+                \uncover<+->{$\longrightarrow$ Parallel programming should
+                    be an important part of any
+                    \alert<.>{core Computer Science curriculum}.}
+                    
+            \item<+-> Understanding which parallel programming paradigms
+                are \alert<.>{best suited} to which types of problems
+                is of critical importance.
+                
+            \item<+-> Teaching needs to provide both a
+                \alert<.>{solid theoretical foundation}, but also
+                \alert<+>{hands-on expericence}, e.g. parallel
+                programming labs.
+                
+            \item<+-> Include \alert<.>{new paradigms} such as
+                SIMT programming with CUDA, many-core programming with
+                OpenCL.
+                
+            \item<+-> Interdisciplinary projects and/or new hardware
+                provide a number
+                of interesting projects for \alert<.>{Bachelor/Master theses}.
+                
+        \end{itemize}
+    \end{frame}
+        
+    
+    \section{Conclusions}
+    \subsection{In summary}
+    
+    \begin{frame}
+        \begin{itemize}
+        
+            \item<+-> In order to continue getting \alert<.>{\em faster}, programs
+                need to become \alert<+>{\em more parallel}.
+                
+            \item<+-> \alert<.>{Task-based parallelism} is a simple and
+                efficient, cross-platform paradigm for shared-memory
+                parallel computing.
+                
+                \uncover<+->{$\longrightarrow$
+                    Algorithms for \alert<.>{specific problems} which exploit
+                    this paradigm are still needed.}
+                
+            \item<+-> \alert<.>{Doing things right} can lead to
+                \alert<+>{massive gains in performance}.
+                
+                \uncover<+->{$\longrightarrow$
+                    Not on some \alert<.>{fancy, expensive future hardware},
+                    but on \alert<+>{existing infrastructure}.}
+                    
+            \item<+-> Interdisciplinary collaborations provide
+                \alert<.>{interesting new problems}.
+                
+                \uncover<+->{$\longrightarrow$
+                    \alert<.>{Close collaboration} is necessary in
+                    order to produce software that can actually be used.}
+                
+        \end{itemize}
+    \end{frame}
+        
+    
+    \subsection{Thanks}
+    
+    \begin{frame}
+        \centerline{Thank you for your attention!}
+    \end{frame}
+
+
+\end{document}
