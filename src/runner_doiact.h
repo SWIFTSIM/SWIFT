@@ -1378,7 +1378,7 @@ void DOSELF1 ( struct runner *r , struct cell *restrict c ) {
                             IACT_NONSYM( r2 , dx , hi , hj , pi , &parts[pjd] );
                         else {
                             dx[0] = -dx[0]; dx[1] = -dx[1]; dx[2] = -dx[2];
-                            IACT_NONSYM( r2 , dx , hi , hj , pi , &parts[pjd] );
+                            IACT_NONSYM( r2 , dx , hj , hi , &parts[pjd] , pi );
                             }
 
                     #else
