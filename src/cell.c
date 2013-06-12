@@ -167,7 +167,7 @@ void cell_unlocktree( struct cell *c ) {
  
 void cell_split ( struct cell *c  ) {
 
-    int i, j, k, kk;
+    int i, j, k;
     struct part temp, *parts = c->parts;
     int left[8], right[8];
     double pivot[3];

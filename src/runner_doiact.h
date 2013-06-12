@@ -940,6 +940,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
                 /* Get a pointer to the jth particle. */
                 cpj = &cparts_j[ sortdt_j[pjd].i ];
+                hj = cpj->h;
 
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
@@ -953,7 +954,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
                     #ifndef VECTORIZE
 
-                        IACT_NONSYM( r2 , dx , cpj->h , hi , &parts_j[ sortdt_j[pjd].i ] , pi );
+                        IACT_NONSYM( r2 , dx , hj , hi , &parts_j[ sortdt_j[pjd].i ] , pi );
 
                     #else
 
@@ -962,7 +963,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                         dxq1[3*icount1+0] = dx[0];
                         dxq1[3*icount1+1] = dx[1];
                         dxq1[3*icount1+2] = dx[2];
-                        hiq1[icount1] = cpj->h;
+                        hiq1[icount1] = hj;
                         hjq1[icount1] = hi;
                         piq1[icount1] = &parts_j[ sortdt_j[ pjd ].i ];
                         pjq1[icount1] = pi;
@@ -990,6 +991,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
                 /* Get a pointer to the jth particle. */
                 cpj = &cparts_j[ sort_j[pjd].i ];
+                hj = cpj->h;
 
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
@@ -1005,9 +1007,9 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
                         /* Does pj need to be updated too? */
                         if ( cpj->dt <= dt_step )
-                            IACT( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[pjd].i ] );
+                            IACT( r2 , dx , hi , hj , pi , &parts_j[ sort_j[pjd].i ] );
                         else
-                            IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts_j[ sort_j[pjd].i ] );
+                            IACT_NONSYM( r2 , dx , hi , hj , pi , &parts_j[ sort_j[pjd].i ] );
 
                     #else
 
@@ -1020,7 +1022,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                             dxq2[3*icount2+1] = dx[1];
                             dxq2[3*icount2+2] = dx[2];
                             hiq2[icount2] = hi;
-                            hjq2[icount2] = cpj->h;
+                            hjq2[icount2] = hj;
                             piq2[icount2] = pi;
                             pjq2[icount2] = &parts_j[ sort_j[ pjd ].i ];
                             icount2 += 1;
@@ -1041,7 +1043,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                             dxq1[3*icount1+1] = dx[1];
                             dxq1[3*icount1+2] = dx[2];
                             hiq1[icount1] = hi;
-                            hjq1[icount1] = cpj->h;
+                            hjq1[icount1] = hj;
                             piq1[icount1] = pi;
                             pjq1[icount1] = &parts_j[ sort_j[ pjd ].i ];
                             icount1 += 1;
@@ -1090,6 +1092,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
                 /* Get a pointer to the jth particle. */
                 cpi = &cparts_i[ sortdt_i[pid].i ];
+                hi = cpi->h;
 
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
@@ -1099,11 +1102,11 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hjg2 && r2 > cpi->h*cpi->h*kernel_gamma2 ) {
+                if ( r2 < hjg2 && r2 > hi*hi*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
-                        IACT_NONSYM( r2 , dx , cpi->h , hj , &parts_i[ sortdt_i[pid].i ] , pj );
+                        IACT_NONSYM( r2 , dx , hi , hj , &parts_i[ sortdt_i[pid].i ] , pj );
 
                     #else
 
@@ -1112,7 +1115,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                         dxq1[3*icount1+0] = dx[0];
                         dxq1[3*icount1+1] = dx[1];
                         dxq1[3*icount1+2] = dx[2];
-                        hiq1[icount1] = cpi->h;
+                        hiq1[icount1] = hi;
                         hjq1[icount1] = hj;
                         piq1[icount1] = &parts_i[ sortdt_i[ pid ].i ];
                         pjq1[icount1] = pj;
@@ -1139,6 +1142,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
 
                 /* Get a pointer to the jth particle. */
                 cpi = &cparts_i[ sort_i[pid].i ];
+                hi = cpi->h;
 
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
@@ -1148,15 +1152,15 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hjg2 && r2 > cpi->h*cpi->h*kernel_gamma2 ) {
+                if ( r2 < hjg2 && r2 > hi*hi*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
                         /* Does pi need to be updated too? */
                         if ( cpi->dt <= dt_step )
-                            IACT( r2 , dx , hj , cpi->h , pj , &parts_i[ sort_i[pid].i ] );
+                            IACT( r2 , dx , hj , hi , pj , &parts_i[ sort_i[pid].i ] );
                         else
-                            IACT_NONSYM( r2 , dx , hj , cpi->h , pj , &parts_i[ sort_i[pid].i ] );
+                            IACT_NONSYM( r2 , dx , hj , hi , pj , &parts_i[ sort_i[pid].i ] );
 
                     #else
 
@@ -1169,7 +1173,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                             dxq2[3*icount2+1] = dx[1];
                             dxq2[3*icount2+2] = dx[2];
                             hiq2[icount2] = hj;
-                            hjq2[icount2] = cpi->h;
+                            hjq2[icount2] = hi;
                             piq2[icount2] = pj;
                             pjq2[icount2] = &parts_i[ sort_i[ pid ].i ];
                             icount2 += 1;
@@ -1190,7 +1194,7 @@ void DOPAIR2 ( struct runner *r , struct cell *ci , struct cell *cj ) {
                             dxq1[3*icount1+1] = dx[1];
                             dxq1[3*icount1+2] = dx[2];
                             hiq1[icount1] = hj;
-                            hjq1[icount1] = cpi->h;
+                            hjq1[icount1] = hi;
                             piq1[icount1] = pj;
                             pjq1[icount1] = &parts_i[ sort_i[ pid ].i ];
                             icount1 += 1;
@@ -1243,97 +1247,226 @@ void DOSELF1 ( struct runner *r , struct cell *restrict c ) {
 
     int k, pid, pjd, count = c->count;
     double pix[3];
-    float dx[3], hi, hig2, r2;
+    float dx[3], hi, hj, hig2, r2;
     struct part *restrict parts = c->parts, *restrict pi;
     struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
     float dt_step = r->e->dt_step;
+    int firstdt = 0, countdt = 0, *indt = NULL, doj;
     #ifdef VECTORIZE
-        int icount = 0;
-        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
-        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
-        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
-        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
-        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+        int icount1 = 0;
+        float r2q1[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq1[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq1[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq1[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq1[VEC_SIZE], *pjq1[VEC_SIZE];
+        int icount2 = 0;
+        float r2q2[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq2[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq2[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq2[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq2[VEC_SIZE], *pjq2[VEC_SIZE];
     #endif
     TIMER_TIC
     
-    /* Any work here? */
+    /* Set up indt if needed. */
     if ( c->dt_min > dt_step )
         return;
+    else if ( c->dt_max > dt_step ) {
+        if ( ( indt = (int *)alloca( sizeof(int) * count ) ) == NULL )
+            error( "Failed to allocate indt." );
+        for ( k = 0 ; k < count ; k++ )
+            if ( cparts[k].dt <= dt_step ) {
+                indt[ countdt ] = k;
+                countdt += 1;
+                }
+        }
     
     /* Loop over the particles in the cell. */
     for ( pid = 0 ; pid < count ; pid++ ) {
     
         /* Get a pointer to the ith particle. */
-        cpi = &cparts[pid];
         pi = &parts[pid];
-        if ( cpi->dt > dt_step )
-            continue;
-            
+        cpi = &cparts[pid];
+    
         /* Get the particle position and radius. */
         for ( k = 0 ; k < 3 ; k++ )
             pix[k] = cpi->x[k];
         hi = cpi->h;
         hig2 = hi * hi * kernel_gamma2;
-            
-        /* Loop over the other particles .*/
-        for ( pjd = 0 ; pjd < count ; pjd++ ) {
         
-            /* Skip self-interactions. */
-            if ( pid == pjd )
-                continue;
+        /* Is the ith particle inactive? */
+        if ( cpi->dt > dt_step ) {
         
-            /* Get a pointer to the jth particle. */
-            cpj = &cparts[pjd];                
-        
-            /* Compute the pairwise distance. */
-            r2 = 0.0f;
-            for ( k = 0 ; k < 3 ; k++ ) {
-                dx[k] = pix[k] - cpj->x[k];
-                r2 += dx[k]*dx[k];
-                }
+            /* Loop over the other particles .*/
+            for ( pjd = firstdt ; pjd < countdt ; pjd++ ) {
+
+                /* Get a pointer to the jth particle. */
+                cpj = &cparts[ indt[ pjd ] ];
+                hj = cpj->h;
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = cpj->x[k] - pix[k];
+                    r2 += dx[k]*dx[k];
+                    }
+
+                /* Hit or miss? */
+                if ( r2 < hj*hj*kernel_gamma2 ) {
+
+                    #ifndef VECTORIZE
+
+                        IACT_NONSYM( r2 , dx , hj , hi , &parts[indt[pjd]] , pi );
+
+                    #else
+
+                        /* Add this interaction to the queue. */
+                        r2q1[icount1] = r2;
+                        dxq1[3*icount1+0] = dx[0];
+                        dxq1[3*icount1+1] = dx[1];
+                        dxq1[3*icount1+2] = dx[2];
+                        hiq1[icount1] = cpj->h;
+                        hjq1[icount1] = hi;
+                        piq1[icount1] = &parts[indt[pjd]];
+                        pjq1[icount1] = pi;
+                        icount1 += 1;
+
+                        /* Flush? */
+                        if ( icount1 == VEC_SIZE ) {
+                            IACT_NONSYM_VEC( r2q1 , dxq1 , hiq1 , hjq1 , piq1 , pjq1 );
+                            icount1 = 0;
+                            }
+
+                    #endif
+
+                    }
+
+                } /* loop over all other particles. */
                 
-            /* Hit or miss? */
-            if ( r2 < hig2 ) {
+            }
             
-                #ifndef VECTORIZE
+        /* Otherwise, interact with all candidates. */
+        else {
+        
+            /* We caught a live one! */
+            firstdt += 1;
+            
+            /* Loop over the other particles .*/
+            for ( pjd = pid+1 ; pjd < count ; pjd++ ) {
+
+                /* Get a pointer to the jth particle. */
+                cpj = &cparts[pjd];
+                hj = cpj->h;
+
+                /* Compute the pairwise distance. */
+                r2 = 0.0f;
+                for ( k = 0 ; k < 3 ; k++ ) {
+                    dx[k] = pix[k] - cpj->x[k];
+                    r2 += dx[k]*dx[k];
+                    }
+                doj = ( cpj->dt <= dt_step ) && ( r2 < hj*hj*kernel_gamma2 );
+
+                /* Hit or miss? */
+                if ( r2 < hig2 || doj ) {
+
+                    #ifndef VECTORIZE
+
+                        /* Which parts need to be updated? */
+                        if ( r2 < hig2 && doj )
+                            IACT( r2 , dx , hi , hj , pi , &parts[pjd] );
+                        else if ( !doj )
+                            IACT_NONSYM( r2 , dx , hi , hj , pi , &parts[pjd] );
+                        else {
+                            dx[0] = -dx[0]; dx[1] = -dx[1]; dx[2] = -dx[2];
+                            IACT_NONSYM( r2 , dx , hi , hj , pi , &parts[pjd] );
+                            }
+
+                    #else
+
+                        /* Does pj need to be updated too? */
+                        if ( r2 < hig2 && doj ) {
                         
-                    IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts[pjd] );
-                
-                #else
+                            /* Add this interaction to the symmetric queue. */
+                            r2q2[icount2] = r2;
+                            dxq2[3*icount2+0] = dx[0];
+                            dxq2[3*icount2+1] = dx[1];
+                            dxq2[3*icount2+2] = dx[2];
+                            hiq2[icount2] = hi;
+                            hjq2[icount2] = hj;
+                            piq2[icount2] = pi;
+                            pjq2[icount2] = &parts[pjd];
+                            icount2 += 1;
 
-                    /* Add this interaction to the queue. */
-                    r2q[icount] = r2;
-                    dxq[3*icount+0] = dx[0];
-                    dxq[3*icount+1] = dx[1];
-                    dxq[3*icount+2] = dx[2];
-                    hiq[icount] = hi;
-                    hjq[icount] = cpj->h;
-                    piq[icount] = pi;
-                    pjq[icount] = &parts[pjd];
-                    icount += 1;
+                            /* Flush? */
+                            if ( icount2 == VEC_SIZE ) {
+                                IACT_VEC( r2q2 , dxq2 , hiq2 , hjq2 , piq2 , pjq2 );
+                                icount2 = 0;
+                                }
+                                
+                            }
+                            
+                        else if ( !doj ) {
+                        
+                            /* Add this interaction to the non-symmetric queue. */
+                            r2q1[icount1] = r2;
+                            dxq1[3*icount1+0] = dx[0];
+                            dxq1[3*icount1+1] = dx[1];
+                            dxq1[3*icount1+2] = dx[2];
+                            hiq1[icount1] = hi;
+                            hjq1[icount1] = hj;
+                            piq1[icount1] = pi;
+                            pjq1[icount1] = &parts[pjd];
+                            icount1 += 1;
 
-                    /* Flush? */
-                    if ( icount == VEC_SIZE ) {
-                        IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
-                        icount = 0;
-                        }
+                            /* Flush? */
+                            if ( icount1 == VEC_SIZE ) {
+                                IACT_NONSYM_VEC( r2q1 , dxq1 , hiq1 , hjq1 , piq1 , pjq1 );
+                                icount1 = 0;
+                                }
+                                
+                            }
 
-                #endif
-                
-                }
-        
-            } /* loop over all other particles. */
+                        else  {
+                        
+                            /* Add this interaction to the non-symmetric queue. */
+                            r2q1[icount1] = r2;
+                            dxq1[3*icount1+0] = -dx[0];
+                            dxq1[3*icount1+1] = -dx[1];
+                            dxq1[3*icount1+2] = -dx[2];
+                            hiq1[icount1] = hj;
+                            hjq1[icount1] = hi;
+                            piq1[icount1] = &parts[pjd];
+                            pjq1[icount1] = pi;
+                            icount1 += 1;
+
+                            /* Flush? */
+                            if ( icount1 == VEC_SIZE ) {
+                                IACT_NONSYM_VEC( r2q1 , dxq1 , hiq1 , hjq1 , piq1 , pjq1 );
+                                icount1 = 0;
+                                }
+                                
+                            }
+
+                    #endif
+
+                    }
+
+                } /* loop over all other particles. */
+            
+            }
     
         } /* loop over all particles. */
 
     #ifdef VECTORIZE
     /* Pick up any leftovers. */
-    if ( icount > 0 )
-        for ( k = 0 ; k < icount ; k++ )
-            IACT_NONSYM( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    if ( icount1 > 0 )
+        for ( k = 0 ; k < icount1 ; k++ )
+            IACT_NONSYM( r2q1[k] , &dxq1[3*k] , hiq1[k] , hjq1[k] , piq1[k] , pjq1[k] );
+    if ( icount2 > 0 )
+        for ( k = 0 ; k < icount2 ; k++ )
+            IACT( r2q2[k] , &dxq2[3*k] , hiq2[k] , hjq2[k] , piq2[k] , pjq2[k] );
     #endif
-        
+    
     #ifdef TIMER_VERBOSE
         printf( "runner_doself1[%02i]: %i parts at depth %i took %.3f ms.\n" , r->id , count , c->depth , ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000 );
     #else
@@ -1347,7 +1480,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
 
     int k, pid, pjd, count = c->count;
     double pix[3];
-    float dx[3], hi, hig2, r2;
+    float dx[3], hi, hj, hig2, r2;
     struct part *restrict parts = c->parts, *restrict pi;
     struct cpart *restrict cpi, *restrict cpj, *restrict cparts = c->cparts;
     float dt_step = r->e->dt_step;
@@ -1402,6 +1535,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
 
                 /* Get a pointer to the jth particle. */
                 cpj = &cparts[ indt[ pjd ] ];
+                hj = cpj->h;
 
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
@@ -1411,11 +1545,11 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hig2 || r2 < cpj->h*cpj->h*kernel_gamma2 ) {
+                if ( r2 < hig2 || r2 < hj*hj*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
-                        IACT_NONSYM( r2 , dx , cpj->h , hi , &parts[indt[pjd]] , pi );
+                        IACT_NONSYM( r2 , dx , hj , hi , &parts[indt[pjd]] , pi );
 
                     #else
 
@@ -1424,7 +1558,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
                         dxq1[3*icount1+0] = dx[0];
                         dxq1[3*icount1+1] = dx[1];
                         dxq1[3*icount1+2] = dx[2];
-                        hiq1[icount1] = cpj->h;
+                        hiq1[icount1] = hj;
                         hjq1[icount1] = hi;
                         piq1[icount1] = &parts[indt[pjd]];
                         pjq1[icount1] = pi;
@@ -1455,6 +1589,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
 
                 /* Get a pointer to the jth particle. */
                 cpj = &cparts[pjd];
+                hj = cpj->h;
 
                 /* Compute the pairwise distance. */
                 r2 = 0.0f;
@@ -1464,15 +1599,15 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
                     }
 
                 /* Hit or miss? */
-                if ( r2 < hig2 || r2 < cpj->h*cpj->h*kernel_gamma2 ) {
+                if ( r2 < hig2 || r2 < hj*hj*kernel_gamma2 ) {
 
                     #ifndef VECTORIZE
 
                         /* Does pj need to be updated too? */
                         if ( cpj->dt <= dt_step )
-                            IACT( r2 , dx , hi , cpj->h , pi , &parts[pjd] );
+                            IACT( r2 , dx , hi , hj , pi , &parts[pjd] );
                         else
-                            IACT_NONSYM( r2 , dx , hi , cpj->h , pi , &parts[pjd] );
+                            IACT_NONSYM( r2 , dx , hi , hj , pi , &parts[pjd] );
 
                     #else
 
@@ -1485,7 +1620,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
                             dxq2[3*icount2+1] = dx[1];
                             dxq2[3*icount2+2] = dx[2];
                             hiq2[icount2] = hi;
-                            hjq2[icount2] = cpj->h;
+                            hjq2[icount2] = hj;
                             piq2[icount2] = pi;
                             pjq2[icount2] = &parts[pjd];
                             icount2 += 1;
@@ -1506,7 +1641,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
                             dxq1[3*icount1+1] = dx[1];
                             dxq1[3*icount1+2] = dx[2];
                             hiq1[icount1] = hi;
-                            hjq1[icount1] = cpj->h;
+                            hjq1[icount1] = hj;
                             piq1[icount1] = pi;
                             pjq1[icount1] = &parts[pjd];
                             icount1 += 1;
