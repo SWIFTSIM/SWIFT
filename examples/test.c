@@ -1050,6 +1050,11 @@ int main ( int argc , char *argv[] ) {
     printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f.\n" ,
 	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->density.wcount );
     
+    /* Dump the task data. */
+    /* for ( k = 0 ; k < s.nr_tasks ; k++ )
+        printf( " %i %i %i %i %lli %lli\n" ,
+            s.tasks[k].rid , s.tasks[k].type , s.tasks[k].subtype , (s.tasks[k].cj == NULL) , s.tasks[k].tic , s.tasks[k].toc ); */
+    
     /* Write final output. */
     write_output( &e );
     
