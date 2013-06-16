@@ -66,39 +66,33 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_density ( float r
     for ( k = 0 ; k < 3 ; k++ )
         curlvr[k] *= ri;
             
-    if ( r2 < hi*hi*kernel_gamma2 ) {
-        
-        h_inv = 1.0 / hi;
-        xi = r * h_inv;
-        kernel_deval( xi , &wi , &wi_dx );
-        
-        pi->rho += mj * wi;
-        pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
-        pi->density.wcount += wi;
-        pi->density.wcount_dh -= xi * wi_dx;
+    /* Compute density of pi. */
+    h_inv = 1.0 / hi;
+    xi = r * h_inv;
+    kernel_deval( xi , &wi , &wi_dx );
 
-	    pi->density.div_v += mj * dvdr * wi_dx;
-	    for ( k = 0 ; k < 3 ; k++ )
-	        pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
-            
-        }
+    pi->rho += mj * wi;
+    pi->rho_dh -= mj * ( 3.0*wi + xi*wi_dx );
+    pi->density.wcount += wi;
+    pi->density.wcount_dh -= xi * wi_dx;
 
-    if ( r2 < hj*hj*kernel_gamma2 ) {
-        
-        h_inv = 1.0 / hj;
-        xj = r * h_inv;
-        kernel_deval( xj , &wj , &wj_dx );
-        
-        pj->rho += mi * wj;
-        pj->rho_dh -= mi * ( 3.0*wj + xj*wj_dx );
-        pj->density.wcount += wj;
-        pj->density.wcount_dh -= xj * wj_dx;
-        
-	    pj->density.div_v += mi * dvdr * wj_dx;
-	    for ( k = 0 ; k < 3 ; k++ )
-	        pj->density.curl_v[k] += mi * curlvr[k] * wj_dx;
-            
-        }
+	pi->density.div_v += mj * dvdr * wi_dx;
+	for ( k = 0 ; k < 3 ; k++ )
+	    pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
+
+    /* Compute density of pj. */
+    h_inv = 1.0 / hj;
+    xj = r * h_inv;
+    kernel_deval( xj , &wj , &wj_dx );
+
+    pj->rho += mi * wj;
+    pj->rho_dh -= mi * ( 3.0*wj + xj*wj_dx );
+    pj->density.wcount += wj;
+    pj->density.wcount_dh -= xj * wj_dx;
+
+	pj->density.div_v += mi * dvdr * wj_dx;
+	for ( k = 0 ; k < 3 ; k++ )
+	    pj->density.curl_v[k] += mi * curlvr[k] * wj_dx;
         
     }
     
@@ -121,23 +115,23 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     r.v = vec_sqrt( vec_load( R2 ) );
     ri.v = vec_rcp( r.v );
     #if VEC_SIZE==8
-        mi.v = _mm256_set_ps( pi[7]->mass , pi[6]->mass , pi[5]->mass , pi[4]->mass , pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
-        mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        mi.v = vec_set( pi[7]->mass , pi[6]->mass , pi[5]->mass , pi[4]->mass , pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
+        mj.v = vec_set( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
+            vj[k].v = vec_set( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] , Dx[12+k] , Dx[15+k] , Dx[18+k] , Dx[21+k] );
     #elif VEC_SIZE==4
-        mi.v = _mm_set_ps( pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
-        mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        mi.v = vec_set( pi[0]->mass , pi[1]->mass , pi[2]->mass , pi[3]->mass );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
     #endif
 
     hi.v = vec_load( Hi );
@@ -285,21 +279,21 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     r.v = vec_sqrt( vec_load( R2 ) );
     ri.v = vec_rcp( r.v );
     #if VEC_SIZE==8
-        mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass , pj[4]->mass , pj[5]->mass , pj[6]->mass , pj[7]->mass );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] , pi[4]->v[k] , pi[5]->v[k] , pi[6]->v[k] , pi[7]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] , pj[4]->v[k] , pj[5]->v[k] , pj[6]->v[k] , pj[7]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] , Dx[12+k] , Dx[15+k] , Dx[18+k] , Dx[21+k] );
     #elif VEC_SIZE==4
-        mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
     #endif
     
     hi.v = vec_load( Hi );
@@ -459,43 +453,43 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
 
     /* Load stuff. */
     #if VEC_SIZE==8
-        mi.v = _mm256_set_ps( pi[7]->mass , pi[6]->mass , pi[5]->mass , pi[4]->mass , pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
-        mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm256_set_ps( pi[7]->force.POrho2 , pi[6]->force.POrho2 , pi[5]->force.POrho2 , pi[4]->force.POrho2 , pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
-        pjPOrho2.v = _mm256_set_ps( pj[7]->force.POrho2 , pj[6]->force.POrho2 , pj[5]->force.POrho2 , pj[4]->force.POrho2 , pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
-        pirho.v = _mm256_set_ps( pi[7]->rho , pi[6]->rho , pi[5]->rho , pi[4]->rho , pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
-        pjrho.v = _mm256_set_ps( pj[7]->rho , pj[6]->rho , pj[5]->rho , pj[4]->rho , pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm256_set_ps( pi[7]->force.c , pi[6]->force.c , pi[5]->force.c , pi[4]->force.c , pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
-        cj.v = _mm256_set_ps( pj[7]->force.c , pj[6]->force.c , pj[5]->force.c , pj[4]->force.c , pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
-        vi_sig.v = _mm256_set_ps( pi[7]->force.v_sig , pi[6]->force.v_sig , pi[5]->force.v_sig , pi[4]->force.v_sig , pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
-        vj_sig.v = _mm256_set_ps( pj[7]->force.v_sig , pj[6]->force.v_sig , pj[5]->force.v_sig , pj[4]->force.v_sig , pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
+        mi.v = vec_set( pi[0]->mass , pi[1]->mass , pi[2]->mass , pi[3]->mass , pi[4]->mass , pi[5]->mass , pi[6]->mass , pi[7]->mass );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass , pj[4]->mass , pj[5]->mass , pj[6]->mass , pj[7]->mass );
+        piPOrho2.v = vec_set( pi[0]->force.POrho2 , pi[1]->force.POrho2 , pi[2]->force.POrho2 , pi[3]->force.POrho2 , pi[4]->force.POrho2 , pi[5]->force.POrho2 , pi[6]->force.POrho2 , pi[7]->force.POrho2 );
+        pjPOrho2.v = vec_set( pj[0]->force.POrho2 , pj[1]->force.POrho2 , pj[2]->force.POrho2 , pj[3]->force.POrho2 , pj[4]->force.POrho2 , pj[5]->force.POrho2 , pj[6]->force.POrho2 , pj[7]->force.POrho2 );
+        pirho.v = vec_set( pi[0]->rho , pi[1]->rho , pi[2]->rho , pi[3]->rho , pi[4]->rho , pi[5]->rho , pi[6]->rho , pi[7]->rho );
+        pjrho.v = vec_set( pj[0]->rho , pj[1]->rho , pj[2]->rho , pj[3]->rho , pj[4]->rho , pj[5]->rho , pj[6]->rho , pj[7]->rho );
+        ci.v = vec_set( pi[0]->force.c , pi[1]->force.c , pi[2]->force.c , pi[3]->force.c , pi[4]->force.c , pi[5]->force.c , pi[6]->force.c , pi[7]->force.c );
+        cj.v = vec_set( pj[0]->force.c , pj[1]->force.c , pj[2]->force.c , pj[3]->force.c , pj[4]->force.c , pj[5]->force.c , pj[6]->force.c , pj[7]->force.c );
+        vi_sig.v = vec_set( pi[0]->force.v_sig , pi[1]->force.v_sig , pi[2]->force.v_sig , pi[3]->force.v_sig , pi[4]->force.v_sig , pi[5]->force.v_sig , pi[6]->force.v_sig , pi[7]->force.v_sig );
+        vj_sig.v = vec_set( pj[0]->force.v_sig , pj[1]->force.v_sig , pj[2]->force.v_sig , pj[3]->force.v_sig , pj[4]->force.v_sig , pj[5]->force.v_sig , pj[6]->force.v_sig , pj[7]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] , pi[4]->v[k] , pi[5]->v[k] , pi[6]->v[k] , pi[7]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] , pj[4]->v[k] , pj[5]->v[k] , pj[6]->v[k] , pj[7]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm256_set_ps( pi[7]->force.balsara , pi[6]->force.balsara , pi[5]->force.balsara , pi[4]->force.balsara , pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
-                    _mm256_set_ps( pj[7]->force.balsara , pj[6]->force.balsara , pj[5]->force.balsara , pj[4]->force.balsara , pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] , Dx[12+k] , Dx[15+k] , Dx[18+k] , Dx[21+k] );
+        balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara , pi[4]->force.balsara , pi[5]->force.balsara , pi[6]->force.balsara , pi[7]->force.balsara ) +
+                    vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara , pj[4]->force.balsara , pj[5]->force.balsara , pj[6]->force.balsara , pj[7]->force.balsara );
     #elif VEC_SIZE==4
-        mi.v = _mm_set_ps( pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
-        mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm_set_ps( pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
-        pjPOrho2.v = _mm_set_ps( pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
-        pirho.v = _mm_set_ps( pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
-        pjrho.v = _mm_set_ps( pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm_set_ps( pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
-        cj.v = _mm_set_ps( pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
-        vi_sig.v = _mm_set_ps( pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
-        vj_sig.v = _mm_set_ps( pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
+        mi.v = vec_set( pi[0]->mass , pi[1]->mass , pi[2]->mass , pi[3]->mass );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass );
+        piPOrho2.v = vec_set( pi[0]->force.POrho2 , pi[1]->force.POrho2 , pi[2]->force.POrho2 , pi[3]->force.POrho2 );
+        pjPOrho2.v = vec_set( pj[0]->force.POrho2 , pj[1]->force.POrho2 , pj[2]->force.POrho2 , pj[3]->force.POrho2 );
+        pirho.v = vec_set( pi[0]->rho , pi[1]->rho , pi[2]->rho , pi[3]->rho );
+        pjrho.v = vec_set( pj[0]->rho , pj[1]->rho , pj[2]->rho , pj[3]->rho );
+        ci.v = vec_set( pi[0]->force.c , pi[1]->force.c , pi[2]->force.c , pi[3]->force.c );
+        cj.v = vec_set( pj[0]->force.c , pj[1]->force.c , pj[2]->force.c , pj[3]->force.c );
+        vi_sig.v = vec_set( pi[0]->force.v_sig , pi[1]->force.v_sig , pi[2]->force.v_sig , pi[3]->force.v_sig );
+        vj_sig.v = vec_set( pj[0]->force.v_sig , pj[1]->force.v_sig , pj[2]->force.v_sig , pj[3]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm_set_ps( pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
-                    _mm_set_ps( pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
+        balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara ) +
+                    vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara );
     #else
         #error
     #endif
@@ -688,41 +682,41 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
 
     /* Load stuff. */
     #if VEC_SIZE==8
-        mj.v = _mm256_set_ps( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm256_set_ps( pi[7]->force.POrho2 , pi[6]->force.POrho2 , pi[5]->force.POrho2 , pi[4]->force.POrho2 , pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
-        pjPOrho2.v = _mm256_set_ps( pj[7]->force.POrho2 , pj[6]->force.POrho2 , pj[5]->force.POrho2 , pj[4]->force.POrho2 , pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
-        pirho.v = _mm256_set_ps( pi[7]->rho , pi[6]->rho , pi[5]->rho , pi[4]->rho , pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
-        pjrho.v = _mm256_set_ps( pj[7]->rho , pj[6]->rho , pj[5]->rho , pj[4]->rho , pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm256_set_ps( pi[7]->force.c , pi[6]->force.c , pi[5]->force.c , pi[4]->force.c , pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
-        cj.v = _mm256_set_ps( pj[7]->force.c , pj[6]->force.c , pj[5]->force.c , pj[4]->force.c , pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
-        vi_sig.v = _mm256_set_ps( pi[7]->force.v_sig , pi[6]->force.v_sig , pi[5]->force.v_sig , pi[4]->force.v_sig , pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
-        vj_sig.v = _mm256_set_ps( pj[7]->force.v_sig , pj[6]->force.v_sig , pj[5]->force.v_sig , pj[4]->force.v_sig , pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass , pj[4]->mass , pj[5]->mass , pj[6]->mass , pj[7]->mass );
+        piPOrho2.v = vec_set( pi[0]->force.POrho2 , pi[1]->force.POrho2 , pi[2]->force.POrho2 , pi[3]->force.POrho2 , pi[4]->force.POrho2 , pi[5]->force.POrho2 , pi[6]->force.POrho2 , pi[7]->force.POrho2 );
+        pjPOrho2.v = vec_set( pj[0]->force.POrho2 , pj[1]->force.POrho2 , pj[2]->force.POrho2 , pj[3]->force.POrho2 , pj[4]->force.POrho2 , pj[5]->force.POrho2 , pj[6]->force.POrho2 , pj[7]->force.POrho2 );
+        pirho.v = vec_set( pi[0]->rho , pi[1]->rho , pi[2]->rho , pi[3]->rho , pi[4]->rho , pi[5]->rho , pi[6]->rho , pi[7]->rho );
+        pjrho.v = vec_set( pj[0]->rho , pj[1]->rho , pj[2]->rho , pj[3]->rho , pj[4]->rho , pj[5]->rho , pj[6]->rho , pj[7]->rho );
+        ci.v = vec_set( pi[0]->force.c , pi[1]->force.c , pi[2]->force.c , pi[3]->force.c , pi[4]->force.c , pi[5]->force.c , pi[6]->force.c , pi[7]->force.c );
+        cj.v = vec_set( pj[0]->force.c , pj[1]->force.c , pj[2]->force.c , pj[3]->force.c , pj[4]->force.c , pj[5]->force.c , pj[6]->force.c , pj[7]->force.c );
+        vi_sig.v = vec_set( pi[0]->force.v_sig , pi[1]->force.v_sig , pi[2]->force.v_sig , pi[3]->force.v_sig , pi[4]->force.v_sig , pi[5]->force.v_sig , pi[6]->force.v_sig , pi[7]->force.v_sig );
+        vj_sig.v = vec_set( pj[0]->force.v_sig , pj[1]->force.v_sig , pj[2]->force.v_sig , pj[3]->force.v_sig , pj[4]->force.v_sig , pj[5]->force.v_sig , pj[6]->force.v_sig , pj[7]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm256_set_ps( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm256_set_ps( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] , pi[4]->v[k] , pi[5]->v[k] , pi[6]->v[k] , pi[7]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] , pj[4]->v[k] , pj[5]->v[k] , pj[6]->v[k] , pj[7]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm256_set_ps( Dx[21+k] , Dx[18+k] , Dx[15+k] , Dx[12+k] , Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm256_set_ps( pi[7]->force.balsara , pi[6]->force.balsara , pi[5]->force.balsara , pi[4]->force.balsara , pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
-                    _mm256_set_ps( pj[7]->force.balsara , pj[6]->force.balsara , pj[5]->force.balsara , pj[4]->force.balsara , pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] , Dx[12+k] , Dx[15+k] , Dx[18+k] , Dx[21+k] );
+        balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara , pi[4]->force.balsara , pi[5]->force.balsara , pi[6]->force.balsara , pi[7]->force.balsara ) +
+                    vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara , pj[4]->force.balsara , pj[5]->force.balsara , pj[6]->force.balsara , pj[7]->force.balsara );
     #elif VEC_SIZE==4
-        mj.v = _mm_set_ps( pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
-        piPOrho2.v = _mm_set_ps( pi[3]->force.POrho2 , pi[2]->force.POrho2 , pi[1]->force.POrho2 , pi[0]->force.POrho2 );
-        pjPOrho2.v = _mm_set_ps( pj[3]->force.POrho2 , pj[2]->force.POrho2 , pj[1]->force.POrho2 , pj[0]->force.POrho2 );
-        pirho.v = _mm_set_ps( pi[3]->rho , pi[2]->rho , pi[1]->rho , pi[0]->rho );
-        pjrho.v = _mm_set_ps( pj[3]->rho , pj[2]->rho , pj[1]->rho , pj[0]->rho );
-        ci.v = _mm_set_ps( pi[3]->force.c , pi[2]->force.c , pi[1]->force.c , pi[0]->force.c );
-        cj.v = _mm_set_ps( pj[3]->force.c , pj[2]->force.c , pj[1]->force.c , pj[0]->force.c );
-        vi_sig.v = _mm_set_ps( pi[3]->force.v_sig , pi[2]->force.v_sig , pi[1]->force.v_sig , pi[0]->force.v_sig );
-        vj_sig.v = _mm_set_ps( pj[3]->force.v_sig , pj[2]->force.v_sig , pj[1]->force.v_sig , pj[0]->force.v_sig );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass );
+        piPOrho2.v = vec_set( pi[0]->force.POrho2 , pi[1]->force.POrho2 , pi[2]->force.POrho2 , pi[3]->force.POrho2 );
+        pjPOrho2.v = vec_set( pj[0]->force.POrho2 , pj[1]->force.POrho2 , pj[2]->force.POrho2 , pj[3]->force.POrho2 );
+        pirho.v = vec_set( pi[0]->rho , pi[1]->rho , pi[2]->rho , pi[3]->rho );
+        pjrho.v = vec_set( pj[0]->rho , pj[1]->rho , pj[2]->rho , pj[3]->rho );
+        ci.v = vec_set( pi[0]->force.c , pi[1]->force.c , pi[2]->force.c , pi[3]->force.c );
+        cj.v = vec_set( pj[0]->force.c , pj[1]->force.c , pj[2]->force.c , pj[3]->force.c );
+        vi_sig.v = vec_set( pi[0]->force.v_sig , pi[1]->force.v_sig , pi[2]->force.v_sig , pi[3]->force.v_sig );
+        vj_sig.v = vec_set( pj[0]->force.v_sig , pj[1]->force.v_sig , pj[2]->force.v_sig , pj[3]->force.v_sig );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = _mm_set_ps( pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = _mm_set_ps( pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
-            dx[k].v = _mm_set_ps( Dx[9+k] , Dx[6+k] , Dx[3+k] , Dx[0+k] );
-        balsara.v = _mm_set_ps( pi[3]->force.balsara , pi[2]->force.balsara , pi[1]->force.balsara , pi[0]->force.balsara ) +
-                    _mm_set_ps( pj[3]->force.balsara , pj[2]->force.balsara , pj[1]->force.balsara , pj[0]->force.balsara );
+            dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
+        balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara ) +
+                    vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara );
     #else
         #error
     #endif
