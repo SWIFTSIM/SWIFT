@@ -307,9 +307,9 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
                 
             /* Get the score for this task. */
             if ( res->cj == NULL )
-                score = 2 * ( res->ci->owner == rid );
+                score = 2 * ( res->ci->super->owner == rid );
             else
-                score = ( res->ci->owner == rid ) + ( res->cj->owner == rid );
+                score = ( res->ci->super->owner == rid ) + ( res->cj->super->owner == rid );
             if ( score <= score_best )
                 continue;
                 
@@ -367,9 +367,9 @@ struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep
             tid = qtid[ ind_best ];
             
             /* Own the cells involved. */
-            qtasks[ tid ].ci->owner = rid;
+            qtasks[ tid ].ci->super->owner = rid;
             if ( qtasks[ tid ].cj != NULL )
-                qtasks[ tid ].cj->owner = rid;
+                qtasks[ tid ].cj->super->owner = rid;
         
             /* Remove the task? */
             if ( keep ) {

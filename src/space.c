@@ -345,7 +345,6 @@ void space_rebuild ( struct space *s , double cell_max ) {
     int i, j, k, cdim[3], nr_parts = s->nr_parts;
     struct cell *restrict c;
     struct part *restrict finger, *restrict p, *parts = s->parts;
-    struct cpart *restrict cfinger;
     int *ind;
     double ih[3], dim[3];
     // ticks tic;
@@ -485,13 +484,10 @@ void space_rebuild ( struct space *s , double cell_max ) {
     /* Hook the cells up to the parts. */
     // tic = getticks();
     finger = s->parts;
-    cfinger = s->cparts;
     for ( k = 0 ; k < s->nr_cells ; k++ ) {
         c = &s->cells[ k ];
         c->parts = finger;
-        c->cparts = cfinger;
         finger = &finger[ c->count ];
-        cfinger = &cfinger[ c->count ];
         }
     // printf( "space_rebuild: hooking up cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
@@ -1353,7 +1349,6 @@ void space_split ( struct space *s , struct cell *c ) {
     double x[3];
     struct cell *temp;
     struct part *p, *parts = c->parts;
-    struct cpart *cp, *cparts = c->cparts;
     struct xpart *xp;
     
     /* Check the depth. */
@@ -1426,16 +1421,11 @@ void space_split ( struct space *s , struct cell *c ) {
         
         for ( k = 0 ; k < count ; k++ ) {
             p = &parts[k];
-            cp = &cparts[k];
             xp = p->xtras;
             xp->x_old[0] = x[0] = p->x[0];
             xp->x_old[1] = x[1] = p->x[1];
             xp->x_old[2] = x[2] = p->x[2];
-            cp->x[0] = x[0];
-            cp->x[1] = x[1];
-            cp->x[2] = x[2];
-            cp->h = h = p->h;
-            cp->dt = dt = p->dt;
+            dt = p->dt;
             if ( h > h_max )
                 h_max = h;
             if ( dt < dt_min )
@@ -1556,10 +1546,6 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->parts = parts;
     s->cell_min = h_max;
     
-    /* Allocate the cparts array. */
-    if ( posix_memalign( (void *)&s->cparts , 32 , N * sizeof(struct cpart) ) != 0 )
-        error( "Failed to allocate cparts." );
-        
     /* Allocate and link the xtra parts array. */
     if ( posix_memalign( (void *)&s->xparts , 32 , N * sizeof(struct xpart) ) != 0 )
         error( "Failed to allocate xparts." );

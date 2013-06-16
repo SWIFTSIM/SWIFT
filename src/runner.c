@@ -172,7 +172,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
 
     struct entry *finger;
     struct entry *fingers[8];
-    struct cpart *cparts = c->cparts;
+    struct part *parts = c->parts;
     int j, k, count = c->count;
     int i, ind, off[8], inds[8], temp_i, missing;
     // float shift[3];
@@ -274,9 +274,9 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
     
         /* Fill the sort array. */
         for ( k = 0 ; k < count ; k++ ) {
-            px[0] = cparts[k].x[0];
-            px[1] = cparts[k].x[1];
-            px[2] = cparts[k].x[2];
+            px[0] = parts[k].x[0];
+            px[1] = parts[k].x[1];
+            px[2] = parts[k].x[2];
             for ( j = 0 ; j < 13 ; j++ )
                 if ( flags & (1 << j) ) {
                     c->sort[ j*(count + 1) + k].i = k;
@@ -331,7 +331,6 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
 void runner_doghost ( struct runner *r , struct cell *c ) {
 
     struct part *p;
-    struct cpart *cp;
     struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
@@ -365,10 +364,9 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 
             /* Get a direct pointer on the part. */
             p = &c->parts[ pid[i] ];
-            cp = &c->cparts[ pid[i] ];
             
             /* Is this part within the timestep? */
-            if ( cp->dt <= dt_step ) {
+            if ( p->dt <= dt_step ) {
             
   	            /* Some smoothing length multiples. */
 	            h = p->h;
@@ -398,7 +396,6 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 
                 /* Apply the correction to p->h and to the compact part. */
                 p->h += h_corr;
-                cp->h = p->h;
 
                 /* Did we get the right number density? */
                 if ( wcount > kernel_nwneigh + const_delta_nwneigh ||
@@ -431,8 +428,8 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Compute the P/Omega/rho2. */
                 p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho + h * rho_dh / 3.0f );
 
-		/* Balsara switch */
-		p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
+		        /* Balsara switch */
+		        p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
                 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )

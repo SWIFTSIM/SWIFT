@@ -180,7 +180,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     double x[3], x_old[3];
     struct part *restrict p;
     struct xpart *restrict xp;
-    struct cpart *restrict cp;
 
     /* No children? */
     if ( !c->split ) {
@@ -197,7 +196,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             /* Get a handle on the kth particle. */
             p = &c->parts[k];
             xp = p->xtras;
-            cp = &c->cparts[k];
             
             /* Load the data locally. */
             a[0] = p->a[0]; a[1] = p->a[1]; a[2] = p->a[2];
@@ -246,13 +244,6 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
             h_max = fmaxf( h_max , h );
 
         
-            /* Fill the cpart. */
-            cp->x[0] = x[0];
-            cp->x[1] = x[1];
-            cp->x[2] = x[2];
-            cp->h = h;
-            cp->dt = pdt;
-            
             /* Integrate other values if this particle will not be updated. */
             /* Init fields for density calculation. */
             if ( pdt > dt_step ) {

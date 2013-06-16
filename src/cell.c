@@ -250,7 +250,6 @@ void cell_split ( struct cell *c  ) {
     for ( k = 0 ; k < 8 ; k++ ) {
         c->progeny[k]->count = right[k] - left[k] + 1;
         c->progeny[k]->parts = &c->parts[ left[k] ];
-        c->progeny[k]->cparts = &c->cparts[ left[k] ];
         }
         
     /* Verify that _all_ the parts have been assigned to a cell. */
