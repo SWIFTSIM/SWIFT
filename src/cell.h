@@ -55,7 +55,7 @@ struct cell {
     float dx_max;
     
     /* The depth of this cell in the tree. */
-    int depth, split;
+    int depth, split, maxdepth;
     
     /* Nr of parts. */
     int count;

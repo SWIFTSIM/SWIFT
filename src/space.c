@@ -922,7 +922,7 @@ void space_splittasks ( struct space *s ) {
             if ( ci->split ) {
             
             /* Make a sub? */
-            if ( space_dosub && ci->count < space_subsize ) {
+            if ( space_dosub && ci->count < space_subsize && ci->maxdepth - ci->depth < space_maxsubdepth ) {
             
                 /* convert to a self-subtask. */
                 t->type = task_type_sub;
@@ -981,6 +981,7 @@ void space_splittasks ( struct space *s ) {
                 /* Replace by a single sub-task? */
                 if ( space_dosub &&
                      ci->count < space_subsize && cj->count < space_subsize &&
+                     ci->maxdepth - ci->depth < space_maxsubdepth && cj->maxdepth - cj->depth < space_maxsubdepth &&
                      sid != 0 && sid != 2 && sid != 6 && sid != 8 ) {
                 
                     /* Make this task a sub task. */
@@ -1344,7 +1345,7 @@ void space_maketasks ( struct space *s , int do_sort ) {
  
 void space_split ( struct space *s , struct cell *c ) {
 
-    int k, count = c->count;
+    int k, count = c->count, maxdepth = 0;
     float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
     double x[3];
     struct cell *temp;
@@ -1397,16 +1398,16 @@ void space_split ( struct space *s , struct cell *c ) {
                 }
             else {
                 space_split( s , c->progeny[k] );
-                if ( c->progeny[k]->h_max > h_max )
-                    h_max = c->progeny[k]->h_max;
-                if ( c->progeny[k]->dt_min < dt_min )
-                    dt_min = c->progeny[k]->dt_min;
-                if ( c->progeny[k]->dt_max > dt_max )
-                    dt_max = c->progeny[k]->dt_max;
+                h_max = fmaxf( h_max , c->progeny[k]->h_max );
+                dt_min = fminf( dt_min , c->progeny[k]->dt_min );
+                dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
+                if ( c->progeny[k]->maxdepth > maxdepth )
+                    maxdepth = c->progeny[k]->maxdepth;
                 }
             c->h_max = h_max;
             c->dt_min = dt_min;
             c->dt_max = dt_max;
+            c->maxdepth = maxdepth;
                 
         }
         
@@ -1416,6 +1417,7 @@ void space_split ( struct space *s , struct cell *c ) {
         /* Clear the progeny. */
         bzero( c->progeny , sizeof(struct cell *) * 8 );
         c->split = 0;
+        c->maxdepth = c->depth;
         
         /* Get dt_min/dt_max. */
         
