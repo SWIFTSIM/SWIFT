@@ -238,8 +238,10 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                         break;
                     }
                 }
-        
+                
             }
+        else
+            res = NULL;
     
         /* Release the task lock. */
         if ( lock_unlock( qlock ) != 0 )
@@ -251,7 +253,7 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
     
         } /* while there are tasks. */
         
-    /* No beef. */
+    /* Take the money and run. */
     TIMER_TOC(queue_timer_gettask);
     return res;
 
