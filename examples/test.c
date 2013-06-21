@@ -874,9 +874,9 @@ int main ( int argc , char *argv[] ) {
     
     /* Inauguration speech. */
     if ( runs < INT_MAX )
-        printf( "main: starting for %i steps with %i threads and %i queues...\n" , runs , e.nr_threads , e.nr_queues );
+        printf( "main: starting for %i steps with %i threads and %i queues...\n" , runs , e.nr_threads , e.sched.nr_queues );
     else
-        printf( "main: starting for t=%.3e with %i threads and %i queues...\n" , clock , e.nr_threads , e.nr_queues );
+        printf( "main: starting for t=%.3e with %i threads and %i queues...\n" , clock , e.nr_threads , e.sched.nr_queues );
     fflush(stdout);
     
     /* Legend. */
@@ -893,7 +893,7 @@ int main ( int argc , char *argv[] ) {
         #endif
         
         /* Take a step. */
-        engine_step( &e , 0 );
+        engine_step( &e );
 
         if(j % 100 == 0)
             write_output(&e);
