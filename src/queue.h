@@ -20,6 +20,8 @@
 
 /* Some constants. */
 #define queue_maxhits            10
+#define queue_sizeinit           100
+#define queue_sizegrow           2
 
 
 /* The queue timers themselves. */
@@ -47,7 +49,7 @@ struct queue {
     lock_type lock;
 
     /* Size, count and next element. */
-    int size, count, next;
+    int size, count;
     
     /* The actual tasks to which the indices refer. */
     struct task *tasks;
@@ -59,8 +61,6 @@ struct queue {
     
 
 /* Function prototypes. */
-struct task *queue_gettask_old ( struct queue *q , int blocking , int keep );
-struct task *queue_gettask ( struct queue *q , int rid , int blocking , int keep );
-void queue_init ( struct queue *q , int size , struct task *tasks );
+struct task *queue_gettask ( struct queue *q , int qid , int blocking );
+void queue_init ( struct queue *q , struct task *tasks );
 void queue_insert ( struct queue *q , struct task *t );
-void queue_sort ( struct queue *q );

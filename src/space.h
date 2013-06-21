@@ -26,8 +26,6 @@
 #define space_splitratio                0.875f
 #define space_splitsize_default         400
 #define space_subsize_default           5000
-#define space_maxsubdepth               3
-#define space_dosub                     1
 #define space_stretch                   1.05f
 #define space_maxtaskspercell           31
 #define space_maxreldx                  0.2f
@@ -92,12 +90,6 @@ struct space {
     /* Is the space periodic? */
     int periodic;
     
-    /* The list of tasks. */
-    struct task *tasks;
-    int nr_tasks, tasks_next;
-    int tasks_size;
-    int *tasks_ind;
-    
     /* General-purpose lock for this space. */
     lock_type lock;
     
@@ -105,22 +97,14 @@ struct space {
 
 
 /* function prototypes. */
-void space_addsorts ( struct space *s , struct task *t , struct cell *ci , struct cell *cj , int sid );
 void parts_sort ( struct part *parts , int *ind , int N , int min , int max );
 struct cell *space_getcell ( struct space *s );
-struct task *space_gettask ( struct space *s );
-struct task *space_addtask ( struct space *s , int type , int subtype , int flags , int wait , struct cell *ci , struct cell *cj , int tight );
 int space_getsid ( struct space *s , struct cell **ci , struct cell **cj , double *shift );
 void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_max );
-void space_maketasks ( struct space *s , int do_sort );
 void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data );
 void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct cell *c , void *data ) , void *data );
 void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cell *c , void *data ) , void *data );
-int space_prepare ( struct space *s );
-void space_ranktasks ( struct space *s );
 void space_rebuild ( struct space *s , double h_max );
 void space_recycle ( struct space *s , struct cell *c );
 void space_split ( struct space *s , struct cell *c );
-
-
 

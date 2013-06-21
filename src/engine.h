@@ -46,11 +46,8 @@ struct engine {
     /* The running policy. */
     int policy;
     
-    /* The number of queues. */
-    int nr_queues;
-    
-    /* The queues. */
-    struct queue *queues;
+    /* The task scheduler. */
+    struct scheduler sched;
     
     /* The maximum dt to step (current). */
     float dt_step;
@@ -85,4 +82,5 @@ struct engine {
 void engine_barrier( struct engine *e );
 void engine_init ( struct engine *e , struct space *s , float dt , int nr_threads , int nr_queues , int policy );
 void engine_prepare ( struct engine *e );
-void engine_step ( struct engine *e , int sort_queues );
+void engine_step ( struct engine *e );
+void engine_maketasks ( struct engine *e );

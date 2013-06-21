@@ -37,6 +37,7 @@
 #include "task.h"
 #include "part.h"
 #include "space.h"
+#include "scheduler.h"
 #include "engine.h"
 #include "error.h"
 #include "kernel.h"

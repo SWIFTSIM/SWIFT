@@ -27,6 +27,7 @@
 #include "atomic.h"
 #include "lock.h"
 #include "task.h"
+#include "scheduler.h"
 #include "part.h"
 #include "cell.h"
 #include "space.h"

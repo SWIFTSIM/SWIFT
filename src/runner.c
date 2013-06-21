@@ -29,7 +29,6 @@
 #include <float.h>
 #include <limits.h>
 #include <omp.h>
-#include <sched.h>
 
 /* Local headers. */
 #include "cycle.h"
@@ -42,6 +41,7 @@
 #include "cell.h"
 #include "space.h"
 #include "queue.h"
+#include "scheduler.h"
 #include "engine.h"
 #include "runner.h"
 #include "runner_iact.h"
@@ -617,15 +617,10 @@ void *runner_main ( void *data ) {
 
     struct runner *r = (struct runner *)data;
     struct engine *e = r->e;
+    struct scheduler *sched = &e->sched;
     int threadID = r->id;
-    int k, qid, naq, keep, tpq;
-    struct queue *queues[ e->nr_queues ], *myq;
     struct task *t;
     struct cell *ci, *cj;
-    unsigned int myseed = rand() + r->id;
-    #ifdef TIMER
-        ticks stalled;
-    #endif
     
     /* Main loop. */
     while ( 1 ) {
@@ -633,88 +628,17 @@ void *runner_main ( void *data ) {
         /* Wait at the barrier. */
         engine_barrier( e );
         
-        /* Set some convenient local data. */
-        keep = e->policy & engine_policy_keep;
-        myq = &e->queues[ threadID * e->nr_queues / e->nr_threads ];
-        tpq = ceil( ((double)e->nr_threads) / e->nr_queues );
-        #ifdef TIMER
-            stalled = 0;
-        #endif
-        
-        /* Set up the local list of active queues. */
-        naq = e->nr_queues;
-        for ( k = 0 ; k < naq ; k++ )
-            queues[k] = &e->queues[k];
-    
-        /* Set up the local list of active queues. */
-        naq = e->nr_queues;
-        for ( k = 0 ; k < naq ; k++ )
-            queues[k] = &e->queues[k];
-    
         /* Loop while there are tasks... */
         while ( 1 ) {
         
-            /* Remove any inactive queues. */
-            for ( k = 0 ; k < naq ; k++ )
-                if ( queues[k]->next == queues[k]->count ) {
-                    naq -= 1;
-                    queues[k] = queues[naq];
-                    k -= 1;
-                    }
-            if ( naq == 0 )
-                break;
-        
             /* Get a task, how and from where depends on the policy. */
             TIMER_TIC
-            t = NULL;
-            if ( e->nr_queues == 1 ) {
-                t = queue_gettask_old( &e->queues[0] , 1 , 0 );
-                }
-            else if ( e->policy & engine_policy_steal ) {
-                if ( ( myq->next == myq->count ) ||
-                     ( t = queue_gettask( myq , r->id , 0 , 0 ) ) == NULL ) {
-                    TIMER_TIC2
-                    qid = rand_r( &myseed ) % naq;
-                    keep = ( e->policy & engine_policy_keep ) &&
-                           ( myq->count <= myq->size-tpq );
-                    if ( myq->next == myq->count )
-                        COUNT(runner_counter_steal_empty);
-                    else
-                        COUNT(runner_counter_steal_stall);
-                    t = queue_gettask( queues[qid] , r->id , 0 , keep );
-                    if ( t != NULL && keep )
-                        queue_insert( myq , t );
-                    TIMER_TOC2(timer_steal);
-                    }
-                }
-            else if ( e->policy & engine_policy_rand ) {
-                qid = rand_r( &myseed ) % naq;
-                t = queue_gettask( queues[qid] , r->id , e->policy & engine_policy_block , 0 );
-                }
-            else {
-                t = queue_gettask( &e->queues[threadID] , r->id , e->policy & engine_policy_block , 0 );
-                }
+            t = scheduler_gettask( sched , threadID );
             TIMER_TOC(timer_getpair);
             
             /* Did I get anything? */
-            if ( t == NULL ) {
-                COUNT(runner_counter_stall);
-                #ifdef TIMER
-                    if ( !stalled )
-                        stalled = getticks();
-                #endif
-                continue;
-                }
-            #ifdef TIMER
-            else if ( stalled ) {
-                timers_toc( timer_stalled , stalled );
-                #ifdef TIMER_VERBOSE
-                    printf( "runner_main[%02i]: stalled %.3f ms\n" , r->id , ((double)stalled) / CPU_TPS * 1000 );
-                    fflush(stdout);
-                #endif
-                stalled = 0;
-                }
-            #endif
+            if ( t == NULL )
+                break;
         
             /* Get the cells. */
             ci = t->ci;
@@ -731,7 +655,6 @@ void *runner_main ( void *data ) {
                         runner_doself2_force( r , ci );
                     else
                         error( "Unknown task subtype." );
-                    cell_unlocktree( ci );
                     break;
                 case task_type_pair:
                     if ( t->subtype == task_subtype_density )
@@ -740,12 +663,9 @@ void *runner_main ( void *data ) {
                         runner_dopair2_force( r , ci , cj );
                     else
                         error( "Unknown task subtype." );
-                    cell_unlocktree( ci );
-                    cell_unlocktree( cj );
                     break;
                 case task_type_sort:
                     runner_dosort( r , ci , t->flags , 1 );
-                    cell_unlocktree( ci );
                     break;
                 case task_type_sub:
                     if ( t->subtype == task_subtype_density )
@@ -754,9 +674,6 @@ void *runner_main ( void *data ) {
                         runner_dosub2_force( r , ci , cj , t->flags );
                     else
                         error( "Unknown task subtype." );
-                    cell_unlocktree( ci );
-                    if ( cj != NULL )
-                        cell_unlocktree( cj );
                     break;
                 case task_type_ghost:
                     if ( ci->super == ci )
@@ -769,25 +686,11 @@ void *runner_main ( void *data ) {
                     error( "Unknown task type." );
                 }
             t->toc = getticks();
-                
-            /* Resolve any dependencies. */
-            for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
-                if ( atomic_dec( &t->unlock_tasks[k]->wait ) == 0 )
-                    error( "Task negative wait." );
-        
-            } /* main loop. */
             
-    	/* Any leftover stalls? */    
-        #ifdef TIMER
-        if ( stalled ) {
-            timers_toc( timer_stalled , stalled );
-            #ifdef TIMER_VERBOSE
-                printf( "runner_main[%02i]: stalled %.3f ms\n" , r->id , ((double)stalled) / CPU_TPS * 1000 );
-                fflush(stdout);
-            #endif
-            stalled = 0;
-            }
-        #endif
+            /* We're done with this task. */
+            scheduler_done( sched , t );
+                
+            } /* main loop. */
             
         }
         
