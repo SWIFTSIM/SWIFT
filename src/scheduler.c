@@ -477,40 +477,40 @@ void scheduler_ranktasks ( struct scheduler *s ) {
     for ( k = nr_tasks-1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
         t->maxdepth = 0;
-        switch ( t->type ) {
-            case task_type_none:
-                t->weight = 0;
-                break;
-            case task_type_sort:
-                t->weight = t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
-                break;
-            case task_type_self:
-                t->weight = t->ci->count * t->ci->count;
-                break;
-            case task_type_pair:
-                t->weight = t->ci->count * t->cj->count;
-                break;
-            case task_type_sub:
-                if ( t->cj != NULL )
-                    t->weight = t->ci->count * t->cj->count;
-                else
-                    t->weight = t->ci->count * t->ci->count;
-                break;
-            case task_type_ghost:
-                if ( t->ci == t->ci->super )
-                    t->weight = t->ci->count;
-                else
-                    t->weight = 0;
-                break;
-            case task_type_kick2:
-                t->weight = t->ci->count;
-                break;
-            }
+        t->weight = 0;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
-            t->weight += t->unlock_tasks[j]->weight;
+            t->weight = t->unlock_tasks[j]->weight;
             if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
                 t->maxdepth = t->unlock_tasks[j]->maxdepth;
             }
+        t->maxdepth += 1;
+        if ( t->tic > 0 )
+            t->weight += t->toc - t->tic;
+        else
+            switch ( t->type ) {
+                case task_type_sort:
+                    t->weight += t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
+                    break;
+                case task_type_self:
+                    t->weight += t->ci->count * t->ci->count;
+                    break;
+                case task_type_pair:
+                    t->weight += t->ci->count * t->cj->count;
+                    break;
+                case task_type_sub:
+                    if ( t->cj != NULL )
+                        t->weight += t->ci->count * t->cj->count;
+                    else
+                        t->weight += t->ci->count * t->ci->count;
+                    break;
+                case task_type_ghost:
+                    if ( t->ci == t->ci->super )
+                        t->weight += t->ci->count;
+                    break;
+                case task_type_kick2:
+                    t->weight += t->ci->count;
+                    break;
+                }
         }
         
     }
