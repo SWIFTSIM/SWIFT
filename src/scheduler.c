@@ -662,32 +662,29 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
     /* Loop as long as there are tasks... */
     while ( s->waiting > 0 ) {
         
-        /* Try to get a task from the suggested queue. */
-        if ( ( res = queue_gettask( &s->queues[qid] , qid , 0 ) ) != NULL )
-            return res;
-            
-        /* If unsucessful, try stealing from the largest queue. */
-        if ( s->flags & scheduler_flag_steal ) {
-            int qids[ nr_queues ];
-            for ( k = 0 ; k < nr_queues ; k++ )
-                qids[k] = k;
-            /* int max_count = 0, max_ind = 0;
-            for ( k = 0 ; k < nr_queues ; k++ )
-                if ( k != qid && s->queues[k].count > max_count ) {
-                    max_ind = k;
-                    max_count = s->queues[k].count;
+        /* Try more than once before sleeping. */
+        for ( int tries = 0 ; tries < scheduler_flag_maxsteal ; tries++ ) {
+        
+            /* Try to get a task from the suggested queue. */
+            if ( ( res = queue_gettask( &s->queues[qid] , qid , 0 ) ) != NULL )
+                return res;
+
+            /* If unsucessful, try stealing from the largest queue. */
+            if ( s->flags & scheduler_flag_steal ){
+                int qids[ nr_queues ];
+                for ( k = 0 ; k < nr_queues ; k++ )
+                    qids[k] = k;
+                for ( k = 0 ; k < nr_queues ; k++ ) {
+                    int j = k + ( rand() % (nr_queues - k) );
+                    int temp = qids[j];
+                    qids[j] = qids[k];
+                    if ( temp == qid )
+                        continue;
+                    if ( s->queues[temp].count > 0 && ( res = queue_gettask( &s->queues[temp] , qid , 0 ) ) != NULL )
+                        return res;
                     }
-            if ( max_count > 0 && ( res = queue_gettask( &s->queues[ max_ind ] , qid , 0 ) ) != NULL )
-                return res; */
-            for ( k = 0 ; k < nr_queues ; k++ ) {
-                if ( k == qid )
-                    continue;
-                int j = k + ( rand() % (nr_queues - k) );
-                int temp = qids[j];
-                qids[j] = qids[k];
-                if ( s->queues[temp].count > 0 && ( res = queue_gettask( &s->queues[temp] , qid , 0 ) ) != NULL )
-                    return res;
                 }
+                
             }
             
         /* If we failed, take a short nap. */
