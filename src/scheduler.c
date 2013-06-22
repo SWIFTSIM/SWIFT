@@ -479,7 +479,8 @@ void scheduler_ranktasks ( struct scheduler *s ) {
         t->maxdepth = 0;
         t->weight = 0;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
-            t->weight = t->unlock_tasks[j]->weight;
+            if ( t->unlock_tasks[j]->weight > t->weight )
+                t->weight = t->unlock_tasks[j]->weight;
             if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
                 t->maxdepth = t->unlock_tasks[j]->maxdepth;
             }
