@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <pthread.h>
 
 /* Local headers. */
 #include "error.h"
@@ -627,7 +628,10 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
         }
         
     /* Task definitely done. */
+    pthread_mutex_lock( &s->sleep_mutex );
     atomic_dec( &s->waiting );
+    pthread_cond_broadcast( &s->sleep_cond );
+    pthread_mutex_unlock( &s->sleep_mutex );
 
     }
 
@@ -664,6 +668,12 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
             if ( max_count > 0 && ( res = queue_gettask( &s->queues[ max_ind ] , qid , 0 ) ) != NULL )
                 return res;
             }
+            
+        /* If we failed, take a short nap. */
+        pthread_mutex_lock( &s->sleep_mutex );
+        if ( s->waiting > 0 )
+            pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
+        pthread_mutex_unlock( &s->sleep_mutex );
         
         }
         
@@ -695,6 +705,11 @@ void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues 
     /* Initialize each queue. */
     for ( k = 0 ; k < nr_queues ; k++ )
         queue_init( &s->queues[k] , NULL );
+        
+    /* Init the sleep mutex and cond. */
+    if ( pthread_cond_init( &s->sleep_cond , NULL ) != 0 ||
+         pthread_mutex_init( &s->sleep_mutex , NULL ) != 0 )
+        error( "Failed to initialize sleep barrier." );
         
     /* Set the scheduler variables. */
     s->nr_queues = nr_queues;

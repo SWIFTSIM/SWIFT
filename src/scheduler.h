@@ -56,6 +56,10 @@ struct scheduler {
     /* Lock for this scheduler. */
     lock_type lock;
     
+    /* Waiting queue. */
+    pthread_mutex_t sleep_mutex;
+    pthread_cond_t sleep_cond;
+    
     /* The space associated with this scheduler. */
     struct space *space;
 
