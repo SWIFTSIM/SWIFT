@@ -104,7 +104,7 @@ void queue_insert ( struct queue *q , struct task *t ) {
     
     /* Shuffle up. */
     for ( int k = q->count - 1 ; k > 0 ; k /= 2 )
-        if ( q->tasks[ q->tid[k] ].maxdepth > q->tasks[ q->tid[k/2] ].maxdepth ) {
+        if ( q->tasks[ q->tid[k] ].weight > q->tasks[ q->tid[k/2] ].weight ) {
             int temp = q->tid[k];
             q->tid[k] = q->tid[k/2];
             q->tid[k/2] = temp;
@@ -234,9 +234,9 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                     int i = 2*k;
                     if ( i >= q->count )
                         break;
-                    if ( i+1 < q->count && qtasks[ qtid[i+1] ].maxdepth > qtasks[ qtid[i] ].maxdepth )
+                    if ( i+1 < q->count && qtasks[ qtid[i+1] ].weight > qtasks[ qtid[i] ].weight )
                         i += 1;
-                    if ( qtasks[ qtid[i] ].maxdepth > qtasks[ qtid[k] ].maxdepth ) {
+                    if ( qtasks[ qtid[i] ].weight > qtasks[ qtid[k] ].weight ) {
                         int temp = qtid[i];
                         qtid[i] = qtid[k];
                         qtid[k] = temp;
