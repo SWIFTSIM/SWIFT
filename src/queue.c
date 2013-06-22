@@ -156,9 +156,10 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  
 struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
 
-    int k, qcount, *qtid = q->tid;
+    int k, qcount, *qtid, type;
     lock_type *qlock = &q->lock;
-    struct task *qtasks = q->tasks, *res = NULL;
+    struct task *qtasks, *res = NULL;
+    struct cell *ci, *cj;
     TIMER_TIC
     
     /* If there are no tasks, leave immediately. */
@@ -174,31 +175,38 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
         if ( lock_lock( qlock ) != 0 )
             error( "Locking the qlock failed.\n" );
             
+        /* Set some pointers we will use often. */
+        qtid = q->tid;
+        qtasks = q->tasks;
+            
         /* Loop over the remaining task IDs. */
         qcount = q->count;
         for ( k = 0 ; k < qcount ; k++ ) {
         
             /* Put a finger on the task. */
             res = &qtasks[ qtid[k] ];
+            ci = res->ci;
+            cj = res->cj;
+            type = res->type;
             
             /* Is this task blocked? */
             if ( res->wait )
                 continue;
                 
             /* Try to lock ci. */
-            if ( res->type == task_type_self || 
-                 res->type == task_type_sort || 
-                 (res->type == task_type_sub && res->cj == NULL) ) {
-                if ( cell_locktree( res->ci ) != 0 )
+            if ( type == task_type_self || 
+                 type == task_type_sort || 
+                 (type == task_type_sub && cj == NULL) ) {
+                if ( cell_locktree( ci ) != 0 )
                     continue;
                 }
-            else if ( res->type == task_type_pair || (res->type == task_type_sub && res->cj != NULL) ) {
-                if ( res->ci->hold || res->cj->hold || res->ci->wait || res->cj->wait )
+            else if ( type == task_type_pair || (type == task_type_sub && cj != NULL) ) {
+                if ( ci->hold || cj->hold || ci->wait || cj->wait )
                     continue;
-                if ( cell_locktree( res->ci ) != 0 )
+                if ( cell_locktree( ci ) != 0 )
                     continue;
-                if ( cell_locktree( res->cj ) != 0 ) {
-                    cell_unlocktree( res->ci );
+                if ( cell_locktree( cj ) != 0 ) {
+                    cell_unlocktree( ci );
                     continue;
                     }
                 }
@@ -215,9 +223,9 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
             q->count -= 1;
         
             /* Own the cells involved. */
-            res->ci->super->owner = qid;
-            if ( res->cj != NULL )
-                res->cj->super->owner = qid;
+            ci->super->owner = qid;
+            if ( cj != NULL )
+                cj->super->owner = qid;
                 
             /* Swap this task with the last task and re-heap. */
             if ( k < q->count ) {
