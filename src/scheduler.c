@@ -103,9 +103,9 @@ void scheduler_splittasks ( struct scheduler *s ) {
                       { -1 , -1 , -1 , -1 , -1 , 12 , 10 ,  9 } ,
                       { -1 , -1 , -1 , -1 , -1 , -1 , 11 , 10 } ,
                       { -1 , -1 , -1 , -1 , -1 , -1 , -1 , 12 } };
-    float sid_scale[13] = { 0.036f , 0.162f , 0.036f , 0.162f , 0.335f , 0.162f ,
-                            0.036f , 0.162f , 0.036f , 0.162f , 0.335f , 0.162f , 
-                            0.335f };
+    float sid_scale[13] = { 0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 ,
+                            0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 , 
+                            0.5788 };
 
     /* Loop through the tasks... */
     // #pragma omp parallel default(none) shared(s,tid,pts,space_subsize) private(ind,j,k,t,t_old,redo,ci,cj,hi,hj,sid,shift)
