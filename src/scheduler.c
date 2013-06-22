@@ -657,7 +657,7 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
 struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
 
     struct task *res;
-    int k;
+    int k, nr_queues = s->nr_queues;
 
     /* Loop as long as there are tasks... */
     while ( s->waiting > 0 ) {
@@ -668,17 +668,26 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
             
         /* If unsucessful, try stealing from the largest queue. */
         if ( s->flags & scheduler_flag_steal ) {
+            int qids[ nr_queues ];
+            for ( k = 0 ; k < nr_queues ; k++ )
+                qids[k] = k;
             /* int max_count = 0, max_ind = 0;
-            for ( k = 0 ; k < s->nr_queues ; k++ )
+            for ( k = 0 ; k < nr_queues ; k++ )
                 if ( k != qid && s->queues[k].count > max_count ) {
                     max_ind = k;
                     max_count = s->queues[k].count;
                     }
             if ( max_count > 0 && ( res = queue_gettask( &s->queues[ max_ind ] , qid , 0 ) ) != NULL )
                 return res; */
-            for ( k = 0 ; k < s->nr_queues ; k++ )
-                if ( s->queues[k].count > 0 && ( res = queue_gettask( &s->queues[ k ] , qid , 0 ) ) != NULL )
+            for ( k = 0 ; k < nr_queues ; k++ ) {
+                if ( k == qid )
+                    continue;
+                int j = k + ( rand() % (nr_queues - k) );
+                int temp = qids[j];
+                qids[j] = qids[k];
+                if ( s->queues[temp].count > 0 && ( res = queue_gettask( &s->queues[temp] , qid , 0 ) ) != NULL )
                     return res;
+                }
             }
             
         /* If we failed, take a short nap. */
