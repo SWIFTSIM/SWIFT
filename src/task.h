@@ -51,7 +51,7 @@ extern const char *taskID_names[];
 struct task {
 
     char type, subtype, skip, tight;
-    int flags, wait, rank;
+    int flags, wait, rank, maxdepth;
     
     lock_type lock;
     

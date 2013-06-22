@@ -854,7 +854,7 @@ void engine_step ( struct engine *e ) {
  
 void engine_init ( struct engine *e , struct space *s , float dt , int nr_threads , int nr_queues , int policy ) {
 
-    #if defined(HAVE_SETAFFINITY)
+    #if defined(NO_HAVE_SETAFFINITY)
         cpu_set_t cpuset;
     #endif
     int k;
@@ -900,7 +900,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         e->runners[k].e = e;
         if ( pthread_create( &e->runners[k].thread , NULL , &runner_main , &e->runners[k] ) != 0 )
             error( "Failed to create runner thread." );
-        #if defined(HAVE_SETAFFINITY)
+        #if defined(NO_HAVE_SETAFFINITY)
             /* Set the cpu mask to zero | e->id. */
             CPU_ZERO( &cpuset );
             CPU_SET( e->runners[k].id , &cpuset );

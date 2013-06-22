@@ -473,6 +473,15 @@ void scheduler_ranktasks ( struct scheduler *s ) {
             
         }
         
+    /* Run throught the tasks backwards and set their maxdepth. */
+    for ( k = nr_tasks-1 ; k >= 0 ; k-- ) {
+        t = &tasks[ tid[k] ];
+        t->maxdepth = 0;
+        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
+            if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
+                t->maxdepth = t->unlock_tasks[j]->maxdepth;
+        }
+        
     }
 
 
