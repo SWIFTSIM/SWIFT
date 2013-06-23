@@ -754,11 +754,17 @@ void engine_step ( struct engine *e ) {
                 break;
             }
         } */
-    for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
-        #pragma omp task
-        engine_map_kick_first( &e->s->cells[k] , e );
+    #pragma omp parallel private(k)
+    {
+        #pragma omp single
+        {
+            for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
+                #pragma omp task
+                engine_map_kick_first( &e->s->cells[k] , e );
+                }
+            }
+        #pragma omp taskwait
         }
-    #pragma omp taskwait
     TIMER_TOC( timer_kick1 );
         
     // for(k=0; k<10; ++k)
