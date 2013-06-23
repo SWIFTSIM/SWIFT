@@ -563,47 +563,47 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
     // #pragma omp parallel for schedule(static) private(t,j)
     for ( k = s->nr_tasks-1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
-        if ( ( (1 << t->type) & mask ) && !t->skip ) {
-            for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
-                atomic_inc( &t->unlock_tasks[j]->wait );
-            t->maxdepth = 0;
-            t->weight = 0;
-            for ( j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
-                if ( t->unlock_tasks[j]->weight > t->weight )
-                    t->weight = t->unlock_tasks[j]->weight;
-                if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
-                    t->maxdepth = t->unlock_tasks[j]->maxdepth;
-                }
-            t->maxdepth += 1;
-            if ( t->tic > 0 )
-                t->weight += t->toc - t->tic;
-            else
-                switch ( t->type ) {
-                    case task_type_sort:
-                        t->weight += t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
-                        break;
-                    case task_type_self:
-                        t->weight += t->ci->count * t->ci->count;
-                        break;
-                    case task_type_pair:
-                        t->weight += t->ci->count * t->cj->count;
-                        break;
-                    case task_type_sub:
-                        if ( t->cj != NULL )
-                            t->weight += t->ci->count * t->cj->count;
-                        else
-                            t->weight += t->ci->count * t->ci->count;
-                        break;
-                    case task_type_ghost:
-                        if ( t->ci == t->ci->super )
-                            t->weight += t->ci->count;
-                        break;
-                    case task_type_kick1:
-                    case task_type_kick2:
-                        t->weight += t->ci->count;
-                        break;
-                    }
+        if ( !( (1 << t->type) & mask ) || !t->skip )
+            continue;
+        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
+            atomic_inc( &t->unlock_tasks[j]->wait );
+        t->maxdepth = 0;
+        t->weight = 0;
+        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
+            if ( t->unlock_tasks[j]->weight > t->weight )
+                t->weight = t->unlock_tasks[j]->weight;
+            if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
+                t->maxdepth = t->unlock_tasks[j]->maxdepth;
             }
+        t->maxdepth += 1;
+        if ( t->tic > 0 )
+            t->weight += t->toc - t->tic;
+        else
+            switch ( t->type ) {
+                case task_type_sort:
+                    t->weight += t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
+                    break;
+                case task_type_self:
+                    t->weight += t->ci->count * t->ci->count;
+                    break;
+                case task_type_pair:
+                    t->weight += t->ci->count * t->cj->count;
+                    break;
+                case task_type_sub:
+                    if ( t->cj != NULL )
+                        t->weight += t->ci->count * t->cj->count;
+                    else
+                        t->weight += t->ci->count * t->ci->count;
+                    break;
+                case task_type_ghost:
+                    if ( t->ci == t->ci->super )
+                        t->weight += t->ci->count;
+                    break;
+                case task_type_kick1:
+                case task_type_kick2:
+                    t->weight += t->ci->count;
+                    break;
+                }
         }
         
     /* Loop over the tasks and enqueue whoever is ready. */
@@ -636,7 +636,6 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
         case task_type_self:
         case task_type_sort:
         case task_type_ghost:
-        case task_type_kick1:
         case task_type_kick2:
             qid = t->ci->super->owner;
             break;

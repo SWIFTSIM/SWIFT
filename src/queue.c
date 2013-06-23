@@ -103,19 +103,19 @@ void queue_insert ( struct queue *q , struct task *t ) {
     q->count += 1;
     
     /* Shuffle up. */
-    /* for ( int k = q->count - 1 ; k > 0 ; k = (k-1)/2 )
+    for ( int k = q->count - 1 ; k > 0 ; k = (k-1)/2 )
         if ( q->tasks[ q->tid[k] ].weight > q->tasks[ q->tid[(k-1)/2] ].weight ) {
             int temp = q->tid[k];
             q->tid[k] = q->tid[(k-1)/2];
             q->tid[(k-1)/2] = temp;
             }
         else
-            break; */
-    for ( int k = q->count - 1 ; k > 0 && q->tasks[ q->tid[k-1] ].weight < q->tasks[ q->tid[k] ].weight ; k-- ) {
+            break;
+    /* for ( int k = q->count - 1 ; k > 0 && q->tasks[ q->tid[k-1] ].weight < q->tasks[ q->tid[k] ].weight ; k-- ) {
         int temp = q->tid[k];
         q->tid[k] = q->tid[k-1];
         q->tid[k-1] = temp;
-        }
+        } */
             
     /* Verify queue consistency. */
     /* for ( int k = 1 ; k < q->count ; k++ )
@@ -238,7 +238,7 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                 cj->super->owner = qid;
                 
             /* Swap this task with the last task and re-heap. */
-            /* if ( k < qcount ) {
+            if ( k < qcount ) {
                 qtid[ k ] = qtid[ qcount ];
                 while ( qtasks[ qtid[k] ].weight > qtasks[ qtid[(k-1)/2] ].weight ) {
                     int temp = q->tid[k];
@@ -246,6 +246,7 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                     q->tid[(k-1)/2] = temp;
                     k = (k-1)/2;
                     }
+                int i;
                 while ( ( i = 2*k+1 ) < qcount ) {
                     if ( i+1 < qcount && qtasks[ qtid[i+1] ].weight > qtasks[ qtid[i] ].weight )
                         i += 1;
@@ -258,14 +259,14 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                     else
                         break;
                     }
-                } */
-            qtid[ k ] = qtid[ qcount ];
+                }
+            /* qtid[ k ] = qtid[ qcount ];
             while ( k < qcount-1 && qtasks[ qtid[k+1] ].weight > qtasks[ qtid[k] ].weight ) {
                 temp = qtid[k];
                 qtid[k] = qtid[k+1];
                 qtid[k+1] = temp;
                 k += 1;
-                }
+                } */
                 
             /* Verify queue consistency. */
             /* for ( k = 1 ; k < q->count ; k++ )
