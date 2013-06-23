@@ -732,8 +732,12 @@ void engine_step ( struct engine *e ) {
         while ( 1 ) {
             #pragma omp critical
             myk = k++;
-            if ( myk < e->s->nr_cells )
+            if ( myk < e->s->nr_cells ) {
+                e->s->cells[myk].tic = getticks();
+                e->s->cells[myk].tid = omp_get_thread_num();
                 engine_map_kick_first( &e->s->cells[myk] , e );
+                e->s->cells[myk].toc = getticks();
+                }
             else
                 break;
             }

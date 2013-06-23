@@ -117,6 +117,10 @@ struct cell {
     /* Linking pointer for "memory management". */
     struct cell *next;
     
+    /* Timing stuff. */
+    ticks tic, toc;
+    int tid;
+    
     } __attribute__((aligned (64)));
 
 
