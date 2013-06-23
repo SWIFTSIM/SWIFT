@@ -103,14 +103,19 @@ void queue_insert ( struct queue *q , struct task *t ) {
     q->count += 1;
     
     /* Shuffle up. */
-    for ( int k = q->count - 1 ; k > 0 ; k /= 2 )
-        if ( q->tasks[ q->tid[k] ].weight > q->tasks[ q->tid[k/2] ].weight ) {
+    for ( int k = q->count - 1 ; k > 0 ; k = (k-1)/2 )
+        if ( q->tasks[ q->tid[k] ].weight > q->tasks[ q->tid[(k-1)/2] ].weight ) {
             int temp = q->tid[k];
-            q->tid[k] = q->tid[k/2];
-            q->tid[k/2] = temp;
+            q->tid[k] = q->tid[(k-1)/2];
+            q->tid[(k-1)/2] = temp;
             }
         else
             break;
+            
+    /* Verify queue consistency. */
+    /* for ( int k = 1 ; k < q->count ; k++ )
+        if ( q->tasks[ q->tid[(k-1)/2] ].weight < q->tasks[ q->tid[k] ].weight )
+            error( "Queue not heaped." ); */
     
     /* Unlock the queue. */
     if ( lock_unlock( &q->lock ) != 0 )
@@ -156,7 +161,7 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  
 struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
 
-    int k, qcount, *qtid, type;
+    int k, kk, i, temp, qcount, *qtid, type;
     lock_type *qlock = &q->lock;
     struct task *qtasks, *res = NULL;
     struct cell *ci, *cj;
@@ -178,9 +183,9 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
         /* Set some pointers we will use often. */
         qtid = q->tid;
         qtasks = q->tasks;
+        qcount = q->count;
             
         /* Loop over the remaining task IDs. */
-        qcount = q->count;
         for ( k = 0 ; k < qcount ; k++ ) {
         
             /* Put a finger on the task. */
@@ -220,7 +225,7 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
         if ( k < qcount ) {
         
             /* Another one bites the dust. */
-            q->count -= 1;
+            qcount = q->count -= 1;
         
             /* Own the cells involved. */
             ci->super->owner = qid;
@@ -228,16 +233,21 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                 cj->super->owner = qid;
                 
             /* Swap this task with the last task and re-heap. */
-            if ( k < q->count ) {
-                qtid[ k ] = qtid[ q->count ];
-                while ( 1 ) {
-                    int i = 2*k;
-                    if ( i >= q->count )
-                        break;
-                    if ( i+1 < q->count && qtasks[ qtid[i+1] ].weight > qtasks[ qtid[i] ].weight )
+            kk = k;
+            k = kk;
+            if ( k < qcount ) {
+                qtid[ k ] = qtid[ qcount ];
+                while ( qtasks[ qtid[k] ].weight > qtasks[ qtid[(k-1)/2] ].weight ) {
+                    int temp = q->tid[k];
+                    q->tid[k] = q->tid[(k-1)/2];
+                    q->tid[(k-1)/2] = temp;
+                    k = (k-1)/2;
+                    }
+                while ( ( i = 2*k+1 ) < qcount ) {
+                    if ( i+1 < qcount && qtasks[ qtid[i+1] ].weight > qtasks[ qtid[i] ].weight )
                         i += 1;
                     if ( qtasks[ qtid[i] ].weight > qtasks[ qtid[k] ].weight ) {
-                        int temp = qtid[i];
+                        temp = qtid[i];
                         qtid[i] = qtid[k];
                         qtid[k] = temp;
                         k = i;
@@ -247,6 +257,11 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                     }
                 }
                 
+            /* Verify queue consistency. */
+            /* for ( k = 1 ; k < q->count ; k++ )
+                if ( q->tasks[ q->tid[(k-1)/2] ].weight < q->tasks[ q->tid[k] ].weight )
+                    error( "Queue not heaped." ); */
+    
             }
         else
             res = NULL;

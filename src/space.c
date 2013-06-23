@@ -758,6 +758,7 @@ struct cell *space_getcell ( struct space *s ) {
     bzero( c , sizeof(struct cell) );
     if ( lock_init( &c->lock ) != 0 )
         error( "Failed to initialize cell spinlock." );
+    c->owner = -1;
         
     /* Unlock the space. */
     lock_unlock_blind( &s->lock );
