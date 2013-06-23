@@ -476,47 +476,6 @@ void scheduler_ranktasks ( struct scheduler *s ) {
             
         }
         
-    /* Run throught the tasks backwards and set their weight and maxdepth. */
-    for ( k = nr_tasks-1 ; k >= 0 ; k-- ) {
-        t = &tasks[ tid[k] ];
-        t->maxdepth = 0;
-        t->weight = 0;
-        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
-            if ( t->unlock_tasks[j]->weight > t->weight )
-                t->weight = t->unlock_tasks[j]->weight;
-            if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
-                t->maxdepth = t->unlock_tasks[j]->maxdepth;
-            }
-        t->maxdepth += 1;
-        if ( t->tic > 0 )
-            t->weight += t->toc - t->tic;
-        else
-            switch ( t->type ) {
-                case task_type_sort:
-                    t->weight += t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
-                    break;
-                case task_type_self:
-                    t->weight += t->ci->count * t->ci->count;
-                    break;
-                case task_type_pair:
-                    t->weight += t->ci->count * t->cj->count;
-                    break;
-                case task_type_sub:
-                    if ( t->cj != NULL )
-                        t->weight += t->ci->count * t->cj->count;
-                    else
-                        t->weight += t->ci->count * t->ci->count;
-                    break;
-                case task_type_ghost:
-                    if ( t->ci == t->ci->super )
-                        t->weight += t->ci->count;
-                    break;
-                case task_type_kick2:
-                    t->weight += t->ci->count;
-                    break;
-                }
-        }
-        
     }
 
 
@@ -568,16 +527,54 @@ void scheduler_reset ( struct scheduler *s , int size ) {
  
 void scheduler_start ( struct scheduler *s ) {
 
-    int k, j;
-    struct task *t;
+    int k, j, *tid = s->tasks_ind;
+    struct task *t, *tasks = s->tasks;
     
-    /* Run through the tasks and get all the waits right. */
+    /* Run throught the tasks backwards and set their waits,
+       weights and maxdepths. */
     // #pragma omp parallel for schedule(static) private(t,j)
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        t = &s->tasks[k];
-        if ( !t->skip )
+    for ( k = s->nr_tasks-1 ; k >= 0 ; k-- ) {
+        t = &tasks[ tid[k] ];
+        if ( !t->skip ) {
             for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
                 atomic_inc( &t->unlock_tasks[j]->wait );
+            t->maxdepth = 0;
+            t->weight = 0;
+            for ( j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
+                if ( t->unlock_tasks[j]->weight > t->weight )
+                    t->weight = t->unlock_tasks[j]->weight;
+                if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
+                    t->maxdepth = t->unlock_tasks[j]->maxdepth;
+                }
+            t->maxdepth += 1;
+            if ( t->tic > 0 )
+                t->weight += t->toc - t->tic;
+            else
+                switch ( t->type ) {
+                    case task_type_sort:
+                        t->weight += t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
+                        break;
+                    case task_type_self:
+                        t->weight += t->ci->count * t->ci->count;
+                        break;
+                    case task_type_pair:
+                        t->weight += t->ci->count * t->cj->count;
+                        break;
+                    case task_type_sub:
+                        if ( t->cj != NULL )
+                            t->weight += t->ci->count * t->cj->count;
+                        else
+                            t->weight += t->ci->count * t->ci->count;
+                        break;
+                    case task_type_ghost:
+                        if ( t->ci == t->ci->super )
+                            t->weight += t->ci->count;
+                        break;
+                    case task_type_kick2:
+                        t->weight += t->ci->count;
+                        break;
+                    }
+            }
         }
         
     /* Loop over the tasks and enqueue whoever is ready. */
