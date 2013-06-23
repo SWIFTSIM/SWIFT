@@ -422,6 +422,10 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
     /* No children? */
     if ( !c->split ) {
     
+        /* Store the timer. */
+        c->tic = getticks();
+        c->tid = omp_get_thread_num();
+    
         /* Init the min/max counters. */
         dt_min = FLT_MAX;
         dt_max = 0.0f;
@@ -504,6 +508,9 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
                 
             }
             
+        /* Store the timer. */
+        c->toc = getticks();
+    
         }
         
     /* Otherwise, agregate data from children. */
