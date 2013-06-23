@@ -39,7 +39,7 @@
 #include "error.h"
 
 /* Task type names. */
-const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" , "sub" , "ghost" , "kick2" };
+const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" , "sub" , "ghost" , "kick1" , "kick2" };
 
 
 /**

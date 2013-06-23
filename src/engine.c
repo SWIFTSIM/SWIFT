@@ -70,7 +70,7 @@ void engine_maketasks ( struct engine *e ) {
     struct cell *ci, *cj;
 
     /* Re-set the scheduler. */
-    scheduler_reset( sched , s->tot_cells * space_maxtaskspercell );
+    scheduler_reset( sched , s->tot_cells * engine_maxtaskspercell );
     
     /* Run through the highest level of cells and add pairs. */
     for ( i = 0 ; i < cdim[0] ; i++ )
@@ -351,7 +351,12 @@ void engine_prepare ( struct engine *e ) {
         }
 
     /* Start the scheduler. */
-    scheduler_start( &e->sched );
+    scheduler_start( &e->sched , (1 << task_type_sort) | 
+                                 (1 << task_type_self) |
+                                 (1 << task_type_pair) | 
+                                 (1 << task_type_sub) |
+                                 (1 << task_type_ghost) | 
+                                 (1 << task_type_kick2) );
     
     TIMER_TOC( timer_prepare );
     
@@ -403,151 +408,6 @@ void engine_barrier( struct engine *e ) {
     }
     
     
-/**
- * @brief Mapping function to set dt_min and dt_max, do the first
- * kick.
- */
-
-void engine_map_kick_first ( struct cell *c , void *data ) {
-
-    int j, k;
-    struct engine *e = (struct engine *)data;
-    float pdt, dt_step = e->dt_step, dt = e->dt, hdt = 0.5f*dt;
-    float dt_min, dt_max, h_max, dx, dx_max;
-    float a[3], v[3], u, u_dt, h, h_dt, v_old[3], w, rho;
-    double x[3], x_old[3];
-    struct part *restrict p;
-    struct xpart *restrict xp;
-
-    /* No children? */
-    if ( !c->split ) {
-    
-        /* Store the timer. */
-        c->tic = getticks();
-        c->tid = omp_get_thread_num();
-    
-        /* Init the min/max counters. */
-        dt_min = FLT_MAX;
-        dt_max = 0.0f;
-        h_max = 0.0f;
-        dx_max = 0.0f;
-    
-        /* Loop over parts. */
-        for ( k = 0 ; k < c->count ; k++ ) {
-            
-            /* Get a handle on the kth particle. */
-            p = &c->parts[k];
-            xp = p->xtras;
-            
-            /* Load the data locally. */
-            a[0] = p->a[0]; a[1] = p->a[1]; a[2] = p->a[2];
-            v[0] = p->v[0]; v[1] = p->v[1]; v[2] = p->v[2];
-            x[0] = p->x[0]; x[1] = p->x[1]; x[2] = p->x[2];
-            x_old[0] = xp->x_old[0]; x_old[1] = xp->x_old[1]; x_old[2] = xp->x_old[2];
-            h = p->h;
-            u = p->u;
-            h_dt = p->force.h_dt;
-            u_dt = p->force.u_dt;
-            pdt = p->dt;
-            
-            /* Store the min/max dt. */
-            dt_min = fminf( dt_min , pdt );
-            dt_max = fmaxf( dt_max , pdt );
-            
-            /* Step and store the velocity and internal energy. */
-            xp->v_old[0] = v_old[0] = v[0] + hdt * a[0];
-            xp->v_old[1] = v_old[1] = v[1] + hdt * a[1];
-            xp->v_old[2] = v_old[2] = v[2] + hdt * a[2];
-            xp->u_old = p->u + hdt * p->force.u_dt;
-
-            /* Move the particles with the velocitie at the half-step. */
-            p->x[0] = x[0] += dt * v_old[0];
-            p->x[1] = x[1] += dt * v_old[1];
-            p->x[2] = x[2] += dt * v_old[2];
-            dx = sqrtf( (x[0] - x_old[0])*(x[0] - x_old[0]) +
-                        (x[1] - x_old[1])*(x[1] - x_old[1]) +
-                        (x[2] - x_old[2])*(x[2] - x_old[2]) );
-            dx_max = fmaxf( dx_max , dx );
-
-            /* Update positions and energies at the half-step. */
-            p->v[0] = v[0] += dt * a[0];
-            p->v[1] = v[1] += dt * a[1];
-            p->v[2] = v[2] += dt * a[2];
-            w = u_dt / u * dt;
-            if ( fabsf( w ) < 0.01f )
-                p->u = u *= 1.0f + w*( 1.0f + w*( 0.5f + w*( 1.0f/6.0f + 1.0f/24.0f*w ) ) );
-            else
-                p->u = u *= expf( w );
-            w = h_dt / h * dt;
-            if ( fabsf( w ) < 0.01f )
-                p->h = h *= 1.0f + w*( 1.0f + w*( 0.5f + w*( 1.0f/6.0f + 1.0f/24.0f*w ) ) );
-            else
-                p->h = h *= expf( w );
-            h_max = fmaxf( h_max , h );
-
-        
-            /* Integrate other values if this particle will not be updated. */
-            /* Init fields for density calculation. */
-            if ( pdt > dt_step ) {
-                float w = -3.0f * h_dt / h * dt;
-                if ( fabsf( w ) < 0.1f )
-                    rho = p->rho *= 1.0f + w*( 1.0f + w*( 0.5f + w*(1.0f/6.0f + 1.0f/24.0f*w ) ) );
-                else
-                    rho = p->rho *= expf( w );
-                p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho * xp->omega );
-                }
-            else {
-                p->density.wcount = 0.0f;
-                p->density.wcount_dh = 0.0f;
-                p->rho = 0.0f;
-                p->rho_dh = 0.0f;
-	            p->density.div_v = 0.0f;
-	            for ( j = 0 ; j < 3 ; ++j)
-	                p->density.curl_v[j] = 0.0f;
-                }
-                
-            }
-            
-        /* Store the timer. */
-        c->toc = getticks();
-    
-        }
-        
-    /* Otherwise, agregate data from children. */
-    else {
-    
-        /* Init with the first non-null child. */
-        dt_min = FLT_MAX;
-        dt_max = 0.0f;
-        h_max = 0.0f;
-        dx_max = 0.0f;
-        
-        /* Loop over the remaining progeny. */
-        for ( k = 0 ; k < 8 ; k++ )
-            if ( c->progeny[k] != NULL ) {
-                #pragma omp task
-                engine_map_kick_first( c->progeny[k] , e );
-                }
-        #pragma omp taskwait
-        for ( k = 0 ; k < 8 ; k++ )
-            if ( c->progeny[k] != NULL ) {
-                dt_min = fminf( dt_min , c->progeny[k]->dt_min );
-                dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
-                h_max = fmaxf( h_max , c->progeny[k]->h_max );
-                dx_max = fmaxf( dx_max , c->progeny[k]->dx_max );
-                }
-    
-        }
-
-    /* Store the values. */
-    c->dt_min = dt_min;
-    c->dt_max = dt_max;
-    c->h_max = h_max;
-    c->dx_max = dx_max;
-    
-    }
-
-
 /**
  * @brief Mapping function to collect the data from the second kick.
  */
@@ -736,36 +596,20 @@ void engine_step ( struct engine *e ) {
     
     /* First kick. */
     TIMER_TIC
-    // space_map_cells_post( e->s , 1 , &engine_map_kick_first , e );
-    /* k = 0;
-    #pragma omp parallel shared(k,e)
-    {
-        int myk;
-        while ( 1 ) {
-            #pragma omp critical
-            myk = k++;
-            if ( myk < e->s->nr_cells ) {
-                e->s->cells[myk].tic = getticks();
-                e->s->cells[myk].tid = omp_get_thread_num();
-                engine_map_kick_first( &e->s->cells[myk] , e );
-                e->s->cells[myk].toc = getticks();
-                }
-            else
-                break;
-            }
-        } */
-    #pragma omp parallel private(k)
-    {
-        #pragma omp single
-        {
-            for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
-                #pragma omp task
-                engine_map_kick_first( &e->s->cells[k] , e );
-                }
-            }
-        #pragma omp taskwait
-        }
+    scheduler_start( &e->sched , (1 << task_type_kick1) );
+    e->barrier_count = -e->barrier_count;
+    if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
+        error( "Failed to broadcast barrier open condition." );
+    while ( e->barrier_count < e->nr_threads )
+        if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
+            error( "Error while waiting for barrier." );
     TIMER_TOC( timer_kick1 );
+    
+    /* Check if all the kick1 threads have executed. */
+    for ( k = 0 ; k < e->sched.nr_tasks ; k++ )
+        if ( e->sched.tasks[k].type == task_type_kick1 &&
+             e->sched.tasks[k].tic == 0 )
+            error( "Not all kick1 tasks completed." );
         
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
@@ -919,6 +763,10 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     /* Init the scheduler. */
     scheduler_init( &e->sched , e->s , nr_queues , scheduler_flag_steal );
         
+    /* Append a kick1 task to each cell. */
+    scheduler_reset( &e->sched , s->tot_cells );
+    space_map_cells_pre( e->s , 1 , &scheduler_map_mkkick1 , &e->sched );
+    
     /* Allocate and init the threads. */
     if ( ( e->runners = (struct runner *)malloc( sizeof(struct runner) * nr_threads ) ) == NULL )
         error( "Failed to allocate threads array." );

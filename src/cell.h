@@ -88,7 +88,7 @@ struct cell {
     int nr_density;
     
     /* The ghost task to link density to interactions. */
-    struct task *ghost, *kick2;
+    struct task *ghost, *kick1, *kick2;
     
     /* Number of tasks that are associated with this cell. */
     int nr_tasks;
@@ -116,10 +116,6 @@ struct cell {
     
     /* Linking pointer for "memory management". */
     struct cell *next;
-    
-    /* Timing stuff. */
-    ticks tic, toc;
-    int tid;
     
     } __attribute__((aligned (64)));
 

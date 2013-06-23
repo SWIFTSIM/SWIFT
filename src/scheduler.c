@@ -71,7 +71,12 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
     if ( c->super != c || c->nr_tasks > 0 )
         c->ghost = scheduler_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , 0 );
 
-    /* Append a kick task if we are the active super cell. */
+    /* Append a kick1 task and make sure the parent depends on it. */
+    c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
+    if ( c->parent != NULL )
+        task_addunlock( c->kick1 , c->parent->kick1 );
+    
+    /* Append a kick2 task if we are the active super cell. */
     if ( c->super == c && c->nr_tasks > 0 )
         c->kick2 = scheduler_addtask( s , task_type_kick2 , task_subtype_none , 0 , 0 , c , NULL , 0 );
     
@@ -80,6 +85,29 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
     if ( c->super != c )
         task_addunlock( c->parent->ghost , c->ghost );
         
+    }
+
+
+/**
+ * @brief Mapping function to append a ghost task to each cell.
+ *
+ * A kick1-task is appended to each cell.
+ */
+
+void scheduler_map_mkkick1 ( struct cell *c , void *data ) {
+
+    struct scheduler *s = (struct scheduler *)data;
+    struct cell *finger;
+
+    /* Append a kick1 task and make sure the parent depends on it. */
+    c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
+    if ( c->parent != NULL )
+        task_addunlock( c->kick1 , c->parent->kick1 );
+        
+    /* Set a bogus super cell. */
+    for ( finger = c ; finger->parent != NULL ; finger = finger->parent );
+    c->super = finger;
+    
     }
 
 
@@ -525,7 +553,7 @@ void scheduler_reset ( struct scheduler *s , int size ) {
  * @param s The #scheduler.
  */
  
-void scheduler_start ( struct scheduler *s ) {
+void scheduler_start ( struct scheduler *s , unsigned int mask ) {
 
     int k, j, *tid = s->tasks_ind;
     struct task *t, *tasks = s->tasks;
@@ -535,7 +563,7 @@ void scheduler_start ( struct scheduler *s ) {
     // #pragma omp parallel for schedule(static) private(t,j)
     for ( k = s->nr_tasks-1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
-        if ( !t->skip ) {
+        if ( ( (1 << t->type) & mask ) && !t->skip ) {
             for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
                 atomic_inc( &t->unlock_tasks[j]->wait );
             t->maxdepth = 0;
@@ -570,6 +598,7 @@ void scheduler_start ( struct scheduler *s ) {
                         if ( t->ci == t->ci->super )
                             t->weight += t->ci->count;
                         break;
+                    case task_type_kick1:
                     case task_type_kick2:
                         t->weight += t->ci->count;
                         break;
@@ -580,7 +609,7 @@ void scheduler_start ( struct scheduler *s ) {
     /* Loop over the tasks and enqueue whoever is ready. */
     for ( k = 0 ; k < s->nr_tasks ; k++ ) {
         t = &s->tasks[k];
-        if ( !t->skip && t->wait == 0 )
+        if ( ( (1 << t->type) & mask ) && !t->skip && t->wait == 0 )
             scheduler_enqueue( s , t );
         }
         
@@ -607,6 +636,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
         case task_type_self:
         case task_type_sort:
         case task_type_ghost:
+        case task_type_kick1:
         case task_type_kick2:
             qid = t->ci->super->owner;
             break;
@@ -617,6 +647,8 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
                  ( qid < 0 || s->queues[qid].count > s->queues[t->cj->super->owner].count ) )
                 qid = t->cj->super->owner;
             break;
+        default:
+            qid = -1;
         }
         
     /* If no previous owner, find the shortest queue. */

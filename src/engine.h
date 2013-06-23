@@ -29,6 +29,7 @@
 #define engine_policy_multistep     32
 
 #define engine_queue_scale          1.2
+#define engine_maxtaskspercell      32
 
 
 /* Data structure for the engine. */
