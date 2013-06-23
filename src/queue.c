@@ -161,7 +161,7 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  
 struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
 
-    int k, kk, i, temp, qcount, *qtid, type;
+    int k, i, temp, qcount, *qtid, type;
     lock_type *qlock = &q->lock;
     struct task *qtasks, *res = NULL;
     struct cell *ci, *cj;
@@ -233,8 +233,6 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                 cj->super->owner = qid;
                 
             /* Swap this task with the last task and re-heap. */
-            kk = k;
-            k = kk;
             if ( k < qcount ) {
                 qtid[ k ] = qtid[ qcount ];
                 while ( qtasks[ qtid[k] ].weight > qtasks[ qtid[(k-1)/2] ].weight ) {
