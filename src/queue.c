@@ -118,9 +118,9 @@ void queue_insert ( struct queue *q , struct task *t ) {
         } */
             
     /* Verify queue consistency. */
-    /* for ( int k = 1 ; k < q->count ; k++ )
+    for ( int k = 1 ; k < q->count ; k++ )
         if ( q->tasks[ q->tid[(k-1)/2] ].weight < q->tasks[ q->tid[k] ].weight )
-            error( "Queue not heaped." ); */
+            error( "Queue not heaped." );
     
     /* Unlock the queue. */
     if ( lock_unlock( &q->lock ) != 0 )
@@ -269,9 +269,9 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                 } */
                 
             /* Verify queue consistency. */
-            /* for ( k = 1 ; k < q->count ; k++ )
+            for ( k = 1 ; k < q->count ; k++ )
                 if ( q->tasks[ q->tid[(k-1)/2] ].weight < q->tasks[ q->tid[k] ].weight )
-                    error( "Queue not heaped." ); */
+                    error( "Queue not heaped." );
     
             }
         else

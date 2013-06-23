@@ -563,7 +563,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
     // #pragma omp parallel for schedule(static) private(t,j)
     for ( k = s->nr_tasks-1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
-        if ( !( (1 << t->type) & mask ) || !t->skip )
+        if ( !( (1 << t->type) & mask ) || t->skip )
             continue;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
             atomic_inc( &t->unlock_tasks[j]->wait );
