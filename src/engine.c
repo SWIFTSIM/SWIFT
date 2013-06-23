@@ -518,7 +518,12 @@ void engine_map_kick_first ( struct cell *c , void *data ) {
         /* Loop over the remaining progeny. */
         for ( k = 0 ; k < 8 ; k++ )
             if ( c->progeny[k] != NULL ) {
+                #pragma omp task
                 engine_map_kick_first( c->progeny[k] , e );
+                }
+        #pragma omp taskwait
+        for ( k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL ) {
                 dt_min = fminf( dt_min , c->progeny[k]->dt_min );
                 dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
                 h_max = fmaxf( h_max , c->progeny[k]->h_max );
@@ -725,7 +730,7 @@ void engine_step ( struct engine *e ) {
     /* First kick. */
     TIMER_TIC
     // space_map_cells_post( e->s , 1 , &engine_map_kick_first , e );
-    k = 0;
+    /* k = 0;
     #pragma omp parallel shared(k,e)
     {
         int myk;
@@ -741,7 +746,12 @@ void engine_step ( struct engine *e ) {
             else
                 break;
             }
+        } */
+    for ( k = 0 ; k < e->s->nr_cells ; k++ ) {
+        #pragma omp task
+        engine_map_kick_first( &e->s->cells[k] , e );
         }
+    #pragma omp taskwait
     TIMER_TOC( timer_kick1 );
         
     // for(k=0; k<10; ++k)
