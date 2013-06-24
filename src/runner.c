@@ -518,15 +518,23 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
     float dt_step = r->e->dt_step, dt = r->e->dt, hdt = 0.5f*dt;
     float dt_cfl, dt_h_change, dt_u_change, dt_new;
     float h_dt, u_dt;
-    struct part *p, *parts = c->parts;
-    struct xpart *xp;
+    struct part *restrict p, *restrict parts = c->parts;
+    struct xpart *restrict xp;
     
     TIMER_TIC
     
     /* Loop over the particles and kick them. */
+    __builtin_prefetch( &parts[0] , 0 , 1 );
+    __builtin_prefetch( &parts[0].rho_dh , 0 , 1 );
+    __builtin_prefetch( &parts[1] , 0 , 1 );
+    __builtin_prefetch( &parts[1].rho_dh , 0 , 1 );
+    __builtin_prefetch( &parts[2] , 0 , 1 );
+    __builtin_prefetch( &parts[2].rho_dh , 0 , 1 );
     for ( k = 0 ; k < nr_parts ; k++ ) {
 
         /* Get a handle on the part. */
+        __builtin_prefetch( &parts[k+3] , 0 , 1 );
+        __builtin_prefetch( &parts[k+3].rho_dh , 0 , 1 );
         p = &parts[k];
         xp = p->xtras;
 
@@ -620,7 +628,7 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
     float dt_min, dt_max, h_max, dx, dx_max;
     float a[3], v[3], u, u_dt, h, h_dt, v_old[3], w, rho;
     double x[3], x_old[3];
-    struct part *restrict p;
+    struct part *restrict p, *restrict parts = c->parts;
     struct xpart *restrict xp;
 
     /* No children? */
@@ -633,17 +641,17 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
         dx_max = 0.0f;
     
         /* Loop over parts. */
-        __builtin_prefetch( &c->parts[0] , 0 , 1 );
-        __builtin_prefetch( &c->parts[0].rho_dh , 0 , 1 );
-        __builtin_prefetch( &c->parts[1] , 0 , 1 );
-        __builtin_prefetch( &c->parts[1].rho_dh , 0 , 1 );
-        __builtin_prefetch( &c->parts[2] , 0 , 1 );
-        __builtin_prefetch( &c->parts[2].rho_dh , 0 , 1 );
+        __builtin_prefetch( &parts[0] , 0 , 1 );
+        __builtin_prefetch( &parts[0].rho_dh , 0 , 1 );
+        __builtin_prefetch( &parts[1] , 0 , 1 );
+        __builtin_prefetch( &parts[1].rho_dh , 0 , 1 );
+        __builtin_prefetch( &parts[2] , 0 , 1 );
+        __builtin_prefetch( &parts[2].rho_dh , 0 , 1 );
         for ( k = 0 ; k < c->count ; k++ ) {
             
             /* Get a handle on the kth particle. */
-            __builtin_prefetch( &c->parts[k+3] , 0 , 1 );
-            __builtin_prefetch( &c->parts[k+3].rho_dh , 0 , 1 );
+            __builtin_prefetch( &parts[k+3] , 0 , 1 );
+            __builtin_prefetch( &parts[k+3].rho_dh , 0 , 1 );
             p = &c->parts[k];
             xp = p->xtras;
             
