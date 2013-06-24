@@ -161,7 +161,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     struct part *restrict finger, *restrict p, *parts = s->parts;
     int *ind;
     double ih[3], dim[3];
-    // ticks tic;
+    ticks tic;
     
     /* Be verbose about this. */
     printf( "space_rebuild: (re)building space...\n" ); fflush(stdout);
@@ -252,6 +252,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
             s->cells[k].dx_max = 0.0f;
             s->cells[k].sorted = 0;
             s->cells[k].count = 0;
+            s->cells[k].kick1 = NULL;
             s->cells[k].kick2 = NULL;
             }
         s->maxdepth = 0;
@@ -259,7 +260,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
         }
         
     /* Run through the particles and get their cell index. */
-    // tic = getticks();
+    tic = getticks();
     if ( ( ind = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
@@ -276,12 +277,12 @@ void space_rebuild ( struct space *s , double cell_max ) {
         ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
         atomic_inc( &s->cells[ ind[k] ].count );
         }
-    // printf( "space_rebuild: getting particle indices took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    printf( "space_rebuild: getting particle indices took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
     /* Sort the parts according to their cells. */
-    // tic = getticks();
+    tic = getticks();
     parts_sort( parts , ind , s->nr_parts , 0 , s->nr_cells-1 );
-    // printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Verify sort. */
     /* for ( k = 1 ; k < nr_parts ; k++ ) {
@@ -307,21 +308,19 @@ void space_rebuild ( struct space *s , double cell_max ) {
         
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
-    // tic = getticks();
+    tic = getticks();
     k = 0;
-    #pragma omp parallel shared(s,k)
+    #pragma omp parallel num_threads(8) shared(s,k)
     {
         while ( 1 ) {
-            int myk;
-            #pragma omp critical
-            myk = k++;
+            int myk = atomic_inc( &k );
             if ( myk < s->nr_cells )
                 space_split( s , &s->cells[myk] );
             else
                 break;
             }
         }
-    // printf( "space_rebuild: space_rebuild_recurse took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    printf( "space_rebuild: space_rebuild_recurse took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
     }
 
@@ -358,7 +357,7 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
+    #pragma omp parallel num_threads(8) default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
     {
     
         /* Main loop. */
@@ -565,11 +564,11 @@ void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cel
         }
         
     /* Call the recursive function on all higher-level cells. */
-    #pragma omp parallel shared(s,cid)
+    // #pragma omp parallel shared(s,cid)
     {
         int mycid;
         while ( 1 ) {
-            #pragma omp critical
+            // #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
                 rec_map( &s->cells[mycid] );
@@ -602,11 +601,11 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
         }
         
     /* Call the recursive function on all higher-level cells. */
-    #pragma omp parallel shared(s,cid)
+    // #pragma omp parallel shared(s,cid)
     {
         int mycid;
         while ( 1 ) {
-            #pragma omp critical
+            // #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
                 rec_map( &s->cells[mycid] );
@@ -790,15 +789,22 @@ struct cell *space_getcell ( struct space *s ) {
     s->cells_new = c->next;
     s->tot_cells += 1;
     
+    /* Unlock the space. */
+    lock_unlock_blind( &s->lock );
+    
     /* Init some things in the cell. */
-    bzero( c , sizeof(struct cell) );
+    c->sorts = NULL;
+    c->nr_tasks = 0;
+    c->nr_density = 0;
+    c->dx_max = 0.0f;
+    c->sorted = 0;
+    c->count = 0;
+    c->kick1 = NULL;
+    c->kick2 = NULL;
     if ( lock_init( &c->lock ) != 0 )
         error( "Failed to initialize cell spinlock." );
     c->owner = -1;
         
-    /* Unlock the space. */
-    lock_unlock_blind( &s->lock );
-    
     return c;
 
     }

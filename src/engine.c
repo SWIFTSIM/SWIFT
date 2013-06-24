@@ -326,7 +326,7 @@ void engine_prepare ( struct engine *e ) {
 
     /* Run through the tasks and mark as skip or not. */
     // tic = getticks();
-    rebuild = ( e->step == 0 || engine_marktasks( e ) );
+    rebuild = 1 || ( e->step == 0 || engine_marktasks( e ) );
     // printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Did this not go through? */

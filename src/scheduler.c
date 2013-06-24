@@ -625,7 +625,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
  
 void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
 
-    int k, qid = -1;
+    int qid = -1;
     
     /* Ignore skipped tasks. */
     if ( t->skip )
@@ -652,9 +652,10 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
         
     /* If no previous owner, find the shortest queue. */
     if ( qid < 0 )
-        for ( qid = 0 , k = 1 ; k < s->nr_queues ; k++ )
+        qid = rand() % s->nr_queues;
+        /* for ( qid = 0 , int k = 1 ; k < s->nr_queues ; k++ )
             if ( s->queues[k].count < s->queues[qid].count )
-                qid = k;
+                qid = k; */
                 
     /* Increase the waiting counter. */
     atomic_inc( &s->waiting );
@@ -674,7 +675,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
  
 void scheduler_done ( struct scheduler *s , struct task *t ) {
 
-    int k;
+    int k, res;
     struct task *t2;
 
     /* Release whatever locks this task held. */
@@ -695,15 +696,17 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
        they are ready. */
     for ( k = 0 ; k < t->nr_unlock_tasks ; k++ ) {
         t2 = t->unlock_tasks[k];
-        if ( atomic_dec( &t2->wait ) == 1 && !t2->skip )
+        if ( ( res = atomic_dec( &t2->wait ) ) < 1 )
+            error( "Negative wait!" );
+        if ( res == 1 && !t2->skip )
             scheduler_enqueue( s , t2 );
         }
         
     /* Task definitely done. */
-    pthread_mutex_lock( &s->sleep_mutex );
+    // pthread_mutex_lock( &s->sleep_mutex );
     atomic_dec( &s->waiting );
-    pthread_cond_broadcast( &s->sleep_cond );
-    pthread_mutex_unlock( &s->sleep_mutex );
+    // pthread_cond_broadcast( &s->sleep_cond );
+    // pthread_mutex_unlock( &s->sleep_mutex );
 
     }
 
@@ -751,10 +754,10 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
             }
             
         /* If we failed, take a short nap. */
-        pthread_mutex_lock( &s->sleep_mutex );
+        /* pthread_mutex_lock( &s->sleep_mutex );
         if ( s->waiting > 0 )
             pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
-        pthread_mutex_unlock( &s->sleep_mutex );
+        pthread_mutex_unlock( &s->sleep_mutex ); */
         
         }
         
