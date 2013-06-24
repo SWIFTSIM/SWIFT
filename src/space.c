@@ -379,55 +379,87 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
             j = qstack[qid].j;
             min = qstack[qid].min;
             max = qstack[qid].max;
-            pivot = (min + max) / 2;
             // printf( "parts_sort_par: thread %i got interval [%i,%i] with values in [%i,%i].\n" , omp_get_thread_num() , i , j , min , max );
             
-            /* One pass of QuickSort's partitioning. */
-            ii = i; jj = j;
-            while ( ii < jj ) {
-                while ( ii <= j && ind[ii] <= pivot )
-                    ii++;
-                while ( jj >= i && ind[jj] > pivot )
-                    jj--;
-                if ( ii < jj ) {
-                    temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
-                    temp_p = parts[ii]; parts[ii] = parts[jj]; parts[jj] = temp_p;
+            /* Loop over sub-intervals. */
+            while ( 1 ) {
+            
+                /* Bring beer. */
+                pivot = (min + max) / 2;
+                
+                /* One pass of QuickSort's partitioning. */
+                ii = i; jj = j;
+                while ( ii < jj ) {
+                    while ( ii <= j && ind[ii] <= pivot )
+                        ii++;
+                    while ( jj >= i && ind[jj] > pivot )
+                        jj--;
+                    if ( ii < jj ) {
+                        temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
+                        temp_p = parts[ii]; parts[ii] = parts[jj]; parts[jj] = temp_p;
+                        }
                     }
-                }
 
-            /* Verify sort. */
-            /* for ( int k = i ; k <= jj ; k++ )
-                if ( ind[k] > pivot ) {
-                    printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
-                    error( "Partition failed (<=pivot)." );
+                /* Verify sort. */
+                /* for ( int k = i ; k <= jj ; k++ )
+                    if ( ind[k] > pivot ) {
+                        printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                        error( "Partition failed (<=pivot)." );
+                        }
+                for ( int k = jj+1 ; k <= j ; k++ )
+                    if ( ind[k] <= pivot ) {
+                        printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                        error( "Partition failed (>pivot)." );
+                        } */
+                        
+                /* Split-off largest interval. */
+                if ( jj - i > j - jj+1 ) {
+
+                    /* Recurse on the left? */
+                    if ( jj > i  && pivot > min ) {
+                        qid = atomic_inc( &last ) % space_qstack;
+                        qstack[qid].i = i;
+                        qstack[qid].j = jj;
+                        qstack[qid].min = min;
+                        qstack[qid].max = pivot;
+                        qstack[qid].ready = 1;
+                        atomic_inc( &waiting );
+                        }
+
+                    /* Recurse on the right? */
+                    if ( jj+1 < j && pivot+1 < max ) {
+                        i = jj+1;
+                        min = pivot+1;
+                        }
+                    else
+                        break;
+                        
                     }
-            for ( int k = jj+1 ; k <= j ; k++ )
-                if ( ind[k] <= pivot ) {
-                    printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
-                    error( "Partition failed (>pivot)." );
-                    } */
+                    
+                else {
+                
+                    /* Recurse on the right? */
+                    if ( jj+1 < j && pivot+1 < max ) {
+                        qid = atomic_inc( &last ) % space_qstack;
+                        qstack[qid].i = jj+1;
+                        qstack[qid].j = j;
+                        qstack[qid].min = pivot+1;
+                        qstack[qid].max = max;
+                        qstack[qid].ready = 1;
+                        atomic_inc( &waiting );
+                        }
+                        
+                    /* Recurse on the left? */
+                    if ( jj > i  && pivot > min ) {
+                        j = jj;
+                        max = pivot;
+                        }
+                    else
+                        break;
 
-            /* Recurse on the left? */
-            if ( jj > i  && pivot > min ) {
-                qid = atomic_inc( &last ) % space_qstack;
-                qstack[qid].i = i;
-                qstack[qid].j = jj;
-                qstack[qid].min = min;
-                qstack[qid].max = pivot;
-                qstack[qid].ready = 1;
-                atomic_inc( &waiting );
-                }
-
-            /* Recurse on the right? */
-            if ( jj+1 < j && pivot+1 < max ) {
-                qid = atomic_inc( &last ) % space_qstack;
-                qstack[qid].i = jj+1;
-                qstack[qid].j = j;
-                qstack[qid].min = pivot+1;
-                qstack[qid].max = max;
-                qstack[qid].ready = 1;
-                atomic_inc( &waiting );
-                }
+                    }
+                    
+                } /* loop over sub-intervals. */
     
             atomic_dec( &waiting );
 
