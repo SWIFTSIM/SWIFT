@@ -23,3 +23,4 @@
 #define atomic_add(v,i) __sync_fetch_and_add( v , i )
 #define atomic_inc(v) atomic_add( v , 1 )
 #define atomic_dec(v) atomic_add( v , -1 )
+#define atomic_cas(v,o,n) __sync_val_compare_and_swap( v , o , n )
