@@ -265,7 +265,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
     cdim[0] = s->cdim[0]; cdim[1] = s->cdim[1]; cdim[2] = s->cdim[2];
-    // #pragma omp parallel for private(p,j)
+    #pragma omp parallel for private(p,j)
     for ( k = 0 ; k < nr_parts ; k++ )  {
         p = &parts[k];
         for ( j = 0 ; j < 3 ; j++ )
@@ -468,9 +468,9 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
         } /* parallel bit. */
     
     /* Verify sort. */
-    for ( i = 1 ; i < N ; i++ )
+    /* for ( i = 1 ; i < N ; i++ )
         if ( ind[i-1] > ind[i] )
-            error( "Sorting failed!" );
+            error( "Sorting failed!" ); */
 
     }
 
