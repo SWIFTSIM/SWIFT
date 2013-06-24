@@ -633,9 +633,17 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
         dx_max = 0.0f;
     
         /* Loop over parts. */
+        __builtin_prefetch( &c->parts[0] , 0 , 1 );
+        __builtin_prefetch( &c->parts[0].rho_dh , 0 , 1 );
+        __builtin_prefetch( &c->parts[1] , 0 , 1 );
+        __builtin_prefetch( &c->parts[1].rho_dh , 0 , 1 );
+        __builtin_prefetch( &c->parts[2] , 0 , 1 );
+        __builtin_prefetch( &c->parts[2].rho_dh , 0 , 1 );
         for ( k = 0 ; k < c->count ; k++ ) {
             
             /* Get a handle on the kth particle. */
+            __builtin_prefetch( &c->parts[k+3] , 0 , 1 );
+            __builtin_prefetch( &c->parts[k+3].rho_dh , 0 , 1 );
             p = &c->parts[k];
             xp = p->xtras;
             

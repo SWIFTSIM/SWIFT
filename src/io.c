@@ -320,7 +320,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   H5Gclose(h_grp);
 
   /* Allocate memory to store particles */
-  if(posix_memalign( (void*)parts , 32 , *N * sizeof(struct part)) != 0)
+  if(posix_memalign( (void*)parts , part_align , *N * sizeof(struct part)) != 0)
     error("Error while allocating memory for particles");
   bzero( *parts , *N * sizeof(struct part) );
 

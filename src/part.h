@@ -22,6 +22,7 @@
 #define part_maxwait                    3
 #define part_maxunlock                  39
 #define part_dtmax                      10
+#define part_align                      64
 
 
 /* Extra particle data not needed during the computation. */
@@ -45,14 +46,14 @@ struct xpart {
 /* Data of a single particle. */
 struct part {
 
-    /* Particle acceleration. */
-    float a[3];
+    /* Particle position. */
+    double x[3];
     
     /* Particle velocity. */
     float v[3];
     
-    /* Particle position. */
-    double x[3];
+    /* Particle acceleration. */
+    float a[3];
     
     /* Particle cutoff radius. */
     float h;
@@ -124,6 +125,6 @@ struct part {
     /* Pointer to extra particle data. */
     struct xpart *xtras;
     
-    } __attribute__((aligned (64)));
+    } __attribute__((aligned (part_align)));
     
 
