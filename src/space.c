@@ -28,6 +28,7 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+#include <omp.h>
 
 /* Local headers. */
 #include "cycle.h"
@@ -333,109 +334,125 @@ void space_rebuild ( struct space *s , double cell_max ) {
  * @param N The number of parts
  * @param min Lowest index.
  * @param max highest index.
- *
- * This function calls itself recursively.
  */
  
-void parts_sort_rec ( struct part *parts , int *ind , int N , int min , int max ) {
-
-    int pivot = (min + max) / 2;
-    int i = 0, j = N-1;
-    int temp_i;
-    struct part temp_p;
-    
-    /* If N is small enough, just do insert sort. */
-    if ( N < 16 ) {
-    
-        for ( i = 1 ; i < N ; i++ )
-            if ( ind[i] < ind[i-1] ) {
-                temp_i = ind[i];
-                temp_p = parts[i];
-                for ( j = i ; j > 0 && ind[j-1] > temp_i ; j-- ) {
-                    ind[j] = ind[j-1];
-                    parts[j] = parts[j-1];
-                    }
-                ind[j] = temp_i;
-                parts[j] = temp_p;
-                }
-                
-        /* Verify sort. */
-        /* for ( i = 1 ; i < N ; i++ )
-            if ( ind[i-1] > ind[i] )
-                error( "Insert-sort failed!" ); */
-    
-        }
-        
-    /* Otherwise, recurse with Quicksort. */
-    else {
-    
-        /* One pass of quicksort. */
-        while ( i < j ) {
-            while ( i < N && ind[i] <= pivot )
-                i++;
-            while ( j >= 0 && ind[j] > pivot )
-                j--;
-            if ( i < j ) {
-                temp_i = ind[i]; ind[i] = ind[j]; ind[j] = temp_i;
-                temp_p = parts[i]; parts[i] = parts[j]; parts[j] = temp_p;
-                }
-            }
-
-        /* Verify sort. */
-        /* for ( int k = 0 ; k <= j ; k++ )
-            if ( ind[k] > pivot ) {
-                printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
-                error( "Sorting failed (<=pivot)." );
-                }
-        for ( int k = j+1 ; k < N ; k++ )
-            if ( ind[k] <= pivot ) {
-                printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
-                error( "Sorting failed (>pivot)." );
-                } */
-
-        /* Bother going parallel? */
-        if ( N < 100 ) {
-        
-            /* Recurse on the left? */
-            if ( j > 0  && pivot > min )
-                parts_sort( parts , ind , j+1 , min , pivot );
-
-            /* Recurse on the right? */
-            if ( i < N && pivot+1 < max )
-                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
-                
-            }
-            
-        else {
-        
-            /* Recurse on the left? */
-            if ( j > 0  && pivot > min ) {
-                #pragma omp task untied
-                parts_sort( parts , ind , j+1 , min , pivot );
-                }
-
-            /* Recurse on the right? */
-            if ( i < N && pivot+1 < max ) {
-                #pragma omp task untied
-                parts_sort( &parts[i], &ind[i], N-i , pivot+1 , max );
-                }
-                
-            }
-            
-        }
-    
-    }
-
-
 void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
 
-    /* Call the first sort as an OpenMP task. */
-    #pragma omp parallel
-    {
-        #pragma omp single nowait
-        parts_sort_rec( parts , ind , N , min , max );
-    }
+    struct {
+        int i, j, min, max;
+        } qstack[space_qstack];
+    int first, last, waiting;
     
+    int pivot;
+    int i, ii, j, jj, temp_i, qid;
+    struct part temp_p;
+    
+    /* Init the interval stack. */
+    qstack[0].i = 0;
+    qstack[0].j = N-1;
+    qstack[0].min = min;
+    qstack[0].max = max;
+    first = 0; last = 0; waiting = 1;
+    
+    /* Parallel bit. */
+    #pragma omp parallel default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
+    {
+    
+        /* Main loop. */
+        while ( waiting > 0 ) {
+        
+            /* Try to get an index off the stack. */
+            qid = -1;
+            while ( waiting > 0 && qid < 0 ) {
+                #pragma omp critical (stack)
+                {
+                    if ( last - first > space_qstack )
+                        error( "Sorting stack overflow." );
+                    if ( first <= last ) {
+                        qid = first;
+                        first += 1;
+                        }
+                    }
+                }
+            
+            /* Did we get an index? */
+            if ( qid < 0 )
+                continue;
+                
+            /* Get the stack entry. */
+            qid %= space_qstack;
+            i = qstack[qid].i;
+            j = qstack[qid].j;
+            min = qstack[qid].min;
+            max = qstack[qid].max;
+            pivot = (min + max) / 2;
+            // printf( "parts_sort_par: thread %i got interval [%i,%i] with values in [%i,%i].\n" , omp_get_thread_num() , i , j , min , max );
+            
+            /* One pass of QuickSort's partitioning. */
+            ii = i; jj = j;
+            while ( ii < jj ) {
+                while ( ii <= j && ind[ii] <= pivot )
+                    ii++;
+                while ( jj >= i && ind[jj] > pivot )
+                    jj--;
+                if ( ii < jj ) {
+                    temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
+                    temp_p = parts[ii]; parts[ii] = parts[jj]; parts[jj] = temp_p;
+                    }
+                }
+
+            /* Verify sort. */
+            /* for ( int k = i ; k <= jj ; k++ )
+                if ( ind[k] > pivot ) {
+                    printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                    error( "Partition failed (<=pivot)." );
+                    }
+            for ( int k = jj+1 ; k <= j ; k++ )
+                if ( ind[k] <= pivot ) {
+                    printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                    error( "Partition failed (>pivot)." );
+                    } */
+
+            /* Recurse on the left? */
+            if ( jj > i  && pivot > min ) {
+                #pragma omp critical (stack)
+                {
+                    last += 1;
+                    qid = last % space_qstack;
+                    qstack[qid].i = i;
+                    qstack[qid].j = jj;
+                    qstack[qid].min = min;
+                    qstack[qid].max = pivot;
+                    waiting += 1;
+                    }
+                }
+
+            /* Recurse on the right? */
+            if ( jj+1 < j && pivot+1 < max ) {
+                #pragma omp critical (stack)
+                {
+                    last += 1;
+                    qid = last % space_qstack;
+                    qstack[qid].i = jj+1;
+                    qstack[qid].j = j;
+                    qstack[qid].min = pivot+1;
+                    qstack[qid].max = max;
+                    waiting += 1;
+                    }
+                }
+    
+            #pragma omp critical (stack)
+            waiting -= 1;
+
+            } /* main loop. */
+    
+        } /* parallel bit. */
+    
+    /* Verify sort. */
+    /* for ( i = 1 ; i < N ; i++ )
+        if ( ind[i-1] > ind[i] )
+            error( "Sorting failed!" ); */
+
     }
 
 

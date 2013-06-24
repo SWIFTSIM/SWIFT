@@ -28,6 +28,7 @@
 #define space_subsize_default           5000
 #define space_stretch                   1.05f
 #define space_maxreldx                  0.2f
+#define space_qstack                    1000
 
 
 /* Convert cell location to ID. */
@@ -97,6 +98,7 @@ struct space {
 
 /* function prototypes. */
 void parts_sort ( struct part *parts , int *ind , int N , int min , int max );
+void parts_sort_par ( struct part *parts , int *ind , int N , int min , int max );
 struct cell *space_getcell ( struct space *s );
 int space_getsid ( struct space *s , struct cell **ci , struct cell **cj , double *shift );
 void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_max );
