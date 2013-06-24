@@ -74,7 +74,7 @@ struct engine {
     /* Data for the threads' barrier. */
     pthread_mutex_t barrier_mutex;
     pthread_cond_t barrier_cond;
-    int barrier_count;
+    volatile int barrier_running, barrier_launch;
     
     };
 

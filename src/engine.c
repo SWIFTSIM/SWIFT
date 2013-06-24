@@ -326,21 +326,21 @@ void engine_prepare ( struct engine *e ) {
 
     /* Run through the tasks and mark as skip or not. */
     // tic = getticks();
-    rebuild = 1 || ( e->step == 0 || engine_marktasks( e ) );
+    rebuild = ( e->step == 0 || engine_marktasks( e ) );
     // printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Did this not go through? */
     if ( rebuild ) {
     
         /* Re-build the space. */
-        tic = getticks();
+        // tic = getticks();
         space_rebuild( e->s , 0.0 );
-        printf( "engine_prepare: space_rebuild took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+        // printf( "engine_prepare: space_rebuild took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
         /* Re-build the tasks. */
-        tic = getticks();
+        // tic = getticks();
         engine_maketasks( e );
-        printf( "engine_prepare: engine_maketasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+        // printf( "engine_prepare: engine_maketasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
         /* Run through the tasks and mark as skip or not. */
         // tic = getticks();
@@ -369,35 +369,31 @@ void engine_prepare ( struct engine *e ) {
  * @param e The #engine.
  */
  
-void engine_barrier( struct engine *e ) {
+void engine_barrier ( struct engine *e ) {
 
     /* First, get the barrier mutex. */
     if ( pthread_mutex_lock( &e->barrier_mutex ) != 0 )
         error( "Failed to get barrier mutex." );
         
-    /* Wait for the barrier to close. */
-    while ( e->barrier_count < 0 )
-        if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
-            error( "Eror waiting for barrier to close." );
+    /* This thread is no longer running. */
+    e->barrier_running -= 1;
         
-    /* Once I'm in, increase the barrier count. */
-    e->barrier_count += 1;
-    
     /* If all threads are in, send a signal... */
-    if ( e->barrier_count == e->nr_threads )
+    if ( e->barrier_running == 0 )
         if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
             error( "Failed to broadcast barrier full condition." );
         
-    /* Wait for barrier to be released. */
-    while ( e->barrier_count > 0 )
+    /* Wait for the barrier to open. */
+    while ( e->barrier_launch == 0 )
         if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
-            error( "Error waiting for barrier to be released." );
-            
-    /* Decrease the counter before leaving... */
-    e->barrier_count += 1;
+            error( "Eror waiting for barrier to close." );
+        
+    /* This thread has been launched. */
+    e->barrier_running += 1;
+    e->barrier_launch -= 1;
     
     /* If I'm the last one out, signal the condition again. */
-    if ( e->barrier_count == 0 )
+    if ( e->barrier_launch == 0 )
         if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
             error( "Failed to broadcast empty barrier condition." );
             
@@ -556,6 +552,28 @@ void engine_single_force ( double *dim , long long int pid , struct part *__rest
     fflush(stdout);
     
     }
+    
+    
+/**
+ * @breif Launch the runners.
+ *
+ * @param e The #engine.
+ * @param nr_runners The number of #runners to let loose.
+ */
+ 
+void engine_launch ( struct engine *e , int nr_runners ) {
+
+    /* Cry havoc and let loose the dogs of war. */
+    e->barrier_launch = nr_runners;
+    if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
+        error( "Failed to broadcast barrier open condition." );
+        
+    /* Sit back and wait for the runners to come home. */
+    while ( e->barrier_launch || e->barrier_running )
+        if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
+            error( "Error while waiting for barrier." );
+            
+    }
 
 
 /**
@@ -597,12 +615,7 @@ void engine_step ( struct engine *e ) {
     /* First kick. */
     TIMER_TIC
     scheduler_start( &e->sched , (1 << task_type_kick1) );
-    e->barrier_count = -e->barrier_count;
-    if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
-        error( "Failed to broadcast barrier open condition." );
-    while ( e->barrier_count < e->nr_threads )
-        if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
-            error( "Error while waiting for barrier." );
+    engine_launch( e , ( e->nr_threads > 16 ) ? 16 : e->nr_threads );
     TIMER_TOC( timer_kick1 );
     
     /* Check if all the kick1 threads have executed. */
@@ -620,22 +633,11 @@ void engine_step ( struct engine *e ) {
     
     // engine_single_density( e->s->dim , 3392063069037 , e->s->parts , e->s->nr_parts , e->s->periodic );
 
-    /* Start the clock. */
+    /* Send off the runners. */
     TIMER_TIC_ND
-    
-    /* Cry havoc and let loose the dogs of war. */
-    e->barrier_count = -e->barrier_count;
-    if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
-        error( "Failed to broadcast barrier open condition." );
-        
-    /* Sit back and wait for the runners to come home. */
-    while ( e->barrier_count < e->nr_threads )
-        if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
-            error( "Error while waiting for barrier." );
-            
-    /* Stop the clock. */
+    engine_launch( e , e->nr_threads );
     TIMER_TOC(timer_runners);
-
+            
     // engine_single_force( e->s->dim , 8328423931905 , e->s->parts , e->s->nr_parts , e->s->periodic );
     
     // for(k=0; k<10; ++k)
@@ -746,7 +748,8 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         error( "Failed to initialize barrier condition variable." );
     if ( pthread_mutex_lock( &e->barrier_mutex ) != 0 )
         error( "Failed to lock barrier mutex." );
-    e->barrier_count = 0;
+    e->barrier_running = 0;
+    e->barrier_launch = 0;
     
     /* Run through the parts and get the minimum time step. */
     e->dt_orig = dt;
@@ -773,6 +776,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     for ( k = 0 ; k < nr_threads ; k++ ) {
         e->runners[k].id = k;
         e->runners[k].e = e;
+        e->barrier_running += 1;
         if ( pthread_create( &e->runners[k].thread , NULL , &runner_main , &e->runners[k] ) != 0 )
             error( "Failed to create runner thread." );
         #if defined(HAVE_SETAFFINITY)
@@ -787,7 +791,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         }
         
     /* Wait for the runner threads to be in place. */
-    while ( e->barrier_count != e->nr_threads )
+    while ( e->barrier_running || e->barrier_launch )
         if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
             error( "Error while waiting for runner threads to get in place." );
     
