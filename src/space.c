@@ -628,7 +628,6 @@ void space_split ( struct space *s , struct cell *c ) {
 
     int k, count = c->count, maxdepth = 0;
     float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
-    double x[3];
     struct cell *temp;
     struct part *p, *parts = c->parts;
     struct xpart *xp;
@@ -705,9 +704,9 @@ void space_split ( struct space *s , struct cell *c ) {
         for ( k = 0 ; k < count ; k++ ) {
             p = &parts[k];
             xp = p->xtras;
-            xp->x_old[0] = x[0] = p->x[0];
-            xp->x_old[1] = x[1] = p->x[1];
-            xp->x_old[2] = x[2] = p->x[2];
+            xp->x_old[0] = p->x[0];
+            xp->x_old[1] = p->x[1];
+            xp->x_old[2] = p->x[2];
             dt = p->dt;
             h = p->h;
             if ( h > h_max )

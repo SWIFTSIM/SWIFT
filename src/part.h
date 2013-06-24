@@ -124,6 +124,6 @@ struct part {
     /* Pointer to extra particle data. */
     struct xpart *xtras;
     
-    } __attribute__((aligned (32)));
+    } __attribute__((aligned (64)));
     
 
