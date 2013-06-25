@@ -82,8 +82,10 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
     
     /* If we are not the super cell ourselves, make our ghost depend
        on our parent cell. */
-    if ( c->super != c )
+    if ( c->super != c ) {
         task_addunlock( c->parent->ghost , c->ghost );
+        c->ghost->implicit = 1;
+        }
         
     }
 
@@ -176,7 +178,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
             if ( ci->split ) {
             
                 /* Make a sub? */
-                if ( scheduler_dosub && ci->count < space_subsize && ci->maxdepth - ci->depth < scheduler_maxsubdepth ) {
+                if ( scheduler_dosub && ci->count < space_subsize ) {
 
                     /* convert to a self-subtask. */
                     t->type = task_type_sub;
@@ -235,7 +237,6 @@ void scheduler_splittasks ( struct scheduler *s ) {
                 /* Replace by a single sub-task? */
                 if ( scheduler_dosub &&
                      ( ci->count + cj->count ) * sid_scale[sid] < space_subsize &&
-                     ci->maxdepth - ci->depth < scheduler_maxsubdepth && cj->maxdepth - cj->depth < scheduler_maxsubdepth &&
                      sid != 0 && sid != 2 && sid != 6 && sid != 8 ) {
                 
                     /* Make this task a sub task. */
@@ -436,6 +437,7 @@ struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , 
     t->cj = cj;
     t->skip = 0;
     t->tight = tight;
+    t->implicit = 0;
     t->nr_unlock_tasks = 0;
     
     /* Init the lock. */
@@ -558,8 +560,8 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
     int k, j, *tid = s->tasks_ind;
     struct task *t, *tasks = s->tasks;
     
-    /* Run throught the tasks backwards and set their waits,
-       weights and maxdepths. */
+    /* Run throught the tasks backwards and set their waits and
+       weights. */
     // #pragma omp parallel for schedule(static) private(t,j)
     for ( k = s->nr_tasks-1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
@@ -567,15 +569,10 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
             continue;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
             atomic_inc( &t->unlock_tasks[j]->wait );
-        t->maxdepth = 0;
         t->weight = 0;
-        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
+        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
             if ( t->unlock_tasks[j]->weight > t->weight )
                 t->weight = t->unlock_tasks[j]->weight;
-            if ( t->unlock_tasks[j]->maxdepth > t->maxdepth )
-                t->maxdepth = t->unlock_tasks[j]->maxdepth;
-            }
-        t->maxdepth += 1;
         if ( t->tic > 0 )
             t->weight += t->toc - t->tic;
         else
@@ -631,37 +628,46 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
     if ( t->skip )
         return;
         
-    /* Find the previous owner for each task type. */
-    switch ( t->type ) {
-        case task_type_self:
-        case task_type_sort:
-        case task_type_ghost:
-        case task_type_kick2:
-            qid = t->ci->super->owner;
-            break;
-        case task_type_pair:
-        case task_type_sub:
-            qid = t->ci->super->owner;
-            if ( t->cj != NULL &&
-                 ( qid < 0 || s->queues[qid].count > s->queues[t->cj->super->owner].count ) )
-                qid = t->cj->super->owner;
-            break;
-        default:
-            qid = -1;
-        }
+    /* If this is an implicit task, just pretend it's done. */
+    if ( t->implicit )
+        scheduler_done( s , t );
         
-    /* If no previous owner, find the shortest queue. */
-    if ( qid < 0 )
-        qid = rand() % s->nr_queues;
-        /* for ( qid = 0 , int k = 1 ; k < s->nr_queues ; k++ )
-            if ( s->queues[k].count < s->queues[qid].count )
-                qid = k; */
-                
-    /* Increase the waiting counter. */
-    atomic_inc( &s->waiting );
-            
-    /* Insert the task into that queue. */
-    queue_insert( &s->queues[qid] , t );
+    /* Otherwise, look for a suitable queue. */
+    else {
+        
+        /* Find the previous owner for each task type. */
+        switch ( t->type ) {
+            case task_type_self:
+            case task_type_sort:
+            case task_type_ghost:
+            case task_type_kick2:
+                qid = t->ci->super->owner;
+                break;
+            case task_type_pair:
+            case task_type_sub:
+                qid = t->ci->super->owner;
+                if ( t->cj != NULL &&
+                     ( qid < 0 || s->queues[qid].count > s->queues[t->cj->super->owner].count ) )
+                    qid = t->cj->super->owner;
+                break;
+            default:
+                qid = -1;
+            }
+
+        /* If no previous owner, find the shortest queue. */
+        if ( qid < 0 )
+            qid = rand() % s->nr_queues;
+            /* for ( qid = 0 , int k = 1 ; k < s->nr_queues ; k++ )
+                if ( s->queues[k].count < s->queues[qid].count )
+                    qid = k; */
+
+        /* Increase the waiting counter. */
+        atomic_inc( &s->waiting );
+
+        /* Insert the task into that queue. */
+        queue_insert( &s->queues[qid] , t );
+        
+        }
         
     }
 
@@ -703,10 +709,12 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
         }
         
     /* Task definitely done. */
-    pthread_mutex_lock( &s->sleep_mutex );
-    atomic_dec( &s->waiting );
-    pthread_cond_broadcast( &s->sleep_cond );
-    pthread_mutex_unlock( &s->sleep_mutex );
+    if ( !t->implicit ) {
+        pthread_mutex_lock( &s->sleep_mutex );
+        atomic_dec( &s->waiting );
+        pthread_cond_broadcast( &s->sleep_cond );
+        pthread_mutex_unlock( &s->sleep_mutex );
+        }
 
     }
 

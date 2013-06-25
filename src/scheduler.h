@@ -22,7 +22,6 @@
 #define scheduler_maxwait                    3
 #define scheduler_maxunlock                  40
 #define scheduler_dosub                      1
-#define scheduler_maxsubdepth                3
 
 /* Flags . */
 #define scheduler_flag_none                  0
