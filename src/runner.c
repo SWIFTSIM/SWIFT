@@ -793,10 +793,8 @@ void *runner_main ( void *data ) {
             /* Get the cells. */
             ci = t->ci;
             cj = t->cj;
-            t->rid = r->id;
             
             /* Different types of tasks... */
-            t->tic = getticks();
             switch ( t->type ) {
                 case task_type_self:
                     if ( t->subtype == task_subtype_density )
@@ -838,7 +836,6 @@ void *runner_main ( void *data ) {
                 default:
                     error( "Unknown task type." );
                 }
-            t->toc = getticks();
             
             /* We're done with this task. */
             scheduler_done( sched , t );

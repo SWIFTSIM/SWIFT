@@ -687,7 +687,7 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
 
     int k, res;
     struct task *t2;
-
+    
     /* Release whatever locks this task held. */
     switch ( t->type ) {
         case task_type_self:
@@ -714,6 +714,7 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
         
     /* Task definitely done. */
     if ( !t->implicit ) {
+        t->toc = getticks();
         pthread_mutex_lock( &s->sleep_mutex );
         atomic_dec( &s->waiting );
         pthread_cond_broadcast( &s->sleep_cond );
@@ -734,21 +735,21 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
  
 struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
 
-    struct task *res;
+    struct task *res = NULL;
     int k, nr_queues = s->nr_queues;
 
     /* Loop as long as there are tasks... */
-    while ( s->waiting > 0 ) {
+    while ( s->waiting > 0 && res == NULL ) {
         
         /* Try more than once before sleeping. */
-        for ( int tries = 0 ; tries < scheduler_flag_maxsteal ; tries++ ) {
+        for ( int tries = 0 ; res == NULL && tries < scheduler_flag_maxsteal ; tries++ ) {
         
             /* Try to get a task from the suggested queue. */
             if ( ( res = queue_gettask( &s->queues[qid] , qid , 0 ) ) != NULL )
-                return res;
+                break;
 
-            /* If unsucessful, try stealing from the largest queue. */
-            if ( s->flags & scheduler_flag_steal ){
+            /* If unsucessful, try stealing from the other queues. */
+            if ( s->flags & scheduler_flag_steal ) {
                 int qids[ nr_queues ];
                 for ( k = 0 ; k < nr_queues ; k++ )
                     qids[k] = k;
@@ -759,22 +760,30 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
                     if ( temp == qid )
                         continue;
                     if ( s->queues[temp].count > 0 && ( res = queue_gettask( &s->queues[temp] , qid , 0 ) ) != NULL )
-                        return res;
+                        break;
                     }
                 }
                 
             }
             
         /* If we failed, take a short nap. */
-        pthread_mutex_lock( &s->sleep_mutex );
-        if ( s->waiting > 0 )
-            pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
-        pthread_mutex_unlock( &s->sleep_mutex );
+        if ( res == NULL ) {
+            pthread_mutex_lock( &s->sleep_mutex );
+            if ( s->waiting > 0 )
+                pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
+            pthread_mutex_unlock( &s->sleep_mutex );
+            }
         
         }
         
+    /* Start the timer on this task, if we got one. */
+    if ( res != NULL ) {
+        res->tic = getticks();
+        res->rid = qid;
+        }
+        
     /* No milk today. */
-    return NULL;
+    return res;
 
     }
 
