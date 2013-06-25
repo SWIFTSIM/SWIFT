@@ -310,15 +310,16 @@ void space_rebuild ( struct space *s , double cell_max ) {
        sure that the parts in each cell are ok. */
     // tic = getticks();
     k = 0;
-    #pragma omp parallel num_threads(8) shared(s,k)
+    #pragma omp parallel shared(s,k)
     {
-        while ( 1 ) {
-            int myk = atomic_inc( &k );
-            if ( myk < s->nr_cells )
-                space_split( s , &s->cells[myk] );
-            else
-                break;
-            }
+        if ( omp_get_thread_num() < 8 )
+            while ( 1 ) {
+                int myk = atomic_inc( &k );
+                if ( myk < s->nr_cells )
+                    space_split( s , &s->cells[myk] );
+                else
+                    break;
+                }
         }
     // printf( "space_rebuild: space_split took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
@@ -357,10 +358,11 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel num_threads(8) default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
+    #pragma omp parallel default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
     {
     
         /* Main loop. */
+        if ( omp_get_thread_num() < 8 )
         while ( waiting > 0 ) {
         
             /* Grab an interval off the queue. */
