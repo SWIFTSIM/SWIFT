@@ -27,6 +27,7 @@
 #define engine_policy_block         8
 #define engine_policy_fixdt         16
 #define engine_policy_multistep     32
+#define engine_policy_cputight      64
 
 #define engine_queue_scale          1.2
 #define engine_maxtaskspercell      32

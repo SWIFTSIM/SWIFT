@@ -23,6 +23,7 @@
 /* Some standard headers. */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
 #include <math.h>
@@ -727,11 +728,28 @@ void engine_step ( struct engine *e ) {
  
 void engine_init ( struct engine *e , struct space *s , float dt , int nr_threads , int nr_queues , int policy ) {
 
-    #if defined(HAVE_SETAFFINITY)
-        cpu_set_t cpuset;
-    #endif
     int k;
     float dt_min = dt;
+    #if defined(HAVE_SETAFFINITY)
+        int nr_cores = sysconf( _SC_NPROCESSORS_ONLN );
+        int i, j, cpuid[ nr_cores ];
+        cpu_set_t cpuset;
+        if ( e->policy & engine_policy_cputight ) {
+            for ( k = 0 ; k < nr_cores ; k++ )
+                cpuid[k] = k;
+            }
+        else {
+            cpuid[0] = 0;
+            k = 1;
+            for ( i = 1 ; i < nr_cores ; i *= 2 )
+                for ( j = nr_cores / i / 2 ; j < nr_cores ; j += nr_cores / i )
+                    cpuid[k++] = j;
+            printf( "engine_init: cpu map is [ " );
+            for ( i = 0 ; i < nr_cores ; i++ )
+                printf( "%i " , cpuid[i] );
+            printf( "].\n" );
+            }
+    #endif
     
     /* Store the values. */
     e->s = s;
@@ -782,7 +800,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         #if defined(HAVE_SETAFFINITY)
             /* Set the cpu mask to zero | e->id. */
             CPU_ZERO( &cpuset );
-            CPU_SET( e->runners[k].id , &cpuset );
+            CPU_SET( cpuid[ e->runners[k].id ] , &cpuset );
 
             /* Apply this mask to the runner's pthread. */
             if ( pthread_setaffinity_np( e->runners[k].thread , sizeof(cpu_set_t) , &cpuset ) != 0 )
