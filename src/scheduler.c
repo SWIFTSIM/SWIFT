@@ -72,9 +72,11 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
         c->ghost = scheduler_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , 0 );
 
     /* Append a kick1 task and make sure the parent depends on it. */
-    c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
-    if ( c->parent != NULL )
-        task_addunlock( c->kick1 , c->parent->kick1 );
+    if ( c->parent == NULL || c->parent->count >= space_subsize ) {
+        c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
+        if ( c->parent != NULL )
+            task_addunlock( c->kick1 , c->parent->kick1 );
+        }
     
     /* Append a kick2 task if we are the active super cell. */
     if ( c->super == c && c->nr_tasks > 0 )

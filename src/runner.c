@@ -738,6 +738,8 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
         /* Loop over the progeny. */
         for ( k = 0 ; k < 8 ; k++ )
             if ( c->progeny[k] != NULL ) {
+                if ( c->count < space_subsize )
+                    runner_dokick1( r , c->progeny[k] );
                 dt_min = fminf( dt_min , c->progeny[k]->dt_min );
                 dt_max = fmaxf( dt_max , c->progeny[k]->dt_max );
                 h_max = fmaxf( h_max , c->progeny[k]->h_max );
