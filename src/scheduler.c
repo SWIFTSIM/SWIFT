@@ -440,6 +440,7 @@ struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , 
     t->skip = 0;
     t->tight = tight;
     t->implicit = 0;
+    t->weight = 0;
     t->nr_unlock_tasks = 0;
     
     /* Init the lock. */
