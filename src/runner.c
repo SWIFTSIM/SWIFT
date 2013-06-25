@@ -476,9 +476,9 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     
                         /* Left or right? */
                         if ( finger->density[k]->ci == finger )
-                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->cj , -1 );
+                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->cj , -1 , 1 );
                         else
-                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->ci , -1 );
+                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->ci , -1 , 1 );
                         
                         }
                 
@@ -819,9 +819,9 @@ void *runner_main ( void *data ) {
                     break;
                 case task_type_sub:
                     if ( t->subtype == task_subtype_density )
-                        runner_dosub1_density( r , ci , cj , t->flags );
+                        runner_dosub1_density( r , ci , cj , t->flags , 1 );
                     else if ( t->subtype == task_subtype_force )
-                        runner_dosub2_force( r , ci , cj , t->flags );
+                        runner_dosub2_force( r , ci , cj , t->flags , 1 );
                     else
                         error( "Unknown task subtype." );
                     break;

@@ -1678,7 +1678,7 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
  * redundant computations to find the sid on-the-fly.
  */
 
-void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
+void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid , int gettimer ) {
 
     int j = 0, k;
     double shift[3];
@@ -1701,10 +1701,10 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
             /* Loop over all progeny. */
             for ( k = 0 ; k < 8 ; k++ )
                 if ( ci->progeny[k] != NULL ) {
-                    DOSUB1( r , ci->progeny[k] , NULL , -1 );
+                    DOSUB1( r , ci->progeny[k] , NULL , -1 , 0 );
                     for ( j = k+1 ; j < 8 ; j++ )
                         if ( ci->progeny[j] != NULL )
-                            DOSUB1( r , ci->progeny[k] , ci->progeny[j] , -1 );
+                            DOSUB1( r , ci->progeny[k] , ci->progeny[j] , -1 , 0 );
                     }
         
             }
@@ -1739,193 +1739,193 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
                 /* Regular sub-cell interactions of a single cell. */
                 case 0: /* (  1 ,  1 ,  1 ) */
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     break;
                     
                 case 1: /* (  1 ,  1 ,  0 ) */
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 , 0 );
                     break;
 
                 case 2: /* (  1 ,  1 , -1 ) */
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     break;
                     
                 case 3: /* (  1 ,  0 ,  1 ) */
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 , 0 );
                     break;
 
                 case 4: /* (  1 ,  0 ,  0 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[3] , -1 , 0 );
                     break;
 
                 case 5: /* (  1 ,  0 , -1 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[3] , -1 , 0 );
                     break;
 
                 case 6: /* (  1 , -1 ,  1 ) */
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     break;
                     
                 case 7: /* (  1 , -1 ,  0 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[3] , -1 , 0 );
                     break;
 
                 case 8: /* (  1 , -1 , -1 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB1( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     break;
                     
                 case 9: /* (  0 ,  1 ,  1 ) */
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 , 0 );
                     break;
 
                 case 10: /* (  0 ,  1 ,  0 ) */
                     if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[2] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[2] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                        DOSUB1( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[5] , -1 , 0 );
                     break;
 
                 case 11: /* (  0 ,  1 , -1 ) */
                     if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                        DOSUB1( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[2] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                        DOSUB1( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                        DOSUB1( r , ci->progeny[6] , cj->progeny[5] , -1 , 0 );
                     break;
 
                 case 12: /* (  0 ,  0 ,  1 ) */
                     if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[1] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[1] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[1] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
-                        DOSUB1( r , ci->progeny[1] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[1] , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
-                        DOSUB1( r , ci->progeny[3] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[3] , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
-                        DOSUB1( r , ci->progeny[5] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[5] , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
-                        DOSUB1( r , ci->progeny[7] , cj->progeny[6] , -1 );
+                        DOSUB1( r , ci->progeny[7] , cj->progeny[6] , -1 , 0 );
                     break;
 
                 }
@@ -1949,16 +1949,17 @@ void DOSUB1 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
         } /* otherwise, pair interaction. */
     
 
-    #ifdef TIMER_VERBOSE
-        printf( "runner_dosub1[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
-    #else
-        TIMER_TOC(TIMER_DOSUB);
-    #endif
+    if ( gettimer )
+        #ifdef TIMER_VERBOSE
+            printf( "runner_dosub1[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+        #else
+            TIMER_TOC(TIMER_DOSUB);
+        #endif
 
     }
 
 
-void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
+void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid , int gettimer ) {
 
     int j, k;
     double shift[3];
@@ -1981,10 +1982,10 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
             /* Loop over all progeny. */
             for ( k = 0 ; k < 8 ; k++ )
                 if ( ci->progeny[k] != NULL ) {
-                    DOSUB2( r , ci->progeny[k] , NULL , -1 );
+                    DOSUB2( r , ci->progeny[k] , NULL , -1 , 0 );
                     for ( j = k+1 ; j < 8 ; j++ )
                         if ( ci->progeny[j] != NULL )
-                            DOSUB2( r , ci->progeny[k] , ci->progeny[j] , -1 );
+                            DOSUB2( r , ci->progeny[k] , ci->progeny[j] , -1 , 0 );
                     }
         
             }
@@ -2019,193 +2020,193 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
                 /* Regular sub-cell interactions of a single cell. */
                 case 0: /* (  1 ,  1 ,  1 ) */
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     break;
                     
                 case 1: /* (  1 ,  1 ,  0 ) */
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 , 0 );
                     break;
 
                 case 2: /* (  1 ,  1 , -1 ) */
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     break;
                     
                 case 3: /* (  1 ,  0 ,  1 ) */
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 , 0 );
                     break;
 
                 case 4: /* (  1 ,  0 ,  0 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[3] , -1 , 0 );
                     break;
 
                 case 5: /* (  1 ,  0 , -1 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[3] , -1 , 0 );
                     break;
 
                 case 6: /* (  1 , -1 ,  1 ) */
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     break;
                     
                 case 7: /* (  1 , -1 ,  0 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[3] , -1 , 0 );
                     break;
 
                 case 8: /* (  1 , -1 , -1 ) */
                     if ( ci->progeny[4] != NULL && cj->progeny[3] != NULL )
-                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 );
+                        DOSUB2( r , ci->progeny[4] , cj->progeny[3] , -1 , 0 );
                     break;
                     
                 case 9: /* (  0 ,  1 ,  1 ) */
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 , 0 );
                     break;
 
                 case 10: /* (  0 ,  1 ,  0 ) */
                     if ( ci->progeny[2] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[2] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[2] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                        DOSUB2( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[5] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[5] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[5] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[5] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[5] , -1 , 0 );
                     break;
 
                 case 11: /* (  0 ,  1 , -1 ) */
                     if ( ci->progeny[2] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[2] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] != NULL )
-                        DOSUB2( r , ci->progeny[2] , cj->progeny[5] , -1 );
+                        DOSUB2( r , ci->progeny[2] , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] != NULL )
-                        DOSUB2( r , ci->progeny[6] , cj->progeny[5] , -1 );
+                        DOSUB2( r , ci->progeny[6] , cj->progeny[5] , -1 , 0 );
                     break;
 
                 case 12: /* (  0 ,  0 ,  1 ) */
                     if ( ci->progeny[1] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[1] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[1] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[1] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[6] != NULL )
-                        DOSUB2( r , ci->progeny[1] , cj->progeny[6] , -1 );
+                        DOSUB2( r , ci->progeny[1] , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[6] != NULL )
-                        DOSUB2( r , ci->progeny[3] , cj->progeny[6] , -1 );
+                        DOSUB2( r , ci->progeny[3] , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[6] != NULL )
-                        DOSUB2( r , ci->progeny[5] , cj->progeny[6] , -1 );
+                        DOSUB2( r , ci->progeny[5] , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[6] != NULL )
-                        DOSUB2( r , ci->progeny[7] , cj->progeny[6] , -1 );
+                        DOSUB2( r , ci->progeny[7] , cj->progeny[6] , -1 , 0 );
                     break;
 
                 }
@@ -2229,16 +2230,17 @@ void DOSUB2 ( struct runner *r , struct cell *ci , struct cell *cj , int sid ) {
         } /* otherwise, pair interaction. */
     
 
-    #ifdef TIMER_VERBOSE
-        printf( "runner_dosub2[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
-    #else
-        TIMER_TOC(TIMER_DOSUB);
-    #endif
+    if ( gettimer )
+        #ifdef TIMER_VERBOSE
+            printf( "runner_dosub2[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+        #else
+            TIMER_TOC(TIMER_DOSUB);
+        #endif
 
     }
 
 
-void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , int *ind , int count , struct cell *cj , int sid ) {
+void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , int *ind , int count , struct cell *cj , int sid , int gettimer ) {
 
     int j, k;
     double shift[3];
@@ -2272,10 +2274,10 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
         if ( ci->split ) {
         
             /* Loop over all progeny. */
-            DOSUB_SUBSET( r , sub , parts , ind , count , NULL , -1 );
+            DOSUB_SUBSET( r , sub , parts , ind , count , NULL , -1 , 0 );
             for ( j = 0 ; j < 8 ; j++ )
                 if ( ci->progeny[j] != sub && ci->progeny[j] != NULL )
-                    DOSUB_SUBSET( r , sub , parts , ind , count , ci->progeny[j] , -1 );
+                    DOSUB_SUBSET( r , sub , parts , ind , count , ci->progeny[j] , -1 , 0 );
         
             }
         
@@ -2304,345 +2306,345 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
                 /* Regular sub-cell interactions of a single cell. */
                 case 0: /* (  1 ,  1 ,  1 ) */
                     if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , ci->progeny[0] , parts , ind , count , cj->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[0] , parts , ind , count , cj->progeny[7] , -1 , 0 );
                     break;
                     
                 case 1: /* (  1 ,  1 ,  0 ) */
                     if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     break;
 
                 case 2: /* (  1 ,  1 , -1 ) */
                     if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     break;
                     
                 case 3: /* (  1 ,  0 ,  1 ) */
                     if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     break;
 
                 case 4: /* (  1 ,  0 ,  0 ) */
                     if ( ci->progeny[4] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[4] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[4] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     break;
 
                 case 5: /* (  1 ,  0 , -1 ) */
                     if ( ci->progeny[4] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     break;
 
                 case 6: /* (  1 , -1 ,  1 ) */
                     if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     break;
                     
                 case 7: /* (  1 , -1 ,  0 ) */
                     if ( ci->progeny[4] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     break;
 
                 case 8: /* (  1 , -1 , -1 ) */
                     if ( ci->progeny[4] == sub && cj->progeny[3] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[4] , parts , ind , count , cj->progeny[3] , -1 , 0 );
                     if ( ci->progeny[4] != NULL && cj->progeny[3] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[3] , parts , ind , count , ci->progeny[4] , -1 , 0 );
                     break;
                     
                 case 9: /* (  0 ,  1 ,  1 ) */
                     if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     break;
 
                 case 10: /* (  0 ,  1 ,  0 ) */
                     if ( ci->progeny[2] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[2] , -1 , 0 );
                     if ( ci->progeny[2] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[2] , -1 , 0 );
                     if ( ci->progeny[2] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[2] , -1 , 0 );
                     if ( ci->progeny[2] == sub && cj->progeny[5] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[2] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[5] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[5] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[5] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[5] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[5] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     break;
 
                 case 11: /* (  0 ,  1 , -1 ) */
                     if ( ci->progeny[2] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[2] , -1 , 0 );
                     if ( ci->progeny[2] == sub && cj->progeny[5] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[2] , parts , ind , count , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[2] != NULL && cj->progeny[5] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[2] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[1] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[1] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[1] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[1] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     if ( ci->progeny[6] == sub && cj->progeny[5] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[6] , parts , ind , count , cj->progeny[5] , -1 , 0 );
                     if ( ci->progeny[6] != NULL && cj->progeny[5] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[5] , parts , ind , count , ci->progeny[6] , -1 , 0 );
                     break;
 
                 case 12: /* (  0 ,  0 ,  1 ) */
                     if ( ci->progeny[1] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[1] , -1 , 0 );
                     if ( ci->progeny[1] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[1] , -1 , 0 );
                     if ( ci->progeny[1] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[1] , -1 , 0 );
                     if ( ci->progeny[1] == sub && cj->progeny[6] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[1] , parts , ind , count , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[1] != NULL && cj->progeny[6] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[1] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[1] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[3] == sub && cj->progeny[6] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[3] , parts , ind , count , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[3] != NULL && cj->progeny[6] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[3] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[3] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[5] == sub && cj->progeny[6] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[5] , parts , ind , count , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[5] != NULL && cj->progeny[6] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[5] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[5] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[0] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[0] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[0] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[0] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[2] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[2] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[2] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[2] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[4] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[4] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[4] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[4] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     if ( ci->progeny[7] == sub && cj->progeny[6] != NULL )
-                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[6] , -1 );
+                        DOSUB_SUBSET( r , ci->progeny[7] , parts , ind , count , cj->progeny[6] , -1 , 0 );
                     if ( ci->progeny[7] != NULL && cj->progeny[6] == sub )
-                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[7] , -1 );
+                        DOSUB_SUBSET( r , cj->progeny[6] , parts , ind , count , ci->progeny[7] , -1 , 0 );
                     break;
 
                 }
@@ -2656,11 +2658,12 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
         } /* otherwise, pair interaction. */
     
 
-    #ifdef TIMER_VERBOSE
-        printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
-    #else
-        TIMER_TOC(TIMER_DOSUB);
-    #endif
+    if ( gettimer )
+        #ifdef TIMER_VERBOSE
+            printf( "runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n" , r->id , sid , ci->depth , ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000 );
+        #else
+            TIMER_TOC(TIMER_DOSUB);
+        #endif
 
     }
 
