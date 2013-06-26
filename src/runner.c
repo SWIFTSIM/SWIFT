@@ -768,7 +768,7 @@ void *runner_main ( void *data ) {
     struct runner *r = (struct runner *)data;
     struct engine *e = r->e;
     struct scheduler *sched = &e->sched;
-    int threadID = r->id;
+    int qid = r->qid;
     struct task *t;
     struct cell *ci, *cj;
     
@@ -783,7 +783,7 @@ void *runner_main ( void *data ) {
         
             /* Get a task, how and from where depends on the policy. */
             TIMER_TIC
-            t = scheduler_gettask( sched , threadID );
+            t = scheduler_gettask( sched , qid );
             TIMER_TOC(timer_getpair);
             
             /* Did I get anything? */

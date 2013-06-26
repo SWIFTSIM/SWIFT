@@ -798,13 +798,20 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         if ( pthread_create( &e->runners[k].thread , NULL , &runner_main , &e->runners[k] ) != 0 )
             error( "Failed to create runner thread." );
         #if defined(HAVE_SETAFFINITY)
+        
+            /* Set a reasonable queue ID. */
+            e->runners[k].qid = cpuid[ k ] * nr_queues / nr_threads;
+            
             /* Set the cpu mask to zero | e->id. */
             CPU_ZERO( &cpuset );
-            CPU_SET( cpuid[ e->runners[k].id ] , &cpuset );
+            CPU_SET( cpuid[ k ] , &cpuset );
 
             /* Apply this mask to the runner's pthread. */
             if ( pthread_setaffinity_np( e->runners[k].thread , sizeof(cpu_set_t) , &cpuset ) != 0 )
                 error( "Failed to set thread affinity." );
+                
+        #else
+            e->runners[k].qid = k % nr_queues;
         #endif
         }
         

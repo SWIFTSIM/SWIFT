@@ -62,6 +62,9 @@ struct runner {
     /* The thread which it is running. */
     pthread_t thread;
     
+    /* The queue to use to get tasks. */
+    int qid;
+
     /* The underlying runner. */
     struct engine *e;
     
