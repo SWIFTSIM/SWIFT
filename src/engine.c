@@ -801,7 +801,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         #if defined(HAVE_SETAFFINITY)
         
             /* Set a reasonable queue ID. */
-            e->runners[k].qid = cpuid[ k ] * nr_queues / nr_threads;
+            e->runners[k].qid = cpuid[ k ] * nr_queues / nr_cores;
             
             /* Set the cpu mask to zero | e->id. */
             CPU_ZERO( &cpuset );
@@ -812,7 +812,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
                 error( "Failed to set thread affinity." );
                 
         #else
-            e->runners[k].qid = k % nr_queues;
+            e->runners[k].qid = k * nr_queues / nr_threads;
         #endif
         }
         
