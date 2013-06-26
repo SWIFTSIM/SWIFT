@@ -778,6 +778,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         error( "Failed to lock barrier mutex." );
     e->barrier_running = 0;
     e->barrier_launch = 0;
+    e->barrier_launchcount = 0;
     
     /* Run through the parts and get the minimum time step. */
     e->dt_orig = dt;

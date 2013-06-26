@@ -40,6 +40,9 @@ struct xpart {
     /* Old density. */
     float omega;
     
+    /* particle's current time-step. */
+    float dt_curr;
+    
     } __attribute__((aligned (32)));
     
 
