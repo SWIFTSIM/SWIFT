@@ -244,6 +244,11 @@ int engine_marktasks ( struct engine *e ) {
     struct task *t, *tasks = s->tasks;
     float dt_step = e->dt_step;
     struct cell *ci, *cj;
+    ticks tic = getticks();
+    
+    /* Nothing to do here if we're on a fixed time-step. */
+    if ( !( e->policy & engine_policy_multistep ) )
+        return 0;
     
     /* Run through the tasks and mark as skip or not. */
     for ( k = 0 ; k < nr_tasks ; k++ ) {
@@ -252,7 +257,7 @@ int engine_marktasks ( struct engine *e ) {
         t = &tasks[ ind[k] ];
         
         /* Sort-task? Note that due to the task ranking, the sorts
-           will all come before the pairs and/or subs. */
+           will all come before the pairs. */
         if ( t->type == task_type_sort ) {
         
             /* Re-set the flags. */
@@ -307,6 +312,8 @@ int engine_marktasks ( struct engine *e ) {
             
         }
         
+    printf( "engine_marktasks: took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+    
     /* All is well... */
     return 0;
     
@@ -328,7 +335,7 @@ void engine_prepare ( struct engine *e ) {
     /* Run through the tasks and mark as skip or not. */
     // tic = getticks();
     rebuild = ( e->step == 0 || engine_marktasks( e ) );
-    // printf( "space_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+    // printf( "engine_prepare: space_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Did this not go through? */
     if ( rebuild ) {
@@ -352,12 +359,14 @@ void engine_prepare ( struct engine *e ) {
         }
 
     /* Start the scheduler. */
+    // ticks tic2 = getticks();
     scheduler_start( &e->sched , (1 << task_type_sort) | 
                                  (1 << task_type_self) |
                                  (1 << task_type_pair) | 
                                  (1 << task_type_sub) |
                                  (1 << task_type_ghost) | 
                                  (1 << task_type_kick2) );
+    // printf( "engine_prepare: scheduler_start took %.3f ms.\n" , (double)(getticks() - tic2)/CPU_TPS*1000 );
     
     TIMER_TOC( timer_prepare );
     

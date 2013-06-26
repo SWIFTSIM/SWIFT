@@ -441,6 +441,7 @@ struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , 
     t->tight = tight;
     t->implicit = 0;
     t->weight = 0;
+    t->rank = 0;
     t->tic = 0;
     t->nr_unlock_tasks = 0;
     
@@ -561,13 +562,13 @@ void scheduler_reset ( struct scheduler *s , int size ) {
  
 void scheduler_start ( struct scheduler *s , unsigned int mask ) {
 
-    int k, j, *tid = s->tasks_ind;
+    int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
     struct task *t, *tasks = s->tasks;
     
     /* Run throught the tasks backwards and set their waits and
        weights. */
     // #pragma omp parallel for schedule(static) private(t,j)
-    for ( k = s->nr_tasks-1 ; k >= 0 ; k-- ) {
+    for ( k = nr_tasks-1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
         if ( !( (1 << t->type) & mask ) || t->skip )
             continue;
@@ -608,8 +609,10 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
         }
         
     /* Loop over the tasks and enqueue whoever is ready. */
-    for ( k = 0 ; k < s->nr_tasks ; k++ ) {
-        t = &s->tasks[k];
+    for ( k = 0 ; k < nr_tasks ; k++ ) {
+        t = &tasks[ tid[k] ];
+        if ( t->rank > 0 )
+            break;
         if ( ( (1 << t->type) & mask ) && !t->skip && t->wait == 0 )
             scheduler_enqueue( s , t );
         }
