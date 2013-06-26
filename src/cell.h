@@ -65,7 +65,7 @@ struct cell {
     
     /* Pointers for the sorted indices. */
     struct entry *sort;
-    int sorted;
+    unsigned int sorted;
     
     /* Number of pairs associated with this cell. */
     // int nr_pairs;

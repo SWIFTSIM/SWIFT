@@ -269,6 +269,15 @@ int engine_marktasks ( struct engine *e ) {
                     return 1;
 
                 }
+                
+            /* Sort? */
+            else if ( t->type == task_type_sort ) {
+            
+                /* If all the sorts have been done, make this task implicit. */
+                if ( !( t->flags & (t->flags ^ t->ci->sorted ) ) )
+                    t->implicit = 1;
+            
+                }
 
             }
             
@@ -320,10 +329,14 @@ int engine_marktasks ( struct engine *e ) {
 
                 /* Set the sort flags. */
                 if ( !t->skip && t->type == task_type_pair ) {
-                    ci->sorts->flags |= (1 << t->flags);
-                    ci->sorts->skip = 0;
-                    cj->sorts->flags |= (1 << t->flags);
-                    cj->sorts->skip = 0;
+                    if ( !( ci->sorted & ( 1 << t->flags ) ) ) {
+                        ci->sorts->flags |= (1 << t->flags);
+                        ci->sorts->skip = 0;
+                        }
+                    if ( !( cj->sorted & ( 1 << t->flags ) ) ) {
+                        cj->sorts->flags |= (1 << t->flags);
+                        cj->sorts->skip = 0;
+                        }
                     }
 
                 }

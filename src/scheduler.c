@@ -692,18 +692,19 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
     struct task *t2;
     
     /* Release whatever locks this task held. */
-    switch ( t->type ) {
-        case task_type_self:
-        case task_type_sort:
-            cell_unlocktree( t->ci );
-            break;
-        case task_type_pair:
-        case task_type_sub:
-            cell_unlocktree( t->ci );
-            if ( t->cj != NULL )
-                cell_unlocktree( t->cj );
-            break;
-        }
+    if ( !t->implicit )
+        switch ( t->type ) {
+            case task_type_self:
+            case task_type_sort:
+                cell_unlocktree( t->ci );
+                break;
+            case task_type_pair:
+            case task_type_sub:
+                cell_unlocktree( t->ci );
+                if ( t->cj != NULL )
+                    cell_unlocktree( t->cj );
+                break;
+            }
         
     /* Loop through the dependencies and add them to a queue if
        they are ready. */
