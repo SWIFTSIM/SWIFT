@@ -686,10 +686,12 @@ void space_split ( struct space *s , struct cell *c ) {
                 if ( c->progeny[k]->maxdepth > maxdepth )
                     maxdepth = c->progeny[k]->maxdepth;
                 }
-            c->h_max = h_max;
-            c->dt_min = dt_min;
-            c->dt_max = dt_max;
-            c->maxdepth = maxdepth;
+                
+        /* Set the values for this cell. */
+        c->h_max = h_max;
+        c->dt_min = dt_min;
+        c->dt_max = dt_max;
+        c->maxdepth = maxdepth;
                 
         }
         
@@ -723,6 +725,9 @@ void space_split ( struct space *s , struct cell *c ) {
         c->dt_max = dt_max;
             
         }
+        
+    /* Set ownership accorind to the start of the parts array. */
+    c->owner = ( c->parts - s->parts ) * s->nr_queues / s->nr_parts;
 
     }
 
@@ -838,6 +843,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->nr_parts = N;
     s->parts = parts;
     s->cell_min = h_max;
+    s->nr_queues = 1;
     
     /* Allocate and link the xtra parts array. */
     if ( posix_memalign( (void *)&s->xparts , 32 , N * sizeof(struct xpart) ) != 0 )

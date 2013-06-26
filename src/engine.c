@@ -783,6 +783,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     
     /* Init the scheduler. */
     scheduler_init( &e->sched , e->s , nr_queues , scheduler_flag_steal );
+    s->nr_queues = nr_queues;
         
     /* Append a kick1 task to each cell. */
     scheduler_reset( &e->sched , s->tot_cells );

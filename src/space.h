@@ -93,6 +93,9 @@ struct space {
     /* General-purpose lock for this space. */
     lock_type lock;
     
+    /* Number of queues in the system. */
+    int nr_queues;
+    
     };
 
 
