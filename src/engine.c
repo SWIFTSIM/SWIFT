@@ -370,7 +370,7 @@ void engine_prepare ( struct engine *e ) {
  * @param e The #engine.
  */
  
-void engine_barrier ( struct engine *e ) {
+void engine_barrier ( struct engine *e , int tid ) {
 
     /* First, get the barrier mutex. */
     if ( pthread_mutex_lock( &e->barrier_mutex ) != 0 )
@@ -385,7 +385,7 @@ void engine_barrier ( struct engine *e ) {
             error( "Failed to broadcast barrier full condition." );
         
     /* Wait for the barrier to open. */
-    while ( e->barrier_launch == 0 )
+    while ( e->barrier_launch == 0 || tid >= e->barrier_launchcount )
         if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
             error( "Eror waiting for barrier to close." );
         
@@ -566,6 +566,7 @@ void engine_launch ( struct engine *e , int nr_runners ) {
 
     /* Cry havoc and let loose the dogs of war. */
     e->barrier_launch = nr_runners;
+    e->barrier_launchcount = nr_runners;
     if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
         error( "Failed to broadcast barrier open condition." );
         
@@ -801,11 +802,11 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         #if defined(HAVE_SETAFFINITY)
         
             /* Set a reasonable queue ID. */
-            e->runners[k].qid = cpuid[ k ] * nr_queues / nr_cores;
+            e->runners[k].qid = cpuid[ k % nr_cores ] * nr_queues / nr_cores;
             
             /* Set the cpu mask to zero | e->id. */
             CPU_ZERO( &cpuset );
-            CPU_SET( cpuid[ k ] , &cpuset );
+            CPU_SET( cpuid[ k % nr_cores ] , &cpuset );
 
             /* Apply this mask to the runner's pthread. */
             if ( pthread_setaffinity_np( e->runners[k].thread , sizeof(cpu_set_t) , &cpuset ) != 0 )

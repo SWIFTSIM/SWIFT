@@ -75,13 +75,13 @@ struct engine {
     /* Data for the threads' barrier. */
     pthread_mutex_t barrier_mutex;
     pthread_cond_t barrier_cond;
-    volatile int barrier_running, barrier_launch;
+    volatile int barrier_running, barrier_launch, barrier_launchcount;
     
     };
 
 
 /* Function prototypes. */
-void engine_barrier( struct engine *e );
+void engine_barrier( struct engine *e , int tid );
 void engine_init ( struct engine *e , struct space *s , float dt , int nr_threads , int nr_queues , int policy );
 void engine_prepare ( struct engine *e );
 void engine_step ( struct engine *e );

@@ -776,7 +776,7 @@ void *runner_main ( void *data ) {
     while ( 1 ) {
     
         /* Wait at the barrier. */
-        engine_barrier( e );
+        engine_barrier( e , r->id );
         
         /* Loop while there are tasks... */
         while ( 1 ) {
