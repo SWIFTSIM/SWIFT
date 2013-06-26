@@ -244,75 +244,114 @@ int engine_marktasks ( struct engine *e ) {
     struct task *t, *tasks = s->tasks;
     float dt_step = e->dt_step;
     struct cell *ci, *cj;
-    ticks tic = getticks();
+    // ticks tic = getticks();
     
-    /* Nothing to do here if we're on a fixed time-step. */
-    if ( !( e->policy & engine_policy_multistep ) )
-        return 0;
+    /* Muc less to do here if we're on a fixed time-step. */
+    if ( !( e->policy & engine_policy_multistep ) ) {
     
-    /* Run through the tasks and mark as skip or not. */
-    for ( k = 0 ; k < nr_tasks ; k++ ) {
-    
-        /* Get a handle on the kth task. */
-        t = &tasks[ ind[k] ];
-        
-        /* Sort-task? Note that due to the task ranking, the sorts
-           will all come before the pairs. */
-        if ( t->type == task_type_sort ) {
-        
-            /* Re-set the flags. */
-            t->flags = 0;
-            t->skip = 1;
-        
-            }
-        
-        /* Single-cell task? */
-        else if ( t->type == task_type_self ||
-                  t->type == task_type_ghost ||
-                ( t->type == task_type_sub && t->cj == NULL ) ) {
-             
-            /* Set this task's skip. */
-            t->skip = ( t->ci->dt_min > dt_step );
-            
-            }
-        
-        /* Pair? */
-        else if ( t->type == task_type_pair || ( t->type == task_type_sub && t->cj != NULL ) ) {
-            
-            /* Local pointers. */
-            ci = t->ci;
-            cj = t->cj;
-            
-            /* Set this task's skip. */
-            t->skip = ( ci->dt_min > dt_step && cj->dt_min > dt_step );
-            
-            /* Too much particle movement? */
-            if ( t->tight &&
-                 ( fmaxf( ci->h_max , cj->h_max ) + ci->dx_max + cj->dx_max > cj->dmin || 
-                   ci->dx_max > space_maxreldx*ci->h_max || cj->dx_max > space_maxreldx*cj->h_max ) )
-                return 1;
-                
-            /* Set the sort flags. */
-            if ( !t->skip && t->type == task_type_pair ) {
-                ci->sorts->flags |= (1 << t->flags);
-                ci->sorts->skip = 0;
-                cj->sorts->flags |= (1 << t->flags);
-                cj->sorts->skip = 0;
+        /* Run through the tasks and mark as skip or not. */
+        for ( k = 0 ; k < nr_tasks ; k++ ) {
+
+            /* Get a handle on the kth task. */
+            t = &tasks[ ind[k] ];
+
+            /* Pair? */
+            if ( t->type == task_type_pair || ( t->type == task_type_sub && t->cj != NULL ) ) {
+
+                /* Local pointers. */
+                ci = t->ci;
+                cj = t->cj;
+
+                /* Set this task's skip. */
+                t->skip = ( ci->dt_min > dt_step && cj->dt_min > dt_step );
+
+                /* Too much particle movement? */
+                if ( t->tight &&
+                     ( fmaxf( ci->h_max , cj->h_max ) + ci->dx_max + cj->dx_max > cj->dmin || 
+                       ci->dx_max > space_maxreldx*ci->h_max || cj->dx_max > space_maxreldx*cj->h_max ) )
+                    return 1;
+
+                /* Set the sort flags. */
+                if ( !t->skip && t->type == task_type_pair ) {
+                    ci->sorts->flags |= (1 << t->flags);
+                    ci->sorts->skip = 0;
+                    cj->sorts->flags |= (1 << t->flags);
+                    cj->sorts->skip = 0;
+                    }
+
                 }
-                
+
             }
             
-        /* Kick2? */
-        else if ( t->type == task_type_kick2 )
-            t->skip = 0;
-            
-        /* None? */
-        else if ( t->type == task_type_none )
-            t->skip = 1;
+        }
+    
+    else {
+    
+        /* Run through the tasks and mark as skip or not. */
+        for ( k = 0 ; k < nr_tasks ; k++ ) {
+
+            /* Get a handle on the kth task. */
+            t = &tasks[ ind[k] ];
+
+            /* Sort-task? Note that due to the task ranking, the sorts
+               will all come before the pairs. */
+            if ( t->type == task_type_sort ) {
+
+                /* Re-set the flags. */
+                t->flags = 0;
+                t->skip = 1;
+
+                }
+
+            /* Single-cell task? */
+            else if ( t->type == task_type_self ||
+                      t->type == task_type_ghost ||
+                    ( t->type == task_type_sub && t->cj == NULL ) ) {
+
+                /* Set this task's skip. */
+                t->skip = ( t->ci->dt_min > dt_step );
+
+                }
+
+            /* Pair? */
+            else if ( t->type == task_type_pair || ( t->type == task_type_sub && t->cj != NULL ) ) {
+
+                /* Local pointers. */
+                ci = t->ci;
+                cj = t->cj;
+
+                /* Set this task's skip. */
+                t->skip = ( ci->dt_min > dt_step && cj->dt_min > dt_step );
+
+                /* Too much particle movement? */
+                if ( t->tight &&
+                     ( fmaxf( ci->h_max , cj->h_max ) + ci->dx_max + cj->dx_max > cj->dmin || 
+                       ci->dx_max > space_maxreldx*ci->h_max || cj->dx_max > space_maxreldx*cj->h_max ) )
+                    return 1;
+
+                /* Set the sort flags. */
+                if ( !t->skip && t->type == task_type_pair ) {
+                    ci->sorts->flags |= (1 << t->flags);
+                    ci->sorts->skip = 0;
+                    cj->sorts->flags |= (1 << t->flags);
+                    cj->sorts->skip = 0;
+                    }
+
+                }
+
+            /* Kick2? */
+            else if ( t->type == task_type_kick2 )
+                t->skip = 0;
+
+            /* None? */
+            else if ( t->type == task_type_none )
+                t->skip = 1;
+
+            }
             
         }
         
-    printf( "engine_marktasks: took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
+    // printf( "engine_marktasks: took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
     
     /* All is well... */
     return 0;
