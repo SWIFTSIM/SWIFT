@@ -262,22 +262,11 @@ int engine_marktasks ( struct engine *e ) {
                 ci = t->ci;
                 cj = t->cj;
 
-                /* Set this task's skip. */
-                t->skip = ( ci->dt_min > dt_step && cj->dt_min > dt_step );
-
                 /* Too much particle movement? */
                 if ( t->tight &&
                      ( fmaxf( ci->h_max , cj->h_max ) + ci->dx_max + cj->dx_max > cj->dmin || 
                        ci->dx_max > space_maxreldx*ci->h_max || cj->dx_max > space_maxreldx*cj->h_max ) )
                     return 1;
-
-                /* Set the sort flags. */
-                if ( !t->skip && t->type == task_type_pair ) {
-                    ci->sorts->flags |= (1 << t->flags);
-                    ci->sorts->skip = 0;
-                    cj->sorts->flags |= (1 << t->flags);
-                    cj->sorts->skip = 0;
-                    }
 
                 }
 
