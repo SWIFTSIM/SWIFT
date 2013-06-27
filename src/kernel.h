@@ -260,7 +260,7 @@ __attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , floa
 #ifdef VECTORIZE
 
 /**
- * @brief Computes the 1uintic spline kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<3.
+ * @brief Computes the quintic spline kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<3.
  */
 
 __attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x , vector *w , vector *dw_dx ) {
@@ -302,6 +302,98 @@ __attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float
         w = x*w + coeffs[k];
     *W = w;
     }
+
+
+
+
+
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+#elif defined(WENDLAND_C2_KERNEL)
+
+/* -------------------------------------------------------------------------------------------------------------------- */
+
+/* Coefficients for the kernel. */ 
+#define kernel_name "Wendland C2"
+#define kernel_degree 5
+#define kernel_ivals 1
+#define kernel_gamma 1.f
+#define kernel_gamma2 1.f
+#define kernel_gamma3 1.f
+#define kernel_igamma 1.f
+#define kernel_nwneigh ( 4.0/3.0*M_PI*const_eta_kernel*const_eta_kernel*const_eta_kernel*7.261825f )
+static float kernel_coeffs[ (kernel_degree + 1) * (kernel_ivals + 1) ] __attribute__ ((aligned (16))) =
+{  4.0f             , -15.0f           , 20.0f            , -10.0f           , 0.0f            , 1.0f,
+  0.0f             , 0.0f             , 0.0f             , 0.0f            , 0.0f            , 0.0f};
+#define kernel_root ( kernel_coeffs[ kernel_degree ] )
+#define kernel_wroot ( 4.0/3.0*M_PI*kernel_coeffs[ kernel_degree ] )
+      
+      
+/**
+ * @brief Computes the quintic spline kernel and its derivative for a given distance x. Gives a sensible answer only if x<1.
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_deval ( float x , float *W , float *dW_dx ) {
+    int ind = fminf( x, kernel_ivals);
+    float *coeffs = &kernel_coeffs[ ind*(kernel_degree + 1) ];
+    float w = coeffs[0]*x + coeffs[1];
+    float dw_dx = coeffs[0];
+    for ( int k = 2 ; k <= kernel_degree ; k++ ) {
+        dw_dx = dw_dx*x + w;
+        w = x*w + coeffs[k];
+        }
+    *W = w;
+    *dW_dx = dw_dx;
+    }
+
+
+#ifdef VECTORIZE
+
+/**
+ * @brief Computes the Wendland C2 kernel and its derivative for a given distance x (Vectorized version). Gives a sensible answer only if x<1.
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_deval_vec ( vector *x , vector *w , vector *dw_dx ) {
+    
+    vector ind, c[kernel_degree+1];
+    int j, k;
+    
+    /* Load x and get the interval id. */
+    ind.m = vec_ftoi( vec_fmin( x->v, vec_set1( (float)kernel_ivals ) ) );
+    
+    /* load the coefficients. */
+    for ( k = 0 ; k < VEC_SIZE ; k++ )
+        for ( j = 0 ; j < kernel_degree+1 ; j++ )
+            c[j].f[k] = kernel_coeffs[ ind.i[k]*(kernel_degree + 1) + j ];
+
+    /* Init the iteration for Horner's scheme. */
+    w->v = ( c[0].v * x->v ) + c[1].v;
+    dw_dx->v = c[0].v;
+    
+    /* And we're off! */
+    for ( int k = 2 ; k <= kernel_degree ; k++ ) {
+        dw_dx->v = ( dw_dx->v * x->v ) + w->v;
+        w->v = ( x->v * w->v ) + c[k].v;
+        }
+        
+    }
+    
+#endif
+
+/**
+ * @brief Computes the Wendland C2 kernel for a given distance x. Gives a sensible answer only if x<1.
+ */
+
+__attribute__ ((always_inline)) INLINE static void kernel_eval ( float x , float *W ) {
+    int ind = fmin( x, kernel_ivals );
+    float *coeffs = &kernel_coeffs[ ind*(kernel_degree + 1) ];
+    float w = coeffs[0]*x + coeffs[1];
+    for ( int k = 2 ; k <= kernel_degree ; k++ )
+        w = x*w + coeffs[k];
+    *W = w;
+    }
+
 
 
 
