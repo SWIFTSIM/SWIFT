@@ -330,7 +330,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
  
 void runner_doghost ( struct runner *r , struct cell *c ) {
 
-    struct part *p;
+    struct part *p, *parts = c->parts;
     struct cell *finger;
     int i, k, redo, count = c->count;
     int *pid;
@@ -360,10 +360,18 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
         redo = 0;
     
         /* Loop over the parts in this cell. */
+        __builtin_prefetch( &parts[ pid[0] ] , 0 , 1 );
+        __builtin_prefetch( &parts[ pid[0] ].rho_dh , 0 , 1 );
+        __builtin_prefetch( &parts[ pid[1] ] , 0 , 1 );
+        __builtin_prefetch( &parts[ pid[1] ].rho_dh , 0 , 1 );
+        __builtin_prefetch( &parts[ pid[2] ] , 0 , 1 );
+        __builtin_prefetch( &parts[ pid[2] ].rho_dh , 0 , 1 );
         for ( i = 0 ; i < count ; i++ ) {
 
             /* Get a direct pointer on the part. */
-            p = &c->parts[ pid[i] ];
+            __builtin_prefetch( &parts[ pid[i+3] ] , 0 , 1 );
+            __builtin_prefetch( &parts[ pid[i+3] ].rho_dh , 0 , 1 );
+            p = &parts[ pid[i] ];
             
             /* Is this part within the timestep? */
             if ( p->dt <= dt_step ) {
@@ -458,16 +466,16 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 
                     /* Self-interaction? */
                     if ( finger->density[k]->type == task_type_self )
-                        runner_doself_subset_density( r , finger , c->parts , pid , count );
+                        runner_doself_subset_density( r , finger , parts , pid , count );
                         
                     /* Otherwise, pair interaction? */
                     else if ( finger->density[k]->type == task_type_pair ) {
                     
                         /* Left or right? */
                         if ( finger->density[k]->ci == finger )
-                            runner_dopair_subset_density( r , finger , c->parts , pid , count , finger->density[k]->cj );
+                            runner_dopair_subset_density( r , finger , parts , pid , count , finger->density[k]->cj );
                         else
-                            runner_dopair_subset_density( r , finger , c->parts , pid , count , finger->density[k]->ci );
+                            runner_dopair_subset_density( r , finger , parts , pid , count , finger->density[k]->ci );
                         
                         }
                 
@@ -476,9 +484,9 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     
                         /* Left or right? */
                         if ( finger->density[k]->ci == finger )
-                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->cj , -1 , 1 );
+                            runner_dosub_subset_density( r , finger , parts , pid , count , finger->density[k]->cj , -1 , 1 );
                         else
-                            runner_dosub_subset_density( r , finger , c->parts , pid , count , finger->density[k]->ci , -1 , 1 );
+                            runner_dosub_subset_density( r , finger , parts , pid , count , finger->density[k]->ci , -1 , 1 );
                         
                         }
                 
@@ -793,6 +801,16 @@ void *runner_main ( void *data ) {
             /* Get the cells. */
             ci = t->ci;
             cj = t->cj;
+            
+            /* Prefetch? */
+            if ( runner_prefetch &&
+                 t->type != task_type_kick1 && t->type != task_type_kick2 && t->type != task_type_ghost ) {
+                for ( int k = 0 ; k < ci->count ; k++ )
+                    __builtin_prefetch( &ci->parts[k] , 1 , 3 );
+                if ( cj != NULL )
+                    for ( int k = 0 ; k < cj->count ; k++ )
+                        __builtin_prefetch( &cj->parts[k] , 1 , 3 );
+                }
             
             /* Different types of tasks... */
             switch ( t->type ) {

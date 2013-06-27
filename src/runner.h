@@ -19,6 +19,9 @@
 
 #include "inline.h"
 
+/* Some constants/flags. */
+#define runner_prefetch                 1
+
 /* SID stuff. */
 extern const char runner_flip[];
 
