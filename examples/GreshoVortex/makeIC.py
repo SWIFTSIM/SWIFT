@@ -28,7 +28,7 @@ from numpy import *
 periodic= 1      # 1 For periodic box
 factor = 4
 boxSize = [ 1.0 , 1.0, 1.0/factor ]
-L = 160           # Number of particles along one axis
+L = 100           # Number of particles along one axis
 gamma = 5./3.     # Gas adiabatic index
 rho = 1           # Gas density
 P0 = 0.           # Constant additional pressure (should have no impact on the dynamics)
@@ -57,7 +57,7 @@ for i in range(L):
             x = i * boxSize[0] / L + boxSize[0] / (2*L)
             y = j * boxSize[0] / L + boxSize[0] / (2*L)
             z = k * boxSize[0] / L + boxSize[0] / (2*L)
-            r2 = (x - boxSize[0] / 2)**2 + (y - boxSize[1])**2
+            r2 = (x - boxSize[0] / 2)**2 + (y - boxSize[1] / 2)**2
             r = sqrt(r2)
             coords[index,0] = x
             coords[index,1] = y
@@ -69,8 +69,8 @@ for i in range(L):
                 v_phi = 2. - 5.*r
             else:
                 v_phi = 0.
-            v[index,0] = -v_phi * (y - boxSize[0]) / r
-            v[index,1] =  v_phi * (x - boxSize[0]) / r
+            v[index,0] = -v_phi * (y - boxSize[0] / 2) / r
+            v[index,1] =  v_phi * (x - boxSize[0] / 2) / r
             v[index,2] = 0.
             m[index] = mass
             h[index] = 2.251 * boxSize[0] / L
