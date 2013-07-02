@@ -758,10 +758,8 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
                 for ( k = 0 ; k < nr_queues ; k++ )
                     if ( s->queues[k].count > 0 )
                         qids[ count++ ] = k;
-                if ( count > 1 ) {
-                    if ( ( res = queue_gettask( &s->queues[ qids[ rand() % count ] ] , qid , 0 ) ) != NULL )
-                        break;
-                    }
+                if ( count > 0 && ( res = queue_gettask( &s->queues[ qids[ rand() % count ] ] , qid , 0 ) ) != NULL )
+                    break;
                 }
                 
             }
