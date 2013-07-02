@@ -24,16 +24,6 @@
 #define queue_sizegrow           2
 
 
-/* The queue timers themselves. */
-enum {
-    queue_timer_none = 0,
-    queue_timer_gettask,
-    queue_timer_bubble,
-    queue_timer_count,
-    };
-extern ticks queue_timer[ queue_timer_count ];
-
-
 /* Counters. */
 enum {
     queue_counter_swap = 0,

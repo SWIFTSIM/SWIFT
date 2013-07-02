@@ -29,33 +29,12 @@
 #include "cycle.h"
 #include "lock.h"
 #include "task.h"
+#include "timers.h"
 #include "cell.h"
 #include "queue.h"
 #include "error.h"
 #include "inline.h"
 
-/* Define the timer macros. */
-#ifdef TIMER_VERBOSE
-    #ifndef TIMER
-        #define TIMER
-    #endif
-#endif
-#ifdef TIMER
-    #define TIMER_TIC ticks tic = getticks();
-    #define TIMER_TOC(t) timer_toc( t , tic )
-    #define TIMER_TIC2 ticks tic2 = getticks();
-    #define TIMER_TOC2(t) timer_toc( t , tic2 )
-    INLINE static ticks timer_toc ( int t , ticks tic ) {
-        ticks d = (getticks() - tic);
-        __sync_add_and_fetch( &queue_timer[t] , d );
-        return d;
-        }
-#else
-    #define TIMER_TIC
-    #define TIMER_TOC(t)
-    #define TIMER_TIC2
-    #define TIMER_TOC2(t)
-#endif
 
 
 /* Counter macros. */
@@ -65,9 +44,6 @@
     #define COUNT(c)
 #endif
 
-
-/* The timers. */
-ticks queue_timer[ queue_timer_count ];
 
 /* The counters. */
 int queue_counter[ queue_counter_count ];
@@ -174,7 +150,7 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
     
     /* If there are no tasks, leave immediately. */
     if ( q->count == 0 ) {
-        TIMER_TOC(queue_timer_gettask);
+        TIMER_TOC(timer_queue);
         return NULL;
         }
 
@@ -288,7 +264,7 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
         } /* while there are tasks. */
         
     /* Take the money and run. */
-    TIMER_TOC(queue_timer_gettask);
+    TIMER_TOC(timer_queue);
     return res;
 
     }

@@ -792,7 +792,7 @@ void *runner_main ( void *data ) {
             /* Get a task, how and from where depends on the policy. */
             TIMER_TIC
             t = scheduler_gettask( sched , qid );
-            TIMER_TOC(timer_getpair);
+            TIMER_TOC(timer_gettask);
             
             /* Did I get anything? */
             if ( t == NULL )

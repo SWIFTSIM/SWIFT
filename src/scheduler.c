@@ -741,7 +741,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
 
     struct task *res = NULL;
     int k, nr_queues = s->nr_queues;
-
+    
     /* Loop as long as there are tasks... */
     while ( s->waiting > 0 && res == NULL ) {
         
