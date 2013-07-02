@@ -33,35 +33,12 @@
 #include "cycle.h"
 #include "lock.h"
 #include "task.h"
+#include "timers.h"
 #include "part.h"
 #include "cell.h"
 #include "error.h"
 #include "inline.h"
 
-/* The timers. */
-ticks cell_timer[ cell_timer_count ];
-
-
-/* Define the timer macros. */
-#ifdef TIMER_VERBOSE
-    #ifndef TIMER
-        #define TIMER
-    #endif
-#endif
-#ifdef TIMER
-    #define TIMER_TIC ticks tic = getticks();
-    #define TIMER_TOC(t) timer_toc( t , tic )
-    #define TIMER_TIC2 ticks tic2 = getticks();
-    #define TIMER_TOC2(t) timer_toc( t , tic2 )
-    INLINE static ticks timer_toc ( int t , ticks tic ) {
-        ticks d = (getticks() - tic);
-        __sync_add_and_fetch( &cell_timer[t] , d );
-        return d;
-        }
-#else
-    #define TIMER_TIC
-    #define TIMER_TOC(t)
-#endif
 
 /**
  * @brief Lock a cell and hold its parents.
@@ -76,7 +53,7 @@ int cell_locktree( struct cell *c ) {
 
     /* First of all, try to lock this cell. */
     if ( c->hold || lock_trylock( &c->lock ) != 0 ) {
-        TIMER_TOC(cell_timer_tree);
+        TIMER_TOC(timer_locktree);
         return 1;
         }
         
@@ -88,7 +65,7 @@ int cell_locktree( struct cell *c ) {
             error( "Failed to unlock cell." );
             
         /* Admit defeat. */
-        TIMER_TOC(cell_timer_tree);
+        TIMER_TOC(timer_locktree);
         return 1;
     
         }
@@ -111,7 +88,7 @@ int cell_locktree( struct cell *c ) {
         
     /* If we reached the top of the tree, we're done. */
     if ( finger == NULL ) {
-        TIMER_TOC(cell_timer_tree);
+        TIMER_TOC(timer_locktree);
         return 0;
         }
         
@@ -127,7 +104,7 @@ int cell_locktree( struct cell *c ) {
             error( "Failed to unlock cell." );
             
         /* Admit defeat. */
-        TIMER_TOC(cell_timer_tree);
+        TIMER_TOC(timer_locktree);
         return 1;
     
         }
@@ -154,7 +131,7 @@ void cell_unlocktree( struct cell *c ) {
     for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
         __sync_fetch_and_sub( &finger->hold , 1 );
         
-    TIMER_TOC(cell_timer_tree);
+    TIMER_TOC(timer_locktree);
         
     }
     

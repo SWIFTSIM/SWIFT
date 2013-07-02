@@ -21,15 +21,6 @@
 #define cell_sid_dt                 13
 
 
-/* The queue timers. */
-enum {
-    cell_timer_none = 0,
-    cell_timer_tree,
-    cell_timer_count,
-    };
-extern ticks cell_timer[ cell_timer_count ];
-
-
 /* Structure to store the data of a single cell. */
 struct cell {
 

@@ -36,7 +36,7 @@ enum {
     timer_doghost,
     timer_gettask,
     timer_qlock,
-    timer_stalled,
+    timer_locktree,
     timer_runners,
     timer_step,
     timer_count,
