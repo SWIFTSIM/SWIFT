@@ -146,20 +146,19 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
     lock_type *qlock = &q->lock;
     struct task *qtasks, *res = NULL;
     struct cell *ci, *cj;
-    TIMER_TIC
     
     /* If there are no tasks, leave immediately. */
-    if ( q->count == 0 ) {
-        TIMER_TOC(timer_queue);
+    if ( q->count == 0 )
         return NULL;
-        }
 
     /* Main loop, while there are tasks... */
     while ( q->count > 0 ) {
     
         /* Grab the task lock. */
+        TIMER_TIC
         if ( lock_lock( qlock ) != 0 )
             error( "Locking the qlock failed.\n" );
+        TIMER_TOC( timer_qlock );
             
         /* Set some pointers we will use often. */
         qtid = q->tid;
@@ -264,7 +263,6 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
         } /* while there are tasks. */
         
     /* Take the money and run. */
-    TIMER_TOC(timer_queue);
     return res;
 
     }

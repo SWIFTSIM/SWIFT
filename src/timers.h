@@ -35,7 +35,7 @@ enum {
     timer_dopair_subset,
     timer_doghost,
     timer_gettask,
-    timer_queue,
+    timer_qlock,
     timer_stalled,
     timer_runners,
     timer_step,
