@@ -578,7 +578,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
             if ( t->unlock_tasks[j]->weight > t->weight )
                 t->weight = t->unlock_tasks[j]->weight;
-        if ( t->tic > 0 )
+        if ( !t->implicit && t->tic > 0 )
             t->weight += t->toc - t->tic;
         else
             switch ( t->type ) {
