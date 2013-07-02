@@ -754,16 +754,12 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
 
             /* If unsucessful, try stealing from the other queues. */
             if ( s->flags & scheduler_flag_steal ) {
-                int qids[ nr_queues ];
+                int count = 0, qids[ nr_queues ];
                 for ( k = 0 ; k < nr_queues ; k++ )
-                    qids[k] = k;
-                for ( k = 0 ; k < nr_queues ; k++ ) {
-                    int j = k + ( rand() % (nr_queues - k) );
-                    int temp = qids[j];
-                    qids[j] = qids[k];
-                    if ( temp == qid )
-                        continue;
-                    if ( s->queues[temp].count > 0 && ( res = queue_gettask( &s->queues[temp] , qid , 0 ) ) != NULL )
+                    if ( s->queues[k].count > 0 )
+                        qids[ count++ ] = k;
+                if ( count > 1 ) {
+                    if ( ( res = queue_gettask( &s->queues[ qids[ rand() % count ] ] , qid , 0 ) ) != NULL )
                         break;
                     }
                 }

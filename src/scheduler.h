@@ -26,7 +26,7 @@
 /* Flags . */
 #define scheduler_flag_none                  0
 #define scheduler_flag_steal                 1
-#define scheduler_flag_maxsteal              1
+#define scheduler_flag_maxsteal              10
 
 
 /* Data of a scheduler. */
