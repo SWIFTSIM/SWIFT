@@ -777,13 +777,16 @@ void *runner_main ( void *data ) {
     struct engine *e = r->e;
     struct scheduler *sched = &e->sched;
     struct task *t = NULL;
-    struct cell *ci, *cj;
+    struct cell *ci, *cj, *super;
     
     /* Main loop. */
     while ( 1 ) {
     
         /* Wait at the barrier. */
         engine_barrier( e , r->id );
+        
+        /* Re-set the pointer to the previous super cell. */
+        super = NULL;
         
         /* Loop while there are tasks... */
         while ( 1 ) {
@@ -793,7 +796,7 @@ void *runner_main ( void *data ) {
             
                 /* Get the task. */
                 TIMER_TIC
-                t = scheduler_gettask( sched , r->qid );
+                t = scheduler_gettask( sched , r->qid , super );
                 TIMER_TOC(timer_gettask);
                 
                 /* Did I get anything? */
@@ -807,6 +810,14 @@ void *runner_main ( void *data ) {
             cj = t->cj;
             t->rid = r->cpuid;
             
+            /* Set super to the first cell that I own. */
+            if ( ci->super->owner == r->qid )
+                super = ci->super;
+            else if ( cj != NULL && cj->super->owner == r->qid )
+                super = cj->super;
+            else
+                super = NULL;
+                
             /* Prefetch? */
             if ( runner_prefetch &&
                  t->type != task_type_kick1 && t->type != task_type_kick2 && t->type != task_type_ghost ) {

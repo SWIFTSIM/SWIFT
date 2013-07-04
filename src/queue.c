@@ -130,7 +130,7 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  * @param keep Remove the returned task from this queue.
  */
  
-struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
+struct task *queue_gettask ( struct queue *q , int qid , struct cell *super , int blocking ) {
 
     int k, temp, qcount, *qtid;
     lock_type *qlock = &q->lock;
@@ -152,21 +152,32 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
         qtasks = q->tasks;
         qcount = q->count;
             
-        /* Loop over the remaining task IDs. */
-        for ( k = 0 ; k < qcount ; k++ ) {
-        
-            /* Put a finger on the task. */
-            res = &qtasks[ qtid[k] ];
+        /* Loop over the task IDs looking for tasks with the same super-cell. */
+        if ( super != NULL )
+            for ( k = 0 ; k < qcount ; k++ ) {
+
+                /* Put a finger on the task. */
+                res = &qtasks[ qtid[k] ];
+
+                /* Try to lock the task and exit if successful. */
+                if ( ( res->ci->super == super || ( res->cj != NULL && res->cj->super == super ) ) &&
+                     task_lock( res ) )
+                    break;
+
+                } /* loop over the task IDs. */
             
-            /* Is this task blocked? */
-            if ( res->wait )
-                error( "Enqueued waiting task." );
-                
-            /* Try to lock the task and exit if successful. */
-            if ( task_lock( res ) )
-                break;
-            
-            } /* loop over the task IDs. */
+        /* Loop over the task IDs again if nothing was found, take anything. */
+        if ( super == NULL || k == qcount )
+            for ( k = 0 ; k < qcount ; k++ ) {
+
+                /* Put a finger on the task. */
+                res = &qtasks[ qtid[k] ];
+
+                /* Try to lock the task and exit if successful. */
+                if ( task_lock( res ) )
+                    break;
+
+                } /* loop over the task IDs. */
             
         /* Did we get a task? */
         if ( k < qcount ) {

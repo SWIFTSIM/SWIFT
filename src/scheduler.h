@@ -68,7 +68,7 @@ struct scheduler {
 
 /* Function prototypes. */
 void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues , unsigned int flags );
-struct task *scheduler_gettask ( struct scheduler *s , int qid );
+struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *super );
 void scheduler_enqueue ( struct scheduler *s , struct task *t );
 void scheduler_start ( struct scheduler *s , unsigned int mask );
 void scheduler_reset ( struct scheduler *s , int nr_tasks );

@@ -775,8 +775,9 @@ void scheduler_done_old ( struct scheduler *s , struct task *t ) {
  
 struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
 
-    int k, res, oid = t->ci->super->owner;
+    int k, res;
     struct task *t2, *next = NULL;
+    struct cell *super = t->ci->super;
     
     /* Release whatever locks this task held. */
     if ( !t->implicit )
@@ -790,7 +791,7 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
             error( "Negative wait!" );
         if ( res == 1 && !t2->skip ) {
             if ( !t2->implicit &&
-                 t2->ci->super->owner == oid &&
+                 t2->ci->super == super &&
                  ( next == NULL || t2->weight > next->weight ) &&
                  task_lock( t2 ) ) {
                 if ( next != NULL ) {
@@ -814,6 +815,10 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
         pthread_mutex_unlock( &s->sleep_mutex );
         }
         
+    /* Start the clock on the follow-up task. */
+    if ( next != NULL )
+        next->tic = getticks();
+        
     /* Return the next best task. */
     return next;
 
@@ -829,7 +834,7 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
  
-struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
+struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *super ) {
 
     struct task *res = NULL;
     int k, nr_queues = s->nr_queues;
@@ -845,7 +850,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
         for ( int tries = 0 ; res == NULL && tries < scheduler_flag_maxsteal ; tries++ ) {
         
             /* Try to get a task from the suggested queue. */
-            if ( ( res = queue_gettask( &s->queues[qid] , qid , 0 ) ) != NULL )
+            if ( ( res = queue_gettask( &s->queues[qid] , qid , super , 0 ) ) != NULL )
                 break;
 
             /* If unsucessful, try stealing from the other queues. */
@@ -854,7 +859,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
                 for ( k = 0 ; k < nr_queues ; k++ )
                     if ( s->queues[k].count > 0 )
                         qids[ count++ ] = k;
-                if ( count > 0 && ( res = queue_gettask( &s->queues[ qids[ rand() % count ] ] , qid , 0 ) ) != NULL )
+                if ( count > 0 && ( res = queue_gettask( &s->queues[ qids[ rand() % count ] ] , qid , super , 0 ) ) != NULL )
                     break;
                 }
                 

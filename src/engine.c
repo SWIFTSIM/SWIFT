@@ -674,10 +674,10 @@ void engine_step ( struct engine *e ) {
     TIMER_TOC( timer_kick1 );
     
     /* Check if all the kick1 threads have executed. */
-    for ( k = 0 ; k < e->sched.nr_tasks ; k++ )
+    /* for ( k = 0 ; k < e->sched.nr_tasks ; k++ )
         if ( e->sched.tasks[k].type == task_type_kick1 &&
              e->sched.tasks[k].toc == 0 )
-            error( "Not all kick1 tasks completed." );
+            error( "Not all kick1 tasks completed." ); */
         
     // for(k=0; k<10; ++k)
     //   printParticle(parts, k);
