@@ -72,3 +72,5 @@ void task_rmunlock( struct task *ta , struct task *tb );
 void task_rmunlock_blind( struct task *ta , struct task *tb );
 void task_cleanunlock ( struct task *t , int type );
 void task_addunlock( struct task *ta , struct task *tb );
+void task_unlock ( struct task *t );
+int task_lock ( struct task *t );

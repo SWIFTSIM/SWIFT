@@ -35,11 +35,74 @@
 #include "cycle.h"
 #include "atomic.h"
 #include "lock.h"
+#include "cell.h"
 #include "task.h"
 #include "error.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" , "sub" , "ghost" , "kick1" , "kick2" };
+
+
+/**
+ * @brief Unlock the cell held by this task.
+ * 
+ * @param t The #task.
+ */
+ 
+void task_unlock ( struct task *t ) {
+
+    /* Act based on task type. */
+    switch ( t->type ) {
+        case task_type_self:
+        case task_type_sort:
+            cell_unlocktree( t->ci );
+            break;
+        case task_type_pair:
+        case task_type_sub:
+            cell_unlocktree( t->ci );
+            if ( t->cj != NULL )
+                cell_unlocktree( t->cj );
+            break;
+        }
+        
+    }
+
+
+/**
+ * @brief Try to lock the cells associated with this task.
+ *
+ * @param t the #task.
+ */
+ 
+int task_lock ( struct task *t ) {
+
+    int type = t->type;
+    struct cell *ci = t->ci, *cj = t->cj;
+
+    /* Unary lock? */
+    if ( type == task_type_self || 
+         type == task_type_sort || 
+         (type == task_type_sub && cj == NULL) ) {
+        if ( cell_locktree( ci ) != 0 )
+            return 0;
+        }
+        
+    /* Otherwise, binary lock. */
+    else if ( type == task_type_pair || (type == task_type_sub && cj != NULL) ) {
+        if ( ci->hold || cj->hold || ci->wait || cj->wait )
+            return 0;
+        if ( cell_locktree( ci ) != 0 )
+            return 0;
+        if ( cell_locktree( cj ) != 0 ) {
+            cell_unlocktree( ci );
+            return 0;
+            }
+        }
+        
+    /* If we made it this far, we've got a lock. */
+    return 1;
+            
+    }
 
 
 /**

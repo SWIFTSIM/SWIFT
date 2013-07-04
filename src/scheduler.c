@@ -587,16 +587,16 @@ void scheduler_reweight ( struct scheduler *s ) {
                     t->weight += __builtin_popcount( t->flags ) * t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
                     break;
                 case task_type_self:
-                    t->weight += 2 * t->ci->count * t->ci->count;
+                    t->weight += 10 * t->ci->count * t->ci->count;
                     break;
                 case task_type_pair:
-                    t->weight += 2 * sid_scale[ t->flags ] * t->ci->count * t->cj->count;
+                    t->weight += 10 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     break;
                 case task_type_sub:
                     if ( t->cj != NULL )
-                        t->weight += 2 * sid_scale[ t->flags ] * t->ci->count * t->cj->count;
+                        t->weight += 10 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     else
-                        t->weight += 2 * t->ci->count * t->ci->count;
+                        t->weight += 10 * t->ci->count * t->ci->count;
                     break;
                 case task_type_ghost:
                     if ( t->ci == t->ci->super )
@@ -669,8 +669,13 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
         return;
         
     /* If this is an implicit task, just pretend it's done. */
-    if ( t->implicit )
-        scheduler_done( s , t );
+    if ( t->implicit ) {
+        for ( int j = 0 ; j < t->nr_unlock_tasks ; j++ ) {
+            struct task *t2 = t->unlock_tasks[j];
+            if ( atomic_dec( &t2->wait ) == 1 && !t2->skip )
+                scheduler_enqueue( s , t2 );
+            }
+        }
         
     /* Otherwise, look for a suitable queue. */
     else {
@@ -697,9 +702,6 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
         /* If no previous owner, find the shortest queue. */
         if ( qid < 0 )
             qid = rand() % s->nr_queues;
-            /* for ( qid = 0 , int k = 1 ; k < s->nr_queues ; k++ )
-                if ( s->queues[k].count < s->queues[qid].count )
-                    qid = k; */
 
         /* Increase the waiting counter. */
         atomic_inc( &s->waiting );
@@ -719,7 +721,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
  * @param t The finished #task.
  */
  
-void scheduler_done ( struct scheduler *s , struct task *t ) {
+void scheduler_done_old ( struct scheduler *s , struct task *t ) {
 
     int k, res;
     struct task *t2;
@@ -757,6 +759,63 @@ void scheduler_done ( struct scheduler *s , struct task *t ) {
         pthread_cond_broadcast( &s->sleep_cond );
         pthread_mutex_unlock( &s->sleep_mutex );
         }
+
+    }
+
+
+/**
+ * @brief Take care of a tasks dependencies.
+ *
+ * @param s The #scheduler.
+ * @param t The finished #task.
+ *
+ * @return A pointer to the next task, if a suitable one has
+ *         been identified.
+ */
+ 
+struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
+
+    int k, res, oid = t->ci->super->owner;
+    struct task *t2, *next = NULL;
+    
+    /* Release whatever locks this task held. */
+    if ( !t->implicit )
+        task_unlock( t );
+        
+    /* Loop through the dependencies and add them to a queue if
+       they are ready. */
+    for ( k = 0 ; k < t->nr_unlock_tasks ; k++ ) {
+        t2 = t->unlock_tasks[k];
+        if ( ( res = atomic_dec( &t2->wait ) ) < 1 )
+            error( "Negative wait!" );
+        if ( res == 1 && !t2->skip ) {
+            if ( !t2->implicit &&
+                 t2->ci->super->owner == oid &&
+                 ( next == NULL || t2->weight > next->weight ) &&
+                 task_lock( t2 ) ) {
+                if ( next != NULL ) {
+                    task_unlock( next );
+                    scheduler_enqueue( s , next );
+                    }
+                next = t2;
+                }
+            else
+                scheduler_enqueue( s , t2 );
+            }
+        }
+        
+    /* Task definitely done. */
+    if ( !t->implicit ) {
+        t->toc = getticks();
+        pthread_mutex_lock( &s->sleep_mutex );
+        if ( next == NULL )
+            atomic_dec( &s->waiting );
+        pthread_cond_broadcast( &s->sleep_cond );
+        pthread_mutex_unlock( &s->sleep_mutex );
+        }
+        
+    /* Return the next best task. */
+    return next;
 
     }
 

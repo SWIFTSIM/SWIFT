@@ -776,7 +776,7 @@ void *runner_main ( void *data ) {
     struct runner *r = (struct runner *)data;
     struct engine *e = r->e;
     struct scheduler *sched = &e->sched;
-    struct task *t;
+    struct task *t = NULL;
     struct cell *ci, *cj;
     
     /* Main loop. */
@@ -788,15 +788,20 @@ void *runner_main ( void *data ) {
         /* Loop while there are tasks... */
         while ( 1 ) {
         
-            /* Get a task, how and from where depends on the policy. */
-            TIMER_TIC
-            t = scheduler_gettask( sched , r->qid );
-            TIMER_TOC(timer_gettask);
+            /* If there's no old task, try to get a new one. */
+            if ( t == NULL ) {
             
-            /* Did I get anything? */
-            if ( t == NULL )
-                break;
+                /* Get the task. */
+                TIMER_TIC
+                t = scheduler_gettask( sched , r->qid );
+                TIMER_TOC(timer_gettask);
+                
+                /* Did I get anything? */
+                if ( t == NULL )
+                    break;
         
+                }
+            
             /* Get the cells. */
             ci = t->ci;
             cj = t->cj;
@@ -855,8 +860,8 @@ void *runner_main ( void *data ) {
                     error( "Unknown task type." );
                 }
             
-            /* We're done with this task. */
-            scheduler_done( sched , t );
+            /* We're done with this task, see if we get a next one. */
+            t = scheduler_done( sched , t );
                 
             } /* main loop. */
             

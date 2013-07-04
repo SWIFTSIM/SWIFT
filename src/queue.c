@@ -87,16 +87,6 @@ void queue_insert ( struct queue *q , struct task *t ) {
             }
         else
             break;
-    /* for ( int k = q->count - 1 ; k > 0 && q->tasks[ q->tid[k-1] ].weight < q->tasks[ q->tid[k] ].weight ; k-- ) {
-        int temp = q->tid[k];
-        q->tid[k] = q->tid[k-1];
-        q->tid[k-1] = temp;
-        } */
-            
-    /* Verify queue consistency. */
-    /* for ( int k = 1 ; k < q->count ; k++ )
-        if ( q->tasks[ q->tid[(k-1)/2] ].weight < q->tasks[ q->tid[k] ].weight )
-            error( "Queue not heaped." ); */
     
     /* Unlock the queue. */
     if ( lock_unlock( &q->lock ) != 0 )
@@ -130,8 +120,8 @@ void queue_init ( struct queue *q , struct task *tasks ) {
         error( "Failed to init queue lock." );
 
     }
-
-
+    
+    
 /**
  * @brief Get a task free of dependencies and conflicts.
  *
@@ -142,10 +132,9 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  
 struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
 
-    int k, temp, qcount, *qtid, type;
+    int k, temp, qcount, *qtid;
     lock_type *qlock = &q->lock;
     struct task *qtasks, *res = NULL;
-    struct cell *ci, *cj;
     
     /* If there are no tasks, leave immediately. */
     if ( q->count == 0 )
@@ -168,35 +157,15 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
         
             /* Put a finger on the task. */
             res = &qtasks[ qtid[k] ];
-            ci = res->ci;
-            cj = res->cj;
-            type = res->type;
             
             /* Is this task blocked? */
             if ( res->wait )
-                continue;
+                error( "Enqueued waiting task." );
                 
-            /* Try to lock ci. */
-            if ( type == task_type_self || 
-                 type == task_type_sort || 
-                 (type == task_type_sub && cj == NULL) ) {
-                if ( cell_locktree( ci ) != 0 )
-                    continue;
-                }
-            else if ( type == task_type_pair || (type == task_type_sub && cj != NULL) ) {
-                if ( ci->hold || cj->hold || ci->wait || cj->wait )
-                    continue;
-                if ( cell_locktree( ci ) != 0 )
-                    continue;
-                if ( cell_locktree( cj ) != 0 ) {
-                    cell_unlocktree( ci );
-                    continue;
-                    }
-                }
+            /* Try to lock the task and exit if successful. */
+            if ( task_lock( res ) )
+                break;
             
-            /* If we made it this far, we're safe. */
-            break;
-        
             } /* loop over the task IDs. */
             
         /* Did we get a task? */
@@ -205,11 +174,6 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
             /* Another one bites the dust. */
             qcount = q->count -= 1;
         
-            /* Own the cells involved. */
-            /* ci->super->owner = qid;
-            if ( cj != NULL )
-                cj->super->owner = qid; */
-                
             /* Swap this task with the last task and re-heap. */
             if ( k < qcount ) {
                 qtid[ k ] = qtid[ qcount ];
@@ -233,18 +197,6 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
                         break;
                     }
                 }
-            /* qtid[ k ] = qtid[ qcount ];
-            while ( k < qcount-1 && qtasks[ qtid[k+1] ].weight > qtasks[ qtid[k] ].weight ) {
-                temp = qtid[k];
-                qtid[k] = qtid[k+1];
-                qtid[k+1] = temp;
-                k += 1;
-                } */
-                
-            /* Verify queue consistency. */
-            /* for ( k = 1 ; k < q->count ; k++ )
-                if ( q->tasks[ q->tid[(k-1)/2] ].weight < q->tasks[ q->tid[k] ].weight )
-                    error( "Queue not heaped." ); */
     
             }
         else

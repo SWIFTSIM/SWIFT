@@ -676,7 +676,7 @@ void engine_step ( struct engine *e ) {
     /* Check if all the kick1 threads have executed. */
     for ( k = 0 ; k < e->sched.nr_tasks ; k++ )
         if ( e->sched.tasks[k].type == task_type_kick1 &&
-             e->sched.tasks[k].tic == 0 )
+             e->sched.tasks[k].toc == 0 )
             error( "Not all kick1 tasks completed." );
         
     // for(k=0; k<10; ++k)
