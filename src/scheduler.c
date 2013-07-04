@@ -555,25 +555,23 @@ void scheduler_reset ( struct scheduler *s , int size ) {
 
 
 /**
- * @brief Start the scheduler, i.e. fill the queues with ready tasks.
+ * @brief Compute the task weights
  *
  * @param s The #scheduler.
  */
  
-void scheduler_start ( struct scheduler *s , unsigned int mask ) {
+void scheduler_reweight ( struct scheduler *s ) {
 
     int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
     struct task *t, *tasks = s->tasks;
+    // ticks tic;
     
     /* Run throught the tasks backwards and set their waits and
        weights. */
+    // tic = getticks();
     // #pragma omp parallel for schedule(static) private(t,j)
     for ( k = nr_tasks-1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
-        if ( !( (1 << t->type) & mask ) || t->skip )
-            continue;
-        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
-            atomic_inc( &t->unlock_tasks[j]->wait );
         t->weight = 0;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
             if ( t->unlock_tasks[j]->weight > t->weight )
@@ -583,19 +581,19 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
         else
             switch ( t->type ) {
                 case task_type_sort:
-                    t->weight += t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
+                    t->weight += __builtin_popcount( t->flags ) * t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
                     break;
                 case task_type_self:
-                    t->weight += t->ci->count * t->ci->count;
+                    t->weight += 2 * t->ci->count * t->ci->count;
                     break;
                 case task_type_pair:
-                    t->weight += t->ci->count * t->cj->count;
+                    t->weight += 2 * t->ci->count * t->cj->count;
                     break;
                 case task_type_sub:
                     if ( t->cj != NULL )
-                        t->weight += t->ci->count * t->cj->count;
+                        t->weight += 2 * t->ci->count * t->cj->count;
                     else
-                        t->weight += t->ci->count * t->ci->count;
+                        t->weight += 2 * t->ci->count * t->ci->count;
                     break;
                 case task_type_ghost:
                     if ( t->ci == t->ci->super )
@@ -607,8 +605,39 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
                     break;
                 }
         }
+    // printf( "scheduler_reweight: weighting tasks took %.3f ms.\n" , (double)( getticks() - tic ) / CPU_TPS * 1000 );
+        
+    }
+
+
+/**
+ * @brief Start the scheduler, i.e. fill the queues with ready tasks.
+ *
+ * @param s The #scheduler.
+ * @param mask The task types to enqueue.
+ */
+ 
+void scheduler_start ( struct scheduler *s , unsigned int mask ) {
+
+    int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
+    struct task *t, *tasks = s->tasks;
+    // ticks tic;
+    
+    /* Run throught the tasks backwards and set their waits. */
+    // tic = getticks();
+    // #pragma omp parallel for schedule(static) private(t,j)
+    for ( k = nr_tasks-1 ; k >= 0 ; k-- ) {
+        t = &tasks[ tid[k] ];
+        if ( !( (1 << t->type) & mask ) || t->skip )
+            continue;
+        for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
+            atomic_inc( &t->unlock_tasks[j]->wait );
+        }
+    // printf( "scheduler_reweight: waiting tasks took %.3f ms.\n" , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         
     /* Loop over the tasks and enqueue whoever is ready. */
+    // tic = getticks();
+    // #pragma omp parallel for schedule(static) private(t)
     for ( k = 0 ; k < nr_tasks ; k++ ) {
         t = &tasks[ tid[k] ];
         if ( t->rank > 0 )
@@ -616,6 +645,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
         if ( ( (1 << t->type) & mask ) && !t->skip && t->wait == 0 )
             scheduler_enqueue( s , t );
         }
+    // printf( "scheduler_start: enqueueing tasks took %.3f ms.\n" , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         
     }
 
@@ -742,6 +772,10 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid ) {
     struct task *res = NULL;
     int k, nr_queues = s->nr_queues;
     
+    /* Check qid. */
+    if ( qid >= nr_queues || qid < 0 )
+	error( "Bad queue ID." );
+
     /* Loop as long as there are tasks... */
     while ( s->waiting > 0 && res == NULL ) {
         

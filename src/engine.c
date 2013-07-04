@@ -213,6 +213,9 @@ void engine_maketasks ( struct engine *e ) {
     /* Rank the tasks. */
     scheduler_ranktasks( sched );
             
+    /* Weight the tasks. */
+    scheduler_reweight( sched );
+            
     /* Count the number of each task type. */
     int counts[ task_type_count+1 ];
     for ( k = 0 ; k <= task_type_count ; k++ )
@@ -868,6 +871,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
             e->runners[k].cpuid = k;
             e->runners[k].qid = k * nr_queues / nr_threads;
         #endif
+        // printf( "engine_init: runner %i on cpuid=%i with qid=%i.\n" , e->runners[k].id , e->runners[k].cpuid , e->runners[k].qid );
         }
         
     /* Wait for the runner threads to be in place. */

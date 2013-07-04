@@ -29,6 +29,11 @@
 #include <limits.h>
 #include <math.h>
 
+/* Switch off timers. */
+#ifdef TIMER
+    #undef TIMER
+#endif
+
 /* Local headers. */
 #include "cycle.h"
 #include "lock.h"

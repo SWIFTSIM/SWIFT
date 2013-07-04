@@ -22,7 +22,7 @@ AUTOMAKE_OPTIONS=gnu
 # Add the debug flag to the whole thing
 AM_CFLAGS = -g -O3 -Wall -Werror -ffast-math -fstrict-aliasing -ftree-vectorize \
     -funroll-loops $(SIMD_FLAGS) $(OPENMP_CFLAGS) \
-    -DTIMER -DCOUNTER -DCPU_TPS=2.40e9 
+    -DTIMER -DCOUNTER -DCPU_TPS=2.30e9 
 # AM_CFLAGS = -Wall -Werror $(OPENMP_CFLAGS) \
 #     -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
 
