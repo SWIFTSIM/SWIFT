@@ -814,7 +814,7 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
         pthread_cond_broadcast( &s->sleep_cond );
         pthread_mutex_unlock( &s->sleep_mutex );
         }
-        
+
     /* Start the clock on the follow-up task. */
     if ( next != NULL )
         next->tic = getticks();
