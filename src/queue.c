@@ -132,7 +132,7 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  
 struct task *queue_gettask ( struct queue *q , int qid , struct cell *super , int blocking ) {
 
-    int k, temp, qcount, *qtid;
+    int k, temp, qcount, *qtid, gotcha;
     lock_type *qlock = &q->lock;
     struct task *qtasks, *res = NULL;
     
@@ -151,23 +151,26 @@ struct task *queue_gettask ( struct queue *q , int qid , struct cell *super , in
         qtid = q->tid;
         qtasks = q->tasks;
         qcount = q->count;
+        gotcha = 0;
             
         /* Loop over the task IDs looking for tasks with the same super-cell. */
         if ( super != NULL )
-            for ( k = 0 ; k < qcount ; k++ ) {
+            for ( k = 0 ; k < qcount && k < queue_maxsuper ; k++ ) {
 
                 /* Put a finger on the task. */
                 res = &qtasks[ qtid[k] ];
 
                 /* Try to lock the task and exit if successful. */
                 if ( ( res->ci->super == super || ( res->cj != NULL && res->cj->super == super ) ) &&
-                     task_lock( res ) )
+                     task_lock( res ) ) {
+                    gotcha = 1;
                     break;
+                    }
 
                 } /* loop over the task IDs. */
             
         /* Loop over the task IDs again if nothing was found, take anything. */
-        if ( super == NULL || k == qcount )
+        if ( !gotcha )
             for ( k = 0 ; k < qcount ; k++ ) {
 
                 /* Put a finger on the task. */

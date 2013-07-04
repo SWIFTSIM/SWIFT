@@ -19,7 +19,7 @@
 
 
 /* Some constants. */
-#define queue_maxhits            10
+#define queue_maxsuper           20
 #define queue_sizeinit           100
 #define queue_sizegrow           2
 
