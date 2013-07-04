@@ -155,10 +155,8 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
     while ( q->count > 0 ) {
     
         /* Grab the task lock. */
-        TIMER_TIC
         if ( lock_lock( qlock ) != 0 )
             error( "Locking the qlock failed.\n" );
-        TIMER_TOC( timer_qlock );
             
         /* Set some pointers we will use often. */
         qtid = q->tid;
@@ -208,9 +206,9 @@ struct task *queue_gettask ( struct queue *q , int qid , int blocking ) {
             qcount = q->count -= 1;
         
             /* Own the cells involved. */
-            ci->super->owner = qid;
+            /* ci->super->owner = qid;
             if ( cj != NULL )
-                cj->super->owner = qid;
+                cj->super->owner = qid; */
                 
             /* Swap this task with the last task and re-heap. */
             if ( k < qcount ) {
