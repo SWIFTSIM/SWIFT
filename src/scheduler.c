@@ -564,6 +564,9 @@ void scheduler_reweight ( struct scheduler *s ) {
 
     int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
     struct task *t, *tasks = s->tasks;
+    float sid_scale[13] = { 0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 ,
+                            0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 , 
+                            0.5788 };
     // ticks tic;
     
     /* Run throught the tasks backwards and set their waits and
@@ -587,11 +590,11 @@ void scheduler_reweight ( struct scheduler *s ) {
                     t->weight += 2 * t->ci->count * t->ci->count;
                     break;
                 case task_type_pair:
-                    t->weight += 2 * t->ci->count * t->cj->count;
+                    t->weight += 2 * sid_scale[ t->flags ] * t->ci->count * t->cj->count;
                     break;
                 case task_type_sub:
                     if ( t->cj != NULL )
-                        t->weight += 2 * t->ci->count * t->cj->count;
+                        t->weight += 2 * sid_scale[ t->flags ] * t->ci->count * t->cj->count;
                     else
                         t->weight += 2 * t->ci->count * t->ci->count;
                     break;
