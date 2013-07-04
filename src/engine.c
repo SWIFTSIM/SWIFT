@@ -667,7 +667,7 @@ void engine_step ( struct engine *e ) {
     /* First kick. */
     TIMER_TIC
     scheduler_start( &e->sched , (1 << task_type_kick1) );
-    engine_launch( e , ( e->nr_threads > 16 ) ? 16 : e->nr_threads );
+    engine_launch( e , ( e->nr_threads > 8 ) ? 8 : e->nr_threads );
     TIMER_TOC( timer_kick1 );
     
     /* Check if all the kick1 threads have executed. */
@@ -854,6 +854,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         
             /* Set a reasonable queue ID. */
             e->runners[k].qid = cpuid[ k % nr_cores ] * nr_queues / nr_cores;
+            e->runners[k].cpuid = cpuid[ k % nr_cores ];
             
             /* Set the cpu mask to zero | e->id. */
             CPU_ZERO( &cpuset );
@@ -864,6 +865,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
                 error( "Failed to set thread affinity." );
                 
         #else
+            e->runners[k].cpuid = k;
             e->runners[k].qid = k * nr_queues / nr_threads;
         #endif
         }

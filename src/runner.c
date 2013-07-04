@@ -776,7 +776,6 @@ void *runner_main ( void *data ) {
     struct runner *r = (struct runner *)data;
     struct engine *e = r->e;
     struct scheduler *sched = &e->sched;
-    int qid = r->qid;
     struct task *t;
     struct cell *ci, *cj;
     
@@ -791,7 +790,7 @@ void *runner_main ( void *data ) {
         
             /* Get a task, how and from where depends on the policy. */
             TIMER_TIC
-            t = scheduler_gettask( sched , qid );
+            t = scheduler_gettask( sched , r->qid );
             TIMER_TOC(timer_gettask);
             
             /* Did I get anything? */
@@ -801,6 +800,7 @@ void *runner_main ( void *data ) {
             /* Get the cells. */
             ci = t->ci;
             cj = t->cj;
+            t->rid = r->cpuid;
             
             /* Prefetch? */
             if ( runner_prefetch &&

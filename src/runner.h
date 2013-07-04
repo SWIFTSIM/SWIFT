@@ -20,7 +20,7 @@
 #include "inline.h"
 
 /* Some constants/flags. */
-#define runner_prefetch                 1
+#define runner_prefetch                 0
 
 /* SID stuff. */
 extern const char runner_flip[];
@@ -66,7 +66,7 @@ struct runner {
     pthread_t thread;
     
     /* The queue to use to get tasks. */
-    int qid;
+    int cpuid, qid;
 
     /* The underlying runner. */
     struct engine *e;
