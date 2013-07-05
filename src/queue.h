@@ -51,6 +51,6 @@ struct queue {
     
 
 /* Function prototypes. */
-struct task *queue_gettask ( struct queue *q , int qid , struct cell *super , int blocking );
+struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking );
 void queue_init ( struct queue *q , struct task *tasks );
 void queue_insert ( struct queue *q , struct task *t );
