@@ -22,11 +22,12 @@
 #define scheduler_maxwait                    3
 #define scheduler_maxunlock                  40
 #define scheduler_dosub                      1
+#define scheduler_maxsteal                   10
+#define scheduler_maxtries                   10
 
 /* Flags . */
 #define scheduler_flag_none                  0
 #define scheduler_flag_steal                 1
-#define scheduler_flag_maxsteal              10
 
 
 /* Data of a scheduler. */
