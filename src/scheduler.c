@@ -847,7 +847,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
     while ( s->waiting > 0 && res == NULL ) {
         
         /* Try more than once before sleeping. */
-        for ( int tries = 0 ; res == NULL && tries < scheduler_maxtries ; tries++ ) {
+        for ( int tries = 0 ; res == NULL && s->waiting && tries < scheduler_maxtries ; tries++ ) {
         
             /* Try to get a task from the suggested queue. */
             if ( ( res = queue_gettask( &s->queues[qid] , qid , super , 0 ) ) != NULL )
