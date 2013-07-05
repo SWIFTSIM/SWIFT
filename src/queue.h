@@ -20,6 +20,7 @@
 
 /* Some constants. */
 #define queue_maxsuper           50
+#define queue_maxrweight         2
 #define queue_sizeinit           100
 #define queue_sizegrow           2
 

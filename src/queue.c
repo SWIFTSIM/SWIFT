@@ -132,7 +132,7 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  
 struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking ) {
 
-    int k, temp, qcount, *qtid, gotcha;
+    int k, temp, qcount, *qtid, gotcha, maxweight;
     lock_type *qlock = &q->lock;
     struct task *qtasks, *res = NULL;
     
@@ -158,6 +158,7 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
         qtasks = q->tasks;
         qcount = q->count;
         gotcha = 0;
+        maxweight = qtasks[ qtid[0] ].weight;
             
         /* Loop over the task IDs looking for tasks with the same super-cell. */
         if ( super != NULL )
@@ -165,6 +166,10 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
 
                 /* Put a finger on the task. */
                 res = &qtasks[ qtid[k] ];
+                
+                /* Things getting too light? */
+                if ( res->weight * queue_maxrweight < maxweight )
+                    break;
 
                 /* Try to lock the task and exit if successful. */
                 if ( ( res->ci->super == super || ( res->cj != NULL && res->cj->super == super ) ) &&
