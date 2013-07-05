@@ -144,8 +144,14 @@ struct task *queue_gettask ( struct queue *q , int qid , struct cell *super , in
     while ( q->count > 0 ) {
     
         /* Grab the task lock. */
-        if ( lock_lock( qlock ) != 0 )
-            error( "Locking the qlock failed.\n" );
+        if ( blocking ) {
+            if ( lock_lock( qlock ) != 0 )
+                error( "Locking the qlock failed.\n" );
+            }
+        else {
+            if ( lock_trylock( qlock ) != 0 )
+                return NULL;
+            }
             
         /* Set some pointers we will use often. */
         qtid = q->tid;
@@ -221,7 +227,7 @@ struct task *queue_gettask ( struct queue *q , int qid , struct cell *super , in
             error( "Unlocking the qlock failed.\n" );
             
         /* Leave? */
-        if ( res != NULL || !blocking )
+        if ( res != NULL )
             break;
     
         } /* while there are tasks. */
