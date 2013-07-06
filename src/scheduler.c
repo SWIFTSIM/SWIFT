@@ -850,8 +850,13 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
         for ( int tries = 0 ; res == NULL && s->waiting && tries < scheduler_maxtries ; tries++ ) {
         
             /* Try to get a task from the suggested queue. */
-            if ( s->queues[qid].count > 0 && ( res = queue_gettask( &s->queues[qid] , super , 0 ) ) != NULL )
-                break;
+            if ( s->queues[qid].count > 0 ) {
+                TIMER_TIC
+                res = queue_gettask( &s->queues[qid] , super , 0 );
+                TIMER_TOC( timer_qget );
+                if ( res != NULL )
+                    break;
+                }
 
             /* If unsucessful, try stealing from the other queues. */
             if ( s->flags & scheduler_flag_steal ) {
@@ -861,7 +866,10 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
                         qids[ count++ ] = k;
                 for ( k = 0 ; k < scheduler_maxsteal && count > 0 ; k++ ) {
                     int ind = rand() % count;
-                    if ( ( res = queue_gettask( &s->queues[ qids[ ind ] ] , super , 0 ) ) != NULL )
+                    TIMER_TIC
+                    res = queue_gettask( &s->queues[ qids[ ind ] ] , super , 0 );
+                    TIMER_TOC( timer_qsteal );
+                    if ( res != NULL )
                         break;
                     else 
                         qids[ ind ] = qids[ --count ];
