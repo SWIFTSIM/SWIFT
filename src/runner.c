@@ -784,7 +784,7 @@ void *runner_main ( void *data ) {
     
         /* Wait at the barrier. */
         engine_barrier( e , r->id );
-        
+
         /* Re-set the pointer to the previous super cell. */
         super = NULL;
         

@@ -590,13 +590,13 @@ void scheduler_reweight ( struct scheduler *s ) {
                     t->weight += 10 * t->ci->count * t->ci->count;
                     break;
                 case task_type_pair:
-                    t->weight += 10 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                    t->weight += 20 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     break;
                 case task_type_sub:
                     if ( t->cj != NULL )
                         t->weight += 10 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     else
-                        t->weight += 10 * t->ci->count * t->ci->count;
+                        t->weight += 20 * t->ci->count * t->ci->count;
                     break;
                 case task_type_ghost:
                     if ( t->ci == t->ci->super )
@@ -789,8 +789,8 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
         t2 = t->unlock_tasks[k];
         if ( ( res = atomic_dec( &t2->wait ) ) < 1 )
             error( "Negative wait!" );
-        if ( res == 1 && !t2->skip ) {
-            if ( !t2->implicit &&
+        if (res == 1 && !t2->skip ) {
+            if ( 0 && !t2->implicit &&
                  t2->ci->super == super &&
                  ( next == NULL || t2->weight > next->weight ) &&
                  task_lock( t2 ) ) {
@@ -838,6 +838,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
 
     struct task *res = NULL;
     int k, nr_queues = s->nr_queues;
+    unsigned int seed = qid;
     
     /* Check qid. */
     if ( qid >= nr_queues || qid < 0 )
@@ -865,7 +866,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
                     if ( s->queues[k].count > 0 )
                         qids[ count++ ] = k;
                 for ( k = 0 ; k < scheduler_maxsteal && count > 0 ; k++ ) {
-                    int ind = rand() % count;
+                    int ind = rand_r( &seed ) % count;
                     TIMER_TIC
                     res = queue_gettask( &s->queues[ qids[ ind ] ] , super , 0 );
                     TIMER_TOC( timer_qsteal );
@@ -879,7 +880,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
                 }
                 
             }
-            
+
         /* If we failed, take a short nap. */
         if ( res == NULL ) {
             pthread_mutex_lock( &s->sleep_mutex );

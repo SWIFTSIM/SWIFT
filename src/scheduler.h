@@ -23,7 +23,7 @@
 #define scheduler_maxunlock                  40
 #define scheduler_dosub                      1
 #define scheduler_maxsteal                   10
-#define scheduler_maxtries                   10
+#define scheduler_maxtries                   2
 
 /* Flags . */
 #define scheduler_flag_none                  0
