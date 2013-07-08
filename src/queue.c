@@ -161,7 +161,8 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
         maxweight = qtasks[ qtid[0] ].weight;
             
         /* Loop over the task IDs looking for tasks with the same super-cell. */
-        if ( super != NULL )
+        if ( super != NULL ) {
+            TIMER_TIC
             for ( k = 0 ; k < qcount && k < queue_maxsuper ; k++ ) {
 
                 /* Put a finger on the task. */
@@ -179,9 +180,12 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
                     }
 
                 } /* loop over the task IDs. */
+            TIMER_TOC( timer_queue_super );
+            }
             
         /* Loop over the task IDs again if nothing was found, take anything. */
-        if ( !gotcha )
+        if ( !gotcha ) {
+            TIMER_TIC
             for ( k = 0 ; k < qcount ; k++ ) {
 
                 /* Put a finger on the task. */
@@ -192,10 +196,14 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
                     break;
 
                 } /* loop over the task IDs. */
+            TIMER_TOC( timer_queue_search );
+            }
             
         /* Did we get a task? */
         if ( k < qcount ) {
         
+            TIMER_TIC
+
             /* Another one bites the dust. */
             qcount = q->count -= 1;
         
@@ -223,6 +231,8 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
                     }
                 }
     
+            TIMER_TOC( timer_queue_post );
+            
             }
         else
             res = NULL;
