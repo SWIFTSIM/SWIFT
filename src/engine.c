@@ -856,8 +856,11 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
         #if defined(HAVE_SETAFFINITY)
         
             /* Set a reasonable queue ID. */
-            e->runners[k].qid = cpuid[ k % nr_cores ] * nr_queues / nr_cores;
             e->runners[k].cpuid = cpuid[ k % nr_cores ];
+            if ( nr_queues < nr_threads )
+                e->runners[k].qid = cpuid[ k % nr_cores ] * nr_queues / nr_cores;
+            else
+                e->runners[k].qid = k;
             
             /* Set the cpu mask to zero | e->id. */
             CPU_ZERO( &cpuset );
