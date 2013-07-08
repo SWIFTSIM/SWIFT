@@ -140,108 +140,91 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
     if ( q->count == 0 )
         return NULL;
 
-    /* Main loop, while there are tasks... */
-    while ( q->count > 0 ) {
-    
-        /* Grab the task lock. */
-        if ( blocking ) {
-            if ( lock_lock( qlock ) != 0 )
-                error( "Locking the qlock failed.\n" );
-            }
-        else {
-            if ( lock_trylock( qlock ) != 0 )
-                return NULL;
-            }
-            
-        /* Set some pointers we will use often. */
-        qtid = q->tid;
-        qtasks = q->tasks;
-        qcount = q->count;
-        gotcha = 0;
-            
-        /* Loop over the task IDs looking for tasks with the same super-cell. */
-        if ( super != NULL ) {
-            TIMER_TIC
-            for ( k = 0 ; k < qcount && k < queue_maxsuper ; k++ ) {
+    /* Grab the task lock. */
+    if ( blocking ) {
+        if ( lock_lock( qlock ) != 0 )
+            error( "Locking the qlock failed.\n" );
+        }
+    else {
+        if ( lock_trylock( qlock ) != 0 )
+            return NULL;
+        }
 
-                /* Put a finger on the task. */
-                res = &qtasks[ qtid[k] ];
-                
-                /* Try to lock the task and exit if successful. */
-                if ( ( res->ci->super == super || ( res->cj != NULL && res->cj->super == super ) ) &&
-                     task_lock( res ) ) {
-                    gotcha = 1;
-                    break;
-                    }
+    /* Set some pointers we will use often. */
+    qtid = q->tid;
+    qtasks = q->tasks;
+    qcount = q->count;
+    gotcha = 0;
 
-                } /* loop over the task IDs. */
-            TIMER_TOC( timer_queue_super );
-            }
-            
-        /* Loop over the task IDs again if nothing was found, take anything. */
-        if ( !gotcha ) {
-            TIMER_TIC
-            for ( k = 0 ; k < qcount ; k++ ) {
+    /* Loop over the task IDs looking for tasks with the same super-cell. */
+    if ( super != NULL ) {
+        for ( k = 0 ; k < qcount && k < queue_maxsuper ; k++ ) {
 
-                /* Put a finger on the task. */
-                res = &qtasks[ qtid[k] ];
+            /* Put a finger on the task. */
+            res = &qtasks[ qtid[k] ];
 
-                /* Try to lock the task and exit if successful. */
-                if ( task_lock( res ) )
-                    break;
-
-                } /* loop over the task IDs. */
-            TIMER_TOC( timer_queue_search );
-            }
-            
-        /* Did we get a task? */
-        if ( k < qcount ) {
-        
-            TIMER_TIC
-
-            /* Another one bites the dust. */
-            qcount = q->count -= 1;
-        
-            /* Swap this task with the last task and re-heap. */
-            if ( k < qcount ) {
-                qtid[ k ] = qtid[ qcount ];
-                while ( qtasks[ qtid[k] ].weight > qtasks[ qtid[(k-1)/2] ].weight ) {
-                    int temp = q->tid[k];
-                    q->tid[k] = q->tid[(k-1)/2];
-                    q->tid[(k-1)/2] = temp;
-                    k = (k-1)/2;
-                    }
-                int i;
-                while ( ( i = 2*k+1 ) < qcount ) {
-                    if ( i+1 < qcount && qtasks[ qtid[i+1] ].weight > qtasks[ qtid[i] ].weight )
-                        i += 1;
-                    if ( qtasks[ qtid[i] ].weight > qtasks[ qtid[k] ].weight ) {
-                        temp = qtid[i];
-                        qtid[i] = qtid[k];
-                        qtid[k] = temp;
-                        k = i;
-                        }
-                    else
-                        break;
-                    }
+            /* Try to lock the task and exit if successful. */
+            if ( ( res->ci->super == super || ( res->cj != NULL && res->cj->super == super ) ) &&
+                 task_lock( res ) ) {
+                gotcha = 1;
+                break;
                 }
-    
-            TIMER_TOC( timer_queue_post );
-            
+
+            } /* loop over the task IDs. */
+        }
+
+    /* Loop over the task IDs again if nothing was found, take anything. */
+    if ( !gotcha ) {
+        for ( k = 0 ; k < qcount ; k++ ) {
+
+            /* Put a finger on the task. */
+            res = &qtasks[ qtid[k] ];
+
+            /* Try to lock the task and exit if successful. */
+            if ( task_lock( res ) )
+                break;
+
+            } /* loop over the task IDs. */
+        }
+
+    /* Did we get a task? */
+    if ( k < qcount ) {
+
+        /* Another one bites the dust. */
+        qcount = q->count -= 1;
+
+        /* Swap this task with the last task and re-heap. */
+        if ( k < qcount ) {
+            qtid[ k ] = qtid[ qcount ];
+            while ( qtasks[ qtid[k] ].weight > qtasks[ qtid[(k-1)/2] ].weight ) {
+                int temp = q->tid[k];
+                q->tid[k] = q->tid[(k-1)/2];
+                q->tid[(k-1)/2] = temp;
+                k = (k-1)/2;
+                }
+            int i;
+            while ( ( i = 2*k+1 ) < qcount ) {
+                if ( i+1 < qcount && qtasks[ qtid[i+1] ].weight > qtasks[ qtid[i] ].weight )
+                    i += 1;
+                if ( qtasks[ qtid[i] ].weight > qtasks[ qtid[k] ].weight ) {
+                    temp = qtid[i];
+                    qtid[i] = qtid[k];
+                    qtid[k] = temp;
+                    k = i;
+                    }
+                else
+                    break;
+                }
             }
-        else
-            res = NULL;
-    
-        /* Release the task lock. */
-        if ( lock_unlock( qlock ) != 0 )
-            error( "Unlocking the qlock failed.\n" );
+
+        }
+    else
+        res = NULL;
+
+    /* Release the task lock. */
+    if ( lock_unlock( qlock ) != 0 )
+        error( "Unlocking the qlock failed.\n" );
             
-        /* Leave? */
-        if ( res != NULL )
-            break;
-    
-        } /* while there are tasks. */
-        
     /* Take the money and run. */
     return res;
 
