@@ -808,11 +808,11 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
     /* Task definitely done. */
     if ( !t->implicit ) {
         t->toc = getticks();
-        // pthread_mutex_lock( &s->sleep_mutex );
+        pthread_mutex_lock( &s->sleep_mutex );
         if ( next == NULL )
             atomic_dec( &s->waiting );
-        // pthread_cond_broadcast( &s->sleep_cond );
-        // pthread_mutex_unlock( &s->sleep_mutex );
+        pthread_cond_broadcast( &s->sleep_cond );
+        pthread_mutex_unlock( &s->sleep_mutex );
         }
 
     /* Start the clock on the follow-up task. */
@@ -881,12 +881,12 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
             }
             
         /* If we failed, take a short nap. */
-        /* if ( res == NULL ) {
+        if ( res == NULL ) {
             pthread_mutex_lock( &s->sleep_mutex );
             if ( s->waiting > 0 )
                 pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
             pthread_mutex_unlock( &s->sleep_mutex );
-            } */
+            }
         
         }
         
