@@ -159,6 +159,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     int i, j, k, cdim[3], nr_parts = s->nr_parts;
     struct cell *restrict c;
     struct part *restrict finger, *restrict p, *parts = s->parts;
+    struct xpart *xfinger, *xparts = s->xparts;
     int *ind;
     double ih[3], dim[3];
     // ticks tic;
@@ -281,7 +282,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    parts_sort( parts , ind , s->nr_parts , 0 , s->nr_cells-1 );
+    parts_sort( parts , xparts , ind , s->nr_parts , 0 , s->nr_cells-1 );
     // printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Verify sort. */
@@ -298,11 +299,14 @@ void space_rebuild ( struct space *s , double cell_max ) {
 
     /* Hook the cells up to the parts. */
     // tic = getticks();
-    finger = s->parts;
+    finger = parts;
+    xfinger = xparts;
     for ( k = 0 ; k < s->nr_cells ; k++ ) {
         c = &s->cells[ k ];
         c->parts = finger;
+        c->xparts = xfinger;
         finger = &finger[ c->count ];
+        xfinger = &xfinger[ c->count ];
         }
     // printf( "space_rebuild: hooking up cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
@@ -336,7 +340,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
  * @param max highest index.
  */
  
-void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
+void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N , int min , int max ) {
 
     struct {
         int i, j, min, max, ready;
@@ -346,6 +350,7 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
     int pivot;
     int i, ii, j, jj, temp_i, qid;
     struct part temp_p;
+    struct xpart temp_xp;
     
     /* Init the interval stack. */
     qstack[0].i = 0;
@@ -358,7 +363,7 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
+    #pragma omp parallel default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
     {
     
         /* Main loop. */
@@ -398,6 +403,7 @@ void parts_sort ( struct part *parts , int *ind , int N , int min , int max ) {
                     if ( ii < jj ) {
                         temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
                         temp_p = parts[ii]; parts[ii] = parts[jj]; parts[jj] = temp_p;
+                        temp_xp = xparts[ii]; xparts[ii] = xparts[jj]; xparts[jj] = temp_xp;
                         }
                     }
 
@@ -632,7 +638,7 @@ void space_split ( struct space *s , struct cell *c ) {
     float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
     struct cell *temp;
     struct part *p, *parts = c->parts;
-    struct xpart *xp;
+    struct xpart *xp, *xparts = c->xparts;
     
     /* Check the depth. */
     if ( c->depth > s->maxdepth )
@@ -707,7 +713,7 @@ void space_split ( struct space *s , struct cell *c ) {
         
         for ( k = 0 ; k < count ; k++ ) {
             p = &parts[k];
-            xp = p->xtras;
+            xp = &xparts[k];
             xp->x_old[0] = p->x[0];
             xp->x_old[1] = p->x[1];
             xp->x_old[2] = p->x[2];
@@ -835,8 +841,6 @@ struct cell *space_getcell ( struct space *s ) {
 
 void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_max ) {
 
-    int k;
-
     /* Store eveything in the space. */
     s->dim[0] = dim[0]; s->dim[1] = dim[1]; s->dim[2] = dim[2];
     s->periodic = periodic;
@@ -845,11 +849,9 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->cell_min = h_max;
     s->nr_queues = 1;
     
-    /* Allocate and link the xtra parts array. */
+    /* Allocate the xtra parts array. */
     if ( posix_memalign( (void *)&s->xparts , 32 , N * sizeof(struct xpart) ) != 0 )
         error( "Failed to allocate xparts." );
-    for ( k = 0 ; k < N ; k++ )
-        s->parts[k].xtras = &s->xparts[k];
         
     /* Init the space lock. */
     if ( lock_init( &s->lock ) != 0 )

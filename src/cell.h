@@ -54,6 +54,9 @@ struct cell {
     /* Pointers to the particle data. */
     struct part *parts;
     
+    /* Pointers to the extra particle data. */
+    struct xpart *xparts;
+    
     /* Pointers for the sorted indices. */
     struct entry *sort;
     unsigned int sorted;

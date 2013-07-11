@@ -842,7 +842,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
     
     /* Check qid. */
     if ( qid >= nr_queues || qid < 0 )
-	error( "Bad queue ID." );
+	    error( "Bad queue ID." );
 
     /* Loop as long as there are tasks... */
     while ( s->waiting > 0 && res == NULL ) {

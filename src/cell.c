@@ -151,6 +151,7 @@ void cell_split ( struct cell *c  ) {
 
     int i, j, k;
     struct part temp, *parts = c->parts;
+    struct xpart xtemp, *xparts = c->xparts;
     int left[8], right[8];
     double pivot[3];
     
@@ -167,6 +168,7 @@ void cell_split ( struct cell *c  ) {
             j -= 1;
         if ( i < j ) {
             temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
+            xtemp = xparts[i]; xparts[i] = xparts[j]; xparts[j] = xtemp;
             }
         }
     /* for ( k = 0 ; k <= j ; k++ )
@@ -188,6 +190,7 @@ void cell_split ( struct cell *c  ) {
                 j -= 1;
             if ( i < j ) {
                 temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
+                xtemp = xparts[i]; xparts[i] = xparts[j]; xparts[j] = xtemp;
                 }
             }
         /* for ( int kk = left[k] ; kk <= j ; kk++ )
@@ -212,6 +215,7 @@ void cell_split ( struct cell *c  ) {
                 j -= 1;
             if ( i < j ) {
                 temp = parts[i]; parts[i] = parts[j]; parts[j] = temp;
+                xtemp = xparts[i]; xparts[i] = xparts[j]; xparts[j] = xtemp;
                 }
             }
         /* for ( int kk = left[k] ; kk <= j ; kk++ )
@@ -232,6 +236,7 @@ void cell_split ( struct cell *c  ) {
     for ( k = 0 ; k < 8 ; k++ ) {
         c->progeny[k]->count = right[k] - left[k] + 1;
         c->progeny[k]->parts = &c->parts[ left[k] ];
+        c->progeny[k]->xparts = &c->xparts[ left[k] ];
         }
         
     /* Verify that _all_ the parts have been assigned to a cell. */

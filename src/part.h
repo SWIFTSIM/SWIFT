@@ -125,9 +125,6 @@ struct part {
     /* Particle ID. */
     unsigned long long id;
     
-    /* Pointer to extra particle data. */
-    struct xpart *xtras;
-    
     } __attribute__((aligned (part_align)));
     
 

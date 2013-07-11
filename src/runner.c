@@ -527,7 +527,7 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
     float dt_cfl, dt_h_change, dt_u_change, dt_new;
     float h_dt, u_dt;
     struct part *restrict p, *restrict parts = c->parts;
-    struct xpart *restrict xp;
+    struct xpart *restrict xp, *restrict xparts = c->xparts;
     
     TIMER_TIC
     
@@ -544,7 +544,7 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
         __builtin_prefetch( &parts[k+3] , 0 , 1 );
         __builtin_prefetch( &parts[k+3].rho_dh , 0 , 1 );
         p = &parts[k];
-        xp = p->xtras;
+        xp = &xparts[k];
 
         /* Get local copies of particle data. */
         pdt = p->dt;
@@ -637,7 +637,7 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
     float a[3], v[3], u, u_dt, h, h_dt, v_old[3], w, rho;
     double x[3], x_old[3];
     struct part *restrict p, *restrict parts = c->parts;
-    struct xpart *restrict xp;
+    struct xpart *restrict xp, *restrict xparts = c->xparts;
 
     /* No children? */
     if ( !c->split ) {
@@ -660,8 +660,8 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
             /* Get a handle on the kth particle. */
             __builtin_prefetch( &parts[k+3] , 0 , 1 );
             __builtin_prefetch( &parts[k+3].rho_dh , 0 , 1 );
-            p = &c->parts[k];
-            xp = p->xtras;
+            p = &parts[k];
+            xp = &xparts[k];
             
             /* Load the data locally. */
             a[0] = p->a[0]; a[1] = p->a[1]; a[2] = p->a[2];
