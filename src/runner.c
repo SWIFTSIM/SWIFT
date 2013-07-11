@@ -860,6 +860,16 @@ void runner_dokick ( struct runner *r , struct cell *c , int timer ) {
             v[2] = v_old[2] + hdt * a[2];
             u = u_old + hdt * u_dt;
             
+            /* Collect momentum */
+            mom[0] += m * v[0];
+            mom[1] += m * v[1];
+            mom[2] += m * v[2];
+
+	        /* Collect angular momentum */
+	        ang[0] += m * ( x[1]*v[2] - x[2]*v[1] );
+	        ang[1] += m * ( x[2]*v[0] - x[0]*v[2] );
+	        ang[2] += m * ( x[0]*v[1] - x[1]*v[0] );
+
             /* Collect total energy. */
             ekin += 0.5 * m * ( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
             epot += m * u;
@@ -878,16 +888,6 @@ void runner_dokick ( struct runner *r , struct cell *c , int timer ) {
                         (x[1] - x_old[1])*(x[1] - x_old[1]) +
                         (x[2] - x_old[2])*(x[2] - x_old[2]) );
             dx_max = fmaxf( dx_max , dx );
-
-            /* Collect momentum */
-            mom[0] += m * v[0];
-            mom[1] += m * v[1];
-            mom[2] += m * v[2];
-
-	        /* Collect angular momentum */
-	        ang[0] += m * ( x[1]*v[2] - x[2]*v[1] );
-	        ang[1] += m * ( x[2]*v[0] - x[0]*v[2] );
-	        ang[2] += m * ( x[0]*v[1] - x[1]*v[0] );
 
             /* Update positions and energies at the half-step. */
             p->v[0] = v[0] + dt * a[0];
