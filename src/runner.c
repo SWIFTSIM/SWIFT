@@ -532,11 +532,21 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
     TIMER_TIC
     
     /* Loop over the particles and kick them. */
+    __builtin_prefetch( &parts[0] , 0 , 1 );
+    __builtin_prefetch( &parts[0].rho_dh , 0 , 1 );
+    __builtin_prefetch( &xparts[0] , 0 , 1 );
+    __builtin_prefetch( &parts[1] , 0 , 1 );
+    __builtin_prefetch( &parts[1].rho_dh , 0 , 1 );
+    __builtin_prefetch( &xparts[1] , 0 , 1 );
+    __builtin_prefetch( &parts[2] , 0 , 1 );
+    __builtin_prefetch( &parts[2].rho_dh , 0 , 1 );
+    __builtin_prefetch( &xparts[2] , 0 , 1 );
     for ( k = 0 ; k < nr_parts ; k++ ) {
 
         /* Get a handle on the part. */
-        __builtin_prefetch( &parts[k+1] , 0 , 1 );
-        __builtin_prefetch( &xparts[k+1] , 0 , 1 );
+        __builtin_prefetch( &parts[k+3] , 0 , 1 );
+        __builtin_prefetch( &parts[k+3].rho_dh , 0 , 1 );
+        __builtin_prefetch( &xparts[k+3] , 0 , 1 );
         p = &parts[k];
         xp = &xparts[k];
 
@@ -643,11 +653,21 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
         dx_max = 0.0f;
     
         /* Loop over parts. */
+        __builtin_prefetch( &parts[0] , 0 , 1 );
+        __builtin_prefetch( &parts[0].rho_dh , 0 , 1 );
+        __builtin_prefetch( &xparts[0] , 0 , 1 );
+        __builtin_prefetch( &parts[1] , 0 , 1 );
+        __builtin_prefetch( &parts[1].rho_dh , 0 , 1 );
+        __builtin_prefetch( &xparts[1] , 0 , 1 );
+        __builtin_prefetch( &parts[2] , 0 , 1 );
+        __builtin_prefetch( &parts[2].rho_dh , 0 , 1 );
+        __builtin_prefetch( &xparts[2] , 0 , 1 );
         for ( k = 0 ; k < c->count ; k++ ) {
             
             /* Get a handle on the kth particle. */
-            __builtin_prefetch( &parts[k+1] , 0 , 1 );
-            __builtin_prefetch( &xparts[k+1] , 0 , 1 );
+            __builtin_prefetch( &parts[k+3] , 0 , 1 );
+            __builtin_prefetch( &parts[k+3].rho_dh , 0 , 1 );
+            __builtin_prefetch( &xparts[k+3] , 0 , 1 );
             p = &parts[k];
             xp = &xparts[k];
             
