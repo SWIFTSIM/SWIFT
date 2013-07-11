@@ -157,7 +157,10 @@ void engine_maketasks ( struct engine *e ) {
         }
         
     /* Append a ghost task to each cell. */
-    space_map_cells_pre( s , 1 , &scheduler_map_mkghosts , sched );
+    if ( e->policy & engine_policy_fixdt )
+        space_map_cells_pre( s , 1 , &scheduler_map_mkghosts_nokick1 , sched );
+    else
+        space_map_cells_pre( s , 1 , &scheduler_map_mkghosts , sched );
     
     /* Run through the tasks and make force tasks for each density task.
        Each force task depends on the cell ghosts and unlocks the kick2 task
@@ -668,10 +671,12 @@ void engine_step ( struct engine *e ) {
     // printParticle( parts , 432626 );
     
     /* First kick. */
-    TIMER_TIC
-    scheduler_start( &e->sched , (1 << task_type_kick1) );
-    engine_launch( e , ( e->nr_threads > 8 ) ? 8 : e->nr_threads );
-    TIMER_TOC( timer_kick1 );
+    if ( e->step == 0 || !( e->policy & engine_policy_fixdt ) ) {
+        TIMER_TIC
+        scheduler_start( &e->sched , (1 << task_type_kick1) );
+        engine_launch( e , ( e->nr_threads > 8 ) ? 8 : e->nr_threads );
+        TIMER_TOC( timer_kick1 );
+        }
     
     /* Check if all the kick1 threads have executed. */
     /* for ( k = 0 ; k < e->sched.nr_tasks ; k++ )
@@ -689,7 +694,7 @@ void engine_step ( struct engine *e ) {
     // engine_single_density( e->s->dim , 3392063069037 , e->s->parts , e->s->nr_parts , e->s->periodic );
 
     /* Send off the runners. */
-    TIMER_TIC_ND
+    TIMER_TIC
     engine_launch( e , e->nr_threads );
     TIMER_TOC(timer_runners);
             

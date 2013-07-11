@@ -774,6 +774,208 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
 
 
 /**
+ * @brief Combined second and first kick for fixed dt.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+ 
+void runner_dokick ( struct runner *r , struct cell *c , int timer ) {
+
+    int k, count = 0, nr_parts = c->count, updated;
+    float dt_min = FLT_MAX, dt_max = 0.0f;
+    float h_max, dx, dx_max;
+    double ekin = 0.0, epot = 0.0;
+    float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
+    float x[3], x_old[3], v[3], v_old[3], a[3], u, u_old, h, pdt, m, w;
+    float dt = r->e->dt, hdt = 0.5f*dt;
+    float dt_cfl, dt_h_change, dt_u_change, dt_new;
+    float h_dt, u_dt;
+    struct part *restrict p, *restrict parts = c->parts;
+    struct xpart *restrict xp, *restrict xparts = c->xparts;
+    
+    TIMER_TIC
+    
+    /* No children? */
+    if ( !c->split ) {
+    
+        /* Init the min/max counters. */
+        dt_min = FLT_MAX;
+        dt_max = 0.0f;
+        h_max = 0.0f;
+        dx_max = 0.0f;
+    
+        /* Loop over the particles and kick them. */
+        __builtin_prefetch( &parts[0] , 0 , 1 );
+        __builtin_prefetch( &parts[0].rho_dh , 0 , 1 );
+        __builtin_prefetch( &xparts[0] , 0 , 1 );
+        __builtin_prefetch( &parts[1] , 0 , 1 );
+        __builtin_prefetch( &parts[1].rho_dh , 0 , 1 );
+        __builtin_prefetch( &xparts[1] , 0 , 1 );
+        __builtin_prefetch( &parts[2] , 0 , 1 );
+        __builtin_prefetch( &parts[2].rho_dh , 0 , 1 );
+        __builtin_prefetch( &xparts[2] , 0 , 1 );
+        for ( k = 0 ; k < nr_parts ; k++ ) {
+
+            /* Get a handle on the part. */
+            __builtin_prefetch( &parts[k+3] , 0 , 1 );
+            __builtin_prefetch( &parts[k+3].rho_dh , 0 , 1 );
+            __builtin_prefetch( &xparts[k+3] , 0 , 1 );
+            p = &parts[k];
+            xp = &xparts[k];
+
+            /* Get local copies of particle data. */
+            pdt = p->dt;
+            u_dt = p->force.u_dt;
+            h = p->h;
+            m = p->mass;
+            x[0] = p->x[0]; x[1] = p->x[1]; x[2] = p->x[2];
+            a[0] = p->a[0]; a[1] = p->a[1]; a[2] = p->a[2];
+            x_old[0] = xp->x_old[0]; x_old[1] = xp->x_old[1]; x_old[2] = xp->x_old[2];
+            v_old[0] = xp->v_old[0]; v_old[1] = xp->v_old[1]; v_old[2] = xp->v_old[2];
+            u_old = xp->u_old;
+
+            /* Scale the derivatives if they're freshly computed. */
+            h_dt = p->force.h_dt *= h * 0.333333333f;
+            count += 1;
+            xp->omega = 1.0f + h * p->rho_dh / p->rho * 0.3333333333f;
+
+            /* Update the particle's time step. */
+            dt_cfl = const_cfl * h / p->force.v_sig;
+            dt_h_change = ( h_dt != 0.0f ) ? fabsf( const_ln_max_h_change * h / h_dt ) : FLT_MAX;
+            dt_u_change = ( u_dt != 0.0f ) ? fabsf( const_max_u_change * p->u / u_dt ) : FLT_MAX;
+            dt_new = fminf( dt_cfl , fminf( dt_h_change , dt_u_change ) );
+            if ( pdt == 0.0f )
+                p->dt = pdt = dt_new;
+            else
+                p->dt = pdt = fminf( dt_new , 2.0f*pdt );
+
+            /* Get the smallest/largest dt. */
+            dt_min = fminf( dt_min , pdt );
+            dt_max = fmaxf( dt_max , pdt );
+
+            /* Get the instentaneous velocity and internal energy. */
+            v[0] = v_old[0] + hdt * a[0];
+            v[1] = v_old[1] + hdt * a[1];
+            v[2] = v_old[2] + hdt * a[2];
+            u = u_old + hdt * u_dt;
+            
+            /* Collect momentum */
+            mom[0] += m * v[0];
+            mom[1] += m * v[1];
+            mom[2] += m * v[2];
+
+	        /* Collect angular momentum */
+	        ang[0] += m * ( x[1]*v[2] - x[2]*v[1] );
+	        ang[1] += m * ( x[2]*v[0] - x[0]*v[2] );
+	        ang[2] += m * ( x[0]*v[1] - x[1]*v[0] );
+
+            /* Step and store the velocity and internal energy. */
+            xp->v_old[0] = ( v_old[0] += dt * a[0] );
+            xp->v_old[1] = ( v_old[1] += dt * a[1] );
+            xp->v_old[2] = ( v_old[2] += dt * a[2] );
+            xp->u_old = u_old + hdt * u_dt;
+
+            /* Move the particles with the velocitie at the half-step. */
+            p->x[0] = x[0] += dt * v_old[0];
+            p->x[1] = x[1] += dt * v_old[1];
+            p->x[2] = x[2] += dt * v_old[2];
+            dx = sqrtf( (x[0] - x_old[0])*(x[0] - x_old[0]) +
+                        (x[1] - x_old[1])*(x[1] - x_old[1]) +
+                        (x[2] - x_old[2])*(x[2] - x_old[2]) );
+            dx_max = fmaxf( dx_max , dx );
+
+            /* Update positions and energies at the half-step. */
+            p->v[0] = v[0] + dt * a[0];
+            p->v[1] = v[1] + dt * a[1];
+            p->v[2] = v[2] + dt * a[2];
+            w = u_dt / u * dt;
+            if ( fabsf( w ) < 0.01f )
+                p->u = u * ( 1.0f + w*( 1.0f + w*( 0.5f + w*( 1.0f/6.0f + 1.0f/24.0f*w ) ) ) );
+            else
+                p->u = u * expf( w );
+            w = h_dt / h * dt;
+            if ( fabsf( w ) < 0.01f )
+                p->h = h * ( 1.0f + w*( 1.0f + w*( 0.5f + w*( 1.0f/6.0f + 1.0f/24.0f*w ) ) ) );
+            else
+                p->h = h * expf( w );
+            h_max = fmaxf( h_max , h );
+
+            /* Collect total energy. */
+            ekin += 0.5 * m * ( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
+            epot += m * u;
+
+            /* Init fields for density calculation. */
+            p->density.wcount = 0.0f;
+            p->density.wcount_dh = 0.0f;
+            p->rho = 0.0f;
+            p->rho_dh = 0.0f;
+	        p->density.div_v = 0.0f;
+            p->density.curl_v[0] = 0.0f;
+            p->density.curl_v[1] = 0.0f;
+            p->density.curl_v[2] = 0.0f;
+                
+            }
+            
+        }
+        
+    /* Otherwise, agregate data from children. */
+    else {
+    
+        /* Init with the first non-null child. */
+        dt_min = FLT_MAX;
+        dt_max = 0.0f;
+        h_max = 0.0f;
+        dx_max = 0.0f;
+        updated = 0;
+        ekin = 0.0;
+        epot = 0.0;
+        mom[0] = 0.0f; mom[1] = 0.0f; mom[2] = 0.0f;
+        ang[0] = 0.0f; ang[1] = 0.0f; ang[2] = 0.0f;
+        
+        /* Loop over the progeny. */
+        for ( k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL ) {
+                struct cell *cp = c->progeny[k];
+                runner_dokick( r , cp , 0 );
+                dt_min = fminf( dt_min , cp->dt_min );
+                dt_max = fmaxf( dt_max , cp->dt_max );
+                h_max = fmaxf( h_max , cp->h_max );
+                dx_max = fmaxf( dx_max , cp->dx_max );
+                updated += cp->count;
+                ekin += cp->ekin;
+                epot += cp->epot;
+                mom[0] += cp->mom[0]; mom[1] += cp->mom[1]; mom[2] += cp->mom[2];
+                ang[0] += cp->ang[0]; ang[1] += cp->ang[1]; ang[2] += cp->ang[2];
+                }
+    
+        }
+
+    /* Store the values. */
+    c->dt_min = dt_min;
+    c->dt_max = dt_max;
+    c->h_max = h_max;
+    c->dx_max = dx_max;
+    c->updated = count;
+    c->ekin = ekin;
+    c->epot = epot;
+    c->mom[0] = mom[0]; c->mom[1] = mom[1]; c->mom[2] = mom[2];
+    c->ang[0] = ang[0]; c->ang[1] = ang[1]; c->ang[2] = ang[2];
+    
+    if ( timer ) {
+        #ifdef TIMER_VERBOSE
+            printf( "runner_dokick2[%02i]: %i parts at depth %i took %.3f ms.\n" ,
+                r->id , c->count , c->depth ,
+                ((double)TIMER_TOC(timer_kick2)) / CPU_TPS * 1000 ); fflush(stdout);
+        #else
+            TIMER_TOC(timer_kick2);
+        #endif
+        }
+        
+    }
+
+
+/**
  * @brief The #runner main thread routine.
  *
  * @param data A pointer to this thread's data.
@@ -873,7 +1075,10 @@ void *runner_main ( void *data ) {
                     runner_dokick1( r , ci );
                     break;
                 case task_type_kick2:
-                    runner_dokick2( r , ci );
+                    if ( e->policy & engine_policy_fixdt )
+                        runner_dokick( r , ci , 1 );
+                    else
+                        runner_dokick2( r , ci );
                     break;
                 default:
                     error( "Unknown task type." );

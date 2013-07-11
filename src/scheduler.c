@@ -92,6 +92,36 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
     }
 
 
+void scheduler_map_mkghosts_nokick1 ( struct cell *c , void *data ) {
+
+    struct scheduler *s = (struct scheduler *)data;
+    struct cell *finger;
+
+    /* Find the super cell, i.e. the highest cell hierarchically above
+       this one to still have at least one task associated with it. */
+    c->super = c;
+    for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
+        if ( finger->nr_tasks > 0 )
+            c->super = finger;
+            
+    /* Make the ghost task */
+    if ( c->super != c || c->nr_tasks > 0 )
+        c->ghost = scheduler_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , 0 );
+
+    /* Append a kick2 task if we are the active super cell. */
+    if ( c->super == c && c->nr_tasks > 0 )
+        c->kick2 = scheduler_addtask( s , task_type_kick2 , task_subtype_none , 0 , 0 , c , NULL , 0 );
+    
+    /* If we are not the super cell ourselves, make our ghost depend
+       on our parent cell. */
+    if ( c->super != c ) {
+        task_addunlock( c->parent->ghost , c->ghost );
+        c->ghost->implicit = 1;
+        }
+        
+    }
+
+
 /**
  * @brief Mapping function to append a ghost task to each cell.
  *
