@@ -343,9 +343,10 @@ void space_rebuild ( struct space *s , double cell_max ) {
 void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N , int min , int max ) {
 
     struct {
-        int i, j, min, max, ready;
+        int i, j, min, max;
+        volatile int ready;
         } qstack[space_qstack];
-    volatile int first, last, waiting;
+    volatile unsigned int first, last, waiting;
     
     int pivot;
     int i, ii, j, jj, temp_i, qid;
@@ -363,7 +364,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel default(shared) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
+    #pragma omp parallel default(none) shared(first,last,waiting,qstack,parts,xparts,ind) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
     {
     
         /* Main loop. */
@@ -374,7 +375,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
             qid = atomic_inc( &first ) % space_qstack;
             
             /* Wait for the interval to be ready. */
-            while ( waiting > 0 && atomic_cas( &qstack[qid].ready , 1 , 0 ) != 1 );
+            while ( waiting > 0 && atomic_cas( &qstack[qid].ready , 1 , 1 ) != 1 );
             
             /* Broke loop for all the wrong reasons? */
             if ( waiting == 0 )
@@ -385,6 +386,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
             j = qstack[qid].j;
             min = qstack[qid].min;
             max = qstack[qid].max;
+            qstack[qid].ready = 0;
             // printf( "parts_sort_par: thread %i got interval [%i,%i] with values in [%i,%i].\n" , omp_get_thread_num() , i , j , min , max );
             
             /* Loop over sub-intervals. */
@@ -425,6 +427,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
                     /* Recurse on the left? */
                     if ( jj > i  && pivot > min ) {
                         qid = atomic_inc( &last ) % space_qstack;
+                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
                         qstack[qid].i = i;
                         qstack[qid].j = jj;
                         qstack[qid].min = min;
@@ -448,6 +451,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
                     /* Recurse on the right? */
                     if ( jj+1 < j && pivot+1 < max ) {
                         qid = atomic_inc( &last ) % space_qstack;
+                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
                         qstack[qid].i = jj+1;
                         qstack[qid].j = j;
                         qstack[qid].min = pivot+1;
