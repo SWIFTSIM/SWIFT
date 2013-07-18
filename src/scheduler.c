@@ -541,6 +541,11 @@ void scheduler_ranktasks ( struct scheduler *s ) {
             
         }
         
+    /* Verify that the tasks were ranked correctly. */
+    /* for ( k = 1 ; k < s->nr_tasks ; k++ )
+        if ( tasks[ tid[k-1] ].rank > tasks[ tid[k-1] ].rank )
+            error( "Task ranking failed." ); */
+        
     }
 
 
@@ -656,11 +661,12 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
     struct task *t, *tasks = s->tasks;
     // ticks tic;
     
-    /* Run throught the tasks backwards and set their waits. */
+    /* Run throught the tasks and set their waits. */
     // tic = getticks();
     // #pragma omp parallel for schedule(static) private(t,j)
-    for ( k = nr_tasks-1 ; k >= 0 ; k-- ) {
+    for ( k = nr_tasks - 1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
+        t->wait = 0;
         if ( !( (1 << t->type) & mask ) || t->skip )
             continue;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
@@ -673,10 +679,13 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
     // #pragma omp parallel for schedule(static) private(t)
     for ( k = 0 ; k < nr_tasks ; k++ ) {
         t = &tasks[ tid[k] ];
-        if ( t->rank > 0 )
-            break;
-        if ( ( (1 << t->type) & mask ) && !t->skip && t->wait == 0 )
-            scheduler_enqueue( s , t );
+        if ( ( (1 << t->type) & mask ) && !t->skip && t->wait == 0 ) {
+            if ( t->implicit )
+                for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
+                    atomic_dec( &t->unlock_tasks[j]->wait );
+            else
+                scheduler_enqueue( s , t );
+            }
         }
     // printf( "scheduler_start: enqueueing tasks took %.3f ms.\n" , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         
@@ -749,55 +758,6 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
  *
  * @param s The #scheduler.
  * @param t The finished #task.
- */
- 
-void scheduler_done_old ( struct scheduler *s , struct task *t ) {
-
-    int k, res;
-    struct task *t2;
-    
-    /* Release whatever locks this task held. */
-    if ( !t->implicit )
-        switch ( t->type ) {
-            case task_type_self:
-            case task_type_sort:
-                cell_unlocktree( t->ci );
-                break;
-            case task_type_pair:
-            case task_type_sub:
-                cell_unlocktree( t->ci );
-                if ( t->cj != NULL )
-                    cell_unlocktree( t->cj );
-                break;
-            }
-        
-    /* Loop through the dependencies and add them to a queue if
-       they are ready. */
-    for ( k = 0 ; k < t->nr_unlock_tasks ; k++ ) {
-        t2 = t->unlock_tasks[k];
-        if ( ( res = atomic_dec( &t2->wait ) ) < 1 )
-            error( "Negative wait!" );
-        if ( res == 1 && !t2->skip )
-            scheduler_enqueue( s , t2 );
-        }
-        
-    /* Task definitely done. */
-    if ( !t->implicit ) {
-        t->toc = getticks();
-        pthread_mutex_lock( &s->sleep_mutex );
-        atomic_dec( &s->waiting );
-        pthread_cond_broadcast( &s->sleep_cond );
-        pthread_mutex_unlock( &s->sleep_mutex );
-        }
-
-    }
-
-
-/**
- * @brief Take care of a tasks dependencies.
- *
- * @param s The #scheduler.
- * @param t The finished #task.
  *
  * @return A pointer to the next task, if a suitable one has
  *         been identified.
@@ -819,7 +779,7 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
         t2 = t->unlock_tasks[k];
         if ( ( res = atomic_dec( &t2->wait ) ) < 1 )
             error( "Negative wait!" );
-        if (res == 1 && !t2->skip ) {
+        if ( res == 1 && !t2->skip ) {
             if ( 0 && !t2->implicit &&
                  t2->ci->super == super &&
                  ( next == NULL || t2->weight > next->weight ) &&

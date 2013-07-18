@@ -122,14 +122,11 @@ void engine_maketasks ( struct engine *e ) {
         if ( t->skip )
             continue;
         if ( t->type == task_type_sort && t->ci->split )
-            for ( j = 0 ; j < 8 ; j++ ) {
-                if ( t->ci->progeny[j] != NULL ) {
-                    if ( t->ci->progeny[j]->sorts == NULL )
-                        t->ci->progeny[j]->sorts = scheduler_addtask( sched , task_type_sort , task_subtype_none , t->flags , 0 , t->ci->progeny[j] , NULL , 0 );
+            for ( j = 0 ; j < 8 ; j++ )
+                if ( t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL ) {
                     t->ci->progeny[j]->sorts->skip = 0;
                     task_addunlock( t->ci->progeny[j]->sorts , t );
                     }
-                }
         if ( t->type == task_type_self ) {
             atomic_inc( &t->ci->nr_tasks );
             if ( t->subtype == task_subtype_density ) {
@@ -219,20 +216,6 @@ void engine_maketasks ( struct engine *e ) {
     /* Weight the tasks. */
     scheduler_reweight( sched );
             
-    /* Count the number of each task type. */
-    int counts[ task_type_count+1 ];
-    for ( k = 0 ; k <= task_type_count ; k++ )
-        counts[k] = 0;
-    for ( k = 0 ; k < sched->nr_tasks ; k++ )
-        if ( !sched->tasks[k].skip )
-            counts[ (int)sched->tasks[k].type ] += 1;
-        else
-            counts[ task_type_count ] += 1;
-    printf( "engine_maketasks: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
-    for ( k = 1 ; k < task_type_count ; k++ )
-        printf( " %s=%i" , taskID_names[k] , counts[k] );
-    printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout); 
-    
     }
     
     
@@ -375,7 +358,8 @@ int engine_marktasks ( struct engine *e ) {
  
 void engine_prepare ( struct engine *e ) {
     
-    int rebuild;
+    int k, rebuild;
+    struct scheduler *sched = &e->sched;
     
     TIMER_TIC
 
@@ -403,16 +387,30 @@ void engine_prepare ( struct engine *e ) {
             error( "engine_marktasks failed after space_rebuild." );
         // printf( "engine_prepare: engine_marktasks took %.3f ms.\n" , (double)(getticks() - tic)/CPU_TPS*1000 );
         
+        /* Count the number of each task type. */
+        int counts[ task_type_count+1 ];
+        for ( k = 0 ; k <= task_type_count ; k++ )
+            counts[k] = 0;
+        for ( k = 0 ; k < sched->nr_tasks ; k++ )
+            if ( !sched->tasks[k].skip )
+                counts[ (int)sched->tasks[k].type ] += 1;
+            else
+                counts[ task_type_count ] += 1;
+        printf( "engine_prepare: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
+        for ( k = 1 ; k < task_type_count ; k++ )
+            printf( " %s=%i" , taskID_names[k] , counts[k] );
+        printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout); 
+    
         }
 
     /* Start the scheduler. */
     // ticks tic2 = getticks();
-    scheduler_start( &e->sched , (1 << task_type_sort) | 
-                                 (1 << task_type_self) |
-                                 (1 << task_type_pair) | 
-                                 (1 << task_type_sub) |
-                                 (1 << task_type_ghost) | 
-                                 (1 << task_type_kick2) );
+    scheduler_start( sched , (1 << task_type_sort) | 
+                             (1 << task_type_self) |
+                             (1 << task_type_pair) | 
+                             (1 << task_type_sub) |
+                             (1 << task_type_ghost) | 
+                             (1 << task_type_kick2) );
     // printf( "engine_prepare: scheduler_start took %.3f ms.\n" , (double)(getticks() - tic2)/CPU_TPS*1000 );
     
     TIMER_TOC( timer_prepare );
@@ -697,7 +695,7 @@ void engine_step ( struct engine *e ) {
     TIMER_TIC
     engine_launch( e , e->nr_threads );
     TIMER_TOC(timer_runners);
-            
+    
     // engine_single_force( e->s->dim , 8328423931905 , e->s->parts , e->s->nr_parts , e->s->periodic );
     
     // for(k=0; k<10; ++k)
@@ -729,7 +727,6 @@ void engine_step ( struct engine *e ) {
     // printf( "engine_step: etot is %e (ekin=%e, epot=%e).\n" , ekin+epot , ekin , epot ); fflush(stdout);
     // printf( "engine_step: total momentum is [ %e , %e , %e ].\n" , mom[0] , mom[1] , mom[2] ); fflush(stdout);
     // printf( "engine_step: total angular momentum is [ %e , %e , %e ].\n" , ang[0] , ang[1] , ang[2] ); fflush(stdout);
-    // printf( "engine_step: total entropic function is %e .\n", ent ); fflush(stdout);
     // printf( "engine_step: updated %i parts (dt_step=%.3e).\n" , count , dt_step ); fflush(stdout);
         
     /* Increase the step. */
@@ -737,36 +734,51 @@ void engine_step ( struct engine *e ) {
 
     /* Does the time step need adjusting? */
     if ( e->policy & engine_policy_fixdt ) {
-        e->dt = e->dt_orig;
+        dt = e->dt_orig;
         }
     else {
-        if ( e->dt == 0 ) {
+        if ( dt == 0 ) {
             e->nullstep += 1;
-            e->dt = e->dt_orig;
-            while ( dt_min < e->dt )
-                e->dt *= 0.5;
-            while ( dt_min > 2*e->dt )
-                e->dt *= 2.0;
+            if ( e->dt_orig > 0.0 ) {
+                dt = e->dt_orig;
+                while ( dt_min < dt )
+                    dt *= 0.5;
+                while ( dt_min > 2*dt )
+                    dt *= 2.0;
+                }
+            else
+                dt = dt_min;
+            for ( k = 0 ; k < s->nr_parts ; k++ ) {
+                /* struct part *p = &s->parts[k];
+                struct xpart *xp = &s->xparts[k];
+                float dt_curr = dt;
+                for ( int j = (int)( p->dt / dt ) ; j > 1 ; j >>= 1 )
+                    dt_curr *= 2.0f; 
+                xp->dt_curr = dt_curr; */
+                s->parts[k].dt = dt;
+                s->xparts[k].dt_curr = dt;
+                }
             // printf( "engine_step: dt_min=%.3e, adjusting time step to dt=%e.\n" , dt_min , e->dt );
             }
         else {
-            while ( dt_min < e->dt ) {
-                e->dt *= 0.5;
+            while ( dt_min < dt ) {
+                dt *= 0.5;
                 e->step *= 2;
                 e->nullstep *= 2;
                 // printf( "engine_step: dt_min dropped below time step, adjusting to dt=%e.\n" , e->dt );
                 }
-            while ( dt_min > 2*e->dt && (e->step & 1) == 0 ) {
-                e->dt *= 2.0;
+            while ( dt_min > 2*dt && (e->step & 1) == 0 ) {
+                dt *= 2.0;
                 e->step /= 2;
                 e->nullstep /= 2;
                 // printf( "engine_step: dt_min is larger than twice the time step, adjusting to dt=%e.\n" , e->dt );
                 }
             }
         } 
+    e->dt = dt;
     
     /* Set the system time. */
-    e->time = e->dt * (e->step - e->nullstep);
+    e->time = dt * (e->step - e->nullstep);
         
     TIMER_TOC2(timer_step);
     
@@ -848,6 +860,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     /* Append a kick1 task to each cell. */
     scheduler_reset( &e->sched , s->tot_cells );
     space_map_cells_pre( e->s , 1 , &scheduler_map_mkkick1 , &e->sched );
+    scheduler_ranktasks( &e->sched );
     
     /* Allocate and init the threads. */
     if ( ( e->runners = (struct runner *)malloc( sizeof(struct runner) * nr_threads ) ) == NULL )

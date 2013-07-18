@@ -28,7 +28,7 @@
 #define space_subsize_default           5000
 #define space_stretch                   1.10f
 #define space_maxreldx                  0.25f
-#define space_qstack                    1000
+#define space_qstack                    1024
 
 
 /* Convert cell location to ID. */

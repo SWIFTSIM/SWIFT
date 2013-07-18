@@ -59,34 +59,45 @@ int queue_counter[ queue_counter_count ];
  
 void queue_insert ( struct queue *q , struct task *t ) {
 
+    int k, *tid;
+    struct task *tasks;
+
     /* Lock the queue. */
     if ( lock_lock( &q->lock ) != 0 )
         error( "Failed to get queue lock." );
         
+    tid = q->tid;
+    tasks = q->tasks;
+
     /* Does the queue need to be grown? */
     if ( q->count == q->size ) {
         int *temp;
         q->size *= queue_sizegrow;
         if ( ( temp = (int *)malloc( sizeof(int) * q->size ) ) == NULL )
             error( "Failed to allocate new indices." );
-        memcpy( temp , q->tid , sizeof(int) * q->count );
-        free( q->tid );
-        q->tid = temp;
+        memcpy( temp , tid , sizeof(int) * q->count );
+        free( tid );
+        q->tid = tid = temp;
         }
         
     /* Drop the task at the end of the queue. */
-    q->tid[ q->count ] = ( t - q->tasks );
+    tid[ q->count ] = ( t - tasks );
     q->count += 1;
     
     /* Shuffle up. */
-    for ( int k = q->count - 1 ; k > 0 ; k = (k-1)/2 )
-        if ( q->tasks[ q->tid[k] ].weight > q->tasks[ q->tid[(k-1)/2] ].weight ) {
-            int temp = q->tid[k];
-            q->tid[k] = q->tid[(k-1)/2];
-            q->tid[(k-1)/2] = temp;
+    for ( k = q->count - 1 ; k > 0 ; k = (k-1)/2 )
+        if ( tasks[ tid[k] ].weight > tasks[ tid[(k-1)/2] ].weight ) {
+            int temp = tid[k];
+            tid[k] = tid[(k-1)/2];
+            tid[(k-1)/2] = temp;
             }
         else
             break;
+            
+    /* Check the queue's consistency. */
+    /* for ( k = 1 ; k < q->count ; k++ )
+        if ( tasks[ tid[(k-1)/2] ].weight < tasks[ tid[k] ].weight )
+            error( "Queue heap is disordered." ); */
     
     /* Unlock the queue. */
     if ( lock_unlock( &q->lock ) != 0 )
@@ -221,6 +232,11 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
     else
         res = NULL;
 
+    /* Check the queue's consistency. */
+    /* for ( k = 1 ; k < q->count ; k++ )
+        if ( qtasks[ qtid[(k-1)/2] ].weight < qtasks[ qtid[k] ].weight )
+            error( "Queue heap is disordered." ); */
+    
     /* Release the task lock. */
     if ( lock_unlock( qlock ) != 0 )
         error( "Unlocking the qlock failed.\n" );
