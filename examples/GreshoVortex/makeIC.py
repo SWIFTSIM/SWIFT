@@ -26,9 +26,9 @@ from numpy import *
 
 # Parameters
 periodic= 1      # 1 For periodic box
-factor = 4
+factor = 3
 boxSize = [ 1.0 , 1.0, 1.0/factor ]
-L = 100           # Number of particles along one axis
+L = 120           # Number of particles along one axis
 gamma = 5./3.     # Gas adiabatic index
 rho = 1           # Gas density
 P0 = 0.           # Constant additional pressure (should have no impact on the dynamics)
