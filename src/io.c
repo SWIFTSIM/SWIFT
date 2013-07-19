@@ -738,7 +738,22 @@ void write_output (struct engine *e)
   writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
   writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
   writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
+
+#ifdef LEGACY_GADGET2_SPH
+  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "(No treatment) Legacy Gadget-2 as in Springel (2005)");  
+  writeAttribute_s(h_grpsph, "Viscosity Model", "Legacy Gadget-2 as in Springel (2005)");  
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);  
+  writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);  
+#else
+  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "Price (2008) without switch");  
+  writeAttribute_f(h_grpsph, "Thermal Conductivity alpha", const_conductivity_alpha);  
+  writeAttribute_s(h_grpsph, "Viscosity Model", "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & Piran (2000) with additional Balsara (1995) switch");  
+  writeAttribute_f(h_grpsph, "Viscosity alpha_min", const_viscosity_alpha_min);  
+  writeAttribute_f(h_grpsph, "Viscosity alpha_max", const_viscosity_alpha_max);  
+  writeAttribute_f(h_grpsph, "Viscosity beta", 2.f);  
+  writeAttribute_f(h_grpsph, "Viscosity decay length", const_viscosity_length);  
+#endif
+
   writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);  
   writeAttribute_f(h_grpsph, "Maximal ln(Delta h) change over dt", const_ln_max_h_change);  
   writeAttribute_f(h_grpsph, "Maximal Delta h change over dt", exp(const_ln_max_h_change));  

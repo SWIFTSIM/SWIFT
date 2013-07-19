@@ -33,7 +33,12 @@
 #include "space.h"
 #include "queue.h"
 #include "runner.h"
-#include "runner_iact.h"
 #include "engine.h"
 #include "io.h"
 #include "debug.h"
+
+#ifdef LEGACY_GADGET2_SPH
+#include "runner_iact_legacy.h"
+#else
+#include "runner_iact.h"
+#endif

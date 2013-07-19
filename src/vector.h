@@ -43,6 +43,7 @@
         #define vec_ftoi(a) _mm256_cvttps_epi32(a)
         #define vec_fmin(a,b) _mm256_min_ps(a,b)
         #define vec_fmax(a,b) _mm256_max_ps(a,b)
+        #define vec_fabs(a) _mm256_andnot_ps(_mm256_set1_ps(-0.f), a)
         #define vec_todbl_lo(a) _mm256_cvtps_pd(_mm256_extract128_ps(a,0))
         #define vec_todbl_hi(a) _mm256_cvtps_pd(_mm256_extract128_ps(a,1))
         #define vec_dbl_tofloat(a,b) _mm256_insertf128( _mm256_castps128_ps256(a) , b , 1 )
@@ -54,7 +55,7 @@
         #define vec_dbl_ftoi(a) _mm256_cvttpd_epi32(a)
         #define vec_dbl_fmin(a,b) _mm256_min_pd(a,b)
         #define vec_dbl_fmax(a,b) _mm256_max_pd(a,b)
-    #elif defined( NO__SSE2__ )
+    #elif defined( __SSE2__ )
         #define VECTORIZE
         #define VEC_SIZE 4
         #define VEC_FLOAT __m128
@@ -70,6 +71,7 @@
         #define vec_ftoi(a) _mm_cvttps_epi32(a)
         #define vec_fmin(a,b) _mm_min_ps(a,b)
         #define vec_fmax(a,b) _mm_max_ps(a,b)
+        #define vec_fabs(a) _mm_andnot_ps(_mm_set1_ps(-0.f), a)
         #define vec_todbl_lo(a) _mm_cvtps_pd(a)
         #define vec_todbl_hi(a) _mm_cvtps_pd(_mm_movehl_ps(a,a))
         #define vec_dbl_tofloat(a,b) _mm_movelh_ps( _mm_cvtpd_ps(a) , _mm_cvtpd_ps(b) )

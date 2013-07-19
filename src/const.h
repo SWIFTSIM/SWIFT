@@ -20,8 +20,16 @@
 
 
 /* Hydrodynamical constants. */
-#define const_hydro_gamma       (5.0f/3.0f)
-#define const_viscosity_alpha   0.8f
+#define const_hydro_gamma          (5.0f/3.0f)
+
+/* SPH Viscosity constants. */
+#define const_viscosity_alpha      0.8f            /* Used in the legacy gadget-2 SPH mode only */
+#define const_viscosity_alpha_min  0.1f            /* Values taken from (Price,2004), not used in legacy gadget mode */
+#define const_viscosity_alpha_max  2.0f            /* Values taken from (Price,2004), not used in legacy gadget mode */
+#define const_viscosity_length     0.1f            /* Values taken from (Price,2004), not used in legacy gadget mode */
+
+/* SPH Thermal conductivity constants. */
+#define const_conductivity_alpha    1.f            /* Value taken from (Price,2008), not used in legacy gadget mode */
 
 /* Time integration constants. */
 #define const_cfl               0.3f
@@ -32,3 +40,6 @@
 #define const_eta_kernel        1.2349f         /* Corresponds to 48 ngbs with the cubic spline kernel */
 #define const_delta_nwneigh     1.f
 #define CUBIC_SPLINE_KERNEL
+
+/* SPH variant to use */
+#define LEGACY_GADGET2_SPH

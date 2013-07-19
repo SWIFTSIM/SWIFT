@@ -72,7 +72,12 @@ struct part {
 
     /* Derivative of the density with respect to this particle's smoothing length. */
     float rho_dh;
-    
+
+#ifndef LEGACY_GADGET2_SPH
+    /* Particle viscosity parameter */
+    float alpha;
+#endif    
+
     /* Store density/force specific stuff. */
     union {
     

@@ -44,8 +44,14 @@
 #include "scheduler.h"
 #include "engine.h"
 #include "runner.h"
-#include "runner_iact.h"
 #include "error.h"
+
+/* Include the right variant of the SPH interactions */
+#ifdef LEGACY_GADGET2_SPH
+#include "runner_iact_legacy.h"
+#else
+#include "runner_iact.h"
+#endif
 
 /* Convert cell location to ID. */
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
@@ -336,6 +342,9 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
     int *pid;
     float h, ih, ih2, ih4, h_corr, rho, wcount, rho_dh, wcount_dh, u, fc;
     float normDiv_v, normCurl_v;
+#ifndef LEGACY_GADGET2_SPH
+    float alpha_dot, tau, S;   
+#endif
     float dt_step = r->e->dt_step;
     TIMER_TIC
     
@@ -376,13 +385,13 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Is this part within the timestep? */
             if ( p->dt <= dt_step ) {
             
-  	            /* Some smoothing length multiples. */
-	            h = p->h;
+	        /* Some smoothing length multiples. */
+	        h = p->h;
                 ih = 1.0f / h;
                 ih2 = ih * ih;
                 ih4 = ih2 * ih2;
 
-		        /* Final operation on the density. */
+		/* Final operation on the density. */
                 p->rho = rho = ih * ih2 * ( p->rho + p->mass*kernel_root );
                 p->rho_dh = rho_dh = ( p->rho_dh - 3.0f*p->mass*kernel_root ) * ih4;
                 wcount = ( p->density.wcount + kernel_root ) * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
@@ -416,15 +425,15 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     p->density.wcount_dh = 0.0;
                     p->rho = 0.0;
                     p->rho_dh = 0.0;
-		            p->density.div_v = 0.0;
-		            for ( k=0 ; k < 3 ; k++)
-		                p->density.curl_v[k] = 0.0;
+		    p->density.div_v = 0.0;
+		    for ( k=0 ; k < 3 ; k++)
+		        p->density.curl_v[k] = 0.0;
                     continue;
                     }
 
                 /* Pre-compute some stuff for the balsara switch. */
-		        normDiv_v = fabs( p->density.div_v / rho * ih4 );
-		        normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / rho * ih4;
+		normDiv_v = fabs( p->density.div_v / rho * ih4 );
+		normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / rho * ih4;
                 
                 /* As of here, particle force variables will be set. Do _NOT_
                    try to read any particle density variables! */
@@ -436,9 +445,24 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Compute the P/Omega/rho2. */
                 p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho + h * rho_dh / 3.0f );
 
-		        /* Balsara switch */
-		        p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
-                
+		/* Balsara switch */
+		p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
+
+#ifndef LEGACY_GADGET2_SPH
+
+		/* Viscosity parameter decay time */
+		tau = h / ( 2.f * const_viscosity_length * p->force.c );
+
+		/* Viscosity source term */
+		S = fmaxf( -normDiv_v, 0.f );
+
+		/* Compute the particle's viscosity parameter time derivative */
+		alpha_dot = ( const_viscosity_alpha_min - p->alpha ) / tau + ( const_viscosity_alpha_max - p->alpha ) * S;
+
+		/* Update particle's viscosity paramter */
+		p->alpha += alpha_dot * p->dt; 
+#endif                
+
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
                     p->a[k] = 0.0f;

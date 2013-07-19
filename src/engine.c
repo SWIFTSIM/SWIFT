@@ -48,8 +48,14 @@
 #include "scheduler.h"
 #include "engine.h"
 #include "runner.h"
-#include "runner_iact.h"
 #include "error.h"
+
+#ifdef LEGACY_GADGET2_SPH
+#include "runner_iact_legacy.h"
+#else
+#include "runner_iact.h"
+#endif
+
 
 /* Convert cell location to ID. */
 #define cell_getid( cdim , i , j , k ) ( (int)(k) + (cdim)[2]*( (int)(j) + (cdim)[1]*(int)(i) ) )
