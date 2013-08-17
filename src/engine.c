@@ -695,7 +695,7 @@ void engine_prepare ( struct engine *e ) {
 
     /* Run through the tasks and mark as skip or not. */
     // tic = getticks();
-    rebuild = ( e->step % 3 == 0 || engine_marktasks( e ) );
+    rebuild = ( e->step == 0 || engine_marktasks( e ) );
     // message( "space_marktasks took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Collect the values of rebuild from all nodes. */
