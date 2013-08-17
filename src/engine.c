@@ -95,9 +95,9 @@ void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj
     if ( k < ci->nr_density ) {
 
         /* Compute the cell's tag. */
-        tag = (int)( ci->loc[0] / e->s->dim[0] * 1024 ) +
-              ((int)( ci->loc[1] / e->s->dim[1] * 1024 ) << 10 ) +
-              ((int)( ci->loc[2] / e->s->dim[2] * 1024 ) << 20 );
+        tag = (int)( ci->loc[0] / e->s->dim[0] * 512 ) +
+              ((int)( ci->loc[1] / e->s->dim[1] * 512 ) << 9 ) +
+              ((int)( ci->loc[2] / e->s->dim[2] * 512 ) << 18 );
         tag = tag*2;
 
         /* Create the tasks. */
@@ -141,9 +141,9 @@ void engine_addtasks_recv ( struct engine *e , struct cell *c , struct task *t_x
     if ( t_xv != NULL || c->nr_density > 0 ) {
     
         /* Compute the cell's tag. */
-        tag = (int)( c->loc[0] / e->s->dim[0] * 1024 ) +
-              ((int)( c->loc[1] / e->s->dim[1] * 1024 ) << 10 ) +
-              ((int)( c->loc[2] / e->s->dim[2] * 1024 ) << 20 );
+        tag = (int)( c->loc[0] / e->s->dim[0] * 512 ) +
+              ((int)( c->loc[1] / e->s->dim[1] * 512 ) << 9 ) +
+              ((int)( c->loc[2] / e->s->dim[2] * 512 ) << 18 );
         tag = tag*2;
         
         /* Create the tasks. */
