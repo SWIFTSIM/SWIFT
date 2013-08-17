@@ -30,15 +30,23 @@
 #include <math.h>
 #include <omp.h>
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
 /* Local headers. */
+#include "const.h"
 #include "cycle.h"
 #include "atomic.h"
 #include "lock.h"
 #include "task.h"
 #include "kernel.h"
 #include "part.h"
-#include "cell.h"
 #include "space.h"
+#include "cell.h"
+#include "scheduler.h"
+#include "engine.h"
 #include "runner.h"
 #include "error.h"
 
@@ -144,28 +152,21 @@ void space_rebuild_recycle ( struct space *s , struct cell *c ) {
                 }
     
     }
-
+    
+    
 /**
- * @brief Re-build the cells as well as the tasks.
+ * @brief Re-build the cell grid.
  *
- * @param s The #space in which to update the cells.
- * @param cell_max Maximal cell size.
- *
+ * @param s The #space.
+ * @param cell_max Maximum cell edge length.
  */
  
-void space_rebuild ( struct space *s , double cell_max ) {
+void space_regrid ( struct space *s , double cell_max ) {
 
     float h_max = s->cell_min / kernel_gamma, dmin;
     int i, j, k, cdim[3], nr_parts = s->nr_parts;
     struct cell *restrict c;
-    struct part *restrict finger, *restrict p, *parts = s->parts;
-    struct xpart *xfinger, *xparts = s->xparts;
-    int *ind;
-    double ih[3], dim[3];
     // ticks tic;
-    
-    /* Be verbose about this. */
-    // printf( "space_rebuild: (re)building space...\n" ); fflush(stdout);
     
     /* Run through the parts and get the current h_max. */
     // tic = getticks();
@@ -182,12 +183,18 @@ void space_rebuild ( struct space *s , double cell_max ) {
             }
         s->h_max = h_max;
         }
-    // printf( "space_rebuild: h_max is %.3e (cell_max=%.3e).\n" , h_max , cell_max );
-    // printf( "space_rebuild: getting h_min and h_max took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    // message( "h_max is %.3e (cell_max=%.3e)." , h_max , cell_max );
+    // message( "getting h_min and h_max took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Get the new putative cell dimensions. */
     for ( k = 0 ; k < 3 ; k++ )
         cdim[k] = floor( s->dim[k] / fmax( h_max*kernel_gamma*space_stretch , cell_max ) );
+        
+    /* In MPI-Land, we're not allowed to change the top-level cell size. */
+    #ifdef WITH_MPI
+        if ( cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] )
+            error( "Root-level change of cell size not allowed." );
+    #endif
         
     /* Do we need to re-build the upper-level cells? */
     // tic = getticks();
@@ -236,10 +243,10 @@ void space_rebuild ( struct space *s , double cell_max ) {
                     }
            
         /* Be verbose about the change. */         
-        printf( "space_rebuild: set cell dimensions to [ %i %i %i ].\n" , cdim[0] , cdim[1] , cdim[2] ); fflush(stdout);
+        message( "set cell dimensions to [ %i %i %i ]." , cdim[0] , cdim[1] , cdim[2] ); fflush(stdout);
                     
         } /* re-build upper-level cells? */
-    // printf( "space_rebuild: rebuilding upper-level cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    // message( "rebuilding upper-level cells took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
     /* Otherwise, just clean up the cells. */
     else {
@@ -250,6 +257,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
             s->cells[k].sorts = NULL;
             s->cells[k].nr_tasks = 0;
             s->cells[k].nr_density = 0;
+            s->cells[k].nr_force = 0;
             s->cells[k].dx_max = 0.0f;
             s->cells[k].sorted = 0;
             s->cells[k].count = 0;
@@ -260,9 +268,135 @@ void space_rebuild ( struct space *s , double cell_max ) {
     
         }
         
+    }
+    
+
+/**
+ * @brief Re-build the cells as well as the tasks.
+ *
+ * @param s The #space in which to update the cells.
+ * @param cell_max Maximal cell size.
+ *
+ */
+ 
+void space_rebuild ( struct space *s , double cell_max ) {
+
+    float h_max = s->cell_min / kernel_gamma, dmin;
+    int i, j, k, cdim[3], nr_parts = s->nr_parts;
+    struct cell *restrict c, *restrict cells = s->cells;
+    struct part *restrict finger, *restrict p, *parts = s->parts;
+    struct xpart *xfinger, *xparts = s->xparts;
+    int *ind;
+    double ih[3], dim[3];
+    // ticks tic;
+    
+    /* Be verbose about this. */
+    // message( "re)building space..." ); fflush(stdout);
+    
+    /* Run through the parts and get the current h_max. */
+    // tic = getticks();
+    if ( cells != NULL ) {
+        for ( k = 0 ; k < s->nr_cells ; k++ ) {
+            if ( cells[k].h_max > h_max )
+                h_max = cells[k].h_max;
+            }
+        }
+    else {
+        for ( k = 0 ; k < nr_parts ; k++ ) {
+            if ( s->parts[k].h > h_max )
+                h_max = s->parts[k].h;
+            }
+        s->h_max = h_max;
+        }
+    // message( "h_max is %.3e (cell_max=%.3e)." , h_max , cell_max );
+    // message( "getting h_min and h_max took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    
+    /* Get the new putative cell dimensions. */
+    for ( k = 0 ; k < 3 ; k++ )
+        cdim[k] = floor( s->dim[k] / fmax( h_max*kernel_gamma*space_stretch , cell_max ) );
+        
+    /* In MPI-Land, we're not allowed to change the top-level cell size. */
+    #ifdef WITH_MPI
+        if ( cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] )
+            error( "Root-level change of cell size not allowed." );
+    #endif
+        
+    /* Do we need to re-build the upper-level cells? */
+    // tic = getticks();
+    if ( cells == NULL ||
+         cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ) {
+    
+        /* Free the old cells, if they were allocated. */
+        if ( cells != NULL ) {
+            for ( k = 0 ; k < s->nr_cells ; k++ ) {
+                space_rebuild_recycle( s , &cells[k] );
+                if ( cells[k].sort != NULL )
+                    free( cells[k].sort );
+                }
+            free( cells );
+            s->maxdepth = 0;
+            }
+            
+        /* Set the new cell dimensions only if smaller. */
+        for ( k = 0 ; k < 3 ; k++ ) {
+            s->cdim[k] = cdim[k];
+            s->h[k] = s->dim[k] / cdim[k];
+            s->ih[k] = 1.0 / s->h[k];
+            }
+        dmin = fminf( s->h[0] , fminf( s->h[1] , s->h[2] ) );
+
+        /* Allocate the highest level of cells. */
+        s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
+        if ( posix_memalign( (void *)&cells , 64 , s->nr_cells * sizeof(struct cell) ) != 0 )
+            error( "Failed to allocate cells." );
+        s->cells = cells;
+        bzero( cells , s->nr_cells * sizeof(struct cell) );
+        for ( k = 0 ; k < s->nr_cells ; k++ )
+            if ( lock_init( &cells[k].lock ) != 0 )
+                error( "Failed to init spinlock." );
+
+        /* Set the cell location and sizes. */
+        for ( i = 0 ; i < cdim[0] ; i++ )
+            for ( j = 0 ; j < cdim[1] ; j++ )
+                for ( k = 0 ; k < cdim[2] ; k++ ) {
+                    c = &cells[ cell_getid( cdim , i , j , k ) ];
+                    c->loc[0] = i*s->h[0]; c->loc[1] = j*s->h[1]; c->loc[2] = k*s->h[2];
+                    c->h[0] = s->h[0]; c->h[1] = s->h[1]; c->h[2] = s->h[2];
+                    c->dmin = dmin;
+                    c->depth = 0;
+                    c->count = 0;
+                    lock_init( &c->lock );
+                    }
+           
+        /* Be verbose about the change. */         
+        message( "set cell dimensions to [ %i %i %i ]." , cdim[0] , cdim[1] , cdim[2] ); fflush(stdout);
+                    
+        } /* re-build upper-level cells? */
+    // message( "rebuilding upper-level cells took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+        
+    /* Otherwise, just clean up the cells. */
+    else {
+    
+        /* Free the old cells, if they were allocated. */
+        for ( k = 0 ; k < s->nr_cells ; k++ ) {
+            space_rebuild_recycle( s , &cells[k] );
+            cells[k].sorts = NULL;
+            cells[k].nr_tasks = 0;
+            cells[k].nr_density = 0;
+            cells[k].nr_force = 0;
+            cells[k].dx_max = 0.0f;
+            cells[k].sorted = 0;
+            cells[k].count = 0;
+            cells[k].kick1 = NULL;
+            cells[k].kick2 = NULL;
+            }
+        s->maxdepth = 0;
+    
+        }
+        
     /* Run through the particles and get their cell index. */
     // tic = getticks();
-    if ( ( ind = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
+    if ( ( ind = (int *)malloc( sizeof(int) * s->size_parts ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
@@ -276,14 +410,44 @@ void space_rebuild ( struct space *s , double cell_max ) {
             else if ( p->x[j] >= dim[j] )
                 p->x[j] -= dim[j];
         ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
-        atomic_inc( &s->cells[ ind[k] ].count );
+        atomic_inc( &cells[ ind[k] ].count );
         }
-    // printf( "space_rebuild: getting particle indices took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+
+
+    /* Move non-local parts to the end of the list. */
+    #ifdef WITH_MPI
+        int nodeID = s->e->nodeID;
+        for ( k = 0 ; k < nr_parts ; k++ )
+            if ( cells[ ind[k] ].nodeID != nodeID ) {
+                cells[ ind[k] ].count -= 1;
+                nr_parts -= 1;
+                struct part tp = parts[k];
+                parts[k] = parts[ nr_parts ];
+                parts[ nr_parts ] = tp;
+                struct xpart txp = xparts[k];
+                xparts[k] = xparts[ nr_parts ];
+                xparts[ nr_parts ] = txp;
+                int t = ind[k];
+                ind[k] = ind[ nr_parts ];
+                ind[ nr_parts ] = t;
+                }
+        s->nr_parts = nr_parts + engine_exchange_strays( s->e , &parts[nr_parts] , &xparts[nr_parts] , &ind[nr_parts] , s->nr_parts - nr_parts );
+        for ( k = nr_parts ; k < s->nr_parts ; k++ ) {
+            p = &parts[k];
+            ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
+            cells[ ind[k] ].count += 1;
+            if ( cells[ ind[k] ].nodeID != nodeID )
+                error( "Received part that does not belong to me (nodeID=%i)." , cells[ ind[k] ].nodeID );
+            }
+        nr_parts = s->nr_parts;
+    #endif
+    
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    parts_sort( parts , xparts , ind , s->nr_parts , 0 , s->nr_cells-1 );
-    // printf( "space_rebuild: parts_sort took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    parts_sort( parts , xparts , ind , nr_parts , 0 , s->nr_cells-1 );
+    // message( "parts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Verify sort. */
     /* for ( k = 1 ; k < nr_parts ; k++ ) {
@@ -302,13 +466,13 @@ void space_rebuild ( struct space *s , double cell_max ) {
     finger = parts;
     xfinger = xparts;
     for ( k = 0 ; k < s->nr_cells ; k++ ) {
-        c = &s->cells[ k ];
+        c = &cells[ k ];
         c->parts = finger;
         c->xparts = xfinger;
         finger = &finger[ c->count ];
         xfinger = &xfinger[ c->count ];
         }
-    // printf( "space_rebuild: hooking up cells took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    // message( "hooking up cells took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
@@ -320,13 +484,13 @@ void space_rebuild ( struct space *s , double cell_max ) {
             while ( 1 ) {
                 int myk = atomic_inc( &k );
                 if ( myk < s->nr_cells )
-                    space_split( s , &s->cells[myk] );
+                    space_split( s , &cells[myk] );
                 else
                     break;
                 }
         }
-    // printf( "space_rebuild: space_split took %.3f ms.\n" , (double)(getticks() - tic) / CPU_TPS * 1000 );
-        
+    // message( "space_split took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    
     }
 
 
@@ -387,7 +551,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
             min = qstack[qid].min;
             max = qstack[qid].max;
             qstack[qid].ready = 0;
-            // printf( "parts_sort_par: thread %i got interval [%i,%i] with values in [%i,%i].\n" , omp_get_thread_num() , i , j , min , max );
+            // message( "thread %i got interval [%i,%i] with values in [%i,%i]." , omp_get_thread_num() , i , j , min , max );
             
             /* Loop over sub-intervals. */
             while ( 1 ) {
@@ -412,12 +576,12 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
                 /* Verify sort. */
                 /* for ( int k = i ; k <= jj ; k++ )
                     if ( ind[k] > pivot ) {
-                        printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
                         error( "Partition failed (<=pivot)." );
                         }
                 for ( int k = jj+1 ; k <= j ; k++ )
                     if ( ind[k] <= pivot ) {
-                        printf( "parts_sort: sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i.\n" , k , ind[k] , pivot , i , j , N );
+                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
                         error( "Partition failed (>pivot)." );
                         } */
                         
@@ -675,6 +839,7 @@ void space_split ( struct space *s , struct cell *c ) {
             temp->split = 0;
             temp->h_max = 0.0;
             temp->dx_max = 0.0;
+            temp->nodeID = c->nodeID;
             temp->parent = c;
             c->progeny[k] = temp;
             }
@@ -737,7 +902,7 @@ void space_split ( struct space *s , struct cell *c ) {
         }
         
     /* Set ownership accorind to the start of the parts array. */
-    c->owner = ( c->parts - s->parts ) * s->nr_queues / s->nr_parts;
+    c->owner = ( ( c->parts - s->parts ) % s->nr_parts ) * s->nr_queues / s->nr_parts;
 
     }
 
@@ -809,17 +974,11 @@ struct cell *space_getcell ( struct space *s ) {
     lock_unlock_blind( &s->lock );
     
     /* Init some things in the cell. */
-    c->sorts = NULL;
-    c->nr_tasks = 0;
-    c->nr_density = 0;
-    c->dx_max = 0.0f;
-    c->sorted = 0;
-    c->count = 0;
-    c->kick1 = NULL;
-    c->kick2 = NULL;
+    bzero( c , sizeof(struct cell) );
+    c->nodeID = -1;
+    c->owner = -1;
     if ( lock_init( &c->lock ) != 0 )
         error( "Failed to initialize cell spinlock." );
-    c->owner = -1;
         
     return c;
 
@@ -849,6 +1008,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->dim[0] = dim[0]; s->dim[1] = dim[1]; s->dim[2] = dim[2];
     s->periodic = periodic;
     s->nr_parts = N;
+    s->size_parts = N;
     s->parts = parts;
     s->cell_min = h_max;
     s->nr_queues = 1;
@@ -873,7 +1033,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
         error( "Failed to create space spin-lock." );
     
     /* Build the cells and the tasks. */
-    space_rebuild( s , h_max );
+    space_regrid( s , h_max );
         
     }
 

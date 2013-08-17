@@ -63,12 +63,15 @@ struct scheduler {
     
     /* The space associated with this scheduler. */
     struct space *space;
+    
+    /* The node we are working on. */
+    int nodeID;
 
     };
 
 
 /* Function prototypes. */
-void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues , unsigned int flags );
+void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues , unsigned int flags , int nodeID );
 struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *super );
 void scheduler_enqueue ( struct scheduler *s , struct task *t );
 void scheduler_start ( struct scheduler *s , unsigned int mask );
@@ -81,4 +84,4 @@ void scheduler_map_mkghosts ( struct cell *c , void *data );
 void scheduler_map_mkghosts_nokick1 ( struct cell *c , void *data );
 void scheduler_map_mkkick1 ( struct cell *c , void *data );
 struct task *scheduler_done ( struct scheduler *s , struct task *t );
-
+struct task *scheduler_unlock ( struct scheduler *s , struct task *t );

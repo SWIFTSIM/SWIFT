@@ -27,7 +27,7 @@
     #define VEC_MACRO(elcount, type)  __attribute__((vector_size((elcount)*sizeof(type)))) type
 
     /* So what will the vector size be? */
-    #ifdef NO__AVX__
+    #ifdef __AVX__
         #define VECTORIZE
         #define VEC_SIZE 8
         #define VEC_FLOAT __m256

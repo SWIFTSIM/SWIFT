@@ -29,20 +29,142 @@
 #include <limits.h>
 #include <math.h>
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
 /* Switch off timers. */
 #ifdef TIMER
     #undef TIMER
 #endif
 
 /* Local headers. */
+#include "const.h"
 #include "cycle.h"
 #include "lock.h"
 #include "task.h"
 #include "timers.h"
 #include "part.h"
+#include "space.h"
 #include "cell.h"
 #include "error.h"
 #include "inline.h"
+
+
+/**
+ * @brief Get the size of the cell subtree.
+ *
+ * @param c The #cell.
+ */
+ 
+int cell_getsize ( struct cell *c ) {
+
+    int k, count = 1;
+    
+    /* Sum up the progeny if split. */
+    if ( c->split )
+        for ( k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL )
+                count += cell_getsize( c->progeny[k] );
+                
+    /* Return the final count. */
+    return count;
+
+    }
+
+
+/** 
+ * @brief Unpack the data of a given cell and its sub-cells.
+ *
+ * @param pc An array of packed #pcell.
+ * @param c The #cell in which to unpack the #pcell.
+ * @param s The #space in which the cells are created.
+ * @param parts The #part array holding the particle data.
+ *
+ * @return The number of cells created.
+ */
+ 
+int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s , struct part *parts ) {
+
+    int k, count = 1;
+    struct cell *temp;
+    
+    /* Unpack the current pcell. */
+    c->h_max = pc->h_max;
+    c->dt_min = pc->dt_min;
+    c->dt_max = pc->dt_max;
+    c->count = pc->count;
+    c->parts = parts;
+    
+    /* Fill the progeny recursively, depth-first. */
+    for ( k = 0 ; k < 8 ; k++ )
+        if ( pc->progeny[k] >= 0 ) {
+            temp = space_getcell( s );
+            temp->count = 0;
+            temp->loc[0] = c->loc[0];
+            temp->loc[1] = c->loc[1];
+            temp->loc[2] = c->loc[2];
+            temp->h[0] = c->h[0]/2;
+            temp->h[1] = c->h[1]/2;
+            temp->h[2] = c->h[2]/2;
+            temp->dmin = c->dmin/2;
+            if ( k & 4 )
+                temp->loc[0] += temp->h[0];
+            if ( k & 2 )
+                temp->loc[1] += temp->h[1];
+            if ( k & 1 )
+                temp->loc[2] += temp->h[2];
+            temp->depth = c->depth + 1;
+            temp->split = 0;
+            temp->dx_max = 0.0;
+            temp->nodeID = c->nodeID;
+            temp->parent = c;
+            c->progeny[k] = temp;
+            c->split = 1;
+            count += cell_unpack( &pc[ pc->progeny[k] ] , temp , s , parts );
+            parts = &parts[ temp->count ];
+            }
+            
+    /* Return the total number of unpacked cells. */
+    return count;
+
+    }
+
+
+/**
+ * @brief Pack the data of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param pc Pointer to an array of packed cells in which the
+ *      cells will be packed.
+ *
+ * @return The number of packed cells.
+ */
+ 
+int cell_pack ( struct cell *c , struct pcell *pc ) {
+
+    int k, count = 1;
+    
+    /* Start by packing the data of the current cell. */
+    pc->h_max = c->h_max;
+    pc->dt_min = c->dt_min;
+    pc->dt_max = c->dt_max;
+    pc->count = c->count;
+    
+    /* Fill in the progeny, depth-first recursion. */
+    for ( k = 0 ; k < 8 ; k++ )
+        if ( c->progeny[k] != NULL ) {
+            pc->progeny[k] = count;
+            count += cell_pack( c->progeny[k] , &pc[count] );
+            }
+        else
+            pc->progeny[k] = -1;
+            
+    /* Return the number of packed cells used. */
+    return count;
+
+    }
 
 
 /**
@@ -195,7 +317,7 @@ void cell_split ( struct cell *c  ) {
             }
         /* for ( int kk = left[k] ; kk <= j ; kk++ )
             if ( parts[kk].x[1] > pivot[1] ) {
-                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
+                message( "ival=[%i,%i], i=%i, j=%i." , left[k] , right[k] , i , j );
                 error( "sorting failed (left)." );
                 }
         for ( int kk = i ; kk <= right[k] ; kk++ )
@@ -220,12 +342,12 @@ void cell_split ( struct cell *c  ) {
             }
         /* for ( int kk = left[k] ; kk <= j ; kk++ )
             if ( parts[kk].x[2] > pivot[2] ) {
-                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
+                message( "ival=[%i,%i], i=%i, j=%i." , left[k] , right[k] , i , j );
                 error( "sorting failed (left)." );
                 }
         for ( int kk = i ; kk <= right[k] ; kk++ )
             if ( parts[kk].x[2] < pivot[2] ) {
-                printf( "cell_split: ival=[%i,%i], i=%i, j=%i.\n" , left[k] , right[k] , i , j );
+                message( "ival=[%i,%i], i=%i, j=%i." , left[k] , right[k] , i , j );
                 error( "sorting failed (right)." );
                 } */
         left[2*k+1] = i; right[2*k+1] = right[k];

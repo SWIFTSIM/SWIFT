@@ -20,7 +20,7 @@
 
 /* Some constants. */
 #define task_maxwait                    3
-#define task_maxunlock                  40
+#define task_maxunlock                  46
 
 
 /* The different task types. */
@@ -33,10 +33,15 @@ enum task_types {
     task_type_ghost,
     task_type_kick1,
     task_type_kick2,
+    task_type_send_xv,
+    task_type_recv_xv,
+    task_type_send_rho,
+    task_type_recv_rho,
     task_type_count
     };
     
 extern const char *taskID_names[];
+    
     
 /* The different task sub-types. */
 enum task_subtypes {
@@ -48,6 +53,7 @@ enum task_subtypes {
     
 extern const char *taskID_names[];
     
+    
 /* Data of a task. */
 struct task {
 
@@ -57,6 +63,10 @@ struct task {
     lock_type lock;
     
     struct cell *ci, *cj;
+    
+    #ifdef WITH_MPI
+        MPI_Request req;
+    #endif
     
     int rid;
     ticks tic, toc;

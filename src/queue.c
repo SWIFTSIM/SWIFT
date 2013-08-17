@@ -25,11 +25,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
 /* Local headers. */
+#include "const.h"
 #include "cycle.h"
 #include "lock.h"
 #include "task.h"
 #include "timers.h"
+#include "space.h"
 #include "cell.h"
 #include "queue.h"
 #include "error.h"

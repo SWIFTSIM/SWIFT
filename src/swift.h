@@ -21,6 +21,8 @@
 #include "../config.h"
 
 /* Local headers. */
+#include "const.h"
+#include "error.h"
 #include "cycle.h"
 #include "timers.h"
 #include "const.h"

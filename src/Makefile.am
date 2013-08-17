@@ -20,8 +20,8 @@
 AUTOMAKE_OPTIONS=gnu
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = -g -O3 -Wall -Werror -ffast-math -fstrict-aliasing -ftree-vectorize \
-    -funroll-loops $(SIMD_FLAGS) $(OPENMP_CFLAGS) \
+AM_CFLAGS = -g -O3 -std=gnu99 -Wall -Werror -ffast-math -fstrict-aliasing \
+    -ftree-vectorize -funroll-loops $(SIMD_FLAGS) $(OPENMP_CFLAGS) \
     -DTIMER -DCOUNTER -DCPU_TPS=2.30e9 
 # AM_CFLAGS = -Wall -Werror $(OPENMP_CFLAGS) \
 #     -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
@@ -31,10 +31,24 @@ AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0
 
 # Build the libswiftsim library
 lib_LTLIBRARIES = libswiftsim.la
-libswiftsim_la_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
-    io.c timers.c debug.c scheduler.c
+# Build a MPI-enabled version too?
+if HAVEMPI
+lib_LTLIBRARIES += libswiftsim_mpi.la
+endif
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
-    engine.h swift.h io.h timers.h debug.h scheduler.h
+    engine.h swift.h io.h timers.h debug.h scheduler.h proxy.h
+
+# Common source files
+AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
+    io.c timers.c debug.c scheduler.c proxy.c
+    
+# Sources and flags for regular library
+libswiftsim_la_SOURCES = $(AM_SOURCES)
+
+# Sources and flags for MPI library
+libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
+libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+libswiftsim_mpi_la_SHORTNAME = mpi
 

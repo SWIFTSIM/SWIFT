@@ -31,16 +31,26 @@
 #include <omp.h>
 #include <sched.h>
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
 /* Local headers. */
+#include "const.h"
 #include "cycle.h"
 #include "atomic.h"
 #include "lock.h"
+#include "space.h"
 #include "cell.h"
 #include "task.h"
 #include "error.h"
 
 /* Task type names. */
-const char *taskID_names[task_type_count] = { "none" , "sort" , "self" , "pair" , "sub" , "ghost" , "kick1" , "kick2" };
+const char *taskID_names[task_type_count] = {   
+    "none" , "sort" , "self" , "pair" , "sub" , "ghost" , 
+    "kick1" , "kick2" , "send_xv" , "recv_xv" , "send_rho" ,
+    "recv_rho" };
 
 
 /**
@@ -79,8 +89,30 @@ int task_lock ( struct task *t ) {
     int type = t->type;
     struct cell *ci = t->ci, *cj = t->cj;
 
+    /* Communication task? */
+    if ( type == task_type_recv_xv || type == task_type_recv_rho ||
+         type == task_type_send_xv || type == task_type_send_rho ) {
+    
+        #ifdef WITH_MPI
+            /* Check the status of the MPI request. */
+            int res, err;
+            MPI_Status stat;
+            if ( ( err = MPI_Test( &t->req , &res , &stat ) ) != MPI_SUCCESS ) {
+                char buff[ MPI_MAX_ERROR_STRING ];
+                int len;
+                MPI_Error_string( err , buff , &len );
+                message( "MPI error: %s\n" , buff ); fflush(stdout);
+                error( "Failed to test request on send/recv task." );
+                }
+            return res;
+        #else
+            error( "SWIFT was not compiled with MPI support." );
+        #endif
+    
+        }
+
     /* Unary lock? */
-    if ( type == task_type_self || 
+    else if ( type == task_type_self || 
          type == task_type_sort || 
          (type == task_type_sub && cj == NULL) ) {
         if ( cell_locktree( ci ) != 0 )

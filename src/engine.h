@@ -28,9 +28,15 @@
 #define engine_policy_fixdt         16
 #define engine_policy_multistep     32
 #define engine_policy_cputight      64
+#define engine_policy_mpi           128
+#define engine_policy_setaffinity   256
 
 #define engine_queue_scale          1.2
 #define engine_maxtaskspercell      32
+
+
+/* The rank of the engine as a global variable (for messages). */
+extern int engine_rank;
 
 
 /* Data structure for the engine. */
@@ -77,12 +83,21 @@ struct engine {
     pthread_cond_t barrier_cond;
     volatile int barrier_running, barrier_launch, barrier_launchcount;
     
+    /* ID of the node this engine lives on. */
+    int nr_nodes, nodeID;
+    
+    /* Proxies for the other nodes in this simulation. */
+    struct proxy *proxies;
+    int nr_proxies, *proxy_ind;
+    
     };
 
 
 /* Function prototypes. */
 void engine_barrier( struct engine *e , int tid );
-void engine_init ( struct engine *e , struct space *s , float dt , int nr_threads , int nr_queues , int policy );
+void engine_init ( struct engine *e , struct space *s , float dt , int nr_threads , int nr_queues , int nr_nodes , int nodeID , int policy );
 void engine_prepare ( struct engine *e );
 void engine_step ( struct engine *e );
 void engine_maketasks ( struct engine *e );
+void engine_split ( struct engine *e , int *grid );
+int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpart *xparts , int *ind , int N );

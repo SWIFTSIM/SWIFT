@@ -85,7 +85,7 @@ struct space {
     struct xpart *xparts;
     
     /* The total number of parts in the space. */
-    int nr_parts;
+    int nr_parts, size_parts;
     
     /* Is the space periodic? */
     int periodic;
@@ -95,6 +95,9 @@ struct space {
     
     /* Number of queues in the system. */
     int nr_queues;
+    
+    /* The associated engine. */
+    struct engine *e;
     
     };
 

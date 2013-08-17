@@ -27,6 +27,11 @@
 #include <math.h>
 #include <pthread.h>
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
 /* Local headers. */
 #include "error.h"
 #include "cycle.h"
@@ -38,8 +43,8 @@
 #include "task.h"
 #include "part.h"
 #include "debug.h"
-#include "cell.h"
 #include "space.h"
+#include "cell.h"
 #include "queue.h"
 #include "kernel.h"
 #include "scheduler.h"
@@ -67,24 +72,28 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
         if ( finger->nr_tasks > 0 )
             c->super = finger;
             
+    /* As of here, things are only interesting for local cells. */
+    if ( c->nodeID != s->nodeID )
+        return;
+            
     /* Make the ghost task */
     if ( c->super != c || c->nr_tasks > 0 )
         c->ghost = scheduler_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , 0 );
 
-    /* Append a kick1 task and make sure the parent depends on it. */
-    if ( c->parent == NULL || c->parent->count >= space_subsize ) {
+    /* Append a kick1 task if local and make sure the parent depends on it. */
+    if (c->parent == NULL || c->parent->count >= space_subsize ) {
         c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
         if ( c->parent != NULL )
             task_addunlock( c->kick1 , c->parent->kick1 );
         }
     
-    /* Append a kick2 task if we are the active super cell. */
+    /* Append a kick2 task if we are local and the active super cell. */
     if ( c->super == c && c->nr_tasks > 0 )
         c->kick2 = scheduler_addtask( s , task_type_kick2 , task_subtype_none , 0 , 0 , c , NULL , 0 );
     
     /* If we are not the super cell ourselves, make our ghost depend
        on our parent cell. */
-    if ( c->super != c ) {
+    if ( c->ghost != NULL && c->super != c ) {
         task_addunlock( c->parent->ghost , c->ghost );
         c->ghost->implicit = 1;
         }
@@ -103,6 +112,10 @@ void scheduler_map_mkghosts_nokick1 ( struct cell *c , void *data ) {
     for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
         if ( finger->nr_tasks > 0 )
             c->super = finger;
+            
+    /* As of here, things are only interesting for local cells. */
+    if ( c->nodeID != s->nodeID )
+        return;
             
     /* Make the ghost task */
     if ( c->super != c || c->nr_tasks > 0 )
@@ -170,8 +183,6 @@ void scheduler_splittasks ( struct scheduler *s ) {
                             0.5788 };
 
     /* Loop through the tasks... */
-    // #pragma omp parallel default(none) shared(s,tid,pts,space_subsize) private(ind,j,k,t,t_old,redo,ci,cj,hi,hj,sid,shift)
-    {
     redo = 0; t_old = t = NULL;
     while ( 1 ) {
     
@@ -193,18 +204,26 @@ void scheduler_splittasks ( struct scheduler *s ) {
             t->skip = 1;
             continue;
             }
-        
+            
+        /* Non-local kick task? */
+        if ( (t->type == task_type_kick1 || t->type == task_type_kick2 ) &&
+             t->ci->nodeID != s->nodeID ) {
+            t->type = task_type_none;
+            t->skip = 1;
+            continue;
+            }
+            
         /* Self-interaction? */
         if ( t->type == task_type_self ) {
         
             /* Get a handle on the cell involved. */
             ci = t->ci;
             
-            /* Ingore this task? */
-            /* if ( ci->dt_min > dt_step ) {
+            /* Foreign task? */
+            if ( ci->nodeID != s->nodeID ) {
                 t->skip = 1;
                 continue;
-                } */
+                }
             
             /* Is this cell even split? */
             if ( ci->split ) {
@@ -251,11 +270,11 @@ void scheduler_splittasks ( struct scheduler *s ) {
             hi = ci->dmin;
             hj = cj->dmin;
 
-            /* Ingore this task? */
-            /* if ( ci->dt_min > dt_step && cj->dt_min > dt_step ) {
+            /* Foreign task? */
+            if ( ci->nodeID != s->nodeID && cj->nodeID != s->nodeID ) {
                 t->skip = 1;
                 continue;
-                } */
+                }
             
             /* Get the sort ID, use space_getsid and not t->flags
                to make sure we get ci and cj swapped if needed. */
@@ -433,8 +452,6 @@ void scheduler_splittasks ( struct scheduler *s ) {
     
         } /* loop over all tasks. */
         
-        }
-        
     }
     
     
@@ -473,6 +490,7 @@ struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , 
     t->weight = 0;
     t->rank = 0;
     t->tic = 0;
+    t->toc = 0;
     t->nr_unlock_tasks = 0;
     
     /* Init the lock. */
@@ -530,7 +548,7 @@ void scheduler_ranktasks ( struct scheduler *s ) {
             tid[i] = t - tasks;
             if ( tid[i] >= nr_tasks )
                 error( "Task index overshoot." );
-            /* printf( "scheduler_ranktasks: task %i of type %s has rank %i.\n" , i , 
+            /* message( "task %i of type %s has rank %i." , i , 
                 (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ? "pair" : "sort" , rank ); */
             for ( k = 0 ; k < t->nr_unlock_tasks ; k++ )
                 t->unlock_tasks[k]->wait -= 1;
@@ -643,7 +661,7 @@ void scheduler_reweight ( struct scheduler *s ) {
                     break;
                 }
         }
-    // printf( "scheduler_reweight: weighting tasks took %.3f ms.\n" , (double)( getticks() - tic ) / CPU_TPS * 1000 );
+    // message( "weighting tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         
     }
 
@@ -672,7 +690,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
             atomic_inc( &t->unlock_tasks[j]->wait );
         }
-    // printf( "scheduler_reweight: waiting tasks took %.3f ms.\n" , (double)( getticks() - tic ) / CPU_TPS * 1000 );
+    // message( "waiting tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         
     /* Loop over the tasks and enqueue whoever is ready. */
     // tic = getticks();
@@ -687,7 +705,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
                 scheduler_enqueue( s , t );
             }
         }
-    // printf( "scheduler_start: enqueueing tasks took %.3f ms.\n" , (double)( getticks() - tic ) / CPU_TPS * 1000 );
+    // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         
     }
 
@@ -719,7 +737,8 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
     /* Otherwise, look for a suitable queue. */
     else {
         
-        /* Find the previous owner for each task type. */
+        /* Find the previous owner for each task type, and do
+           any pre-processing needed. */
         switch ( t->type ) {
             case task_type_self:
             case task_type_sort:
@@ -734,10 +753,37 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
                      ( qid < 0 || s->queues[qid].count > s->queues[t->cj->super->owner].count ) )
                     qid = t->cj->super->owner;
                 break;
+            case task_type_recv_xv:
+            case task_type_recv_rho:
+                #ifdef WITH_MPI
+                    if ( MPI_Irecv( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->ci->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) != MPI_SUCCESS )
+                        error( "Failed to emit irecv for particle data." );
+                    // message( "recieving %i parts with tag=%i from %i to %i." ,
+                    //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID ); fflush(stdout);
+                    qid = -1;
+                #else
+                    error( "SWIFT was not compiled with MPI support." );
+                #endif
+                break;
+            case task_type_send_xv:
+            case task_type_send_rho:
+                #ifdef WITH_MPI
+                    if ( MPI_Isend( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->cj->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) != MPI_SUCCESS )
+                        error( "Failed to emit isend for particle data." );
+                    // message( "sending %i parts with tag=%i from %i to %i." ,
+                    //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID ); fflush(stdout);
+                    qid = -1;
+                #else
+                    error( "SWIFT was not compiled with MPI support." );
+                #endif
+                break;
             default:
                 qid = -1;
             }
-
+            
+        if ( qid >= s->nr_queues )
+            error( "Bad computed qid." );
+            
         /* If no previous owner, find the shortest queue. */
         if ( qid < 0 )
             qid = rand() % s->nr_queues;
@@ -793,6 +839,51 @@ struct task *scheduler_done ( struct scheduler *s , struct task *t ) {
             else
                 scheduler_enqueue( s , t2 );
             }
+        }
+        
+    /* Task definitely done. */
+    if ( !t->implicit ) {
+        t->toc = getticks();
+        pthread_mutex_lock( &s->sleep_mutex );
+        if ( next == NULL )
+            atomic_dec( &s->waiting );
+        pthread_cond_broadcast( &s->sleep_cond );
+        pthread_mutex_unlock( &s->sleep_mutex );
+        }
+
+    /* Start the clock on the follow-up task. */
+    if ( next != NULL )
+        next->tic = getticks();
+        
+    /* Return the next best task. */
+    return next;
+
+    }
+
+
+/**
+ * @brief Resolve a single dependency by hand.
+ *
+ * @param s The #scheduler.
+ * @param t The dependent #task.
+ *
+ * @return A pointer to the next task, if a suitable one has
+ *         been identified.
+ */
+ 
+struct task *scheduler_unlock ( struct scheduler *s , struct task *t ) {
+
+    int k, res;
+    struct task *t2, *next = NULL;
+    
+    /* Loop through the dependencies and add them to a queue if
+       they are ready. */
+    for ( k = 0 ; k < t->nr_unlock_tasks ; k++ ) {
+        t2 = t->unlock_tasks[k];
+        if ( ( res = atomic_dec( &t2->wait ) ) < 1 )
+            error( "Negative wait!" );
+        if ( res == 1 && !t2->skip )
+            scheduler_enqueue( s , t2 );
         }
         
     /* Task definitely done. */
@@ -872,12 +963,14 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
             }
 
         /* If we failed, take a short nap. */
-        if ( res == NULL ) {
-            pthread_mutex_lock( &s->sleep_mutex );
-            if ( s->waiting > 0 )
-                pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
-            pthread_mutex_unlock( &s->sleep_mutex );
-            }
+        #ifndef WITH_MPI
+            if ( res == NULL ) {
+                pthread_mutex_lock( &s->sleep_mutex );
+                if ( s->waiting > 0 )
+                    pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
+                pthread_mutex_unlock( &s->sleep_mutex );
+                }
+        #endif
         
         }
         
@@ -901,7 +994,7 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
  * @param flags The #scheduler flags.
  */
  
-void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues , unsigned int flags ) {
+void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues , unsigned int flags , int nodeID ) {
     
     int k;
     
@@ -925,6 +1018,7 @@ void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues 
     s->nr_queues = nr_queues;
     s->flags = flags;
     s->space = space;
+    s->nodeID = nodeID;
     
     /* Init other values. */
     s->tasks = NULL;

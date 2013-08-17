@@ -32,6 +32,12 @@
 #include <hdf5.h>
 #include <math.h>
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
+#include "const.h"
 #include "cycle.h"
 #include "lock.h"
 #include "task.h"
@@ -120,17 +126,13 @@ void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data)
   h_attr = H5Aopen(grp, name, H5P_DEFAULT);
   if(h_attr < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while opening attribute '%s'\n", name);
-      error(buf);
+      error( "Error while opening attribute '%s'" , name );
     }
 
   h_err = H5Aread(h_attr, hdf5Type(type), data);
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while reading attribute '%s'\n", name);
-      error(buf);
+      error( "Error while reading attribute '%s'" , name );
     }
 
   H5Aclose(h_attr);
@@ -168,21 +170,17 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   exist = H5Lexists(grp, name, 0);
   if(exist < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while checking the existence of data set '%s'\n", name);
-      error(buf);
+      error( "Error while checking the existence of data set '%s'." , name );
     }
   else if(exist == 0)
     {
       if(importance == COMPULSORY)
 	{
-	  char buf[100];
-	  sprintf(buf, "Compulsory data set '%s' not present in the file.\n", name);
-	  error(buf);
+	  error( "Compulsory data set '%s' not present in the file." , name );
 	}
       else
 	{
-	  /* printf("readArray: Optional data set '%s' not present. Zeroing this particle field...\n", name);	   */
+	  /* message("Optional data set '%s' not present. Zeroing this particle field...", name);	   */
 	  
 	  for(i=0; i<N; ++i)
 	    memset(part_c+i*partSize, 0, copySize);
@@ -191,15 +189,13 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 	}
    }
 
-  /* printf("readArray: Reading %s '%s' array...\n", importance == COMPULSORY ? "compulsory": "optional  ", name); */
+  /* message( "Reading %s '%s' array...", importance == COMPULSORY ? "compulsory": "optional  ", name); */
 
   /* Open data space */
   h_data = H5Dopen1(grp, name);
   if(h_data < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while opening data space '%s'\n", name);
-      error(buf);
+      error( "Error while opening data space '%s'." , name );
     }
 
   /* Check data type */
@@ -220,9 +216,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   h_err = H5Dread(h_data, hdf5Type(type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while reading data array '%s'\n", name);
-      error(buf);
+      error( "Error while reading data array '%s'." , name );
     }
 
   /* Copy temporary buffer to particle data */
@@ -277,17 +271,15 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   int numParticles[6]={0};   /* GADGET has 6 particle types. We only keep the type 0*/
 
   /* Open file */
-  /* printf("read_ic: Opening file '%s' as IC.\n", fileName); */
+  /* message("Opening file '%s' as IC.", fileName); */
   h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
   if(h_file < 0)
     {
-      char buf[200];
-      sprintf(buf, "Error while opening file '%s'", fileName);
-      error(buf);
+      error( "Error while opening file '%s'." , fileName );
     }
 
   /* Open header to read simulation properties */
-  /* printf("read_ic: Reading runtime parameters...\n"); */
+  /* message("Reading runtime parameters..."); */
   h_grp = H5Gopen1(h_file, "/RuntimePars");
   if(h_grp < 0)
     error("Error while opening runtime parameters\n");
@@ -299,7 +291,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   H5Gclose(h_grp);
   
   /* Open header to read simulation properties */
-  /* printf("read_ic: Reading file header...\n"); */
+  /* message("Reading file header..."); */
   h_grp = H5Gopen1(h_file, "/Header");
   if(h_grp < 0)
     error("Error while opening file header\n");
@@ -313,7 +305,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   dim[1] = ( boxSize[1] < 0 ) ? boxSize[0] : boxSize[1];
   dim[2] = ( boxSize[2] < 0 ) ? boxSize[0] : boxSize[2];
 
-  /* printf("read_ic: Found %d particles in a %speriodic box of size [%f %f %f]\n",  */
+  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
   /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
 
   /* Close header */
@@ -324,10 +316,10 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
     error("Error while allocating memory for particles");
   bzero( *parts , *N * sizeof(struct part) );
 
-  /* printf("read_ic: Allocated %8.2f MB for particles.\n", *N * sizeof(struct part) / (1024.*1024.)); */
+  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / (1024.*1024.)); */
 		  
   /* Open SPH particles group */
-  /* printf("read_ic: Reading particle arrays...\n"); */
+  /* message("Reading particle arrays..."); */
   h_grp = H5Gopen1(h_file, "/PartType0");
   if(h_grp < 0)
     error( "Error while opening particle group.\n");
@@ -346,7 +338,7 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
   /* Close particle group */
   H5Gclose(h_grp);
 
-  /* printf("read_ic: Done Reading particles...\n"); */
+  /* message("Done Reading particles..."); */
 
   /* Close file */
   H5Fclose(h_file);
@@ -385,33 +377,25 @@ void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data, int 
   h_space = H5Screate(H5S_SIMPLE);
   if(h_space < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while creating dataspace for attribute '%s'\n", name);
-      error(buf);
+      error( "Error while creating dataspace for attribute '%s'." , name );
     }
 
   h_err = H5Sset_extent_simple(h_space, 1, dim, NULL);
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while changing dataspace shape for attribute '%s'\n", name);
-      error(buf);
+      error( "Error while changing dataspace shape for attribute '%s'." , name );
     }
 
   h_attr = H5Acreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
   if(h_attr < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while creating attribute '%s'\n", name);
-      error(buf);
+      error( "Error while creating attribute '%s'.", name );
     }
 
   h_err = H5Awrite(h_attr, hdf5Type(type), data);
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while reading attribute '%s'\n", name);
-      error(buf);
+      error( "Error while reading attribute '%s'." , name );
     }
 
   H5Sclose(h_space);
@@ -435,41 +419,31 @@ void writeStringAttribute(hid_t grp, char* name, char* str, int length)
   h_space = H5Screate(H5S_SCALAR);
   if(h_space < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while creating dataspace for attribute '%s'\n", name);
-      error(buf);
+      error( "Error while creating dataspace for attribute '%s'." , name );
     }
 
   h_type = H5Tcopy(H5T_C_S1);
   if(h_type < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while copying datatype 'H5T_C_S1'\n");
-      error(buf);
+      error( "Error while copying datatype 'H5T_C_S1'." );
     }
 
   h_err = H5Tset_size(h_type, length);
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while resizing attribute tyep to '%i'\n", length);
-      error(buf);
+      error( "Error while resizing attribute tyep to '%i'." , length );
     }
 
   h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
   if(h_attr < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while creating attribute '%s'\n", name);
-      error(buf);
+      error( "Error while creating attribute '%s'." , name );
     }
 
   h_err = H5Awrite(h_attr, h_type, str );
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while reading attribute '%s'\n", name);
-      error(buf);
+      error( "Error while reading attribute '%s'." , name );
     }
 
   H5Tclose(h_type);
@@ -562,7 +536,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   char* temp_c = 0;
   hsize_t shape[2];
 
-  /* printf("writeArray: Writing '%s' array...\n", name); */
+  /* message("Writing '%s' array...", name); */
 
   /* Allocate temporary buffer */
   temp = malloc(N * dim * sizeOfType(type));
@@ -578,9 +552,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   h_space = H5Screate(H5S_SIMPLE);
   if(h_space < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while creating data space for field '%s'\n", name);
-      error(buf);      
+      error( "Error while creating data space for field '%s'." , name );
     }
   
   if(dim > 1)
@@ -598,27 +570,21 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while changing data space shape for field '%s'\n", name);
-      error(buf);      
+      error( "Error while changing data space shape for field '%s'." , name );
     }
   
   /* Create dataset */
   h_data = H5Dcreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
   if(h_data < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while creating dataspace '%s'\n", name);
-      error(buf);
+      error( "Error while creating dataspace '%s'." , name );
     }
   
   /* Write temporary buffer to HDF5 dataspace */
   h_err = H5Dwrite(h_data, hdf5Type(type), h_space, H5S_ALL, H5P_DEFAULT, temp);
   if(h_err < 0)
     {
-      char buf[100];
-      sprintf(buf, "Error while reading data array '%s'\n", name);
-      error(buf);
+      error( "Error while reading data array '%s'." , name );
     }
 
   /* Write XMF description for this data set */
@@ -689,17 +655,15 @@ void write_output (struct engine *e)
 
 
   /* Open file */
-  /* printf("write_output: Opening file '%s'.\n", fileName); */
+  /* message("Opening file '%s'.", fileName); */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT,H5P_DEFAULT);
   if(h_file < 0)
     {
-      char buf[200];
-      sprintf(buf, "Error while opening file '%s'", fileName);
-      error(buf);
+      error( "Error while opening file '%s'." , fileName );
     }
 
   /* Open header to read simulation properties */
-  /* printf("write_output: Writing runtime parameters...\n"); */
+  /* message("Writing runtime parameters..."); */
   h_grp = H5Gcreate1(h_file, "/RuntimePars", 0);
   if(h_grp < 0)
     error("Error while creating runtime parameters group\n");
@@ -711,7 +675,7 @@ void write_output (struct engine *e)
   H5Gclose(h_grp);
   
   /* Open header to write simulation properties */
-  /* printf("write_output: Writing file header...\n"); */
+  /* message("Writing file header..."); */
   h_grp = H5Gcreate1(h_file, "/Header", 0);
   if(h_grp < 0)
     error("Error while creating file header\n");
@@ -765,7 +729,7 @@ void write_output (struct engine *e)
   H5Gclose(h_grp);
 		  
   /* Create SPH particles group */
-  /* printf("write_output: Writing particle arrays...\n"); */
+  /* message("Writing particle arrays..."); */
   h_grp = H5Gcreate1(h_file, "/PartType0", 0);
   if(h_grp < 0)
     error( "Error while creating particle group.\n");
@@ -787,7 +751,7 @@ void write_output (struct engine *e)
   /* Write LXMF file descriptor */
   writeXMFfooter(xmfFile);
 
-  /* printf("write_output: Done writing particles...\n"); */
+  /* message("Done writing particles..."); */
 
   /* Close file */
   H5Fclose(h_file);

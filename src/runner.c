@@ -30,7 +30,13 @@
 #include <limits.h>
 #include <omp.h>
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
 /* Local headers. */
+#include "const.h"
 #include "cycle.h"
 #include "atomic.h"
 #include "timers.h"
@@ -38,8 +44,8 @@
 #include "lock.h"
 #include "task.h"
 #include "part.h"
-#include "cell.h"
 #include "space.h"
+#include "cell.h"
 #include "queue.h"
 #include "scheduler.h"
 #include "engine.h"
@@ -88,6 +94,43 @@ const char runner_flip[27] = { 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1
 #define FUNCTION force
 #include "runner_doiact.h"
 
+
+/**
+ * @brief Send a local cell's particle data to another node.
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ * @param nodeID The destination node's ID.
+ * @param tagbit bit to distinguish between xv and rho sends.
+ */
+ 
+void runner_dosend ( struct runner *r , struct cell *c , int nodeID , int tag ) {
+
+#ifdef WITH_MPI
+
+    MPI_Request req;
+    
+    /* First check if all the density tasks have been run. */
+    if ( tag & 1 )
+        if ( c->parts[0].rho == 0.0 )
+            error( "Attempting to send rhos before ghost task completed." );
+    
+    /* Emit the isend. */
+    if ( MPI_Isend( c->parts , sizeof(struct part) * c->count , MPI_BYTE , nodeID , tag , MPI_COMM_WORLD , &req ) != MPI_SUCCESS )
+        error( "Failed to isend particle data." );
+        
+    message( "sending %i parts with tag=%i from %i to %i." ,
+        c->count , tag , r->e->nodeID , nodeID ); fflush(stdout);
+    
+    /* Free the request handler as we don't care what happens next. */
+    MPI_Request_free( &req );
+
+#else
+    error( "SWIFT was not compiled with MPI support." );
+#endif
+
+    }
+    
 
 /**
  * @brief Sort the entries in ascending order using QuickSort.
@@ -315,7 +358,7 @@ void runner_dosort ( struct runner *r , struct cell *c , int flags , int clock )
         } */
         
     #ifdef TIMER_VERBOSE
-        printf( "runner_dosort[%02i]: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) took %.3f ms.\n" ,
+        message( "runner %02i: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) took %.3f ms." ,
             r->id , c->count , c->depth ,
             (flags & 0x1000) >> 12 , (flags & 0x800) >> 11 , (flags & 0x400) >> 10 , (flags & 0x200) >> 9 , (flags & 0x100) >> 8 , (flags & 0x80) >> 7 , (flags & 0x40) >> 6 , (flags & 0x20) >> 5 , (flags & 0x10) >> 4 , (flags & 0x8) >> 3 , (flags & 0x4) >> 2 , (flags & 0x2) >> 1 , (flags & 0x1) >> 0 , 
             ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000 ); fflush(stdout);
@@ -385,13 +428,13 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             /* Is this part within the timestep? */
             if ( p->dt <= dt_step ) {
             
-	        /* Some smoothing length multiples. */
-	        h = p->h;
+	            /* Some smoothing length multiples. */
+	            h = p->h;
                 ih = 1.0f / h;
                 ih2 = ih * ih;
                 ih4 = ih2 * ih2;
 
-		/* Final operation on the density. */
+		        /* Final operation on the density. */
                 p->rho = rho = ih * ih2 * ( p->rho + p->mass*kernel_root );
                 p->rho_dh = rho_dh = ( p->rho_dh - 3.0f*p->mass*kernel_root ) * ih4;
                 wcount = ( p->density.wcount + kernel_root ) * ( 4.0f / 3.0 * M_PI * kernel_gamma3 );
@@ -417,7 +460,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Did we get the right number density? */
                 if ( wcount > kernel_nwneigh + const_delta_nwneigh ||
                      wcount < kernel_nwneigh - const_delta_nwneigh ) {
-                    // printf( "runner_doghost: particle %lli (h=%e,depth=%i) has bad wcount=%.3f.\n" , p->id , p->h , c->depth , wcount ); fflush(stdout);
+                    // message( "particle %lli (h=%e,depth=%i) has bad wcount=%.3f." , p->id , p->h , c->depth , wcount ); fflush(stdout);
                     // p->h += ( p->density.wcount + kernel_root - kernel_nwneigh ) / p->density.wcount_dh;
                     pid[redo] = pid[i];
                     redo += 1;
@@ -425,15 +468,15 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                     p->density.wcount_dh = 0.0;
                     p->rho = 0.0;
                     p->rho_dh = 0.0;
-		    p->density.div_v = 0.0;
-		    for ( k=0 ; k < 3 ; k++)
-		        p->density.curl_v[k] = 0.0;
+		            p->density.div_v = 0.0;
+		            for ( k=0 ; k < 3 ; k++)
+		                p->density.curl_v[k] = 0.0;
                     continue;
                     }
 
                 /* Pre-compute some stuff for the balsara switch. */
-		normDiv_v = fabs( p->density.div_v / rho * ih4 );
-		normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / rho * ih4;
+		        normDiv_v = fabs( p->density.div_v / rho * ih4 );
+		        normCurl_v = sqrtf( p->density.curl_v[0] * p->density.curl_v[0] + p->density.curl_v[1] * p->density.curl_v[1] + p->density.curl_v[2] * p->density.curl_v[2] ) / rho * ih4;
                 
                 /* As of here, particle force variables will be set. Do _NOT_
                    try to read any particle density variables! */
@@ -445,23 +488,22 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
                 /* Compute the P/Omega/rho2. */
                 p->force.POrho2 = u * ( const_hydro_gamma - 1.0f ) / ( rho + h * rho_dh / 3.0f );
 
-		/* Balsara switch */
-		p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
+		        /* Balsara switch */
+		        p->force.balsara = normDiv_v / ( normDiv_v + normCurl_v + 0.0001f * fc * ih );
 
-#ifndef LEGACY_GADGET2_SPH
+                #ifndef LEGACY_GADGET2_SPH
+		            /* Viscosity parameter decay time */
+		            tau = h / ( 2.f * const_viscosity_length * p->force.c );
 
-		/* Viscosity parameter decay time */
-		tau = h / ( 2.f * const_viscosity_length * p->force.c );
+		            /* Viscosity source term */
+		            S = fmaxf( -normDiv_v, 0.f );
 
-		/* Viscosity source term */
-		S = fmaxf( -normDiv_v, 0.f );
+		            /* Compute the particle's viscosity parameter time derivative */
+		            alpha_dot = ( const_viscosity_alpha_min - p->alpha ) / tau + ( const_viscosity_alpha_max - p->alpha ) * S;
 
-		/* Compute the particle's viscosity parameter time derivative */
-		alpha_dot = ( const_viscosity_alpha_min - p->alpha ) / tau + ( const_viscosity_alpha_max - p->alpha ) * S;
-
-		/* Update particle's viscosity paramter */
-		p->alpha += alpha_dot * p->dt; 
-#endif                
+		            /* Update particle's viscosity paramter */
+		            p->alpha += alpha_dot * p->dt; 
+                #endif                
 
                 /* Reset the acceleration. */
                 for ( k = 0 ; k < 3 ; k++ )
@@ -523,7 +565,7 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
         }
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_doghost[%02i]: %i parts at depth %i took %.3f ms.\n" ,
+        message( "runner %02i: %i parts at depth %i took %.3f ms." ,
             r->id , c->count , c->depth ,
             ((double)TIMER_TOC(timer_doghost)) / CPU_TPS * 1000 ); fflush(stdout);
     #else
@@ -657,7 +699,7 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
         }
 
     #ifdef TIMER_VERBOSE
-        printf( "runner_dokick2[%02i]: %i parts at depth %i took %.3f ms.\n" ,
+        message( "runner %02i: %i parts at depth %i took %.3f ms." ,
             r->id , c->count , c->depth ,
             ((double)TIMER_TOC(timer_kick2)) / CPU_TPS * 1000 ); fflush(stdout);
     #else
@@ -1001,7 +1043,7 @@ void runner_dokick ( struct runner *r , struct cell *c , int timer ) {
     
     if ( timer ) {
         #ifdef TIMER_VERBOSE
-            printf( "runner_dokick2[%02i]: %i parts at depth %i took %.3f ms.\n" ,
+            message( "runner %02i: %i parts at depth %i took %.3f ms." ,
                 r->id , c->count , c->depth ,
                 ((double)TIMER_TOC(timer_kick2)) / CPU_TPS * 1000 ); fflush(stdout);
         #else
@@ -1116,6 +1158,12 @@ void *runner_main ( void *data ) {
                         runner_dokick( r , ci , 1 );
                     else
                         runner_dokick2( r , ci );
+                    break;
+                case task_type_send_xv:
+                case task_type_send_rho:
+                    break;
+                case task_type_recv_xv:
+                case task_type_recv_rho:
                     break;
                 default:
                     error( "Unknown task type." );

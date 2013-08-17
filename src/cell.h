@@ -21,6 +21,21 @@
 #define cell_sid_dt                 13
 
 
+/* Packed cell. */
+struct pcell {
+
+    /* Stats on this cell's particles. */
+    double h_max, dt_min, dt_max;
+    
+    /* Number of particles in this cell. */
+    int count;
+    
+    /* Relative indices of the cell's progeny. */
+    int progeny[8];
+
+    };
+
+
 /* Structure to store the data of a single cell. */
 struct cell {
 
@@ -78,11 +93,14 @@ struct cell {
     int sortsize;
     
     /* The tasks computing this cell's density. */
-    struct task *density[27];
-    int nr_density;
+    struct task *density[27], *force[27];
+    int nr_density, nr_force;
     
     /* The ghost task to link density to interactions. */
     struct task *ghost, *kick1, *kick2;
+    
+    /* Task receiving data. */
+    struct task *recv_xv, *recv_rho;
     
     /* Number of tasks that are associated with this cell. */
     int nr_tasks;
@@ -111,6 +129,16 @@ struct cell {
     /* Linking pointer for "memory management". */
     struct cell *next;
     
+    /* ID of the node this cell lives on. */
+    int nodeID;
+    
+    /* Bit mask of the proxies this cell is registered with. */
+    unsigned int sendto;
+    
+    /* Pointer to this cell's packed representation. */
+    struct pcell *pcell;
+    int pcell_size;
+    
     } __attribute__((aligned (64)));
 
 
@@ -118,3 +146,6 @@ struct cell {
 void cell_split ( struct cell *c  );
 int cell_locktree( struct cell *c );
 void cell_unlocktree( struct cell *c );
+int cell_pack ( struct cell *c , struct pcell *pc );
+int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s , struct part *parts );
+int cell_getsize ( struct cell *c );
