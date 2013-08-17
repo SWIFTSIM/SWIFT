@@ -720,6 +720,9 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
 void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
 
     int qid = -1;
+    #ifdef WITH_MPI
+        int err;
+    #endif
     
     /* Ignore skipped tasks. */
     if ( t->skip )
@@ -756,8 +759,12 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
             case task_type_recv_xv:
             case task_type_recv_rho:
                 #ifdef WITH_MPI
-                    if ( MPI_Irecv( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->ci->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) != MPI_SUCCESS )
-                        error( "Failed to emit irecv for particle data." );
+                    if ( ( err = MPI_Irecv( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->ci->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) ) != MPI_SUCCESS ) {
+                        char buff[ MPI_MAX_ERROR_STRING ];
+                        int len;
+                        MPI_Error_string( err , buff , &len );
+                        error( "Failed to emit irecv for particle data (%s)." , buff );
+                        }
                     // message( "recieving %i parts with tag=%i from %i to %i." ,
                     //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID ); fflush(stdout);
                     qid = -1;
@@ -768,8 +775,12 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
             case task_type_send_xv:
             case task_type_send_rho:
                 #ifdef WITH_MPI
-                    if ( MPI_Isend( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->cj->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) != MPI_SUCCESS )
-                        error( "Failed to emit isend for particle data." );
+                    if ( ( err = MPI_Isend( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->cj->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) ) != MPI_SUCCESS ) {
+                        char buff[ MPI_MAX_ERROR_STRING ];
+                        int len;
+                        MPI_Error_string( err , buff , &len );
+                        error( "Failed to emit isend for particle data (%s)." , buff );
+                        }
                     // message( "sending %i parts with tag=%i from %i to %i." ,
                     //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID ); fflush(stdout);
                     qid = -1;
