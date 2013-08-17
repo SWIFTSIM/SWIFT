@@ -51,9 +51,6 @@
     #define ENGINE_POLICY engine_policy_none
 #endif
 
-/* Error macro. */
-#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
-
 
 /**
  * @brief Main routine that loads a few particles and generates some output.

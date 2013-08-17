@@ -38,6 +38,11 @@
     #include <zlib.h>
 #endif
 
+/* MPI headers. */
+#ifdef WITH_MPI
+    #include <mpi.h>
+#endif
+
 /* Local headers. */
 #include "swift.h"
 
@@ -50,9 +55,6 @@
 #ifndef ENGINE_POLICY
     #define ENGINE_POLICY engine_policy_none
 #endif
-
-/* Error macro. */
-#define error(s) { printf( "%s:%s:%i: %s\n" , __FILE__ , __FUNCTION__ , __LINE__ , s ); abort(); }
 
 
 /**
@@ -707,49 +709,80 @@ int main ( int argc , char *argv[] ) {
     int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
     int data[2];
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
-    double /*r_min = 0.01, r_max = 0.1,*/ h_max = -1.0 , scaling = 1.0, rho = 0.0;
+    double h_max = -1.0 , scaling = 1.0;
     double clock = DBL_MAX;
-    struct part *parts = NULL, *p;
+    struct part *parts = NULL;
     struct space s;
     struct engine e;
     char ICfileName[200];
     float dt_max = 0.0f;
     ticks tic;
+    int nr_nodes = 1, myrank = 0, grid[3] = { 1 , 1 , 1 };
     
     /* Choke on FP-exceptions. */
     feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+    
+#ifdef WITH_MPI
+    /* Start by initializing MPI. */
+    int res, prov;
+    if ( ( res = MPI_Init_thread( &argc , &argv , MPI_THREAD_MULTIPLE , &prov ) ) != MPI_SUCCESS )
+        error( "Call to MPI_Init failed with error %i." , res );
+    if ( prov != MPI_THREAD_MULTIPLE )
+        error( "MPI does not provide the level of threading required (MPI_THREAD_MULTIPLE)." );
+    if ( ( res = MPI_Comm_size( MPI_COMM_WORLD , &nr_nodes ) != MPI_SUCCESS ) )
+        error( "MPI_Comm_size failed with error %i." , res );
+    if ( ( res = MPI_Comm_rank( MPI_COMM_WORLD , &myrank ) ) != MPI_SUCCESS )
+        error( "Call to MPI_Comm_rank failed with error %i." , res );
+    if ( ( res = MPI_Comm_set_errhandler( MPI_COMM_WORLD , MPI_ERRORS_RETURN ) ) != MPI_SUCCESS )
+        error( "Call to MPI_Comm_set_errhandler failed with error %i." , res );
+    if ( myrank == 0 )
+        message( "MPI is up and running with %i nodes." , nr_nodes );
+    fflush(stdout);
+#endif
+    
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
 
     /* Parse the options */
-    while ( ( c = getopt( argc , argv  , "a:c:d:f:m:q:r:s:t:w:z:" ) ) != -1 )
+    while ( ( c = getopt( argc , argv  , "a:c:d:f:g:m:q:r:s:t:w:z:" ) ) != -1 )
       switch( c )
 	{
 	case 'a':
 	  if ( sscanf( optarg , "%lf" , &scaling ) != 1 )
 	    error( "Error parsing cutoff scaling." );
-	  printf( "main: scaling cutoff by %.3f.\n" , scaling ); fflush(stdout);
+	  if ( myrank == 0 )
+        message( "scaling cutoff by %.3f." , scaling ); fflush(stdout);
 	  break;
 	case 'c':
 	  if ( sscanf( optarg , "%lf" , &clock ) != 1 )
 	    error( "Error parsing clock." );
-	  printf( "main: clock set to %.3e.\n" , clock ); fflush(stdout);
+	  if ( myrank == 0 )
+        message( "clock set to %.3e." , clock ); fflush(stdout);
 	  break;
 	case 'd':
 	  if ( sscanf( optarg , "%f" , &dt_max ) != 1 )
 	    error( "Error parsing timestep." );
-	  printf( "main: dt set to %e.\n" , dt_max ); fflush(stdout);
+	  if ( myrank == 0 )
+        message( "dt set to %e." , dt_max ); fflush(stdout);
 	  break;
 	case 'f':
 	  if( !strcpy(ICfileName, optarg))
 	    error("Error parsing IC file name.");
-	  printf("main: IC to be read from file '%s'\n", ICfileName);
+	  if ( myrank == 0 )
+        message("IC to be read from file '%s'.", ICfileName);
+	  break;
+	case 'g':
+	  if ( sscanf( optarg , "%i %i %i" , &grid[0] , &grid[1] , &grid[2] ) != 3 )
+	    error( "Error parsing grid." );
+	  if ( myrank == 0 )
+        message( "grid set to [ %i %i %i ]." , grid[0] , grid[1] , grid[2] ); fflush(stdout);
 	  break;
 	case 'm':
 	  if ( sscanf( optarg , "%lf" , &h_max ) != 1 )
 	    error( "Error parsing h_max." );
-	  printf( "main: maximum h set to %e.\n" , h_max ); fflush(stdout);
+	  if ( myrank == 0 )
+        message( "maximum h set to %e." , h_max ); fflush(stdout);
 	  break;
 	case 'q':
 	  if ( sscanf( optarg , "%d" , &nr_queues ) != 1 )
@@ -762,7 +795,8 @@ int main ( int argc , char *argv[] ) {
 	case 's':
 	  if ( sscanf( optarg , "%lf %lf %lf" , &shift[0] , &shift[1] , &shift[2] ) != 3 )
 	    error( "Error parsing shift." );
-	  printf( "main: will shift parts by [ %.3f %.3f %.3f ].\n" , shift[0] , shift[1] , shift[2] );
+	  if ( myrank == 0 )
+        message( "will shift parts by [ %.3f %.3f %.3f ]." , shift[0] , shift[1] , shift[2] );
 	  break;
 	case 't':
 	  if ( sscanf( optarg , "%d" , &nr_threads ) != 1 )
@@ -772,12 +806,14 @@ int main ( int argc , char *argv[] ) {
 	case 'w':
 	  if ( sscanf( optarg , "%d" , &space_subsize ) != 1 )
 	    error( "Error parsing sub size." );
-	  printf( "main: sub size set to %i.\n" , space_subsize );
+	  if ( myrank == 0 )
+        message( "sub size set to %i." , space_subsize );
 	  break;
 	case 'z':
 	  if ( sscanf( optarg , "%d" , &space_splitsize ) != 1 )
 	    error( "Error parsing split size." );
-	  printf( "main: split size set to %i.\n" , space_splitsize );
+	  if ( myrank == 0 )
+        message( "split size set to %i." , space_splitsize );
 	  break;
 	case '?':
 	  error( "Unknown option." );
@@ -787,12 +823,14 @@ int main ( int argc , char *argv[] ) {
             
 
     /* How large are the parts? */
-    printf( "main: sizeof(struct part) is %li bytes.\n" , (long int)sizeof( struct part ));
+    if ( myrank == 0 )
+        message( "sizeof(struct part) is %li bytes." , (long int)sizeof( struct part ));
 
     /* Read particles and space information from (GADGET) IC */
     tic = getticks();
     read_ic( ICfileName , dim , &parts , &N , &periodic );
-    printf( "main: reading particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+    if ( myrank == 0 )
+        message( "reading particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Apply h scaling */
     if( scaling != 1.0 )
@@ -807,23 +845,6 @@ int main ( int argc , char *argv[] ) {
 	    parts[k].x[2] += shift[2];
       }
 
-    /* Dump the first few particles. */
-    // for(k=0; k<10; ++k)
-    //   printParticle(parts, k, N);
-    // printParticle( parts , 6178 , N );
-    // pairs_single( dim , 8525152967533 , parts , N , periodic );
-    // printParticle( parts , 515150 );
-    // printParticle( parts , 494849 );
-            
-    /* Dump the kernel to make sure its ok. */
-    // kernel_dump( 100 );
-    // density_dump( 100 );
-    
-    /* Get the brute-force number of pairs. */
-    // pairs_n2( dim , parts , N , periodic );
-    // pairs_single( dim , 5245989477229 , parts , N , periodic );
-    // fflush( stdout );
-    
     /* Set default number of queues. */
     if ( nr_queues < 0 )
         nr_queues = nr_threads;
@@ -831,40 +852,59 @@ int main ( int argc , char *argv[] ) {
     /* Initialize the space with this data. */
     tic = getticks();
     space_init( &s , dim , parts , N , periodic , h_max );
-    printf( "main: space_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+    if ( myrank == 0 )
+        message( "space_init took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
 
     /* Set the default time step to 1.0f. */
-    printf( "main: dt_max is %f.\n" , dt_max );
+    if ( myrank == 0 )
+        message( "dt_max is %e." , dt_max );
     
     /* Say a few nice things about the space we just created. */
-    printf( "main: space dimensions are [ %.3f %.3f %.3f ].\n" , s.dim[0] , s.dim[1] , s.dim[2] );
-    printf( "main: space %s periodic.\n" , s.periodic ? "is" : "isn't" );
-    printf( "main: highest-level cell dimensions are [ %i %i %i ].\n" , s.cdim[0] , s.cdim[1] , s.cdim[2] );
-    printf( "main: %i parts in %i cells.\n" , s.nr_parts , s.tot_cells );
-    printf( "main: maximum depth is %d.\n" , s.maxdepth );
-    // printf( "main: cutoffs in [ %g %g ].\n" , s.h_min , s.h_max ); fflush(stdout);
+    if ( myrank == 0 ) {
+        message( "space dimensions are [ %.3f %.3f %.3f ]." , s.dim[0] , s.dim[1] , s.dim[2] );
+        message( "space %s periodic." , s.periodic ? "is" : "isn't" );
+        message( "highest-level cell dimensions are [ %i %i %i ]." , s.cdim[0] , s.cdim[1] , s.cdim[2] );
+        message( "%i parts in %i cells." , s.nr_parts , s.tot_cells );
+        message( "maximum depth is %d." , s.maxdepth );
+        // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
+        }
     
     /* Verify that each particle is in it's propper cell. */
-    icount = 0;
-    space_map_cells_pre( &s , 0 , &map_cellcheck , &icount );
-    printf( "main: map_cellcheck picked up %i parts.\n" , icount );
+    if ( myrank == 0 ) {
+        icount = 0;
+        space_map_cells_pre( &s , 0 , &map_cellcheck , &icount );
+        message( "map_cellcheck picked up %i parts." , icount );
+        }
     
-    data[0] = s.maxdepth; data[1] = 0;
-    space_map_cells_pre( &s , 0 , &map_maxdepth , data );
-    printf( "main: nr of cells at depth %i is %i.\n" , data[0] , data[1] );
+    if ( myrank == 0 ) {
+        data[0] = s.maxdepth; data[1] = 0;
+        space_map_cells_pre( &s , 0 , &map_maxdepth , data );
+        message( "nr of cells at depth %i is %i." , data[0] , data[1] );
+        }
     
     /* Dump the particle positions. */
     // space_map_parts( &s , &map_dump , shift );
     
-    /* Initialize the runner with this space. */
+    
+    /* Initialize the engine with this space. */
     tic = getticks();
-    engine_init( &e , &s , dt_max , nr_threads , nr_queues , ENGINE_POLICY | engine_policy_steal );
-    printf( "main: engine_init took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+    engine_init( &e , &s , dt_max , nr_threads , nr_queues , nr_nodes , myrank , ENGINE_POLICY | engine_policy_steal );
+    if ( myrank == 0 )
+        message( "engine_init took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+
+#ifdef WITH_MPI
+    /* Split the space. */
+    if ( nr_nodes != grid[0]*grid[1]*grid[2] )
+        error( "Grid size does not match number of nodes." );
+    engine_split( &e , grid );
+#endif
 
     /* Write the state of the system as it is before starting time integration. */
-    tic = getticks();
-    write_output(&e);
-    printf( "main: writing particle properties took %.3f ms.\n" , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+    if ( myrank == 0 ) {
+        tic = getticks();
+        write_output(&e);
+        message( "writing particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
+        }
     
     /* Init the runner history. */
     #ifdef HIST
@@ -874,18 +914,19 @@ int main ( int argc , char *argv[] ) {
     
     /* Inauguration speech. */
     if ( runs < INT_MAX )
-        printf( "main: starting for %i steps with %i threads and %i queues...\n" , runs , e.nr_threads , e.sched.nr_queues );
+        message( "starting for %i steps with %i threads and %i queues..." , runs , e.nr_threads , e.sched.nr_queues );
     else
-        printf( "main: starting for t=%.3e with %i threads and %i queues...\n" , clock , e.nr_threads , e.sched.nr_queues );
+        message( "starting for t=%.3e with %i threads and %i queues..." , clock , e.nr_threads , e.sched.nr_queues );
     fflush(stdout);
     
     /* Legend. */
-    printf( "# step time e_tot e_kin e_temp dt dt_step count dt_min dt_max\n" );
+    if ( myrank == 0 )
+        printf( "# step time e_tot e_kin e_temp dt dt_step count dt_min dt_max\n" );
     
     /* Let loose a runner on the space. */
     for ( j = 0 ; j < runs && e.time < clock ; j++ ) {
     
-        // printf( "main: starting run %i/%i (t=%.3e) with %i threads and %i queues...\n" , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
+        // message( "starting run %i/%i (t=%.3e) with %i threads and %i queues..." , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
         timers_reset( timers_mask_all );
         #ifdef COUNTER
             for ( k = 0 ; k < runner_counter_count ; k++ )
@@ -894,128 +935,21 @@ int main ( int argc , char *argv[] ) {
         
         /* Take a step. */
         engine_step( &e );
-
-        if(j % 100 == 0)
+        
+        if ( myrank == 0 && j % 100 == 0 )
             write_output(&e);
-	
-        
-        /* Dump the first few particles. */
-        // for(k=0; k<10; ++k)
-        //   printParticle(parts, k);
-        // printParticle( parts , 6178 , N );
-        // printParticle( parts , 515150 );
-        // printParticle( parts , 494849 );
-        // pairs_single( dim , 432732 , parts , N , periodic );
-    
-        /* Get the particle with the lowest h. */
-        /* p = &s.parts[0];
-        space_map_parts( &s , &map_h_min , &p );
-        printf( "main: particle %lli/%i at [ %e %e %e ] has minimum h=%.3e (h_dt=%.3e).\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt ); */
-
-        /* Get the particle with the highest h. */
-        /* p = &s.parts[0];
-        space_map_parts( &s , &map_h_max , &p );
-        printf( "main: particle %lli/%i at [ %e %e %e ] has maximum h=%.3e (h_dt=%.3e).\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->force.h_dt ); */
-    
-        /* Get the particle with the lowest dt. */
-        /* p = &s.parts[0];
-        for ( k = 0 ; k < s.nr_parts ; k++ )
-            if ( s.parts[k].dt < p->dt )
-                p = &s.parts[k];
-        printf( "main: particle %lli/%i at [ %e %e %e ] has smallest dt=%e (h=%.3e,u=%.3e).\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->dt , p->h , p->u ); */
-        
-        /* Get the particle with the highest e_kin. */
-        /* p = &s.parts[0];
-        double v2, v2_max = 0.5 * ( p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2] ) * p->mass;
-        for ( k = 0 ; k < s.nr_parts ; k++ ) {
-            v2 = 0.5 * ( s.parts[k].v[0]*s.parts[k].v[0] + s.parts[k].v[1]*s.parts[k].v[1] + s.parts[k].v[2]*s.parts[k].v[2] ) * p->mass;
-            if ( v2 > v2_max ) {
-                p = &s.parts[k];
-                v2_max = v2;
-                }
-            } */
-        /* printf( "main: particle %lli/%i at [ %e %e %e ] has largest ekin=%e.\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , ekin_max ); */
-        
-        /* Get the particle with the highest acceleration. */
-        /* p = &s.parts[0];
-        double a2, a2_max = p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2];
-        for ( k = 0 ; k < s.nr_parts ; k++ ) {
-            a2 = s.parts[k].a[0]*s.parts[k].a[0] + s.parts[k].a[1]*s.parts[k].a[1] + s.parts[k].a[2]*s.parts[k].a[2];
-            if ( a2 > a2_max ) {
-                p = &s.parts[k];
-                a2_max = a2;
-                }
-            }
-        printf( "main: particle %lli/%i at [ %e %e %e ] has largest ekin=%e.\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , ekin_max ); */
-        
-        /* Get the particle with the highest energy. */
-        /* p = &s.parts[0];
-        double dudt, dudt_max = fabsf( p->u - p->xtras->u_old );
-        for ( k = 0 ; k < s.nr_parts ; k++ ) {
-            dudt = fabsf( p->u - p->xtras->u_old  );
-            if ( dudt > dudt_max ) {
-                p = &s.parts[k];
-                dudt_max = dudt;
-                }
-            } */
-        /* printf( "main: particle %lli/%i at [ %e %e %e ] has largest ekin=%e.\n" ,
-	        p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , ekin_max ); */
-            
-        /* Compute the energies by hand. */
-        /* double epot = 0.0, ekin = 0.0;
-        for ( k = 0 ; k < s.nr_parts ; k++ ) {
-            p = &s.parts[k];
-            ekin += 0.5 * p->mass * ( p->v[0]*p->v[0] + p->v[1]*p->v[1] + p->v[2]*p->v[2] );
-            epot += p->mass * p->u;
-            } */
-        
-        /* Output. */
-        #ifdef TIMER
-            /* printf( "main: runner timers are [ %.3f" , timers[0]/CPU_TPS*1000 );
-            for ( k = 1 ; k < timer_count ; k++ )
-                printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
-            printf( " ] ms.\n" ); */
-            /* printf( "main: queue timers are [ %.3f" , queue_timer[0]/CPU_TPS*1000 );
-            for ( k = 1 ; k < queue_timer_count ; k++ ) 
-                printf( " %.3f" , ((double)queue_timer[k])/CPU_TPS*1000 );
-            for ( k = 0 ; k < queue_timer_count ; k++ )
-                queue_timer[k] = 0;
-            printf( " ] ms.\n" );
-            printf( "main: cell timers are [ %.3f" , cell_timer[0]/CPU_TPS*1000 );
-            for ( k = 1 ; k < cell_timer_count ; k++ ) 
-                printf( " %.3f" , ((double)cell_timer[k])/CPU_TPS*1000 );
-            for ( k = 0 ; k < cell_timer_count ; k++ )
-                cell_timer[k] = 0;
-            printf( " ] ms.\n" ); */
-        #else
-            printf( "main: engine_run with %i threads took %.3f ms.\n" , nr_threads , ((double)(getticks() - tic)) / CPU_TPS * 1000 );
-        #endif
-        #ifdef COUNTER
-            printf( "main: runner counters are [ %d" , runner_counter[0] );
-            for ( k = 1 ; k < runner_counter_count ; k++ )
-                printf( " %d" , runner_counter[k] );
-            printf( " ].\n" );
-        #endif
-        /* printf( "main: engine queue lengths are [ %i" , e.queues[0].count );
-        for ( k = 1 ; k < e.nr_queues ; k++ )
-            printf( " %i" , e.queues[k].count );
-        printf( " ].\n" );
-        fflush(stdout); */
-        
+                
         /* Dump a line of agregate output. */
-        printf( "%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e" ,
-            j , e.time ,
-            e.ekin+e.epot , e.ekin , e.epot ,
-            e.dt , e.dt_step , e.count_step ,
-            e.dt_min , e.dt_max );
-        for ( k = 0 ; k < timer_count ; k++ )
-            printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
-        printf( "\n" ); fflush(stdout);
+        if ( myrank == 0 ) {
+            printf( "%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e" ,
+                j , e.time ,
+                e.ekin+e.epot , e.ekin , e.epot ,
+                e.dt , e.dt_step , e.count_step ,
+                e.dt_min , e.dt_max );
+            for ( k = 0 ; k < timer_count ; k++ )
+                printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
+            printf( "\n" ); fflush(stdout);
+            }
         
         }
         
@@ -1033,50 +967,26 @@ int main ( int argc , char *argv[] ) {
     // for ( k = 0 ; k < N ; k++ )
     //     printf( " %i %e %e\n" , s.parts[k].id , s.parts[k].count , s.parts[k].count_dh );
     
-    /* Get the average interactions per particle. */
-    rho = 0;
-    space_map_parts( &s , &map_count , &rho );
-    printf( "main: average wcount per particle is %.3f.\n" , rho / s.nr_parts );
-    
-    /* Get the particle with the lowest wcount. */
-    p = &s.parts[0];
-    space_map_parts( &s , &map_wcount_min , &p );
-    printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has minimum wcount %.3f.\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->density.wcount );
-    
-    /* Get the particle with the highest wcount. */
-    p = &s.parts[0];
-    space_map_parts( &s , &map_wcount_max , &p );
-    printf( "main: particle %lli/%i at [ %e %e %e ] (h=%e) has maximum wcount %.3f.\n" ,
-	    p->id , (int)(p - s.parts) , p->x[0] , p->x[1] , p->x[2] , p->h , p->density.wcount );
-    
     /* Dump the task data. */
-    /* for ( k = 0 ; k < s.nr_tasks ; k++ )
-        printf( " %i %i %i %i %lli %lli\n" ,
-            s.tasks[k].rid , s.tasks[k].type , s.tasks[k].subtype , (s.tasks[k].cj == NULL) , s.tasks[k].tic , s.tasks[k].toc ); */
+    /* for ( k = 0 ; k < e.sched.nr_tasks ; k++ )
+        if ( !e.sched.tasks[k].skip && !e.sched.tasks[k].implicit )
+            printf( " %i %i %i %i %lli %lli %i %i\n" ,
+                e.sched.tasks[k].rid , e.sched.tasks[k].type , e.sched.tasks[k].subtype , 
+                (e.sched.tasks[k].cj == NULL) , e.sched.tasks[k].tic , e.sched.tasks[k].toc ,
+                e.sched.tasks[k].ci->count , 
+                (e.sched.tasks[k].cj==NULL)?0:e.sched.tasks[k].cj->count ); */
     
     /* Write final output. */
-    write_output( &e );
+    if ( myrank == 0 )
+        write_output( &e );
+        
+    #ifdef WITH_MPI
+        if ( MPI_Finalize() != MPI_SUCCESS )
+            error( "call to MPI_Finalize failed with error %i." , res );
+    #endif
     
-    /* Get the average interactions per particle. */
-    // icount = 0;
-    // space_map_parts( &s , &map_icount , &icount );
-    // printf( "main: average neighbours per particle is %.3f.\n" , (double)icount / s.nr_parts );
-    
-    /* Dump the first few particles. */
-    // for(k=0; k<10; ++k)
-    //   printParticle(parts, k);
-    
-    /* Get all the cells of a certain depth. */
-    // icount = 1;
-    // space_map_cells_pre( &s , 0 , &map_cells_plot , &icount );
-    
-    /* Check for outliers. */
-    // space_map_parts( &s , &map_check , NULL );
-    
-    /* Dump the particle dts. */
-    // for ( k = 0; k < s.nr_parts ; k++ )
-    //     printf( " %lli %e\n" , s.parts[k].id , s.parts[k].dt );
+    /* Say goodbye. */
+    message( "done." );
     
     /* All is calm, all is bright. */
     return 0;
