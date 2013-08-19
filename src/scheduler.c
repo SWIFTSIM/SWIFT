@@ -617,6 +617,7 @@ void scheduler_reweight ( struct scheduler *s ) {
 
     int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
     struct task *t, *tasks = s->tasks;
+    int nodeID = s->nodeID;
     float sid_scale[13] = { 0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 ,
                             0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 , 
                             0.5788 };
@@ -643,13 +644,20 @@ void scheduler_reweight ( struct scheduler *s ) {
                     t->weight += 10 * t->ci->count * t->ci->count;
                     break;
                 case task_type_pair:
-                    t->weight += 20 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                    if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID )
+                        t->weight += 30 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                    else
+                        t->weight += 20 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     break;
                 case task_type_sub:
-                    if ( t->cj != NULL )
-                        t->weight += 10 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                    if ( t->cj != NULL ) {
+                        if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID )
+                            t->weight += 30 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                        else
+                            t->weight += 20 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                        }
                     else
-                        t->weight += 20 * t->ci->count * t->ci->count;
+                        t->weight += 10 * t->ci->count * t->ci->count;
                     break;
                 case task_type_ghost:
                     if ( t->ci == t->ci->super )
@@ -658,6 +666,10 @@ void scheduler_reweight ( struct scheduler *s ) {
                 case task_type_kick1:
                 case task_type_kick2:
                     t->weight += t->ci->count;
+                    break;
+                case task_type_send_xv:
+                case task_type_send_rho:
+                    t->weight *= 2;
                     break;
                 }
         }
@@ -767,7 +779,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
                         }
                     // message( "recieving %i parts with tag=%i from %i to %i." ,
                     //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID ); fflush(stdout);
-                    qid = -1;
+                    qid = 0;
                 #else
                     error( "SWIFT was not compiled with MPI support." );
                 #endif
@@ -783,7 +795,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
                         }
                     // message( "sending %i parts with tag=%i from %i to %i." ,
                     //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID ); fflush(stdout);
-                    qid = -1;
+                    qid = 0;
                 #else
                     error( "SWIFT was not compiled with MPI support." );
                 #endif
