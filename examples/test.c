@@ -926,6 +926,12 @@ int main ( int argc , char *argv[] ) {
     /* Let loose a runner on the space. */
     for ( j = 0 ; j < runs && e.time < clock ; j++ ) {
     
+        /* Repartition the space amongst the nodes? */
+        #if defined(WITH_MPI) && defined(HAVE_METIS)
+            if ( j == 1 )
+                e.forcerepart = 1;
+        #endif
+        
         // message( "starting run %i/%i (t=%.3e) with %i threads and %i queues..." , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
         timers_reset( timers_mask_all );
         #ifdef COUNTER
