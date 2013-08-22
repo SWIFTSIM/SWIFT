@@ -211,15 +211,17 @@ void proxy_parts_exch1 ( struct proxy *p ) {
     // message( "isent particle count (%i) from node %i to node %i." , p->nr_parts_out , p->mynodeID , p->nodeID ); fflush(stdout);
     
     /* Send the particle buffers. */
-    if ( MPI_Isend( p->parts_out , sizeof(struct part)*p->nr_parts_out , MPI_BYTE , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_parts , MPI_COMM_WORLD , &p->req_parts_out ) != MPI_SUCCESS ||
-         MPI_Isend( p->xparts_out , sizeof(struct xpart)*p->nr_parts_out , MPI_BYTE , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_xparts , MPI_COMM_WORLD , &p->req_xparts_out ) != MPI_SUCCESS )
-        error( "Failed to isend part data." );
-    MPI_Request_free( &p->req_parts_out );
-    // message( "isent particle data (%i) to node %i." , p->nr_parts_out , p->nodeID ); fflush(stdout);
-    /* for ( int k = 0 ; k < p->nr_parts_out ; k++ )
-        message( "sending particle %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i." ,
-            p->parts_out[k].id , p->parts_out[k].x[0] , p->parts_out[k].x[1] , p->parts_out[k].x[2] ,
-            p->parts_out[k].h , p->nodeID ); */
+    if ( p->nr_parts_out > 0 ) {
+        if ( MPI_Isend( p->parts_out , sizeof(struct part)*p->nr_parts_out , MPI_BYTE , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_parts , MPI_COMM_WORLD , &p->req_parts_out ) != MPI_SUCCESS ||
+             MPI_Isend( p->xparts_out , sizeof(struct xpart)*p->nr_parts_out , MPI_BYTE , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_xparts , MPI_COMM_WORLD , &p->req_xparts_out ) != MPI_SUCCESS )
+            error( "Failed to isend part data." );
+        MPI_Request_free( &p->req_parts_out );
+        // message( "isent particle data (%i) to node %i." , p->nr_parts_out , p->nodeID ); fflush(stdout);
+        /* for ( int k = 0 ; k < p->nr_parts_out ; k++ )
+            message( "sending particle %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i." ,
+                p->parts_out[k].id , p->parts_out[k].x[0] , p->parts_out[k].x[1] , p->parts_out[k].x[2] ,
+                p->parts_out[k].h , p->nodeID ); */
+        }
 
     /* Receive the number of particles. */
     if ( MPI_Irecv( &p->nr_parts_in , 1 , MPI_INT , p->nodeID , p->nodeID*proxy_tag_shift + proxy_tag_count , MPI_COMM_WORLD , &p->req_parts_count_in ) != MPI_SUCCESS )
@@ -249,10 +251,12 @@ void proxy_parts_exch2 ( struct proxy *p ) {
         }
         
     /* Receive the particle buffers. */
-    if ( MPI_Irecv( p->parts_in , sizeof(struct part)*p->nr_parts_in , MPI_BYTE , p->nodeID , p->nodeID*proxy_tag_shift + proxy_tag_parts , MPI_COMM_WORLD , &p->req_parts_in ) != MPI_SUCCESS ||
-         MPI_Irecv( p->xparts_in , sizeof(struct xpart)*p->nr_parts_in , MPI_BYTE , p->nodeID , p->nodeID*proxy_tag_shift + proxy_tag_xparts , MPI_COMM_WORLD , &p->req_xparts_in ) != MPI_SUCCESS )
-        error( "Failed to irecv part data." );
-    // message( "irecv particle data (%i) from node %i." , p->nr_parts_in , p->nodeID ); fflush(stdout);
+    if ( p->nr_parts_in > 0 ) {
+        if ( MPI_Irecv( p->parts_in , sizeof(struct part)*p->nr_parts_in , MPI_BYTE , p->nodeID , p->nodeID*proxy_tag_shift + proxy_tag_parts , MPI_COMM_WORLD , &p->req_parts_in ) != MPI_SUCCESS ||
+             MPI_Irecv( p->xparts_in , sizeof(struct xpart)*p->nr_parts_in , MPI_BYTE , p->nodeID , p->nodeID*proxy_tag_shift + proxy_tag_xparts , MPI_COMM_WORLD , &p->req_xparts_in ) != MPI_SUCCESS )
+            error( "Failed to irecv part data." );
+        // message( "irecv particle data (%i) from node %i." , p->nr_parts_in , p->nodeID ); fflush(stdout);
+        }
 
 #else
     error( "SWIFT was not compiled with MPI support." );

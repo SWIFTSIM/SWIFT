@@ -609,7 +609,7 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
 
 #ifdef WITH_MPI
 
-    int k, pid, count = 0;
+    int k, pid, count = 0, nr_in = 0, nr_out = 0;
     MPI_Request reqs_in[ engine_maxproxies ];
     MPI_Request reqs_out[ engine_maxproxies ];
     MPI_Status status;
@@ -644,13 +644,23 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
         
     /* Set the requests for the particle data. */
     for ( k = 0 ; k < e->nr_proxies ; k++ ) {
-        reqs_in[k] = e->proxies[k].req_xparts_in;
-        reqs_out[k] = e->proxies[k].req_xparts_out;
+        if ( e->proxies[k].nr_parts_in > 0 ) {
+            reqs_in[k] = e->proxies[k].req_xparts_in;
+            nr_in += 1;
+            }
+        else
+            reqs_in[k] = MPI_REQUEST_NULL;
+        if ( e->proxies[k].nr_parts_out > 0 ) {
+            reqs_out[k] = e->proxies[k].req_xparts_out;
+            nr_out += 1;
+            }
+        else
+            reqs_out[k] = MPI_REQUEST_NULL;
         }
     
     /* Wait for each part array to come in and collect the new
        parts from the proxies. */
-    for ( k = 0 ; k < e->nr_proxies ; k++ ) {
+    for ( k = 0 ; k < nr_in ; k++ ) {
         if ( MPI_Waitany( e->nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
              pid == MPI_UNDEFINED )
             error( "MPI_Waitany failed." );
@@ -666,8 +676,9 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
         }
     
     /* Wait for all the sends to have finnished too. */
-    if ( MPI_Waitall( e->nr_proxies , reqs_out , &status ) != MPI_SUCCESS )
-        error( "MPI_Waitall on sends failed." );
+    if ( nr_out > 0 )
+        if ( MPI_Waitall( e->nr_proxies , reqs_out , &status ) != MPI_SUCCESS )
+            error( "MPI_Waitall on sends failed." );
         
     /* Return the number of harvested parts. */
     return count;
