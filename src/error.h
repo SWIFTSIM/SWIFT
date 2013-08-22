@@ -39,7 +39,7 @@
  */
 #ifdef WITH_MPI
     extern int engine_rank;
-    #define message(s, ...) printf( "%s[%03i]: " s "\n" , __FUNCTION__ , engine_rank , ##__VA_ARGS__ )
+    #define message(s, ...) printf( "[%03i] %s: " s "\n" , engine_rank , __FUNCTION__ , ##__VA_ARGS__ )
 #else
     #define message(s, ...) printf( "%s: " s "\n" , __FUNCTION__ , ##__VA_ARGS__ )
 #endif

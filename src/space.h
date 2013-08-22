@@ -99,6 +99,10 @@ struct space {
     /* The associated engine. */
     struct engine *e;
     
+    /* Buffers for parts that we will receive from foreign cells. */
+    struct part *parts_foreign;
+    int nr_parts_foreign, size_parts_foreign;
+    
     };
 
 

@@ -80,12 +80,11 @@ int cell_getsize ( struct cell *c ) {
  * @param pc An array of packed #pcell.
  * @param c The #cell in which to unpack the #pcell.
  * @param s The #space in which the cells are created.
- * @param parts The #part array holding the particle data.
  *
  * @return The number of cells created.
  */
  
-int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s , struct part *parts ) {
+int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s ) {
 
     int k, count = 1;
     struct cell *temp;
@@ -95,7 +94,6 @@ int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s , struct p
     c->dt_min = pc->dt_min;
     c->dt_max = pc->dt_max;
     c->count = pc->count;
-    c->parts = parts;
     
     /* Fill the progeny recursively, depth-first. */
     for ( k = 0 ; k < 8 ; k++ )
@@ -122,12 +120,38 @@ int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s , struct p
             temp->parent = c;
             c->progeny[k] = temp;
             c->split = 1;
-            count += cell_unpack( &pc[ pc->progeny[k] ] , temp , s , parts );
-            parts = &parts[ temp->count ];
+            count += cell_unpack( &pc[ pc->progeny[k] ] , temp , s );
             }
             
     /* Return the total number of unpacked cells. */
     return count;
+
+    }
+
+
+/**
+ * @brief Link the cells recursively to the given part array.
+ *
+ * @param c The #cell.
+ * @param parts The #part array.
+ *
+ * @return The number of particles linked.
+ */
+
+int cell_link ( struct cell *c , struct part *parts ) {
+
+    int k, ind = 0;
+    
+    c->parts = parts;
+    
+    /* Fill the progeny recursively, depth-first. */
+    if ( c->split )
+        for ( k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL )
+                ind += cell_link( c->progeny[k] , &parts[ind] );
+            
+    /* Return the total number of unpacked cells. */
+    return c->count;
 
     }
 

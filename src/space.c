@@ -163,7 +163,7 @@ void space_rebuild_recycle ( struct space *s , struct cell *c ) {
  
 void space_regrid ( struct space *s , double cell_max ) {
 
-    float h_max = s->cell_min / kernel_gamma, dmin;
+    float h_max = s->cell_min / kernel_gamma / space_stretch, dmin;
     int i, j, k, cdim[3], nr_parts = s->nr_parts;
     struct cell *restrict c;
     // ticks tic;
@@ -281,7 +281,7 @@ void space_regrid ( struct space *s , double cell_max ) {
  
 void space_rebuild ( struct space *s , double cell_max ) {
 
-    float h_max = s->cell_min / kernel_gamma, dmin;
+    float h_max = s->cell_min / kernel_gamma / space_stretch, dmin;
     int i, j, k, cdim[3], nr_parts = s->nr_parts;
     struct cell *restrict c, *restrict cells = s->cells;
     struct part *restrict finger, *restrict p, *parts = s->parts;
@@ -437,8 +437,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
             p = &parts[k];
             ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
             cells[ ind[k] ].count += 1;
-            if ( cells[ ind[k] ].nodeID != nodeID )
-                error( "Received part that does not belong to me (nodeID=%i)." , cells[ ind[k] ].nodeID );
+            /* if ( cells[ ind[k] ].nodeID != nodeID )
+                error( "Received part that does not belong to me (nodeID=%i)." , cells[ ind[k] ].nodeID ); */
             }
         nr_parts = s->nr_parts;
     #endif
@@ -506,10 +506,12 @@ void space_rebuild ( struct space *s , double cell_max ) {
  
 void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N , int min , int max ) {
 
-    struct {
+    struct qstack {
         int i, j, min, max;
         volatile int ready;
-        } qstack[space_qstack];
+        };
+    struct qstack *qstack;
+    int qstack_size = (max-min)/2 + 1;
     volatile unsigned int first, last, waiting;
     
     int pivot;
@@ -517,18 +519,22 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
     struct part temp_p;
     struct xpart temp_xp;
     
+    /* Allocate the stack. */
+    if ( ( qstack = malloc( sizeof(struct qstack) * qstack_size ) ) == NULL )
+        error( "Failed to allocate qstack." );
+    
     /* Init the interval stack. */
     qstack[0].i = 0;
     qstack[0].j = N-1;
     qstack[0].min = min;
     qstack[0].max = max;
     qstack[0].ready = 1;
-    for ( i = 1 ; i < space_qstack ; i++ )
+    for ( i = 1 ; i < qstack_size ; i++ )
         qstack[i].ready = 0;
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel default(none) shared(first,last,waiting,qstack,parts,xparts,ind) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
+    #pragma omp parallel default(none) shared(first,last,waiting,qstack,parts,xparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
     {
     
         /* Main loop. */
@@ -536,7 +542,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
         while ( waiting > 0 ) {
         
             /* Grab an interval off the queue. */
-            qid = atomic_inc( &first ) % space_qstack;
+            qid = atomic_inc( &first ) % qstack_size;
             
             /* Wait for the interval to be ready. */
             while ( waiting > 0 && atomic_cas( &qstack[qid].ready , 1 , 1 ) != 1 );
@@ -590,14 +596,15 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
 
                     /* Recurse on the left? */
                     if ( jj > i  && pivot > min ) {
-                        qid = atomic_inc( &last ) % space_qstack;
+                        qid = atomic_inc( &last ) % qstack_size;
                         while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
                         qstack[qid].i = i;
                         qstack[qid].j = jj;
                         qstack[qid].min = min;
                         qstack[qid].max = pivot;
                         qstack[qid].ready = 1;
-                        atomic_inc( &waiting );
+                        if ( atomic_inc( &waiting ) >= qstack_size )
+                            error( "Qstack overflow." );
                         }
 
                     /* Recurse on the right? */
@@ -614,14 +621,15 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
                 
                     /* Recurse on the right? */
                     if ( jj+1 < j && pivot+1 < max ) {
-                        qid = atomic_inc( &last ) % space_qstack;
+                        qid = atomic_inc( &last ) % qstack_size;
                         while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
                         qstack[qid].i = jj+1;
                         qstack[qid].j = j;
                         qstack[qid].min = pivot+1;
                         qstack[qid].max = max;
                         qstack[qid].ready = 1;
-                        atomic_inc( &waiting );
+                        if ( atomic_inc( &waiting ) >= qstack_size )
+                            error( "Qstack overflow." );
                         }
                         
                     /* Recurse on the left? */
@@ -646,6 +654,9 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
     /* for ( i = 1 ; i < N ; i++ )
         if ( ind[i-1] > ind[i] )
             error( "Sorting failed!" ); */
+            
+    /* Clean up. */
+    free( qstack );
 
     }
 
@@ -976,7 +987,6 @@ struct cell *space_getcell ( struct space *s ) {
     /* Init some things in the cell. */
     bzero( c , sizeof(struct cell) );
     c->nodeID = -1;
-    c->owner = -1;
     if ( lock_init( &c->lock ) != 0 )
         error( "Failed to initialize cell spinlock." );
         
@@ -1012,6 +1022,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->parts = parts;
     s->cell_min = h_max;
     s->nr_queues = 1;
+    s->size_parts_foreign = 0;
     
     /* Allocate the xtra parts array. */
     if ( posix_memalign( (void *)&s->xparts , 32 , N * sizeof(struct xpart) ) != 0 )

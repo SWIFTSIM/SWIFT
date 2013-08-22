@@ -584,7 +584,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   h_err = H5Dwrite(h_data, hdf5Type(type), h_space, H5S_ALL, H5P_DEFAULT, temp);
   if(h_err < 0)
     {
-      error( "Error while reading data array '%s'." , name );
+      error( "Error while writing data array '%s'." , name );
     }
 
   /* Write XMF description for this data set */

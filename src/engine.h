@@ -33,6 +33,7 @@
 
 #define engine_queue_scale          1.2
 #define engine_maxtaskspercell      32
+#define engine_maxproxies           36
 
 
 /* The rank of the engine as a global variable (for messages). */
@@ -90,6 +91,9 @@ struct engine {
     struct proxy *proxies;
     int nr_proxies, *proxy_ind;
     
+    /* Force the engine to rebuild? */
+    int forcerebuild, forcerepart;
+    
     };
 
 
@@ -101,3 +105,6 @@ void engine_step ( struct engine *e );
 void engine_maketasks ( struct engine *e );
 void engine_split ( struct engine *e , int *grid );
 int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpart *xparts , int *ind , int N );
+void engine_rebuild ( struct engine *e );
+void engine_repartition ( struct engine *e );
+void engine_makeproxies ( struct engine *e );

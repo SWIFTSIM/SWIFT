@@ -147,5 +147,6 @@ void cell_split ( struct cell *c  );
 int cell_locktree( struct cell *c );
 void cell_unlocktree( struct cell *c );
 int cell_pack ( struct cell *c , struct pcell *pc );
-int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s , struct part *parts );
+int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s );
 int cell_getsize ( struct cell *c );
+int cell_link ( struct cell *c , struct part *parts );

@@ -37,6 +37,11 @@
     #include <mpi.h>
 #endif
 
+/* METIS headers. */
+#ifdef HAVE_METIS
+    #include <metis.h>
+#endif
+
 /* Local headers. */
 #include "const.h"
 #include "cycle.h"
@@ -70,6 +75,298 @@
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
+
+
+/**
+ * @breif Repartition the cells amongst the nodes.
+ *
+ * @param e The #engine.
+ */
+ 
+void engine_repartition ( struct engine *e ) {
+
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+
+    int i, j, k, l, cid, cjd, ii, jj, kk, res;
+    idx_t *inds;
+    idx_t *weights_v, *weights_e;
+    struct space *s = e->s;
+    int nr_cells = s->nr_cells;
+    struct cell *cells = s->cells;
+    int ind[3], *cdim = s->cdim;
+    struct task *t, *tasks = e->sched.tasks;
+    struct cell *ci, *cj;
+    int nr_nodes = e->nr_nodes, nodeID = e->nodeID, *nodeIDs;
+    float sid_scale[13] = { 0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 ,
+                            0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 , 
+                            0.5788 };
+    float wscale = 0.001;
+    
+    /* Clear the repartition flag. */
+    e->forcerepart = 0;
+    
+    /* Allocate the inds and weights. */
+    if ( ( inds = (idx_t *)malloc( sizeof(idx_t) * 26*nr_cells ) ) == NULL ||
+         ( weights_v = (idx_t *)malloc( sizeof(idx_t) * nr_cells ) ) == NULL ||
+         ( weights_e = (idx_t *)malloc( sizeof(idx_t) * 26*nr_cells ) ) == NULL ||
+         ( nodeIDs = (idx_t *)malloc( sizeof(idx_t) * nr_cells ) ) == NULL )
+        error( "Failed to allocate inds and weights arrays." );
+        
+    /* Fill the inds array. */
+    for ( cid = 0 ; cid < nr_cells ; cid++ ) {
+        ind[0] = cells[cid].loc[0] / s->cells[cid].h[0] + 0.5;
+        ind[1] = cells[cid].loc[1] / s->cells[cid].h[1] + 0.5;
+        ind[2] = cells[cid].loc[2] / s->cells[cid].h[2] + 0.5;
+        l = 0;
+        for ( i = -1 ; i <= 1 ; i++ ) {
+            ii = ind[0] + i;
+            if ( ii < 0 ) ii += cdim[0];
+            else if ( ii >= cdim[0] ) ii -= cdim[0];
+            for ( j = -1 ; j <= 1 ; j++ ) {
+                jj = ind[1] + j;
+                if ( jj < 0 ) jj += cdim[1];
+                else if ( jj >= cdim[1] ) jj -= cdim[1];
+                for ( k = -1 ; k <= 1 ; k++ ) {
+                    kk = ind[2] + k;
+                    if ( kk < 0 ) kk += cdim[2];
+                    else if ( kk >= cdim[2] ) kk -= cdim[2];
+                    if ( i || j || k ) {
+                        inds[ cid*26 + l ] = cell_getid( cdim , ii , jj , kk );
+                        l += 1;
+                        }
+                    }
+                }
+            }
+        }
+        
+    /* Init the weights arrays. */
+    bzero( weights_e , sizeof(idx_t) * 26*nr_cells );
+    for ( k = 0 ; k < nr_cells ; k++ )
+        if ( cells[k].nodeID == nodeID )
+            weights_v[k] = 10.0 * cells[k].count;
+        else
+            weights_v[k] = 0.0;
+    
+    /* Loop over the tasks... */
+    for ( j = 0 ; j < e->sched.nr_tasks ; j++ ) {
+    
+        /* Get a pointer to the kth task. */
+        t = &tasks[j];
+        
+        /* Skip un-interesting tasks. */
+        if ( t->type != task_type_self &&
+             t->type != task_type_pair &&
+             t->type != task_type_sub )
+            continue;
+        
+        /* Get the top-level cells involved. */
+        for ( ci = t->ci ; ci->parent != NULL ; ci = ci->parent );
+        if ( t->cj != NULL )
+            for ( cj = t->cj ; cj->parent != NULL ; cj = cj->parent );
+        else
+            cj = NULL;
+            
+        /* Get the cell IDs. */
+        cid = ci - cells;
+            
+        /* Different weights for different tasks. */
+        if ( ( t->type == task_type_self && ci->nodeID == nodeID ) ||
+             ( t->type == task_type_sub && cj == NULL && ci->nodeID == nodeID ) ) {
+        
+            /* Self interactions add only to vertex weight. */
+            weights_v[cid] += t->ci->count * t->ci->count * wscale;
+            
+            }
+            
+        /* Pair? */
+        else if ( t->type == task_type_pair ||
+                  ( t->type == task_type_sub && cj != NULL ) ) {
+                  
+            /* In-cell pair? */
+            if ( ci == cj ) {
+            
+                /* Add weight to vertex for ci. */
+                weights_v[cid] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+            
+                }
+                
+            /* Distinct cells with local ci? */
+            else if ( ci->nodeID == nodeID ) {
+            
+                /* Index of the jth cell. */
+                cjd = cj - cells;
+                
+                /* Add half of weight to each cell. */
+                if ( ci->nodeID == nodeID )
+                    weights_v[cid] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                if ( cj->nodeID == nodeID )
+                    weights_v[cjd] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                    
+                /* Add Weight to edge. */
+                for ( k = 26*cid ; inds[k] != cjd ; k++ );
+                weights_e[ k ] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                for ( k = 26*cjd ; inds[k] != cid ; k++ );
+                weights_e[ k ] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+            
+                }
+                  
+            }
+    
+        }
+        
+    /* Merge the weights arrays accross all nodes. */
+    if ( ( res = MPI_Reduce( ( nodeID == 0 ) ? MPI_IN_PLACE : weights_v , weights_v , nr_cells , MPI_INT , MPI_SUM , 0 , MPI_COMM_WORLD ) ) != MPI_SUCCESS ) {
+        char buff[ MPI_MAX_ERROR_STRING ];
+        MPI_Error_string( res , buff , &i );
+        error( "Failed to allreduce vertex weights (%s)." , buff );
+        }
+    if ( MPI_Reduce( ( nodeID == 0 ) ? MPI_IN_PLACE : weights_e , weights_e , 26*nr_cells , MPI_INT , MPI_SUM , 0 , MPI_COMM_WORLD ) != MPI_SUCCESS )
+        error( "Failed to allreduce edge weights." );
+        
+    /* As of here, only one node needs to compute the partition. */
+    if ( nodeID == 0 ) {
+    
+        /* Allocate and fill the connection array. */
+        idx_t *offsets;
+        if ( ( offsets = (idx_t *)malloc( sizeof(idx_t) * (nr_cells + 1) ) ) == NULL )
+            error( "Failed to allocate offsets buffer." );
+        offsets[0] = 0;
+        for ( k = 0 ; k < nr_cells ; k++ )
+            offsets[k+1] = offsets[k] + 26;
+            
+        /* Set the METIS options. */
+        idx_t options[METIS_NOPTIONS];
+        METIS_SetDefaultOptions( options );
+        options[ METIS_OPTION_OBJTYPE ] = METIS_OBJTYPE_CUT;
+        options[ METIS_OPTION_NUMBERING ] = 0;
+        options[ METIS_OPTION_CONTIG ] = 1;
+        
+        /* Call METIS. */
+        int one = 1;
+        idx_t objval;
+        if ( METIS_PartGraphKway( &nr_cells , &one , offsets , inds , weights_v , NULL , weights_e , &nr_nodes , NULL , NULL , options , &objval , nodeIDs ) != METIS_OK )
+            error( "Call to METIS_PartGraphKway failed." );
+    
+        }
+        
+    /* Broadcast the result of the partition. */
+    if ( MPI_Bcast( nodeIDs , nr_cells , MPI_INT , 0 , MPI_COMM_WORLD ) != MPI_SUCCESS )
+        error( "Failed to bcast the node IDs." );
+        
+    /* Set the cell nodeIDs and clear any non-local parts. */
+    for ( k = 0 ; k < nr_cells ; k++ )
+        cells[k].nodeID = nodeIDs[k];
+        
+    /* Clean up. */
+    free( inds );
+    free( weights_v );
+    free( weights_e );
+    free( nodeIDs );
+        
+    /* Now comes the tricky part: Exchange particles between all nodes.
+       This is done in two steps, first allreducing a matrix of 
+       how many particles go from where to where, then re-allocating
+       the parts array, and emiting the sends and receives.
+       Finally, the space, tasks, and proxies need to be rebuilt. */
+       
+    /* Start by sorting the particles according to their nodes and
+       getting the counts. */
+    int *counts, *dest;
+    struct part *parts = s->parts;
+    float ih[3];
+    ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
+    if ( ( counts = (int *)malloc( sizeof(int) * nr_nodes * nr_nodes ) ) == NULL ||
+         ( dest = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
+        error( "Failed to allocate count and dest buffers." );
+    bzero( counts , sizeof(int) * nr_nodes * nr_nodes );
+    for ( k = 0 ; k < s->nr_parts ; k++ ) {
+        cid = cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] );
+        dest[k] = cells[ cid ].nodeID;
+        counts[ nodeID*nr_nodes + dest[k] ] += 1;
+        }
+    parts_sort( s->parts , s->xparts , dest , s->nr_parts , 0 , nr_nodes-1 );
+    
+    /* Get all the counts from all the nodes. */
+    if ( MPI_Allreduce( MPI_IN_PLACE , counts , nr_nodes * nr_nodes , MPI_INT , MPI_SUM , MPI_COMM_WORLD ) != MPI_SUCCESS )
+        error( "Failed to allreduce particle transfer counts." );
+        
+    /* Get the new number of parts for this node, be generous in allocating. */
+    int nr_parts = 0;
+    for ( k = 0 ; k < nr_nodes ; k++ )
+        nr_parts += counts[ k*nr_nodes + nodeID ];
+    struct part *parts_new;
+    struct xpart *xparts_new, *xparts = s->xparts;
+    if ( posix_memalign( (void **)&parts_new , part_align , sizeof(struct part) * nr_parts * 2 ) != 0 ||
+         posix_memalign( (void **)&xparts_new , part_align , sizeof(struct xpart) * nr_parts * 2 ) != 0 )
+        error( "Failed to allocate new part data." );
+        
+    /* Emit the sends and recvs for the particle data. */
+    MPI_Request *reqs;
+    if ( ( reqs = (MPI_Request *)malloc( sizeof(MPI_Request) * 4 * nr_nodes ) ) == NULL )
+        error( "Failed to allocate MPI request list." );
+    for ( k = 0 ; k < 4*nr_nodes ; k++ )
+        reqs[k] = MPI_REQUEST_NULL;
+    for ( i = 0 , j = 0 , k = 0 ; k < nr_nodes ; k++ ) {
+        if ( k == nodeID && counts[ nodeID*nr_nodes + k ] > 0 ) {
+            memcpy( &parts_new[j] , &parts[i] , sizeof(struct part) * counts[ k*nr_nodes + nodeID ] );
+            memcpy( &xparts_new[j] , &xparts[i] , sizeof(struct xpart) * counts[ k*nr_nodes + nodeID ] );
+            i += counts[ nodeID*nr_nodes + k ];
+            j += counts[ k*nr_nodes + nodeID ];
+            }
+        if ( k != nodeID && counts[ nodeID*nr_nodes + k ] > 0 ) {
+            if ( MPI_Isend( &parts[i] , sizeof(struct part) * counts[ nodeID*nr_nodes + k ] , MPI_BYTE , k , 0 , MPI_COMM_WORLD , &reqs[4*k] ) != MPI_SUCCESS )
+                error( "Failed to isend parts to node %i." , k );
+            if ( MPI_Isend( &xparts[i] , sizeof(struct xpart) * counts[ nodeID*nr_nodes + k ] , MPI_BYTE , k , 1 , MPI_COMM_WORLD , &reqs[4*k+1] ) != MPI_SUCCESS )
+                error( "Failed to isend xparts to node %i." , k );
+            i += counts[ nodeID*nr_nodes + k ];
+            }
+        if ( k != nodeID && counts[ k*nr_nodes + nodeID ] > 0 ) {
+            if ( MPI_Irecv( &parts_new[j] , sizeof(struct part) * counts[ k*nr_nodes + nodeID ] , MPI_BYTE , k , 0 , MPI_COMM_WORLD , &reqs[4*k+2] ) != MPI_SUCCESS )
+                error( "Failed to emit irecv of parts from node %i." , k );
+            if ( MPI_Irecv( &xparts_new[j] , sizeof(struct xpart) * counts[ k*nr_nodes + nodeID ] , MPI_BYTE , k , 1 , MPI_COMM_WORLD , &reqs[4*k+3] ) != MPI_SUCCESS )
+                error( "Failed to emit irecv of parts from node %i." , k );
+            j += counts[ k*nr_nodes + nodeID ];
+            }
+        }
+        
+    /* Wait for all the recvs to tumble in. */
+    if ( MPI_Waitall( 4*nr_nodes , reqs , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
+        error( "Failed during waitall for part data." );
+        
+    /* Verify that all parts are in the right place. */
+    /* for ( k = 0 ; k < nr_parts ; k++ ) {
+        cid = cell_getid( cdim , parts_new[k].x[0]*ih[0] , parts_new[k].x[1]*ih[1] , parts_new[k].x[2]*ih[2] );
+        if ( cells[ cid ].nodeID != nodeID )
+            error( "Received particle (%i) that does not belong here (nodeID=%i)." , k , cells[ cid ].nodeID );
+        } */
+        
+    /* Set the new part data, free the old. */
+    free( parts );
+    free( xparts );
+    s->parts = parts_new;
+    s->xparts = xparts_new;
+    s->nr_parts = nr_parts;
+    s->size_parts = 2*nr_parts;
+    
+    /* Be verbose about what just happened. */
+    message( "node %i now has %i parts." , nodeID , nr_parts );
+    
+    /* Clean up other stuff. */
+    free( reqs );
+    free( counts );
+    free( dest );
+        
+    /* Make the proxies. */
+    engine_makeproxies( e );
+        
+    /* Tell the engine it should re-build whenever possible */
+    e->forcerebuild = 1;
+    
+#else
+    error( "SWIFT was not compiled with MPI and METIS support." );
+#endif
+
+    }
 
 
 /**
@@ -196,12 +493,15 @@ void engine_exchange_cells ( struct engine *e ) {
 
     int j, k, pid, count = 0;
     struct pcell *pcells;
-    struct cell *cells = e->s->cells;
-    int nr_cells = e->s->nr_cells;
+    struct space *s = e->s;
+    struct cell *cells = s->cells;
+    int nr_cells = s->nr_cells;
+    int nr_proxies = e->nr_proxies;
     int offset[ nr_cells ];
-    MPI_Request reqs[27];
+    MPI_Request reqs_in[ engine_maxproxies ];
+    MPI_Request reqs_out[ engine_maxproxies ];
     MPI_Status status;
-    struct part *parts = &e->s->parts[ e->s->nr_parts ];
+    struct part *parts = &s->parts[ s->nr_parts ];
     
     /* Run through the cells and get the size of the ones that will be sent off. */
     for ( k = 0 ; k < nr_cells ; k++ ) {
@@ -222,37 +522,66 @@ void engine_exchange_cells ( struct engine *e ) {
             }
 
     /* Launch the proxies. */
-    for ( k = 0 ; k < e->nr_proxies ; k++ ) {
+    for ( k = 0 ; k < nr_proxies ; k++ ) {
         proxy_cells_exch1( &e->proxies[k] );
-        reqs[k] = e->proxies[k].req_cells_count_in;
+        reqs_in[k] = e->proxies[k].req_cells_count_in;
         }
         
     /* Wait for each count to come in and start the recv. */
-    for ( k = 0 ; k < e->nr_proxies ; k++ ) {
-        if ( MPI_Waitany( e->nr_proxies , reqs , &pid , &status ) != MPI_SUCCESS ||
+    for ( k = 0 ; k < nr_proxies ; k++ ) {
+        if ( MPI_Waitany( nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
              pid == MPI_UNDEFINED )
             error( "MPI_Waitany failed." );
         // message( "request from proxy %i has arrived." , pid );
-        reqs[pid] = MPI_REQUEST_NULL;
         proxy_cells_exch2( &e->proxies[pid] );
         }
         
     /* Set the requests for the cells. */
-    for ( k = 0 ; k < e->nr_proxies ; k++ )
-        reqs[k] = e->proxies[k].req_cells_in;
+    for ( k = 0 ; k < nr_proxies ; k++ ) {
+        reqs_in[k] = e->proxies[k].req_cells_in;
+        reqs_out[k] = e->proxies[k].req_cells_out;
+        }
     
     /* Wait for each pcell array to come in from the proxies. */
-    for ( k = 0 ; k < e->nr_proxies ; k++ ) {
-        if ( MPI_Waitany( e->nr_proxies , reqs , &pid , &status ) != MPI_SUCCESS ||
+    for ( k = 0 ; k < nr_proxies ; k++ ) {
+        if ( MPI_Waitany( nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
              pid == MPI_UNDEFINED )
             error( "MPI_Waitany failed." );
-        // message( "request from proxy %i has arrived." , pid );
-        reqs[pid] = MPI_REQUEST_NULL;
-        for ( count = 0 , j = 0 ; j < e->proxies[pid].nr_cells_in ; j++ ) {
-            count += cell_unpack( &e->proxies[pid].pcells_in[count] , e->proxies[pid].cells_in[j] , e->s , parts );
-            parts = &parts[ e->proxies[pid].cells_in[j]->count ];
+        // message( "cell data from proxy %i has arrived." , pid );
+        for ( count = 0 , j = 0 ; j < e->proxies[pid].nr_cells_in ; j++ )
+            count += cell_unpack( &e->proxies[pid].pcells_in[count] , e->proxies[pid].cells_in[j] , e->s );
+        }
+        
+    /* Wait for all the sends to have finnished too. */
+    if ( MPI_Waitall( nr_proxies , reqs_out , &status ) != MPI_SUCCESS )
+        error( "MPI_Waitall on sends failed." );
+        
+    /* Count the number of particles we need to import and re-allocate
+       the buffer if needed. */
+    for ( count = 0 , k = 0 ; k < nr_proxies ; k++ )
+        for ( j = 0 ; j < e->proxies[k].nr_cells_in ; j++ )
+            count += e->proxies[k].cells_in[j]->count;
+    if ( count > s->size_parts_foreign ) {
+        if ( s->parts_foreign != NULL )
+            free( s->parts_foreign );
+        s->size_parts_foreign = 1.1 * count;
+        if ( posix_memalign( (void **)&s->parts_foreign , part_align , sizeof(struct part) * s->size_parts_foreign ) != 0 )
+            error( "Failed to allocate foreign part data." );
+        }
+        
+    /* Unpack the cells and link to the particle data. */
+    parts = s->parts_foreign;
+    for ( k = 0 ; k < nr_proxies ; k++ ) {
+        for ( count = 0 , j = 0 ; j < e->proxies[k].nr_cells_in ; j++ ) {
+            count += cell_link( e->proxies[k].cells_in[j] , parts );
+            parts = &parts[ e->proxies[k].cells_in[j]->count ];
             }
         }
+    s->nr_parts_foreign = parts - s->parts_foreign;
+        
+    /* Is the parts buffer large enough? */
+    if ( s->nr_parts_foreign > s->size_parts_foreign )
+        error( "Foreign parts buffer too small." );
         
     /* Free the pcell buffer. */
     free( pcells );
@@ -281,7 +610,8 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
 #ifdef WITH_MPI
 
     int k, pid, count = 0;
-    MPI_Request reqs[27];
+    MPI_Request reqs_in[ engine_maxproxies ];
+    MPI_Request reqs_out[ engine_maxproxies ];
     MPI_Status status;
     struct proxy *p;
 
@@ -300,33 +630,32 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     /* Launch the proxies. */
     for ( k = 0 ; k < e->nr_proxies ; k++ ) {
         proxy_parts_exch1( &e->proxies[k] );
-        reqs[k] = e->proxies[k].req_parts_count_in;
+        reqs_in[k] = e->proxies[k].req_parts_count_in;
         }
         
     /* Wait for each count to come in and start the recv. */
     for ( k = 0 ; k < e->nr_proxies ; k++ ) {
-        if ( MPI_Waitany( e->nr_proxies , reqs , &pid , &status ) != MPI_SUCCESS ||
+        if ( MPI_Waitany( e->nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
              pid == MPI_UNDEFINED )
             error( "MPI_Waitany failed." );
         // message( "request from proxy %i has arrived." , pid );
-        reqs[pid] = MPI_REQUEST_NULL;
         proxy_parts_exch2( &e->proxies[pid] );
         }
         
     /* Set the requests for the particle data. */
-    for ( k = 0 ; k < e->nr_proxies ; k++ )
-        reqs[k] = e->proxies[k].req_xparts_in;
+    for ( k = 0 ; k < e->nr_proxies ; k++ ) {
+        reqs_in[k] = e->proxies[k].req_xparts_in;
+        reqs_out[k] = e->proxies[k].req_xparts_out;
+        }
     
     /* Wait for each part array to come in and collect the new
        parts from the proxies. */
     for ( k = 0 ; k < e->nr_proxies ; k++ ) {
-        if ( MPI_Waitany( e->nr_proxies , reqs , &pid , &status ) != MPI_SUCCESS ||
+        if ( MPI_Waitany( e->nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
              pid == MPI_UNDEFINED )
             error( "MPI_Waitany failed." );
         // message( "request from proxy %i has arrived." , pid );
         p = &e->proxies[pid];
-        reqs[pid] = MPI_REQUEST_NULL;
-        MPI_Request_free( &p->req_parts_in );
         memcpy( &parts[count] , p->parts_in , sizeof(struct part) * p->nr_parts_in );
         memcpy( &xparts[count] , p->xparts_in , sizeof(struct xpart) * p->nr_parts_in );
         count += p->nr_parts_in;
@@ -336,6 +665,10 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
                 p->parts_in[k].h , p->nodeID ); */
         }
     
+    /* Wait for all the sends to have finnished too. */
+    if ( MPI_Waitall( e->nr_proxies , reqs_out , &status ) != MPI_SUCCESS )
+        error( "MPI_Waitall on sends failed." );
+        
     /* Return the number of harvested parts. */
     return count;
     
@@ -533,7 +866,7 @@ void engine_maketasks ( struct engine *e ) {
             
             /* Loop through the proxy's outgoing cells and add the
                send tasks. */
-            for ( k = 0 ; k < p->nr_cells_in ; k++ )
+            for ( k = 0 ; k < p->nr_cells_out ; k++ )
                 engine_addtasks_send( e , p->cells_out[k] , p->cells_in[0] );
             
             }
@@ -678,6 +1011,65 @@ int engine_marktasks ( struct engine *e ) {
     return 0;
     
     }
+    
+
+/**
+ * @brief Rebuild the space and tasks.
+ *
+ * @param e The #engine.
+ */
+ 
+void engine_rebuild ( struct engine *e ) {
+
+    int k;
+    struct scheduler *sched = &e->sched;
+    
+    /* Clear the forcerebuild flag, whatever it was. */
+    e->forcerebuild = 0;
+
+    /* Re-build the space. */
+    // tic = getticks();
+    space_rebuild( e->s , 0.0 );
+    // message( "space_rebuild took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+
+    /* If in parallel, exchange the cell structure. */
+    #ifdef WITH_MPI
+        // tic = getticks();
+        engine_exchange_cells( e );
+        // message( "engine_exchange_cells took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+    #endif
+
+    /* Re-build the tasks. */
+    // tic = getticks();
+    engine_maketasks( e );
+    // message( "engine_maketasks took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+
+    /* Run through the tasks and mark as skip or not. */
+    // tic = getticks();
+    if ( engine_marktasks( e ) )
+        error( "engine_marktasks failed after space_rebuild." );
+    // message( "engine_marktasks took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+
+    /* Count and print the number of each task type. */
+    int counts[ task_type_count+1 ];
+    for ( k = 0 ; k <= task_type_count ; k++ )
+        counts[k] = 0;
+    for ( k = 0 ; k < sched->nr_tasks ; k++ )
+        if ( !sched->tasks[k].skip )
+            counts[ (int)sched->tasks[k].type ] += 1;
+        else
+            counts[ task_type_count ] += 1;
+    #ifdef WITH_MPI
+        printf( "[%03i] engine_prepare: task counts are [ %s=%i" , e->nodeID , taskID_names[0] , counts[0] );
+    #else
+        printf( "engine_prepare: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
+    #endif
+    for ( k = 1 ; k < task_type_count ; k++ )
+        printf( " %s=%i" , taskID_names[k] , counts[k] );
+    printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout);
+    message( "nr_parts = %i." , e->s->nr_parts );
+    
+    }
 
 
 /**
@@ -688,14 +1080,14 @@ int engine_marktasks ( struct engine *e ) {
  
 void engine_prepare ( struct engine *e ) {
     
-    int k, rebuild;
+    int rebuild;
     struct scheduler *sched = &e->sched;
     
     TIMER_TIC
 
     /* Run through the tasks and mark as skip or not. */
     // tic = getticks();
-    rebuild = ( e->step == 0 || engine_marktasks( e ) );
+    rebuild = ( e->forcerebuild || engine_marktasks( e ) );
     // message( "space_marktasks took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
         
     /* Collect the values of rebuild from all nodes. */
@@ -707,51 +1099,8 @@ void engine_prepare ( struct engine *e ) {
     #endif
     
     /* Did this not go through? */
-    if ( rebuild ) {
-    
-        /* Re-build the space. */
-        // tic = getticks();
-        space_rebuild( e->s , 0.0 );
-        // message( "space_rebuild took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
-    
-        /* If in parallel, exchange the cell structure. */
-        #ifdef WITH_MPI
-            // tic = getticks();
-            engine_exchange_cells( e );
-            // message( "engine_exchange_cells took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
-        #endif
-    
-        /* Re-build the tasks. */
-        // tic = getticks();
-        engine_maketasks( e );
-        // message( "engine_maketasks took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
-    
-        /* Run through the tasks and mark as skip or not. */
-        // tic = getticks();
-        if ( engine_marktasks( e ) )
-            error( "engine_marktasks failed after space_rebuild." );
-        // message( "engine_marktasks took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
-        
-        /* Count the number of each task type. */
-        int counts[ task_type_count+1 ];
-        for ( k = 0 ; k <= task_type_count ; k++ )
-            counts[k] = 0;
-        for ( k = 0 ; k < sched->nr_tasks ; k++ )
-            if ( !sched->tasks[k].skip )
-                counts[ (int)sched->tasks[k].type ] += 1;
-            else
-                counts[ task_type_count ] += 1;
-        #ifdef WITH_MPI
-            printf( "engine_prepare[%03i]: task counts are [ %s=%i" , e->nodeID , taskID_names[0] , counts[0] );
-        #else
-            printf( "engine_prepare: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
-        #endif
-        for ( k = 1 ; k < task_type_count ; k++ )
-            printf( " %s=%i" , taskID_names[k] , counts[k] );
-        printf( " skipped=%i ]\n" , counts[ task_type_count ] ); fflush(stdout);
-        message( "nr_parts = %i." , e->s->nr_parts );
-    
-        }
+    if ( rebuild )
+        engine_rebuild( e );
 
     /* Start the scheduler. */
     // ticks tic2 = getticks();
@@ -984,6 +1333,19 @@ void engine_launch ( struct engine *e , int nr_runners ) {
             error( "Error while waiting for barrier." );
             
     }
+    
+    
+void hassorted ( struct cell *c ) {
+
+    if ( c->sorted )
+        error( "Suprious sorted flags." );
+        
+    if ( c->split )
+        for ( int k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL )
+                hassorted( c->progeny[k] );
+                    
+    }
 
 
 /**
@@ -1040,6 +1402,10 @@ void engine_step ( struct engine *e ) {
     //   printParticle(parts, k);
     // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
  
+    /* Re-distribute the particles amongst the nodes? */
+    if ( e->forcerepart )
+        engine_repartition( e );
+    
     /* Prepare the space. */
     engine_prepare( e );
     
@@ -1162,26 +1528,20 @@ void engine_step ( struct engine *e ) {
     }
     
     
-/** 
- * @brief Split the underlying space according to the given grid.
+/**
+ * @brief Create and fill the proxies.
  *
  * @param e The #engine.
- * @param grid The grid.
  */
  
-void engine_split ( struct engine *e , int *grid ) {
+void engine_makeproxies ( struct engine *e ) {
 
-    int i, j, k, ii, jj, kk, jd;
-    float scale[3];
-    int cid, cjd, pid, ind[3], jnd[3], *cdim = e->s->cdim;
+    int i, j, k, ii, jj, kk;
+    int cid, cjd, pid, ind[3], *cdim = e->s->cdim;
     struct space *s = e->s;
-    struct cell *c;
-    struct part *p;
+    struct cell *cells = s->cells;
+    struct proxy *proxies = e->proxies;
     
-    /* If we've got the wrong number of nodes, fail. */
-    if ( e->nr_nodes != grid[0]*grid[1]*grid[2] )
-        error( "Grid size does not match number of nodes." );
-        
     /* Prepare the proxies and the proxy index. */
     if ( e->proxy_ind != NULL )
         free( e->proxy_ind );
@@ -1191,59 +1551,15 @@ void engine_split ( struct engine *e , int *grid ) {
         e->proxy_ind[k] = -1;
     e->nr_proxies = 0;
     
-    /* Get the scale. */
-    for ( j = 0 ; j < 3 ; j++ )
-        scale[j] = ((float)grid[j]) / s->cdim[j];
-    
-    /* Run through the cells and set their nodeID. */
-    for ( k = 0 ; k < s->nr_cells ; k++ ) {
-        c = &s->cells[k];
-        for ( j = 0 ; j < 3 ; j++ )
-            ind[j] = c->loc[j] * s->ih[j] * scale[j];
-        c->nodeID = ind[0] + grid[0]*( ind[1] + grid[1]*ind[2] );
-        }
-        
-    /* Identify the neighbours of this proxy. */
-    ind[0] = e->nodeID % grid[0];
-    ind[1] = ( e->nodeID / grid[0] ) % grid[1];
-    ind[2] = e->nodeID / ( grid[0]*grid[1] );
-    message( "node %i is [ %i %i %i ] on grid [ %i %i %i ]." ,
-        e->nodeID , ind[0] , ind[1] , ind[2] , grid[0] , grid[1] , grid[2] );
-    for ( i = -1 ; i <= 1 ; i++ ) {
-        jnd[0] = ind[0] + i;
-        if ( jnd[0] < 0 ) jnd[0] += grid[0];
-        if ( jnd[0] >= grid[0] ) jnd[0] -= grid[0];
-        for ( j = -1 ; j <= 1 ; j++ ) {
-            jnd[1] = ind[1] + j;
-            if ( jnd[1] < 0 ) jnd[1] += grid[1];
-            if ( jnd[1] >= grid[1] ) jnd[1] -= grid[1];
-            for ( k = -1 ; k <= 1 ; k++ ) {
-                jnd[2] = ind[2] + k;
-                if ( jnd[2] < 0 ) jnd[2] += grid[2];
-                if ( jnd[2] >= grid[2] ) jnd[2] -= grid[2];
-                
-                /* Are ind and jnd the same node? */
-                jd = jnd[0] + grid[0]*( jnd[1] + grid[1]*jnd[2] );
-                if ( jd == e->nodeID )
-                    continue;
-                
-                /* Add jnd? */
-                if ( e->proxy_ind[jd] < 0 ) {
-                    proxy_init( &e->proxies[ e->nr_proxies ] , e->nodeID , jd );
-                    e->proxy_ind[jd] = e->nr_proxies;
-                    e->nr_proxies += 1;
-                    }
-                
-                }
-            }
-        }
-        
-    /* Identify the neighbouring highest-level cells and add them to
-       the respective proxies. */
+    /* Loop over each cell in the space. */
     for ( ind[0] = 0 ; ind[0] < cdim[0] ; ind[0]++ )
         for ( ind[1] = 0 ; ind[1] < cdim[1] ; ind[1]++ )
             for ( ind[2] = 0 ; ind[2] < cdim[2] ; ind[2]++ ) {
+            
+                /* Get the cell ID. */
                 cid = cell_getid( cdim , ind[0] , ind[1] , ind[2] );
+                
+                /* Loop over all its neighbours (periodic). */
                 for ( i = -1 ; i <= 1 ; i++ ) {
                     ii = ind[0] + i;
                     if ( ii >= cdim[0] )
@@ -1262,23 +1578,78 @@ void engine_split ( struct engine *e , int *grid ) {
                                 kk -= cdim[2];
                             else if ( kk < 0 )
                                 kk += cdim[2];
+                            
+                            /* Get the cell ID. */
                             cjd = cell_getid( cdim , ii , jj , kk );
-                            if ( s->cells[cid].nodeID == e->nodeID && s->cells[cjd].nodeID != e->nodeID ) {
-                                pid = e->proxy_ind[ s->cells[cjd].nodeID ];
-                                proxy_addcell_in( &e->proxies[pid] , &s->cells[cjd] );
-                                proxy_addcell_out( &e->proxies[pid] , &s->cells[cid] );
-                                s->cells[cid].sendto |= ( 1 << pid );
+                            
+                            /* Add to proxies? */
+                            if ( cells[cid].nodeID == e->nodeID && cells[cjd].nodeID != e->nodeID ) {
+                                pid = e->proxy_ind[ cells[cjd].nodeID ];
+                                if ( pid < 0 ) {
+                                    proxy_init( &proxies[ e->nr_proxies ] , e->nodeID , cells[cjd].nodeID );
+                                    e->proxy_ind[ cells[cjd].nodeID ] = e->nr_proxies;
+                                    pid = e->nr_proxies;
+                                    e->nr_proxies += 1;
+                                    }
+                                proxy_addcell_in( &proxies[pid] , &cells[cjd] );
+                                proxy_addcell_out( &proxies[pid] , &cells[cid] );
+                                cells[cid].sendto |= ( 1 << pid );
                                 }
-                            if ( s->cells[cjd].nodeID == e->nodeID && s->cells[cid].nodeID != e->nodeID ) {
-                                pid = e->proxy_ind[ s->cells[cid].nodeID ];
-                                proxy_addcell_in( &e->proxies[pid] , &s->cells[cid] );
-                                proxy_addcell_out( &e->proxies[pid] , &s->cells[cjd] );
-                                s->cells[cjd].sendto |= ( 1 << pid );
+                                
+                            if ( cells[cjd].nodeID == e->nodeID && cells[cid].nodeID != e->nodeID ) {
+                                pid = e->proxy_ind[ cells[cid].nodeID ];
+                                if ( pid < 0 ) {
+                                    proxy_init( &proxies[ e->nr_proxies ] , e->nodeID , cells[cid].nodeID );
+                                    e->proxy_ind[ cells[cid].nodeID ] = e->nr_proxies;
+                                    pid = e->nr_proxies;
+                                    e->nr_proxies += 1;
+                                    }
+                                proxy_addcell_in( &proxies[pid] , &cells[cid] );
+                                proxy_addcell_out( &proxies[pid] , &cells[cjd] );
+                                cells[cjd].sendto |= ( 1 << pid );
                                 }
                             }
                         }
                     }
                 }
+        
+    }
+    
+    
+/** 
+ * @brief Split the underlying space according to the given grid.
+ *
+ * @param e The #engine.
+ * @param grid The grid.
+ */
+ 
+void engine_split ( struct engine *e , int *grid ) {
+
+    int j, k;
+    float scale[3];
+    int ind[3];
+    struct space *s = e->s;
+    struct cell *c;
+    struct part *p;
+    
+    /* If we've got the wrong number of nodes, fail. */
+    if ( e->nr_nodes != grid[0]*grid[1]*grid[2] )
+        error( "Grid size does not match number of nodes." );
+        
+    /* Get the scale. */
+    for ( j = 0 ; j < 3 ; j++ )
+        scale[j] = ((float)grid[j]) / s->cdim[j];
+    
+    /* Run through the cells and set their nodeID. */
+    for ( k = 0 ; k < s->nr_cells ; k++ ) {
+        c = &s->cells[k];
+        for ( j = 0 ; j < 3 ; j++ )
+            ind[j] = c->loc[j] * s->ih[j] * scale[j];
+        c->nodeID = ind[0] + grid[0]*( ind[1] + grid[1]*ind[2] );
+        }
+        
+    /* Make the proxies. */
+    engine_makeproxies( e );
         
     /* For now, just kill any particle outside of our grid. */
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
@@ -1327,7 +1698,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
             #ifdef WITHMPI
                 printf( "engine_init: cpu map is [ " );
             #else
-                printf( "engine_init[%03i]: cpu map is [ " , nodeID );
+                printf( "[%03i] engine_init: cpu map is [ " , nodeID );
             #endif
             for ( i = 0 ; i < nr_cores ; i++ )
                 printf( "%i " , cpuid[i] );
@@ -1346,6 +1717,8 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     e->nodeID = nodeID;
     e->proxy_ind = NULL;
     e->nr_proxies = 0;
+    e->forcerebuild = 1;
+    e->forcerepart = 0;
     engine_rank = nodeID;
     
     /* Make the space link back to the engine. */
@@ -1353,14 +1726,15 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     
     /* Are we doing stuff in parallel? */
     if ( nr_nodes > 1 ) {
-        #if !defined(HAVE_MPI) || !defined(WITH_MPI)
+        #ifndef HAVE_MPI
             error( "SWIFT was not compiled with MPI support." );
+        #else
+            e->policy |= engine_policy_mpi;
+            if ( ( e->proxies = (struct proxy *)malloc( sizeof(struct proxy) * engine_maxproxies ) ) == NULL )
+                error( "Failed to allocate memory for proxies." );
+            bzero( e->proxies , sizeof(struct proxy) * 26 );
+            e->nr_proxies = 0;
         #endif
-        e->policy |= engine_policy_mpi;
-        if ( ( e->proxies = (struct proxy *)malloc( sizeof(struct proxy) * 26 ) ) == NULL )
-            error( "Failed to allocate memory for proxies." );
-        bzero( e->proxies , sizeof(struct proxy) * 26 );
-        e->nr_proxies = 0;
         }
     
     /* First of all, init the barrier and lock it. */
