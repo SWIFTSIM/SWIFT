@@ -932,9 +932,12 @@ void engine_maketasks ( struct engine *e ) {
         
     /* Rank the tasks. */
     scheduler_ranktasks( sched );
-            
+    
     /* Weight the tasks. */
     scheduler_reweight( sched );
+            
+    /* Set the tasks age. */
+    e->tasks_age = 0;
             
     }
     
@@ -1158,6 +1161,11 @@ void engine_prepare ( struct engine *e ) {
     /* Did this not go through? */
     if ( rebuild )
         engine_rebuild( e );
+        
+    /* Re-rank the tasks every now and then. */
+    if ( e->tasks_age % engine_tasksreweight == 1 )
+        scheduler_reweight( &e->sched );
+    e->tasks_age += 1;
 
     /* Start the scheduler. */
     // ticks tic2 = getticks();

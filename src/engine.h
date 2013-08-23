@@ -34,6 +34,7 @@
 #define engine_queue_scale          1.2
 #define engine_maxtaskspercell      32
 #define engine_maxproxies           64
+#define engine_tasksreweight        10
 
 
 /* The rank of the engine as a global variable (for messages). */
@@ -93,6 +94,9 @@ struct engine {
     
     /* Force the engine to rebuild? */
     int forcerebuild, forcerepart;
+    
+    /* How many steps have we done with the same set of tasks? */
+    int tasks_age;
     
     };
 
