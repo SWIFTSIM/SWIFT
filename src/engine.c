@@ -100,7 +100,7 @@ void engine_repartition ( struct engine *e ) {
     float sid_scale[13] = { 0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 ,
                             0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 , 
                             0.5788 };
-    float wscale = 0.0001;
+    float wscale = 0.001;
     
     /* Clear the repartition flag. */
     e->forcerepart = 0;
@@ -234,6 +234,11 @@ void engine_repartition ( struct engine *e ) {
                 if ( weights_e[ cid*26+k ] != weights_e[ j ] )
                     error( "Unsymmetric edge weights detected (%i vs %i)." , weights_e[ cid*26+k ] , weights_e[ j ] );
                 } */
+                
+        /* Make sure there are no zero weights. */
+        for ( k = 0 ; k < 26*nr_cells ; k++ )
+            if ( weights_e[k] == 0 )
+                weigths_e[k] = 1;
     
         /* Allocate and fill the connection array. */
         idx_t *offsets;
