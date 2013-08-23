@@ -33,7 +33,7 @@
 
 #define engine_queue_scale          1.2
 #define engine_maxtaskspercell      32
-#define engine_maxproxies           36
+#define engine_maxproxies           64
 
 
 /* The rank of the engine as a global variable (for messages). */

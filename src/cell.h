@@ -133,7 +133,7 @@ struct cell {
     int nodeID;
     
     /* Bit mask of the proxies this cell is registered with. */
-    unsigned int sendto;
+    unsigned long long int sendto;
     
     /* Pointer to this cell's packed representation. */
     struct pcell *pcell;

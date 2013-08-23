@@ -91,7 +91,7 @@ void engine_repartition ( struct engine *e ) {
     idx_t *inds;
     idx_t *weights_v, *weights_e;
     struct space *s = e->s;
-    int nr_cells = s->nr_cells;
+    int nr_cells = s->nr_cells, my_cells = 0;
     struct cell *cells = s->cells;
     int ind[3], *cdim = s->cdim;
     struct task *t, *tasks = e->sched.tasks;
@@ -254,8 +254,11 @@ void engine_repartition ( struct engine *e ) {
         error( "Failed to bcast the node IDs." );
         
     /* Set the cell nodeIDs and clear any non-local parts. */
-    for ( k = 0 ; k < nr_cells ; k++ )
+    for ( k = 0 ; k < nr_cells ; k++ ) {
         cells[k].nodeID = nodeIDs[k];
+        if ( nodeIDs[k] == nodeID )
+            my_cells += 1;
+        }
         
     /* Clean up. */
     free( inds );
@@ -349,7 +352,7 @@ void engine_repartition ( struct engine *e ) {
     s->size_parts = 2*nr_parts;
     
     /* Be verbose about what just happened. */
-    message( "node %i now has %i parts." , nodeID , nr_parts );
+    message( "node %i now has %i parts in %i cells." , nodeID , nr_parts , my_cells );
     
     /* Clean up other stuff. */
     free( reqs );
@@ -553,7 +556,7 @@ void engine_exchange_cells ( struct engine *e ) {
         }
         
     /* Wait for all the sends to have finnished too. */
-    if ( MPI_Waitall( nr_proxies , reqs_out , &status ) != MPI_SUCCESS )
+    if ( MPI_Waitall( nr_proxies , reqs_out , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
         error( "MPI_Waitall on sends failed." );
         
     /* Count the number of particles we need to import and re-allocate
@@ -677,7 +680,7 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     
     /* Wait for all the sends to have finnished too. */
     if ( nr_out > 0 )
-        if ( MPI_Waitall( e->nr_proxies , reqs_out , &status ) != MPI_SUCCESS )
+        if ( MPI_Waitall( e->nr_proxies , reqs_out , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
             error( "MPI_Waitall on sends failed." );
         
     /* Return the number of harvested parts. */
@@ -1597,6 +1600,8 @@ void engine_makeproxies ( struct engine *e ) {
                             if ( cells[cid].nodeID == e->nodeID && cells[cjd].nodeID != e->nodeID ) {
                                 pid = e->proxy_ind[ cells[cjd].nodeID ];
                                 if ( pid < 0 ) {
+                                    if ( e->nr_proxies == engine_maxproxies )
+                                        error( "Maximum number of proxies exceeded." );
                                     proxy_init( &proxies[ e->nr_proxies ] , e->nodeID , cells[cjd].nodeID );
                                     e->proxy_ind[ cells[cjd].nodeID ] = e->nr_proxies;
                                     pid = e->nr_proxies;
@@ -1604,12 +1609,14 @@ void engine_makeproxies ( struct engine *e ) {
                                     }
                                 proxy_addcell_in( &proxies[pid] , &cells[cjd] );
                                 proxy_addcell_out( &proxies[pid] , &cells[cid] );
-                                cells[cid].sendto |= ( 1 << pid );
+                                cells[cid].sendto |= ( 1ULL << pid );
                                 }
                                 
                             if ( cells[cjd].nodeID == e->nodeID && cells[cid].nodeID != e->nodeID ) {
                                 pid = e->proxy_ind[ cells[cid].nodeID ];
                                 if ( pid < 0 ) {
+                                    if ( e->nr_proxies == engine_maxproxies )
+                                        error( "Maximum number of proxies exceeded." );
                                     proxy_init( &proxies[ e->nr_proxies ] , e->nodeID , cells[cid].nodeID );
                                     e->proxy_ind[ cells[cid].nodeID ] = e->nr_proxies;
                                     pid = e->nr_proxies;
@@ -1617,7 +1624,7 @@ void engine_makeproxies ( struct engine *e ) {
                                     }
                                 proxy_addcell_in( &proxies[pid] , &cells[cid] );
                                 proxy_addcell_out( &proxies[pid] , &cells[cjd] );
-                                cells[cjd].sendto |= ( 1 << pid );
+                                cells[cjd].sendto |= ( 1ULL << pid );
                                 }
                             }
                         }
