@@ -87,7 +87,7 @@ void engine_repartition ( struct engine *e ) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-    int i, j, k, l, cid, cjd, ii, jj, kk, res;
+    int i, j, k, l, cid, cjd, ii, jj, kk, res, w;
     idx_t *inds;
     idx_t *weights_v, *weights_e;
     struct space *s = e->s;
@@ -97,10 +97,7 @@ void engine_repartition ( struct engine *e ) {
     struct task *t, *tasks = e->sched.tasks;
     struct cell *ci, *cj;
     int nr_nodes = e->nr_nodes, nodeID = e->nodeID, *nodeIDs;
-    float sid_scale[13] = { 0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 ,
-                            0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 , 
-                            0.5788 };
-    float wscale = 0.001;
+    float wscale = 0.01;
     
     /* Clear the repartition flag. */
     e->forcerepart = 0;
@@ -141,11 +138,7 @@ void engine_repartition ( struct engine *e ) {
         
     /* Init the weights arrays. */
     bzero( weights_e , sizeof(idx_t) * 26*nr_cells );
-    for ( k = 0 ; k < nr_cells ; k++ )
-        if ( cells[k].nodeID == nodeID )
-            weights_v[k] = 10.0 * cells[k].count;
-        else
-            weights_v[k] = 0.0;
+    bzero( weights_v , sizeof(idx_t) * nr_cells );
     
     /* Loop over the tasks... */
     for ( j = 0 ; j < e->sched.nr_tasks ; j++ ) {
@@ -156,8 +149,16 @@ void engine_repartition ( struct engine *e ) {
         /* Skip un-interesting tasks. */
         if ( t->type != task_type_self &&
              t->type != task_type_pair &&
-             t->type != task_type_sub )
+             t->type != task_type_sub &&
+             t->type != task_type_ghost &&
+             t->type != task_type_kick1 &&
+             t->type != task_type_kick2 )
             continue;
+            
+        /* Get the task weight. */
+        w = ( t->toc - t->tic ) * wscale;
+        if ( w < 0 )
+            error( "Bad task weight (%i)." , w );
         
         /* Get the top-level cells involved. */
         for ( ci = t->ci ; ci->parent != NULL ; ci = ci->parent );
@@ -170,11 +171,21 @@ void engine_repartition ( struct engine *e ) {
         cid = ci - cells;
             
         /* Different weights for different tasks. */
-        if ( ( t->type == task_type_self && ci->nodeID == nodeID ) ||
+        if ( t->type == task_type_ghost ||
+             t->type == task_type_kick1 || 
+             t->type == task_type_kick2 ) {
+             
+            /* Particle updates add only to vertex weight. */
+            weights_v[cid] += w;
+            
+            }
+        
+        /* Self interaction? */     
+        else if ( ( t->type == task_type_self && ci->nodeID == nodeID ) ||
              ( t->type == task_type_sub && cj == NULL && ci->nodeID == nodeID ) ) {
         
             /* Self interactions add only to vertex weight. */
-            weights_v[cid] += t->ci->count * t->ci->count * wscale;
+            weights_v[cid] += w;
             
             }
             
@@ -186,7 +197,7 @@ void engine_repartition ( struct engine *e ) {
             if ( ci == cj ) {
             
                 /* Add weight to vertex for ci. */
-                weights_v[cid] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                weights_v[cid] += w;
             
                 }
                 
@@ -198,15 +209,15 @@ void engine_repartition ( struct engine *e ) {
                 
                 /* Add half of weight to each cell. */
                 if ( ci->nodeID == nodeID )
-                    weights_v[cid] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                    weights_v[cid] += 0.5 * w;
                 if ( cj->nodeID == nodeID )
-                    weights_v[cjd] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                    weights_v[cjd] += 0.5 * w;
                     
                 /* Add Weight to edge. */
                 for ( k = 26*cid ; inds[k] != cjd ; k++ );
-                weights_e[ k ] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                weights_e[ k ] += w;
                 for ( k = 26*cjd ; inds[k] != cid ; k++ );
-                weights_e[ k ] += t->ci->count * t->cj->count * sid_scale[ t->flags ] * wscale;
+                weights_e[ k ] += w;
             
                 }
                   
@@ -234,6 +245,20 @@ void engine_repartition ( struct engine *e ) {
                 if ( weights_e[ cid*26+k ] != weights_e[ j ] )
                     error( "Unsymmetric edge weights detected (%i vs %i)." , weights_e[ cid*26+k ] , weights_e[ j ] );
                 } */
+        int w_min = weights_e[0], w_max = weights_e[0];
+        for ( k = 1 ; k < 26*nr_cells ; k++ )
+            if ( weights_e[k] < w_min )
+                w_min = weights_e[k];
+            else if ( weights_e[k] > w_max )
+                w_max = weights_e[k];
+        message( "edge weights in [ %i , %i ]." , w_min , w_max );
+        w_min = weights_e[0], w_max = weights_e[0];
+        for ( k = 1 ; k < nr_cells ; k++ )
+            if ( weights_v[k] < w_min )
+                w_min = weights_v[k];
+            else if ( weights_v[k] > w_max )
+                w_max = weights_v[k];
+        message( "vertex weights in [ %i , %i ]." , w_min , w_max );
                 
         /* Make sure there are no zero weights. */
         for ( k = 0 ; k < 26*nr_cells ; k++ )
