@@ -245,7 +245,7 @@ void engine_repartition ( struct engine *e ) {
                 if ( weights_e[ cid*26+k ] != weights_e[ j ] )
                     error( "Unsymmetric edge weights detected (%i vs %i)." , weights_e[ cid*26+k ] , weights_e[ j ] );
                 } */
-        int w_min = weights_e[0], w_max = weights_e[0];
+        /* int w_min = weights_e[0], w_max = weights_e[0];
         for ( k = 1 ; k < 26*nr_cells ; k++ )
             if ( weights_e[k] < w_min )
                 w_min = weights_e[k];
@@ -258,7 +258,7 @@ void engine_repartition ( struct engine *e ) {
                 w_min = weights_v[k];
             else if ( weights_v[k] > w_max )
                 w_max = weights_v[k];
-        message( "vertex weights in [ %i , %i ]." , w_min , w_max );
+        message( "vertex weights in [ %i , %i ]." , w_min , w_max ); */
                 
         /* Make sure there are no zero weights. */
         for ( k = 0 ; k < 26*nr_cells ; k++ )
