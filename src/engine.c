@@ -1557,13 +1557,16 @@ void engine_makeproxies ( struct engine *e ) {
     struct proxy *proxies = e->proxies;
     
     /* Prepare the proxies and the proxy index. */
-    if ( e->proxy_ind != NULL )
-        free( e->proxy_ind );
-    if ( ( e->proxy_ind = (int *)malloc( sizeof(int) * e->nr_nodes ) ) == NULL )
-        error( "Failed to allocate proxy index." );
+    if ( e->proxy_ind == NULL )
+        if ( ( e->proxy_ind = (int *)malloc( sizeof(int) * e->nr_nodes ) ) == NULL )
+            error( "Failed to allocate proxy index." );
     for ( k = 0 ; k < e->nr_nodes ; k++ )
         e->proxy_ind[k] = -1;
     e->nr_proxies = 0;
+    
+    /* The following loop is super-clunky, but it's necessary
+       to ensure that the order of the send and recv cells in
+       the proxies is identical for all nodes! */
     
     /* Loop over each cell in the space. */
     for ( ind[0] = 0 ; ind[0] < cdim[0] ; ind[0]++ )
@@ -1750,7 +1753,7 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
             e->policy |= engine_policy_mpi;
             if ( ( e->proxies = (struct proxy *)malloc( sizeof(struct proxy) * engine_maxproxies ) ) == NULL )
                 error( "Failed to allocate memory for proxies." );
-            bzero( e->proxies , sizeof(struct proxy) * 26 );
+            bzero( e->proxies , sizeof(struct proxy) * engine_maxproxies );
             e->nr_proxies = 0;
         #endif
         }
