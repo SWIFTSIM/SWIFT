@@ -227,13 +227,13 @@ void engine_repartition ( struct engine *e ) {
     if ( nodeID == 0 ) {
     
         /* Check that the edge weights are fully symmetric. */
-        for ( cid = 0 ; cid < nr_cells ; cid++ )
+        /* for ( cid = 0 ; cid < nr_cells ; cid++ )
             for ( k = 0 ; k < 26 ; k++ ) {
                 cjd = inds[ cid*26 + k ];
                 for ( j = 26*cjd ; inds[j] != cid ; j++ );
                 if ( weights_e[ cid*26+k ] != weights_e[ j ] )
                     error( "Unsymmetric edge weights detected (%i vs %i)." , weights_e[ cid*26+k ] , weights_e[ j ] );
-                }
+                } */
     
         /* Allocate and fill the connection array. */
         idx_t *offsets;
@@ -250,6 +250,10 @@ void engine_repartition ( struct engine *e ) {
         options[ METIS_OPTION_NUMBERING ] = 0;
         options[ METIS_OPTION_CONTIG ] = 1;
         
+        /* Set the initial partition, although this is probably ignored. */
+        for ( k = 0 ; k < nr_cells ; k++ )
+            nodeIDs[k] = cells[k].nodeID;
+            
         /* Call METIS. */
         int one = 1;
         idx_t objval;
