@@ -238,7 +238,7 @@ void engine_repartition ( struct engine *e ) {
         /* Make sure there are no zero weights. */
         for ( k = 0 ; k < 26*nr_cells ; k++ )
             if ( weights_e[k] == 0 )
-                weigths_e[k] = 1;
+                weights_e[k] = 1;
     
         /* Allocate and fill the connection array. */
         idx_t *offsets;
