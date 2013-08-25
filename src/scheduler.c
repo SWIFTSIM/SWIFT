@@ -667,11 +667,12 @@ void scheduler_reweight ( struct scheduler *s ) {
                 case task_type_kick2:
                     t->weight += t->ci->count;
                     break;
-                case task_type_send_xv:
-                case task_type_send_rho:
-                    t->weight *= 2;
                     break;
                 }
+        if ( t->type == task_type_send_xv || t->type == task_type_send_rho )
+            t->weight *= 10;
+        if ( t->type == task_type_recv_xv || t->type == task_type_recv_rho )
+            t->weight *= 2;
         }
     // message( "weighting tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         

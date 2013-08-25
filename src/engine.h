@@ -112,3 +112,4 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
 void engine_rebuild ( struct engine *e );
 void engine_repartition ( struct engine *e );
 void engine_makeproxies ( struct engine *e );
+void engine_redistribute ( struct engine *e );
