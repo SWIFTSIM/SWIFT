@@ -115,11 +115,11 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     r.v = vec_sqrt( vec_load( R2 ) );
     ri.v = vec_rcp( r.v );
     #if VEC_SIZE==8
-        mi.v = vec_set( pi[7]->mass , pi[6]->mass , pi[5]->mass , pi[4]->mass , pi[3]->mass , pi[2]->mass , pi[1]->mass , pi[0]->mass );
-        mj.v = vec_set( pj[7]->mass , pj[6]->mass , pj[5]->mass , pj[4]->mass , pj[3]->mass , pj[2]->mass , pj[1]->mass , pj[0]->mass );
+        mi.v = vec_set( pi[0]->mass , pi[1]->mass , pi[2]->mass , pi[3]->mass , pi[4]->mass , pi[5]->mass , pi[6]->mass , pi[7]->mass );
+        mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass , pj[4]->mass , pj[5]->mass , pj[6]->mass , pj[7]->mass );
         for ( k = 0 ; k < 3 ; k++ ) {
-            vi[k].v = vec_set( pi[7]->v[k] , pi[6]->v[k] , pi[5]->v[k] , pi[4]->v[k] , pi[3]->v[k] , pi[2]->v[k] , pi[1]->v[k] , pi[0]->v[k] );
-            vj[k].v = vec_set( pj[7]->v[k] , pj[6]->v[k] , pj[5]->v[k] , pj[4]->v[k] , pj[3]->v[k] , pj[2]->v[k] , pj[1]->v[k] , pj[0]->v[k] );
+            vi[k].v = vec_set( pi[0]->v[k] , pi[1]->v[k] , pi[2]->v[k] , pi[3]->v[k] , pi[4]->v[k] , pi[5]->v[k] , pi[6]->v[k] , pi[7]->v[k] );
+            vj[k].v = vec_set( pj[0]->v[k] , pj[1]->v[k] , pj[2]->v[k] , pj[3]->v[k] , pj[4]->v[k] , pj[5]->v[k] , pj[6]->v[k] , pj[7]->v[k] );
             }
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] , Dx[12+k] , Dx[15+k] , Dx[18+k] , Dx[21+k] );
@@ -486,8 +486,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
             dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] , Dx[12+k] , Dx[15+k] , Dx[18+k] , Dx[21+k] );
         balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara , pi[4]->force.balsara , pi[5]->force.balsara , pi[6]->force.balsara , pi[7]->force.balsara ) + 
 	            vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara , pj[4]->force.balsara , pj[5]->force.balsara , pj[6]->force.balsara , pj[7]->force.balsara );
-	pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha, pi[4]->alpha, pi[5]->alpha , pi[6]->alpha, pi[7]->alpha );
-	pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha, pj[4]->alpha, pj[5]->alpha , pj[6]->alpha, pj[7]->alpha );
+	    pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha, pi[4]->alpha, pi[5]->alpha , pi[6]->alpha, pi[7]->alpha );
+	    pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha, pj[4]->alpha, pj[5]->alpha , pj[6]->alpha, pj[7]->alpha );
     #elif VEC_SIZE==4
         mi.v = vec_set( pi[0]->mass , pi[1]->mass , pi[2]->mass , pi[3]->mass );
         mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass );
@@ -509,8 +509,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_force ( float
             dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
         balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara ) +
                     vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara );
-	pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha );
-	pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha );
+	    pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha );
+	    pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha );
     #else
         #error
     #endif
@@ -746,8 +746,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
             dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] , Dx[12+k] , Dx[15+k] , Dx[18+k] , Dx[21+k] );
         balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara , pi[4]->force.balsara , pi[5]->force.balsara , pi[6]->force.balsara , pi[7]->force.balsara ) +
                     vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara , pj[4]->force.balsara , pj[5]->force.balsara , pj[6]->force.balsara , pj[7]->force.balsara );
-	pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha, pi[4]->alpha, pi[5]->alpha , pi[6]->alpha, pi[7]->alpha );
-	pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha, pj[4]->alpha, pj[5]->alpha , pj[6]->alpha, pj[7]->alpha );
+	    pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha, pi[4]->alpha, pi[5]->alpha , pi[6]->alpha, pi[7]->alpha );
+	    pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha, pj[4]->alpha, pj[5]->alpha , pj[6]->alpha, pj[7]->alpha );
     #elif VEC_SIZE==4
         mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass );
         piPOrho2.v = vec_set( pi[0]->force.POrho2 , pi[1]->force.POrho2 , pi[2]->force.POrho2 , pi[3]->force.POrho2 );
@@ -768,8 +768,8 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_force 
             dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
         balsara.v = vec_set( pi[0]->force.balsara , pi[1]->force.balsara , pi[2]->force.balsara , pi[3]->force.balsara ) +
                     vec_set( pj[0]->force.balsara , pj[1]->force.balsara , pj[2]->force.balsara , pj[3]->force.balsara );
-	pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha );
-	pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha );
+	    pialpha.v = vec_set( pi[0]->alpha, pi[1]->alpha, pi[2]->alpha, pi[3]->alpha );
+	    pjalpha.v = vec_set( pj[0]->alpha, pj[1]->alpha, pj[2]->alpha, pj[3]->alpha );
     #else
         #error
     #endif
