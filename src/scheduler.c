@@ -282,8 +282,8 @@ void scheduler_splittasks ( struct scheduler *s ) {
                 
             /* Should this task be split-up? */
             if ( ci->split && cj->split &&
-                 ci->h_max*kernel_gamma*space_stretch < hi &&
-                 cj->h_max*kernel_gamma*space_stretch < hj ) {
+                 ci->h_max*kernel_gamma*space_stretch < hi/2 &&
+                 cj->h_max*kernel_gamma*space_stretch < hj/2 ) {
                  
                 /* Replace by a single sub-task? */
                 if ( scheduler_dosub &&
