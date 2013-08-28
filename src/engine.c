@@ -100,7 +100,7 @@ void engine_redistribute ( struct engine *e ) {
        getting the counts. */
     int *counts, *dest;
     struct part *parts = s->parts;
-    float ih[3];
+    double ih[3];
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     if ( ( counts = (int *)malloc( sizeof(int) * nr_nodes * nr_nodes ) ) == NULL ||
          ( dest = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
@@ -156,7 +156,7 @@ void engine_redistribute ( struct engine *e ) {
             }
         }
         
-    /* Wait for all the recvs to tumble in. */
+    /* Wait for all the sends and recvs to tumble in. */
     if ( MPI_Waitall( 4*nr_nodes , reqs , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
         error( "Failed during waitall for part data." );
         
