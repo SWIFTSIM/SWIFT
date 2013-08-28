@@ -94,6 +94,7 @@ void engine_redistribute ( struct engine *e ) {
     int my_cells = 0;
     int *cdim = s->cdim;
     struct cell *cells = s->cells;
+    int nr_cells = s->nr_cells;
 
     /* Start by sorting the particles according to their nodes and
        getting the counts. */
@@ -175,6 +176,9 @@ void engine_redistribute ( struct engine *e ) {
     s->size_parts = 2*nr_parts;
     
     /* Be verbose about what just happened. */
+    for ( k = 0 ; k < nr_cells ; k++ )
+        if ( cells[k].nodeID == nodeID )
+            my_cells += 1;
     message( "node %i now has %i parts in %i cells." , nodeID , nr_parts , my_cells );
     
     /* Clean up other stuff. */
@@ -249,8 +253,12 @@ void engine_repartition ( struct engine *e ) {
         }
         
     /* Init the weights arrays. */
-    bzero( weights_e , sizeof(idx_t) * 26*nr_cells );
-    bzero( weights_v , sizeof(idx_t) * nr_cells );
+    /* bzero( weights_e , sizeof(idx_t) * 26*nr_cells );
+    bzero( weights_v , sizeof(idx_t) * nr_cells ); */
+    for ( k = 0 ; k < 26*nr_nodes ; k++ )
+        weights_e[k] = 1;
+    for ( k = 0 ; k < nr_nodes ; k++ )
+        weights_v[k] = 1;
     
     /* Loop over the tasks... */
     for ( j = 0 ; j < e->sched.nr_tasks ; j++ ) {
