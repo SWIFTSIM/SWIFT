@@ -621,6 +621,7 @@ void scheduler_reweight ( struct scheduler *s ) {
     float sid_scale[13] = { 0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 ,
                             0.1897 , 0.4025 , 0.1897 , 0.4025 , 0.5788 , 0.4025 , 
                             0.5788 };
+    float wscale = 0.001;
     // ticks tic;
     
     /* Run throught the tasks backwards and set their waits and
@@ -638,34 +639,34 @@ void scheduler_reweight ( struct scheduler *s ) {
         else
             switch ( t->type ) {
                 case task_type_sort:
-                    t->weight += __builtin_popcount( t->flags ) * t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
+                    t->weight += wscale * __builtin_popcount( t->flags ) * t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
                     break;
                 case task_type_self:
                     t->weight += 10 * t->ci->count * t->ci->count;
                     break;
                 case task_type_pair:
                     if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID )
-                        t->weight += 30 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                        t->weight += 30 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     else
-                        t->weight += 20 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                        t->weight += 20 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     break;
                 case task_type_sub:
                     if ( t->cj != NULL ) {
                         if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID )
-                            t->weight += 30 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                            t->weight += 30 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                         else
-                            t->weight += 20 * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                            t->weight += 20 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                         }
                     else
-                        t->weight += 10 * t->ci->count * t->ci->count;
+                        t->weight += 10 * wscale * t->ci->count * t->ci->count;
                     break;
                 case task_type_ghost:
                     if ( t->ci == t->ci->super )
-                        t->weight += t->ci->count;
+                        t->weight += wscale * t->ci->count;
                     break;
                 case task_type_kick1:
                 case task_type_kick2:
-                    t->weight += t->ci->count;
+                    t->weight += wscale * t->ci->count;
                     break;
                     break;
                 }
