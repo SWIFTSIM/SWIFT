@@ -743,7 +743,7 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     
     /* Wait for each part array to come in and collect the new
        parts from the proxies. */
-    for ( k = 0 ; k < nr_in ; k++ ) {
+    for ( k = 0 ; k < 2*(nr_in + nr_out) ; k++ ) {
         if ( MPI_Waitany( 2*e->nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
              pid == MPI_UNDEFINED )
             error( "MPI_Waitany failed." );

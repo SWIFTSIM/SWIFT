@@ -176,7 +176,7 @@ int cell_pack ( struct cell *c , struct pcell *pc ) {
     pc->dt_min = c->dt_min;
     pc->dt_max = c->dt_max;
     pc->count = c->count;
-    c->tag = pc->tag = rand() % (1 << 24);
+    c->tag = pc->tag = ( ((long long int)c) / sizeof(struct cell) ) % (1 << 30);
     
     /* Fill in the progeny, depth-first recursion. */
     for ( k = 0 ; k < 8 ; k++ )
