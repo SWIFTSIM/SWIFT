@@ -255,9 +255,9 @@ void engine_repartition ( struct engine *e ) {
     /* Init the weights arrays. */
     /* bzero( weights_e , sizeof(idx_t) * 26*nr_cells );
     bzero( weights_v , sizeof(idx_t) * nr_cells ); */
-    for ( k = 0 ; k < 26*nr_nodes ; k++ )
+    for ( k = 0 ; k < 26*nr_cells ; k++ )
         weights_e[k] = 1;
-    for ( k = 0 ; k < nr_nodes ; k++ )
+    for ( k = 0 ; k < nr_cells ; k++ )
         weights_v[k] = 1;
     
     /* Loop over the tasks... */
