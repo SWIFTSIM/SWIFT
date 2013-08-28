@@ -635,7 +635,7 @@ void scheduler_reweight ( struct scheduler *s ) {
             if ( t->unlock_tasks[j]->weight > t->weight )
                 t->weight = t->unlock_tasks[j]->weight;
         if ( !t->implicit && t->tic > 0 )
-            t->weight += t->toc - t->tic;
+            t->weight += wscale * (t->toc - t->tic);
         else
             switch ( t->type ) {
                 case task_type_sort:

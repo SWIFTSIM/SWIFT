@@ -74,7 +74,6 @@ void proxy_cells_exch1 ( struct proxy *p ) {
     /* Send the number of pcells. */
     if ( MPI_Isend( &p->size_pcells_out , 1 , MPI_INT , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_count , MPI_COMM_WORLD , &p->req_cells_count_out ) != MPI_SUCCESS )
         error( "Failed to isend nr of pcells." );
-    MPI_Request_free( &p->req_cells_count_out );
     // message( "isent pcell count (%i) from node %i to node %i." , p->size_pcells_out , p->mynodeID , p->nodeID ); fflush(stdout);
     
     /* Allocate and fill the pcell buffer. */
@@ -207,7 +206,6 @@ void proxy_parts_exch1 ( struct proxy *p ) {
     /* Send the number of particles. */
     if ( MPI_Isend( &p->nr_parts_out , 1 , MPI_INT , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_count , MPI_COMM_WORLD , &p->req_parts_count_out ) != MPI_SUCCESS )
         error( "Failed to isend nr of parts." );
-    MPI_Request_free( &p->req_parts_count_out );
     // message( "isent particle count (%i) from node %i to node %i." , p->nr_parts_out , p->mynodeID , p->nodeID ); fflush(stdout);
     
     /* Send the particle buffers. */
@@ -215,7 +213,6 @@ void proxy_parts_exch1 ( struct proxy *p ) {
         if ( MPI_Isend( p->parts_out , sizeof(struct part)*p->nr_parts_out , MPI_BYTE , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_parts , MPI_COMM_WORLD , &p->req_parts_out ) != MPI_SUCCESS ||
              MPI_Isend( p->xparts_out , sizeof(struct xpart)*p->nr_parts_out , MPI_BYTE , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_xparts , MPI_COMM_WORLD , &p->req_xparts_out ) != MPI_SUCCESS )
             error( "Failed to isend part data." );
-        MPI_Request_free( &p->req_parts_out );
         // message( "isent particle data (%i) to node %i." , p->nr_parts_out , p->nodeID ); fflush(stdout);
         /* for ( int k = 0 ; k < p->nr_parts_out ; k++ )
             message( "sending particle %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i." ,

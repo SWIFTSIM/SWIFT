@@ -595,6 +595,7 @@ void engine_exchange_cells ( struct engine *e ) {
     for ( k = 0 ; k < nr_proxies ; k++ ) {
         proxy_cells_exch1( &e->proxies[k] );
         reqs_in[k] = e->proxies[k].req_cells_count_in;
+        reqs_out[k] = e->proxies[k].req_cells_count_out;
         }
         
     /* Wait for each count to come in and start the recv. */
@@ -605,6 +606,10 @@ void engine_exchange_cells ( struct engine *e ) {
         // message( "request from proxy %i has arrived." , pid );
         proxy_cells_exch2( &e->proxies[pid] );
         }
+        
+    /* Wait for all the sends to have finnished too. */
+    if ( MPI_Waitall( nr_proxies , reqs_out , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
+        error( "MPI_Waitall on sends failed." );
         
     /* Set the requests for the cells. */
     for ( k = 0 ; k < nr_proxies ; k++ ) {
@@ -680,8 +685,8 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
 #ifdef WITH_MPI
 
     int k, pid, count = 0, nr_in = 0, nr_out = 0;
-    MPI_Request reqs_in[ engine_maxproxies ];
-    MPI_Request reqs_out[ engine_maxproxies ];
+    MPI_Request reqs_in[ 2*engine_maxproxies ];
+    MPI_Request reqs_out[ 2*engine_maxproxies ];
     MPI_Status status;
     struct proxy *p;
 
@@ -701,6 +706,7 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     for ( k = 0 ; k < e->nr_proxies ; k++ ) {
         proxy_parts_exch1( &e->proxies[k] );
         reqs_in[k] = e->proxies[k].req_parts_count_in;
+        reqs_out[k] = e->proxies[k].req_parts_count_out;
         }
         
     /* Wait for each count to come in and start the recv. */
@@ -712,42 +718,52 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
         proxy_parts_exch2( &e->proxies[pid] );
         }
         
+    /* Wait for all the sends to have finnished too. */
+    if ( MPI_Waitall( e->nr_proxies , reqs_out , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
+        error( "MPI_Waitall on sends failed." );
+        
+    /* Return the number of harvested parts. */
     /* Set the requests for the particle data. */
     for ( k = 0 ; k < e->nr_proxies ; k++ ) {
         if ( e->proxies[k].nr_parts_in > 0 ) {
-            reqs_in[k] = e->proxies[k].req_xparts_in;
+            reqs_in[2*k] = e->proxies[k].req_parts_in;
+            reqs_in[2*k+1] = e->proxies[k].req_xparts_in;
             nr_in += 1;
             }
         else
-            reqs_in[k] = MPI_REQUEST_NULL;
+            reqs_in[2*k] = reqs_in[2*k+1] = MPI_REQUEST_NULL;
         if ( e->proxies[k].nr_parts_out > 0 ) {
-            reqs_out[k] = e->proxies[k].req_xparts_out;
+            reqs_out[2*k] = e->proxies[k].req_parts_out;
+            reqs_out[2*k+1] = e->proxies[k].req_xparts_out;
             nr_out += 1;
             }
         else
-            reqs_out[k] = MPI_REQUEST_NULL;
+            reqs_out[2*k] = reqs_out[2*k+1] = MPI_REQUEST_NULL;
         }
     
     /* Wait for each part array to come in and collect the new
        parts from the proxies. */
     for ( k = 0 ; k < nr_in ; k++ ) {
-        if ( MPI_Waitany( e->nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
+        if ( MPI_Waitany( 2*e->nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS ||
              pid == MPI_UNDEFINED )
             error( "MPI_Waitany failed." );
         // message( "request from proxy %i has arrived." , pid );
-        p = &e->proxies[pid];
-        memcpy( &parts[count] , p->parts_in , sizeof(struct part) * p->nr_parts_in );
-        memcpy( &xparts[count] , p->xparts_in , sizeof(struct xpart) * p->nr_parts_in );
-        count += p->nr_parts_in;
-        /* for ( int k = 0 ; k < p->nr_parts_in ; k++ )
-            message( "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i." ,
-                p->parts_in[k].id , p->parts_in[k].x[0] , p->parts_in[k].x[1] , p->parts_in[k].x[2] ,
-                p->parts_in[k].h , p->nodeID ); */
+        if ( reqs_in[pid & ~1] == MPI_REQUEST_NULL &&
+             reqs_in[pid | 1 ] == MPI_REQUEST_NULL ) {
+            p = &e->proxies[pid/2];
+            memcpy( &parts[count] , p->parts_in , sizeof(struct part) * p->nr_parts_in );
+            memcpy( &xparts[count] , p->xparts_in , sizeof(struct xpart) * p->nr_parts_in );
+            count += p->nr_parts_in;
+            /* for ( int k = 0 ; k < p->nr_parts_in ; k++ )
+                message( "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i." ,
+                    p->parts_in[k].id , p->parts_in[k].x[0] , p->parts_in[k].x[1] , p->parts_in[k].x[2] ,
+                    p->parts_in[k].h , p->nodeID ); */
+            }
         }
     
     /* Wait for all the sends to have finnished too. */
     if ( nr_out > 0 )
-        if ( MPI_Waitall( e->nr_proxies , reqs_out , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
+        if ( MPI_Waitall( 2*e->nr_proxies , reqs_out , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
             error( "MPI_Waitall on sends failed." );
         
     /* Return the number of harvested parts. */
