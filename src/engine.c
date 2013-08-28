@@ -141,16 +141,16 @@ void engine_redistribute ( struct engine *e ) {
             j += counts[ k*nr_nodes + nodeID ];
             }
         if ( k != nodeID && counts[ nodeID*nr_nodes + k ] > 0 ) {
-            if ( MPI_Isend( &parts[i] , sizeof(struct part) * counts[ nodeID*nr_nodes + k ] , MPI_BYTE , k , 0 , MPI_COMM_WORLD , &reqs[4*k] ) != MPI_SUCCESS )
+            if ( MPI_Isend( &parts[i] , sizeof(struct part) * counts[ nodeID*nr_nodes + k ] , MPI_BYTE , k , 2*(nodeID*nr_nodes + k) + 0 , MPI_COMM_WORLD , &reqs[4*k] ) != MPI_SUCCESS )
                 error( "Failed to isend parts to node %i." , k );
-            if ( MPI_Isend( &xparts[i] , sizeof(struct xpart) * counts[ nodeID*nr_nodes + k ] , MPI_BYTE , k , 1 , MPI_COMM_WORLD , &reqs[4*k+1] ) != MPI_SUCCESS )
+            if ( MPI_Isend( &xparts[i] , sizeof(struct xpart) * counts[ nodeID*nr_nodes + k ] , MPI_BYTE , k , 2*(nodeID*nr_nodes + k) + 1 , MPI_COMM_WORLD , &reqs[4*k+1] ) != MPI_SUCCESS )
                 error( "Failed to isend xparts to node %i." , k );
             i += counts[ nodeID*nr_nodes + k ];
             }
         if ( k != nodeID && counts[ k*nr_nodes + nodeID ] > 0 ) {
-            if ( MPI_Irecv( &parts_new[j] , sizeof(struct part) * counts[ k*nr_nodes + nodeID ] , MPI_BYTE , k , 0 , MPI_COMM_WORLD , &reqs[4*k+2] ) != MPI_SUCCESS )
+            if ( MPI_Irecv( &parts_new[j] , sizeof(struct part) * counts[ k*nr_nodes + nodeID ] , MPI_BYTE , k , 2*(k*nr_nodes + nodeID) + 0 , MPI_COMM_WORLD , &reqs[4*k+2] ) != MPI_SUCCESS )
                 error( "Failed to emit irecv of parts from node %i." , k );
-            if ( MPI_Irecv( &xparts_new[j] , sizeof(struct xpart) * counts[ k*nr_nodes + nodeID ] , MPI_BYTE , k , 1 , MPI_COMM_WORLD , &reqs[4*k+3] ) != MPI_SUCCESS )
+            if ( MPI_Irecv( &xparts_new[j] , sizeof(struct xpart) * counts[ k*nr_nodes + nodeID ] , MPI_BYTE , k , 2*(k*nr_nodes + nodeID) + 1 , MPI_COMM_WORLD , &reqs[4*k+3] ) != MPI_SUCCESS )
                 error( "Failed to emit irecv of parts from node %i." , k );
             j += counts[ k*nr_nodes + nodeID ];
             }
