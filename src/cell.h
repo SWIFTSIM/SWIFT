@@ -30,9 +30,12 @@ struct pcell {
     /* Number of particles in this cell. */
     int count;
     
+    /* tag used for MPI communication. */
+    int tag;
+
     /* Relative indices of the cell's progeny. */
     int progeny[8];
-
+    
     };
 
 
@@ -138,6 +141,7 @@ struct cell {
     /* Pointer to this cell's packed representation. */
     struct pcell *pcell;
     int pcell_size;
+    int tag;
     
     } __attribute__((aligned (64)));
 

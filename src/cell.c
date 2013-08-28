@@ -94,6 +94,7 @@ int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s ) {
     c->dt_min = pc->dt_min;
     c->dt_max = pc->dt_max;
     c->count = pc->count;
+    c->tag = pc->tag;
     
     /* Fill the progeny recursively, depth-first. */
     for ( k = 0 ; k < 8 ; k++ )
@@ -175,6 +176,7 @@ int cell_pack ( struct cell *c , struct pcell *pc ) {
     pc->dt_min = c->dt_min;
     pc->dt_max = c->dt_max;
     pc->count = c->count;
+    c->tag = pc->tag = rand() % (1 << 24);
     
     /* Fill in the progeny, depth-first recursion. */
     for ( k = 0 ; k < 8 ; k++ )

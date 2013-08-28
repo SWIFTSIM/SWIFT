@@ -462,7 +462,7 @@ void engine_repartition ( struct engine *e ) {
 
 void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj ) {
 
-    int k, tag;
+    int k;
 
     /* Check if any of the density tasks are for the target node. */
     for ( k = 0 ; k < ci->nr_density ; k++ )
@@ -473,15 +473,9 @@ void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj
     /* If so, attach send tasks. */
     if ( k < ci->nr_density ) {
 
-        /* Compute the cell's tag. */
-        tag = (int)( ci->loc[0] / e->s->dim[0] * 512 ) +
-              ((int)( ci->loc[1] / e->s->dim[1] * 512 ) << 9 ) +
-              ((int)( ci->loc[2] / e->s->dim[2] * 512 ) << 18 );
-        tag = tag*2;
-
         /* Create the tasks. */
-        struct task *t_xv = scheduler_addtask( &e->sched , task_type_send_xv , task_subtype_none , tag , 0 , ci , cj , 0 );
-        struct task *t_rho = scheduler_addtask( &e->sched , task_type_send_rho , task_subtype_none , tag + 1 , 0 , ci , cj , 0 );
+        struct task *t_xv = scheduler_addtask( &e->sched , task_type_send_xv , task_subtype_none , 2*ci->tag , 0 , ci , cj , 0 );
+        struct task *t_rho = scheduler_addtask( &e->sched , task_type_send_rho , task_subtype_none , 2*ci->tag + 1 , 0 , ci , cj , 0 );
 
         /* The send_rho task depends on the cell's ghost task. */
         task_addunlock( ci->ghost , t_rho );
@@ -514,20 +508,14 @@ void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj
 
 void engine_addtasks_recv ( struct engine *e , struct cell *c , struct task *t_xv , struct task *t_rho ) {
 
-    int k, tag;
+    int k;
 
     /* Do we need to construct a recv task? */
     if ( t_xv != NULL || c->nr_density > 0 ) {
     
-        /* Compute the cell's tag. */
-        tag = (int)( c->loc[0] / e->s->dim[0] * 512 ) +
-              ((int)( c->loc[1] / e->s->dim[1] * 512 ) << 9 ) +
-              ((int)( c->loc[2] / e->s->dim[2] * 512 ) << 18 );
-        tag = tag*2;
-        
         /* Create the tasks. */
-        c->recv_xv = scheduler_addtask( &e->sched , task_type_recv_xv , task_subtype_none , tag , 0 , c , NULL , 0 );
-        c->recv_rho = scheduler_addtask( &e->sched , task_type_recv_rho , task_subtype_none , tag + 1 , 0 , c , NULL , 0 );
+        c->recv_xv = scheduler_addtask( &e->sched , task_type_recv_xv , task_subtype_none , 2*c->tag , 0 , c , NULL , 0 );
+        c->recv_rho = scheduler_addtask( &e->sched , task_type_recv_rho , task_subtype_none , 2*c->tag + 1 , 0 , c , NULL , 0 );
         
         /* If there has been a higher-up recv task, then these tasks
            are implicit and depend on the higher-up task. */
