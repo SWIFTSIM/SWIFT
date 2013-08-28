@@ -507,11 +507,11 @@ void space_rebuild ( struct space *s , double cell_max ) {
 void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N , int min , int max ) {
 
     struct qstack {
-        int i, j, min, max;
+        volatile int i, j, min, max;
         volatile int ready;
         };
     struct qstack *qstack;
-    int qstack_size = (max-min)/2 + 1;
+    int qstack_size = (max-min)/2 + 10;
     volatile unsigned int first, last, waiting;
     
     int pivot;
