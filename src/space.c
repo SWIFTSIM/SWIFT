@@ -53,6 +53,7 @@
 /* Split size. */
 int space_splitsize = space_splitsize_default;
 int space_subsize = space_subsize_default;
+int space_maxsize = space_maxsize_default;
 
 /* Map shift vector to sortlist. */
 const int sortlistID[27] = {

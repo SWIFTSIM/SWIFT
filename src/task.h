@@ -20,7 +20,7 @@
 
 /* Some constants. */
 #define task_maxwait                    3
-#define task_maxunlock                  46
+#define task_maxunlock                  64
 
 
 /* The different task types. */

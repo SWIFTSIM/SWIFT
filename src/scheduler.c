@@ -425,6 +425,25 @@ void scheduler_splittasks ( struct scheduler *s ) {
 
                 } /* split this task? */
                 
+            /* Otherwise, break it up if it is too large? */
+            else if ( scheduler_doforcesplit && ci->split && cj->split &&
+                      ( ci->count > space_maxsize && cj->count > space_maxsize ) ) {
+                      
+                message( "force splitting pair with %i and %i parts." , ci->count , cj->count );
+                      
+                /* Replace the current task. */
+                t->type = task_type_none;
+                
+                for ( j = 0 ; j < 8 ; j++ )
+                    if ( ci->progeny[j] != NULL )
+                        for ( k = 0 ; k < 8 ; k++ )
+                            if ( cj->progeny[k] != NULL ) {
+                                t = scheduler_addtask( s , task_type_pair , t->subtype , 0 , 0 , ci->progeny[j] , cj->progeny[k] , 0 );
+                                t->flags = space_getsid( s->space , &t->ci , &t->cj , shift );
+                                }
+                      
+                }
+                
             /* Otherwise, if not spilt, stitch-up the sorting. */
             else {
             
