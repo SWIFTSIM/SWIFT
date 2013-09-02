@@ -1774,6 +1774,20 @@ void engine_split ( struct engine *e , int *grid ) {
             k -= 1;
             }
         }
+    
+    /* Re-allocate the local parts. */
+    s->size_parts = s->nr_parts * 2;
+    struct part *parts_new;
+    struct xpart *xparts_new;
+    if ( posix_memalign( (void **)&parts_new , part_align , sizeof(struct part) * s->size_parts ) != 0 ||
+         posix_memalign( (void **)&xparts_new , part_align , sizeof(struct xpart) * s->size_parts ) != 0 )
+        error( "Failed to allocate new part data." );
+    memcpy( parts_new , s->parts , sizeof(struct part) * s->nr_parts );
+    memcpy( xparts_new , s->xparts , sizeof(struct xpart) * s->nr_parts );
+    free( s->parts );
+    free( s->xparts );
+    s->parts = parts_new;
+    s->xparts = xparts_new;
 
     }
     
