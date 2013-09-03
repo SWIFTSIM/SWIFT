@@ -86,3 +86,4 @@ void scheduler_map_mkghosts_nokick1 ( struct cell *c , void *data );
 void scheduler_map_mkkick1 ( struct cell *c , void *data );
 struct task *scheduler_done ( struct scheduler *s , struct task *t );
 struct task *scheduler_unlock ( struct scheduler *s , struct task *t );
+void scheduler_addunlock ( struct scheduler *s , struct task *ta , struct task *tb );

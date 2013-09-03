@@ -50,7 +50,7 @@
 const char *taskID_names[task_type_count] = {   
     "none" , "sort" , "self" , "pair" , "sub" , "ghost" , 
     "kick1" , "kick2" , "send_xv" , "recv_xv" , "send_rho" ,
-    "recv_rho" };
+    "recv_rho" , "link" };
 
 
 /**
@@ -221,6 +221,8 @@ void task_rmunlock_blind ( struct task *ta , struct task *tb ) {
  */
  
 void task_addunlock ( struct task *ta , struct task *tb ) {
+
+    error( "Use sched_addunlock instead." );
 
     /* Add the lock atomically. */
     ta->unlock_tasks[ atomic_inc( &ta->nr_unlock_tasks ) ] = tb;

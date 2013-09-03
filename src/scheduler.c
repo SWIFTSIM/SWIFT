@@ -51,6 +51,53 @@
 
 
 /**
+ * @brief Add an unlock_task to the given task.
+ *
+ * @param s The #scheduler.
+ * @param ta The unlocking #task.
+ * @param tb The #task that will be unlocked.
+ */
+ 
+void scheduler_addunlock ( struct scheduler *s , struct task *ta , struct task *tb ) {
+
+    /* Main loop. */
+    while ( 1 ) {
+
+        /* Follow the links. */
+        while ( ta->link != NULL )
+            ta = ta->link;
+
+        /* Get the index of the next free task. */
+        int ind = atomic_inc( &ta->nr_unlock_tasks );
+
+        /* Is there room in this task? */
+        if ( ind < task_maxunlock ) {
+            ta->unlock_tasks[ ind ] = tb;
+            break;
+            }
+
+        /* Otherwise, generate a link task. */
+        else {
+        
+            /* Only one thread should have to do this. */
+            if ( ind == task_maxunlock ) {
+                ta->link = scheduler_addtask( s , task_type_link , task_subtype_none , ta->flags , 0 , NULL , NULL , 0 );
+                ta->link->implicit = 1;
+                ta->unlock_tasks[ ind ] = ta->link;
+                }
+
+            /* Otherwise, reduce the count. */
+            else
+                atomic_dec( &ta->nr_unlock_tasks );
+
+            }
+            
+        }
+
+    }
+    
+
+/**
  * @brief Mapping function to append a ghost task to each cell.
  *
  * Looks for the super cell, e.g. the highest-level cell above each
@@ -84,7 +131,7 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
     if (c->parent == NULL || c->parent->count >= space_subsize ) {
         c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
         if ( c->parent != NULL )
-            task_addunlock( c->kick1 , c->parent->kick1 );
+            scheduler_addunlock( s , c->kick1 , c->parent->kick1 );
         }
     
     /* Append a kick2 task if we are local and the active super cell. */
@@ -94,7 +141,7 @@ void scheduler_map_mkghosts ( struct cell *c , void *data ) {
     /* If we are not the super cell ourselves, make our ghost depend
        on our parent cell. */
     if ( c->ghost != NULL && c->super != c ) {
-        task_addunlock( c->parent->ghost , c->ghost );
+        scheduler_addunlock( s , c->parent->ghost , c->ghost );
         c->ghost->implicit = 1;
         }
         
@@ -128,7 +175,7 @@ void scheduler_map_mkghosts_nokick1 ( struct cell *c , void *data ) {
     /* If we are not the super cell ourselves, make our ghost depend
        on our parent cell. */
     if ( c->super != c ) {
-        task_addunlock( c->parent->ghost , c->ghost );
+        scheduler_addunlock( s , c->parent->ghost , c->ghost );
         c->ghost->implicit = 1;
         }
         
@@ -149,7 +196,7 @@ void scheduler_map_mkkick1 ( struct cell *c , void *data ) {
     /* Append a kick1 task and make sure the parent depends on it. */
     c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
     if ( c->parent != NULL )
-        task_addunlock( c->kick1 , c->parent->kick1 );
+        scheduler_addunlock( s , c->kick1 , c->parent->kick1 );
         
     /* Set a bogus super cell. */
     for ( finger = c ; finger->parent != NULL ; finger = finger->parent );
@@ -199,11 +246,11 @@ void scheduler_splittasks ( struct scheduler *s ) {
             }
         
         /* Empty task? */
-        if ( t->ci == NULL || ( t->type == task_type_pair && t->cj == NULL ) ) {
+        /* if ( t->ci == NULL || ( t->type == task_type_pair && t->cj == NULL ) ) {
             t->type = task_type_none;
             t->skip = 1;
             continue;
-            }
+            } */
             
         /* Non-local kick task? */
         if ( (t->type == task_type_kick1 || t->type == task_type_kick2 ) &&
@@ -454,7 +501,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
                 else
                     ci->sorts->flags |= (1 << sid);
                 // lock_unlock_blind( &ci->lock );
-                task_addunlock( ci->sorts , t );
+                scheduler_addunlock( s , ci->sorts , t );
                 
                 /* Create the sort for cj. */
                 // lock_lock( &cj->lock );
@@ -463,7 +510,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
                 else
                     cj->sorts->flags |= (1 << sid);
                 // lock_unlock_blind( &cj->lock );
-                task_addunlock( cj->sorts , t );
+                scheduler_addunlock( s , cj->sorts , t );
                 
                 }
                 
@@ -511,6 +558,7 @@ struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , 
     t->tic = 0;
     t->toc = 0;
     t->nr_unlock_tasks = 0;
+    t->link = NULL;
     
     /* Init the lock. */
     lock_init( &t->lock );
@@ -612,6 +660,9 @@ void scheduler_reset ( struct scheduler *s , int size ) {
             error( "Failed to allocate task lists." );
             
         }
+        
+    /* Reset the task data. */
+    bzero( s->tasks , sizeof(struct task) * size );
         
     /* Reset the counters. */
     s->size = size;

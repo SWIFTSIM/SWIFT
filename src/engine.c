@@ -463,6 +463,7 @@ void engine_repartition ( struct engine *e ) {
 void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj ) {
 
     int k;
+    struct scheduler *s = &e->sched;
 
     /* Check if any of the density tasks are for the target node. */
     for ( k = 0 ; k < ci->nr_density ; k++ )
@@ -478,13 +479,13 @@ void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj
         struct task *t_rho = scheduler_addtask( &e->sched , task_type_send_rho , task_subtype_none , 2*ci->tag + 1 , 0 , ci , cj , 0 );
 
         /* The send_rho task depends on the cell's ghost task. */
-        task_addunlock( ci->ghost , t_rho );
+        scheduler_addunlock( s , ci->ghost , t_rho );
 
         /* The send_rho task should unlock the super-cell's kick2 task. */
-        task_addunlock( t_rho , ci->super->kick2 );
+        scheduler_addunlock( s , t_rho , ci->super->kick2 );
 
         /* The send_xv task should unlock the super-cell's ghost task. */
-        task_addunlock( t_xv , ci->super->ghost );
+        scheduler_addunlock( s , t_xv , ci->super->ghost );
 
         }
         
@@ -509,6 +510,7 @@ void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj
 void engine_addtasks_recv ( struct engine *e , struct cell *c , struct task *t_xv , struct task *t_rho ) {
 
     int k;
+    struct scheduler *s = &e->sched;
 
     /* Do we need to construct a recv task? */
     if ( t_xv != NULL || c->nr_density > 0 ) {
@@ -520,8 +522,8 @@ void engine_addtasks_recv ( struct engine *e , struct cell *c , struct task *t_x
         /* If there has been a higher-up recv task, then these tasks
            are implicit and depend on the higher-up task. */
         if ( t_xv != NULL ) {
-            task_addunlock( c->parent->recv_xv , c->recv_xv );
-            task_addunlock( c->parent->recv_rho , c->recv_rho );
+            scheduler_addunlock( s , c->parent->recv_xv , c->recv_xv );
+            scheduler_addunlock( s , c->parent->recv_rho , c->recv_rho );
             c->recv_xv->implicit = 1;
             c->recv_rho->implicit = 1;
             }
@@ -532,13 +534,13 @@ void engine_addtasks_recv ( struct engine *e , struct cell *c , struct task *t_x
         
         /* Add dependencies if there are density/force tasks. */
         for ( k = 0 ; k < c->nr_density ; k++ ) {
-            task_addunlock( c->recv_xv , c->density[k] );
-            task_addunlock( c->density[k] , t_rho );
+            scheduler_addunlock( s , c->recv_xv , c->density[k] );
+            scheduler_addunlock( s , c->density[k] , t_rho );
             }
         for ( k = 0 ; k < c->nr_force ; k++ )
-            task_addunlock( c->recv_rho , c->force[k] );
+            scheduler_addunlock( s , c->recv_rho , c->force[k] );
         if ( c->sorts != NULL )
-            task_addunlock( c->recv_xv , c->sorts );
+            scheduler_addunlock( s , c->recv_xv , c->sorts );
             
         }
         
@@ -850,7 +852,7 @@ void engine_maketasks ( struct engine *e ) {
             for ( j = 0 ; j < 8 ; j++ )
                 if ( t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL ) {
                     t->ci->progeny[j]->sorts->skip = 0;
-                    task_addunlock( t->ci->progeny[j]->sorts , t );
+                    scheduler_addunlock( sched , t->ci->progeny[j]->sorts , t );
                     }
         if ( t->type == task_type_self ) {
             atomic_inc( &t->ci->nr_tasks );
@@ -900,10 +902,10 @@ void engine_maketasks ( struct engine *e ) {
         
         /* Self-interaction? */
         if ( t->type == task_type_self && t->subtype == task_subtype_density ) {
-            task_addunlock( t , t->ci->super->ghost );
+            scheduler_addunlock( sched , t , t->ci->super->ghost );
             t2 = scheduler_addtask( sched , task_type_self , task_subtype_force , 0 , 0 , t->ci , NULL , 0 );
-            task_addunlock( t->ci->ghost , t2 );
-            task_addunlock( t2 , t->ci->super->kick2 );
+            scheduler_addunlock( sched , t->ci->ghost , t2 );
+            scheduler_addunlock( sched , t2 , t->ci->super->kick2 );
             t->ci->force[ atomic_inc( &t->ci->nr_force ) ] = t2;
             }
             
@@ -911,15 +913,15 @@ void engine_maketasks ( struct engine *e ) {
         else if ( t->type == task_type_pair && t->subtype == task_subtype_density ) {
             t2 = scheduler_addtask( sched , task_type_pair , task_subtype_force , 0 , 0 , t->ci , t->cj , 0 );
             if ( t->ci->nodeID == e->nodeID ) {
-                task_addunlock( t->ci->ghost , t2 );
-                task_addunlock( t , t->ci->super->ghost );
-                task_addunlock( t2 , t->ci->super->kick2 );
+                scheduler_addunlock( sched , t->ci->ghost , t2 );
+                scheduler_addunlock( sched , t , t->ci->super->ghost );
+                scheduler_addunlock( sched , t2 , t->ci->super->kick2 );
                 }
             if ( t->cj->nodeID == e->nodeID ) {
-                task_addunlock( t->cj->ghost , t2 );
+                scheduler_addunlock( sched , t->cj->ghost , t2 );
                 if ( t->ci->super != t->cj->super ) {
-                    task_addunlock( t , t->cj->super->ghost );
-                    task_addunlock( t2 , t->cj->super->kick2 );
+                    scheduler_addunlock( sched , t , t->cj->super->ghost );
+                    scheduler_addunlock( sched , t2 , t->cj->super->kick2 );
                     }
                 }
             t->ci->force[ atomic_inc( &t->ci->nr_force ) ] = t2;
@@ -930,15 +932,15 @@ void engine_maketasks ( struct engine *e ) {
         else if ( t->type == task_type_sub && t->subtype == task_subtype_density ) {
             t2 = scheduler_addtask( sched , task_type_sub , task_subtype_force , t->flags , 0 , t->ci , t->cj , 0 );
             if ( t->ci->nodeID == e->nodeID ) {
-                task_addunlock( t , t->ci->super->ghost );
-                task_addunlock( t->ci->ghost , t2 );
-                task_addunlock( t2 , t->ci->super->kick2 );
+                scheduler_addunlock( sched , t , t->ci->super->ghost );
+                scheduler_addunlock( sched , t->ci->ghost , t2 );
+                scheduler_addunlock( sched , t2 , t->ci->super->kick2 );
                 }
             if ( t->cj != NULL && t->cj->nodeID == e->nodeID ) {
-                task_addunlock( t->cj->ghost , t2 );
+                scheduler_addunlock( sched , t->cj->ghost , t2 );
                 if ( t->ci->super != t->cj->super ) {
-                    task_addunlock( t , t->cj->super->ghost );
-                    task_addunlock( t2 , t->cj->super->kick2 );
+                    scheduler_addunlock( sched , t , t->cj->super->ghost );
+                    scheduler_addunlock( sched , t2 , t->cj->super->kick2 );
                     }
                 }
             t->ci->force[ atomic_inc( &t->ci->nr_force ) ] = t2;
@@ -1219,7 +1221,8 @@ void engine_prepare ( struct engine *e ) {
                              (1 << task_type_send_xv) |
                              (1 << task_type_recv_xv) |
                              (1 << task_type_send_rho) |
-                             (1 << task_type_recv_rho) );
+                             (1 << task_type_recv_rho) |
+                             (1 << task_type_link) );
     // message( "scheduler_start took %.3f ms." , (double)(getticks() - tic2)/CPU_TPS*1000 );
     
     TIMER_TOC( timer_prepare );
@@ -1493,7 +1496,7 @@ void engine_step ( struct engine *e ) {
     /* First kick. */
     if ( e->step == 0 || !( e->policy & engine_policy_fixdt ) ) {
         TIMER_TIC
-        scheduler_start( &e->sched , (1 << task_type_kick1) );
+        scheduler_start( &e->sched , (1 << task_type_kick1) | (1 << task_type_link) );
         engine_launch( e , ( e->nr_threads > 8 ) ? 8 : e->nr_threads );
         TIMER_TOC( timer_kick1 );
         }

@@ -20,7 +20,7 @@
 
 /* Some constants. */
 #define task_maxwait                    3
-#define task_maxunlock                  64
+#define task_maxunlock                  31
 
 
 /* The different task types. */
@@ -37,6 +37,7 @@ enum task_types {
     task_type_recv_xv,
     task_type_send_rho,
     task_type_recv_rho,
+    task_type_link,
     task_type_count
     };
     
@@ -72,7 +73,8 @@ struct task {
     ticks tic, toc;
     
     int nr_unlock_tasks;
-    struct task *unlock_tasks[ task_maxunlock ];
+    struct task *unlock_tasks[ task_maxunlock + 1 ];
+    struct task *link;
 
     };
 

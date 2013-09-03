@@ -25,7 +25,7 @@
 #define space_cellallocchunk            1000
 #define space_splitratio                0.875f
 #define space_splitsize_default         400
-#define space_maxsize_default           3000
+#define space_maxsize_default           2000
 #define space_subsize_default           5000
 #define space_stretch                   1.10f
 #define space_maxreldx                  0.25f
