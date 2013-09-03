@@ -81,7 +81,7 @@ void scheduler_addunlock ( struct scheduler *s , struct task *ta , struct task *
         
             /* Only one thread should have to do this. */
             if ( ind == task_maxunlock ) {
-                ta->link = scheduler_addtask( s , task_type_link , task_subtype_none , ta->flags , 0 , NULL , NULL , 0 );
+                ta->link = scheduler_addtask( s , task_type_link , task_subtype_none , ta->flags , 0 , ta->ci , ta->cj , 0 );
                 ta->link->implicit = 1;
                 ta->unlock_tasks[ ind ] = ta->link;
                 }
@@ -246,11 +246,11 @@ void scheduler_splittasks ( struct scheduler *s ) {
             }
         
         /* Empty task? */
-        /* if ( t->ci == NULL || ( t->type == task_type_pair && t->cj == NULL ) ) {
+        if ( t->ci == NULL || ( t->type == task_type_pair && t->cj == NULL ) ) {
             t->type = task_type_none;
             t->skip = 1;
             continue;
-            } */
+            }
             
         /* Non-local kick task? */
         if ( (t->type == task_type_kick1 || t->type == task_type_kick2 ) &&
