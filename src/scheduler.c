@@ -474,7 +474,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
                 
             /* Otherwise, break it up if it is too large? */
             else if ( scheduler_doforcesplit && ci->split && cj->split &&
-                      ( ci->count > space_maxsize && cj->count > space_maxsize ) ) {
+                      ( ci->count > space_maxsize / cj->count ) ) {
                       
                 message( "force splitting pair with %i and %i parts." , ci->count , cj->count );
                       
