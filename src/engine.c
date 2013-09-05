@@ -213,7 +213,7 @@ void engine_repartition ( struct engine *e ) {
     struct task *t, *tasks = e->sched.tasks;
     struct cell *ci, *cj;
     int nr_nodes = e->nr_nodes, nodeID = e->nodeID, *nodeIDs;
-    float wscale = 0.01;
+    float wscale = 0.0001;
     
     /* Clear the repartition flag. */
     e->forcerepart = 0;
@@ -1184,7 +1184,6 @@ void engine_rebuild ( struct engine *e ) {
 void engine_prepare ( struct engine *e ) {
     
     int rebuild;
-    struct scheduler *sched = &e->sched;
     
     TIMER_TIC
 
@@ -1210,21 +1209,6 @@ void engine_prepare ( struct engine *e ) {
         scheduler_reweight( &e->sched );
     e->tasks_age += 1;
 
-    /* Start the scheduler. */
-    // ticks tic2 = getticks();
-    scheduler_start( sched , (1 << task_type_sort) | 
-                             (1 << task_type_self) |
-                             (1 << task_type_pair) | 
-                             (1 << task_type_sub) |
-                             (1 << task_type_ghost) | 
-                             (1 << task_type_kick2) |
-                             (1 << task_type_send_xv) |
-                             (1 << task_type_recv_xv) |
-                             (1 << task_type_send_rho) |
-                             (1 << task_type_recv_rho) |
-                             (1 << task_type_link) );
-    // message( "scheduler_start took %.3f ms." , (double)(getticks() - tic2)/CPU_TPS*1000 );
-    
     TIMER_TOC( timer_prepare );
     
     }
@@ -1426,9 +1410,13 @@ void engine_collect_kick2 ( struct cell *c ) {
  *
  * @param e The #engine.
  * @param nr_runners The number of #runners to let loose.
+ * @param The task mask to launch.
  */
  
-void engine_launch ( struct engine *e , int nr_runners ) {
+void engine_launch ( struct engine *e , int nr_runners , unsigned int mask ) {
+
+    /* Prepare the scheduler. */
+    atomic_inc( &e->sched.waiting );
 
     /* Cry havoc and let loose the dogs of war. */
     e->barrier_launch = nr_runners;
@@ -1436,6 +1424,12 @@ void engine_launch ( struct engine *e , int nr_runners ) {
     if ( pthread_cond_broadcast( &e->barrier_cond ) != 0 )
         error( "Failed to broadcast barrier open condition." );
         
+    /* Load the tasks. */
+    scheduler_start( &e->sched , mask );
+        
+    /* Remove the safeguard. */
+    atomic_dec( &e->sched.waiting );
+
     /* Sit back and wait for the runners to come home. */
     while ( e->barrier_launch || e->barrier_running )
         if ( pthread_cond_wait( &e->barrier_cond , &e->barrier_mutex ) != 0 )
@@ -1496,8 +1490,7 @@ void engine_step ( struct engine *e ) {
     /* First kick. */
     if ( e->step == 0 || !( e->policy & engine_policy_fixdt ) ) {
         TIMER_TIC
-        scheduler_start( &e->sched , (1 << task_type_kick1) | (1 << task_type_link) );
-        engine_launch( e , ( e->nr_threads > 8 ) ? 8 : e->nr_threads );
+        engine_launch( e , ( e->nr_threads > 8 ) ? 8 : e->nr_threads , (1 << task_type_kick1) | (1 << task_type_link) );
         TIMER_TOC( timer_kick1 );
         }
     
@@ -1522,7 +1515,17 @@ void engine_step ( struct engine *e ) {
 
     /* Send off the runners. */
     TIMER_TIC
-    engine_launch( e , e->nr_threads );
+    engine_launch( e , e->nr_threads , (1 << task_type_sort) | 
+                                       (1 << task_type_self) |
+                                       (1 << task_type_pair) | 
+                                       (1 << task_type_sub) |
+                                       (1 << task_type_ghost) | 
+                                       (1 << task_type_kick2) |
+                                       (1 << task_type_send_xv) |
+                                       (1 << task_type_recv_xv) |
+                                       (1 << task_type_send_rho) |
+                                       (1 << task_type_recv_rho) |
+                                       (1 << task_type_link) );
     TIMER_TOC(timer_runners);
     
     // engine_single_force( e->s->dim , 8328423931905 , e->s->parts , e->s->nr_parts , e->s->periodic );
