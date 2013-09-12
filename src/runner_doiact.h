@@ -2249,6 +2249,7 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
     float h;
     struct space *s = r->e->s;
     struct cell *sub = NULL;
+    float dt_step = r->e->dt_step;
 
     TIMER_TIC
     
@@ -2654,8 +2655,18 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
             }
             
         /* Otherwise, compute the pair directly. */
-        else
+        else if ( ci->dt_min <= dt_step || cj->dt_min <= dt_step ) {
+        
+            /* Do any of the cells need to be sorted first? */
+            if ( !(ci->sorted & (1 << sid) ) )
+                runner_dosort( r , ci , (1 << sid) , 1 );
+            if ( !(cj->sorted & (1 << sid) ) )
+                runner_dosort( r , cj , (1 << sid) , 1 );
+        
+            /* Compute the interactions. */
             DOPAIR_SUBSET( r , ci , parts , ind , count , cj );
+            
+            }
     
         } /* otherwise, pair interaction. */
     
