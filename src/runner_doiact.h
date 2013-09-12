@@ -2658,8 +2658,6 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
         else if ( ci->dt_min <= dt_step || cj->dt_min <= dt_step ) {
         
             /* Do any of the cells need to be sorted first? */
-            if ( !(ci->sorted & (1 << sid) ) )
-                runner_dosort( r , ci , (1 << sid) , 1 );
             if ( !(cj->sorted & (1 << sid) ) )
                 runner_dosort( r , cj , (1 << sid) , 1 );
         
