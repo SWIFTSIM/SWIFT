@@ -828,7 +828,11 @@ int main ( int argc , char *argv[] ) {
 
     /* Read particles and space information from (GADGET) IC */
     tic = getticks();
+#ifdef WITH_MPI
+    read_ic_parallel( ICfileName , dim , &parts , &N , &periodic );
+#else
     read_ic( ICfileName , dim , &parts , &N , &periodic );
+#endif
     if ( myrank == 0 )
         message( "reading particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
@@ -900,11 +904,13 @@ int main ( int argc , char *argv[] ) {
 #endif
 
     /* Write the state of the system as it is before starting time integration. */
-    if ( myrank == 0 ) {
-        tic = getticks();
-        write_output(&e);
-        message( "writing particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
-        }
+    tic = getticks();
+#ifdef WITH_MPI
+    write_output_parallel(&e, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+#else
+    write_output(&e);
+#endif
+    message( "writing particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
     /* Init the runner history. */
     #ifdef HIST
@@ -942,8 +948,14 @@ int main ( int argc , char *argv[] ) {
         /* Take a step. */
         engine_step( &e );
         
-        if ( myrank == 0 && j % 100 == 0 )
-            write_output(&e);
+        if ( j % 100 == 0 )
+	  {
+#ifdef WITH_MPI
+	    write_output_parallel(&e, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+#else
+             write_output(&e);
+#endif
+          }
                 
         /* Dump a line of agregate output. */
         if ( myrank == 0 ) {
@@ -983,10 +995,13 @@ int main ( int argc , char *argv[] ) {
                 (e.sched.tasks[k].cj==NULL)?0:e.sched.tasks[k].cj->count ); */
     
     /* Write final output. */
-    if ( myrank == 0 )
-        write_output( &e );
+#ifdef WITH_MPI
+	write_output_parallel( &e, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
+#else
+	write_output( &e );
+#endif
         
-    #ifdef WITH_MPI
+#ifdef WITH_MPI
         if ( MPI_Finalize() != MPI_SUCCESS )
             error( "call to MPI_Finalize failed with error %i." , res );
     #endif

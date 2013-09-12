@@ -37,6 +37,7 @@
 #include "runner.h"
 #include "engine.h"
 #include "io.h"
+#include "parallel_io.h"
 #include "debug.h"
 
 #ifdef LEGACY_GADGET2_SPH
