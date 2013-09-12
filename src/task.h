@@ -20,7 +20,7 @@
 
 /* Some constants. */
 #define task_maxwait                    3
-#define task_maxunlock                  31
+#define task_maxunlock                  15
 
 
 /* The different task types. */
@@ -74,7 +74,6 @@ struct task {
     
     int nr_unlock_tasks;
     struct task *unlock_tasks[ task_maxunlock + 1 ];
-    struct task *link;
 
     };
 

@@ -528,31 +528,31 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
             for ( finger = c ; finger != NULL ; finger = finger->parent ) {
             
                 /* Run through this cell's density interactions. */
-                for ( k = 0 ; k < finger->nr_density ; k++ ) {
+                for ( struct link *l = finger->density ; l != NULL ; l = l->next ) {
                 
                     /* Self-interaction? */
-                    if ( finger->density[k]->type == task_type_self )
+                    if ( l->t->type == task_type_self )
                         runner_doself_subset_density( r , finger , parts , pid , count );
                         
                     /* Otherwise, pair interaction? */
-                    else if ( finger->density[k]->type == task_type_pair ) {
+                    else if ( l->t->type == task_type_pair ) {
                     
                         /* Left or right? */
-                        if ( finger->density[k]->ci == finger )
-                            runner_dopair_subset_density( r , finger , parts , pid , count , finger->density[k]->cj );
+                        if ( l->t->ci == finger )
+                            runner_dopair_subset_density( r , finger , parts , pid , count , l->t->cj );
                         else
-                            runner_dopair_subset_density( r , finger , parts , pid , count , finger->density[k]->ci );
+                            runner_dopair_subset_density( r , finger , parts , pid , count , l->t->ci );
                         
                         }
                 
                     /* Otherwise, sub interaction? */
-                    else if ( finger->density[k]->type == task_type_sub ) {
+                    else if ( l->t->type == task_type_sub ) {
                     
                         /* Left or right? */
-                        if ( finger->density[k]->ci == finger )
-                            runner_dosub_subset_density( r , finger , parts , pid , count , finger->density[k]->cj , -1 , 1 );
+                        if ( l->t->ci == finger )
+                            runner_dosub_subset_density( r , finger , parts , pid , count , l->t->cj , -1 , 1 );
                         else
-                            runner_dosub_subset_density( r , finger , parts , pid , count , finger->density[k]->ci , -1 , 1 );
+                            runner_dosub_subset_density( r , finger , parts , pid , count , l->t->ci , -1 , 1 );
                         
                         }
                 
@@ -1102,10 +1102,10 @@ void *runner_main ( void *data ) {
             /* Set super to the first cell that I own. */
             if ( ci->super->owner == r->qid )
                 super = ci->super;
-            else if ( cj != NULL && cj->super->owner == r->qid )
+            else if ( cj != NULL && cj->super != NULL && cj->super->owner == r->qid )
                 super = cj->super;
-            else
-                super = NULL;
+            /* else
+                super = NULL; */
                 
             /* Prefetch? */
             if ( runner_prefetch &&
@@ -1147,8 +1147,7 @@ void *runner_main ( void *data ) {
                         error( "Unknown task subtype." );
                     break;
                 case task_type_ghost:
-                    if ( ci->super == ci )
-                        runner_doghost( r , ci );
+                    runner_doghost( r , ci );
                     break;
                 case task_type_kick1:
                     runner_dokick1( r , ci );

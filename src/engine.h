@@ -41,6 +41,18 @@
 extern int engine_rank;
 
 
+/* Mini struct to link cells to density/force tasks. */
+struct link {
+
+    /* The task pointer. */
+    struct task *t;
+    
+    /* The next pointer. */
+    struct link *next;
+    
+    };
+
+
 /* Data structure for the engine. */
 struct engine {
 
@@ -98,6 +110,10 @@ struct engine {
     /* How many steps have we done with the same set of tasks? */
     int tasks_age;
     
+    /* Linked list for cell-task association. */
+    struct link *links;
+    int nr_links;
+    
     };
 
 
@@ -113,3 +129,4 @@ void engine_rebuild ( struct engine *e );
 void engine_repartition ( struct engine *e );
 void engine_makeproxies ( struct engine *e );
 void engine_redistribute ( struct engine *e );
+struct link *engine_addlink( struct engine *e , struct link *l , struct task *t );

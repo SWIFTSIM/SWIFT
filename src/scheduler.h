@@ -81,8 +81,6 @@ void scheduler_ranktasks ( struct scheduler *s );
 void scheduler_reweight ( struct scheduler *s );
 struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , int flags , int wait , struct cell *ci , struct cell *cj , int tight );
 void scheduler_splittasks ( struct scheduler *s );
-void scheduler_map_mkghosts ( struct cell *c , void *data );
-void scheduler_map_mkghosts_nokick1 ( struct cell *c , void *data );
 void scheduler_map_mkkick1 ( struct cell *c , void *data );
 struct task *scheduler_done ( struct scheduler *s , struct task *t );
 struct task *scheduler_unlock ( struct scheduler *s , struct task *t );

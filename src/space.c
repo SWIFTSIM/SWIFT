@@ -240,6 +240,7 @@ void space_regrid ( struct space *s , double cell_max ) {
                     c->dmin = dmin;
                     c->depth = 0;
                     c->count = 0;
+                    c->super = c;
                     lock_init( &c->lock );
                     }
            
@@ -259,11 +260,14 @@ void space_regrid ( struct space *s , double cell_max ) {
             s->cells[k].nr_tasks = 0;
             s->cells[k].nr_density = 0;
             s->cells[k].nr_force = 0;
+            s->cells[k].density = NULL;
+            s->cells[k].force = NULL;
             s->cells[k].dx_max = 0.0f;
             s->cells[k].sorted = 0;
             s->cells[k].count = 0;
             s->cells[k].kick1 = NULL;
             s->cells[k].kick2 = NULL;
+            s->cells[k].super = &s->cells[k];
             }
         s->maxdepth = 0;
     
@@ -366,6 +370,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
                     c->dmin = dmin;
                     c->depth = 0;
                     c->count = 0;
+                    c->super = c;
                     lock_init( &c->lock );
                     }
            
@@ -385,9 +390,12 @@ void space_rebuild ( struct space *s , double cell_max ) {
             cells[k].nr_tasks = 0;
             cells[k].nr_density = 0;
             cells[k].nr_force = 0;
+            cells[k].density = NULL;
+            cells[k].force = NULL;
             cells[k].dx_max = 0.0f;
             cells[k].sorted = 0;
             cells[k].count = 0;
+            cells[k].super = &cells[k];
             cells[k].kick1 = NULL;
             cells[k].kick2 = NULL;
             }

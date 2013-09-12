@@ -64,8 +64,8 @@ void scheduler_addunlock ( struct scheduler *s , struct task *ta , struct task *
     while ( 1 ) {
 
         /* Follow the links. */
-        while ( ta->link != NULL )
-            ta = ta->link;
+        while ( ta->nr_unlock_tasks == task_maxunlock+1 )
+            ta = ta->unlock_tasks[ task_maxunlock ];
 
         /* Get the index of the next free task. */
         int ind = atomic_inc( &ta->nr_unlock_tasks );
@@ -81,9 +81,8 @@ void scheduler_addunlock ( struct scheduler *s , struct task *ta , struct task *
         
             /* Only one thread should have to do this. */
             if ( ind == task_maxunlock ) {
-                ta->link = scheduler_addtask( s , task_type_link , task_subtype_none , ta->flags , 0 , ta->ci , ta->cj , 0 );
-                ta->link->implicit = 1;
-                ta->unlock_tasks[ ind ] = ta->link;
+                ta->unlock_tasks[ task_maxunlock ] = scheduler_addtask( s , task_type_link , task_subtype_none , ta->flags , 0 , ta->ci , ta->cj , 0 );
+                ta->unlock_tasks[ task_maxunlock ]->implicit = 1;
                 }
 
             /* Otherwise, reduce the count. */
@@ -96,91 +95,6 @@ void scheduler_addunlock ( struct scheduler *s , struct task *ta , struct task *
 
     }
     
-
-/**
- * @brief Mapping function to append a ghost task to each cell.
- *
- * Looks for the super cell, e.g. the highest-level cell above each
- * cell for which a pair is defined. All ghosts below this cell will
- * depend on the ghost of their parents (sounds spooky, but it isn't).
- *
- * A kick2-task is appended to each super cell.
- */
-
-void scheduler_map_mkghosts ( struct cell *c , void *data ) {
-
-    struct scheduler *s = (struct scheduler *)data;
-    struct cell *finger;
-
-    /* Find the super cell, i.e. the highest cell hierarchically above
-       this one to still have at least one task associated with it. */
-    c->super = c;
-    for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
-        if ( finger->nr_tasks > 0 )
-            c->super = finger;
-            
-    /* As of here, things are only interesting for local cells. */
-    if ( c->nodeID != s->nodeID )
-        return;
-            
-    /* Make the ghost task */
-    if ( c->super != c || c->nr_tasks > 0 )
-        c->ghost = scheduler_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , 0 );
-
-    /* Append a kick1 task if local and make sure the parent depends on it. */
-    if (c->parent == NULL || c->parent->count >= space_subsize ) {
-        c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
-        if ( c->parent != NULL )
-            scheduler_addunlock( s , c->kick1 , c->parent->kick1 );
-        }
-    
-    /* Append a kick2 task if we are local and the active super cell. */
-    if ( c->super == c && c->nr_tasks > 0 )
-        c->kick2 = scheduler_addtask( s , task_type_kick2 , task_subtype_none , 0 , 0 , c , NULL , 0 );
-    
-    /* If we are not the super cell ourselves, make our ghost depend
-       on our parent cell. */
-    if ( c->ghost != NULL && c->super != c ) {
-        scheduler_addunlock( s , c->parent->ghost , c->ghost );
-        c->ghost->implicit = 1;
-        }
-        
-    }
-
-
-void scheduler_map_mkghosts_nokick1 ( struct cell *c , void *data ) {
-
-    struct scheduler *s = (struct scheduler *)data;
-    struct cell *finger;
-
-    /* Find the super cell, i.e. the highest cell hierarchically above
-       this one to still have at least one task associated with it. */
-    c->super = c;
-    for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
-        if ( finger->nr_tasks > 0 )
-            c->super = finger;
-            
-    /* As of here, things are only interesting for local cells. */
-    if ( c->nodeID != s->nodeID )
-        return;
-            
-    /* Make the ghost task */
-    if ( c->super != c || c->nr_tasks > 0 )
-        c->ghost = scheduler_addtask( s , task_type_ghost , task_subtype_none , 0 , 0 , c , NULL , 0 );
-
-    /* Append a kick2 task if we are the active super cell. */
-    if ( c->super == c && c->nr_tasks > 0 )
-        c->kick2 = scheduler_addtask( s , task_type_kick2 , task_subtype_none , 0 , 0 , c , NULL , 0 );
-    
-    /* If we are not the super cell ourselves, make our ghost depend
-       on our parent cell. */
-    if ( c->super != c ) {
-        scheduler_addunlock( s , c->parent->ghost , c->ghost );
-        c->ghost->implicit = 1;
-        }
-        
-    }
-
 
 /**
  * @brief Mapping function to append a ghost task to each cell.
@@ -558,7 +472,6 @@ struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , 
     t->tic = 0;
     t->toc = 0;
     t->nr_unlock_tasks = 0;
-    t->link = NULL;
     
     /* Init the lock. */
     lock_init( &t->lock );
