@@ -239,8 +239,9 @@ void DOSELF_NAIVE ( struct runner *r , struct cell *restrict c ) {
     
         /* Get a hold of the ith part in ci. */
         pi = &parts[ pid ];
-        for ( k = 0 ; k < 3 ; k++ )
-            pix[k] = pi->x[k];
+        pix[0] = pi->x[0];
+        pix[1] = pi->x[1];
+        pix[2] = pi->x[2];
         hi = pi->h;
         hig2 = hi * hi * kernel_gamma2;
         
@@ -544,8 +545,9 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     
         /* Get a hold of the ith part in ci. */
         pi = &parts[ ind[ pid ] ];
-        for ( k = 0 ; k < 3 ; k++ )
-            pix[k] = pi->x[k];
+        pix[0] = pi->x[0];
+        pix[1] = pi->x[1];
+        pix[2] = pi->x[2];
         hi = pi->h;
         hig2 = hi * hi * kernel_gamma2;
         
