@@ -660,8 +660,11 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
   hid_t h_file=0, h_grp=0, h_grpsph=0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
-  int numParticles[6]={N,0};
-  int numParticlesHighWord[6]={0};
+  unsigned int numParticles[6]={N,0};
+  unsigned int numParticlesHighWord[6]={0};
+  unsigned int flagEntropy[6]={0};
+  long long N_total = 0, offset = 0;
+  double offset_d = 0., N_d = 0., N_total_d = 0.;
   int numFiles = 1;
   struct part* parts = e->s->parts;
   FILE* xmfFile = 0;
@@ -690,11 +693,15 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
     }
 
   /* Compute offset in the file and total number of particles */
-  int offset = 0;
-  MPI_Exscan(&N, &offset, 1, MPI_INT, MPI_SUM, comm);
-  int N_total = offset+N;
-  MPI_Bcast(&N_total, 1, MPI_INT, mpi_size-1, comm);
-  numParticles[0] = N_total;
+  /* Done using double to allow for up to 2^50=10^15 particles */
+  N_d = (double)N;
+  MPI_Exscan(&N_d, &offset_d, 1, MPI_DOUBLE, MPI_SUM, comm);
+  N_total_d = offset_d + N_d;
+  MPI_Bcast(&N_total_d, 1, MPI_DOUBLE, mpi_size-1, comm);
+  if(N_total_d > 1.e15)
+    error("Error while computing the offest for parallel output: Simulation has more than 10^15 particles.\n");
+  N_total = (long long) N_total_d;
+  offset = (long long) offset_d;
 
   /* Write the part of the XMF file corresponding to this specific output */
   if(mpi_rank == 0)
@@ -724,11 +731,13 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
   writeAttribute(h_grp, "Time", DOUBLE, &e->time, 1);
 
   /* GADGET-2 legacy values */
+  numParticles[0] = (unsigned int) N_total ;
   writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
+  numParticlesHighWord[0] = (unsigned int) (N_total >> 32);
   writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord, 6);
   double MassTable[6] = {0., 0., 0., 0., 0., 0.};
   writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
-  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
+  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy, 6);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
 
   /* Print the SPH parameters */
