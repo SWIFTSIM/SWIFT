@@ -350,8 +350,8 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
 void createXMFfile();
 FILE* prepareXMFfile();
 void writeXMFfooter(FILE* xmfFile);
-void writeXMFheader(FILE* xmfFile, int Nparts, char* hdfFileName,  float time);
-void writeXMFline(FILE* xmfFile, char* fileName, char* name, int N, int dim, enum DATA_TYPE type);
+void writeXMFheader(FILE* xmfFile, long long N, char* hdfFileName,  float time);
+void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N, int dim, enum DATA_TYPE type);
 
 
 /**
@@ -523,7 +523,7 @@ void writeAttribute_s(hid_t grp, char* name, char* str)
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, int N_total, int offset, char* part_c)
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, int N_total, int mpi_rank, int offset, char* part_c)
 {
   hid_t h_data=0, h_err=0, h_memspace=0, h_filespace=0, h_plist_id=0;
   void* temp = 0;
@@ -611,7 +611,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
     }
 
   /* Write XMF description for this data set */
-  writeXMFline(xmfFile, fileName, name, N, dim, type);
+  if(mpi_rank == 0)
+    writeXMFline(xmfFile, fileName, name, N_total, dim, type);
 
   
   /* Free and close everything */
@@ -632,12 +633,13 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @param N The number of particles to write from this core.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param N_total Total number of particles across all cores
+ * @param mpi_rank The MPI task rank calling the function
  * @param offset Offset in the array where this mpi task starts writing
  * @param part A (char*) pointer on the first occurence of the field of interest in the parts array
  * @param field The name (code name) of the field to read from.
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, offset, field) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total, offset, (char*)(&(part[0]).field))
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, mpi_rank, offset, field) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total, mpi_rank, offset, (char*)(&(part[0]).field))
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -670,17 +672,14 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
   sprintf(fileName, "output_%03i.hdf5", outputCount);
 
   /* First time, we need to create the XMF file */
-  if(outputCount == 0)
+  if(outputCount == 0 && mpi_rank == 0)
     createXMFfile();
   
   /* Prepare the XMF file for the new entry */
-  xmfFile = prepareXMFfile();
+  if(mpi_rank == 0)
+    xmfFile = prepareXMFfile();
 
-  /* Write the part corresponding to this specific output */
-  writeXMFheader(xmfFile, N, fileName, e->time);
-
-
-  /* Open file */
+  /* Open HDF5 file */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
   H5Pset_fapl_mpio(plist_id, comm, info);
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
@@ -696,6 +695,10 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
   int N_total = offset+N;
   MPI_Bcast(&N_total, 1, MPI_INT, mpi_size-1, comm);
   numParticles[0] = N_total;
+
+  /* Write the part of the XMF file corresponding to this specific output */
+  if(mpi_rank == 0)
+    writeXMFheader(xmfFile, N_total, fileName, e->time);
 
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
@@ -770,21 +773,22 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
     error( "Error while creating particle group.\n");
 
   /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, N_total, offset, x);
-  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, N_total, offset, v);
-  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, N_total, offset,mass);
-  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h);
-  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset, u);
-  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id);
-  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total, offset, dt);
-  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a);
-  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total, offset, rho);
+  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, N_total, mpi_rank, offset, x);
+  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, N_total, mpi_rank, offset, v);
+  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, N_total, mpi_rank, offset, mass);
+  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, N_total, mpi_rank, offset, h);
+  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, N_total, mpi_rank, offset, u);
+  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id);
+  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total, mpi_rank, offset, dt);
+  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, N_total, mpi_rank, offset, a);
+  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total, mpi_rank, offset, rho);
 
   /* Close particle group */
   H5Gclose(h_grp);
 
   /* Write LXMF file descriptor */
-  writeXMFfooter(xmfFile);
+  if(mpi_rank == 0)
+    writeXMFfooter(xmfFile);
 
   /* message("Done writing particles..."); */
 
@@ -812,13 +816,13 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
  *
  * @todo Treat the types in a better way.
  */
-void writeXMFline(FILE* xmfFile, char* fileName, char* name, int N, int dim, enum DATA_TYPE type )
+void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N, int dim, enum DATA_TYPE type )
 {
   fprintf(xmfFile, "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n", name, dim == 1 ? "Scalar": "Vector");
   if(dim == 1)
-    fprintf(xmfFile, "<DataItem Dimensions=\"%d\" NumberType=\"Double\" Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n", N, type==FLOAT ? 4:8, fileName, name);
+    fprintf(xmfFile, "<DataItem Dimensions=\"%lld\" NumberType=\"Double\" Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n", N, type==FLOAT ? 4:8, fileName, name);
   else
-    fprintf(xmfFile, "<DataItem Dimensions=\"%d %d\" NumberType=\"Double\" Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n", N, dim, type==FLOAT ? 4:8, fileName, name);
+    fprintf(xmfFile, "<DataItem Dimensions=\"%lld %d\" NumberType=\"Double\" Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n", N, dim, type==FLOAT ? 4:8, fileName, name);
   fprintf(xmfFile, "</Attribute>\n");
 }
 
@@ -908,16 +912,16 @@ void createXMFfile()
  * @param hdfFileName The name of the HDF5 file corresponding to this output.
  * @param time The current simulation time.
  */
-void writeXMFheader(FILE* xmfFile, int Nparts, char* hdfFileName, float time)
+void writeXMFheader(FILE* xmfFile, long long Nparts, char* hdfFileName, float time)
 {
   /* Write end of file */
   
   fprintf(xmfFile, "<Grid GridType=\"Collection\" CollectionType=\"Spatial\">\n");
   fprintf(xmfFile, "<Time Type=\"Single\" Value=\"%f\"/>\n", time);
   fprintf(xmfFile, "<Grid Name=\"Gas\" GridType=\"Uniform\">\n");
-  fprintf(xmfFile, "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%d\"/>\n", Nparts);
+  fprintf(xmfFile, "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%lld\"/>\n", Nparts);
   fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
-  fprintf(xmfFile, "<DataItem Dimensions=\"%d 3\" NumberType=\"Double\" Precision=\"8\" Format=\"HDF\">%s:/PartType0/Coordinates</DataItem>\n", Nparts, hdfFileName);
+  fprintf(xmfFile, "<DataItem Dimensions=\"%lld 3\" NumberType=\"Double\" Precision=\"8\" Format=\"HDF\">%s:/PartType0/Coordinates</DataItem>\n", Nparts, hdfFileName);
   fprintf(xmfFile, "</Geometry>");
 }
 
