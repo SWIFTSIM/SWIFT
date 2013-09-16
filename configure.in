@@ -106,7 +106,7 @@ if test -z "${OPENMP_CFLAGS}"; then
 fi
 
 # Check for HDF5
-AX_LIB_HDF5([serial])
+AX_LIB_HDF5()
 
 # check for setaffinity
 AC_USE_SYSTEM_EXTENSIONS
