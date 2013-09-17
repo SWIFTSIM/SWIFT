@@ -184,15 +184,15 @@ void engine_redistribute ( struct engine *e ) {
     /* Get all the counts from all the nodes. */
     if ( MPI_Allreduce( MPI_IN_PLACE , counts , nr_nodes * nr_nodes , MPI_INT , MPI_SUM , MPI_COMM_WORLD ) != MPI_SUCCESS )
         error( "Failed to allreduce particle transfer counts." );
-        
+
     /* Get the new number of parts for this node, be generous in allocating. */
     int nr_parts = 0;
     for ( k = 0 ; k < nr_nodes ; k++ )
         nr_parts += counts[ k*nr_nodes + nodeID ];
     struct part *parts_new;
     struct xpart *xparts_new, *xparts = s->xparts;
-    if ( posix_memalign( (void **)&parts_new , part_align , sizeof(struct part) * nr_parts * 2 ) != 0 ||
-         posix_memalign( (void **)&xparts_new , part_align , sizeof(struct xpart) * nr_parts * 2 ) != 0 )
+    if ( posix_memalign( (void **)&parts_new , part_align , sizeof(struct part) * nr_parts * 1.2 ) != 0 ||
+         posix_memalign( (void **)&xparts_new , part_align , sizeof(struct xpart) * nr_parts * 1.2 ) != 0 )
         error( "Failed to allocate new part data." );
         
     /* Emit the sends and recvs for the particle data. */
@@ -225,9 +225,19 @@ void engine_redistribute ( struct engine *e ) {
         }
         
     /* Wait for all the sends and recvs to tumble in. */
-    if ( MPI_Waitall( 4*nr_nodes , reqs , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
+    MPI_Status stats[4*nr_nodes];
+    int res;
+    if ( ( res = MPI_Waitall( 4*nr_nodes , reqs , stats ) ) != MPI_SUCCESS ) {
+        for ( k = 0 ; k < 4*nr_nodes ; k++ ) {
+	    char buff[ MPI_MAX_ERROR_STRING ];
+	    int res;
+	    MPI_Error_string( stats[k].MPI_ERROR , buff , &res );
+	    message( "request %i has error '%s'." , k , buff );
+	    }
+	message( "counts is [ %i %i %i %i ]." , counts[0] , counts[1] , counts[2] , counts[3] );
         error( "Failed during waitall for part data." );
-        
+        }
+
     /* Verify that all parts are in the right place. */
     /* for ( k = 0 ; k < nr_parts ; k++ ) {
         cid = cell_getid( cdim , parts_new[k].x[0]*ih[0] , parts_new[k].x[1]*ih[1] , parts_new[k].x[2]*ih[2] );
@@ -241,7 +251,7 @@ void engine_redistribute ( struct engine *e ) {
     s->parts = parts_new;
     s->xparts = xparts_new;
     s->nr_parts = nr_parts;
-    s->size_parts = 2*nr_parts;
+    s->size_parts = 1.2*nr_parts;
     
     /* Be verbose about what just happened. */
     for ( k = 0 ; k < nr_cells ; k++ )
@@ -281,7 +291,7 @@ void engine_repartition ( struct engine *e ) {
     struct task *t, *tasks = e->sched.tasks;
     struct cell *ci, *cj;
     int nr_nodes = e->nr_nodes, nodeID = e->nodeID, *nodeIDs;
-    float wscale = 0.0001;
+    float wscale = 0.0001, vscale = 0.001;
     
     /* Clear the repartition flag. */
     e->forcerepart = 0;
@@ -433,25 +443,32 @@ void engine_repartition ( struct engine *e ) {
                 if ( weights_e[ cid*26+k ] != weights_e[ j ] )
                     error( "Unsymmetric edge weights detected (%i vs %i)." , weights_e[ cid*26+k ] , weights_e[ j ] );
                 } */
-        /* int w_min = weights_e[0], w_max = weights_e[0];
-        for ( k = 1 ; k < 26*nr_cells ; k++ )
+        /* int w_min = weights_e[0], w_max = weights_e[0], w_tot = weights_e[0];
+        for ( k = 1 ; k < 26*nr_cells ; k++ ) {
+            w_tot += weights_e[k];
             if ( weights_e[k] < w_min )
                 w_min = weights_e[k];
             else if ( weights_e[k] > w_max )
                 w_max = weights_e[k];
-        message( "edge weights in [ %i , %i ]." , w_min , w_max );
-        w_min = weights_e[0], w_max = weights_e[0];
-        for ( k = 1 ; k < nr_cells ; k++ )
+            }
+        message( "edge weights in [ %i , %i ], tot=%i." , w_min , w_max , w_tot );
+        w_min = weights_e[0], w_max = weights_e[0]; w_tot = weights_v[0];
+        for ( k = 1 ; k < nr_cells ; k++ ) {
+            w_tot += weights_v[k];
             if ( weights_v[k] < w_min )
                 w_min = weights_v[k];
             else if ( weights_v[k] > w_max )
                 w_max = weights_v[k];
-        message( "vertex weights in [ %i , %i ]." , w_min , w_max ); */
+            }
+        message( "vertex weights in [ %i , %i ], tot=%i." , w_min , w_max , w_tot ); */
                 
         /* Make sure there are no zero weights. */
         for ( k = 0 ; k < 26*nr_cells ; k++ )
             if ( weights_e[k] == 0 )
                 weights_e[k] = 1;
+	for ( k = 0 ; k < nr_cells ; k++ )
+            if ( ( weights_v[k] *= vscale ) == 0 )
+	        weights_v[k] = 1;
     
         /* Allocate and fill the connection array. */
         idx_t *offsets;
@@ -467,6 +484,9 @@ void engine_repartition ( struct engine *e ) {
         options[ METIS_OPTION_OBJTYPE ] = METIS_OBJTYPE_CUT;
         options[ METIS_OPTION_NUMBERING ] = 0;
         options[ METIS_OPTION_CONTIG ] = 1;
+	options[ METIS_OPTION_NCUTS ] = 10;
+	options[ METIS_OPTION_NITER ] = 20;
+	// options[ METIS_OPTION_UFACTOR ] = 1;
         
         /* Set the initial partition, although this is probably ignored. */
         for ( k = 0 ; k < nr_cells ; k++ )
@@ -475,8 +495,16 @@ void engine_repartition ( struct engine *e ) {
         /* Call METIS. */
         int one = 1;
         idx_t objval;
-        if ( METIS_PartGraphKway( &nr_cells , &one , offsets , inds , weights_v , NULL , weights_e , &nr_nodes , NULL , NULL , options , &objval , nodeIDs ) != METIS_OK )
+        if ( METIS_PartGraphRecursive( &nr_cells , &one , offsets , inds , weights_v , NULL , weights_e , &nr_nodes , NULL , NULL , options , &objval , nodeIDs ) != METIS_OK )
             error( "Call to METIS_PartGraphKway failed." );
+
+	/* Dump the 3d array of cell IDs. */
+	printf( "engine_repartition: nodeIDs = [" );
+	for ( i = 0 ; i < cdim[0] ; i++ )
+	    for ( j = 0 ; j < cdim[1] ; j++ )
+	        for ( k = 0 ; k < cdim[2] ; k++ )
+		    printf( "%i " , nodeIDs[ cell_getid( cdim , i , j , k ) ] );
+	printf("]; nodeIDs = reshape(nodeIDs,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]);
     
         }
         
@@ -802,8 +830,15 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     /* Wait for each part array to come in and collect the new
        parts from the proxies. */
     for ( k = 0 ; k < 2*(nr_in + nr_out) ; k++ ) {
-        if ( MPI_Waitany( 2*e->nr_proxies , reqs_in , &pid , &status ) != MPI_SUCCESS )
-            error( "MPI_Waitany failed." );
+        int err;
+        if ( ( err = MPI_Waitany( 2*e->nr_proxies , reqs_in , &pid , &status ) ) != MPI_SUCCESS ) {
+	    char buff[ MPI_MAX_ERROR_STRING ];
+	    int res;
+	    MPI_Error_string( err , buff , &res );
+            error( "MPI_Waitany failed (%s)." , buff );
+	    }
+	if ( pid == MPI_UNDEFINED )
+	    break;
         if ( pid == MPI_UNDEFINED )
             break;
         // message( "request from proxy %i has arrived." , pid );
@@ -922,6 +957,8 @@ void engine_maketasks ( struct engine *e ) {
             if ( t->subtype == task_subtype_density ) {
                 t->ci->density = engine_addlink( e , t->ci->density , t );
                 atomic_inc( &t->ci->nr_density );
+                if ( t->ci->nr_density > 27*8 )
+		    error( "Density overflow." );
                 }
             }
         else if ( t->type == task_type_pair ) {
@@ -932,6 +969,8 @@ void engine_maketasks ( struct engine *e ) {
                 atomic_inc( &t->ci->nr_density );
                 t->cj->density = engine_addlink( e , t->cj->density , t );
                 atomic_inc( &t->cj->nr_density );
+		if ( t->ci->nr_density > 8*27 || t->cj->nr_density > 8*27 )
+		    error( "Density overflow." );
                 }
             }
         else if ( t->type == task_type_sub ) {
@@ -944,7 +983,9 @@ void engine_maketasks ( struct engine *e ) {
                 if ( t->cj != NULL ) {
                     t->cj->density = engine_addlink( e , t->cj->density , t );
                     atomic_inc( &t->cj->nr_density );
-                    }
+		    if ( t->cj->nr_density > 8*27 )
+		    	error( "Density overflow." );
+		    }
                 }
             }
         }
@@ -1236,9 +1277,9 @@ void engine_rebuild ( struct engine *e ) {
         else
             counts[ task_type_count ] += 1;
     #ifdef WITH_MPI
-        printf( "[%03i] engine_prepare: task counts are [ %s=%i" , e->nodeID , taskID_names[0] , counts[0] );
+        printf( "[%03i] engine_rebuild: task counts are [ %s=%i" , e->nodeID , taskID_names[0] , counts[0] );
     #else
-        printf( "engine_prepare: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
+        printf( "engine_rebuild: task counts are [ %s=%i" , taskID_names[0] , counts[0] );
     #endif
     for ( k = 1 ; k < task_type_count ; k++ )
         printf( " %s=%i" , taskID_names[k] , counts[k] );
@@ -1267,19 +1308,28 @@ void engine_prepare ( struct engine *e ) {
         
     /* Collect the values of rebuild from all nodes. */
     #ifdef WITH_MPI
+        // tic = getticks();
         int buff;
         if ( MPI_Allreduce( &rebuild , &buff , 1 , MPI_INT , MPI_MAX , MPI_COMM_WORLD ) != MPI_SUCCESS )
             error( "Failed to aggreggate the rebuild flag accross nodes." );
         rebuild = buff;
+	// message( "rebuild allreduce took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
     #endif
+    e->tic_step = getticks();
     
     /* Did this not go through? */
-    if ( rebuild )
+    if ( rebuild ) {
+        // tic = getticks();
         engine_rebuild( e );
+	// message( "engine_rebuild took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+	}
         
     /* Re-rank the tasks every now and then. */
-    if ( e->tasks_age % engine_tasksreweight == 1 )
+    if ( e->tasks_age % engine_tasksreweight == 1 ) {
+    	// tic = getticks();
         scheduler_reweight( &e->sched );
+	// message( "scheduler_reweight took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+	}
     e->tasks_age += 1;
 
     TIMER_TOC( timer_prepare );
@@ -1498,10 +1548,15 @@ void engine_launch ( struct engine *e , int nr_runners , unsigned int mask ) {
         error( "Failed to broadcast barrier open condition." );
         
     /* Load the tasks. */
+    pthread_mutex_unlock( &e->barrier_mutex );
     scheduler_start( &e->sched , mask );
+    pthread_mutex_lock( &e->barrier_mutex );
         
     /* Remove the safeguard. */
+    pthread_mutex_lock( &e->sched.sleep_mutex );
     atomic_dec( &e->sched.waiting );
+    pthread_cond_broadcast( &e->sched.sleep_cond );
+    pthread_mutex_unlock( &e->sched.sleep_mutex );
 
     /* Sit back and wait for the runners to come home. */
     while ( e->barrier_launch || e->barrier_running )
@@ -1855,7 +1910,7 @@ void engine_split ( struct engine *e , int *grid ) {
         }
     
     /* Re-allocate the local parts. */
-    s->size_parts = s->nr_parts * 2;
+    s->size_parts = s->nr_parts * 1.2;
     struct part *parts_new;
     struct xpart *xparts_new;
     if ( posix_memalign( (void **)&parts_new , part_align , sizeof(struct part) * s->size_parts ) != 0 ||
