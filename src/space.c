@@ -520,13 +520,17 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
         volatile int ready;
         };
     struct qstack *qstack;
-    int qstack_size = (max-min)/2 + 10;
+    int qstack_size = 2*(max-min) + 10;
     volatile unsigned int first, last, waiting;
     
     int pivot;
     int i, ii, j, jj, temp_i, qid;
     struct part temp_p;
     struct xpart temp_xp;
+
+    /* for ( int k = 0 ; k < N ; k++ )
+        if ( ind[k] > max || ind[k] < min )
+	    error( "ind[%i]=%i is not in [%i,%i]." , k , ind[k] , min , max ); */
     
     /* Allocate the stack. */
     if ( ( qstack = malloc( sizeof(struct qstack) * qstack_size ) ) == NULL )
@@ -543,7 +547,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel default(none) shared(first,last,waiting,qstack,parts,xparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
+    #pragma omp parallel default(none) shared(N,first,last,waiting,qstack,parts,xparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
     {
     
         /* Main loop. */
@@ -662,7 +666,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
     /* Verify sort. */
     /* for ( i = 1 ; i < N ; i++ )
         if ( ind[i-1] > ind[i] )
-            error( "Sorting failed!" ); */
+            error( "Sorting failed (ind[%i]=%i,ind[%i]=%i)." , i-1 , ind[i-1] , i , ind[i] ); */
             
     /* Clean up. */
     free( qstack );
