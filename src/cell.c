@@ -91,8 +91,8 @@ int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s ) {
     
     /* Unpack the current pcell. */
     c->h_max = pc->h_max;
-    c->dt_min = pc->dt_min;
-    c->dt_max = pc->dt_max;
+    c->dt_min = FLT_MAX; // pc->dt_min;
+    c->dt_max = FLT_MAX; // pc->dt_max;
     c->count = pc->count;
     c->tag = pc->tag;
     
