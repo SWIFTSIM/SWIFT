@@ -901,6 +901,9 @@ int main ( int argc , char *argv[] ) {
     if ( nr_nodes != grid[0]*grid[1]*grid[2] )
         error( "Grid size does not match number of nodes." );
     engine_split( &e , grid );
+    printParticle( s.parts , 5665430362989 , s.nr_parts );
+    engine_redistribute ( &e );
+    printParticle( s.parts , 5665430362989 , s.nr_parts );
 #endif
 
     /* Write the state of the system as it is before starting time integration. */
@@ -934,9 +937,13 @@ int main ( int argc , char *argv[] ) {
     
         /* Repartition the space amongst the nodes? */
         #if defined(WITH_MPI) && defined(HAVE_METIS)
-            if ( j == 1 )
+            if ( j == 2 )
                 e.forcerepart = 1;
         #endif
+        
+        /* Force a rebuild for testing. */
+        /* if ( j % 4 == 1 )
+            e.forcerebuild = 1; */
         
         // message( "starting run %i/%i (t=%.3e) with %i threads and %i queues..." , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
         timers_reset( timers_mask_all );
