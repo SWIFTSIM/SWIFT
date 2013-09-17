@@ -26,6 +26,8 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include <limits.h>
+#include <omp.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -190,7 +192,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
             if ( ci->split ) {
             
                 /* Make a sub? */
-                if ( scheduler_dosub && ci->count < space_subsize ) {
+                if ( scheduler_dosub && ci->count < space_subsize/ci->count ) {
 
                     /* convert to a self-subtask. */
                     t->type = task_type_sub;
@@ -248,7 +250,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
                  
                 /* Replace by a single sub-task? */
                 if ( scheduler_dosub &&
-                     ( ci->count + cj->count ) * sid_scale[sid] < space_subsize &&
+                     ci->count * sid_scale[sid] < space_subsize/cj->count &&
                      sid != 0 && sid != 2 && sid != 6 && sid != 8 ) {
                 
                     /* Make this task a sub task. */
@@ -625,23 +627,23 @@ void scheduler_reweight ( struct scheduler *s ) {
                     t->weight += wscale * __builtin_popcount( t->flags ) * t->ci->count * ( sizeof(int)*8 - __builtin_clz( t->ci->count ) );
                     break;
                 case task_type_self:
-                    t->weight += 10 * t->ci->count * t->ci->count;
+                    t->weight += 1 * t->ci->count * t->ci->count;
                     break;
                 case task_type_pair:
                     if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID )
-                        t->weight += 30 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                        t->weight += 3 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     else
-                        t->weight += 20 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                        t->weight += 2 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                     break;
                 case task_type_sub:
                     if ( t->cj != NULL ) {
                         if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID )
-                            t->weight += 30 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                            t->weight += 3 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                         else
-                            t->weight += 20 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                            t->weight += 2 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
                         }
                     else
-                        t->weight += 10 * wscale * t->ci->count * t->ci->count;
+                        t->weight += 1 * wscale * t->ci->count * t->ci->count;
                     break;
                 case task_type_ghost:
                     if ( t->ci == t->ci->super )
@@ -651,14 +653,21 @@ void scheduler_reweight ( struct scheduler *s ) {
                 case task_type_kick2:
                     t->weight += wscale * t->ci->count;
                     break;
-                    break;
                 }
         if ( t->type == task_type_send_xv || t->type == task_type_send_rho )
-            t->weight *= 10;
+            t->weight  = INT_MAX / 8;
         if ( t->type == task_type_recv_xv || t->type == task_type_recv_rho )
-            t->weight *= 2;
+            t->weight *= 1.41; 
         }
     // message( "weighting tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
+
+    /* int min = tasks[0].weight, max = tasks[0].weight;
+    for ( k = 1 ; k < nr_tasks ; k++ )
+    	if ( tasks[k].weight < min )
+	    min = tasks[k].weight;
+	else if ( tasks[k].weight > max )
+	    max = tasks[k].weight;
+    message( "task weights are in [ %i , %i ]." , min , max ); */
         
     }
 
@@ -682,6 +691,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
     for ( k = nr_tasks - 1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
         t->wait = 0;
+	t->rid = -1;
         if ( !( (1 << t->type) & mask ) || t->skip )
             continue;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
@@ -691,15 +701,15 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
         
     /* Loop over the tasks and enqueue whoever is ready. */
     // tic = getticks();
-    // #pragma omp parallel for schedule(static) private(t)
-    for ( k = 0 ; k < nr_tasks ; k++ ) {
+    for ( k = 0 ; k < nr_tasks ; k++) {
         t = &tasks[ tid[k] ];
-        if ( ( (1 << t->type) & mask ) && !t->skip && t->wait == 0 ) {
-            if ( t->implicit )
-                for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
-                    atomic_dec( &t->unlock_tasks[j]->wait );
-            else
-                scheduler_enqueue( s , t );
+        if ( ( (1 << t->type) & mask ) && !t->skip ) {
+            if ( t->wait == 0 ) {
+		scheduler_enqueue( s , t );
+		pthread_cond_broadcast( &s->sleep_cond );
+		}
+	    else
+	        break;
             }
         }
     // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
@@ -722,7 +732,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
     #endif
     
     /* Ignore skipped tasks. */
-    if ( t->skip )
+    if ( t->skip  || atomic_cas( &t->rid , -1 , 0 ) != -1 )
         return;
         
     /* If this is an implicit task, just pretend it's done. */
@@ -764,7 +774,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
                         }
                     // message( "recieving %i parts with tag=%i from %i to %i." ,
                     //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID ); fflush(stdout);
-                    qid = 0;
+                    qid = 1 % s->nr_queues;
                 #else
                     error( "SWIFT was not compiled with MPI support." );
                 #endif
@@ -971,15 +981,17 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
             }
 
         /* If we failed, take a short nap. */
-        #ifndef WITH_MPI
+        #ifdef WITH_MPI
+	    if ( res == NULL && qid > 1 ) {
+	#else
             if ( res == NULL ) {
+	#endif
                 pthread_mutex_lock( &s->sleep_mutex );
                 if ( s->waiting > 0 )
                     pthread_cond_wait( &s->sleep_cond , &s->sleep_mutex );
                 pthread_mutex_unlock( &s->sleep_mutex );
                 }
-        #endif
-        
+
         }
         
     /* Start the timer on this task, if we got one. */
