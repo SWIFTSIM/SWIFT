@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 
+#include "const.h"
 #include "part.h"
 
 
@@ -41,7 +42,7 @@ void printParticle ( struct part *parts , long long int id, int N ) {
     for ( i = 0 ; i < N && parts[i].id != id; i++ );
 
     if ( i < N )
-        printf("## Particle[%d]: id=%lld, x=[%e,%e,%e], v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e, rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, v_sig=%.3e, dt=%.3e\n",
+        printf("## Particle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e, rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, v_sig=%.3e, dt=%.3e\n",
             i,
             parts[i].id,
             parts[i].x[0], parts[i].x[1], parts[i].x[2],
