@@ -335,13 +335,9 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
   dim[1] = ( boxSize[1] < 0 ) ? boxSize[0] : boxSize[1];
   dim[2] = ( boxSize[2] < 0 ) ? boxSize[0] : boxSize[2];
 
-  /* Divide the particles among the tasks. The last task gets the extra particles */
-  *N = (int) (N_total / (long long) mpi_size);
-  if(mpi_rank == mpi_size - 1)
-    *N += N_total % (long long) mpi_size;
-
-  if(mpi_rank > 0)
-    offset = ( (long long) *N ) * ( (long long) mpi_rank - 1ll );
+  /* Divide the particles among the tasks. */
+  offset = mpi_rank * N_total / mpi_size;
+  *N = (mpi_rank + 1) * N_total / mpi_size - offset;
 
   /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
   /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
