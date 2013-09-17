@@ -103,6 +103,9 @@ struct engine {
     /* Proxies for the other nodes in this simulation. */
     struct proxy *proxies;
     int nr_proxies, *proxy_ind;
+
+    /* Tic at the start of a step. */
+    ticks tic_step;
     
     /* Force the engine to rebuild? */
     int forcerebuild, forcerepart;
