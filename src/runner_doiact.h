@@ -212,7 +212,7 @@ void DOSELF_NAIVE ( struct runner *r , struct cell *restrict c ) {
     int pid, pjd, k, count = c->count;
     struct part *restrict parts = c->parts;
     struct part *restrict pi, *restrict pj;
-    double pix[3];
+    double pix[3] = {0.0,0.0,0.0};
     float dx[3], hi, hig2, r2;
     float dt_step = r->e->dt_step;
     #ifdef VECTORIZE
@@ -523,7 +523,7 @@ void DOSELF_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     int pid, pjd, k, count_i = ci->count;
     struct part *restrict parts_j = ci->parts;
     struct part *restrict pi, *restrict pj;
-    double pix[3];
+    double pix[3] = {0.0,0.0,0.0};
     float dx[3], hi, hig2, r2;
     #ifdef VECTORIZE
         int icount = 0;
