@@ -151,16 +151,18 @@ void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data)
  *  
  * Calls #error() if an error occurs.
  */
-void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, char* part_c, enum DATA_IMPORTANCE importance)
+void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, long long N_total, long long offset, char* part_c, enum DATA_IMPORTANCE importance)
 {
-  hid_t h_data=0, h_err=0, h_type=0;
+  hid_t h_data=0, h_err=0, h_type=0, h_memspace=0, h_filespace=0, h_plist_id=0;
+  hsize_t shape[2], offsets[2];
   htri_t exist=0;
   void* temp;
-  int i=0;
+  int i=0, rank=0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
   const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
+
 
   /* Check whether the dataspace exists or not */
   exist = H5Lexists(grp, name, 0);
@@ -187,8 +189,8 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 
   /* message( "Reading %s '%s' array...", importance == COMPULSORY ? "compulsory": "optional  ", name); */
 
-  /* Open data space */
-  h_data = H5Dopen1(grp, name);
+  /* Open data space in file */
+  h_data = H5Dopen2(grp, name, H5P_DEFAULT);
   if(h_data < 0)
     {
       error( "Error while opening data space '%s'." , name );
@@ -206,10 +208,34 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   if(temp == NULL)
     error("Unable to allocate memory for temporary buffer");
 
+  if(dim > 1)
+    {
+      rank = 2;
+      shape[0] = N; shape[1] = dim;
+      offsets[0] = offset; offsets[1] = 0;
+    }
+  else
+    {
+      rank = 1;
+      shape[0] = N; shape[1] = 0;
+      offsets[0] = offset; offsets[1] = 0;
+    }
+
+  /* Create data space in memory */
+  h_memspace = H5Screate_simple(rank, shape, NULL);
+ 
+  /* Select hyperslab in file */
+  h_filespace = H5Dget_space(h_data);
+  H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
+
+  /* Set collective reading properties */
+  h_plist_id = H5Pcreate(H5P_DATASET_XFER);
+  H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
+
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  h_err = H5Dread(h_data, hdf5Type(type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
+  h_err = H5Dread(h_data, hdf5Type(type), h_memspace, h_filespace, h_plist_id, temp);
   if(h_err < 0)
     {
       error( "Error while reading data array '%s'." , name );
@@ -232,17 +258,19 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
  * @param grp The group from which to read.
  * @param name The name of the array to read.
  * @param type The #DATA_TYPE of the attribute.
- * @param N The number of particles.
+ * @param N The number of particles on this MPI task.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part The array of particles to fill
+ * @param N_total Total number of particles
+ * @param offset Offset in the array where this task starts reading
  * @param field The name of the field (C code name as defined in part.h) to fill
  * @param importance Is the data compulsory or not
  *
  */
-#define readArray(grp, name, type, N, dim, part, field, importance) readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field), importance)
+#define readArray(grp, name, type, N, dim, part, N_total, offset, field, importance) readArrayBackEnd(grp, name, type, N, dim, N_total, offset, (char*)(&(part[0]).field), importance)
 
 /**
- * @brief Reads an HDF5 initial condition file (GADGET-3 type)
+ * @brief Reads an HDF5 initial condition file (GADGET-3 type) in parallel
  *
  * @param fileName The file to read.
  * @param dim (output) The dimension of the volume read from the file.
@@ -260,15 +288,20 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
  * Calls #error() if an error occurs.
  *
  */
-void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic)
+void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info)
 {
   hid_t h_file=0, h_grp=0;
   double boxSize[3]={0.0,-1.0,-1.0};         /* GADGET has only cubic boxes (in cosmological mode) */
   int numParticles[6]={0};   /* GADGET has 6 particle types. We only keep the type 0*/
+  int numParticles_highWord[6]={0};
+  long long offset = 0;
+  long long N_total = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
-  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+  hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
+  H5Pset_fapl_mpio(plist_id, comm, info);
+  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, plist_id);
   if(h_file < 0)
     {
       error( "Error while opening file '%s'." , fileName );
@@ -295,11 +328,20 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
   /* Read the relevant information and print status */
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
+  readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-  *N = numParticles[0];
+  N_total = ((long long) numParticles[0]) + ((long long) numParticles_highWord[0] << 32);   
   dim[0] = boxSize[0];
   dim[1] = ( boxSize[1] < 0 ) ? boxSize[0] : boxSize[1];
   dim[2] = ( boxSize[2] < 0 ) ? boxSize[0] : boxSize[2];
+
+  /* Divide the particles among the tasks. The last task gets the extra particles */
+  *N = (int) (N_total / (long long) mpi_size);
+  if(mpi_rank == mpi_size - 1)
+    *N += N_total % (long long) mpi_size;
+
+  if(mpi_rank > 0)
+    offset = ( (long long) *N ) * ( (long long) mpi_rank - 1ll );
 
   /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
   /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
@@ -321,15 +363,15 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
     error( "Error while opening particle group.\n");
 
   /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, x, COMPULSORY);
-  readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, v, COMPULSORY);
-  readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, mass, COMPULSORY);
-  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
-  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
-  readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL);
-  readArray(h_grp, "Density", FLOAT, *N, 1, *parts, rho, OPTIONAL );
+  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, N_total, offset, x, COMPULSORY);
+  readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, N_total, offset, v, COMPULSORY);
+  readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, N_total, offset, mass, COMPULSORY);
+  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset, h, COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset, u, COMPULSORY);
+  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset, id, COMPULSORY);
+  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, OPTIONAL);
+  readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a, OPTIONAL);
+  readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho, OPTIONAL );
 
   /* Close particle group */
   H5Gclose(h_grp);
@@ -567,13 +609,14 @@ void writeSPHflavour(hid_t h_file)
 void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, int N_total, int mpi_rank, int offset, char* part_c)
 {
   hid_t h_data=0, h_err=0, h_memspace=0, h_filespace=0, h_plist_id=0;
+  hsize_t shape[2], shape_total[2], offsets[2];
   void* temp = 0;
   int i=0, rank=0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
   const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
-  hsize_t shape[2], shape_total[2], offsets[2];
+
 
   /* message("Writing '%s' array...", name); */
 
@@ -664,7 +707,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
 }
 
 /**
- * @brief A helper macro to call the readArrayBackEnd function more easily.
+ * @brief A helper macro to call the writeArrayBackEnd function more easily.
  *
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written

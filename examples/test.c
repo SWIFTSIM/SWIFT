@@ -829,7 +829,7 @@ int main ( int argc , char *argv[] ) {
     /* Read particles and space information from (GADGET) IC */
     tic = getticks();
 #ifdef WITH_MPI
-    read_ic_parallel( ICfileName , dim , &parts , &N , &periodic );
+    read_ic_parallel( ICfileName , dim , &parts , &N , &periodic, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
 #else
     read_ic( ICfileName , dim , &parts , &N , &periodic );
 #endif
