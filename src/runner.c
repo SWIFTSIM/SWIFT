@@ -1067,6 +1067,8 @@ void *runner_main ( void *data ) {
     struct scheduler *sched = &e->sched;
     struct task *t = NULL;
     struct cell *ci, *cj, *super;
+    struct part *parts;
+    int k, nr_parts;
     
     /* Main loop. */
     while ( 1 ) {
@@ -1163,6 +1165,11 @@ void *runner_main ( void *data ) {
                     break;
                 case task_type_recv_xv:
                 case task_type_recv_rho:
+		    parts = ci->parts;
+                    nr_parts = ci->count;
+                    for ( k = 0 ; k < nr_parts ; k++ )
+			parts[k].dt = FLT_MAX;
+		    ci->dt_min = ci->dt_max = FLT_MAX;
                     break;
                 default:
                     error( "Unknown task type." );
