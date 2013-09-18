@@ -509,11 +509,7 @@ void engine_repartition ( struct engine *e ) {
         /* Dump the 3d array of cell IDs. */
         printf( "engine_repartition: nodeIDs = reshape( [" );
         for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
-#if IDXTYPEWIDTH==32
-            printf( "%i " , nodeIDs[ i ] );
-#else
-            printf( "%lli " , nodeIDs[ i ] );
-#endif
+            printf( "%i " , (int)nodeIDs[ i ] );
         printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]);
     
         }
