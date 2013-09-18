@@ -229,12 +229,12 @@ void engine_redistribute ( struct engine *e ) {
     int res;
     if ( ( res = MPI_Waitall( 4*nr_nodes , reqs , stats ) ) != MPI_SUCCESS ) {
         for ( k = 0 ; k < 4*nr_nodes ; k++ ) {
-	    char buff[ MPI_MAX_ERROR_STRING ];
-	    int res;
-	    MPI_Error_string( stats[k].MPI_ERROR , buff , &res );
-	    message( "request %i has error '%s'." , k , buff );
-	    }
-	message( "counts is [ %i %i %i %i ]." , counts[0] , counts[1] , counts[2] , counts[3] );
+        char buff[ MPI_MAX_ERROR_STRING ];
+        int res;
+        MPI_Error_string( stats[k].MPI_ERROR , buff , &res );
+        message( "request %i has error '%s'." , k , buff );
+        }
+    message( "counts is [ %i %i %i %i ]." , counts[0] , counts[1] , counts[2] , counts[3] );
         error( "Failed during waitall for part data." );
         }
 
@@ -282,7 +282,7 @@ void engine_repartition ( struct engine *e ) {
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
     int i, j, k, l, cid, cjd, ii, jj, kk, res, w;
-    idx_t *inds;
+    idx_t *inds, *nodeIDs;
     idx_t *weights_v, *weights_e;
     struct space *s = e->s;
     int nr_cells = s->nr_cells, my_cells = 0;
@@ -290,7 +290,7 @@ void engine_repartition ( struct engine *e ) {
     int ind[3], *cdim = s->cdim;
     struct task *t, *tasks = e->sched.tasks;
     struct cell *ci, *cj;
-    int nr_nodes = e->nr_nodes, nodeID = e->nodeID, *nodeIDs;
+    int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
     float wscale = 0.0001, vscale = 0.001;
     
     /* Clear the repartition flag. */
@@ -424,13 +424,21 @@ void engine_repartition ( struct engine *e ) {
         }
         
     /* Merge the weights arrays accross all nodes. */
+#if IDXTYPEWIDTH==32
     if ( ( res = MPI_Reduce( ( nodeID == 0 ) ? MPI_IN_PLACE : weights_v , weights_v , nr_cells , MPI_INT , MPI_SUM , 0 , MPI_COMM_WORLD ) ) != MPI_SUCCESS ) {
+#else
+    if ( ( res = MPI_Reduce( ( nodeID == 0 ) ? MPI_IN_PLACE : weights_v , weights_v , nr_cells , MPI_LONG_LONG_INT , MPI_SUM , 0 , MPI_COMM_WORLD ) ) != MPI_SUCCESS ) {
+#endif
         char buff[ MPI_MAX_ERROR_STRING ];
         MPI_Error_string( res , buff , &i );
         error( "Failed to allreduce vertex weights (%s)." , buff );
         }
+#if IDXTYPEWIDTH==32
     if ( MPI_Reduce( ( nodeID == 0 ) ? MPI_IN_PLACE : weights_e , weights_e , 26*nr_cells , MPI_INT , MPI_SUM , 0 , MPI_COMM_WORLD ) != MPI_SUCCESS )
-        error( "Failed to allreduce edge weights." );
+#else
+    if ( MPI_Reduce( ( nodeID == 0 ) ? MPI_IN_PLACE : weights_e , weights_e , 26*nr_cells , MPI_LONG_LONG_INT , MPI_SUM , 0 , MPI_COMM_WORLD ) != MPI_SUCCESS )
+#endif
+       error( "Failed to allreduce edge weights." );
         
     /* As of here, only one node needs to compute the partition. */
     if ( nodeID == 0 ) {
@@ -466,9 +474,9 @@ void engine_repartition ( struct engine *e ) {
         for ( k = 0 ; k < 26*nr_cells ; k++ )
             if ( weights_e[k] == 0 )
                 weights_e[k] = 1;
-	for ( k = 0 ; k < nr_cells ; k++ )
+        for ( k = 0 ; k < nr_cells ; k++ )
             if ( ( weights_v[k] *= vscale ) == 0 )
-	        weights_v[k] = 1;
+                weights_v[k] = 1;
     
         /* Allocate and fill the connection array. */
         idx_t *offsets;
@@ -484,27 +492,25 @@ void engine_repartition ( struct engine *e ) {
         options[ METIS_OPTION_OBJTYPE ] = METIS_OBJTYPE_CUT;
         options[ METIS_OPTION_NUMBERING ] = 0;
         options[ METIS_OPTION_CONTIG ] = 1;
-	options[ METIS_OPTION_NCUTS ] = 10;
-	options[ METIS_OPTION_NITER ] = 20;
-	// options[ METIS_OPTION_UFACTOR ] = 1;
+        options[ METIS_OPTION_NCUTS ] = 10;
+        options[ METIS_OPTION_NITER ] = 20;
+        // options[ METIS_OPTION_UFACTOR ] = 1;
         
         /* Set the initial partition, although this is probably ignored. */
         for ( k = 0 ; k < nr_cells ; k++ )
             nodeIDs[k] = cells[k].nodeID;
             
         /* Call METIS. */
-        int one = 1;
+        idx_t one = 1, idx_nr_cells = nr_cells, idx_nr_nodes = nr_nodes;
         idx_t objval;
-        if ( METIS_PartGraphRecursive( &nr_cells , &one , offsets , inds , weights_v , NULL , weights_e , &nr_nodes , NULL , NULL , options , &objval , nodeIDs ) != METIS_OK )
+        if ( METIS_PartGraphRecursive( &idx_nr_cells , &one , offsets , inds , weights_v , NULL , weights_e , &idx_nr_nodes , NULL , NULL , options , &objval , nodeIDs ) != METIS_OK )
             error( "Call to METIS_PartGraphKway failed." );
 
-	/* Dump the 3d array of cell IDs. */
-	printf( "engine_repartition: nodeIDs = [" );
-	for ( i = 0 ; i < cdim[0] ; i++ )
-	    for ( j = 0 ; j < cdim[1] ; j++ )
-	        for ( k = 0 ; k < cdim[2] ; k++ )
-		    printf( "%i " , nodeIDs[ cell_getid( cdim , i , j , k ) ] );
-	printf("]; nodeIDs = reshape(nodeIDs,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]);
+        /* Dump the 3d array of cell IDs. */
+        printf( "engine_repartition: nodeIDs = reshape( [" );
+        for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
+            printf( "%i " , nodeIDs[ i ] );
+        printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]);
     
         }
         
@@ -832,13 +838,13 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     for ( k = 0 ; k < 2*(nr_in + nr_out) ; k++ ) {
         int err;
         if ( ( err = MPI_Waitany( 2*e->nr_proxies , reqs_in , &pid , &status ) ) != MPI_SUCCESS ) {
-	    char buff[ MPI_MAX_ERROR_STRING ];
-	    int res;
-	    MPI_Error_string( err , buff , &res );
+        char buff[ MPI_MAX_ERROR_STRING ];
+        int res;
+        MPI_Error_string( err , buff , &res );
             error( "MPI_Waitany failed (%s)." , buff );
-	    }
-	if ( pid == MPI_UNDEFINED )
-	    break;
+        }
+    if ( pid == MPI_UNDEFINED )
+        break;
         if ( pid == MPI_UNDEFINED )
             break;
         // message( "request from proxy %i has arrived." , pid );
@@ -958,7 +964,7 @@ void engine_maketasks ( struct engine *e ) {
                 t->ci->density = engine_addlink( e , t->ci->density , t );
                 atomic_inc( &t->ci->nr_density );
                 if ( t->ci->nr_density > 27*8 )
-		    error( "Density overflow." );
+            error( "Density overflow." );
                 }
             }
         else if ( t->type == task_type_pair ) {
@@ -969,8 +975,8 @@ void engine_maketasks ( struct engine *e ) {
                 atomic_inc( &t->ci->nr_density );
                 t->cj->density = engine_addlink( e , t->cj->density , t );
                 atomic_inc( &t->cj->nr_density );
-		if ( t->ci->nr_density > 8*27 || t->cj->nr_density > 8*27 )
-		    error( "Density overflow." );
+        if ( t->ci->nr_density > 8*27 || t->cj->nr_density > 8*27 )
+            error( "Density overflow." );
                 }
             }
         else if ( t->type == task_type_sub ) {
@@ -983,9 +989,9 @@ void engine_maketasks ( struct engine *e ) {
                 if ( t->cj != NULL ) {
                     t->cj->density = engine_addlink( e , t->cj->density , t );
                     atomic_inc( &t->cj->nr_density );
-		    if ( t->cj->nr_density > 8*27 )
-		    	error( "Density overflow." );
-		    }
+            if ( t->cj->nr_density > 8*27 )
+                error( "Density overflow." );
+            }
                 }
             }
         }
@@ -1313,7 +1319,7 @@ void engine_prepare ( struct engine *e ) {
         if ( MPI_Allreduce( &rebuild , &buff , 1 , MPI_INT , MPI_MAX , MPI_COMM_WORLD ) != MPI_SUCCESS )
             error( "Failed to aggreggate the rebuild flag accross nodes." );
         rebuild = buff;
-	// message( "rebuild allreduce took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+    // message( "rebuild allreduce took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
     #endif
     e->tic_step = getticks();
     
@@ -1321,15 +1327,15 @@ void engine_prepare ( struct engine *e ) {
     if ( rebuild ) {
         // tic = getticks();
         engine_rebuild( e );
-	// message( "engine_rebuild took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
-	}
+    // message( "engine_rebuild took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+    }
         
     /* Re-rank the tasks every now and then. */
     if ( e->tasks_age % engine_tasksreweight == 1 ) {
-    	// tic = getticks();
+        // tic = getticks();
         scheduler_reweight( &e->sched );
-	// message( "scheduler_reweight took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
-	}
+    // message( "scheduler_reweight took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+    }
     e->tasks_age += 1;
 
     TIMER_TOC( timer_prepare );
@@ -1444,9 +1450,9 @@ void engine_collect_kick2 ( struct cell *c ) {
 //     ih = 1.0f / p.h;
 //     p.rho = 0.0f; p.rho_dh = 0.0f;
 //     p.density.wcount = 0.0f; p.density.wcount_dh = 0.0f;
-// 	p.density.div_v = 0.0;
-// 	for ( k=0 ; k < 3 ; k++)
-// 		p.density.curl_v[k] = 0.0;
+//     p.density.div_v = 0.0;
+//     for ( k=0 ; k < 3 ; k++)
+//         p.density.curl_v[k] = 0.0;
 //             
 //     /* Loop over all particle pairs (force). */
 //     for ( k = 0 ; k < N ; k++ ) {
@@ -1877,7 +1883,6 @@ void engine_split ( struct engine *e , int *grid ) {
     int ind[3];
     struct space *s = e->s;
     struct cell *c;
-    struct part *p;
     
     /* If we've got the wrong number of nodes, fail. */
     if ( e->nr_nodes != grid[0]*grid[1]*grid[2] )
@@ -1898,17 +1903,6 @@ void engine_split ( struct engine *e , int *grid ) {
     /* Make the proxies. */
     engine_makeproxies( e );
         
-    /* For now, just kill any particle outside of our grid. */
-    for ( k = 0 ; k < s->nr_parts ; k++ ) {
-        p = &s->parts[k];
-        if ( s->cells[ cell_getid( s->cdim , p->x[0]*s->ih[0] , p->x[1]*s->ih[1] , p->x[2]*s->ih[2] ) ].nodeID != e->nodeID ) {
-            s->nr_parts -= 1;
-            s->parts[k] = s->parts[ s->nr_parts ];
-            s->xparts[k] = s->xparts[ s->nr_parts ];
-            k -= 1;
-            }
-        }
-    
     /* Re-allocate the local parts. */
     s->size_parts = s->nr_parts * 1.2;
     struct part *parts_new;
