@@ -49,8 +49,7 @@
 /* Task type names. */
 const char *taskID_names[task_type_count] = {   
     "none" , "sort" , "self" , "pair" , "sub" , "ghost" , 
-    "kick1" , "kick2" , "send_xv" , "recv_xv" , "send_rho" ,
-    "recv_rho" , "link" };
+    "kick1" , "kick2" , "send" , "recv" , "link" };
 
 
 /**
@@ -90,8 +89,8 @@ int task_lock ( struct task *t ) {
     struct cell *ci = t->ci, *cj = t->cj;
 
     /* Communication task? */
-    if ( type == task_type_recv_xv || type == task_type_recv_rho ||
-         type == task_type_send_xv || type == task_type_send_rho ) {
+    if ( type == task_type_recv ||
+         type == task_type_send ) {
     
         #ifdef WITH_MPI
             /* Check the status of the MPI request. */

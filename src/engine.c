@@ -578,8 +578,8 @@ void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj
     if ( l != NULL ) {
 
         /* Create the tasks. */
-        struct task *t_xv = scheduler_addtask( &e->sched , task_type_send_xv , task_subtype_none , 2*ci->tag , 0 , ci , cj , 0 );
-        struct task *t_rho = scheduler_addtask( &e->sched , task_type_send_rho , task_subtype_none , 2*ci->tag + 1 , 0 , ci , cj , 0 );
+        struct task *t_xv = scheduler_addtask( &e->sched , task_type_send , task_subtype_none , 2*ci->tag , 0 , ci , cj , 0 );
+        struct task *t_rho = scheduler_addtask( &e->sched , task_type_send , task_subtype_none , 2*ci->tag + 1 , 0 , ci , cj , 0 );
 
         /* The send_rho task depends on the cell's ghost task. */
         scheduler_addunlock( s , ci->super->ghost , t_rho );
@@ -619,8 +619,8 @@ void engine_addtasks_recv ( struct engine *e , struct cell *c , struct task *t_x
     if ( t_xv == NULL && c->nr_density > 0 ) {
     
         /* Create the tasks. */
-        t_xv = c->recv_xv = scheduler_addtask( &e->sched , task_type_recv_xv , task_subtype_none , 2*c->tag , 0 , c , NULL , 0 );
-        t_rho = c->recv_rho = scheduler_addtask( &e->sched , task_type_recv_rho , task_subtype_none , 2*c->tag + 1 , 0 , c , NULL , 0 );
+        t_xv = c->recv_xv = scheduler_addtask( &e->sched , task_type_recv , task_subtype_none , 2*c->tag , 0 , c , NULL , 0 );
+        t_rho = c->recv_rho = scheduler_addtask( &e->sched , task_type_recv , task_subtype_none , 2*c->tag + 1 , 0 , c , NULL , 0 );
         
         }
         
@@ -1655,10 +1655,8 @@ void engine_step ( struct engine *e ) {
                                        (1 << task_type_sub) |
                                        (1 << task_type_ghost) | 
                                        (1 << task_type_kick2) |
-                                       (1 << task_type_send_xv) |
-                                       (1 << task_type_recv_xv) |
-                                       (1 << task_type_send_rho) |
-                                       (1 << task_type_recv_rho) |
+                                       (1 << task_type_send) |
+                                       (1 << task_type_recv) |
                                        (1 << task_type_link) );
     TIMER_TOC(timer_runners);
     

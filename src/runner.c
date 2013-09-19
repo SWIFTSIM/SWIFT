@@ -1160,16 +1160,14 @@ void *runner_main ( void *data ) {
                     else
                         runner_dokick2( r , ci );
                     break;
-                case task_type_send_xv:
-                case task_type_send_rho:
+                case task_type_send:
                     break;
-                case task_type_recv_xv:
-                case task_type_recv_rho:
-		    parts = ci->parts;
+                case task_type_recv:
+                    parts = ci->parts;
                     nr_parts = ci->count;
                     for ( k = 0 ; k < nr_parts ; k++ )
-			parts[k].dt = FLT_MAX;
-		    ci->dt_min = ci->dt_max = FLT_MAX;
+                        parts[k].dt = FLT_MAX;
+                    ci->dt_min = ci->dt_max = FLT_MAX;
                     break;
                 default:
                     error( "Unknown task type." );

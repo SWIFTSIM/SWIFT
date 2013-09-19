@@ -654,9 +654,9 @@ void scheduler_reweight ( struct scheduler *s ) {
                     t->weight += wscale * t->ci->count;
                     break;
                 }
-        if ( t->type == task_type_send_xv || t->type == task_type_send_rho )
+        if ( t->type == task_type_send )
             t->weight  = INT_MAX / 8;
-        if ( t->type == task_type_recv_xv || t->type == task_type_recv_rho )
+        if ( t->type == task_type_recv )
             t->weight *= 1.41; 
         }
     // message( "weighting tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
@@ -763,8 +763,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
                      ( qid < 0 || s->queues[qid].count > s->queues[t->cj->super->owner].count ) )
                     qid = t->cj->super->owner;
                 break;
-            case task_type_recv_xv:
-            case task_type_recv_rho:
+            case task_type_recv:
                 #ifdef WITH_MPI
                     if ( ( err = MPI_Irecv( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->ci->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) ) != MPI_SUCCESS ) {
                         char buff[ MPI_MAX_ERROR_STRING ];
@@ -779,8 +778,7 @@ void scheduler_enqueue ( struct scheduler *s , struct task *t ) {
                     error( "SWIFT was not compiled with MPI support." );
                 #endif
                 break;
-            case task_type_send_xv:
-            case task_type_send_rho:
+            case task_type_send:
                 #ifdef WITH_MPI
                     if ( ( err = MPI_Isend( t->ci->parts , sizeof(struct part) * t->ci->count , MPI_BYTE , t->cj->nodeID , t->flags , MPI_COMM_WORLD , &t->req ) ) != MPI_SUCCESS ) {
                         char buff[ MPI_MAX_ERROR_STRING ];
