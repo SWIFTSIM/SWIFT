@@ -714,6 +714,7 @@ int main ( int argc , char *argv[] ) {
     struct part *parts = NULL;
     struct space s;
     struct engine e;
+    struct UnitSystem us;
     char ICfileName[200];
     float dt_max = 0.0f;
     ticks tic;
@@ -826,6 +827,18 @@ int main ( int argc , char *argv[] ) {
     if ( myrank == 0 )
         message( "sizeof(struct part) is %li bytes." , (long int)sizeof( struct part ));
 
+    /* Initilaize unit system */
+    initUnitSystem(&us);
+    if ( myrank == 0 )
+      {
+	message( "Unit system: U_L = %e cm.", us.UnitLength_in_cgs );
+	message( "Unit system: U_M = %e g.", us.UnitMass_in_cgs );
+	message( "Unit system: U_t = %e s.", us.UnitTime_in_cgs );
+	message( "Unit system: U_I = %e A.", us.UnitCurrent_in_cgs );
+	message( "Unit system: U_T = %e K.", us.UnitTemperature_in_cgs );
+	/* message( "Density units: %e a^%f h^%f.", conversionFactor(&us, UNIT_CONV_ENTROPY), aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY) ); */
+      }
+
     /* Read particles and space information from (GADGET) IC */
     tic = getticks();
 #ifdef WITH_MPI
@@ -840,7 +853,7 @@ int main ( int argc , char *argv[] ) {
     if( scaling != 1.0 )
       for ( k = 0 ; k < N ; k++ )
 	    parts[k].h *= scaling;
-    
+
     /* Apply shift */
     if(shift[0] !=0 || shift[1] !=0 || shift[2] !=0 )
       for ( k = 0 ; k < N ; k++ ) {

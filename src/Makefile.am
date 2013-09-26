@@ -42,7 +42,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
-    io.c timers.c debug.c scheduler.c proxy.c parallel_io.c
+    io.c timers.c debug.c scheduler.c proxy.c parallel_io.c units.c
     
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)
