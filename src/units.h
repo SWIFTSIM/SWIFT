@@ -56,6 +56,7 @@ enum BaseUnits
  */
 enum UnitConversionFactor
   {
+    UNIT_CONV_NO_UNITS,
     UNIT_CONV_MASS,
     UNIT_CONV_LENGTH,
     UNIT_CONV_TIME,
@@ -66,9 +67,10 @@ enum UnitConversionFactor
     UNIT_CONV_ENERGY,
     UNIT_CONV_ENERGY_PER_UNIT_MASS,
     UNIT_CONV_ENTROPY,
+    UNIT_CONV_ENTROPY_PER_UNIT_MASS,
     UNIT_CONV_POWER,
     UNIT_CONV_PRESSURE,
-    UNIT_CONV_FREQUENCY
+    UNIT_CONV_FREQUENCY,
   };
 
 
@@ -76,6 +78,21 @@ enum UnitConversionFactor
  * @brief Initialises the UnitSystem structure with the constants given in const.h
  */
 void initUnitSystem(struct UnitSystem*);
+
+/**
+ * @brief Returns the base unit conversion factor for a given unit system
+ */
+double getBaseUnit(struct UnitSystem*, enum BaseUnits);
+
+/**
+ * @brief Returns the base unit symbol in the cgs system
+ */
+const char* getBaseUnitSymbol(enum BaseUnits);
+
+/**
+ * @brief Returns the base unit symbol in the cgs system
+ */
+const char* getBaseUnitCGSSymbol(enum BaseUnits);
 
 
 /**
@@ -112,3 +129,15 @@ double generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
  * @brief Returns the scaling factor for a given unit in the chosen unit system
  */
 double aFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
+
+
+/**
+ * @brief Returns a string containg the exponants of the base units making up the conversion factors (expressed in terms of the 5 fundamental units)
+ */
+void generalConversionString(char * buffer, struct UnitSystem* us, float baseUnitsExponants[5]);
+
+
+/**
+ * @brief Returns a string containg the exponants of the base units making up the conversion factors
+ */
+void conversionString(char * buffer, struct UnitSystem* us, enum UnitConversionFactor unit);

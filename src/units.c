@@ -49,11 +49,67 @@ void initUnitSystem(struct UnitSystem* us)
   us->UnitTemperature_in_cgs = 1.;
 }
 
+/**
+ * @brief Returns the base unit conversion factor for a given unit system
+ * @param us The UnitSystem used
+ * @param baseUnit The base unit 
+ */
+double getBaseUnit(struct UnitSystem* us, enum BaseUnits baseUnit)
+{
+  switch(baseUnit)
+    {
+    case UNIT_MASS: return us->UnitMass_in_cgs;
+    case UNIT_LENGTH: return us->UnitLength_in_cgs;
+    case UNIT_TIME: return us->UnitTime_in_cgs;
+    case UNIT_CURRENT: return us->UnitCurrent_in_cgs;
+    case UNIT_TEMPERATURE: return us->UnitTemperature_in_cgs;
+    default: error( "Invalid base Unit" );
+    }
+}
+
+/**
+ * @brief Returns the base unit symbol
+ * @param baseUnit The base unit 
+ */
+const char* getBaseUnitSymbol(enum BaseUnits baseUnit)
+{
+ switch(baseUnit)
+    {
+    case UNIT_MASS: return "U_M";
+    case UNIT_LENGTH: return "U_L";
+    case UNIT_TIME: return "U_t";
+    case UNIT_CURRENT: return "U_I";
+    case UNIT_TEMPERATURE: return "U_T";
+    default: error( "Invalid base Unit" );
+    }
+}
+
+
+/**
+ * @brief Returns the base unit symbol in the cgs system
+ * @param baseUnit The base unit 
+ */
+const char* getBaseUnitCGSSymbol(enum BaseUnits baseUnit)
+{
+ switch(baseUnit)
+    {
+    case UNIT_MASS: return "g";
+    case UNIT_LENGTH: return "cm";
+    case UNIT_TIME: return "s";
+    case UNIT_CURRENT: return "A";
+    case UNIT_TEMPERATURE: return "K";
+    default: error( "Invalid base Unit" );
+    }
+}
+
 
 void getBaseUnitExponantsArray(float baseUnitsExp[5], enum UnitConversionFactor unit)
 {
   switch( unit )
     {
+    case UNIT_CONV_NO_UNITS:
+      break;
+
     case UNIT_CONV_MASS: 
       baseUnitsExp[UNIT_MASS] = 1; break;
 
@@ -87,6 +143,9 @@ void getBaseUnitExponantsArray(float baseUnitsExp[5], enum UnitConversionFactor 
     case UNIT_CONV_ENTROPY: 
       baseUnitsExp[UNIT_MASS] = 1. - const_hydro_gamma; baseUnitsExp[UNIT_LENGTH] = 3.*const_hydro_gamma - 1.; baseUnitsExp[UNIT_TIME] = -2;  break;
 
+    case UNIT_CONV_ENTROPY_PER_UNIT_MASS: 
+      baseUnitsExp[UNIT_MASS] = -const_hydro_gamma; baseUnitsExp[UNIT_LENGTH] = 3.*const_hydro_gamma - 1.; baseUnitsExp[UNIT_TIME] = -2;  break;
+
     case UNIT_CONV_POWER: 
       baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -3;  break;
 
@@ -104,7 +163,7 @@ void getBaseUnitExponantsArray(float baseUnitsExp[5], enum UnitConversionFactor 
  */
 double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
 {
-  float baseUnitsExp[5] = { 0, 0, 0, 0, 0 };
+  float baseUnitsExp[5] = { 0.f };
 
   getBaseUnitExponantsArray(baseUnitsExp, unit);
   
@@ -118,7 +177,7 @@ double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
  */
 double hFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
 {
-  float baseUnitsExp[5] = { 0, 0, 0, 0, 0 };
+  float baseUnitsExp[5] = { 0.f };
 
   getBaseUnitExponantsArray(baseUnitsExp, unit);
   
@@ -134,7 +193,7 @@ double hFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
  */
 double aFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
 {
-  float baseUnitsExp[5] = { 0, 0, 0, 0, 0 };
+  float baseUnitsExp[5] = { 0.f };
 
   getBaseUnitExponantsArray(baseUnitsExp, unit);
   
@@ -143,11 +202,24 @@ double aFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
 }
 
 
+/**
+ * @brief Returns a string containg the exponants of the base units making up the conversion factors
+ */
+void conversionString(char * buffer, struct UnitSystem* us, enum UnitConversionFactor unit)
+{
+  float baseUnitsExp[5] = { 0.f };
+
+  getBaseUnitExponantsArray(baseUnitsExp, unit);
+ 
+  generalConversionString(buffer, us, baseUnitsExp);
+}
+
+
 
 /**
  * @brief Returns the conversion factor for a given unit (expressed in terms of the 5 fundamental units) in the chosen unit system
  * @param us The unit system used
- * @param baseUnitsExponants The exponant (integer) of each base units required to form the desired quantity. See conversionFactor() for a working example
+ * @param baseUnitsExponants The exponant of each base units required to form the desired quantity. See conversionFactor() for a working example
  */
 double generalConversionFactor(struct UnitSystem* us, float baseUnitsExponants[5])
 {
@@ -156,7 +228,7 @@ double generalConversionFactor(struct UnitSystem* us, float baseUnitsExponants[5
 
   for(i = 0 ; i < 5 ; ++i )
     if(baseUnitsExponants[i] != 0)
-      factor *= pow( *( &( us->UnitMass_in_cgs ) + i ) , baseUnitsExponants[i] );
+	factor *= pow( getBaseUnit( us, i )  , baseUnitsExponants[i] );
 
   return factor;	
 }
@@ -165,7 +237,7 @@ double generalConversionFactor(struct UnitSystem* us, float baseUnitsExponants[5
 /**
  * @brief Returns the h factor exponentiation for a given unit (expressed in terms of the 5 fundamental units)
  * @param us The unit system used
- * @param baseUnitsExponants The exponant (integer) of each base units required to form the desired quantity. See conversionFactor() for a working example
+ * @param baseUnitsExponants The exponant of each base units required to form the desired quantity. See conversionFactor() for a working example
  */
 double generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5])
 {
@@ -182,7 +254,7 @@ double generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5])
 /**
  * @brief Returns the scaling factor exponentiation for a given unit (expressed in terms of the 5 fundamental units)
  * @param us The unit system used
- * @param baseUnitsExponants The exponant (integer) of each base units required to form the desired quantity. See conversionFactor() for a working example
+ * @param baseUnitsExponants The exponant of each base units required to form the desired quantity. See conversionFactor() for a working example
  */
 double generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5])
 {
@@ -191,4 +263,66 @@ double generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5])
   factor_exp += baseUnitsExponants[UNIT_LENGTH];
   
   return factor_exp;	
+}
+
+/**
+ * @brief Returns a string containg the exponants of the base units making up the conversion factors (expressed in terms of the 5 fundamental units)
+ * @param buffer The buffer in which to write (The buffer must be long enough, 140 chars at most)
+ * @param us The UnistSystem in use.
+ * @param baseUnitsExponants The exponant of each base units required to form the desired quantity. See conversionFactor() for a working example
+ */
+void generalConversionString(char * buffer, struct UnitSystem* us, float baseUnitsExponants[5])
+{
+  char temp[14];
+  double a_exp = generalaFactor(us, baseUnitsExponants);
+  double h_exp = generalhFactor(us, baseUnitsExponants);
+  int i;
+
+  /* Add a-factor */
+  if(a_exp == 1)
+    sprintf(buffer, "h");
+  else  if(remainder(a_exp, 1.) == 0)
+    sprintf(buffer, "a^%d ", (int) a_exp);
+  else
+    sprintf(buffer, "a^%7.4f ", a_exp);
+
+  /* Add h-factor */
+  if(h_exp == 1)
+    sprintf(temp, "h");
+  else if(remainder(h_exp, 1.) == 0)
+    sprintf(temp, "h^%d ", (int) h_exp);
+  else
+    sprintf(temp, "h^%7.4f ", h_exp);
+  strncat(buffer, temp, 12);
+
+  /* Add conversion units */
+  for(i = 0 ; i < 5 ; ++i )
+    if(baseUnitsExponants[i] != 0)
+      {
+	if(baseUnitsExponants[i] == 1.)
+	  sprintf(temp, "%s ", getBaseUnitSymbol(i));
+	else if(remainder(baseUnitsExponants[i], 1.) == 0)
+	  sprintf(temp, "%s^%d ", getBaseUnitSymbol(i), (int)  baseUnitsExponants[i]);
+	else
+	  sprintf(temp, "%s^%7.4f ", getBaseUnitSymbol(i), baseUnitsExponants[i]);
+	strncat(buffer, temp, 12);
+      }
+
+
+  /* Add CGS units */
+  strncat(buffer, " [", 2);
+
+  for(i = 0 ; i < 5 ; ++i )
+    if(baseUnitsExponants[i] != 0)
+      {
+	if(baseUnitsExponants[i] == 1.)
+	  sprintf(temp, "%s ", getBaseUnitCGSSymbol(i));
+	else if(remainder(baseUnitsExponants[i], 1.) == 0)
+	  sprintf(temp, "%s^%d ", getBaseUnitCGSSymbol(i), (int)  baseUnitsExponants[i]);
+	else
+	  sprintf(temp, "%s^%7.4f ", getBaseUnitCGSSymbol(i), baseUnitsExponants[i]);
+	strncat(buffer, temp, 12);
+      }
+
+  strncat(buffer, "]", 2);
 }

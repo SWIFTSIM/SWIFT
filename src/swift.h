@@ -36,10 +36,11 @@
 #include "queue.h"
 #include "runner.h"
 #include "engine.h"
+#include "units.h"
 #include "io.h"
 #include "parallel_io.h"
 #include "debug.h"
-#include "units.h"
+
 
 #ifdef LEGACY_GADGET2_SPH
 #include "runner_iact_legacy.h"

@@ -43,6 +43,7 @@
 #include "engine.h"
 #include "error.h"
 #include "kernel.h"
+#include "units.h"
 
 /**
  * @brief The different types of data used in the GADGET IC files.
@@ -549,9 +550,9 @@ void writeSPHflavour(hid_t h_file)
 {
   hid_t h_grpsph=0;
 
-  h_grpsph = H5Gcreate1(h_file, "/Header/SPH", 0);
+  h_grpsph = H5Gcreate1(h_file, "/SPH", 0);
   if(h_grpsph < 0)
-    error("Error while creating SPH header\n");
+    error("Error while creating SPH group");
 
   writeAttribute_f(h_grpsph, "Kernel eta", const_eta_kernel);
   writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
@@ -579,9 +580,30 @@ void writeSPHflavour(hid_t h_file)
   writeAttribute_f(h_grpsph, "Maximal Delta u change over dt", const_max_u_change);  
   writeAttribute_s(h_grpsph, "Kernel", kernel_name);
 
-  /* Close headers */
   H5Gclose(h_grpsph);
 }
+
+/**
+ * @brief Writes the current Unit System
+ * @param h_file The (opened) HDF5 file in which to write
+ */
+void writeUnitSystem(hid_t h_file, struct UnitSystem* us)
+{
+  hid_t h_grpunit=0;
+
+  h_grpunit = H5Gcreate1(h_file, "/Units", 0);
+  if(h_grpunit < 0)
+    error("Error while creating Unit System group");
+
+  writeAttribute_d(h_grpunit, "Unit mass in cgs", getBaseUnit(us, UNIT_MASS));
+  writeAttribute_d(h_grpunit, "Unit length in cgs", getBaseUnit(us, UNIT_LENGTH));
+  writeAttribute_d(h_grpunit, "Unit time in cgs", getBaseUnit(us, UNIT_TIME));
+  writeAttribute_d(h_grpunit, "Unit current in cgs", getBaseUnit(us, UNIT_CURRENT));
+  writeAttribute_d(h_grpunit, "Unit temperature in cgs", getBaseUnit(us, UNIT_TEMPERATURE));  
+
+  H5Gclose(h_grpunit);
+}
+
 
 /**
  * @brief Writes a data array in given HDF5 group.
@@ -596,13 +618,15 @@ void writeSPHflavour(hid_t h_file)
  * @param N_total Total number of particles across all cores
  * @param offset Offset in the array where this mpi task starts writing
  * @param part_c A (char*) pointer on the first occurence of the field of interest in the parts array
+ * @param us The UnitSystem currently in use
+ * @param convFactor The UnitConversionFactor for this array
  *
  * @todo A better version using HDF5 hyperslabs to write the file directly from the part array
  * will be written once the strucutres have been stabilized.
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, int N_total, int mpi_rank, int offset, char* part_c)
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, int N_total, int mpi_rank, int offset, char* part_c, struct UnitSystem* us, enum UnitConversionFactor convFactor)
 {
   hid_t h_data=0, h_err=0, h_memspace=0, h_filespace=0, h_plist_id=0;
   hsize_t shape[2], shape_total[2], offsets[2];
@@ -612,6 +636,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   const size_t copySize = typeSize * dim;
   const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
+  char buffer[150];
 
 
   /* message("Writing '%s' array...", name); */
@@ -694,6 +719,13 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   if(mpi_rank == 0)
     writeXMFline(xmfFile, fileName, name, N_total, dim, type);
 
+  /* Write unit conversion factors for this data set */
+  conversionString( buffer, us, convFactor );
+  writeAttribute_d( h_data, "CGS conversion factor", conversionFactor( us, convFactor ) );
+  writeAttribute_d( h_data, "h-scale exponant", hFactor( us, convFactor ) );
+  writeAttribute_d( h_data, "a-scale exponant", aFactor( us, convFactor ) );
+  writeAttribute_s( h_data, "Conversion factor", buffer );
+  
   
   /* Free and close everything */
   free(temp);
@@ -717,9 +749,11 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @param offset Offset in the array where this mpi task starts writing
  * @param part A (char*) pointer on the first occurence of the field of interest in the parts array
  * @param field The name (code name) of the field to read from.
+ * @param us The UnitSystem currently in use
+ * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, mpi_rank, offset, field) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total, mpi_rank, offset, (char*)(&(part[0]).field))
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, mpi_rank, offset, field, us, convFactor) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total, mpi_rank, offset, (char*)(&(part[0]).field), us, convFactor)
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -734,7 +768,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * Calls #error() if an error occurs.
  *
  */
-void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info)
+void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info)
 {
   
   hid_t h_file=0, h_grp=0;
@@ -823,6 +857,9 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
   /* Print the SPH parameters */
   writeSPHflavour(h_file);
 
+  /* Print the system of Units */
+  writeUnitSystem(h_file, us);
+
   /* Close header */
   H5Gclose(h_grp);
 		  
@@ -833,15 +870,15 @@ void write_output_parallel (struct engine *e, int mpi_rank, int mpi_size, MPI_Co
     error( "Error while creating particle group.\n");
 
   /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, N_total, mpi_rank, offset, x);
-  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, N_total, mpi_rank, offset, v);
-  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, N_total, mpi_rank, offset, mass);
-  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, N_total, mpi_rank, offset, h);
-  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, N_total, mpi_rank, offset, u);
-  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id);
-  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total, mpi_rank, offset, dt);
-  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, N_total, mpi_rank, offset, a);
-  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total, mpi_rank, offset, rho);
+  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, N_total, mpi_rank, offset, x, us, UNIT_CONV_LENGTH);
+  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, N_total, mpi_rank, offset, v, us, UNIT_CONV_SPEED);
+  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, N_total, mpi_rank, offset, mass, us, UNIT_CONV_MASS);
+  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, us, UNIT_CONV_LENGTH);
+  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, N_total, mpi_rank, offset, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
+  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total, mpi_rank, offset, dt, us, UNIT_CONV_TIME);
+  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);
+  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total, mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
 
   /* Close particle group */
   H5Gclose(h_grp);

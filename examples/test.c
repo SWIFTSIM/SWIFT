@@ -831,12 +831,13 @@ int main ( int argc , char *argv[] ) {
     initUnitSystem(&us);
     if ( myrank == 0 )
       {
-	message( "Unit system: U_L = %e cm.", us.UnitLength_in_cgs );
 	message( "Unit system: U_M = %e g.", us.UnitMass_in_cgs );
+	message( "Unit system: U_L = %e cm.", us.UnitLength_in_cgs );
 	message( "Unit system: U_t = %e s.", us.UnitTime_in_cgs );
 	message( "Unit system: U_I = %e A.", us.UnitCurrent_in_cgs );
 	message( "Unit system: U_T = %e K.", us.UnitTemperature_in_cgs );
-	/* message( "Density units: %e a^%f h^%f.", conversionFactor(&us, UNIT_CONV_ENTROPY), aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY) ); */
+	message( "Density units: %e a^%f h^%f.", conversionFactor(&us, UNIT_CONV_DENSITY), aFactor(&us, UNIT_CONV_DENSITY), hFactor(&us, UNIT_CONV_DENSITY) );
+	message( "Entropy units: %e a^%f h^%f.", conversionFactor(&us, UNIT_CONV_ENTROPY), aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY) );
       }
 
     /* Read particles and space information from (GADGET) IC */
@@ -922,7 +923,7 @@ int main ( int argc , char *argv[] ) {
     /* Write the state of the system as it is before starting time integration. */
     tic = getticks();
 #ifdef WITH_MPI
-    write_output_parallel(&e, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
     write_output(&e);
 #endif
@@ -971,7 +972,7 @@ int main ( int argc , char *argv[] ) {
         if ( j % 100 == 0 )
 	  {
 #ifdef WITH_MPI
-	    write_output_parallel(&e, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+             write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
              write_output(&e);
 #endif
@@ -1016,7 +1017,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Write final output. */
 #ifdef WITH_MPI
-	write_output_parallel( &e, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
+	write_output_parallel( &e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
 #else
 	write_output( &e );
 #endif

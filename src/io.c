@@ -520,7 +520,7 @@ void writeAttribute_s(hid_t grp, char* name, char* str)
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, char* part_c)
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, char* part_c /*, struct UnitSystem* us, enum UnitConversionFactor convFact */)
 {
   hid_t h_data=0, h_err=0, h_space=0;
   void* temp = 0;
@@ -606,7 +606,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @param field The name (code name) of the field to read from.
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, field) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, (char*)(&(part[0]).field))
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, field /*, us, unitConv */) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, (char*)(&(part[0]).field))
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
