@@ -621,7 +621,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * Calls #error() if an error occurs.
  *
  */
-void write_output (struct engine *e, int mpi_rank)
+void write_output (struct engine *e)
 {
   
   hid_t h_file=0, h_grp=0, h_grpsph=0;
