@@ -271,6 +271,8 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurence of the field of interest in the parts array
+ * @param us The UnitSystem currently in use
+ * @param convFactor The UnitConversionFactor for this array
  *
  * @todo A better version using HDF5 hyperslabs to write the file directly from the part array
  * will be written once the strucutres have been stabilized.
@@ -378,6 +380,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
  *
  * @param e The engine containing all the system.
+ * @param us The UnitSystem used for the conversion of units in the output
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced

@@ -317,6 +317,7 @@ void writeSPHflavour(hid_t h_file)
 /**
  * @brief Writes the current Unit System
  * @param h_file The (opened) HDF5 file in which to write
+ * @param us The UnitSystem used in the run
  */
 void writeUnitSystem(hid_t h_file, struct UnitSystem* us)
 {
