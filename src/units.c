@@ -152,6 +152,32 @@ void getBaseUnitExponantsArray(float baseUnitsExp[5], enum UnitConversionFactor 
     case UNIT_CONV_PRESSURE: 
       baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = -1; baseUnitsExp[UNIT_TIME] = -2;  break;
 
+    case UNIT_CONV_ELECTRIC_CHARGE:
+      baseUnitsExp[UNIT_TIME] = 1; baseUnitsExp[UNIT_CURRENT] = 1; break;
+
+    case UNIT_CONV_ELECTRIC_VOLTAGE:
+      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -3; baseUnitsExp[UNIT_CURRENT] = -1; break;
+      
+    case UNIT_CONV_ELECTRIC_CAPACITANCE:
+      baseUnitsExp[UNIT_MASS] = -1; baseUnitsExp[UNIT_LENGTH] = -2; baseUnitsExp[UNIT_TIME] = 4; baseUnitsExp[UNIT_CURRENT] = 2; break;
+
+    case UNIT_CONV_ELECTRIC_RESISTANCE:
+      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -3; baseUnitsExp[UNIT_CURRENT] = -2; break;
+
+    case UNIT_CONV_ELECTRIC_CONDUCTANCE:
+      baseUnitsExp[UNIT_MASS] = -1; baseUnitsExp[UNIT_LENGTH] = -2; baseUnitsExp[UNIT_TIME] = 3; baseUnitsExp[UNIT_CURRENT] = 2; break;
+      
+    case UNIT_CONV_MAGNETIC_FLUX:
+      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -2; baseUnitsExp[UNIT_CURRENT] = -1; break;
+      
+    case UNIT_CONV_MAGNETIC_FIELD:
+      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_TIME] = -2; baseUnitsExp[UNIT_CURRENT] = -1; break;
+
+    case UNIT_CONV_MAGNETIC_INDUCTANCE:
+      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -2; baseUnitsExp[UNIT_CURRENT] = -2; break;
+
+    case UNIT_CONV_TEMPERATURE:
+      baseUnitsExp[UNIT_TEMPERATURE] = 1;
     }
 }
 
