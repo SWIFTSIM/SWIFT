@@ -925,7 +925,7 @@ int main ( int argc , char *argv[] ) {
 #ifdef WITH_MPI
     write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-    write_output(&e);
+    write_output(&e, &us);
 #endif
     message( "writing particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
@@ -974,7 +974,7 @@ int main ( int argc , char *argv[] ) {
 #ifdef WITH_MPI
              write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-             write_output(&e);
+             write_output(&e, &us);
 #endif
           }
                 
@@ -1019,7 +1019,7 @@ int main ( int argc , char *argv[] ) {
 #ifdef WITH_MPI
 	write_output_parallel( &e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
 #else
-	write_output( &e );
+	write_output( &e , &us );
 #endif
         
 #ifdef WITH_MPI

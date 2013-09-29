@@ -42,97 +42,13 @@
 #include "engine.h"
 #include "error.h"
 #include "kernel.h"
+#include "common_io.h"
 
-/**
- * @brief The different types of data used in the GADGET IC files.
- *
- * (This is admittedly a poor substitute to C++ templates...)
- */
-enum DATA_TYPE{INT, LONG, LONGLONG, UINT, ULONG, ULONGLONG, FLOAT, DOUBLE, CHAR};
 
-/**
- * @brief The two sorts of data present in the GADGET IC files: compulsory to start a run or optional.
- *
- */
-enum DATA_IMPORTANCE{COMPULSORY=1, OPTIONAL=0};
-
-/**
- * @brief Converts a C data type to the HDF5 equivalent. 
- *
- * This function is a trivial wrapper around the HDF5 types but allows
- * to change the exact storage types matching the code types in a transparent way.
- */
-static hid_t hdf5Type(enum DATA_TYPE type)
-{
-  switch(type)
-    {
-    case INT: return H5T_NATIVE_INT;
-    case UINT: return H5T_NATIVE_UINT;
-    case LONG: return H5T_NATIVE_LONG;
-    case ULONG: return H5T_NATIVE_ULONG;
-    case LONGLONG: return H5T_NATIVE_LLONG;
-    case ULONGLONG: return H5T_NATIVE_ULLONG;
-    case FLOAT: return H5T_NATIVE_FLOAT;
-    case DOUBLE: return H5T_NATIVE_DOUBLE;
-    case CHAR: return H5T_C_S1;
-    default: error("Unknown type"); return 0;
-    }
-}
-
-/**
- * @brief Returns the memory size of the data type
- */
-static size_t sizeOfType(enum DATA_TYPE type)
-{
-  switch(type)
-    {
-    case INT: return sizeof(int);
-    case UINT: return sizeof(unsigned int);
-    case LONG: return sizeof(long);
-    case ULONG: return sizeof(unsigned long);
-    case LONGLONG: return sizeof(long long);
-    case ULONGLONG: return sizeof(unsigned long long);
-    case FLOAT: return sizeof(float);
-    case DOUBLE: return sizeof(double);
-    case CHAR: return sizeof(char);
-    default: error("Unknown type"); return 0;
-    }
-}
 
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
  *-----------------------------------------------------------------------------*/
-
-
-/**
- * @brief Reads an attribute from a given HDF5 group.
- *
- * @param grp The group from which to read.
- * @param name The name of the attribute to read.
- * @param type The #DATA_TYPE of the attribute.
- * @param data (output) The attribute read from the HDF5 group.
- *
- * Calls #error() if an error occurs.
- */
-void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data)
-{
-  hid_t h_attr=0, h_err=0;
-
-  h_attr = H5Aopen(grp, name, H5P_DEFAULT);
-  if(h_attr < 0)
-    {
-      error( "Error while opening attribute '%s'" , name );
-    }
-
-  h_err = H5Aread(h_attr, hdf5Type(type), data);
-  if(h_err < 0)
-    {
-      error( "Error while reading attribute '%s'" , name );
-    }
-
-  H5Aclose(h_attr);
-}
-
 
 /**
  * @brief Reads a data array from a given HDF5 group.
@@ -344,165 +260,6 @@ void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int*
  * Routines writing an output file
  *-----------------------------------------------------------------------------*/
 
-
-/* File descriptor output routine */
-void createXMFfile();
-FILE* prepareXMFfile();
-void writeXMFfooter(FILE* xmfFile);
-void writeXMFheader(FILE* xmfFile, int Nparts, char* hdfFileName,  float time);
-void writeXMFline(FILE* xmfFile, char* fileName, char* name, int N, int dim, enum DATA_TYPE type);
-
-
-/**
- * @brief Write an attribute to a given HDF5 group.
- *
- * @param grp The group in which to write.
- * @param name The name of the attribute to write.
- * @param type The #DATA_TYPE of the attribute.
- * @param data The attribute to write.
- * @param num The number of elements to write
- *
- * Calls #error() if an error occurs.
- */
-void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data, int num)
-{
-  hid_t h_space=0, h_attr=0, h_err=0;
-  hsize_t dim[1]={num};
-
-  h_space = H5Screate(H5S_SIMPLE);
-  if(h_space < 0)
-    {
-      error( "Error while creating dataspace for attribute '%s'." , name );
-    }
-
-  h_err = H5Sset_extent_simple(h_space, 1, dim, NULL);
-  if(h_err < 0)
-    {
-      error( "Error while changing dataspace shape for attribute '%s'." , name );
-    }
-
-  h_attr = H5Acreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
-  if(h_attr < 0)
-    {
-      error( "Error while creating attribute '%s'.", name );
-    }
-
-  h_err = H5Awrite(h_attr, hdf5Type(type), data);
-  if(h_err < 0)
-    {
-      error( "Error while reading attribute '%s'." , name );
-    }
-
-  H5Sclose(h_space);
-  H5Aclose(h_attr);
-}
-
-/**
- * @brief Write a string as an attribute to a given HDF5 group.
- *
- * @param grp The group in which to write.
- * @param name The name of the attribute to write.
- * @param str The string to write.
- * @param length The length of the string
- *
- * Calls #error() if an error occurs.
- */
-void writeStringAttribute(hid_t grp, char* name, char* str, int length)
-{
-  hid_t h_space=0, h_attr=0, h_err=0, h_type=0;
-
-  h_space = H5Screate(H5S_SCALAR);
-  if(h_space < 0)
-    {
-      error( "Error while creating dataspace for attribute '%s'." , name );
-    }
-
-  h_type = H5Tcopy(H5T_C_S1);
-  if(h_type < 0)
-    {
-      error( "Error while copying datatype 'H5T_C_S1'." );
-    }
-
-  h_err = H5Tset_size(h_type, length);
-  if(h_err < 0)
-    {
-      error( "Error while resizing attribute tyep to '%i'." , length );
-    }
-
-  h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
-  if(h_attr < 0)
-    {
-      error( "Error while creating attribute '%s'." , name );
-    }
-
-  h_err = H5Awrite(h_attr, h_type, str );
-  if(h_err < 0)
-    {
-      error( "Error while reading attribute '%s'." , name );
-    }
-
-  H5Tclose(h_type);
-  H5Sclose(h_space);
-  H5Aclose(h_attr);
-}
-
-/**
- * @brief Writes a double value as an attribute
- * @param grp The groupm in which to write
- * @param name The name of the attribute
- * @param data The value to write
- */
-void writeAttribute_d(hid_t grp, char* name, double data)
-{
-  writeAttribute(grp, name, DOUBLE, &data, 1);
-}
-
-/**
- * @brief Writes a float value as an attribute
- * @param grp The groupm in which to write
- * @param name The name of the attribute
- * @param data The value to write
- */
-void writeAttribute_f(hid_t grp, char* name, float data)
-{
-  writeAttribute(grp, name, FLOAT, &data, 1);
-}
-
-/**
- * @brief Writes an int value as an attribute
- * @param grp The groupm in which to write
- * @param name The name of the attribute
- * @param data The value to write
- */
-
-void writeAttribute_i(hid_t grp, char* name, int data)
-{
-  writeAttribute(grp, name, INT, &data, 1);
-}
-
-/**
- * @brief Writes a long value as an attribute
- * @param grp The groupm in which to write
- * @param name The name of the attribute
- * @param data The value to write
- */
-void writeAttribute_l(hid_t grp, char* name, long data)
-{
-  writeAttribute(grp, name, LONG, &data, 1);
-}
-
-/**
- * @brief Writes a string value as an attribute
- * @param grp The groupm in which to write
- * @param name The name of the attribute
- * @param str The string to write
- */
-void writeAttribute_s(hid_t grp, char* name, char* str)
-{
-  writeStringAttribute(grp, name, str, strlen(str));
-}
-
-
 /**
  * @brief Writes a data array in given HDF5 group.
  *
@@ -520,7 +277,7 @@ void writeAttribute_s(hid_t grp, char* name, char* str)
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, char* part_c /*, struct UnitSystem* us, enum UnitConversionFactor convFact */)
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, char* part_c, struct UnitSystem* us, enum UnitConversionFactor convFactor)
 {
   hid_t h_data=0, h_err=0, h_space=0;
   void* temp = 0;
@@ -530,6 +287,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
   hsize_t shape[2];
+  char buffer[150];
 
   /* message("Writing '%s' array...", name); */
 
@@ -585,6 +343,12 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   /* Write XMF description for this data set */
   writeXMFline(xmfFile, fileName, name, N, dim, type);
 
+  /* Write unit conversion factors for this data set */
+  conversionString( buffer, us, convFactor );
+  writeAttribute_d( h_data, "CGS conversion factor", conversionFactor( us, convFactor ) );
+  writeAttribute_d( h_data, "h-scale exponant", hFactor( us, convFactor ) );
+  writeAttribute_d( h_data, "a-scale exponant", aFactor( us, convFactor ) );
+  writeAttribute_s( h_data, "Conversion factor", buffer );
   
   /* Free and close everything */
   free(temp);
@@ -604,9 +368,11 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part A (char*) pointer on the first occurence of the field of interest in the parts array
  * @param field The name (code name) of the field to read from.
+ * @param us The UnitSystem currently in use
+ * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, field /*, us, unitConv */) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, (char*)(&(part[0]).field))
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, field, us, convFactor) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, (char*)(&(part[0]).field), us, convFactor)
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -621,10 +387,10 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * Calls #error() if an error occurs.
  *
  */
-void write_output (struct engine *e)
+void write_output (struct engine *e, struct UnitSystem* us)
 {
   
-  hid_t h_file=0, h_grp=0, h_grpsph=0;
+  hid_t h_file=0, h_grp=0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
   int numParticles[6]={N,0};
@@ -688,40 +454,14 @@ void write_output (struct engine *e)
   writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
 
-  /* Print the SPH parameters */
-  h_grpsph = H5Gcreate1(h_file, "/Header/SPH", 0);
-  if(h_grpsph < 0)
-    error("Error while creating SPH header\n");
-
-  writeAttribute_f(h_grpsph, "Kernel eta", const_eta_kernel);
-  writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
-  writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
-  writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
-
-#ifdef LEGACY_GADGET2_SPH
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "(No treatment) Legacy Gadget-2 as in Springel (2005)");  
-  writeAttribute_s(h_grpsph, "Viscosity Model", "Legacy Gadget-2 as in Springel (2005)");  
-  writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);  
-  writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);  
-#else
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "Price (2008) without switch");  
-  writeAttribute_f(h_grpsph, "Thermal Conductivity alpha", const_conductivity_alpha);  
-  writeAttribute_s(h_grpsph, "Viscosity Model", "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & Piran (2000) with additional Balsara (1995) switch");  
-  writeAttribute_f(h_grpsph, "Viscosity alpha_min", const_viscosity_alpha_min);  
-  writeAttribute_f(h_grpsph, "Viscosity alpha_max", const_viscosity_alpha_max);  
-  writeAttribute_f(h_grpsph, "Viscosity beta", 2.f);  
-  writeAttribute_f(h_grpsph, "Viscosity decay length", const_viscosity_length);  
-#endif
-
-  writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);  
-  writeAttribute_f(h_grpsph, "Maximal ln(Delta h) change over dt", const_ln_max_h_change);  
-  writeAttribute_f(h_grpsph, "Maximal Delta h change over dt", exp(const_ln_max_h_change));  
-  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt", const_max_u_change);  
-  writeAttribute_s(h_grpsph, "Kernel", kernel_name);
-
-  /* Close headers */
-  H5Gclose(h_grpsph);
+  /* Close header */
   H5Gclose(h_grp);
+
+  /* Print the SPH parameters */
+  writeSPHflavour(h_file);
+
+  /* Print the system of Units */
+  writeUnitSystem(h_file, us);
 		  
   /* Create SPH particles group */
   /* message("Writing particle arrays..."); */
@@ -730,15 +470,15 @@ void write_output (struct engine *e)
     error( "Error while creating particle group.\n");
 
   /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, x);
-  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, v);
-  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, mass);
-  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, h);
-  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, u);
-  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, id);
-  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, dt);
-  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, a);
-  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, rho);
+  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, x, us, UNIT_CONV_LENGTH);
+  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, v, us, UNIT_CONV_SPEED);
+  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, mass, us, UNIT_CONV_MASS);
+  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, h, us, UNIT_CONV_LENGTH);
+  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, id, us, UNIT_CONV_NO_UNITS);
+  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, dt, us, UNIT_CONV_TIME);
+  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, a, us, UNIT_CONV_ACCELERATION);
+  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, rho, us, UNIT_CONV_DENSITY);
 
   /* Close particle group */
   H5Gclose(h_grp);
@@ -754,151 +494,6 @@ void write_output (struct engine *e)
   ++outputCount;
 }
 
-
-
-/* ------------------------------------------------------------------------------------------------ 
- * This part writes the XMF file descriptor enabling a visualisation through ParaView
- * ------------------------------------------------------------------------------------------------ */
-
-/**
- * @brief Writes the lines corresponding to an array of the HDF5 output
- *
- * @param xmfFile The file in which to write
- * @param fileName The name of the HDF5 file associated to this XMF descriptor.
- * @param name The name of the array in the HDF5 file.
- * @param N The number of particles.
- * @param dim The dimension of the quantity (1 for scalars, 3 for vectors).
- * @param type The type of the data to write.
- *
- * @todo Treat the types in a better way.
- */
-void writeXMFline(FILE* xmfFile, char* fileName, char* name, int N, int dim, enum DATA_TYPE type )
-{
-  fprintf(xmfFile, "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n", name, dim == 1 ? "Scalar": "Vector");
-  if(dim == 1)
-    fprintf(xmfFile, "<DataItem Dimensions=\"%d\" NumberType=\"Double\" Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n", N, type==FLOAT ? 4:8, fileName, name);
-  else
-    fprintf(xmfFile, "<DataItem Dimensions=\"%d %d\" NumberType=\"Double\" Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n", N, dim, type==FLOAT ? 4:8, fileName, name);
-  fprintf(xmfFile, "</Attribute>\n");
-}
-
-
-/**
- * @brief Prepares the XMF file for the new entry
- *
- * Creates a temporary file on the disk in order to copy the right lines.
- *
- * @todo Use a proper XML library to avoid stupid copies.
- */
-FILE* prepareXMFfile()
-{
-  char buffer[1024];
-
-  FILE* xmfFile = fopen("output.xmf", "r");
-  FILE* tempFile = fopen("output_temp.xmf", "w");
-
-  if(xmfFile == NULL)
-    error("Unable to open current XMF file.");
-
-  if(tempFile == NULL)
-    error("Unable to open temporary file.");
-
-
-  /* First we make a temporary copy of the XMF file and count the lines */
-  int counter = 0;
-  while (fgets(buffer, 1024, xmfFile) != NULL)
-    {
-      counter++;
-      fprintf(tempFile, "%s", buffer);
-    }
-  fclose(tempFile);
-  fclose(xmfFile);
-  
-  /* We then copy the XMF file back up to the closing lines */
-  xmfFile = fopen("output.xmf", "w");
-  tempFile = fopen("output_temp.xmf", "r");
-
-  if(xmfFile == NULL)
-    error("Unable to open current XMF file.");
-
-  if(tempFile == NULL)
-    error("Unable to open temporary file.");
-
-  int i = 0;
-  while (fgets(buffer, 1024, tempFile) != NULL && i < counter - 3)
-    {
-      i++;
-      fprintf(xmfFile, "%s", buffer);
-    }
-  fprintf(xmfFile, "\n");
-  fclose(tempFile);
-  remove("output_temp.xmf");
- 
-  return xmfFile;
-}
-
-/**
- * @brief Writes the begin of the XMF file
- *
- * @todo Exploit the XML nature of the XMF format to write a proper XML writer and simplify all the XMF-related stuff.
- */
-void createXMFfile()
-{
-  FILE* xmfFile = fopen("output.xmf", "w");
-
-  fprintf(xmfFile, "<?xml version=\"1.0\" ?> \n");
-  fprintf(xmfFile, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []> \n");
-  fprintf(xmfFile, "<Xdmf xmlns:xi=\"http://www.w3.org/2003/XInclude\" Version=\"2.1\">\n");
-  fprintf(xmfFile, "<Domain>\n");
-  fprintf(xmfFile, "<Grid Name=\"TimeSeries\" GridType=\"Collection\" CollectionType=\"Temporal\">\n\n");
-
-  fprintf(xmfFile, "</Grid>\n");
-  fprintf(xmfFile, "</Domain>\n");
-  fprintf(xmfFile, "</Xdmf>\n");
-
-  fclose(xmfFile);
-}
-
-
-/**
- * @brief Writes the part of the XMF entry presenting the geometry of the snapshot
- *
- * @param xmfFile The file to write in.
- * @param Nparts The number of particles.
- * @param hdfFileName The name of the HDF5 file corresponding to this output.
- * @param time The current simulation time.
- */
-void writeXMFheader(FILE* xmfFile, int Nparts, char* hdfFileName, float time)
-{
-  /* Write end of file */
-  
-  fprintf(xmfFile, "<Grid GridType=\"Collection\" CollectionType=\"Spatial\">\n");
-  fprintf(xmfFile, "<Time Type=\"Single\" Value=\"%f\"/>\n", time);
-  fprintf(xmfFile, "<Grid Name=\"Gas\" GridType=\"Uniform\">\n");
-  fprintf(xmfFile, "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%d\"/>\n", Nparts);
-  fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
-  fprintf(xmfFile, "<DataItem Dimensions=\"%d 3\" NumberType=\"Double\" Precision=\"8\" Format=\"HDF\">%s:/PartType0/Coordinates</DataItem>\n", Nparts, hdfFileName);
-  fprintf(xmfFile, "</Geometry>");
-}
-
-
-/**
- * @brief Writes the end of the XMF file (closes all open markups)
- *
- * @param xmfFile The file to write in.
- */
-void writeXMFfooter(FILE* xmfFile)
-{
-  /* Write end of the section of this time step */
-  
-  fprintf(xmfFile, "\n</Grid>\n");
-  fprintf(xmfFile, "</Grid>\n");
-  fprintf(xmfFile, "\n</Grid>\n");
-  fprintf(xmfFile, "</Domain>\n");
-  fprintf(xmfFile, "</Xdmf>\n");
-  
-  fclose(xmfFile);
-}
 
 #endif  /* HAVE_HDF5 */
 

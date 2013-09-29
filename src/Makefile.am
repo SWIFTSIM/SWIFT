@@ -38,11 +38,11 @@ endif
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
-    engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h
+    engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h common_io.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
-    serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c units.c
+    serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c units.c common_io.c
     
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)

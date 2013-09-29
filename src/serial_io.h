@@ -22,7 +22,7 @@
 
 void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic);
 
-void write_output ( struct engine* e);
+void write_output ( struct engine* e, struct UnitSystem* us );
 
 #endif
 
