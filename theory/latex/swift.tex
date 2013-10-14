@@ -197,39 +197,29 @@ time. In cosmological simulations, the softening length is a function of time.
 
 \section{Gravity interactions}
 
-The interaction is computed between all pairs of particles. The acceleration of particle $i$ due to one other particle
-$j$ is given by:
+The gravity interactions are split in two parts, the sort range interactions computed via the FMM method and the long 
+range interactions computed through a PM scheme. Short range interactions are also soften on a scale $\epsilon$ to 
+reduce the effect of spurious two-body relaxation. For implementation purposes, we define the quantity $h_c = 
+2.8\epsilon$, the radius at which the force becomes Newtonian and is not soften any more.
+
+The short range force is computed thanks to FMM. The expression for the acceleration of a particle $i$ due to a body 
+(particle or monopole) $j$ is given by:
 
 \begin{equation}
- \vec{a_i} = \left\lbrace \begin{array}{rcl}
-	   \Bigg. G_N\dfrac{m_j}{|\vec{r}_{ij}|^3}\vec{r}_{ij}& \mbox{if} & \Big.\dfrac{|\vec{r}_{ij}|}{\epsilon}
-\geq 1 \\
-         \Bigg. G_N\dfrac{m_j}{\epsilon^3}\phi\left(\frac{|\vec{r}_{ij}|}{\epsilon}\right)\vec{r}_{ij} & \mbox{if} &
-\Big.\dfrac{|\vec{r}_{ij}|}{\epsilon} < 1 \\
-                     \end{array}
-\right.
+ \vec{a} = f \cdot \vec{r}_{ij},
 \end{equation}
-
-where the softened potential $\phi(u)$ is given by:
+ where $f$ is the norm of the acceleration given by
 
 \begin{equation}
-\phi(u) =  \left\lbrace \begin{array}{rcl}
-	     \frac{32}{3} - \frac{192}{5}u^2 + 32u^3& \mbox{if} & u < \Big.\frac{1}{2}\\
-	     \frac{64}{3} - 48u + \frac{192}{5} u^2 - \frac{32}{3}u^3  - \frac{2}{30}\dfrac{1}{u^3}& \mbox{if} & \Big.u
-\geq \frac{1}{2}\\
-                        \end{array}
-\right.
+ f = G\left\lbrace \begin{array}{rcl}
+                    \frac{1}{|\vec{r}_{ij}|^3}  & \mbox{if} & |\vec{r}_{ij}| > h_c \\
+                    (\frac{32}{3} + \frac{|\vec{r}_{ij}|^2}{h_c^2} (32 \frac{|\vec{r}_{ij}|}{h_c} - 38.4)) / h_c^3  & 
+\mbox{if} & h_c \geq |\vec{r}_{ij}| > \frac{h_c}{2} \\	
+                    \frac{1}{|\vec{r}_{ij}|^3}  & \mbox{if} & |\vec{r}_{ij}| \leq \frac{h_c}{2} \\		
+		    \end{array}\right.
 \end{equation}
 
-and $G_N$ is Newton's constant for gravity. The softening length used in this equation is the maximum of the softening
-length of both particles, i.e. $\epsilon = \max(\epsilon_i, \epsilon_j)$. Notice that this softened potential is
-derived from the smoothing kernel used in the SPH part of the calculation with a smoothing length $h=1.4\epsilon$. This
-corresponds to a Plummer sphere of size $\epsilon$. \\
-
-
-\textcolor{red}{This is the softening potential used in GADGET. There is something weird about this function that I want
-to check but for now it should be sufficient.}\\
-
+ 
 The maximal time step a particle is allowed to have is related to the acceleration by:
 
 \begin{equation}
