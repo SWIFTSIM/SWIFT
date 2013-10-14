@@ -2,6 +2,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{color}
+\usepackage{graphicx}
 
 \newcommand{\swift}{\textsc{swift }}
 \newcommand{\eagle}{\textsc{eagle }}
@@ -147,7 +148,7 @@ performed very rarely and is described in chapter \ref{chap:FOF}.
 
 \section{Units used in the code}
 
-\textcolor{red}{To be agreed on and written down.}
+\textcolor{red}{To be written down.}
 
 
 
@@ -200,81 +201,141 @@ time. In cosmological simulations, the softening length is a function of time.
 The gravity interactions are split in two parts, the sort range interactions computed via the FMM method and the long 
 range interactions computed through a PM scheme. Short range interactions are also soften on a scale $\epsilon$ to 
 reduce the effect of spurious two-body relaxation. For implementation purposes, we define the quantity $h_c = 
-2.8\epsilon$, the radius at which the force becomes Newtonian and is not soften any more.
+2.8\epsilon$, the radius at which the force becomes purely Newtonian and is not soften any more.
+
+\begin{equation}
+ \vec{a} = \vec{a}_{short} + \vec{a}_{long}
+\end{equation}
+
 
 The short range force is computed thanks to FMM. The expression for the acceleration of a particle $i$ due to a body 
 (particle or monopole) $j$ is given by:
 
 \begin{equation}
- \vec{a} = f \cdot \vec{r}_{ij},
+ \vec{a}_{short} = G\cdot f \cdot f_{LR} \cdot \vec{r}_{ij},
 \end{equation}
- where $f$ is the norm of the acceleration given by
+ where $G$ is Newton's constant, $f$ is the softened local force and $f_{LR}$ is the correction factor coming from the use of the mesh for long distance forces.
+ The softened local force is 
 
 \begin{equation}
- f = G\left\lbrace \begin{array}{rcl}
-                    \frac{1}{|\vec{r}_{ij}|^3}  & \mbox{if} & |\vec{r}_{ij}| > h_c \\
-                    (\frac{32}{3} + \frac{|\vec{r}_{ij}|^2}{h_c^2} (32 \frac{|\vec{r}_{ij}|}{h_c} - 38.4)) / h_c^3  & 
-\mbox{if} & h_c \geq |\vec{r}_{ij}| > \frac{h_c}{2} \\	
-                    \frac{1}{|\vec{r}_{ij}|^3}  & \mbox{if} & |\vec{r}_{ij}| \leq \frac{h_c}{2} \\		
+\nonumber
+ f = \left\lbrace \begin{array}{rcl}
+                    \frac{1}{|\vec{r}_{ij}|^3}  & \mbox{if} & |\vec{r}_{ij}| > h_c\Big. \\
+                    \frac{1}{h_c^3}\left(-\frac{32}{3}\frac{|\vec{r}_{ij}|^3}{h_c^3} + \frac{192}{5}\frac{|\vec{r}_{ij}|^2}{h_c^2} - 48\frac{|\vec{r}_{ij}|}{h_c} + \frac{64}{3} - \frac{2h_c^3}{3|\vec{r}_{ij}|^3} \right)  & \mbox{if} & h_c \geq |\vec{r}_{ij}| > \frac{h_c}{2}\Big. \\	
+                    \frac{1}{h_c^3}\left(32\frac{|\vec{r}_{ij}|^3}{h_c^3} - \frac{192}{5}\frac{|\vec{r}_{ij}|^2}{h_c^2} + \frac{32}{3}\right)  & \mbox{if} & |\vec{r}_{ij}| \leq \frac{h_c}{2}\Big. \\		
 		    \end{array}\right.
 \end{equation}
 
- 
+The correction factor introduced by the long range force calculation is dependant on the parameter $r_s$, the spatial scale of the force-split.
+
+\begin{equation}
+ f_{LR} = \text{erfc}\left(\frac{|\vec{r}_{ij}|}{2r_s}\right) + \frac{|\vec{r}_{ij}|}{r_s\sqrt{\pi}}\exp\left(-\frac{|\vec{r}_{ij}|^2}{4r_s^2}\right)
+\end{equation}
+
+In practice, $r_s$ is given as a multiple ($\sim 1.25$) of the FFT-mesh size (See below). Figure \ref{fig:short_range_correction} shows the value of $f_{LR}$ for various distances $r$ (expressed in units of $r_s$.
+As can be seen for distances greater than a few $r_s$, the value drops below $10^{-2}$, effectively suppressing the force contributions coming from the tree for large distances. In practice, a
+cut-off distance of $r_c$ is used above which no tree interaction is performed. A choice of $r_c=4.5r_s$ is standard. Notice than in practice $r_s \gg \epsilon$.\\
+The values of $r_s$ and $r_c$ are both given at compile time. \\
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{Figures/Gravity/correction}
+\caption{Correction terms to the force computed from the tree due to the use of a mesh for long range forces. For distances above $r_c$, the contribution of the tree becomes neglectable and can safely be ignored.
+The red curve is the complement to one of $f_{LR}$ and shows that this term only matters in a small region around $r_s$ and can safely be replaced by $1$ for $r\ll r_s$.} 
+ \label{fig:short_range_correction}
+\end{figure}
+
+A similar cut-off radius could be used to avoid computing $f_{LR}$ for small $r$ (i.e. when the term is $1$). \gadget pre-computes the values of $f_{LR}$ and stores the results
+in a table. This allows to avoid the expensive calculation of the exact term. \\
+
+The long range force is computed using the FFT algoritm. In the first step, the particles are sampled on the grid to give the density field $\rho(\vec{x})$. We then use a Fourier
+transform to compute the field $\hat\rho(\vec{k})$. We then compute the potential in Fourier space by applying the filter function corresponding to the term $f_{LR}$. This reads:
+
+\begin{equation}
+ \hat\phi(\vec{k}) = - \frac{4\pi G\hat\rho(\vec{k})}{|\vec{k}|^2} \exp\left(-|\vec{k}|^2 r_s^2\right).
+\end{equation}
+
+This is then transformed back to real space using an inverse FFT. The force applied to each particle is obtained by finite-differentiating this using a standard stencil:
+
+\begin{equation}
+ \frac{d\phi}{dx_i} = \frac{1}{\Delta x}\left(\frac{1}{12}\phi_{i-2,j,k} - \frac{2}{3}\phi_{i-1,j,k} + \frac{2}{3}\phi_{i+1,j,k} - \frac{1}{12}\phi_{i+2,j,k}\right)
+\end{equation}
+
+Figure \ref{fig:total_force} shows the total acceleration as a function of distance and the different contributions. The total error made in the calculation is displayed on figure
+\ref{fig:total_error}. The error comes from the truncation of the short-range tree forces at a distance $r_c$. For $r_c>4.5r_s$, the error is less than $2\%$. Higher values of
+$r_c$ would improve the accuracy but lead to more intereactions computed via the tree instead of via the mesh.\\
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{Figures/Gravity/force}
+\caption{Total acceleration and the various contributions as a function of the distance $r$ in units of $h_c$. No tree-based interaction is computed for $r>r_c$.
+The value of $r_s$ chosen here is arbitrary.} 
+ \label{fig:total_force}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{Figures/Gravity/error}
+\caption{Relative error made on the acceleration calculation as a function of the distance $r$ expressed in uits of $r_s$. The error is maximal at $r=r_c$ and is less than $2\%$ in magnitude if 
+one chooses $r_c > 4.5 r_s$.} 
+ \label{fig:total_error}
+\end{figure}
+
 The maximal time step a particle is allowed to have is related to the acceleration by:
 
 \begin{equation}
- \Delta t_i = \sqrt{\frac{2\eta \epsilon_i}{|\vec{a_i}|}}
+ \Delta t_i = \sqrt{\frac{2\eta \epsilon}{|\vec{a_i}|}}
 \end{equation}
 
 where $\eta$ is some accuracy constant which generally takes a value around $\eta \approx 0.025$.
 
-\section{Periodic boundary conditions}
+% \section{Periodic boundary conditions}
+% 
+% In most cases, the simulations are run with periodic boundary conditions. The simplest way to treat the formally
+% infinite number of interactions in a tree code is to use the Ewald summation technique. In this case, the acceleration
+% of a particle gets a new term:
+% 
+% \begin{equation}
+%  \vec{a_i} = \vec{a_i} + \sum_j m_j \vec{f}_c(\vec{r}_{ij}).
+% \end{equation}
+% 
+% The correction terms $\vec{f}_c$ are expensive to compute but are constant in time and only depend on the distance
+% between the particles. This means that the values can be pre-computed and stored in a table. A simple 3D interpolation
+% of the values in this table is then used when actually computing the force. \gadget and other code use a $N_e=64$
+% elements per dimension table representing one octant. The other ones can be obtained thanks to the symmetry properties
+% of the terms. \\
+% 
+% The table is computed as follows. For every element $i <N_e, j<N_e,k<N_e$, we compute the vector $\vec{x} =
+% (\frac{i}{2N_e}, \frac{j}{2N_e}, \frac{k}{2N_e})$. The table element $(i,j,k)$ is then:
+% 
+% \begin{eqnarray*}
+%  \vec{E}_{ijk} &=& \frac{1}{L^2}\frac{\vec{x}}{|\vec{x}|} \\
+%          & & -\frac{1}{L^2}\sum_{n_x=-l_n}^{l_n}\sum_{n_z=-l_n}^{l_n}\sum_{n_z=-l_n}^{l_n}
+% \frac{\vec{x}-\vec{n}}{|\vec{x}-\vec{n}|}\left[\mathrm{erfc}\left(\alpha|\vec{x}-\vec{n}|\right) +
+% \frac{2\alpha}{\sqrt{\pi}}|\vec{x}-\vec{n}|\cdot e^{-\alpha^2|\vec{x}-\vec{n}|^2}\right]\\
+%          & & -\frac{1}{L^2}\sum_{h_x=-l_h}^{l_h}\sum_{h_z=-l_h}^{l_h}\sum_{h_z=-l_h}^{l_h} 2\frac{\vec{h}}{|\vec{h}|^2}
+% \cdot e^{-\pi^2|\vec{h}|^2} \cdot \sin\left(2\pi\cdot \vec{h}\cdot\vec{x}\right)
+% \end{eqnarray*}
+% 
+% where $L$ is the size of the box, $\alpha$ is an arbitrary number and the vectors $\vec{n}$ and $\vec{h}$ are defined
+% as $\vec{n} = (n_x,n_y,n_z)$ and $\vec{h} = (h_x,h_y,h_z)$. \gadget uses $\alpha=2$ and $l_n=l_h=4$. The higher these
+% last two values and $N_e$ are, the better the approximation. The result does not depend on $\alpha$ but depending on
+% the value, the convergence of the serires toward the exact solution can vary. \\
+% These tables are computed at the start of the simulation or read from a file to speed-up initialization. \\
+% 
+% Once the table has been computed, the values can be used to get the corrections $\vec{f}_c(\vec{r}_{ij})$.
+% 
+% \begin{equation}
+%  \vec{f}_c(\vec{r}_{ij}) = \vec{E}_{abc}
+% \end{equation}
+% 
+% where the indices $a$, $b$ and $c$ are rounded down integer values $(a,b,c) = \left\lfloor\frac{2N}{L}
+% \vec{r}_{ij}\right\rfloor$ of the distance between particle $i$ and $j$.
 
-In most cases, the simulations are run with periodic boundary conditions. The simplest way to treat the formally
-infinite number of interactions in a tree code is to use the Ewald summation technique. In this case, the acceleration
-of a particle gets a new term:
-
-\begin{equation}
- \vec{a_i} = \vec{a_i} + \sum_j m_j \vec{f}_c(\vec{r}_{ij}).
-\end{equation}
-
-The correction terms $\vec{f}_c$ are expensive to compute but are constant in time and only depend on the distance
-between the particles. This means that the values can be pre-computed and stored in a table. A simple 3D interpolation
-of the values in this table is then used when actually computing the force. \gadget and other code use a $N_e=64$
-elements per dimension table representing one octant. The other ones can be obtained thanks to the symmetry properties
-of the terms. \\
-
-The table is computed as follows. For every element $i <N_e, j<N_e,k<N_e$, we compute the vector $\vec{x} =
-(\frac{i}{2N_e}, \frac{j}{2N_e}, \frac{k}{2N_e})$. The table element $(i,j,k)$ is then:
-
-\begin{eqnarray*}
- \vec{E}_{ijk} &=& \frac{1}{L^2}\frac{\vec{x}}{|\vec{x}|} \\
-         & & -\frac{1}{L^2}\sum_{n_x=-l_n}^{l_n}\sum_{n_z=-l_n}^{l_n}\sum_{n_z=-l_n}^{l_n}
-\frac{\vec{x}-\vec{n}}{|\vec{x}-\vec{n}|}\left[\mathrm{erfc}\left(\alpha|\vec{x}-\vec{n}|\right) +
-\frac{2\alpha}{\sqrt{\pi}}|\vec{x}-\vec{n}|\cdot e^{-\alpha^2|\vec{x}-\vec{n}|^2}\right]\\
-         & & -\frac{1}{L^2}\sum_{h_x=-l_h}^{l_h}\sum_{h_z=-l_h}^{l_h}\sum_{h_z=-l_h}^{l_h} 2\frac{\vec{h}}{|\vec{h}|^2}
-\cdot e^{-\pi^2|\vec{h}|^2} \cdot \sin\left(2\pi\cdot \vec{h}\cdot\vec{x}\right)
-\end{eqnarray*}
-
-where $L$ is the size of the box, $\alpha$ is an arbitrary number and the vectors $\vec{n}$ and $\vec{h}$ are defined
-as $\vec{n} = (n_x,n_y,n_z)$ and $\vec{h} = (h_x,h_y,h_z)$. \gadget uses $\alpha=2$ and $l_n=l_h=4$. The higher these
-last two values and $N_e$ are, the better the approximation. The result does not depend on $\alpha$ but depending on
-the value, the convergence of the serires toward the exact solution can vary. \\
-These tables are computed at the start of the simulation or read from a file to speed-up initialization. \\
-
-Once the table has been computed, the values can be used to get the corrections $\vec{f}_c(\vec{r}_{ij})$.
-
-\begin{equation}
- \vec{f}_c(\vec{r}_{ij}) = \vec{E}_{abc}
-\end{equation}
-
-where the indices $a$, $b$ and $c$ are rounded down integer values $(a,b,c) = \left\lfloor\frac{2N}{L}
-\vec{r}_{ij}\right\rfloor$ of the distance between particle $i$ and $j$.
-
-\section{Fast Multipole Method}
-
-
-\textcolor{red}{To be done.}
+% \section{Fast Multipole Method}
+% 
+% 
+% \textcolor{red}{To be done.}
 
 
 
