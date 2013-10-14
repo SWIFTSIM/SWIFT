@@ -348,8 +348,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   /* Write unit conversion factors for this data set */
   conversionString( buffer, us, convFactor );
   writeAttribute_d( h_data, "CGS conversion factor", conversionFactor( us, convFactor ) );
-  writeAttribute_d( h_data, "h-scale exponant", hFactor( us, convFactor ) );
-  writeAttribute_d( h_data, "a-scale exponant", aFactor( us, convFactor ) );
+  writeAttribute_f( h_data, "h-scale exponant", hFactor( us, convFactor ) );
+  writeAttribute_f( h_data, "a-scale exponant", aFactor( us, convFactor ) );
   writeAttribute_s( h_data, "Conversion factor", buffer );
   
   /* Free and close everything */

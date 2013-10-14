@@ -119,25 +119,25 @@ double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
 /**
  * @brief Returns the h factor for a given unit (expressed in terms of the 5 fundamental units) in the chosen unit system
  */
-double generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
+float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
 
 
 /**
  * @brief Returns the h factor for a given unit in the chosen unit system
  */
-double hFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
+float hFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
 
 
 /**
  * @brief Returns the scaling factor for a given unit (expressed in terms of the 5 fundamental units) in the chosen unit system
  */
-double generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
+float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
 
 
 /**
  * @brief Returns the scaling factor for a given unit in the chosen unit system
  */
-double aFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
+float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
 
 
 /**

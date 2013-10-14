@@ -111,73 +111,73 @@ void getBaseUnitExponantsArray(float baseUnitsExp[5], enum UnitConversionFactor 
       break;
 
     case UNIT_CONV_MASS: 
-      baseUnitsExp[UNIT_MASS] = 1; break;
+      baseUnitsExp[UNIT_MASS] = 1.f; break;
 
     case UNIT_CONV_LENGTH: 
-      baseUnitsExp[UNIT_LENGTH] = 1; break;
+      baseUnitsExp[UNIT_LENGTH] = 1.f; break;
 
     case UNIT_CONV_TIME: 
-      baseUnitsExp[UNIT_TIME] = 1; break;
+      baseUnitsExp[UNIT_TIME] = 1.f; break;
 
     case UNIT_CONV_FREQUENCY: 
-       baseUnitsExp[UNIT_TIME] = -1;  break;
+       baseUnitsExp[UNIT_TIME] = -1.f;  break;
 
     case UNIT_CONV_DENSITY: 
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = -3;  break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = -3.f;  break;
 
     case UNIT_CONV_SPEED: 
-      baseUnitsExp[UNIT_LENGTH] = 1; baseUnitsExp[UNIT_TIME] = -1;  break;
+      baseUnitsExp[UNIT_LENGTH] = 1.f; baseUnitsExp[UNIT_TIME] = -1.f;  break;
 
     case UNIT_CONV_ACCELERATION: 
-      baseUnitsExp[UNIT_LENGTH] = 1; baseUnitsExp[UNIT_TIME] = -2;  break;
+      baseUnitsExp[UNIT_LENGTH] = 1.f; baseUnitsExp[UNIT_TIME] = -2.f;  break;
 
     case UNIT_CONV_FORCE: 
-       baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 1; baseUnitsExp[UNIT_TIME] = -2;  break;
+       baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = 1.f; baseUnitsExp[UNIT_TIME] = -2.f;  break;
 
     case UNIT_CONV_ENERGY: 
-       baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -2;  break;
+       baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = 2.f; baseUnitsExp[UNIT_TIME] = -2.f;  break;
 
     case UNIT_CONV_ENERGY_PER_UNIT_MASS: 
-      baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -2;  break;
+      baseUnitsExp[UNIT_LENGTH] = 2.f; baseUnitsExp[UNIT_TIME] = -2.f;  break;
 
     case UNIT_CONV_ENTROPY: 
-      baseUnitsExp[UNIT_MASS] = 1. - const_hydro_gamma; baseUnitsExp[UNIT_LENGTH] = 3.*const_hydro_gamma - 1.; baseUnitsExp[UNIT_TIME] = -2;  break;
+      baseUnitsExp[UNIT_MASS] = 1.f - const_hydro_gamma; baseUnitsExp[UNIT_LENGTH] = 3.f * const_hydro_gamma - 1.f; baseUnitsExp[UNIT_TIME] = -2.f;  break;
 
     case UNIT_CONV_ENTROPY_PER_UNIT_MASS: 
-      baseUnitsExp[UNIT_MASS] = -const_hydro_gamma; baseUnitsExp[UNIT_LENGTH] = 3.*const_hydro_gamma - 1.; baseUnitsExp[UNIT_TIME] = -2;  break;
+      baseUnitsExp[UNIT_MASS] = -const_hydro_gamma; baseUnitsExp[UNIT_LENGTH] = 3.f * const_hydro_gamma - 1.f; baseUnitsExp[UNIT_TIME] = -2.f;  break;
 
     case UNIT_CONV_POWER: 
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -3;  break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = 2.f; baseUnitsExp[UNIT_TIME] = -3.f;  break;
 
     case UNIT_CONV_PRESSURE: 
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = -1; baseUnitsExp[UNIT_TIME] = -2;  break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = -1.f; baseUnitsExp[UNIT_TIME] = -2.f;  break;
 
     case UNIT_CONV_ELECTRIC_CHARGE:
-      baseUnitsExp[UNIT_TIME] = 1; baseUnitsExp[UNIT_CURRENT] = 1; break;
+      baseUnitsExp[UNIT_TIME] = 1.f; baseUnitsExp[UNIT_CURRENT] = 1.f; break;
 
     case UNIT_CONV_ELECTRIC_VOLTAGE:
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -3; baseUnitsExp[UNIT_CURRENT] = -1; break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = 2.f; baseUnitsExp[UNIT_TIME] = -3.f; baseUnitsExp[UNIT_CURRENT] = -1.f; break;
       
     case UNIT_CONV_ELECTRIC_CAPACITANCE:
-      baseUnitsExp[UNIT_MASS] = -1; baseUnitsExp[UNIT_LENGTH] = -2; baseUnitsExp[UNIT_TIME] = 4; baseUnitsExp[UNIT_CURRENT] = 2; break;
+      baseUnitsExp[UNIT_MASS] = -1.f; baseUnitsExp[UNIT_LENGTH] = -2.f; baseUnitsExp[UNIT_TIME] = 4; baseUnitsExp[UNIT_CURRENT] = 2.f; break;
 
     case UNIT_CONV_ELECTRIC_RESISTANCE:
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -3; baseUnitsExp[UNIT_CURRENT] = -2; break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = 2.f; baseUnitsExp[UNIT_TIME] = -3.f; baseUnitsExp[UNIT_CURRENT] = -2.f; break;
 
     case UNIT_CONV_ELECTRIC_CONDUCTANCE:
-      baseUnitsExp[UNIT_MASS] = -1; baseUnitsExp[UNIT_LENGTH] = -2; baseUnitsExp[UNIT_TIME] = 3; baseUnitsExp[UNIT_CURRENT] = 2; break;
+      baseUnitsExp[UNIT_MASS] = -1.f; baseUnitsExp[UNIT_LENGTH] = -2.f; baseUnitsExp[UNIT_TIME] = 3.f; baseUnitsExp[UNIT_CURRENT] = 2.f; break;
       
     case UNIT_CONV_MAGNETIC_FLUX:
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -2; baseUnitsExp[UNIT_CURRENT] = -1; break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = 2.f; baseUnitsExp[UNIT_TIME] = -2.f; baseUnitsExp[UNIT_CURRENT] = -1.f; break;
       
     case UNIT_CONV_MAGNETIC_FIELD:
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_TIME] = -2; baseUnitsExp[UNIT_CURRENT] = -1; break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_TIME] = -2.f; baseUnitsExp[UNIT_CURRENT] = -1.f; break;
 
     case UNIT_CONV_MAGNETIC_INDUCTANCE:
-      baseUnitsExp[UNIT_MASS] = 1; baseUnitsExp[UNIT_LENGTH] = 2; baseUnitsExp[UNIT_TIME] = -2; baseUnitsExp[UNIT_CURRENT] = -2; break;
+      baseUnitsExp[UNIT_MASS] = 1.f; baseUnitsExp[UNIT_LENGTH] = 2.f; baseUnitsExp[UNIT_TIME] = -2.f; baseUnitsExp[UNIT_CURRENT] = -2.f; break;
 
     case UNIT_CONV_TEMPERATURE:
-      baseUnitsExp[UNIT_TEMPERATURE] = 1;
+      baseUnitsExp[UNIT_TEMPERATURE] = 1.f;
     }
 }
 
@@ -201,7 +201,7 @@ double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-double hFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
+float hFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
 {
   float baseUnitsExp[5] = { 0.f };
 
@@ -217,7 +217,7 @@ double hFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-double aFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
+float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit)
 {
   float baseUnitsExp[5] = { 0.f };
 
@@ -265,16 +265,15 @@ double generalConversionFactor(struct UnitSystem* us, float baseUnitsExponants[5
  * @param us The unit system used
  * @param baseUnitsExponants The exponant of each base units required to form the desired quantity. See conversionFactor() for a working example
  */
-double generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5])
+float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5])
 {
-  float factor_exp = 0;
+  float factor_exp = 0.f;
   
   factor_exp += -baseUnitsExponants[UNIT_MASS];
   factor_exp += -baseUnitsExponants[UNIT_LENGTH];
   factor_exp += -baseUnitsExponants[UNIT_TIME];
   
-
-  return factor_exp;	
+  return factor_exp;
 }
 
 /**
@@ -282,13 +281,13 @@ double generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5])
  * @param us The unit system used
  * @param baseUnitsExponants The exponant of each base units required to form the desired quantity. See conversionFactor() for a working example
  */
-double generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5])
+float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5])
 {
-  float factor_exp = 0;
+  float factor_exp = 0.f;
   
   factor_exp += baseUnitsExponants[UNIT_LENGTH];
   
-  return factor_exp;	
+  return  factor_exp;
 }
 
 /**
@@ -304,17 +303,34 @@ void generalConversionString(char * buffer, struct UnitSystem* us, float baseUni
   double h_exp = generalhFactor(us, baseUnitsExponants);
   int i;
 
+  /* Check whether we are unitless or not */
+  char isAllNonZero = 1;
+  for(i = 0 ; i < 5 ; ++i )
+    if( baseUnitsExponants[i] != 0.)
+      isAllNonZero = 0;
+
+  if( isAllNonZero )
+    {
+      sprintf(buffer, "[ - ] ");
+      return;
+    }
+
+
   /* Add a-factor */
-  if(a_exp == 1)
-    sprintf(buffer, "h");
+  if(a_exp == 0)
+    sprintf(buffer, " ");
+  else if(a_exp == 1)
+    sprintf(buffer, "a ");
   else  if(remainder(a_exp, 1.) == 0)
     sprintf(buffer, "a^%d ", (int) a_exp);
   else
     sprintf(buffer, "a^%7.4f ", a_exp);
 
   /* Add h-factor */
-  if(h_exp == 1)
-    sprintf(temp, "h");
+  if(h_exp == 0)
+    sprintf(temp, " ");
+  else if(h_exp == 1)
+    sprintf(temp, "h ");
   else if(remainder(h_exp, 1.) == 0)
     sprintf(temp, "h^%d ", (int) h_exp);
   else
@@ -325,7 +341,9 @@ void generalConversionString(char * buffer, struct UnitSystem* us, float baseUni
   for(i = 0 ; i < 5 ; ++i )
     if(baseUnitsExponants[i] != 0)
       {
-	if(baseUnitsExponants[i] == 1.)
+	if(baseUnitsExponants[i] == 0.)
+	  sprintf(temp, " ");
+	else if(baseUnitsExponants[i] == 1.)
 	  sprintf(temp, "%s ", getBaseUnitSymbol(i));
 	else if(remainder(baseUnitsExponants[i], 1.) == 0)
 	  sprintf(temp, "%s^%d ", getBaseUnitSymbol(i), (int)  baseUnitsExponants[i]);
@@ -336,19 +354,23 @@ void generalConversionString(char * buffer, struct UnitSystem* us, float baseUni
 
 
   /* Add CGS units */
-  strncat(buffer, " [", 2);
-
+  strncat(buffer, " [ ", 3);
+  
   for(i = 0 ; i < 5 ; ++i )
-    if(baseUnitsExponants[i] != 0)
-      {
-	if(baseUnitsExponants[i] == 1.)
-	  sprintf(temp, "%s ", getBaseUnitCGSSymbol(i));
-	else if(remainder(baseUnitsExponants[i], 1.) == 0)
-	  sprintf(temp, "%s^%d ", getBaseUnitCGSSymbol(i), (int)  baseUnitsExponants[i]);
-	else
-	  sprintf(temp, "%s^%7.4f ", getBaseUnitCGSSymbol(i), baseUnitsExponants[i]);
-	strncat(buffer, temp, 12);
-      }
-
+    {
+      if(baseUnitsExponants[i] != 0)
+	{
+	  if(baseUnitsExponants[i] == 0.)
+	    continue;
+	  else if(baseUnitsExponants[i] == 1.)
+	    sprintf(temp, "%s ", getBaseUnitCGSSymbol(i));
+	  else if(remainder(baseUnitsExponants[i], 1.) == 0)
+	    sprintf(temp, "%s^%d ", getBaseUnitCGSSymbol(i), (int)  baseUnitsExponants[i]);
+	  else
+	    sprintf(temp, "%s^%7.4f ", getBaseUnitCGSSymbol(i), baseUnitsExponants[i]);
+	  strncat(buffer, temp, 12);
+	}
+    }
+  
   strncat(buffer, "]", 2);
 }

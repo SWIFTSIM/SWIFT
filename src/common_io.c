@@ -327,11 +327,11 @@ void writeUnitSystem(hid_t h_file, struct UnitSystem* us)
   if(h_grpunit < 0)
     error("Error while creating Unit System group");
 
-  writeAttribute_d(h_grpunit, "Unit mass in cgs", getBaseUnit(us, UNIT_MASS));
-  writeAttribute_d(h_grpunit, "Unit length in cgs", getBaseUnit(us, UNIT_LENGTH));
-  writeAttribute_d(h_grpunit, "Unit time in cgs", getBaseUnit(us, UNIT_TIME));
-  writeAttribute_d(h_grpunit, "Unit current in cgs", getBaseUnit(us, UNIT_CURRENT));
-  writeAttribute_d(h_grpunit, "Unit temperature in cgs", getBaseUnit(us, UNIT_TEMPERATURE));  
+  writeAttribute_d(h_grpunit, "Unit mass in cgs (U_M)", getBaseUnit(us, UNIT_MASS));
+  writeAttribute_d(h_grpunit, "Unit length in cgs (U_L)", getBaseUnit(us, UNIT_LENGTH));
+  writeAttribute_d(h_grpunit, "Unit time in cgs (U_t)", getBaseUnit(us, UNIT_TIME));
+  writeAttribute_d(h_grpunit, "Unit current in cgs (U_I)", getBaseUnit(us, UNIT_CURRENT));
+  writeAttribute_d(h_grpunit, "Unit temperature in cgs (U_T)", getBaseUnit(us, UNIT_TEMPERATURE));  
 
   H5Gclose(h_grpunit);
 }
