@@ -44,6 +44,7 @@
 #include "kernel.h"
 #include "part.h"
 #include "space.h"
+#include "multipole.h"
 #include "cell.h"
 #include "scheduler.h"
 #include "engine.h"
@@ -101,16 +102,16 @@ const int sortlistID[27] = {
  
 int space_getsid ( struct space *s , struct cell **ci , struct cell **cj , double *shift ) {
 
-    int k, sid = 0;
+    int k, sid = 0, periodic = s->periodic;
     struct cell *temp;
     double dx[3];
 
     /* Get the relative distance between the pairs, wrapping. */
     for ( k = 0 ; k < 3 ; k++ ) {
         dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
-        if ( dx[k] < -s->dim[k]/2 )
+        if ( periodic && dx[k] < -s->dim[k]/2 )
             shift[k] = s->dim[k];
-        else if ( dx[k] > s->dim[k]/2 )
+        else if ( periodic && dx[k] > s->dim[k]/2 )
             shift[k] = -s->dim[k];
         else
             shift[k] = 0.0;
@@ -240,6 +241,7 @@ void space_regrid ( struct space *s , double cell_max ) {
                     c->dmin = dmin;
                     c->depth = 0;
                     c->count = 0;
+                    c->gcount = 0;
                     c->super = c;
                     lock_init( &c->lock );
                     }
@@ -265,6 +267,7 @@ void space_regrid ( struct space *s , double cell_max ) {
             s->cells[k].dx_max = 0.0f;
             s->cells[k].sorted = 0;
             s->cells[k].count = 0;
+            s->cells[k].gcount = 0;
             s->cells[k].kick1 = NULL;
             s->cells[k].kick2 = NULL;
             s->cells[k].super = &s->cells[k];
@@ -286,11 +289,11 @@ void space_regrid ( struct space *s , double cell_max ) {
  
 void space_rebuild ( struct space *s , double cell_max ) {
 
-    float h_max = s->cell_min / kernel_gamma / space_stretch, dmin;
-    int i, j, k, cdim[3], nr_parts = s->nr_parts;
+    int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
     struct cell *restrict c, *restrict cells = s->cells;
     struct part *restrict finger, *restrict p, *parts = s->parts;
     struct xpart *xfinger, *xparts = s->xparts;
+    struct gpart *gp, *gparts = s->gparts, *gfinger;
     int *ind;
     double ih[3], dim[3];
     // ticks tic;
@@ -298,110 +301,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
     /* Be verbose about this. */
     // message( "re)building space..." ); fflush(stdout);
     
-    /* Run through the parts and get the current h_max. */
-    // tic = getticks();
-    if ( cells != NULL ) {
-        for ( k = 0 ; k < s->nr_cells ; k++ ) {
-            if ( cells[k].h_max > h_max )
-                h_max = cells[k].h_max;
-            }
-        }
-    else {
-        for ( k = 0 ; k < nr_parts ; k++ ) {
-            if ( s->parts[k].h > h_max )
-                h_max = s->parts[k].h;
-            }
-        s->h_max = h_max;
-        }
-    // message( "h_max is %.3e (cell_max=%.3e)." , h_max , cell_max );
-    // message( "getting h_min and h_max took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
-    
-    /* Get the new putative cell dimensions. */
-    for ( k = 0 ; k < 3 ; k++ )
-        cdim[k] = floor( s->dim[k] / fmax( h_max*kernel_gamma*space_stretch , cell_max ) );
-        
-    /* In MPI-Land, we're not allowed to change the top-level cell size. */
-    #ifdef WITH_MPI
-        if ( cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] )
-            error( "Root-level change of cell size not allowed." );
-    #endif
-        
-    /* Do we need to re-build the upper-level cells? */
-    // tic = getticks();
-    if ( cells == NULL ||
-         cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ) {
-    
-        /* Free the old cells, if they were allocated. */
-        if ( cells != NULL ) {
-            for ( k = 0 ; k < s->nr_cells ; k++ ) {
-                space_rebuild_recycle( s , &cells[k] );
-                if ( cells[k].sort != NULL )
-                    free( cells[k].sort );
-                }
-            free( cells );
-            s->maxdepth = 0;
-            }
-            
-        /* Set the new cell dimensions only if smaller. */
-        for ( k = 0 ; k < 3 ; k++ ) {
-            s->cdim[k] = cdim[k];
-            s->h[k] = s->dim[k] / cdim[k];
-            s->ih[k] = 1.0 / s->h[k];
-            }
-        dmin = fminf( s->h[0] , fminf( s->h[1] , s->h[2] ) );
-
-        /* Allocate the highest level of cells. */
-        s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-        if ( posix_memalign( (void *)&cells , 64 , s->nr_cells * sizeof(struct cell) ) != 0 )
-            error( "Failed to allocate cells." );
-        s->cells = cells;
-        bzero( cells , s->nr_cells * sizeof(struct cell) );
-        for ( k = 0 ; k < s->nr_cells ; k++ )
-            if ( lock_init( &cells[k].lock ) != 0 )
-                error( "Failed to init spinlock." );
-
-        /* Set the cell location and sizes. */
-        for ( i = 0 ; i < cdim[0] ; i++ )
-            for ( j = 0 ; j < cdim[1] ; j++ )
-                for ( k = 0 ; k < cdim[2] ; k++ ) {
-                    c = &cells[ cell_getid( cdim , i , j , k ) ];
-                    c->loc[0] = i*s->h[0]; c->loc[1] = j*s->h[1]; c->loc[2] = k*s->h[2];
-                    c->h[0] = s->h[0]; c->h[1] = s->h[1]; c->h[2] = s->h[2];
-                    c->dmin = dmin;
-                    c->depth = 0;
-                    c->count = 0;
-                    c->super = c;
-                    lock_init( &c->lock );
-                    }
-           
-        /* Be verbose about the change. */         
-        message( "set cell dimensions to [ %i %i %i ]." , cdim[0] , cdim[1] , cdim[2] ); fflush(stdout);
-                    
-        } /* re-build upper-level cells? */
-    // message( "rebuilding upper-level cells took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
-        
-    /* Otherwise, just clean up the cells. */
-    else {
-    
-        /* Free the old cells, if they were allocated. */
-        for ( k = 0 ; k < s->nr_cells ; k++ ) {
-            space_rebuild_recycle( s , &cells[k] );
-            cells[k].sorts = NULL;
-            cells[k].nr_tasks = 0;
-            cells[k].nr_density = 0;
-            cells[k].nr_force = 0;
-            cells[k].density = NULL;
-            cells[k].force = NULL;
-            cells[k].dx_max = 0.0f;
-            cells[k].sorted = 0;
-            cells[k].count = 0;
-            cells[k].super = &cells[k];
-            cells[k].kick1 = NULL;
-            cells[k].kick2 = NULL;
-            }
-        s->maxdepth = 0;
-    
-        }
+    /* Re-grid if necessary, or just re-set the cell data. */
+    space_regrid( s , cell_max );
         
     /* Run through the particles and get their cell index. */
     // tic = getticks();
@@ -458,6 +359,11 @@ void space_rebuild ( struct space *s , double cell_max ) {
     parts_sort( parts , xparts , ind , nr_parts , 0 , s->nr_cells-1 );
     // message( "parts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
+    /* Re-link the gparts. */
+    for ( k = 0 ; k < nr_parts ; k++ )
+        if ( parts[k].gpart != NULL )
+            parts[k].gpart->part = &parts[k];
+    
     /* Verify sort. */
     /* for ( k = 1 ; k < nr_parts ; k++ ) {
         if ( ind[k-1] > ind[k] ) {
@@ -470,16 +376,55 @@ void space_rebuild ( struct space *s , double cell_max ) {
     /* We no longer need the indices as of here. */
     free( ind );    
 
+
+
+    /* Run through the gravity particles and get their cell index. */
+    // tic = getticks();
+    if ( ( ind = (int *)malloc( sizeof(int) * s->size_gparts ) ) == NULL )
+        error( "Failed to allocate temporary particle indices." );
+    #pragma omp parallel for private(gp,j)
+    for ( k = 0 ; k < nr_gparts ; k++ )  {
+        gp = &gparts[k];
+        for ( j = 0 ; j < 3 ; j++ )
+            if ( gp->x[j] < 0.0 )
+                gp->x[j] += dim[j];
+            else if ( gp->x[j] >= dim[j] )
+                gp->x[j] -= dim[j];
+        ind[k] = cell_getid( cdim , gp->x[0]*ih[0] , gp->x[1]*ih[1] , gp->x[2]*ih[2] );
+        atomic_inc( &cells[ ind[k] ].gcount );
+        }
+    // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+
+    /* TODO: Here we should exchange the gparts as well! */
+
+    /* Sort the parts according to their cells. */
+    // tic = getticks();
+    gparts_sort( gparts ,ind , nr_parts , 0 , s->nr_cells-1 );
+    // message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+    
+    /* Re-link the parts. */
+    for ( k = 0 ; k < nr_gparts ; k++ )
+        if ( gparts[k].id > 0 )
+            gparts[k].part->gpart = &gparts[k];
+
+    /* We no longer need the indices as of here. */
+    free( ind );    
+
+
+
     /* Hook the cells up to the parts. */
     // tic = getticks();
     finger = parts;
     xfinger = xparts;
+    gfinger = gparts;
     for ( k = 0 ; k < s->nr_cells ; k++ ) {
         c = &cells[ k ];
         c->parts = finger;
         c->xparts = xfinger;
+        c->gparts = gfinger;
         finger = &finger[ c->count ];
         xfinger = &xfinger[ c->count ];
+        gfinger = &gfinger[ c->gcount ];
         }
     // message( "hooking up cells took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
         
@@ -589,6 +534,165 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
                         temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
                         temp_p = parts[ii]; parts[ii] = parts[jj]; parts[jj] = temp_p;
                         temp_xp = xparts[ii]; xparts[ii] = xparts[jj]; xparts[jj] = temp_xp;
+                        }
+                    }
+
+                /* Verify sort. */
+                /* for ( int k = i ; k <= jj ; k++ )
+                    if ( ind[k] > pivot ) {
+                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
+                        error( "Partition failed (<=pivot)." );
+                        }
+                for ( int k = jj+1 ; k <= j ; k++ )
+                    if ( ind[k] <= pivot ) {
+                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
+                        error( "Partition failed (>pivot)." );
+                        } */
+                        
+                /* Split-off largest interval. */
+                if ( jj - i > j - jj+1 ) {
+
+                    /* Recurse on the left? */
+                    if ( jj > i  && pivot > min ) {
+                        qid = atomic_inc( &last ) % qstack_size;
+                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
+                        qstack[qid].i = i;
+                        qstack[qid].j = jj;
+                        qstack[qid].min = min;
+                        qstack[qid].max = pivot;
+                        qstack[qid].ready = 1;
+                        if ( atomic_inc( &waiting ) >= qstack_size )
+                            error( "Qstack overflow." );
+                        }
+
+                    /* Recurse on the right? */
+                    if ( jj+1 < j && pivot+1 < max ) {
+                        i = jj+1;
+                        min = pivot+1;
+                        }
+                    else
+                        break;
+                        
+                    }
+                    
+                else {
+                
+                    /* Recurse on the right? */
+                    if ( jj+1 < j && pivot+1 < max ) {
+                        qid = atomic_inc( &last ) % qstack_size;
+                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
+                        qstack[qid].i = jj+1;
+                        qstack[qid].j = j;
+                        qstack[qid].min = pivot+1;
+                        qstack[qid].max = max;
+                        qstack[qid].ready = 1;
+                        if ( atomic_inc( &waiting ) >= qstack_size )
+                            error( "Qstack overflow." );
+                        }
+                        
+                    /* Recurse on the left? */
+                    if ( jj > i  && pivot > min ) {
+                        j = jj;
+                        max = pivot;
+                        }
+                    else
+                        break;
+
+                    }
+                    
+                } /* loop over sub-intervals. */
+    
+            atomic_dec( &waiting );
+
+            } /* main loop. */
+    
+        } /* parallel bit. */
+    
+    /* Verify sort. */
+    /* for ( i = 1 ; i < N ; i++ )
+        if ( ind[i-1] > ind[i] )
+            error( "Sorting failed (ind[%i]=%i,ind[%i]=%i)." , i-1 , ind[i-1] , i , ind[i] ); */
+            
+    /* Clean up. */
+    free( qstack );
+
+    }
+
+
+void gparts_sort ( struct gpart *gparts , int *ind , int N , int min , int max ) {
+
+    struct qstack {
+        volatile int i, j, min, max;
+        volatile int ready;
+        };
+    struct qstack *qstack;
+    int qstack_size = 2*(max-min) + 10;
+    volatile unsigned int first, last, waiting;
+    
+    int pivot;
+    int i, ii, j, jj, temp_i, qid;
+    struct gpart temp_p;
+
+    /* for ( int k = 0 ; k < N ; k++ )
+        if ( ind[k] > max || ind[k] < min )
+	    error( "ind[%i]=%i is not in [%i,%i]." , k , ind[k] , min , max ); */
+    
+    /* Allocate the stack. */
+    if ( ( qstack = malloc( sizeof(struct qstack) * qstack_size ) ) == NULL )
+        error( "Failed to allocate qstack." );
+    
+    /* Init the interval stack. */
+    qstack[0].i = 0;
+    qstack[0].j = N-1;
+    qstack[0].min = min;
+    qstack[0].max = max;
+    qstack[0].ready = 1;
+    for ( i = 1 ; i < qstack_size ; i++ )
+        qstack[i].ready = 0;
+    first = 0; last = 1; waiting = 1;
+    
+    /* Parallel bit. */
+    #pragma omp parallel default(none) shared(N,first,last,waiting,qstack,gparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
+    {
+    
+        /* Main loop. */
+        if ( omp_get_thread_num() < 8 )
+        while ( waiting > 0 ) {
+        
+            /* Grab an interval off the queue. */
+            qid = atomic_inc( &first ) % qstack_size;
+            
+            /* Wait for the interval to be ready. */
+            while ( waiting > 0 && atomic_cas( &qstack[qid].ready , 1 , 1 ) != 1 );
+            
+            /* Broke loop for all the wrong reasons? */
+            if ( waiting == 0 )
+                break;
+        
+            /* Get the stack entry. */
+            i = qstack[qid].i;
+            j = qstack[qid].j;
+            min = qstack[qid].min;
+            max = qstack[qid].max;
+            qstack[qid].ready = 0;
+            // message( "thread %i got interval [%i,%i] with values in [%i,%i]." , omp_get_thread_num() , i , j , min , max );
+            
+            /* Loop over sub-intervals. */
+            while ( 1 ) {
+            
+                /* Bring beer. */
+                pivot = (min + max) / 2;
+                
+                /* One pass of QuickSort's partitioning. */
+                ii = i; jj = j;
+                while ( ii < jj ) {
+                    while ( ii <= j && ind[ii] <= pivot )
+                        ii++;
+                    while ( jj >= i && ind[jj] > pivot )
+                        jj--;
+                    if ( ii < jj ) {
+                        temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
+                        temp_p = gparts[ii]; gparts[ii] = gparts[jj]; gparts[jj] = temp_p;
                         }
                     }
 
@@ -826,7 +930,7 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
  
 void space_split ( struct space *s , struct cell *c ) {
 
-    int k, count = c->count, maxdepth = 0;
+    int k, count = c->count, gcount = c->gcount, maxdepth = 0;
     float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
     struct cell *temp;
     struct part *p, *parts = c->parts;
@@ -837,7 +941,7 @@ void space_split ( struct space *s , struct cell *c ) {
         s->maxdepth = c->depth;
     
     /* Split or let it be? */
-    if ( count > space_splitsize ) {
+    if ( count > space_splitsize || gcount > space_splitsize ) {
     
         /* No longer just a leaf. */
         c->split = 1;
@@ -846,6 +950,7 @@ void space_split ( struct space *s , struct cell *c ) {
         for ( k = 0 ; k < 8 ; k++ ) {
             temp = space_getcell( s );
             temp->count = 0;
+            temp->gcount = 0;
             temp->loc[0] = c->loc[0];
             temp->loc[1] = c->loc[1];
             temp->loc[2] = c->loc[2];
@@ -873,7 +978,7 @@ void space_split ( struct space *s , struct cell *c ) {
             
         /* Remove any progeny with zero parts. */
         for ( k = 0 ; k < 8 ; k++ )
-            if ( c->progeny[k]->count == 0 ) {
+            if ( c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0 ) {
                 space_recycle( s , c->progeny[k] );
                 c->progeny[k] = NULL;
                 }
@@ -1000,8 +1105,9 @@ struct cell *space_getcell ( struct space *s ) {
     /* Init some things in the cell. */
     bzero( c , sizeof(struct cell) );
     c->nodeID = -1;
-    if ( lock_init( &c->lock ) != 0 )
-        error( "Failed to initialize cell spinlock." );
+    if ( lock_init( &c->lock ) != 0 ||
+         lock_init( &c->glock ) != 0 )
+        error( "Failed to initialize cell spinlocks." );
         
     return c;
 
@@ -1051,6 +1157,28 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
         xp->v_hdt[2] = p->v[2];
         xp->u_hdt = p->u;
         }
+        
+        
+    /* For now, clone the parts to make gparts. */
+    if ( posix_memalign( (void *)&s->gparts , part_align , N * sizeof(struct gpart) ) != 0 )
+        error( "Failed to allocate gparts." );
+    bzero( s->gparts , N * sizeof(struct gpart) );
+    for ( int k = 0 ; k < N ; k++ ) {
+        s->gparts[k].x[0] = s->parts[k].x[0];
+        s->gparts[k].x[1] = s->parts[k].x[1];
+        s->gparts[k].x[2] = s->parts[k].x[2];
+        s->gparts[k].v[0] = s->parts[k].v[0];
+        s->gparts[k].v[1] = s->parts[k].v[1];
+        s->gparts[k].v[2] = s->parts[k].v[2];
+        s->gparts[k].mass = s->parts[k].mass;
+        s->gparts[k].dt = s->parts[k].dt;
+        s->gparts[k].id = s->parts[k].id;
+        s->gparts[k].part = &s->parts[k];
+        s->parts[k].gpart = &s->gparts[k];
+        }
+    s->nr_gparts = s->nr_parts;
+    s->size_gparts = s->size_parts;
+    
         
     /* Init the space lock. */
     if ( lock_init( &s->lock ) != 0 )

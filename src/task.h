@@ -36,6 +36,10 @@ enum task_types {
     task_type_send,
     task_type_recv,
     task_type_link,
+    task_type_grav_pp,
+    task_type_grav_mm,
+    task_type_grav_up,
+    task_type_grav_down,
     task_type_count
     };
     
@@ -47,6 +51,7 @@ enum task_subtypes {
     task_subtype_none = 0,
     task_subtype_density,
     task_subtype_force,
+    task_subtype_grav,
     task_subtype_count
     };
     
@@ -56,7 +61,9 @@ extern const char *taskID_names[];
 /* Data of a task. */
 struct task {
 
-    char type, subtype, skip, tight, implicit;
+    enum task_types type;
+    enum task_subtypes subtype;
+    char skip, tight, implicit;
     int flags, wait, rank, weight;
     
     lock_type lock;

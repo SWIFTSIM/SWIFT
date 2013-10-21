@@ -32,7 +32,7 @@
 #define engine_policy_setaffinity   256
 
 #define engine_queue_scale          1.2
-#define engine_maxtaskspercell      32
+#define engine_maxtaskspercell      128
 #define engine_maxproxies           64
 #define engine_tasksreweight        10
 

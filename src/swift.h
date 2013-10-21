@@ -31,6 +31,7 @@
 #include "task.h"
 #include "scheduler.h"
 #include "part.h"
+#include "multipole.h"
 #include "cell.h"
 #include "space.h"
 #include "queue.h"
@@ -47,3 +48,4 @@
 #else
 #include "runner_iact.h"
 #endif
+#include "runner_iact_grav.h"

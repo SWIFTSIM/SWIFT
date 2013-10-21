@@ -42,6 +42,8 @@
 #include "atomic.h"
 #include "lock.h"
 #include "space.h"
+#include "part.h"
+#include "multipole.h"
 #include "cell.h"
 #include "task.h"
 #include "error.h"
@@ -49,7 +51,8 @@
 /* Task type names. */
 const char *taskID_names[task_type_count] = {   
     "none" , "sort" , "self" , "pair" , "sub" , "ghost" , 
-    "kick1" , "kick2" , "send" , "recv" , "link" };
+    "kick1" , "kick2" , "send" , "recv" , "link" , "grav_pp" ,
+    "grav_mm" , "grav_up" , "grav_down" };
 
 
 /**
@@ -71,6 +74,15 @@ void task_unlock ( struct task *t ) {
             cell_unlocktree( t->ci );
             if ( t->cj != NULL )
                 cell_unlocktree( t->cj );
+            break;
+        case task_type_grav_pp:
+        case task_type_grav_mm:
+        case task_type_grav_down:
+            cell_gunlocktree( t->ci );
+            if ( t->cj != NULL )
+                cell_gunlocktree( t->cj );
+            break;
+        default:
             break;
         }
         
@@ -118,13 +130,28 @@ int task_lock ( struct task *t ) {
         }
         
     /* Otherwise, binary lock. */
-    else if ( type == task_type_pair || (type == task_type_sub && cj != NULL) ) {
-        if ( ci->hold || cj->hold || ci->wait || cj->wait )
+    else if ( type == task_type_pair || 
+              ( type == task_type_sub && cj != NULL ) ) {
+        if ( ci->hold || cj->hold )
             return 0;
         if ( cell_locktree( ci ) != 0 )
             return 0;
         if ( cell_locktree( cj ) != 0 ) {
             cell_unlocktree( ci );
+            return 0;
+            }
+        }
+        
+    /* Gravity tasks? */
+    else if ( type == task_type_grav_mm ||
+              type == task_type_grav_pp ||
+              type == task_type_grav_down ) {
+        if ( ci->ghold || ( cj != NULL && cj->ghold ) )
+            return 0;
+        if ( cell_glocktree( ci ) != 0 )
+            return 0;
+        if ( cj != NULL && cell_glocktree( cj ) != 0 ) {
+            cell_gunlocktree( ci );
             return 0;
             }
         }

@@ -47,6 +47,7 @@
 #include "timers.h"
 #include "part.h"
 #include "space.h"
+#include "multipole.h"
 #include "cell.h"
 #include "error.h"
 #include "inline.h"
@@ -265,6 +266,72 @@ int cell_locktree( struct cell *c ) {
     }
     
     
+int cell_glocktree( struct cell *c ) {
+
+    struct cell *finger, *finger2;
+    TIMER_TIC
+
+    /* First of all, try to lock this cell. */
+    if ( c->ghold || lock_trylock( &c->glock ) != 0 ) {
+        TIMER_TOC(timer_locktree);
+        return 1;
+        }
+        
+    /* Did somebody hold this cell in the meantime? */
+    if ( c->ghold ) {
+        
+        /* Unlock this cell. */
+        if ( lock_unlock( &c->glock ) != 0 )
+            error( "Failed to unlock cell." );
+            
+        /* Admit defeat. */
+        TIMER_TOC(timer_locktree);
+        return 1;
+    
+        }
+        
+    /* Climb up the tree and lock/hold/unlock. */
+    for ( finger = c->parent ; finger != NULL ; finger = finger->parent ) {
+    
+        /* Lock this cell. */
+        if ( lock_trylock( &finger->glock ) != 0 )
+            break;
+            
+        /* Increment the hold. */
+        __sync_fetch_and_add( &finger->ghold , 1 );
+        
+        /* Unlock the cell. */
+        if ( lock_unlock( &finger->glock ) != 0 )
+            error( "Failed to unlock cell." );
+    
+        }
+        
+    /* If we reached the top of the tree, we're done. */
+    if ( finger == NULL ) {
+        TIMER_TOC(timer_locktree);
+        return 0;
+        }
+        
+    /* Otherwise, we hit a snag. */
+    else {
+    
+        /* Undo the holds up to finger. */
+        for ( finger2 = c->parent ; finger2 != finger ; finger2 = finger2->parent )
+            __sync_fetch_and_sub( &finger2->ghold , 1 );
+            
+        /* Unlock this cell. */
+        if ( lock_unlock( &c->glock ) != 0 )
+            error( "Failed to unlock cell." );
+            
+        /* Admit defeat. */
+        TIMER_TOC(timer_locktree);
+        return 1;
+    
+        }
+
+    }
+    
+    
 /**
  * @brief Unock a cell's parents.
  *
@@ -289,6 +356,24 @@ void cell_unlocktree( struct cell *c ) {
     }
     
     
+void cell_gunlocktree( struct cell *c ) {
+
+    struct cell *finger;
+    TIMER_TIC
+
+    /* First of all, try to unlock this cell. */
+    if ( lock_unlock( &c->glock ) != 0 )
+        error( "Failed to unlock cell." );
+        
+    /* Climb up the tree and unhold the parents. */
+    for ( finger = c->parent ; finger != NULL ; finger = finger->parent )
+        __sync_fetch_and_sub( &finger->ghold , 1 );
+        
+    TIMER_TOC(timer_locktree);
+        
+    }
+    
+    
 /**
  * @brief Sort the parts into eight bins along the given pivots.
  *
@@ -297,20 +382,21 @@ void cell_unlocktree( struct cell *c ) {
  
 void cell_split ( struct cell *c  ) {
 
-    int i, j, k;
+    int i, j, k, count = c->count, gcount = c->gcount;
     struct part temp, *parts = c->parts;
     struct xpart xtemp, *xparts = c->xparts;
+    struct gpart gtemp, *gparts = c->gparts;
     int left[8], right[8];
     double pivot[3];
     
-    /* Init the pivot. */
+    /* Init the pivots. */
     for ( k = 0 ; k < 3 ; k++ )
         pivot[k] = c->loc[k] + c->h[k]/2;
     
     /* Split along the x-axis. */
-    i = 0; j = c->count - 1;
+    i = 0; j = count - 1;
     while ( i <= j ) {
-        while ( i <= c->count-1 && parts[i].x[0] <= pivot[0] )
+        while ( i <= count-1 && parts[i].x[0] <= pivot[0] )
             i += 1;
         while ( j >= 0 && parts[j].x[0] > pivot[0] )
             j -= 1;
@@ -322,10 +408,10 @@ void cell_split ( struct cell *c  ) {
     /* for ( k = 0 ; k <= j ; k++ )
         if ( parts[k].x[0] > pivot[0] )
             error( "cell_split: sorting failed." );
-    for ( k = i ; k < c->count ; k++ )
+    for ( k = i ; k < count ; k++ )
         if ( parts[k].x[0] < pivot[0] )
             error( "cell_split: sorting failed." ); */
-    left[1] = i; right[1] = c->count - 1;
+    left[1] = i; right[1] = count - 1;
     left[0] = 0; right[0] = j;
     
     /* Split along the y axis, twice. */
@@ -387,13 +473,17 @@ void cell_split ( struct cell *c  ) {
         c->progeny[k]->xparts = &c->xparts[ left[k] ];
         }
         
+    /* Re-link the gparts. */
+    for ( k = 0 ; k < count ; k++ )
+        parts[k].gpart->part = &parts[k];
+        
     /* Verify that _all_ the parts have been assigned to a cell. */
     /* for ( k = 1 ; k < 8 ; k++ )
         if ( &c->progeny[k-1]->parts[ c->progeny[k-1]->count ] != c->progeny[k]->parts )
             error( "Particle sorting failed (internal consistency)." );
     if ( c->progeny[0]->parts != c->parts )
         error( "Particle sorting failed (left edge)." );
-    if ( &c->progeny[7]->parts[ c->progeny[7]->count ] != &c->parts[ c->count ] )
+    if ( &c->progeny[7]->parts[ c->progeny[7]->count ] != &c->parts[ count ] )
         error( "Particle sorting failed (right edge)." ); */
         
     /* Verify a few sub-cells. */
@@ -413,6 +503,65 @@ void cell_split ( struct cell *c  ) {
              c->progeny[2]->parts[k].x[2] > pivot[2] )
             error( "Sorting failed (progeny=2)." ); */
 
+    /* Now do the same song and dance for the gparts. */
+
+    /* Split along the x-axis. */
+    i = 0; j = gcount - 1;
+    while ( i <= j ) {
+        while ( i <= gcount-1 && gparts[i].x[0] <= pivot[0] )
+            i += 1;
+        while ( j >= 0 && gparts[j].x[0] > pivot[0] )
+            j -= 1;
+        if ( i < j ) {
+            gtemp = gparts[i]; gparts[i] = gparts[j]; gparts[j] = gtemp;
+            }
+        }
+    left[1] = i; right[1] = gcount - 1;
+    left[0] = 0; right[0] = j;
+    
+    /* Split along the y axis, twice. */
+    for ( k = 1 ; k >= 0 ; k-- ) {
+        i = left[k]; j = right[k];
+        while ( i <= j ) {
+            while ( i <= right[k] && gparts[i].x[1] <= pivot[1] )
+                i += 1;
+            while ( j >= left[k] && gparts[j].x[1] > pivot[1] )
+                j -= 1;
+            if ( i < j ) {
+                gtemp = gparts[i]; gparts[i] = gparts[j]; gparts[j] = gtemp;
+                }
+            }
+        left[2*k+1] = i; right[2*k+1] = right[k];
+        left[2*k] = left[k]; right[2*k] = j;
+        }
+
+    /* Split along the z axis, four times. */
+    for ( k = 3 ; k >= 0 ; k-- ) {
+        i = left[k]; j = right[k];
+        while ( i <= j ) {
+            while ( i <= right[k] && gparts[i].x[2] <= pivot[2] )
+                i += 1;
+            while ( j >= left[k] && gparts[j].x[2] > pivot[2] )
+                j -= 1;
+            if ( i < j ) {
+                gtemp = gparts[i]; gparts[i] = gparts[j]; gparts[j] = gtemp;
+                }
+            }
+        left[2*k+1] = i; right[2*k+1] = right[k];
+        left[2*k] = left[k]; right[2*k] = j;
+        }
+        
+    /* Store the counts and offsets. */
+    for ( k = 0 ; k < 8 ; k++ ) {
+        c->progeny[k]->gcount = right[k] - left[k] + 1;
+        c->progeny[k]->gparts = &c->gparts[ left[k] ];
+        }
+        
+    /* Re-link the parts. */
+    for ( k = 0 ; k < gcount ; k++ )
+        if ( gparts[k].id > 0 )
+            gparts[k].part->gpart = &gparts[k];
+        
     }
 
 

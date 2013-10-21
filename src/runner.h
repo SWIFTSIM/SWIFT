@@ -27,7 +27,7 @@ extern const char runner_flip[];
 
 
 /* Counters. */
-enum {
+enum runner_counters {
     runner_counter_swap = 0,
     runner_counter_stall,
     runner_counter_steal_stall,
@@ -80,6 +80,7 @@ void runner_dopair_density ( struct runner *r , struct cell *ci , struct cell *c
 void runner_doself_density ( struct runner *r , struct cell *c );
 void runner_dosub_density ( struct runner *r , struct cell *ci , struct cell *cj , int flags );
 void runner_dosort ( struct runner *r , struct cell *c , int flag , int clock );
+void runner_dogsort ( struct runner *r , struct cell *c , int flag , int clock );
 void runner_dokick ( struct runner *r , struct cell *c , int timer );
 void runner_dokick1 ( struct runner *r , struct cell *c );
 void runner_dokick2 ( struct runner *r , struct cell *c );

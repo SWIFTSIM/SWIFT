@@ -58,7 +58,7 @@
         #define vec_dbl_fmax(a,b) _mm512_max_pd(a,b)
         #define vec_getoffsets(ptrs) _mm512_insertf64x4( _mm512_insertf64x4( _mm512_setzero_pd() , _mm512_cvtepi64_epi32( _mm512_load_epi64(ptrs) - _mm512_set1_epi64(ptrs[0]) ) , 0 ) , _mm512_cvtepi64_epi32( _mm512_load_epi64(&ptrs[4]) - _mm512_set1_epi64(ptrs[0]) ) , 1 ) 
         #define vec_gather(base,offsets) _mm512_i32gather_ps( offsets.m , base , 1 )
-    #elif defined(__AVX__)
+    #elif defined( NO__AVX__ )
         #define VECTORIZE
         #define VEC_SIZE 8
         #define VEC_FLOAT __m256
@@ -90,7 +90,7 @@
             #define VEC_HAVE_GATHER
             #define vec_gather(base,offsets) _mm256_i32gather_ps( base , offsets.m , 1 )
         #endif
-    #elif defined( __SSE2__ )
+    #elif defined( NO__SSE2__ )
         #define VECTORIZE
         #define VEC_SIZE 4
         #define VEC_FLOAT __m128

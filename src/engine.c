@@ -54,6 +54,7 @@
 #include "part.h"
 #include "debug.h"
 #include "space.h"
+#include "multipole.h"
 #include "cell.h"
 #include "queue.h"
 #include "scheduler.h"
@@ -551,6 +552,30 @@ void engine_repartition ( struct engine *e ) {
 #endif
 
     }
+    
+    
+/**
+ * @brief Add up/down gravity tasks to a cell hierarchy.
+ *
+ * @param e The #engine.
+ * @param c The #cell
+ * @param up The upward gravity #task.
+ * @param down The downward gravity #task.
+ */
+ 
+void engine_addtasks_grav ( struct engine *e , struct cell *c , struct task *up , struct task *down ) {
+
+    /* Link the tasks to this cell. */
+    c->grav_up = up;
+    c->grav_down = down;
+    
+    /* Recurse? */
+    if ( c->split )
+        for ( int k = 0 ; k < 8 ; k++ )
+            if ( c->progeny[k] != NULL )
+                engine_addtasks_grav( e , c->progeny[k] , up , down );
+
+    }
 
 
 /**
@@ -887,6 +912,9 @@ void engine_maketasks ( struct engine *e ) {
 
     struct space *s = e->s;
     struct scheduler *sched = &e->sched;
+    struct cell *cells = s->cells;
+    int nr_cells = s->nr_cells;
+    int nodeID = e->nodeID;
     int i, j, k, ii, jj, kk, iii, jjj, kkk, cid, cjd, sid;
     int *cdim = s->cdim;
     struct task *t, *t2;
@@ -900,12 +928,12 @@ void engine_maketasks ( struct engine *e ) {
         for ( j = 0 ; j < cdim[1] ; j++ )
             for ( k = 0 ; k < cdim[2] ; k++ ) {
                 cid = cell_getid( cdim , i , j , k );
-                if ( s->cells[cid].count == 0 )
+                if ( cells[cid].count == 0 )
                     continue;
-                ci = &s->cells[cid];
+                ci = &cells[cid];
                 if ( ci->count == 0 )
                     continue;
-                if ( ci->nodeID == e->nodeID )
+                if ( ci->nodeID == nodeID )
                     scheduler_addtask( sched , task_type_self , task_subtype_density , 0 , 0 , ci , NULL , 0 );
                 for ( ii = -1 ; ii < 2 ; ii++ ) {
                     iii = i + ii;
@@ -923,17 +951,24 @@ void engine_maketasks ( struct engine *e ) {
                                 continue;
                             kkk = ( kkk + cdim[2] ) % cdim[2];
                             cjd = cell_getid( cdim , iii , jjj , kkk );
-                            cj = &s->cells[cjd];
+                            cj = &cells[cjd];
                             if ( cid >= cjd || cj->count == 0 || 
-                                 ( ci->nodeID != e->nodeID && cj->nodeID != e->nodeID ) )
+                                 ( ci->nodeID != nodeID && cj->nodeID != nodeID ) )
                                 continue;
                             sid = sortlistID[ (kk+1) + 3*( (jj+1) + 3*(ii+1) ) ];
-                            t = scheduler_addtask( sched , task_type_pair , task_subtype_density , sid , 0 , ci , cj , 1 );
+                            scheduler_addtask( sched , task_type_pair , task_subtype_density , sid , 0 , ci , cj , 1 );
                             }
                         }
                     }
                 }
-
+                
+    /* Add the gravity mm tasks. */
+    for ( i = 0 ; i < nr_cells ; i++ ) {
+        scheduler_addtask( sched , task_type_grav_mm , task_subtype_none , -1 , 0 , &cells[i] , NULL , 0 );
+        for ( j = i+1 ; j < nr_cells ; j++ )
+            scheduler_addtask( sched , task_type_grav_mm , task_subtype_none , -1 , 0 , &cells[i] , &cells[j] , 0 );
+        }
+        
     /* Split the tasks. */
     scheduler_splittasks( sched );
     
@@ -944,27 +979,44 @@ void engine_maketasks ( struct engine *e ) {
         error( "Failed to allocate cell-task links." );
     e->nr_links = 0;
     
+    /* Add the gravity up/down tasks at the top-level cells and push them down. */
+    for ( k = 0 ; k < nr_cells ; k++ )
+        if ( cells[k].nodeID == nodeID ) {
+        
+            /* Create tasks at top level. */
+            struct task *up = scheduler_addtask( sched , task_type_grav_up , task_subtype_none , 0 , 0 , &cells[k] , NULL , 0 );
+            struct task *down = scheduler_addtask( sched , task_type_grav_down , task_subtype_none , 0 , 0 , &cells[k] , NULL , 0 );
+            
+            /* Push tasks down the cell hierarchy. */
+            engine_addtasks_grav( e , &cells[k] , up , down );
+            
+            }
+    
     /* Count the number of tasks associated with each cell and
        store the density tasks in each cell, and make each sort
        depend on the sorts of its progeny. */
     // #pragma omp parallel for private(t,j)
     for ( k = 0 ; k < sched->nr_tasks ; k++ ) {
+        
+        /* Get the current task. */
         t = &sched->tasks[k];
         if ( t->skip )
             continue;
+            
+        /* Link sort tasks together. */
         if ( t->type == task_type_sort && t->ci->split )
             for ( j = 0 ; j < 8 ; j++ )
                 if ( t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL ) {
                     t->ci->progeny[j]->sorts->skip = 0;
                     scheduler_addunlock( sched , t->ci->progeny[j]->sorts , t );
                     }
+                    
+        /* Link density tasks to cells. */
         if ( t->type == task_type_self ) {
             atomic_inc( &t->ci->nr_tasks );
             if ( t->subtype == task_subtype_density ) {
                 t->ci->density = engine_addlink( e , t->ci->density , t );
                 atomic_inc( &t->ci->nr_density );
-                if ( t->ci->nr_density > 27*8 )
-            error( "Density overflow." );
                 }
             }
         else if ( t->type == task_type_pair ) {
@@ -975,8 +1027,6 @@ void engine_maketasks ( struct engine *e ) {
                 atomic_inc( &t->ci->nr_density );
                 t->cj->density = engine_addlink( e , t->cj->density , t );
                 atomic_inc( &t->cj->nr_density );
-        if ( t->ci->nr_density > 8*27 || t->cj->nr_density > 8*27 )
-            error( "Density overflow." );
                 }
             }
         else if ( t->type == task_type_sub ) {
@@ -989,21 +1039,33 @@ void engine_maketasks ( struct engine *e ) {
                 if ( t->cj != NULL ) {
                     t->cj->density = engine_addlink( e , t->cj->density , t );
                     atomic_inc( &t->cj->nr_density );
-            if ( t->cj->nr_density > 8*27 )
-                error( "Density overflow." );
-            }
+                    }
                 }
             }
+            
+        /* Link gravity multipole tasks to the up/down tasks. */
+        if ( t->type == task_type_grav_mm ||
+             ( t->type == task_type_sub && t->subtype == task_subtype_grav ) ) {
+            atomic_inc( &t->ci->nr_tasks );
+            scheduler_addunlock( sched , t->ci->grav_up , t );
+            scheduler_addunlock( sched , t , t->ci->grav_down );
+            if ( t->cj != NULL && t->ci->grav_up != t->cj->grav_up ) {
+                scheduler_addunlock( sched , t->cj->grav_up , t );
+                scheduler_addunlock( sched , t , t->cj->grav_down );
+                }
+            }
+            
         }
         
-    /* Append a ghost task to each cell. */
-    for ( k = 0 ; k < s->nr_cells ; k++ )
-        engine_mkghosts( e , &s->cells[k] , NULL );
+    /* Append a ghost task to each cell, and add kick2 tasks to the
+       super cells. */
+    for ( k = 0 ; k < nr_cells ; k++ )
+        engine_mkghosts( e , &cells[k] , NULL );
     /* if ( e->policy & engine_policy_fixdt )
         space_map_cells_pre( s , 1 , &scheduler_map_mkghosts_nokick1 , sched );
     else
         space_map_cells_pre( s , 1 , &scheduler_map_mkghosts , sched ); */
-    
+        
     /* Run through the tasks and make force tasks for each density task.
        Each force task depends on the cell ghosts and unlocks the kick2 task
        of its super-cell. */
@@ -1031,12 +1093,12 @@ void engine_maketasks ( struct engine *e ) {
         /* Otherwise, pair interaction? */
         else if ( t->type == task_type_pair && t->subtype == task_subtype_density ) {
             t2 = scheduler_addtask( sched , task_type_pair , task_subtype_force , 0 , 0 , t->ci , t->cj , 0 );
-            if ( t->ci->nodeID == e->nodeID ) {
+            if ( t->ci->nodeID == nodeID ) {
                 scheduler_addunlock( sched , t , t->ci->super->ghost );
                 scheduler_addunlock( sched , t->ci->super->ghost , t2 );
                 scheduler_addunlock( sched , t2 , t->ci->super->kick2 );
                 }
-            if ( t->cj->nodeID == e->nodeID && t->ci->super != t->cj->super ) {
+            if ( t->cj->nodeID == nodeID && t->ci->super != t->cj->super ) {
                 scheduler_addunlock( sched , t , t->cj->super->ghost );
                 scheduler_addunlock( sched , t->cj->super->ghost , t2 );
                 scheduler_addunlock( sched , t2 , t->cj->super->kick2 );
@@ -1050,12 +1112,12 @@ void engine_maketasks ( struct engine *e ) {
         /* Otherwise, sub interaction? */
         else if ( t->type == task_type_sub && t->subtype == task_subtype_density ) {
             t2 = scheduler_addtask( sched , task_type_sub , task_subtype_force , t->flags , 0 , t->ci , t->cj , 0 );
-            if ( t->ci->nodeID == e->nodeID ) {
+            if ( t->ci->nodeID == nodeID ) {
                 scheduler_addunlock( sched , t , t->ci->super->ghost );
                 scheduler_addunlock( sched , t->ci->super->ghost , t2 );
                 scheduler_addunlock( sched , t2 , t->ci->super->kick2 );
                 }
-            if ( t->cj != NULL && t->cj->nodeID == e->nodeID && t->ci->super != t->cj->super ) {
+            if ( t->cj != NULL && t->cj->nodeID == nodeID && t->ci->super != t->cj->super ) {
                 scheduler_addunlock( sched , t , t->cj->super->ghost );
                 scheduler_addunlock( sched , t->cj->super->ghost , t2 );
                 scheduler_addunlock( sched , t2 , t->cj->super->kick2 );
@@ -1067,6 +1129,10 @@ void engine_maketasks ( struct engine *e ) {
                 atomic_inc( &t->cj->nr_force );
                 }
             }
+            
+        /* Kick2 tasks should rely on the grav_down tasks of their cell. */
+        else if ( t->type == task_type_kick2 )
+            scheduler_addunlock( sched , t->ci->grav_down , t );
             
         }
         
@@ -1657,6 +1723,10 @@ void engine_step ( struct engine *e ) {
                                        (1 << task_type_kick2) |
                                        (1 << task_type_send) |
                                        (1 << task_type_recv) |
+                                       (1 << task_type_grav_pp) |
+                                       (1 << task_type_grav_mm) |
+                                       (1 << task_type_grav_up) |
+                                       (1 << task_type_grav_down) |
                                        (1 << task_type_link) );
     TIMER_TOC(timer_runners);
     

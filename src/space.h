@@ -83,11 +83,12 @@ struct space {
     
     /* The particle data (cells have pointers to this). */
     struct part *parts;
-    struct cpart *cparts;
     struct xpart *xparts;
+    struct gpart *gparts;
     
     /* The total number of parts in the space. */
     int nr_parts, size_parts;
+    int nr_gparts, size_gparts;
     
     /* Is the space periodic? */
     int periodic;
@@ -110,6 +111,7 @@ struct space {
 
 /* function prototypes. */
 void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N , int min , int max );
+void gparts_sort ( struct gpart *gparts , int *ind , int N , int min , int max );
 struct cell *space_getcell ( struct space *s );
 int space_getsid ( struct space *s , struct cell **ci , struct cell **cj , double *shift );
 void space_init ( struct space *s , double dim[3] , struct part *parts , int N , int periodic , double h_max );

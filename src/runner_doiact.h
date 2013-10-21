@@ -673,9 +673,6 @@ void DOPAIR1 ( struct runner *r , struct cell *ci , struct cell *cj ) {
     dj_min = sort_j[0].d;
     dx_max = ( ci->dx_max + cj->dx_max );
     
-    /* if ( ci->split && cj->split && sid == 4 )
-        printf( "boing!\n" ); */
-        
 
     /* Loop over the parts in ci. */
     for ( pid = count_i-1 ; pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min ; pid-- ) {

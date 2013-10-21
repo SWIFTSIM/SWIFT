@@ -45,6 +45,38 @@ struct xpart {
     
     } __attribute__((aligned (32)));
     
+    
+/* Gravity particle. */
+struct gpart {
+
+    /* Particle position. */
+    double x[3];
+    
+    /* Particle velocity. */
+    float v[3];
+    
+    /* Particle acceleration. */
+    float a[3];
+    
+    /* Particle mass. */
+    float mass;
+    
+    /* Particle time step. */
+    float dt;
+    
+    /* Anonymous union for id/part. */
+    union {
+    
+        /* Particle ID. */
+        unsigned long long id;
+
+        /* Pointer to corresponding SPH part. */
+        struct part *part;
+        
+        };
+    
+    } __attribute__((aligned (part_align)));
+    
 
 /* Data of a single particle. */
 struct part {
@@ -129,6 +161,9 @@ struct part {
     
     /* Particle ID. */
     unsigned long long id;
+    
+    /* Associated gravitas. */
+    struct gpart *gpart;
     
     } __attribute__((aligned (part_align)));
     

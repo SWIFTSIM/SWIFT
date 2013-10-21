@@ -103,7 +103,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
 
 #ifdef VECTORIZE
 
-    vector r, ri, xi, xj, hi, hj, hi_inv, hj_inv,  wi, wj, wi_dx, wj_dx;
+    vector r, ri, r2, xi, xj, hi, hj, hi_inv, hj_inv,  wi, wj, wi_dx, wj_dx;
     vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
     vector mi, mj;
     vector dx[3], dv[3];
@@ -112,8 +112,6 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
     vector curlvr[3], curl_vi[3], curl_vj[3];
     int k, j;
     
-    r.v = vec_sqrt( vec_load( R2 ) );
-    ri.v = vec_rcp( r.v );
     #if VEC_SIZE==8
         mi.v = vec_set( pi[0]->mass , pi[1]->mass , pi[2]->mass , pi[3]->mass , pi[4]->mass , pi[5]->mass , pi[6]->mass , pi[7]->mass );
         mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass , pj[4]->mass , pj[5]->mass , pj[6]->mass , pj[7]->mass );
@@ -134,6 +132,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_vec_density ( flo
             dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
     #endif
 
+    /* Get the radius and inverse radius. */
+    r2.v = vec_load( R2 );
+    ri.v = vec_rsqrt( r2.v );
+    ri.v = ri.v - vec_set1( 0.5f ) * ri.v * ( r2.v * ri.v * ri.v - vec_set1( 1.0f ) );
+    r.v = r2.v * ri.v;
+    
     hi.v = vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );
     hi_inv.v = hi_inv.v - hi_inv.v * ( hi_inv.v * hi.v  - vec_set1( 1.0f ) );
@@ -267,7 +271,7 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
 
 #ifdef VECTORIZE
 
-    vector r, ri, xi, hi, hi_inv, wi, wi_dx;
+    vector r, ri, r2, xi, hi, hi_inv, wi, wi_dx;
     vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
     vector mj;
     vector dx[3], dv[3];
@@ -276,8 +280,6 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
     vector curlvr[3], curl_vi[3];
     int k, j;
     
-    r.v = vec_sqrt( vec_load( R2 ) );
-    ri.v = vec_rcp( r.v );
     #if VEC_SIZE==8
         mj.v = vec_set( pj[0]->mass , pj[1]->mass , pj[2]->mass , pj[3]->mass , pj[4]->mass , pj[5]->mass , pj[6]->mass , pj[7]->mass );
         for ( k = 0 ; k < 3 ; k++ ) {
@@ -295,6 +297,12 @@ __attribute__ ((always_inline)) INLINE static void runner_iact_nonsym_vec_densit
         for ( k = 0 ; k < 3 ; k++ )
             dx[k].v = vec_set( Dx[0+k] , Dx[3+k] , Dx[6+k] , Dx[9+k] );
     #endif
+    
+    /* Get the radius and inverse radius. */
+    r2.v = vec_load( R2 );
+    ri.v = vec_rsqrt( r2.v );
+    ri.v = ri.v - vec_set1( 0.5f ) * ri.v * ( r2.v * ri.v * ri.v - vec_set1( 1.0f ) );
+    r.v = r2.v * ri.v;
     
     hi.v = vec_load( Hi );
     hi_inv.v = vec_rcp( hi.v );

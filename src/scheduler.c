@@ -46,6 +46,7 @@
 #include "part.h"
 #include "debug.h"
 #include "space.h"
+#include "multipole.h"
 #include "cell.h"
 #include "queue.h"
 #include "kernel.h"
@@ -431,6 +432,135 @@ void scheduler_splittasks ( struct scheduler *s ) {
                 }
                 
             } /* pair interaction? */
+            
+        /* Gravity interaction? */
+        else if ( t->type == task_type_grav_mm ) {
+        
+            /* Get a handle on the cells involved. */
+            ci = t->ci;
+            cj = t->cj;
+            
+            /* Self-interaction? */
+            if ( cj == NULL ) {
+            
+                /* Ignore this task if the cell has no gparts. */
+                if ( ci->gcount == 0 )
+                    t->type = task_type_none;
+            
+                /* If the cell is split, recurse. */
+                else if ( ci->split ) {
+                
+                    /* Make a single sub-task? */
+                    if ( scheduler_dosub && ci->count < space_subsize/ci->count ) {
+                    
+                        t->type = task_type_sub;
+                        t->subtype = task_subtype_grav;
+                    
+                        }
+                        
+                    /* Otherwise, just split the task. */
+                    else {
+                
+                        /* Split this task into tasks on its progeny. */
+                        t->type = task_type_none;
+                        for ( j = 0 ; j < 8 ; j++ )
+                            if ( ci->progeny[j] != NULL ) {
+                                if ( t->type == task_type_none ) {
+                                    t->type = task_type_grav_mm;
+                                    t->ci = ci->progeny[j];
+                                    t->cj = NULL;
+                                    }
+                                else
+                                    t = scheduler_addtask( s , task_type_grav_mm , task_subtype_none , 0 , 0 , ci->progeny[j] , NULL , 0 );
+                                for ( k = j+1 ; k < 8 ; k++ )
+                                    if ( ci->progeny[k] != NULL ) {
+                                        if ( t->type == task_type_none ) {
+                                            t->type = task_type_grav_mm;
+                                            t->ci = ci->progeny[j];
+                                            t->cj = ci->progeny[k];
+                                            }
+                                        else
+                                            t = scheduler_addtask( s , task_type_grav_mm , task_subtype_none , 0 , 0 , ci->progeny[j] , ci->progeny[k] , 0 );
+                                        }
+                                }
+                        redo = ( t->type != task_type_none );
+                        
+                        }
+                      
+                    }
+                    
+                /* Otherwise, just make a pp task out of it. */
+                else
+                    t->type = task_type_grav_pp;
+                
+                }
+                
+            /* Nope, pair. */
+            else {
+            
+                /* Make a sub-task? */
+                if ( scheduler_dosub && ci->count < space_subsize/cj->count ) {
+                
+                    t->type = task_type_sub;
+                    t->subtype = task_subtype_grav;
+                
+                    }
+                    
+                /* Otherwise, split the task. */
+                else {
+        
+                    /* Get the opening angle theta. */
+                    float dx[3], theta;
+                    for ( k = 0 ; k < 3 ; k++ ) {
+                        dx[k] = fabsf( ci->loc[k] - cj->loc[k] );
+                        if ( s->space->periodic && dx[k] > 0.5*s->space->dim[k] )
+                            dx[k] = -dx[k] + s->space->dim[k];
+                        if ( dx[k] > 0.0f )
+                            dx[k] -= ci->h[k];
+                        }
+                    theta = ( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] ) / 
+                            ( ci->h[0]*ci->h[0] + ci->h[1]*ci->h[1] + ci->h[2]*ci->h[2] );
+
+                    /* Ignore this task if the cell has no gparts. */
+                    if ( ci->gcount == 0 || cj->gcount == 0 )
+                        t->type = task_type_none;
+
+                    /* Split the interacton? */
+                    else if ( theta < const_theta_max*const_theta_max ) {
+
+                        /* Are both ci and cj split? */
+                        if ( ci->split && cj->split ) {
+
+                            /* Split this task into tasks on its progeny. */
+                            t->type = task_type_none;
+                            for ( j = 0 ; j < 8 ; j++ )
+                                if ( ci->progeny[j] != NULL ) {
+                                    for ( k = 0 ; k < 8 ; k++ )
+                                        if ( cj->progeny[k] != NULL ) {
+                                            if ( t->type == task_type_none ) {
+                                                t->type = task_type_grav_mm;
+                                                t->ci = ci->progeny[j];
+                                                t->cj = cj->progeny[k];
+                                                }
+                                            else
+                                                t = scheduler_addtask( s , task_type_grav_mm , task_subtype_none , 0 , 0 , ci->progeny[j] , cj->progeny[k] , 0 );
+                                            }
+                                    }
+                            redo = ( t->type != task_type_none );
+
+                            }
+
+                        /* Otherwise, make a pp task out of it. */
+                        else
+                            t->type = task_type_grav_pp;
+
+                        }
+                        
+                    }
+                
+                } /* gravity pair interaction? */
+        
+            } /* gravity interaction? */
     
         } /* loop over all tasks. */
         
@@ -457,6 +587,12 @@ struct task *scheduler_addtask ( struct scheduler *s , int type , int subtype , 
     
     /* Get the next free task. */
     ind = atomic_inc( &s->tasks_next );
+    
+    /* Overflow? */
+    if ( ind >= s->size )
+        error( "Task list overflow." );
+    
+    /* Get a pointer to the new task. */
     t = &s->tasks[ ind ];
     
     /* Copy the data. */
@@ -637,10 +773,18 @@ void scheduler_reweight ( struct scheduler *s ) {
                     break;
                 case task_type_sub:
                     if ( t->cj != NULL ) {
-                        if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID )
-                            t->weight += 3 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
-                        else
-                            t->weight += 2 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                        if ( t->ci->nodeID != nodeID || t->cj->nodeID != nodeID ) {
+                            if ( t->flags < 0 )
+                                t->weight += 3 * wscale * t->ci->count * t->cj->count;
+                            else
+                                t->weight += 3 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                            }
+                        else {
+                            if ( t->flags < 0 )
+                                t->weight += 2 * wscale * t->ci->count * t->cj->count;
+                            else
+                                t->weight += 2 * wscale * t->ci->count * t->cj->count * sid_scale[ t->flags ];
+                            }
                         }
                     else
                         t->weight += 1 * wscale * t->ci->count * t->ci->count;
@@ -652,6 +796,8 @@ void scheduler_reweight ( struct scheduler *s ) {
                 case task_type_kick1:
                 case task_type_kick2:
                     t->weight += wscale * t->ci->count;
+                    break;
+                default:
                     break;
                 }
         if ( t->type == task_type_send )

@@ -41,6 +41,18 @@
 #define const_delta_nwneigh     1.f
 #define CUBIC_SPLINE_KERNEL
 
+/* Gravity stuff. */
+#define const_theta_max         0.57735f        /* Opening criteria, which is the ratio of the
+                                                   cell distance over the cell width. */
+#define const_G                 6.67384e-8f     /* Gravitational constant. */
+#define const_epsilon           0.0014f         /* Gravity blending distance. */
+#define const_iepsilon          714.285714286f  /* Inverse gravity blending distance. */
+#define const_iepsilon2         (const_iepsilon*const_iepsilon)
+#define const_iepsilon3         (const_iepsilon2*const_iepsilon)
+#define const_iepsilon4         (const_iepsilon2*const_iepsilon2)
+#define const_iepsilon5         (const_iepsilon3*const_iepsilon2)
+#define const_iepsilon6         (const_iepsilon3*const_iepsilon3)
+
 /* SPH variant to use */
 #define LEGACY_GADGET2_SPH
 

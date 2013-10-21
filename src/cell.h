@@ -67,7 +67,7 @@ struct cell {
     int depth, split, maxdepth;
     
     /* Nr of parts. */
-    int count;
+    int count, gcount;
     
     /* Pointers to the particle data. */
     struct part *parts;
@@ -75,12 +75,12 @@ struct cell {
     /* Pointers to the extra particle data. */
     struct xpart *xparts;
     
-    /* Pointers for the sorted indices. */
-    struct entry *sort;
-    unsigned int sorted;
+    /* Pointers to the gravity particle data. */
+    struct gpart *gparts;
     
-    /* Number of pairs associated with this cell. */
-    // int nr_pairs;
+    /* Pointers for the sorted indices. */
+    struct entry *sort, *gsort;
+    unsigned int sorted, gsorted;
     
     /* Pointers to the next level of cells. */
     struct cell *progeny[8];
@@ -91,13 +91,13 @@ struct cell {
     /* Super cell, i.e. the highest-level supercell that has interactions. */
     struct cell *super;
     
-    /* The tasks computing this cell's sorts. */
-    struct task *sorts;
-    int sortsize;
+    /* The task computing this cell's sorts. */
+    struct task *sorts, *gsorts;
+    int sortsize, gsortsize;
     
     /* The tasks computing this cell's density. */
-    struct link *density, *force;
-    int nr_density, nr_force;
+    struct link *density, *force, *grav;
+    int nr_density, nr_force, nr_grav;
     
     /* The ghost task to link density to interactions. */
     struct task *ghost, *kick1, *kick2;
@@ -105,17 +105,17 @@ struct cell {
     /* Task receiving data. */
     struct task *recv_xv, *recv_rho;
     
+    /* Tasks for gravity tree. */
+    struct task *grav_up, *grav_down;
+    
     /* Number of tasks that are associated with this cell. */
     int nr_tasks;
     
-    /* Number of tasks this cell is waiting for and whether it is in use. */
-    int wait;
-    
     /* Is the data of this cell being used in a sub-cell? */
-    int hold;
+    int hold, ghold;
     
     /* Spin lock for various uses. */
-    lock_type lock;
+    lock_type lock, glock;
     
     /* ID of the previous owner, e.g. runner. */
     int owner;
@@ -143,6 +143,9 @@ struct cell {
     int pcell_size;
     int tag;
     
+    /* This cell's multipole. */
+    struct multipole multipole;
+    
     } __attribute__((aligned (64)));
 
 
@@ -150,6 +153,8 @@ struct cell {
 void cell_split ( struct cell *c  );
 int cell_locktree( struct cell *c );
 void cell_unlocktree( struct cell *c );
+int cell_glocktree( struct cell *c );
+void cell_gunlocktree( struct cell *c );
 int cell_pack ( struct cell *c , struct pcell *pc );
 int cell_unpack ( struct pcell *pc , struct cell *c , struct space *s );
 int cell_getsize ( struct cell *c );
