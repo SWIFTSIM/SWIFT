@@ -2293,13 +2293,13 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
         /* Get the cell dimensions. */
         h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
 
+        /* Get the type of pair if not specified explicitly. */
+        sid = space_getsid( s , &ci , &cj , shift );
+
         /* Recurse? */
         if ( ci->split && cj->split &&
              fmaxf( ci->h_max , cj->h_max )*kernel_gamma + ci->dx_max + cj->dx_max < h/2 ) {
              
-            /* Get the type of pair if not specified explicitly. */
-            sid = space_getsid( s , &ci , &cj , shift );
-
             /* Different types of flags. */
             switch ( sid ) {
 
