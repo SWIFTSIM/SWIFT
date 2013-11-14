@@ -48,7 +48,7 @@
 
 /* Ticks per second on this machine. */
 #ifndef CPU_TPS
-    #define CPU_TPS 2.67e9
+    #define CPU_TPS 2.40e9
 #endif
 
 /* Engine policy flags. */
@@ -306,60 +306,6 @@ void read_coords ( char *fname , struct part *parts , int N ) {
 
 
 /**
- * @brief Read cutoffs from a text file.
- *
- * @param fname The name of the cutoffs file.
- * @param parts An array of #part in which to store the cutoffs.
- * @param N The number of parts to read.
- */
- 
-void read_cutoffs ( char *fname , struct part *parts , int N ) {
-
-#ifdef HAVE_LIBZ
-    gzFile fd;
-    char buff[1024];
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
-        error( "Failed to open cutoff file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( gzgets( fd , buff , 1024 ) == NULL )
-            error( "Error reading cutoff file." );
-        if ( sscanf( buff , "%ef" , &parts[k].h ) != 1 ) {
-            printf( "read_cutoffs: failed to parse %ith entry.\n" , k );
-            error( "Error parsing cutoff file." );
-            }
-        }
-        
-    /* Wrap it up. */
-    gzclose( fd );
-#else
-    FILE *fd;
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = fopen( fname , "r" ) ) == NULL )
-        error( "Failed to open cutoff file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( fscanf( fd , "%ef" , &parts[k].h ) != 1 ) {
-            printf( "read_cutoffs: failed to read %ith entry.\n" , k );
-            error( "Error reading cutoff file." );
-            }
-        }
-        
-    /* Wrap it up. */
-    fclose( fd );
-#endif
-
-    }
-    
-    
-/**
  * @brief Read id from a text file.
  *
  * @param fname The name of the id file.
@@ -404,56 +350,6 @@ void read_id ( char *fname , struct part *parts , int N ) {
             printf( "read_id: failed to read %ith entry.\n" , k );
             error( "Error reading id file." );
             }
-        }
-
-    /* Wrap it up. */
-    fclose( fd );
-#endif
-
-    }
-    
-    
-/**
- * @brief Read dt from a text file.
- *
- * @param fname The name of the dt file.
- * @param parts An array of #part in which to store the dt.
- * @param N The number of parts to read.
- */
- 
-void read_dt ( char *fname , struct part *parts , int N ) {
-
-#ifdef HAVE_LIBZ
-    gzFile fd;
-    char buff[1024];
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
-        error( "Failed to open dt file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( gzgets( fd , buff , 1024 ) == NULL )
-            error( "Error reading id file." );
-        if ( sscanf( buff , "%f" , &parts[k].dt ) != 1 )
-            error( "Error parsing dt file." );
-        }
-        
-    /* Wrap it up. */
-    gzclose( fd );
-#else
-    FILE *fd;
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = fopen( fname , "r" ) ) == NULL )
-        error( "Failed to open dt file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( fscanf( fd , "%ef" , &parts[k].dt ) != 1 )
-            error( "Error reading dt file." );
         }
 
     /* Wrap it up. */
@@ -705,7 +601,7 @@ void density_dump ( int N ) {
  
 int main ( int argc , char *argv[] ) {
 
-    int c, icount, j, k, N = 100, periodic = 1;
+    int c, icount, j, k, N = -1, periodic = 1;
     int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
     int data[2];
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
@@ -721,7 +617,7 @@ int main ( int argc , char *argv[] ) {
     int nr_nodes = 1, myrank = 0, grid[3] = { 1 , 1 , 1 };
     
     /* Choke on FP-exceptions. */
-    feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+    // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
     
 #ifdef WITH_MPI
     /* Start by initializing MPI. */
@@ -770,8 +666,8 @@ int main ( int argc , char *argv[] ) {
 	case 'f':
 	  if( !strcpy(ICfileName, optarg))
 	    error("Error parsing IC file name.");
-	  if ( myrank == 0 )
-        message("IC to be read from file '%s'.", ICfileName);
+	  // if ( myrank == 0 )
+        // message("IC to be read from file '%s'.", ICfileName);
 	  break;
 	case 'g':
 	  if ( sscanf( optarg , "%i %i %i" , &grid[0] , &grid[1] , &grid[2] ) != 3 )
@@ -863,6 +759,32 @@ int main ( int argc , char *argv[] ) {
 	    parts[k].x[2] += shift[2];
       }
 
+    /* printParticle( parts , 10312237508790 , N );
+    printParticle( parts , 10312286091950 , N ); */
+    /* for ( k = 0 ; k < N ; k++ )
+	if ( parts[k].id == 10312286091950 ||
+	     parts[k].id == 10286889371446  ||
+	     parts[k].id == 9536045071298 ||
+	     parts[k].id == 12726778692106  ||
+	     parts[k].id == 9479892852626  ||
+	     parts[k].id == 9535843125514  ||
+	     parts[k].id == 14151507889834  ||
+	     parts[k].id == 14144038209438  ||
+	     parts[k].id == 14121890205050  ||
+	     parts[k].id == 5868762382714  ||
+	     parts[k].id == 12840527117206 ||
+	     parts[k].id == 10292087642778  ||
+	     parts[k].id == 9465178320650  ||
+	     parts[k].id == 2834846537770  ||
+	     parts[k].id == 9483000048314  ||
+	     parts[k].id == 10247332828902  ||
+	     parts[k].id == 10223834653674  ||
+	     parts[k].id == 16719632108962  ||
+	     parts[k].id == 16759192850622  ||
+	     parts[k].id == 9483599082554  ||
+	     parts[k].id == 10247340329226 )
+            parts[k] = parts[--N]; */
+
     /* Set default number of queues. */
     if ( nr_queues < 0 )
         nr_queues = nr_threads;
@@ -906,14 +828,13 @@ int main ( int argc , char *argv[] ) {
     
     /* Initialize the engine with this space. */
     tic = getticks();
+    message( "nr_nodes is %i." , nr_nodes );
     engine_init( &e , &s , dt_max , nr_threads , nr_queues , nr_nodes , myrank , ENGINE_POLICY | engine_policy_steal );
     if ( myrank == 0 )
         message( "engine_init took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
 
 #ifdef WITH_MPI
     /* Split the space. */
-    if ( nr_nodes != grid[0]*grid[1]*grid[2] )
-        error( "Grid size does not match number of nodes." );
     engine_split( &e , grid );
     printParticle( s.parts , 5665430362989 , s.nr_parts );
     engine_redistribute ( &e );
@@ -989,7 +910,7 @@ int main ( int argc , char *argv[] ) {
                 printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
             printf( "\n" ); fflush(stdout);
             }
-        
+
         }
         
     /* Print the values of the runner histogram. */
@@ -1001,19 +922,39 @@ int main ( int argc , char *argv[] ) {
                 runner_hist_a + (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N ,
                 (double)runner_hist_bins[k] );
     #endif
+
+    // write_output( &e );
         
     /* Loop over the parts directly. */
     // for ( k = 0 ; k < N ; k++ )
     //     printf( " %i %e %e\n" , s.parts[k].id , s.parts[k].count , s.parts[k].count_dh );
     
     /* Dump the task data. */
-    /* for ( k = 0 ; k < e.sched.nr_tasks ; k++ )
+    /* #ifdef WITH_MPI
+    for ( j = 0 ; j < nr_nodes ; j++ ) {
+    MPI_Barrier( MPI_COMM_WORLD );
+    if ( j == myrank ) {
+    printf( " %03i 0 0 0 0 %lli 0 0 0 0\n" , myrank , e.tic_step );
+    for ( k = 0 ; k < e.sched.nr_tasks ; k++ )
         if ( !e.sched.tasks[k].skip && !e.sched.tasks[k].implicit )
-            printf( " %i %i %i %i %lli %lli %i %i\n" ,
+            printf( " %03i %i %i %i %i %lli %lli %i %i %i\n" ,
+                myrank ,
+                e.sched.tasks[k].rid , e.sched.tasks[k].type , e.sched.tasks[k].subtype ,
+                (e.sched.tasks[k].cj == NULL) , e.sched.tasks[k].tic , e.sched.tasks[k].toc ,
+		e.sched.tasks[k].ci->count , (e.sched.tasks[k].cj!=NULL)?e.sched.tasks[k].cj->count:0 , e.sched.tasks[k].flags); 
+    fflush(stdout);
+    sleep(1);
+    }
+    }
+    #else
+    for ( k = 0 ; k < e.sched.nr_tasks ; k++ )
+        if ( !e.sched.tasks[k].skip && !e.sched.tasks[k].implicit )
+                printf( " %i %i %i %i %lli %lli %i %i\n" ,
                 e.sched.tasks[k].rid , e.sched.tasks[k].type , e.sched.tasks[k].subtype , 
                 (e.sched.tasks[k].cj == NULL) , e.sched.tasks[k].tic , e.sched.tasks[k].toc ,
                 e.sched.tasks[k].ci->count , 
-                (e.sched.tasks[k].cj==NULL)?0:e.sched.tasks[k].cj->count ); */
+                (e.sched.tasks[k].cj==NULL)?0:e.sched.tasks[k].cj->count ); 
+    #endif */
     
     /* Write final output. */
 #ifdef WITH_MPI
