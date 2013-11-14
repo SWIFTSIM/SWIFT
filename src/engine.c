@@ -963,11 +963,13 @@ void engine_maketasks ( struct engine *e ) {
                 }
                 
     /* Add the gravity mm tasks. */
-    for ( i = 0 ; i < nr_cells ; i++ ) {
-        scheduler_addtask( sched , task_type_grav_mm , task_subtype_none , -1 , 0 , &cells[i] , NULL , 0 );
-        for ( j = i+1 ; j < nr_cells ; j++ )
-            scheduler_addtask( sched , task_type_grav_mm , task_subtype_none , -1 , 0 , &cells[i] , &cells[j] , 0 );
-        }
+    for ( i = 0 ; i < nr_cells ; i++ )
+        if ( cells[i].gcount > 0 ) {
+            scheduler_addtask( sched , task_type_grav_mm , task_subtype_none , -1 , 0 , &cells[i] , NULL , 0 );
+            for ( j = i+1 ; j < nr_cells ; j++ )
+                if ( cells[j].gcount > 0 )
+                    scheduler_addtask( sched , task_type_grav_mm , task_subtype_none , -1 , 0 , &cells[i] , &cells[j] , 0 );
+            }
         
     /* Split the tasks. */
     scheduler_splittasks( sched );
@@ -981,7 +983,7 @@ void engine_maketasks ( struct engine *e ) {
     
     /* Add the gravity up/down tasks at the top-level cells and push them down. */
     for ( k = 0 ; k < nr_cells ; k++ )
-        if ( cells[k].nodeID == nodeID ) {
+        if ( cells[k].nodeID == nodeID && cells[k].gcount > 0 ) {
         
             /* Create tasks at top level. */
             struct task *up = scheduler_addtask( sched , task_type_grav_up , task_subtype_none , 0 , 0 , &cells[k] , NULL , 0 );
@@ -1131,7 +1133,7 @@ void engine_maketasks ( struct engine *e ) {
             }
             
         /* Kick2 tasks should rely on the grav_down tasks of their cell. */
-        else if ( t->type == task_type_kick2 )
+        else if ( t->type == task_type_kick2 && t->ci->grav_down != NULL )
             scheduler_addunlock( sched , t->ci->grav_down , t );
             
         }

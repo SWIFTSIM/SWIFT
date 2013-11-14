@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2012 Pedro Gonnet (ptcedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -44,9 +44,12 @@
 /* Gravity stuff. */
 #define const_theta_max         0.57735f        /* Opening criteria, which is the ratio of the
                                                    cell distance over the cell width. */
-#define const_G                 6.67384e-8f     /* Gravitational constant. */
-#define const_epsilon           0.0014f         /* Gravity blending distance. */
-#define const_iepsilon          714.285714286f  /* Inverse gravity blending distance. */
+// #define const_G                 6.67384e-8f     /* Gravitational constant. */
+#define const_G                 6.672e-8f     /* Gravitational constant. */
+// #define const_epsilon           0.0014f         /* Gravity blending distance. */
+// #define const_iepsilon          714.285714286f  /* Inverse gravity blending distance. */
+#define const_epsilon 1e-20
+#define const_iepsilon 1e20
 #define const_iepsilon2         (const_iepsilon*const_iepsilon)
 #define const_iepsilon3         (const_iepsilon2*const_iepsilon)
 #define const_iepsilon4         (const_iepsilon2*const_iepsilon2)

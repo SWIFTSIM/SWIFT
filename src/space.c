@@ -1163,7 +1163,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     if ( posix_memalign( (void *)&s->gparts , part_align , N * sizeof(struct gpart) ) != 0 )
         error( "Failed to allocate gparts." );
     bzero( s->gparts , N * sizeof(struct gpart) );
-    for ( int k = 0 ; k < N ; k++ ) {
+    /* for ( int k = 0 ; k < N ; k++ ) {
         s->gparts[k].x[0] = s->parts[k].x[0];
         s->gparts[k].x[1] = s->parts[k].x[1];
         s->gparts[k].x[2] = s->parts[k].x[2];
@@ -1176,7 +1176,8 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
         s->gparts[k].part = &s->parts[k];
         s->parts[k].gpart = &s->gparts[k];
         }
-    s->nr_gparts = s->nr_parts;
+    s->nr_gparts = s->nr_parts; */
+    s->nr_gparts = 0;
     s->size_gparts = s->size_parts;
     
         

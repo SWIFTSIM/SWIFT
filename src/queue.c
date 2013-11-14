@@ -152,7 +152,7 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  
 struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking ) {
 
-    int k, temp, qcount, *qtid, gotcha;
+    int k, qcount, *qtid, gotcha;
     lock_type *qlock = &q->lock;
     struct task *qtasks, *res = NULL;
     
@@ -216,7 +216,8 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
         /* Swap this task with the last task and re-heap. */
         if ( k < qcount ) {
             qtid[ k ] = qtid[ qcount ];
-            while ( qtasks[ qtid[k] ].weight > qtasks[ qtid[(k-1)/2] ].weight ) {
+            int w = qtasks[ qtid[k] ].weight;
+            while ( k > 0 && w > qtasks[ qtid[(k-1)/2] ].weight ) {
                 int temp = q->tid[k];
                 q->tid[k] = q->tid[(k-1)/2];
                 q->tid[(k-1)/2] = temp;
@@ -226,8 +227,8 @@ struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking
             while ( ( i = 2*k+1 ) < qcount ) {
                 if ( i+1 < qcount && qtasks[ qtid[i+1] ].weight > qtasks[ qtid[i] ].weight )
                     i += 1;
-                if ( qtasks[ qtid[i] ].weight > qtasks[ qtid[k] ].weight ) {
-                    temp = qtid[i];
+                if ( qtasks[ qtid[i] ].weight > w ) {
+                    int temp = qtid[i];
                     qtid[i] = qtid[k];
                     qtid[k] = temp;
                     k = i;

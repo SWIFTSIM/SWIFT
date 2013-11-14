@@ -41,6 +41,7 @@
 
 /* Local headers. */
 #include "const.h"
+#include "atomic.h"
 #include "cycle.h"
 #include "lock.h"
 #include "task.h"
@@ -232,7 +233,7 @@ int cell_locktree( struct cell *c ) {
             break;
             
         /* Increment the hold. */
-        __sync_fetch_and_add( &finger->hold , 1 );
+        atomic_inc( &finger->hold );
         
         /* Unlock the cell. */
         if ( lock_unlock( &finger->lock ) != 0 )
@@ -475,7 +476,8 @@ void cell_split ( struct cell *c  ) {
         
     /* Re-link the gparts. */
     for ( k = 0 ; k < count ; k++ )
-        parts[k].gpart->part = &parts[k];
+        if ( parts[k].gpart != NULL )
+            parts[k].gpart->part = &parts[k];
         
     /* Verify that _all_ the parts have been assigned to a cell. */
     /* for ( k = 1 ; k < 8 ; k++ )

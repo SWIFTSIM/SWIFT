@@ -68,7 +68,7 @@ struct gpart {
     union {
     
         /* Particle ID. */
-        unsigned long long id;
+        size_t id;
 
         /* Pointer to corresponding SPH part. */
         struct part *part;

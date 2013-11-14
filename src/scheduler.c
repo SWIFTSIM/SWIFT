@@ -464,7 +464,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
                         /* Split this task into tasks on its progeny. */
                         t->type = task_type_none;
                         for ( j = 0 ; j < 8 ; j++ )
-                            if ( ci->progeny[j] != NULL ) {
+                            if ( ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0 ) {
                                 if ( t->type == task_type_none ) {
                                     t->type = task_type_grav_mm;
                                     t->ci = ci->progeny[j];
@@ -473,7 +473,7 @@ void scheduler_splittasks ( struct scheduler *s ) {
                                 else
                                     t = scheduler_addtask( s , task_type_grav_mm , task_subtype_none , 0 , 0 , ci->progeny[j] , NULL , 0 );
                                 for ( k = j+1 ; k < 8 ; k++ )
-                                    if ( ci->progeny[k] != NULL ) {
+                                    if ( ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0 ) {
                                         if ( t->type == task_type_none ) {
                                             t->type = task_type_grav_mm;
                                             t->ci = ci->progeny[j];
@@ -534,9 +534,9 @@ void scheduler_splittasks ( struct scheduler *s ) {
                             /* Split this task into tasks on its progeny. */
                             t->type = task_type_none;
                             for ( j = 0 ; j < 8 ; j++ )
-                                if ( ci->progeny[j] != NULL ) {
+                                if ( ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0 ) {
                                     for ( k = 0 ; k < 8 ; k++ )
-                                        if ( cj->progeny[k] != NULL ) {
+                                        if ( cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0 ) {
                                             if ( t->type == task_type_none ) {
                                                 t->type = task_type_grav_mm;
                                                 t->ci = ci->progeny[j];
