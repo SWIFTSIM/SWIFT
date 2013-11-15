@@ -355,6 +355,10 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
     flipped = runner_flip[sid];
     sid = sortlistID[sid];
     
+    /* Have the cells been sorted? */
+    if ( !(cj->sorted & (1 << sid) ) )
+        error( "Trying to interact unsorted cells." );
+    
     /* printf( "runner_dopair_naive: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts and shift = [ %g %g %g ].\n" ,
         ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
         ci->count , cj->count , shift[0] , shift[1] , shift[2] ); fflush(stdout);
@@ -2293,13 +2297,13 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
         /* Get the cell dimensions. */
         h = fmin( ci->h[0] , fmin( ci->h[1] , ci->h[2] ) );
 
-        /* Get the type of pair if not specified explicitly. */
-        sid = space_getsid( s , &ci , &cj , shift );
-
         /* Recurse? */
         if ( ci->split && cj->split &&
              fmaxf( ci->h_max , cj->h_max )*kernel_gamma + ci->dx_max + cj->dx_max < h/2 ) {
              
+            /* Get the type of pair if not specified explicitly. */
+            sid = space_getsid( s , &ci , &cj , shift );
+
             /* Different types of flags. */
             switch ( sid ) {
 
@@ -2654,6 +2658,19 @@ void DOSUB_SUBSET ( struct runner *r , struct cell *ci , struct part *parts , in
         /* Otherwise, compute the pair directly. */
         else if ( ci->dt_min <= dt_step || cj->dt_min <= dt_step ) {
         
+            /* Get the relative distance between the pairs, wrapping. */
+            for ( k = 0 ; k < 3 ; k++ ) {
+                if ( cj->loc[k] - ci->loc[k] < -s->dim[k]/2 )
+                    shift[k] = s->dim[k];
+                else if ( cj->loc[k] - ci->loc[k] > s->dim[k]/2 )
+                    shift[k] = -s->dim[k];
+                }
+        
+            /* Get the sorting index. */
+            for ( sid = 0 , k = 0 ; k < 3 ; k++ )
+                sid = 3*sid + ( (cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0 : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1 );
+            sid = sortlistID[sid];
+    
             /* Do any of the cells need to be sorted first? */
             if ( !(cj->sorted & (1 << sid) ) )
                 runner_dosort( r , cj , (1 << sid) , 1 );
