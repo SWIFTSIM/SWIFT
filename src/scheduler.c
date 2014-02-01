@@ -100,29 +100,6 @@ void scheduler_addunlock ( struct scheduler *s , struct task *ta , struct task *
     
 
 /**
- * @brief Mapping function to append a ghost task to each cell.
- *
- * A kick1-task is appended to each cell.
- */
-
-void scheduler_map_mkkick1 ( struct cell *c , void *data ) {
-
-    struct scheduler *s = (struct scheduler *)data;
-    struct cell *finger;
-
-    /* Append a kick1 task and make sure the parent depends on it. */
-    c->kick1 = scheduler_addtask( s , task_type_kick1 , task_subtype_none , 0 , 0 , c , NULL , 0 );
-    if ( c->parent != NULL )
-        scheduler_addunlock( s , c->kick1 , c->parent->kick1 );
-        
-    /* Set a bogus super cell. */
-    for ( finger = c ; finger->parent != NULL ; finger = finger->parent );
-    c->super = finger;
-    
-    }
-
-
-/**
  * @brief Split tasks that may be too large.
  *
  * @param s The #scheduler we are working in.
@@ -837,7 +814,7 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
     for ( k = nr_tasks - 1 ; k >= 0 ; k-- ) {
         t = &tasks[ tid[k] ];
         t->wait = 0;
-	t->rid = -1;
+        t->rid = -1;
         if ( !( (1 << t->type) & mask ) || t->skip )
             continue;
         for ( j = 0 ; j < t->nr_unlock_tasks ; j++ )
@@ -845,17 +822,20 @@ void scheduler_start ( struct scheduler *s , unsigned int mask ) {
         }
     // message( "waiting tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );
         
+    /* Don't enqueue link tasks directly. */
+    mask &= ~(1 << task_type_link);
+        
     /* Loop over the tasks and enqueue whoever is ready. */
     // tic = getticks();
     for ( k = 0 ; k < nr_tasks ; k++) {
         t = &tasks[ tid[k] ];
         if ( ( (1 << t->type) & mask ) && !t->skip ) {
             if ( t->wait == 0 ) {
-		scheduler_enqueue( s , t );
-		pthread_cond_broadcast( &s->sleep_cond );
-		}
-	    else
-	        break;
+		        scheduler_enqueue( s , t );
+		        pthread_cond_broadcast( &s->sleep_cond );
+		        }
+	        else
+	            break;
             }
         }
     // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) / CPU_TPS * 1000 );

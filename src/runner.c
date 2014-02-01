@@ -748,11 +748,11 @@ void runner_doghost ( struct runner *r , struct cell *c ) {
 void runner_dokick2 ( struct runner *r , struct cell *c ) {
 
     int j, k, count = 0, nr_parts = c->count;
-    float dt_curr, hdt_curr, dt_min = FLT_MAX, dt_max = 0.0f;
+    float dt_min = FLT_MAX, dt_max = 0.0f;
     double ekin = 0.0, epot = 0.0;
     float mom[3] = { 0.0f , 0.0f , 0.0f }, ang[3] = { 0.0f , 0.0f , 0.0f };
     float x[3], v_hdt[3], u_hdt, h, pdt, m;
-    float dt_step = r->e->dt_step, dt = r->e->dt, idt;
+    float dt_step = r->e->dt_step, dt = r->e->dt, hdt, idt;
     float dt_cfl, dt_h_change, dt_u_change, dt_new;
     float h_dt, u_dt;
     struct part *restrict p, *restrict parts = c->parts;
@@ -762,6 +762,7 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
     
     /* Init idt to avoid compiler stupidity. */
     idt = ( dt > 0 ) ? 1.0f / dt : 0.0f;
+    hdt = dt / 2;
     
     /* Loop over the particles and kick them. */
     __builtin_prefetch( &parts[0] , 0 , 1 );
@@ -811,23 +812,15 @@ void runner_dokick2 ( struct runner *r , struct cell *c ) {
             else
                 p->dt = pdt = fminf( dt_new , 2.0f*pdt );
                 
-            /* Get the particle-specific time step. */
-            dt_curr = xp->dt_curr;
-            hdt_curr = 0.5f * dt_curr;
-            
             /* Update positions and energies at the full step. */
-            p->v[0] = v_hdt[0] + hdt_curr * p->a[0];
-            p->v[1] = v_hdt[1] + hdt_curr * p->a[1];
-            p->v[2] = v_hdt[2] + hdt_curr * p->a[2];
-            p->u = u_hdt + hdt_curr * u_dt;
-            xp->v_hdt[0] = ( v_hdt[0] += dt_curr * p->a[0] );
-            xp->v_hdt[1] = ( v_hdt[1] += dt_curr * p->a[1] );
-            xp->v_hdt[2] = ( v_hdt[2] += dt_curr * p->a[2] );
-            xp->u_hdt = ( u_hdt += dt_curr * u_dt );
+            p->v[0] = v_hdt[0] + hdt * p->a[0];
+            p->v[1] = v_hdt[1] + hdt * p->a[1];
+            p->v[2] = v_hdt[2] + hdt * p->a[2];
+            p->u = u_hdt + hdt * u_dt;
             
             /* Set the new particle-specific time step. */
             if ( dt > 0.0f ) {
-                dt_curr = dt;
+                float dt_curr = dt;
                 j = (int)( pdt * idt );
                 while ( j > 1 ) {
                     dt_curr *= 2.0f;
@@ -890,7 +883,7 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
 
     int j, k;
     struct engine *e = r->e;
-    float pdt, dt_step = e->dt_step, dt = e->dt;
+    float pdt, dt_step = e->dt_step, dt = e->dt, hdt = dt/2;
     float dt_min, dt_max, h_max, dx, dx_max;
     float a[3], v[3], u, u_dt, h, h_dt, w, rho;
     double x[3], x_old[3];
@@ -940,6 +933,12 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
             dt_min = fminf( dt_min , pdt );
             dt_max = fmaxf( dt_max , pdt );
             
+            /* Update the half-step velocities from the current velocities. */
+            xp->v_hdt[0] = v[0] + hdt * a[0];
+            xp->v_hdt[1] = v[1] + hdt * a[1];
+            xp->v_hdt[2] = v[2] + hdt * a[2];
+            xp->u_hdt = u + hdt * u_dt;
+            
             /* Move the particles with the velocities at the half-step. */
             p->x[0] = x[0] += dt * xp->v_hdt[0];
             p->x[1] = x[1] += dt * xp->v_hdt[1];
@@ -950,9 +949,9 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
             dx_max = fmaxf( dx_max , dx );
 
             /* Update positions and energies at the half-step. */
-            p->v[0] = v[0] += dt * a[0];
-            p->v[1] = v[1] += dt * a[1];
-            p->v[2] = v[2] += dt * a[2];
+            p->v[0] = v[0] + dt * a[0];
+            p->v[1] = v[1] + dt * a[1];
+            p->v[2] = v[2] + dt * a[2];
             w = u_dt / u * dt;
             if ( fabsf( w ) < 0.01f )
                 p->u = u *= 1.0f + w*( 1.0f + w*( 0.5f + w*( 1.0f/6.0f + 1.0f/24.0f*w ) ) );

@@ -1063,10 +1063,6 @@ void engine_maketasks ( struct engine *e ) {
        super cells. */
     for ( k = 0 ; k < nr_cells ; k++ )
         engine_mkghosts( e , &cells[k] , NULL );
-    /* if ( e->policy & engine_policy_fixdt )
-        space_map_cells_pre( s , 1 , &scheduler_map_mkghosts_nokick1 , sched );
-    else
-        space_map_cells_pre( s , 1 , &scheduler_map_mkghosts , sched ); */
         
     /* Run through the tasks and make force tasks for each density task.
        Each force task depends on the cell ghosts and unlocks the kick2 task
@@ -1395,14 +1391,14 @@ void engine_prepare ( struct engine *e ) {
     if ( rebuild ) {
         // tic = getticks();
         engine_rebuild( e );
-    // message( "engine_rebuild took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+        // message( "engine_rebuild took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
     }
         
     /* Re-rank the tasks every now and then. */
     if ( e->tasks_age % engine_tasksreweight == 1 ) {
         // tic = getticks();
         scheduler_reweight( &e->sched );
-    // message( "scheduler_reweight took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+        // message( "scheduler_reweight took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
     }
     e->tasks_age += 1;
 
@@ -2095,7 +2091,6 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
     scheduler_reset( &e->sched , s->tot_cells );
     for ( k = 0 ; k < s->nr_cells ; k++ )
         s->cells[k].kick1 = scheduler_addtask( &e->sched , task_type_kick1 , task_subtype_none , 0 , 0 , &s->cells[k] , NULL , 0 );
-    // space_map_cells_pre( e->s , 1 , &scheduler_map_mkkick1 , &e->sched );
     scheduler_ranktasks( &e->sched );
     
     /* Allocate and init the threads. */
