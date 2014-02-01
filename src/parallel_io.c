@@ -528,7 +528,7 @@ void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_ra
     error("Error while creating file header\n");
     
   /* Print the relevant information and print status */
-  writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 1);
+  writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
   writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
   writeAttribute(h_grp, "Time", DOUBLE, &e->time, 1);
 
