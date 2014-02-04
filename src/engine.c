@@ -977,7 +977,7 @@ void engine_maketasks ( struct engine *e ) {
     /* Allocate the list of cell-task links. */
     if ( e->links != NULL )
         free( e->links );
-    if ( ( e->links = malloc( sizeof(struct link) * s->tot_cells * 27 ) ) == NULL )
+    if ( ( e->links = malloc( sizeof(struct link) * s->tot_cells * 27 * 2 ) ) == NULL )
         error( "Failed to allocate cell-task links." );
     e->nr_links = 0;
     
