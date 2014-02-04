@@ -290,7 +290,7 @@ void space_regrid ( struct space *s , double cell_max ) {
 void space_rebuild ( struct space *s , double cell_max ) {
 
     int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
-    struct cell *restrict c, *restrict cells = s->cells;
+    struct cell *restrict c, *restrict cells;
     struct part *restrict finger, *restrict p, *parts = s->parts;
     struct xpart *xfinger, *xparts = s->xparts;
     struct gpart *gp, *gparts = s->gparts, *gfinger;
@@ -303,6 +303,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     
     /* Re-grid if necessary, or just re-set the cell data. */
     space_regrid( s , cell_max );
+    cells = s->cells;
         
     /* Run through the particles and get their cell index. */
     // tic = getticks();
