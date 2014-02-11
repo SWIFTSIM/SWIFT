@@ -252,114 +252,6 @@ void map_dump ( struct part *p , struct cell *c , void *data ) {
 
 
 /**
- * @brief Read coordinates from a text file.
- *
- * @param fname The name of the coordinate file.
- * @param parts An array of #part in which to store the coordinates.
- * @param N The number of parts to read.
- */
- 
-void read_coords ( char *fname , struct part *parts , int N ) {
-
-#ifdef HAVE_LIBZ
-    gzFile fd;
-    char buff[1024];
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
-        error( "Failed to open coordinate file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( gzgets( fd , buff , 1024 ) == NULL )
-            error( "Error reading coordinate file." );
-        if ( sscanf( buff , "%lf %lf %lf" , &parts[k].x[0] , &parts[k].x[1] , &parts[k].x[2] ) != 3 ) {
-            printf( "read_coords: failed to parse %ith entry.\n" , k );
-            error( "Error parsing coordinate file." );
-            }
-        }
-        
-    /* Wrap it up. */
-    gzclose( fd );
-#else
-    FILE *fd;
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = fopen( fname , "r" ) ) == NULL )
-        error( "Failed to open coordinate file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( fscanf( fd , "%lf %lf %lf" , &parts[k].x[0] , &parts[k].x[1] , &parts[k].x[2] ) != 3 ) {
-            printf( "read_coords: failed to read %ith entry.\n" , k );
-            error( "Error reading coordinate file." );
-            }
-        }
-        
-    /* Wrap it up. */
-    fclose( fd );
-#endif
-
-    }
-
-
-/**
- * @brief Read id from a text file.
- *
- * @param fname The name of the id file.
- * @param parts An array of #part in which to store the dt.
- * @param N The number of parts to read.
- */
- 
-void read_id ( char *fname , struct part *parts , int N ) {
-
-#ifdef HAVE_LIBZ
-    gzFile fd;
-    char buff[1024];
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = gzopen( fname , "r" ) ) == NULL )
-        error( "Failed to open id file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( gzgets( fd , buff , 1024 ) == NULL )
-            error( "Error reading id file." );
-        if ( sscanf( buff , "%lli" , &parts[k].id ) != 1 ) {
-            printf( "read_id: failed to parse %ith entry.\n" , k );
-            error( "Error parsing id file." );
-            }
-        }
-        
-    /* Wrap it up. */
-    gzclose( fd );
-#else
-    FILE *fd;
-    int k;
-    
-    /* Open the given file. */
-    if ( ( fd = fopen( fname , "r" ) ) == NULL )
-        error( "Failed to open id file" );
-        
-    /* Read the coordinates into the part positions. */
-    for ( k = 0 ; k < N ; k++ ) {
-        if ( fscanf( fd , "%lli" , &parts[k].id ) != 1 ) {
-            printf( "read_id: failed to read %ith entry.\n" , k );
-            error( "Error reading id file." );
-            }
-        }
-
-    /* Wrap it up. */
-    fclose( fd );
-#endif
-
-    }
-    
-    
-/**
  * @brief Compute the average number of pairs per particle using
  *      a brute-force O(N^2) computation.
  *
@@ -433,7 +325,7 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
     }
 
 
-void pairs_single ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
+void pairs_single_density ( double *dim , long long int pid , struct part *__restrict__ parts , int N , int periodic ) {
 
     int i, k;
     // int mj, mk;
@@ -486,50 +378,53 @@ void pairs_single ( double *dim , long long int pid , struct part *__restrict__ 
     }
 
 
-/**
- * @brief Find the pairs of a single particle
- *
- * @param dim The space dimensions.
- * @param parts The #part array.
- * @param N The number of parts.
- * @param periodic Periodic boundary conditions flag.
- * @param target the index of the target particle.
- */
+void pairs_single_grav ( double *dim , long long int pid , struct gpart *__restrict__ parts , int N , int periodic ) {
 
-void pairs_single_old ( double *dim , struct part *__restrict__ parts , int N , int periodic , int target ) {
-
-    int i, k, tid;
-    double r, tx[3], th, dx[3];
+    int i, k;
+    // int mj, mk;
+    // double maxratio = 1.0;
+    double r2, dx[3];
+    float fdx[3], a[3] = { 0.0 , 0.0 , 0.0 }, aabs[3] = { 0.0 , 0.0 , 0.0 };
+    struct gpart pi, pj;
+    // double ih = 12.0/6.25;
     
-    /* Get the target position and radius. */
-    for ( k = 0 ; k < 3 ; k++ )
-        tx[k] = parts[target].x[k];
-    th = parts[target].h;
-    tid = parts[target].id;
+    /* Find "our" part. */
+    for ( k = 0 ; k < N ; k++ )
+        if ( ( parts[k].id > 0 && parts[k].part->id == pid ) || parts[k].id == -pid )
+            break;
+    if ( k == N )
+        error( "Part not found." );
+    pi = parts[k];
+    pi.a[0] = 0.0f; pi.a[1] = 0.0f; pi.a[2] = 0.0f;
     
     /* Loop over all particle pairs. */
-    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r), shared(target,tx,th,tid,periodic,parts,dim,N)
     for ( k = 0 ; k < N ; k++ ) {
-        if ( k == target )
+        if ( parts[k].id == pi.id )
             continue;
+        pj = parts[k];
         for ( i = 0 ; i < 3 ; i++ ) {
-            dx[i] = tx[i] - parts[k].x[i];
+            dx[i] = pi.x[i] - pj.x[i];
             if ( periodic ) {
                 if ( dx[i] < -dim[i]/2 )
                     dx[i] += dim[i];
                 else if ( dx[i] > dim[i]/2 )
                     dx[i] -= dim[i];
                 }
+            fdx[i] = dx[i];
             }
-        r = sqrt( dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] );
-        if ( r < th )
-            printf( "pairs_single: %i %lli [%e,%e,%e] %e\n" ,
-                tid , parts[k].id , dx[0] , dx[1] , dx[2] , r );
+        r2 = fdx[0]*fdx[0] + fdx[1]*fdx[1] + fdx[2]*fdx[2];
+        runner_iact_grav( r2 , fdx , &pi , &pj );
+        a[0] += pi.a[0]; a[1] += pi.a[1]; a[2] += pi.a[2];
+        aabs[0] += fabsf( pi.a[0] ); aabs[1] += fabsf( pi.a[1] ); aabs[2] += fabsf( pi.a[2] );
+        pi.a[0] = 0.0f; pi.a[1] = 0.0f; pi.a[2] = 0.0f;
         }
-            
+        
+    /* Dump the result. */
+    message( "acceleration on gpart %lli is a=[ %e %e %e ], |a|=[ %.2e %.2e %.2e ].\n" , pi.part->id , a[0] , a[1] , a[2] , aabs[0] , aabs[1] , aabs[2] );
+    
     }
-    
-    
+
+
 /**
  * @brief Test the kernel function by dumping it in the interval [0,1].
  *
@@ -550,6 +445,42 @@ void kernel_dump ( int N ) {
         kernel_deval( x , &w , &dw_dx );
         // kernel_deval_vec( (vector *)x4 , (vector *)w4 , (vector *)dw_dx4 );
         printf( " %e %e %e %e %e %e %e\n" , x , w , dw_dx , w4[0] , w4[1] , w4[2] , w4[3] );
+        }
+
+    }
+
+
+void gravity_dump ( float r_max , int N ) {
+
+    int k;
+    float x, w;
+    float x4[4] = {0.0f,0.0f,0.0f,0.0f};
+    float w4[4] = {0.0f,0.0f,0.0f,0.0f};
+    // float dw_dx4[4] __attribute__ ((aligned (16)));
+    
+    float gadget ( float r ) {
+        float fac, h_inv, u, r2 = r*r;
+        if ( r >= const_epsilon )
+            fac = 1.0f / (r2 * r);
+        else {
+            h_inv = 1. / const_epsilon;
+            u = r * h_inv;
+            if ( u < 0.5 )
+                fac = const_iepsilon3 * (10.666666666667 + u * u * (32.0 * u - 38.4));
+            else
+                fac = const_iepsilon3 * (21.333333333333 - 48.0 * u +
+                                     38.4 * u * u - 10.666666666667 * u * u * u - 0.066666666667 / (u * u * u));
+            }
+        return const_G * fac;
+        }
+
+    for ( k = 1 ; k <= N ; k++ ) {
+        x = (r_max * k) / N;
+        x4[3] = x4[2]; x4[2] = x4[1]; x4[1] = x4[0]; x4[0] = x;
+        kernel_grav_eval( x , &w );
+        w *= const_G / ( x*x*x );
+        // blender_deval_vec( (vector *)x4 , (vector *)w4 , (vector *)dw_dx4 );
+        printf( " %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n" , x , w*x , w4[0] , w4[1] , w4[2] , w4[3] , gadget(x)*x );
         }
 
     }
@@ -618,6 +549,10 @@ int main ( int argc , char *argv[] ) {
     
     /* Choke on FP-exceptions. */
     // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+    
+    /* Just dump the gravity potential and leave. */
+    /* gravity_dump( 0.005 , 1000 );
+    return 0; */
     
 #ifdef WITH_MPI
     /* Start by initializing MPI. */
@@ -717,11 +652,13 @@ int main ( int argc , char *argv[] ) {
 	  break;
 
 	}
-            
+    
 
     /* How large are the parts? */
-    if ( myrank == 0 )
+    if ( myrank == 0 ) {
         message( "sizeof(struct part) is %li bytes." , (long int)sizeof( struct part ));
+        message( "sizeof(struct gpart) is %li bytes." , (long int)sizeof( struct gpart ));
+        }
 
     /* Initilaize unit system */
     initUnitSystem(&us);
@@ -836,9 +773,7 @@ int main ( int argc , char *argv[] ) {
 #ifdef WITH_MPI
     /* Split the space. */
     engine_split( &e , grid );
-    printParticle( s.parts , 5665430362989 , s.nr_parts );
     engine_redistribute ( &e );
-    printParticle( s.parts , 5665430362989 , s.nr_parts );
 #endif
 
     /* Write the state of the system as it is before starting time integration. */
@@ -862,6 +797,14 @@ int main ( int argc , char *argv[] ) {
     else
         message( "starting for t=%.3e with %i threads and %i queues..." , clock , e.nr_threads , e.sched.nr_queues );
     fflush(stdout);
+    
+    /* Set a target particle. */
+    /* long long int pid[5];
+    unsigned int seed = 6178;
+    for ( k = 0 ; k < 5 ; k++ )
+        pid[k] = s.gparts[ rand_r( &seed ) % N ].part->id;
+    for ( k = 0 ; k < 5 ; k++ )
+        pairs_single_grav( dim , pid[k] , s.gparts , N , 0 ); */
     
     /* Legend. */
     if ( myrank == 0 )
@@ -910,7 +853,9 @@ int main ( int argc , char *argv[] ) {
                 printf( " %.3f" , ((double)timers[k])/CPU_TPS*1000 );
             printf( "\n" ); fflush(stdout);
             }
-
+        /* for ( k = 0 ; k < 5 ; k++ )
+            printgParticle( s.gparts , pid[k] , N ); */
+        
         }
         
     /* Print the values of the runner histogram. */
