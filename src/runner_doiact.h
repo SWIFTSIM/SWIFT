@@ -35,6 +35,9 @@
 #define _DOPAIR_SUBSET(f) PASTE(runner_dopair_subset,f)
 #define DOPAIR_SUBSET _DOPAIR_SUBSET(FUNCTION)
 
+#define _DOPAIR_SUBSET_NAIVE(f) PASTE(runner_dopair_subset_naive,f)
+#define DOPAIR_SUBSET_NAIVE _DOPAIR_SUBSET_NAIVE(FUNCTION)
+
 #define _DOPAIR_NAIVE(f) PASTE(runner_dopair_naive,f)
 #define DOPAIR_NAIVE _DOPAIR_NAIVE(FUNCTION)
 
@@ -494,6 +497,123 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
             
         }
         
+    #ifdef VECTORIZE
+    /* Pick up any leftovers. */
+    if ( icount > 0 )
+        for ( k = 0 ; k < icount ; k++ )
+            IACT_NONSYM( r2q[k] , &dxq[3*k] , hiq[k] , hjq[k] , piq[k] , pjq[k] );
+    #endif
+        
+    #ifdef TIMER_VERBOSE
+        printf( "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) took %.3f ms.\n" , r->id , count , count_j , ci->depth , ci->h_max , cj->h_max , ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000 );
+    #else
+        TIMER_TOC(timer_dopair_subset);
+    #endif
+
+
+    }
+
+
+/**
+ * @brief Compute the interactions between a cell pair, but only for the
+ *      given indices in ci.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param parts_i The #parts to interact with @c cj.
+ * @param ind The list of indices of particles in @c ci to interact with.
+ * @param count The number of particles in @c ind.
+ * @param cj The second #cell.
+ */
+ 
+void DOPAIR_SUBSET_NAIVE ( struct runner *r , struct cell *restrict ci , struct part *restrict parts_i , int *restrict ind , int count , struct cell *restrict cj ) {
+
+    struct engine *e = r->e;
+    int pid, pjd, k, count_j = cj->count;
+    double shift[3] = { 0.0 , 0.0 , 0.0 };
+    struct part *restrict pi, *restrict pj, *restrict parts_j = cj->parts;
+    double pix[3];
+    float dx[3], hi, hig2, r2;
+    #ifdef VECTORIZE
+        int icount = 0;
+        float r2q[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hiq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float hjq[VEC_SIZE] __attribute__ ((aligned (16)));
+        float dxq[3*VEC_SIZE] __attribute__ ((aligned (16)));
+        struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
+    #endif
+    TIMER_TIC
+    
+    /* Get the relative distance between the pairs, wrapping. */
+    for ( k = 0 ; k < 3 ; k++ ) {
+        if ( cj->loc[k] - ci->loc[k] < -e->s->dim[k]/2 )
+            shift[k] = e->s->dim[k];
+        else if ( cj->loc[k] - ci->loc[k] > e->s->dim[k]/2 )
+            shift[k] = -e->s->dim[k];
+        }
+        
+    /* printf( "runner_dopair_naive: doing pair [ %g %g %g ]/[ %g %g %g ] with %i/%i parts and shift = [ %g %g %g ].\n" ,
+        ci->loc[0] , ci->loc[1] , ci->loc[2] , cj->loc[0] , cj->loc[1] , cj->loc[2] ,
+        ci->count , cj->count , shift[0] , shift[1] , shift[2] ); fflush(stdout);
+    tic = getticks(); */
+    
+    /* Loop over the parts_i. */
+    for ( pid = 0 ; pid < count ; pid++ ) {
+
+        /* Get a hold of the ith part in ci. */
+        pi = &parts_i[ ind[ pid ] ];
+        for ( k = 0 ; k < 3 ; k++ )
+            pix[k] = pi->x[k] - shift[k];
+        hi = pi->h;
+        hig2 = hi * hi * kernel_gamma2;
+
+        /* Loop over the parts in cj. */
+        for ( pjd = 0 ; pjd < count_j ; pjd++ ) {
+
+            /* Get a pointer to the jth particle. */
+            pj = &parts_j[ pjd ];
+
+            /* Compute the pairwise distance. */
+            r2 = 0.0f;
+            for ( k = 0 ; k < 3 ; k++ ) {
+                dx[k] = pix[k] - pj->x[k];
+                r2 += dx[k]*dx[k];
+                }
+
+            /* Hit or miss? */
+            if ( r2 < hig2 ) {
+
+                #ifndef VECTORIZE
+
+                    IACT_NONSYM( r2 , dx , hi , pj->h , pi , pj );
+
+                #else
+
+                    /* Add this interaction to the queue. */
+                    r2q[icount] = r2;
+                    dxq[3*icount+0] = dx[0];
+                    dxq[3*icount+1] = dx[1];
+                    dxq[3*icount+2] = dx[2];
+                    hiq[icount] = hi;
+                    hjq[icount] = pj->h;
+                    piq[icount] = pi;
+                    pjq[icount] = pj;
+                    icount += 1;
+
+                    /* Flush? */
+                    if ( icount == VEC_SIZE ) {
+                        IACT_NONSYM_VEC( r2q , dxq , hiq , hjq , piq , pjq );
+                        icount = 0;
+                        }
+
+                #endif
+
+                }
+
+            } /* loop over the parts in cj. */
+
+        } /* loop over the parts in ci. */
+
     #ifdef VECTORIZE
     /* Pick up any leftovers. */
     if ( icount > 0 )
