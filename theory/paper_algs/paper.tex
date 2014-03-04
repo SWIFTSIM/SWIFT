@@ -51,6 +51,8 @@
     {Table~\ref{tab:#1}}
 \newcommand{\figs}[1]
     {Figures~\ref{fig:#1}}
+\newcommand{\sect}[1]
+    {Section~\ref{sec:#1}}
 \newcommand{\cuda}
     {{\sc cuda}\xspace}
 \newcommand{\namd}
@@ -71,7 +73,7 @@
 %  Title, author and affiliations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \title{Efficient and Scalable Algorithms for Smoothed Particle Hydrodynamics on
-    Shared-Memory Multi-Core Architectures}
+    Hybrid Shared/Distributed-Memory Architectures}
 \author{Pedro Gonnet\thanks{School of Engineering and Computing Sciences,
     Durham University, Durham, Untied Kingdom ({\tt pedro.gonnet@durham.ac.uk}).}}
 
@@ -99,13 +101,15 @@
 %  Abstract
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-This paper describes a novel approach to neighbour-finding in multi-resolution
+This paper describes a new fast and implicitly parallel
+approach to neighbour-finding in multi-resolution
 Smoothed Particle Hydrodynamics (SPH) simulations.
-This new approach is based on hierarchical cell decompositions, sorted interactions,
-and a task-based formulation.
-It is shown to be faster than traditional tree-based
+This new approach is based on hierarchical cell decompositions and
+sorted interactions, within a task-based formulation.
+This approach is shown to be faster than traditional tree-based
 codes, and to scale better than domain decomposition-based approaches on
-shared-memory parallel architectures such as multi-cores.
+hybrid shared/distributed-memory parallel architectures, e.g. clusters
+of multi-cores.
 \end{abstract}
 
 
@@ -133,36 +137,6 @@ multi-cores
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 
-Since the past few years, due to the physical limitations
-on the speed of individual processor cores, instead of
-getting {\em faster}, computers are getting {\em more parallel}.
-This increase in parallelism comes mainly in the form of
-{\em multi-core} computers, e.g. single computers which
-contain more than one computational core sharing the 
-same memory bus.
-Systems containing up to 64 general-purpose cores are becoming
-commonplace, and the number cores can be expected to continue
-growing exponentially, e.g.~following Moore's law, much in the
-same way processor speeds were up until a few years ago.
-
-This applies not only to shared-memory parallel desktop
-computers, but also modern High-Performance Computing (HPC)
-infrastructure which consist mainly of clusters of multi-cores.
-Indeed, over the past 5 years, the main factor driving the growth
-in cluster performance is the use of shared-memory multi-cores,
-and not an increase in the total number of nodes/computers used.
-
-In order to address increasingly larger
-or more complex problems, high-performance computing software
-will need to be able to exploit this increasing parallelism.
-Fortunately, parallelism and parallel codes are nothing new:
-Many large-scale computations, e.g.~the cosmological
-simulation software {\sc gadget}, can run concurrently
-on several thousands of cores.
-The exponential growth of parallelism, and shared-memory
-parallelism in particular, however, provide some interesting 
-new challenges.
-
 For the past 15 years, the predominant paradigm for parallel
 computing has been distributed-memory parallelism using MPI
 (Message Passing Interface) \cite{ref:Snir1998},
@@ -172,10 +146,10 @@ each node or core a portion of the data on which to work.
 The cores execute the same code
 in parallel, each on its own part on the data, intermittently exchanging data.
 The amount of {\em computation} local to the node is then proportional
-to the amount of data it contains, e.g.~its volume, while
+to the amount of data it contains, e.g.~its {\em volume}, while
 the amount of {\em communication} is proportional to the
 amount of computation spanning two or more nodes, e.g.~its
-surface.
+{\em surface}.
 
 For very large computations over a moderate number of nodes,
 the cost of communication is negligible compared to the
@@ -184,60 +158,92 @@ However, if the number of nodes increases, or
 smaller problems are considered, the surface-to-volume ratio,
 i.e. the ratio of communication to computation,
 grows, and the time spent on communication will increasingly
-dominate the entire simulation, reducing scaling and parallel
-efficiency.
-Another problem is that current multi-core computers
-differ in one important aspect from traditional clusters or
-single-core distributed-memory
-systems: Since all cores in a single computer share the same memory
-bus and, in most cases, parts of the cache hierarchy,
-the effective memory bandwidth per core decreases with
-increasing numbers of cores,
-making aspects such as memory and cache efficiency
-increasingly important.
+dominate the entire simulation, resulting in a loss of scaling
+and parallel efficiency.
+
+% Another problem is that current multi-core computers
+% differ in one important aspect from traditional clusters or
+% single-core distributed-memory
+% systems: Since all cores in a single computer share the same memory
+% bus and, in most cases, parts of the cache hierarchy,
+% the effective memory bandwidth per core decreases with
+% increasing numbers of cores,
+% making aspects such as memory and cache efficiency
+% increasingly important.
+
+Since the past few years, due to the physical limitations
+on the speed of individual processor cores, instead of
+getting {\em faster}, computers are getting {\em more parallel}.
+This increase in parallelism comes mainly in the form of
+{\em multi-core} computers, e.g. single computers which
+contain more than one computational core sharing a common 
+memory bus.
+Systems containing up to 64 general-purpose cores are becoming
+commonplace, and the number cores can be expected to continue
+growing exponentially, e.g.~following Moore's law, much in the
+same way processor speeds were up until a few years ago.
+
+This development affects not only to shared-memory parallel desktop
+computers, but also modern High-Performance Computing (HPC)
+infrastructure which consist mainly of clusters of multi-cores.
+Indeed, over the past 5 years, the main factor driving the growth
+in cluster performance is the use of shared-memory multi-cores,
+and not necessarily an increase in the total number of
+nodes/computers used.
 
 Assuming the individual cores do not get any faster,
-this means that small simulations, for which the
-maximum degree of parallelism has already been reached, will never
-become any faster (see \fig{Results}).
-This also means that large systems, if they do not continue
+simulations for which the
+maximum degree of parallelism has already been reached will
+{\em never} become any faster (see dashed line in \fig{CosmoVolume}).
+Ever.
+The surface-to-volume ratio problem also means that large
+systems which currently parallelize well, if they do not continue
 to get larger, will also eventually break down as the number
 of cores used for their computation increases.
 In order to speed up small simulations, or to continue
 scaling for large simulations, new approaches on how
 computations are parallelized need to be considered.
 
-One of the many uses of High-Performance Computing (HPC) is
-Smoothed Particle Hydrodynamics (SPH) simulations, in which fluids
-are modeled as a set of moving and interacting particles.
-Such simulations are used e.g.~in Astrophysics and Oceanography,
-but also in computer graphics and games for the fast and realistic
-modeling of water.
+In order to address increasingly larger
+or more complex problems, high-performance computing software
+will need to be able to better exploit this increase in shared-memory
+parallelism.
+Although parallelism and parallel codes are nothing new ---
+Many large-scale scientific codes, e.g.~the cosmological
+simulation software {\sc gadget}, can run concurrently
+on several thousands of cores ---
+the exponential growth of parallelism, and shared-memory
+parallelism in particular, provide some interesting 
+new challenges.
 
-With the above-mentioned new realities in mind, I will, in the following,
-describe a reformulation of the
-underlying algorithms for Smoothed Particle Hydrodynamics (SPH)
-simulations which uses asynchronous
-task-based shared-memory parallelism to achieve better parallel
-performance on multi-core architectures.
+In this paper, I will describe both a well-known general formulation
+for shared memory parallelism, i.e.~task-based parallelism, as well
+as its application Smoothed Particle Hydrodynamics simulations.
+The task-based approach is extended by the concept of {\em conflicts}
+between tasks.
+The specific algorithms use several ideas from other particle-based
+simulations.
+The algorithms are implemented in SWIFT, an Open-Source
+platform-independent software for hybrid shared/distributed-memory
+parallel simulations which is shown to perform and scale
+significantly better than the most popular freely available code
+in this area.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  Algorithms, i.e. decomposition, interactions, and parallelization
+%  Short outline of previous algorithms, approaches
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Algorithms}
+\section{Previous work}
 
 In the following, I will give an overview of the underlying equations for
 SPH computations, and discuss how they are normally implemented
-in simulation codes.
-I will then describe, in detail, a new spatial decomposition as well
-as its implementation for shared-memory parallel computers using
-task-based parallelism.
+in multi-resolution simulation codes.
+
 
 \subsection{Smoothed Particle Hydrodynamics}
 
 Smoothed Particle Hydrodynamics \cite{ref:Gingold1977,ref:Price2012}
-uses particles to represent
+ (SPH) uses particles to represent
 fluids.
 Each particle $p_i$ has a position $\mathbf x_i$,
 velocity $\mathbf v_i$, internal energy $u_i$, mass $m_i$,
@@ -307,18 +313,20 @@ where $\hat{h}_{ij} = \max\{h_i,h_j\}$, and the particle pressure
 $P_i=\rho_i u_i (\gamma-1)$ and correction term
 $\Omega_i=1 + \frac{h_i}{3\rho_i}\frac{\partial \rho}{\partial h}$
 are computed on the fly.
-The polytropic index $\gamma$ is usually set to $\frac{5}{3}$.
+For cosmological simulations, the polytropic index $\gamma$ is
+usually set to $\frac{5}{3}$.
 
-Both computations involve finding all pairs of particles
-within range of each other, i.e.
-any particle $p_j$ is {\em within range} of a particle $p_i$
+The computations in \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}
+involve finding all pairs of particles
+within range of each other.
+Any particle $p_j$ is {\em within range} of a particle $p_i$
 if the distance between $p_i$ and $p_j$ is smaller or equal
 to the smoothing distance $h_i$ of $p_i$, e.g.~as is done in \eqn{rho}.
 Note that since particle smoothing lengths may vary, this
 association is not symmetric, i.e. $p_j$ may be in range of
 $p_i$, but not $p_i$ in range of $p_j$.
 If $r_{ij} < \max\{h_i,h_j\}$, as is required in \eqn{dvdt},
-we will say that particles $p_i$ and $p_j$ are within range
+then particles $p_i$ and $p_j$ are within range
 {\em of each other}.
 
 The computation thus proceeds in two distinct stages that are
@@ -345,7 +353,9 @@ In such a setup, finding the particles in range of any other particle
 is similar to Molecular Dynamics simulations, in which all particles
 interact within a constant cutoff radius, and approaches which are used
 in the latter, e.g. cell-linked lists
-\cite{ref:Allen1989} or Verlet lists \cite{ref:Verlet1967} can be used.
+\cite{ref:Allen1989} or Verlet lists \cite{ref:Verlet1967}
+or more efficient variants thereof \cite{ref:Gonnet2012,ref:Gonnet2013}
+can be used.
 Both approaches are discussed in the context of SPH simulations
 in \cite{ref:Dominguez2011} and \cite{ref:Viccione2008}.
 
@@ -372,10 +382,10 @@ the second derivatives of the physical quantities for that particle.
 Despite their simple and elegant formulation, the tree-based
 approach to neighbour-finding has three main problems:
 \begin{itemize}
-    \item Computational efficiency: Finding all neighbours
-        of a particle in the tree is, on average, in \oh{\log N},
-        and worst-case behavior in \oh{N^{2/3}} \cite{ref:Lee1977},
-        i.e.~the computational cost per particle grows with the
+    \item Computational efficiency: The cost of finding all neighbours
+        of any given particle in the tree is, on average, in \oh{\log N},
+        and has worst-case behavior in \oh{N^{2/3}} \cite{ref:Lee1977},
+        i.e.~in any case, the computational cost per particle grows with the
         total number of particles $N$.
     \item Cache efficiency: When searching for the neighbours of a
         given particle, the data of all potential neighbours, which may
@@ -384,11 +394,15 @@ approach to neighbour-finding has three main problems:
         cache-inefficient. Furthermore, this operation is performed for
         each particle separately, further reducing the chances
         of cache re-use.
+        On shared-memory parallel architectures, this problem is of
+        particular concern as parts of the cache hierarchy and the
+        memory bandwidth are shared between cores, effectively
+        reducing both in parallel computations.
     \item Symmetry: The parallel tree search can not exploit symmetry,
         i.e.~a pair $p_i$ and $p_j$ will always be found twice,
         once when walking the tree for each particle. It would, however,
         be sufficient to find it once and update both particles, as most
-        of the particle interactions are symmetrical.
+        of the particle interactions are symmetric.
         If this is done in a shared-memory parallel setup, special
         care muss be taken to avoid concurrency problems when
         two threads update the same particle's data.
@@ -397,53 +411,219 @@ approach to neighbour-finding has three main problems:
 These problems are all inherently linked to the use of
 spatial trees, i.e. more specifically their traversal,
 for neighbour-finding.
-As of here we\footnote{As in you the reader, and I the author.}
-will proceed differently, using a hierarchical cell
-decomposition, and computing the interactions by cell pairs.
-This new approach avoids the above-mentioned problems and
-is both more efficient for both constant and variable smoothing-length
-simulations, and provides better parallel scaling.
+
+
+\subsection{Task-based parallelism}
+
+The arguably most well-known paradigm for shared-memory,
+or multi-threaded parallelism is OpenMP \cite{ref:Dagum1998},
+in which compiler annotations are used to describe if and when
+specific loops or portions of the code can be executed
+in parallel.
+When such a parallel section, e.g.~a parallel loop, is
+encountered, the sections of the loop are split statically
+or dynamically over the available threads, each executing
+on a single core.
+Once all the threads have terminated, the program continues
+executing in a single thread.
+Unfortunately, this can lead to a lot of inefficient
+branch-and-bound
+type operations, which generally lead to low performance and
+bad scaling on even moderate numbers of cores (see \fig{OMPScaling}).
+
+An additional complication is that this form of shared-memory
+parallelism provides no implicit mechanism to avoid or handle
+concurrency problems,
+e.g.~two threads attempting to modify the same data at the same time,
+or data dependencies between them.
+These must be implemented explicitly using either redundancy, barriers,
+critical sections, or atomic memory operations, which can further degrade
+parallel performance.
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/OMPScaling.pdf,width=0.7\textwidth}}
+    
+    \caption{Branch-and-bound parallelism as is commonly used in OpenMP.
+        The horizontal arrows indicate the program flow over time, and
+        branching arrows indicate a parallel section. The dotted vertical
+        bars are the synchronization points at the end of each such section.
+        Parallel efficiency is lost to two factors: The grey shaded areas
+        along the main horizontal area indicate parts of the program that
+        do not execute in parallel and restrict the maximum parallel
+        efficiency, e.g.~as described by Amdahl's law, and the red
+        areas indicate the difference between the fastest and slowest
+        threads in each parallel block, i.e.~the time lost to
+        thread synchronization.
+        }
+    \label{fig:OMPScaling}
+\end{figure}
+
+
+In order to better exploit shared-memory parallelism, 
+the underlying paradigm needs to be changed, i.e. instead
+of annotating an essentially serial computation with parallel
+bits, it is preferable to describe the entire computation in a way that
+is inherently parallelizable.
+One such approach is {\em task-based parallelism}, in which the
+computation is divided into a number of inter-dependent
+computational tasks, which are then dynamically allocated
+to a number of processors.
+In order to ensure that the tasks are executed in the right
+order, e.g.~that data needed by one task is only used once it
+has been produced by another task, and that no two tasks
+update the same data at the same time, {\em dependencies} between
+tasks are specified and strictly enforced by a task scheduler.
+
+Given such a set of tasks and dependencies, the processors
+can traverse it topological order, picking up and executing
+tasks when they have no unresolved dependencies.
+Whenever a processor is done with a task, it goes back to
+the DAG and looks for a new one or waits until a task
+becomes available, until all tasks have been completed.
+
+\fig{TasksExample} shows five tasks, A, B, C, D, and E, drawn
+as circles, and their dependencies, drawn by arrows.
+In this example, tasks B and C depend on task A, and task D
+depends on task B.
+In a task-based parallel environment, tasks A and E could
+be executed first, as they have no unresolved dependencies.
+Once task A has been executed, tasks B and C become available.
+Task D can only be executed once task B has completed.
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/TasksExample.pdf,width=0.5\textwidth}}
+    
+    \caption{Five tasks, A, B, C, D, and E, with their dependencies
+        shown as arrows, i.e.~tasks B and C both depend on task A.}
+    \label{fig:TasksExample}
+\end{figure}
+
+Several middle-wares providing such task-based
+parallelism exist, e.g.~Cilk \cite{ref:Blumofe1995}, QUARK \cite{ref:QUARK},
+StarPU \cite{ref:Augonnet2011}, SMP~Superscalar \cite{ref:SMPSuperscalar},
+OpenMP~3.0 \cite{ref:Duran2009}, and Intel's TBB \cite{ref:Reinders2007}.
+Cilk and StarPU are implemented as extensions to the C programming
+language, whereas SMP Superscalar and OpenMP 3.0 use so-called {\tt pragma}s
+to define functions or sections of code that form tasks.
+QUARK and Intel's TBB are implemented as compiler-independent
+libraries.
+
+The main advantages of using a task-based approach are
+%
+\begin{itemize}
+    \item The order in which the tasks are processed is completely
+        dynamic and adapts automatically to load imbalances.
+    \item If the dependencies and conflicts are specified correctly,
+        there is no need for expensive explicit locking, synchronization,
+        or atomic operations to deal with most concurrency problems.
+    \item Each task has exclusive access to the data it is working on,
+        thus improving cache locality and efficiency.
+\end{itemize}
+%
+Despite these advantages, task-based parallelism is only rarely
+used in scientific codes, with the notable exception of
+the PLASMA project \cite{ref:Agullo2009}, which is the driving
+force behind the QUARK library, and the {\tt deal.II} project
+\cite{ref:Bangerth2007} which uses Intel's TBB.
+This is most probably due to the fact that, in order to profit
+from the many advantages of task-based programming,
+for most non-trivial problems, the underlying algorithms must
+be redesigned from in a task-based way from the bottom up.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  As of here, new approaches
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Algorithms}
+
+In the following, I will describe both an extension to the
+traditional task-based parallel programming model, as well
+as a task-based formulation for neighbour-finding and 
+particle interactions in SPH simulation.
+
+
+\subsection{Task-based parallelism with conflicts}
+
+I will differ from previous approaches to task-based parallelism
+in introducing the concept of {\em conflicts} between tasks.
+Conflicts occur when two tasks operate on the same data, 
+but the order in which these operations must occur is not defined.
+
+\fig{TasksExampleConflicts} extends the example in the
+previous section with conflicts between tasks B and C, and tasks D and E.
+In a parallel setup, once task A has been completed, if one processor
+picks up task B, then no other processor is allowed to execute
+task C until task B has completed, or vice versa.
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/TasksExampleConflicts.pdf,width=0.5\textwidth}}
+    
+    \caption{Five tasks, A, B, C, D, and E, with their dependencies
+        shown as arrows, and their conflicts shown as dashed lines,
+        i.e.~tasks B and C, and tasks D and E conflict with each
+        other.}
+    \label{fig:TasksExampleConflicts}
+\end{figure}
+
+In previous task-based models, conflicts can be modeled as dependencies,
+yet this introduces an artificial ordering between the tasks
+and imposes unnecessary constraints on the task scheduler
+(e.g.~mutual and non-mutual interactions in \cite{ref:Ltaief2012}).
+
+In the following, conflicts are modelled using exclusive {\em locks} on shared
+resources, i.e.~a task operating on potentially shared data will
+only be scheduled if the executing thread can obtain an exclusive
+lock on that data,
+thus preventing other tasks using said data to be scheduled concurrently.
+This locking mechanism will be described in more detail further on.
 
 
 \subsection{Spatial decomposition}
 
+Besides the problems described in the previous section,
+spatial trees also have the disadvantage that they do not
+lend themselves particularly well for task-based computations.
+Instead, the particle interactions will be described in
+terms of {\em hierarchical cell lists}, and the operations thereon.
+
 If $h_\mathsf{max} := \max_i  h_i $ is the maximum smoothing
-length of any particle in the simulation, we start by splitting
-the simulation domain into rectangular cells of edge length
+length of any particle in the simulation,  the simulation domain
+is split into rectangular cells of edge length
 larger or equal to $h_\mathsf{max}$.
 
-Given such an initial decomposition, we then generate
+Given such an initial decomposition,
 a list of cell {\em self-interactions}, which contains all
-non-empty cells in the grid.
+non-empty cells in the grid, is generated.
 This list of interactions is then extended by the cell
 {\em pair-interactions}, i.e. a list of all non-empty cell pairs
 sharing either a face, edge, or corner.
 For periodic domains, cell pair-interactions need also be
 specified for cell neighbouring each other across
 periodic boundaries.
-These self- and pair-interactions encode, conceptually at least,
-the evaluation of the interactions between all particles
-in the same cell, or all interactions between particle pairs
-spanning a pair of cells, respectively.
 
 In this first coarse decomposition, if a particle $p_j$
 is within range of a particle $p_i$, both will be either
 in the same cell, or in neighbouring cells for which a
 cell self-interaction or cell pair-interaction has been
 specified respectively.
+These self- and pair-interactions therefore encode,
+conceptually at least,
+the evaluation of the interactions between all particles
+in the same cell, or all interactions between particle pairs
+spanning a pair of cells, respectively.
 
-In the best of cases, i.e.~if each cell contains
+In the best case, i.e.~if each cell contains
 only particles with smoothing length equal to the cell
-edge length, if for any particle $p_i$ we inspect each
-particle $p_j$ in the same
-and neighbouring cells, only roughly 16\% of the $p_j$
+edge length, if for any particle $p_i$ each
+particle $p_j$ in the same and neighbouring cells is
+inspected, only roughly 16\% of the $p_j$
 will actually be within range of $p_i$ \cite{ref:Gonnet2007}.
 If the cells contain particles who's smoothing length
 is less than the cell edge length, this ratio only
 gets worse.
-It therefore makes sense to refine the cell decomposition,
-and we will do so recursively, bisecting each cell along
-all spatial dimension if: (a) The cell contains more than
+It therefore makes sense to refine the cell decomposition
+recursively, bisecting each cell along
+all spatial dimension whenever (a) the cell contains more than
 some minimal number of particles, and (b) the smoothing
 length of a reasonable fraction of the particles within
 the cell is less than half the cell edge length.
@@ -561,13 +741,13 @@ and $3.6\%$ of all particle
 pairs between cells sharing a common face, edge, or corner, respectively,
 will be within range of each other, leading
 to an excessive number of spurious pairwise distance evaluations (line~3).
-We will therefore use the sorted cell
-interactions, described therein, yet with some minor modifications, as
+The sorted cell interactions described therein will be used instead,
+yet with some minor modifications, as
 the original algorithm is designed for systems in which the
 smoothing lengths of all particles are equal:
-We first sort the particles in both cells along the vector joining
-the centers of the two cells and then loop over the
-parts $p_i$ on the left and interact them with the sorted parts $p_j$
+The particles in both cells are first sorted along the vector joining
+the centers of the two cells, then the
+parts $p_i$ on the left are interacted with the sorted parts $p_j$
 on the right which are within $h_i$ {\em along the cell pair axis}.
 The same procedure is repeated for each particle $p_j$ on the
 right, interacting with each other particle $p_i$ on the
@@ -610,21 +790,25 @@ for ( j = 0 ; j < count_j ; j++ ) {
 the particles of both cells along the cell axis, and
 {\tt ind\_i} and {\tt ind\_j} contain the particle indices
 sorted with respect to these positions respectively.
+The {\tt if}-statements in lines 9 and 19 are needed to check
+if there are any particles left within range along the cell
+pair axis, and to prematurely exit the innermost loop if
+this is not the case.
 
 The particles need to be traversed twice: once to identify
 all particles in range of the particles on the left, and
 once to identify all particles in range of the particles on the
 right, but that were not identified in the first loop,
-thus the condition in line~24.
-Instead of sorting the particles every time we compute the
-pairwise interactions between two cells, we can pre-compute
-the sorted indices along the 26 possible cell-pair axes and
-store them for each cell.
+thus the condition in line~22.
+Instead of sorting the particles every time the
+pairwise interactions between two cells are computed,
+the sorted indices along the 26 possible cell-pair axes can be
+pre-computed and stored for each cell.
 These sorted indices are, however, symmetric: e.g. the indices
 computed for a cell interacting with a cell to its left along the
 $x$-axis are the inverse of the indices required for interacting 
 with the cell on its right.
-We therefore only need to sort 13 sets of indices, and flip
+It is therefore only necessary to sort 13 sets of indices, and flip
 the cells in a cell pair-interaction around when the order
 required is the opposite of the order stored, i.e. as is
 done in \cite{ref:Gonnet2013}.
@@ -665,88 +849,7 @@ This reduces the \oh{n\log{n}} sorting to \oh{n} for merging.
 \end{figure}
 
 
-\subsection{Parallel implementation}
-
-The arguably most well-known paradigm for shared-memory,
-or multi-threaded parallelism is OpenMP \cite{ref:Dagum1998},
-in which compiler annotations are used to describe if and when
-specific loops or portions of the code can be executed
-in parallel.
-When such a parallel section, e.g.~a parallel loop, is
-encountered, the sections of the loop are split statically
-or dynamically over the available threads, each executing
-on a single core.
-Once all the threads have terminated, the program continues
-executing in a single thread.
-Unfortunately, this can lead to a lot of inefficient
-branch-and-bound
-type operations, which generally lead to low performance and
-bad scaling on even moderate numbers of cores (see \fig{OMPScaling}).
-
-Furthermore, this form of shared-memory parallelism provides
-no implicit mechanism to avoid or handle concurrency problems,
-e.g.~two threads attempting to modify the same data at the same time,
-or data dependencies between them.
-These must be implemented explicitly using either redundancy, barriers,
-critical sections, or atomic memory operations, which can further degrade
-parallel performance.
-
-\begin{figure}
-    \centerline{\epsfig{file=figures/OMPScaling.pdf,width=0.7\textwidth}}
-    
-    \caption{Branch-and-bound parallelism as is commonly used in OpenMP.
-        The horizontal arrows indicate the program flow over time, and
-        branching arrows indicate a parallel section. The dotted vertical
-        bars are the synchronization points at the end of each such section.
-        Parallel efficiency is lost to two factors: The grey shaded areas
-        along the main horizontal area indicate parts of the program that
-        do not execute in parallel and restrict the maximum parallel
-        efficiency, e.g.~as described by Amdahl's law, and the red
-        areas indicate the difference between the fastest and slowest
-        threads in each parallel block, i.e.~the time lost to
-        thread synchronization.
-        }
-    \label{fig:OMPScaling}
-\end{figure}
-
-
-In order to better exploit shared-memory parallelism, 
-we have to change the underlying paradigm, i.e. instead
-of annotating an essentially serial computation with parallel
-bits, it is preferable to describe the whole computation in a way that
-is inherently parallelizable.
-One such approach is {\em task-based parallelism}, in which the
-computation is divided into a number of inter-dependent
-computational tasks, which are then dynamically allocated
-to a number of processors.
-In order to ensure that the tasks are executed in the right
-order, e.g.~that data needed by one task is only used once it
-has been produced by another task, and that no two tasks
-update the same data at the same time, dependencies between
-tasks are specified and strictly enforced by the task
-scheduler.
-
-Several middle-wares providing such task-based
-parallelism exist, e.g.~Cilk \cite{ref:Blumofe1995}, QUARK \cite{ref:QUARK},
-StarPU \cite{ref:Augonnet2011}, SMP~Superscalar \cite{ref:SMPSuperscalar},
-OpenMP~3.0 \cite{ref:Duran2009}, and Intel's TBB \cite{ref:Reinders2007}.
-These implementations allow for the specification of individual tasks
-along with their {\em dependencies}, i.e.~hierarchical relationships
-specifying which tasks must have completed before another task
-can be executed.
-
-We will, however, differ from these approaches in that we introduce the
-concept of {\em conflicts} between tasks.
-Conflicts occur when two tasks operate on the same data, 
-but the order in which these operations must occur is not defined.
-In previous task-based models, conflicts can be modeled as dependencies,
-yet this introduces an artificial ordering between the tasks
-and imposes unnecessary constraints on the task scheduler
-(e.g.~mutual and non-mutual interactions in \cite{ref:Ltaief2012}).
-These conflicts can be modelled using exclusive {\em locks} on shared
-resources, i.e.~a task operating on potentially shared data will
-only be scheduled if can obtain an exclusive lock on that data,
-thus preventing other tasks using that data to be scheduled concurrently.
+\subsection{Task-based implementation}
 
 The particle interactions described in the previous subsection
 lead to three basic task types:
@@ -771,20 +874,36 @@ Since the tasks are restricted to operating on the data of a
 single cell, or pair of cells, two tasks conflict if they
 operate on overlapping sets of cells.
 Due to the hierarchical nature of the spatial decomposition,
-two tasks also conflict if they the cells of one are sub-cells
-of the other.
+two tasks also conflict if any of the cells used by one task
+are sub-cells of any of the cells used by the other task.
 
-Since the interactions have two phases, i.e.~density and force
-computation, we introduce a {\em ghost} task in between for each cell.
+Pair and self interactions involving less than a certain number
+of particles are split only implicitly, i.e.~the tasks resulting
+from a split are grouped together and executed as a single
+task.
+This is done both to reduce the total number of tasks,
+as well as to increase their locality.
+
+The interactions have two phases, the~density and force
+computation, which need to be clearly separated, i.e.~all the density
+tasks on a cell must complete before its force tasks, which
+rely on the densities, can be computed.
+They are therefore separated by a {\em ghost}
+task for each cell.
 This ghost task depends on all the density computations
 for a given cell, and, in turn, all force computations involving
 that cell depend on its ghost task.
-Using this mechanism, we can enforce that all density computations
-for a set of particles have completed before we use this
-density in the force computations.
+This mechanism enforces that all density computations
+for a set of particles have completed before this
+density is used in any force computations.
 
-The dependencies and conflicts between tasks can thus be
-formulated as follows:
+Finally, an integrator task for each cell is used to update the
+particle positions, velocities, and internal energy once the force
+equations of the particles therein have been evaluated.
+
+The dependencies and conflicts between the different task types,
+which are illustrated in \fig{Hierarchy2},
+can be formulated as follows:
 
 \begin{itemize}
 
@@ -807,16 +926,18 @@ formulated as follows:
         
     \item The force cell pair-interaction and self-interaction tasks
         depend on the ghost tasks of the cells on which they operate.
+        
+    \item The integrator tasks depend on the force cell pair-interaction
+        and self-interaction tasks of its cell and of all its cell's
+        sub-cells.
 
 \end{itemize}
-
-\noindent These task dependencies are illustrated in \fig{Hierarchy2}.
 
 This task decomposition has significant advantages over the use of
 spatial trees.
 First of all, the cost of identifying all particles in range of
 a given particle does not depend on the total number of
-particles.
+particles, but only on the local particle density.
 Furthermore, the particle interactions in each task are computed
 symmetrically, i.e.~each particle pair is identified only
 once for each interaction type.
@@ -825,8 +946,8 @@ density and force computation, and even over several time-steps
 \cite{ref:Gonnet2013}, thus reducing the computational cost even
 further.
 Finally, if the particles are stored grouped by cell, each task
-then only involves accessing and modifying a contained
-and contiguous regions of memory, thus greatly improving their
+then only involves accessing and modifying a limited
+and contiguous region of memory, thus greatly improving
 cache re-use \cite{ref:Fomin2011}.
 
 \begin{figure}
@@ -844,168 +965,125 @@ cache re-use \cite{ref:Fomin2011}.
         density computation depend on the sort tasks of the respective cells,
         whereas self-interaction tasks (squares) for the density computation
         do not, as they do not require sorting.
-        Self- and pair-Interactions on overlapping cells (same colour)
+        Self- and pair-Interactions on overlapping cells (same color)
         conflict with each other.
         The ghost task of each cell (triangles) depends on the self-
         and pair-interaction density tasks.
-        The self- and pair-interaction tasks for the force computation, finally,
-        depend on the ghost tasks of the respective cells.
+        The self- and pair-interaction tasks for the force computation,
+        depend on the ghost tasks of the respective cells,
+        and the integrator task (inverted triangle) of each cell depends on the cell's
+        force tasks.
         }
     \label{fig:Hierarchy2}
 \end{figure}
 
 
-\subsubsection{Task queues}
+\subsubsection{Task scheduling}
 
-If the dependencies and conflicts are defined correctly, then
-there is no risk of concurrency problems, i.e.~two tasks updating
-the same particles simultaneously or accessing values that have
-not yet been computed, and thus each task
-can be implemented without special attention to the latter,
-e.g.~it can update data without using exclusive access barriers
-or atomic memory updates.
-This, however, requires some care in how the individual tasks
-are allocated to the computing threads, i.e.~each task should
-be allocated only once, to a single thread, and should not have
-and unresolved dependencies, or conflict with any concurrently
-executing tasks.
-In the following, tasks will be stored in one or more {\em queues}:
+The assignment of individual tasks to the processors of a system
+is a tricky issue:
+Each task must be scheduled once all its dependencies are met,
+only if it has no conflicts, and only to a single processor.
+Additionally, the tasks should be scheduled in a way that
+maximizes both the amount of non-conflicting tasks available to all
+processors, as well as the amount of cache re-use between tasks.
+
+In the current implementation, tasks are represented as follows:
         
 \begin{center}\begin{minipage}{0.8\textwidth}
     \begin{lstlisting}
-struct queue {
-    int *tasks;
-    int next, count;
-    mutex lock;
+struct task {
+    int type;
+    unsigned int flags;
+    int wait;
+    int nr_unlocks;
+    struct task *unlocks;
+    ...
     };
     \end{lstlisting}
 \end{minipage}\end{center}
 
-\noindent where {\tt tasks} is the list of task IDs in the queue, {\tt next}
-is the index of the first task in the queue that has not yet been executed,
-and {\tt count} is the total number of tasks, completed and waiting,
-in the queue.
-The {\tt lock} variable is used to guarantee exclusive access
-to the queue.
+\noindent where {\tt type} is determines the task type, e.g.~sorting,
+pair, or ghost tasks, and {\tt flags} is a bit-mask
+which encodes properties of the type which will be described
+later on.
+The variable {\tt wait} is a counter for the number of
+unresolved dependencies belonging to this task and will be
+zero when this task is ready to run.
+Conversely, {\tt unlocks} is an array of {\tt nr\_unlocks}
+pointers to tasks that depend on this task.
+The tasks also contain additional data specific to each task
+type, i.e.~the cells on which it operates.
 
-Task IDs are retrieved from the queue as follows:        
+The {\tt wait} counters, which are initialized to zero, are
+set before the computation by traversing the list of tasks, and,
+for each task, incrementing by one the {\tt wait} counter of each of its
+{\tt unlocks} tasks.
+The {\tt wait} counter then holds the number of other tasks on which
+the task depends.
+Once a task has been executed, the {\tt wait} counters of its
+{\tt unlocks} tasks are decremented by one.
+If a task's {\tt wait} counter is zero, then it has no
+unsatisfied dependencies and can be executed.
 
-\begin{center}\begin{minipage}{0.8\textwidth}
-    \begin{lstlisting}
-int queue_gettask ( struct queue *q ) {
-    int tid, res = -1;
-    lock( &q->lock );
-    for ( tid = q->next ; tid < q->count ; tid++ )
-        if ( q->tasks[tid] has no unresolved dependencies &&
-             q->tasks[tid] can lock all the resources it needs )
-            break;
-    if ( tid < q->count ) {
-        res = q->tasks[tid];
-        swap q->tasks[tid] and q->tasks[q->next];
-        q->next += 1;
-        }
-    unlock( &q->lock );
-    return res;
-    }
-    \end{lstlisting}
-\end{minipage}\end{center}
+As opposed to the dependencies, the task conflicts are not
+encoded explicitly, but implemented via locks on shared resources,
+i.e.~the cells on which a task operates.
+This locking is described in detail in \sect{locking}.
 
-\noindent i.e.~exclusive access to the queue is obtained by locking
-its mutex (line~3).
-The function {\tt lock} blocks until the lock is available.
-In lines~4 to~7, the tasks are inspected
-in sequence until a task is found that has no unresolved
-dependencies or existing conflicts.
-If a task has been found, its ID is swapped with that at
-position {\tt next}, and {\tt next} is incremented by one
-(lines 8~to~12).
-The lock on the queue is then released (line~13) and
-the task ID, or {\tt -1} if no available task was found, is
-returned.
+The tasks are managed by a {\em scheduler}, which assigns tasks
+whose dependencies have all been met to different {\em queues}.
+The processors, or threads, in a system then obtain the tasks
+directly from this scheduler, which tries to obtain a task
+from the thread's preferred queue.
+If this queue is empty or has no conflict-free tasks, the scheduler
+attempts to obtain a task from any other non-empty queue.
+This is the well-known concept of {\em work-stealing} described
+in \cite{ref:Blumofe1999}.
 
-The advantage of swapping the retrieved task to the next
-position in the list is that if the queue is reset, e.g.~{\tt next}
-is set to zero, and used again with the same set of tasks,
-the tasks will be traversed in the order in which they were
-executed in the previous run.
-This provides a basic form of iterative refinement of the task
+In order to preserve memory locality and improve cache re-use,
+the scheduler attempts to assign tasks working on similar sets
+of cells to the same queue.
+This is done by assigning each cell a pre-defined preferred queue.
+Tasks involving only cells of a given queue are assigned to that
+queue, and tasks involving more than one queue are assigned to
+the shortest of the set of queues.
+
+While the scheduler is responsible for dependencies and data
+locality, the queues themselves are responsible for conflict
+avoidance and task order.
+The queues are implemented as binary heaps which order the tasks
+according to their {\em weight}.
+A task's weight is defined as the approximate or
+measured computational cost of the task, plus the maximum
+weight of all its dependent tasks.
+This weight is a measure for the length of the critical
+execution path starting at the given task.
+Picking the task with the largest weight corresponds to reducing
+the longest critical path first.
+
+When a processor requests a task from a queue, the heap is
+traversed in topological order\footnote{
+This is implemented by storing the heap nodes in an array such that the $k$th
+entry has sub-nodes at the indices $2k+1$ and $2k+2$, and traversing
+this array from left to right.}, starting from the top, looking
+for tasks free of conflicts.
+Although the first task inspected will have the largest weight
+in the queue, the traversal is not in strictly decreasing weight
 order.
-The tasks can also be pre-sorted topologically, according to their
-dependency graph, to reduce the effort required to find
-a valid task.
+This sub-optimal traversal was chosen as a efficiency trade-off,
+since the cost of inserting or removing an element in a binary heap is in
+\oh{\log n}, whereas maintaining a strict ordering requires
+at least \oh{n} for insertion, e.g.~using linked lists.
+In order to ensure that each task is assigned only once, mutexes
+are used to control exclusive access to each queue.
 
-The mutex at the start of {\tt queue\_gettask} is a potential
-bottleneck if the time required to process a task is small
-compared to the time required for all the threads to obtain
-a task, e.g.~for large numbers of very small tasks and/or
-a large number of threads.
-One way of avoiding this problem is to use several concurrent
-queues, e.g.~one queue per thread, and spread the tasks over
-all queues.
-A fixed assignment of tasks to queues can, however,
-cause load balancing problems, e.g.~when a thread's queue is
-empty before the others have finished.
-In order to avoid such problems, {\em work-stealing}
-\cite{ref:Blumofe1999} can be used:
-If a thread cannot obtain a task from its own queue, it picks
-another queue at random and tries to {\em steal} a task from it
-i.e. if it can obtain a task, it removes it from the queue and
-adds it to it's own queue, thus iteratively re-balancing
-the task queues if they are used repeatedly:
-
-\begin{center}\begin{minipage}{0.8\textwidth}
-    \begin{lstlisting}
-while ( there is still a task in any of the queues ) {
-    if ( ( tid = queue_gettask( myq , 0 ) ) < 0 ) {
-        randq = pick a non-empty queue at random.
-        if ( ( tid = queue_gettask( randq , 1 ) ) >= 0 )
-            queue_addtask( myq , tid );
-        }
-    if ( tid >= 0 )
-        execute task tid.
-    }
-    \end{lstlisting}
-\end{minipage}\end{center}
-
-\noindent where {\tt myq} is the queue associated with the
-current thread, and {\tt queue\_addtask} adds a task ID
-to the given queue.
-Note that {\tt queue\_gettask} has been extended by an
-additional parameter that indicates if we are going to steal
-a task from that queue, or leave it in there:
-
-\begin{center}\begin{minipage}{0.8\textwidth}
-    \begin{lstlisting}
-int queue_gettask ( struct queue *q , int steal ) {
-    int tid, res = -1;
-    lock( &q->lock );
-    for ( tid = q->next ; tid < q->count ; tid++ )
-        if ( q->tasks[tid] has no unresolved dependencies &&
-             q->tasks[tid] can lock all the resources it needs )
-            break;
-    if ( tid < q->count ) {
-        res = q->tasks[tid];
-        if ( steal ) {
-            q->count -= 1;
-            swap q->tasks[tid] and q->tasks[q->count];
-            }
-        else {
-            swap q->tasks[tid] and q->tasks[q->next];
-            q->next += 1;
-            }
-        }
-    unlock( &q->lock );
-    return res;
-    }
-    \end{lstlisting}
-\end{minipage}\end{center}
-
-\noindent where, in lines 10~to~13, if the task is to be stolen,
-it is removed from the queue, i.e.~swapped with the last element (line~12),
-while the task count is reduced (line~11).
+The details of the task scheduler are described in a separate
+publication \cite{ref:Gonnet2013b}.
 
 
 \subsubsection{Cell locking}
+\label{sec:locking}
 
 Particles within a cell are also within that cell's hierarchical
 parents.
@@ -1014,13 +1092,14 @@ operate on its parent's data should not be allowed to execute.
 One way to avoid this problem is to require that a task
 not only lock a cell, but also all of its hierarchical
 parents in order to operate on its data.
-This, however, would prevent tasks involving siblings,
+This, however, would prevent tasks involving siblings who share
+a common hierarchical parent cells, yet
 whose particle sets do not overlap, from executing.
 
-We avoid this problem by giving each cell both a {\em lock},
+This problem is avoided by giving each cell both a {\em lock},
 and a {\em hold} counter:
-A cell is locked when it, or one of its parent cells, are currently
-in use. A cell is held when one or more of its sub-cells is locked,
+A cell is {\em locked} when it, or one of its parent cells, is currently
+in use. A cell is {\em held} when one or more of its sub-cells is locked,
 and thus cannot be locked itself.
 Since more than one task at a time may hold a cell, this property
 is implemented as a counter.
@@ -1055,12 +1134,10 @@ int cell_locktree ( struct cell c ) {
     \end{lstlisting}
 \end{minipage}\end{center}
 
-\noindent When trying to lock a cell, we first check that it is neither
+\noindent When trying to lock a cell, the function first checks that it is neither
 locked (line 3) or held (line 5), i.e.~its hold counter is zero.
-If neither is the case, then we can lock it.
-The function {\tt trylock} is similar to the previously used {\tt lock},
-but differs in that it does not wait if the mutex is already locked.
-We then travel up the hierarchy increasing the 
+If neither is the case, then the cell can be locked.
+It then travels up the hierarchy increasing the 
 hold counter of each cell on the way, up to the topmost cell (lines 9--14).
 If any cell along the hierarchy is locked (line 10), the locking is aborted
 and all locks and holds are undone (lines 15--20, see \fig{CellLocking}).
@@ -1090,10 +1167,182 @@ void cell_unlocktree ( struct cell c ) {
         larger than zero.
         The hold count is shown inside each cell and corresponds to the number
         of locked cells hierarchically below it.
-        All cells except for those locked or with a ``hold'' count larger than
-        zero can still be locked without causing concurrent data access.
+        All cells except for those locked, below a locked cell, or with
+        a ``hold'' count larger than
+        zero can still be locked without violating any constraints.
         }
     \label{fig:CellLocking}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Extension of the algorithms to hybrid parallelism
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Hybrid shared/distributed-memory parallelism}
+
+Although the task-based algorithms described in the previous subsections
+were described only in the context of shared-memory parallelism,
+the task-based scheme
+extends rather elegantly to {\em hybrid shared/distributed-memory
+parallel} setups as well.
+
+The highest-level cells in the hierarchical cell lists can be distributed
+between a set of distributed-memory {\em nodes}, such that for each
+node the space is partitioned into {\em local} and {\em foreign} cells.
+On each node, the tasks are constructed as in the single-node
+case, yet each node only keeps the tasks which involve at
+least one local cell, i.e. self interaction, ghost, and integrator
+tasks on local cells, and pair interaction tasks involving two
+local cells, or a local and a foreign cell.
+This step would seem to imply that each node would have to have
+information on all particles in the system, but it is actually
+sufficient for it to know only the structure of the cell hierarchy
+of the highest-level foreign cells adjacent to a local cell.
+
+The set of foreign cells which are involved in a pair interaction
+with a local cell will be referred to as {\em proxy} cells.
+These cells are used to compute interactions locally, but contain
+particles which reside on a different node.
+
+For each proxy cell, two {\em communication tasks} are generated, one
+to receive the particle positions and other data for the density
+computation, and one to receive the particle densities and other
+data for the force computation.
+The force and density tasks involving each proxy cell are
+made dependent of these two communication tasks respectively.
+If a proxy cell requires a sort task, the sort task is also made
+dependent of the communication task for the particle positions
+(see \fig{Hierarchy3}).
+
+Similarly, for each local cell which is a proxy cell on another
+node, two communication tasks are generated to send the
+particle positions and densities respectively to the foreign node.
+The communication task sending a cell's particle positions has
+no dependencies, but care must be taken to make any task that
+will update the particle data, i.e.~the cell's ghost task, depend
+on its completion to avoid corrupting the particle data before
+it is sent.
+The communication task sending a cell's particle densities depends
+on the computation of said densities, i.e.~the cell's ghost task.
+Since the cell's integrator task will modify the particle data, it must
+be made dependent on the completion of the communication task sending
+the cell's particle densities.
+
+All communication is implemented asynchronously using the
+{\tt MPI\_Isend}, {\tt MPI\_Irecv}, and {\tt MPI\_Test}
+commands.
+The {\tt MPI\_Isend} and {\tt MPI\_Irecv} commands for a
+communication task are emitted as soon as the task's dependencies
+have been met and it is enqueued.
+Once in the task queue, the communication tasks are only executed
+if a call to {\tt MPI\_Test} returns that they have completed.
+The tasks themselves do nothing else, i.e.~all the work happens
+in the background or on the calls to {\tt MPI\_Test}, depending
+on how asynchronous communication is implemented in the
+underlying MPI library.
+
+Contrary to most distributed-memory parallel codes, the
+communication between two nodes is not grouped into a single
+MPI {\tt send}/{\tt recv} command.
+The individual communication tasks have the advantage that
+the particle data, which is stored contiguously for each
+cell, does not need to be re-packaged for communication.
+It also has the advantage of preventing bottlenecks, since
+a single sending task would have to wait for {\em all} density
+tasks involving a different node to complete before it
+could be executed.
+The only potential disadvantage is that the sum of the latencies
+for several small sends and receives is far larger than the
+latency for a single large send and receive.
+This, however, should be of no particular concern as the task-based
+model can simply execute other tasks while waiting for the
+data to be transmitted, effectively masking the communication latencies.
+
+The main advantage of using non-blocking communication primitives
+and a task based model over the traditional
+synchronous communication in other distributed-memory parallel codes
+is twofold: Firstly, since the computation is data driven,
+there are no fixed synchronization points between
+nodes, which could force all the nodes to wait
+until the slowest node is ready.
+Secondly, the communication latencies are completely hidden
+i.e.~instead of waiting idly for data to be transmitted, if
+other tasks are available for executing, they will be executed.
+
+One final advantage associated with using the task-based formulation for
+hybrid simulations has to do with the domain decomposition, which
+was until here simply assumed to be given.
+In most parallel codes, the domain is decomposed following the
+simulation {\em data}, i.e.~attempting to spread the particles
+evenly amongst the nodes.
+The tasks, however, form a complete representation of the {\em work}
+that will actually be done during the computation.
+It is then straight-forward to construct a graph in which each
+cell is a node, and two nodes share an edge if they are spanned
+by a pair task.
+The node weights are given by the sum of the approximate costs
+of all tasks involving only that node, and the edge weights by the
+sum of the approximate costs of the tasks spanning both nodes' cells.
+This graph can then be partitioned using a standard library
+such as METIS \cite{ref:Karypis1998} providing a good equidistribution
+of the actual {\em work} across the nodes, as opposed to just
+the {\em data}.
+
+\fig{TaskPlot} shows the task timeline for a single time-step of a hybrid
+shared/distributed-memory parallel simulation of 1\,M particles on a
+perturbed grid on eight 12-core nodes of the COSMA4 cluster.
+The different colors indicate the different task types.
+The white gaps preceding the red communication tasks are time spent
+in the MPI routines.
+Note that despite the large degree of parallelization (96 cores, <90\,ms
+per time step), the load distribution between nodes is good an the
+load balance within each node is almost perfect, despite the uneven
+communication costs.
+        
+It should be noted that the hybrid approach suffers from the
+same surface-to-volume ratio problem described in the introduction.
+However, as opposed to purely distributed-memory parallel based
+codes, the problem is somewhat mitigated by the fact that
+the hybrid approach uses one MPI node per {\em physical node},
+as opposed to one MPI node per {\em core}.
+With the increasing number of cores per cluster node,
+this significantly reduces the ratio of communication per
+computation.
+
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/Hierarchy3.pdf,height=0.5\textwidth}}
+    
+    \caption{Task dependencies and conflicts for hybrid parallelism:
+        Two task hierarchies on neighbouring nodes.
+        The blue cell, which resides on the left node, interacts
+        with the yellow cell, which resides on the right node.
+        The regular task hierarchy of the ``ghost'' yellow cell on the
+        left is replaced with communication tasks (yellow diamonds)
+        and new dependencies (red arrows) on both nodes.
+        On the left node, the sorting and density tasks for the yellow cell
+        depend on the receipt of the particle positions (marked ``{\bf x}'').
+        Similarly, the force tasks depend on the receipt of the
+        particle densities (marked ``$\boldsymbol\rho$'').
+        On the right node, the sending of the particle densities
+        depends on the cell's ghost task to ensure that they have
+        been effectively computed.
+        The ghost and integrator tasks on the right, which overwrite
+        parts of the particle data, are made
+        to depend on the communication tasks having completed.
+        }
+    \label{fig:Hierarchy3}
+\end{figure}
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/PerturbedBox_tasks.pdf,width=0.9\textwidth}}
+    \caption{Task timeline for a single time-step of a hybrid
+        shared/distributed-memory parallel simulation on
+        eight 12-core nodes of the COSMA4 cluster.
+        Each task is represented by a block, the color of which represents
+        the task type, i.e. pair-interaction (blue), self-interaction (green),
+        ghost (yellow), communication (red), and integration (orange).}
+    \label{fig:TaskPlot}
 \end{figure}
 
 
@@ -1102,8 +1351,8 @@ void cell_unlocktree ( struct cell c ) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Validation}
 
-In the following, I describe how the algorithms shown in the previous section
-are implemented and tested against exiting codes on specific test problems.
+This section describes how the algorithms shown in the previous section
+are implemented and tested against exiting codes on specific problems.
 
 \subsection{Implementation details}
 
@@ -1120,31 +1369,30 @@ of Computational Cosmology (ICC) at Durham University.
 {\tt gcc} compiler.
 Although SIMD-vectorized code, using the {\tt gcc} vector types
 and SSE/AVX intrinsics, has been implemented, it was switched
-off in the following to allow for a fair comparison against
-unvectorized codes.
+off in the following to allow for a fair comparison with
+Gadget-2, which does not use explicit vectorization.
 
 The code for the task-based parallelism is implemented using
-standard {\tt pthread}s \cite{ref:pthreads}, and in some places,
-e.g.~in the time-stepper
-or task list creation, OpenMP \cite{ref:Dagum1998} is used.
-Each thread is assigned it's own task queue, over which the tasks
-are distributed evenly in topological order of the dependencies.
-The threads are initialized once at the start of the simulation
+standard {\tt pthread}s \cite{ref:pthreads}.
+Each thread is assigned it's own task queue.
+The threads executing the tasks are initialized once at the
+start of the simulation
 and synchronize via a barrier between time steps.
 The task selection is implemented as described above, yet with the
 addition that the ID of the last thread to have worked on each
-cell is recorded and the queue inspects up to 10 valid tasks 
-looking for one that involves previously-owned cells.
+cell is recorded and the queue inspects up to 50 valid tasks 
+looking for one that involves previously-used cells.
 
-The equations of motion are integrated using a kick-drift-kick
-leapfrog integrator.
+The equations of motion are integrated using a velocity-Verlet
+integrator.
 Multiple time-stepping has been implemented similarly to
 the Gadget-2 code \cite{ref:Springel2005}: The maximum time-step
 for each particle is computed as
 %
-\begin{equation*}
+\begin{equation}
     \Delta t_i = C_{CFL}\frac{2 h_i}{ \max_j\left( c_i + c_j + \max\{0,-3 \mathbf r_{ij} \cdot \mathbf v_{ij} / r_{ij} \} \right) }
-\end{equation*}
+    \label{eqn:dt}
+\end{equation}
 %
 where $\mathbf v_{ij} = \mathbf v_i - \mathbf v_j$ and
 $\mathbf r_{ij} = \mathbf r_i - \mathbf r_j$.
@@ -1165,7 +1413,7 @@ If the cell decomposition does not need to be re-computed often,
 this can lead to substantial savings by eliminating the sort tasks
 in these time-steps.
 
-Finally, \swift also uses an artificial viscosity of the
+Finally, \swift also implements an artificial viscosity of the
 Monaghan--Balsara type \cite{ref:Monaghan1983,ref:Balsara1995},
 i.e.~the terms
 %
@@ -1201,108 +1449,201 @@ were tested in \swift using the following four
 simulation setups:
 %
 \begin{itemize}
-    \item {\em Perturbed box}: A periodic cubic box containing
-        $50\times 50\times 50$ particles on a regular grid
-        initialized with $\rho_i=1$,
-        $P_i=1$ and initial velocities $\mathbf v_i=\mathbf 0$.
-        All particles have the same initial smoothing lengths $h_i$,
-        which will only vary marginally during the simulation.
-        The initial particle positions are slightly perturbed
-        and the system relaxes to a glass-like configuration.
-        This simulation provides a test case for energy
-        conservation, and a benchmark for neighbour finding with
-        constant smoothing lengths.
-    \item {\em Sod-shock} \cite{ref:Sod1978}: A cubic periodic domain containing a
+%     \item {\em Perturbed box}: A periodic cubic box containing
+%         $50\times 50\times 50$ particles on a regular grid
+%         initialized with $\rho_i=1$,
+%         $P_i=1$ and initial velocities $\mathbf v_i=\mathbf 0$.
+%         All particles have the same initial smoothing lengths $h_i$,
+%         which vary only marginally during the simulation.
+%         The initial particle positions are slightly perturbed
+%         and the system relaxes to a glass-like configuration.
+%         This simulation provides a test case for energy
+%         conservation, and a benchmark for neighbour finding with
+%         constant smoothing lengths.
+    \item {\em Sod-shock} \cite{ref:Sod1978}: A rectangular periodic
+        domain of size $8\times 1 \times 1$ containing a
         high-density region of
         800\,000 particles with $P_i=1$ and $\rho_i=4$ on one half,
         and a low-density region of 200\,000
         particles with $P_i=0.1795$ and $\rho_i=1$ on the other.
         The simulation results can be compared to an analytic
         solution, providing a test case for the accuracy of the
-        implementation, as well as a benchmark for simulations
-        with particles with different smoothing lengths.
-    \item {\em Sedov blast}: A cubic grid of $101\times 101\times 101$
+        implementation.
+    \item {\em Sedov blast}: A face-centered cubic lattice of
+        $101\times 101\times 101$
         particles at rest with $P_i$ and $\rho_i=1$, yet with the
-        central 33 particles set to
+        central 26 particles set to
         $P_i=100$.
         The resulting blast wave provides a good example of
         strong pressure, density, and smoothing length gradients
         for which an analytical solution can be computed.
     \item {\em Cosmological box}: Realistic distribution of matter
-        in a periodic volume of universe. The simulation consists
-        of 1\,841\,127 particles with
+        in a periodic volume of universe at redshift $z=0.5$.
+        The simulation consists
+        of $\sim$51\,M particles with
         a mix of smoothing lengths spanning three orders of magnitude,
         providing a test-case for neighbour finding and parallel
         scaling in a real-world scenario.
+        Although cosmological simulations are usually run with
+        billions of particles \cite{ref:Lemson2006}, this simulation
+        contains roughly as many particles as can be assigned to a
+        single node.
 \end{itemize}
 %
 In all simulations, the constants $N_{ngb}=48$, $\gamma=5/3$,
 $C_{CFL}=1/4$, and $\alpha = 0.8$ were used.
-In \swift, cells were split if they contained more than 400
+In \swift, cells were split if they contained more than 300
 particles and more than 87.5\% of the particles had a smoothing
 length less than half the cell edge length.
+Tasks were grouped for cells or cell pairs containing less than
+6000 particles.
 
-The perturbed box simulations were run both with and without the
+The Sod-shock simulation was run both with and without the
 sorted particle interaction in order to provide a rough comparison
 to traditional neighbour-finding approaches in SPH simulations with
-constant smoothing length.
-In the remaining three test cases, results were
-computed both with and without multiple time stepping,
-i.e.~using a fixed time step and updating the forces on all
-particles in each time-step, as well as using the multiple
-time-stepping scheme described above in which only the particles
-active in each time-step are updated.
+locally constant smoothing lengths.
+In all three test cases, results were
+computed using a fixed time step and updating the forces on all
+particles in each time-step.
+In the Sedov blast simulation, the timestep was set to be below
+the smallest particle timestep as computed in \eqn{dt}
+in each step.
 
 The simulation results compared with Gadget-2 \cite{ref:Springel2005}
-in terms of accuracy, speed, and parallel scaling.
+in terms of  speed and parallel scaling.
 Gadget-2 was compiled with the Intel C Compiler version 2013.0.028
-using the options {\tt -DUSE\_IRECV -O3 -ip -fp-model fast -ftz
--no-prec-div -mcmodel=medium}.
-For the parallel runs, OpenMPI version 1.6.3 was used \cite{ref:Gabriel2004}.
-
-\swift v.~0.1.0 was compiled with the GNU C Compiler version 4.7.2
-using the options {\tt -O3 -ffast-math -fstrict-aliasing
+using the options 
+\begin{quote}{\tt -DUSE\_IRECV -O3 -ip -fp-model fast -ftz
+-no-prec-div -mcmodel=medium}.\end{quote}
+\swift v.~1.0.0 was compiled with the GNU C Compiler version 4.8
+using the options
+\begin{quote}{\tt -O3 -ffast-math -fstrict-aliasing
 -ftree-vectorize -funroll-loops -mmmx -msse -msse2 -msse3 -mssse3
--msse4.1 -msse4.2 -mavx -fopenmp -march=native -pthread}.
+-msse4.1 -msse4.2 -mavx -fopenmp -march=native -pthread}.\end{quote}
 Note that although the compiler switches for the SSE and AVX
 vector instruction sets were activated, explicit
 SIMD-vectorization was not used.
+For the hybrid shared/distributed memory parallel runs,
+Platform~MPI version 9.1.0 was used.
 
-All simulations were run on a $4\times$Intel Xeon E5-4640
-32-core machine running at 2.4\,GHz with
-CentOS release 6.2 Linux for x86\_64.
+All simulations were run on the COSMA5 supercomputer,\footnote{\url{http://icc.dur.ac.uk/index.php?content=Computing/Cosma}}
+consisting of $4\times$Intel Xeon E5-2670
+16-core nodes running at 2.6\,GHz with CentOS release 6.2 Linux
+for x86\_64.
+The nodes are connected
+via Mellanox FDR10 Infiniband in a 2:1 blocking configuration.
 
 
 \subsection{Results}
 
-\begin{itemize}
-
-    \item Results for a 1.8M particle simulation on a 32-core Intel Xeon X7550
-        are shown in \fig{Results}.
-        
-    \item The new simulation code not only scales much better, e.g. achieving
-        a parallel efficiency of 73\% at 32 cores, but it is also much faster
-        on a single core.
-        
-    \item Ratio of spurious pairwise distance calculations in three-code
-        vs.~using cells, show actual numbers for each case.
-
-\end{itemize}
-
-
-\begin{figure}[ht]
-    \centerline{\epsfig{file=figures/scaling.pdf,width=0.9\textwidth}}
-    
-    \caption{Parallel scaling and efficiency for Gadget-2 and \swift
-        for a 1.8M particle simulation.
-        The numbers in the scaling plot are the average number of milliseconds
-        per simulation time step.
-        Note that not only does swift scale better, it is also up to nine
-        times faster.
-        The timings for Gadget-2 are courtesy of Matthieu Schaller of the
-        Institute of Computational Cosmology at Durham University.}
-    \label{fig:Results}
+\begin{figure}
+    \centerline{\epsfig{file=figures/SodShock_profile.pdf,width=0.9\textwidth}}%
+    % \centerline{\epsfig{file=SodShock_scaling.pdf,width=0.9\textwidth}}
+    \caption{Results for the Sod-shock simulation test case at $t=0.12$.
+        The density,
+        pressure, and velocity profiles are in good agreement with the
+        analytic solution (top).
+        The simulation scales well up to 16 cores of the same shared-memory
+        machine, achieving 86\% parallel efficiency (bottom).}
+    \label{fig:SodShock}
 \end{figure}
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/SedovBlast_density.pdf,width=0.8\textwidth}}
+    \caption{Radial density profile of the Sedov blast simulations at
+        times $t=0.075$ (crosses), $t=0.150$ (circles), and $t=0.275$
+        (triangles), along with the corresponding analytically computed solution
+        (dotted lines).}
+    \label{fig:SedovBlast}
+\end{figure}
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/SodShock_scaling.pdf,width=0.8\textwidth}}
+    \centerline{\epsfig{file=figures/SedovBlast_scaling.pdf,width=0.8\textwidth}}
+    \caption{Parallel (strong) scaling and efficiency plots for the Sod-shock and
+        Sedov blast simulations on up to 16 cores of a $4\times$Intel Xeon E5-2670
+        at 2.6\,GHz. The numbers inside the speedup plots on the left are
+        the average number of milliseconds per timestep.}
+    \label{fig:Scaling}
+\end{figure}
+
+\begin{figure}
+    \centerline{\epsfig{file=figures/BigCosmoVolume_cosma5.pdf,width=0.8\textwidth}}
+    \caption{Hybrid parallel (strong) scaling and efficiency for the
+        Cosmological volume simulation on up to 64 nodes of the COSMA5
+        cluster, containing 16 cores each, for both SWIFT and Gadget-2.
+        The numbers in the scaling plot on the left represent the minimum
+        average milliseconds per timestep achieved.
+        The inverted triangles and numbers in the efficiency plot point to
+        the number of cores used at each point.
+        For both codes, the parallel efficiency is computed relative to
+        the performance of each code on a single core.}
+    \label{fig:CosmoVolume}
+\end{figure}
+
+
+\fig{SodShock} shows the averaged density, pressure, and velocity profiles
+along the $x$-axis of the Sod-shock simulation at time $t=0.12$.
+The computed results are in good agreement with the analytical solution
+for this setup \cite{ref:Sod1978}.
+
+Similarly, \fig{SedovBlast} shows the average radial density profiles
+for the Sedov blast simulation at times $t=0.075$, $t=0.150$, and $t=0.275$,
+along with their analytical solutions.
+
+\fig{Scaling} shows the performance of the shared-memory task-based 
+code on a single 16-core node of the COSMA5 cluster.
+In both cases, SWIFT achieves over 80\% parallel efficiency on all
+16 cores.
+The Sod-shock and Sedov blast simulations without the sorted
+interactions described
+in Section~3.3 are roughly $\sim 2--4\times$ slower than the simulation
+with sorted interactions.
+It should be noted that these results are for {\em strong scaling}
+on relatively moderately-sized problems.
+
+The scaling plots are also interesting for what they don't show
+any apparent NUMA-related effects, e.g. performance jumps due to
+uneven numbers of processes per processor.
+Such effects are usually
+considered to be a problem for shared-memory parallel codes in
+which several cores share the same memory bus and parts of
+the cache hierarchy, thus limiting the effective memory bandwidth
+and higher-level cache capacities \cite{ref:Thacker2006}.
+The hierarchical cells described herein are sufficiently
+cache efficient to avoid such problems: By working on sets
+of particles which are stored contiguously in memory,
+and that fit well in the lower-level processor caches, the ratio
+of computation to memory access is kept relatively high, relieving
+pressure on the higher-level caches and the memory bus.
+
+Finally, \fig{CosmoVolume} shows the results of the hybrid
+shared/distributed-memory parallel Cosmological volume simulation.
+On 16 cores of the same node, SWIFT achieves 90\% parallel efficiency.
+As the number of nodes is successively doubled, the parallel
+efficiency stays above 80\% up to 256 cores (16 nodes), and
+drops down to 56\% at 1024 cores (64 nodes), at a speedup
+of a factor of 571$\times$.
+Gadget-2 does not fare as well, achieving only 40\% parallel efficiency
+on a single 16-core node and reaching its maximum speedup of 107$\times$ at
+384 cores (24 nodes) with a parallel efficiency of only 28\%.
+As of 384 cores, the parallel efficiency decays rapidly, reaching
+4\% at 1024 cores.
+Over all 1024 cores, SWIFT is 39.6$\times$ faster than Gadget-2.
+This speedup is due not only to better scaling, but also to
+the better performance on a single core, where SWIFT is already
+7.5$\times$ faster than Gadget-2.
+Note again that all these results refer to {\em strong scaling},
+and that SWIFT was run without explicit vectorization in order
+to provide a fair comparison.
+
+
+% \begin{itemize}
+% 
+%     \item Ratio of spurious pairwise distance calculations in three-code
+%         vs.~using cells, show actual numbers for each case.
+%         
+% \end{itemize}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1310,15 +1651,93 @@ CentOS release 6.2 Linux for x86\_64.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
 
+The good results presented in the previous section can be attributed to
+a combination of factors:
+
 \begin{itemize}
 
-    \item Good scaling.
-    
-    \item Computational model can easily be exported to other architectures,
-        including GPUs (reference task-based parallelism on GPUs with Aidan),
-        and other multi-core accelerators such as the Intel MIC.
+    \item {\em Better algorithms}: The cell-based particle interaction
+        algorithms described in Section 3 differ significantly from the
+        widely-used tree-based neighbour finding approaches.
+        The new neighbour finding algorithm's main advantage is
+        its amortized cost of \oh{1} operations per particle,
+        as opposed to \oh{N^{2/3}} (for a total of $N$ particles)
+        for the tree search.
+        The sorted interactions add another factor of $2--4$ speedup.
+        These algorithmic improvements alone make SWIFT a total
+        of 7.5$\times$ faster than Gadget-2, as measured with the
+        Cosmological volume simulation, on a single core, i.e.~decoupled
+        from any improvements to the parallel performance of either code.
         
+    \item {\em Better load balancing on a single node}: The main advantage
+        of the task-based parallel approach with constraints
+        used in SWIFT is that it
+        provides automatic fine-grained load balancing.
+        This, along with the
+        lack of explicit locking, atomics, and/or synchronization,
+        results in more than 80\% parallel efficiency
+        on a single 16-core node.
+        This almost linear scaling translates to a 15-fold advantage
+        over Gadget-2 on a single 16-core node for the Cosmological
+        volume simulation.
+        
+    \item {\em Better caching behavior}: A subtle additional advantage of
+        the task/cell-based particle interaction algorithm is that
+        the computation is organized in such a way that it maximizes the
+        amount of computation per memory accessed.
+        Instead of interacting a single particle with all its neighbours
+        at potentially disparate memory locations, the cell-based
+        approach computes all interactions between two sets of contiguous
+        particles, allowing them to be kept in the lowest level caches
+        for each task.
+        Furthermore since each task has exclusive access to it's particles'
+        data, there is little performance lost to cache coherency maintenance
+        across cores.
+    
+    \item {\em Better load balancing across multiple nodes}: Instead of
+        splitting the {\em particles} over a set of distributed-memory nodes,
+        SWIFT uses the task graph to partition the {\em work} over
+        the nodes, resulting
+        in better load balancing and scaling, as shown by the Cosmological
+        volume simulation over 64 nodes.
+    
+    \item {\em Hybrid shared/distributed-memory parallelism}: One of the
+        main issues with massively parallel codes is that, as the number
+        of involved cores increases, so does the ratio of communication
+        to computation for each core, resulting in an eventual loss of scaling.
+        In taking a hybrid shared/distributed-memory parallel approach,
+        the number of communicating nodes, and thus the total communication,
+        is reduced by a factor of the number of cores per shared-memory node.
+        
+    \item {\em Asynchronous distributed-memory communication}: The task-based
+        computation lends itself especially well for the implementation
+        of asynchronous communication: Each node sends data as soon
+        as it is ready, and activates task which depend on communication
+        only once the data has been received.
+        This avoids any explicit synchronization between nodes to coordinate
+        communication, and, by spreading the communication throughout the
+        computation, reduces pressure on the communication infrastructure.
+        Furthermore, since the idle time between sending and receiving
+        data is used for computation, network latencies play a much
+        less limiting role for the overall performance.
+    
 \end{itemize}
+
+Most of these factors are a direct consequence of the task-based
+structure of the computation.
+This simple yet powerful paradigm is at the core of the results
+presented herein.
+
+It should be noted, finally, that the algorithms and performance gains
+described herein are not the result of exploiting any single feature
+of the short-lived underlying hardware.
+The algorithms merely exploit what has been the trend in computer
+architecture for the past decade, i.e.~shared-memory parallel multi-core
+systems, shared hierarchical memory caches, and limited communication
+bandwidth/latency.
+These trends still hold true for more modern architectures such as
+GPUs and the recent Intel MIC, on which task-based parallelism
+is possible \cite{ref:Chalk2014}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1326,14 +1745,16 @@ CentOS release 6.2 Linux for x86\_64.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section*{Acknowledgments}
 
-\begin{itemize}
+The author would like to thank Matthieu Schaller and Tom Theuns of the
+Institute for Computational Cosmology (ICC), and Aidan Chalk of the
+School of Engineering and Computing Sciences (SECS), at Durham University,
+for the ongoing collaboration of which this work is but one of the first
+results.
 
-    \item Collaboration with Matthieu Schaller and Tom Theums from the
-        Institute of Computational Cosmology (ICC) at Durham University.
-        
-    \item Lydia Heck from the ICC for providing access to the infrastructure.
-
-\end{itemize}
+This collaboration would never have happened were it not for Lydia Heck,
+also of the ICC at Durham University, who brought the group together 
+and also provided access to and expertise 
+on the COSMA5 cluster. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

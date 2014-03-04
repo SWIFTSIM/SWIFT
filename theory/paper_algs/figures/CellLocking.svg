@@ -13,7 +13,7 @@
    height="1052.3622047"
    id="svg2"
    version="1.1"
-   inkscape:version="0.48.3.1 r9886"
+   inkscape:version="0.48.4 r9939"
    sodipodi:docname="CellLocking.svg">
   <defs
      id="defs4">
@@ -39,7 +39,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="2"
-     inkscape:cx="319.93452"
+     inkscape:cx="330.55518"
      inkscape:cy="689.70563"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -127,7 +127,7 @@
        id="rect3769"
        style="fill:none;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
     <rect
-       style="fill:none;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       style="fill:#ff0000;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;fill-opacity:1"
        id="rect3771"
        width="20"
        height="20"
@@ -249,7 +249,7 @@
          y="316.0072"
          x="364.91455"
          id="tspan4878"
-         sodipodi:role="line">1</tspan></text>
+         sodipodi:role="line">2</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:end;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
@@ -261,6 +261,6 @@
          id="tspan4882"
          x="319.91455"
          y="271.0072"
-         style="font-size:10px;text-align:center;text-anchor:middle">3</tspan></text>
+         style="font-size:10px;text-align:center;text-anchor:middle">4</tspan></text>
   </g>
 </svg>
