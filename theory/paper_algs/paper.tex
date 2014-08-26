@@ -144,7 +144,7 @@ This increase in parallelism comes mainly in the form of
 contain more than one computational core sharing a common 
 memory bus.
 Systems containing up to 64 general-purpose cores are becoming
-commonplace, and the number cores can be expected to continue
+commonplace, and the number of cores can be expected to continue
 growing exponentially, e.g.~following Moore's law, much in the
 same way processor speeds were up until a few years ago.
 This development is not restricted to shared-memory parallel desktop
@@ -277,7 +277,7 @@ The particle density $\rho_i$ used in \eqn{interp} is itself
 computed similarly:
 %
 \begin{equation}
-    \rho_i = \sum_{r_{ij} < h_i} m_j W(r_{ij},h_i)
+    \rho_i = \sum_{j,~r_{ij} < h_i} m_j W(r_{ij},h_i)
     \label{eqn:rho}
 \end{equation}
 %
@@ -302,10 +302,10 @@ of the velocity, internal energy, and smoothing length, which
 require $\rho_i$, are computed as followed:
 %
 \begin{eqnarray}
-    \frac{dv}{dt} & = & -\sum_{r_{ij} < \hat{h}_{ij}} m_j \left[
+    \frac{dv_i}{dt} & = & -\sum_{j,~r_{ij} < \hat{h}_{ij}} m_j \left[
         \frac{P_i}{\Omega_i\rho_i^2}\nabla_rW(r_{ij},h_i) +
         \frac{P_j}{\Omega_j\rho_j^2}\nabla_rW(r_{ij},h_j) \right], \label{eqn:dvdt} \\ 
-    \frac{du}{dt} & = & \frac{P_i}{\Omega_i\rho_i^2} \sum_{r_{ij} < h_i} m_j(\mathbf v_i - \mathbf v_j) \cdot \nabla_rW(r_{ij},h_i), \label{eqn:dudt}
+    \frac{du_i}{dt} & = & \frac{P_i}{\Omega_i\rho_i^2} \sum_{j,~r_{ij} < h_i} m_j(\mathbf v_i - \mathbf v_j) \cdot \nabla_rW(r_{ij},h_i), \label{eqn:dudt}
 \end{eqnarray}
 %
 where $\hat{h}_{ij} = \max\{h_i,h_j\}$, and the particle pressure
@@ -363,10 +363,14 @@ each particle has its own smoothing length $h_i$, with ranges spawning
 up to several orders of magnitude.
 In such cases, e.g. in Astrophysics simulations \cite{ref:Gingold1977},
 the above-mentioned approaches cease to work efficiently.
-Such codes therefore usually rely on {\em trees}
+Such codes therefore usually rely on spatial {\em trees}
 for neighbour finding \cite{ref:Hernquist1989,ref:Springel2005,ref:Wadsley2004},
 i.e.~$k$-d trees \cite{ref:Bentley1975} or octrees \cite{ref:Meagher1982}
-are used to decompose the simulation space. 
+are used to decompose the simulation space.
+In Astrophysics in particular, spatial trees are also a somewhat natural
+choice as they are used to compute long-range gravitational interactions
+via a Barnes-Hut \cite{ref:Barnes1986} or Fast Multipole
+\cite{ref:Carrier1988} method. 
 The particle interactions are then computed by traversing the list of
 particles and searching for their neighbours in the tree.
 
@@ -518,7 +522,7 @@ The main advantages of using a task-based approach are
     \item Each task has exclusive access to the data it is working on,
         thus improving cache locality and efficiency.
         If each task operates exclusively on a restricted part of the
-        problem data, this can lead to hich cache locality and efficiency.
+        problem data, this can lead to high cache locality and efficiency.
 \end{itemize}
 %
 Despite these advantages, task-based parallelism is only rarely
@@ -526,8 +530,13 @@ used in scientific codes, with the notable exception of
 the PLASMA project \cite{ref:Agullo2009}, which is the driving
 force behind the QUARK library, and the {\tt deal.II} project
 \cite{ref:Bangerth2007} which uses Intel's TBB.
-This is most probably due to the fact that, in order to profit
-from the many advantages of task-based programming,
+The NAMD \cite{ref:Phillips2005} software for Molecular Dynamics simulations
+uses the Charm++ \cite{ref:Kale1993} library, which provides
+decomposition of the computation into {\em chares} which
+react to {\em messages}, in a way similar to tasks.
+
+This scarcity of task-based codes is most probably due to the fact that,
+in order to profit from the many advantages of task-based programming,
 for most non-trivial problems, the underlying algorithms must
 be redesigned from the bottom up in a task-based way.
 
@@ -599,7 +608,7 @@ This list of interactions is then extended by the cell
 {\em pair-interactions}, i.e. a list of all non-empty cell pairs
 sharing either a face, edge, or corner.
 For periodic domains, cell pair-interactions must also be
-specified for cell neighbouring each other across
+specified for cells neighbouring each other across
 periodic boundaries.
 
 In this first coarse decomposition, if a particle $p_j$
@@ -614,7 +623,7 @@ in the same cell, or all interactions between particle pairs
 spanning a pair of cells, respectively, i.e.~if the list of
 self-interactions and pair-interactions are traversed,
 computing all the interactions within each cell and between
-each cell pair, respectively, the all the required particle
+each cell pair, respectively, all the required particle
 interactions will have been computed.
 
 In the best case, i.e.~if each cell contains
@@ -628,7 +637,7 @@ is less than the cell edge length, this ratio only
 gets worse.
 It therefore makes sense to refine the cell decomposition
 recursively, bisecting each cell along
-all spatial dimension whenever (a) the cell contains more than
+all spatial dimensions whenever (a) the cell contains more than
 some minimal number of particles, and (b) the smoothing
 length of a reasonable fraction of the particles within
 the cell is less than half the cell edge length.
@@ -706,7 +715,7 @@ The algorithm, in C-like pseudo code, can be written as follows:
     \begin{lstlisting}
 for (i = 0; i < count - 1; i++) {
   for (j = i + 1; j < count; j++) {
-    rij = || parts[i] - parts[j] ||.
+    rij = dist(parts[i], parts[j]);
     if (rij < h[i] || rij < h[j]) {
       compute interaction.
     }
@@ -726,7 +735,7 @@ can be computed similarly, e.g.:
     \begin{lstlisting}
 for (i = 0; i < count_i; i++) {
   for (j = 0; j < count_j; j++) {
-    rij = || parts_i[i] - parts_j[j] ||.
+    rij = dist(parts_i[i], parts_j[j]);
     if (rij < h_i[i] || rij < h_j[j]) {
       compute interaction.
     }
@@ -750,7 +759,7 @@ The sorted cell interactions described therein will be used in order to
 avoid this problem, yet with some minor modifications, as
 the original algorithm is designed for systems in which the
 smoothing lengths of all particles are equal:
-The particles in both cells are first sorted along the vector joining
+the particles in both cells are first sorted along the vector joining
 the centers of the two cells, then the
 parts $p_i$ on the left are interacted with the sorted parts $p_j$
 on the right which are within $h_i$ {\em along the cell pair axis}.
@@ -770,7 +779,7 @@ for (i = 0; i < count_i; i++) {
   for (jj = 0; jj < count_j; jj++) {
     j = ind_j[jj];
     if (r_i[i] + h_i[i] < r_j[j]) break;
-    rij = || parts_i[i] - parts_j[j] ||.
+    rij = dist(parts_i[i], parts_j[j]);
     if (rij < h_i[i]) {
       compute interaction.
     }
@@ -780,7 +789,7 @@ for (j = 0; j < count_j; j++) {
   for (ii = count_i - 1; ii >= 0; ii--) {
     i = ind_i[i];
     if (r_i[i] < r_j[j] - h_j[j]) break;
-    rij = || parts_i[i] - parts_j[j] ||.
+    rij = dist(parts_i[i], parts_j[j]);
     if (rij < h_j[j] && rij > h_i[i]) {
       compute interaction.
     }
@@ -824,6 +833,17 @@ by shifting and merging the indices of its eight sub-cells
 (see \fig{HierarchySorting}).
 For cells with sub-cells, this reduces the \oh{n\log{n}} cost of sorting
 to \oh{n} for merging. 
+
+Note that many codes for Molecular Dynamics and fixed smoothing length
+SPH simulations compute the particle interactions in two distinct phases:
+first the neighbours of each particle are identified in stored in a
+Verlet list (or neighbor lists) \cite{ref:Verlet1967},
+and in a second phase the Verlet list
+is traversed and the actual interactions are computed.
+The sorted interactions described herein, however, have been shown
+\cite{ref:Fomin2011} to be more cache-efficient than using Verlet
+lists, and storing the list of particle neighbors would result in
+a large memory burden, which is why the latter are not used here.
 
 
 \begin{figure}
@@ -959,7 +979,7 @@ cache re-use \cite{ref:Fomin2011}.
     
     \caption{Task dependencies and conflicts:
         Arrows indicate the dependencies
-        between different task types, i.e.~and arrow from task A to task
+        between different task types, i.e.~an arrow from task A to task
         B indicates that A depends on B.
         Dashed lines between tasks indicate conflicts, i.e.~the two tasks
         can not be executed concurrently.
@@ -1072,7 +1092,7 @@ for tasks free of conflicts.
 Although the first task inspected will have the largest weight
 in the queue, the traversal is not in strictly decreasing weight
 order.
-This sub-optimal traversal was chosen as a efficiency trade-off,
+This sub-optimal traversal was chosen as an efficiency trade-off,
 since the cost of inserting or removing an element in a binary heap is in
 \oh{\log n}, whereas maintaining a strict ordering requires
 at least \oh{n} for insertion, e.g.~using linked lists.
@@ -1305,7 +1325,7 @@ described in the introduction.
 However, as opposed to purely distributed-memory parallel based
 codes, the problem is somewhat mitigated by the fact that
 the hybrid approach uses one MPI node per {\em physical node},
-as opposed to one MPI node per {\em core}, and that the commuication
+as opposed to one MPI node per {\em core}, and that the communication
 latencies can be overlapped with computations over local cells.
 With the increasing number of cores per cluster node,
 this significantly reduces the ratio of communication per
@@ -1354,7 +1374,7 @@ computation.
 \section{Validation}
 
 This section describes how the algorithms shown in the previous section
-are implemented and tested against exiting codes on specific problems.
+are implemented and tested against existing codes on specific problems.
 
 \subsection{Implementation details}
 
@@ -1365,7 +1385,7 @@ of SWIFT (\underline{S}PH \underline{W}ith
 an Open-Source platform for hybrid shared/distributed-memory
 SPH simulations\footnote{See http://swiftsim.sourceforge.net/}.
 The code is being developed in collaboration with the Institute
-of Computational Cosmology (ICC) at Durham University.
+of Computational Cosmology (ICC) at Durham University
 
 SWIFT is implemented in C, and can be compiled with the
 {\tt gcc} compiler.
@@ -1376,7 +1396,7 @@ Gadget-2, which does not use explicit vectorization.
 
 The underlying multithreading for the task-based parallelism is
 implemented using standard {\tt pthread}s \cite{ref:pthreads}.
-Each thread is assigned it's own task queue.
+Each thread is assigned its own task queue.
 The threads executing the tasks are initialized once at the
 start of the simulation
 and synchronize via a barrier between time steps.
@@ -1450,7 +1470,7 @@ range $[0.5,2]$.
 
 In order to test their accuracy, efficiency, and scaling,
 the algorithms described in the previous section
-were tested in SWIFT using the following four
+were tested in SWIFT using the following three
 simulation setups:
 %
 \begin{itemize}
@@ -1490,20 +1510,25 @@ simulation setups:
         providing a test-case for neighbour finding and parallel
         scaling in a real-world scenario.
         Although cosmological simulations are often run with
-        billions of particles \cite{ref:Springel2005}, the number of
+        billions of particles \cite{ref:Springel2005b}, the number of
         particles used is sufficient for the study of a number of
-        interesting phenomenon.
+        interesting phenomena.
 \end{itemize}
 %
+The first two simulations, the Sod-shock and Sedov blast,
+are idealized problems used mainly to show
+the correctness of the code, whereas the Cosmological box represents
+a real-world use case.
+
 In all simulations, the constants $N_{ngb}=48$, $\gamma=5/3$,
 $C_{CFL}=1/4$, and $\alpha = 0.8$ were used.
 In SWIFT, cells were split if they contained more than 300
 particles and more than 87.5\% of the particles had a smoothing
 length less than half the cell edge length.
-Fr cells or cell pairs containing less than 6000 particles, the
+For cells or cell pairs containing less than 6000 particles, the
 tasks hierarchically below them were grouped into a single task.
 
-The Sod-shock simulation was run both with and without the
+The Sod-shock and Sedov blast simulations were run both with and without the
 sorted particle interaction in order to provide a rough comparison
 to traditional neighbour-finding approaches in SPH simulations with
 locally constant smoothing lengths.
@@ -1516,10 +1541,15 @@ in each step.
 
 The simulation results compared with Gadget-2 \cite{ref:Springel2005}
 in terms of  speed and parallel scaling.
+Although the Gadget-2 software was originaly designed for gravity only
+simulations, is arguably the most efficient and widely-used software
+for SPH simulations in Astrophysics.
 Gadget-2 was compiled with the Intel C Compiler version 2013.0.028
 using the options 
 \begin{quote}{\tt -DUSE\_IRECV -O3 -ip -fp-model fast -ftz
 -no-prec-div -mcmodel=medium}.\end{quote}
+and was run with the gravitational interactions switched off.
+
 SWIFT v.~1.0.0 was compiled with the GNU C Compiler version 4.8
 using the options
 \begin{quote}{\tt -O3 -ffast-math -fstrict-aliasing
@@ -1546,10 +1576,8 @@ via Mellanox FDR10 Infiniband in a 2:1 blocking configuration.
     % \centerline{\epsfig{file=SodShock_scaling.pdf,width=0.9\textwidth}}
     \caption{Results for the Sod-shock simulation test case at $t=0.12$.
         The density,
-        pressure, and velocity profiles are in good agreement with the
-        analytic solution (top).
-        The simulation scales well up to 16 cores of the same shared-memory
-        machine, achieving 86\% parallel efficiency (bottom).}
+        pressure, and velocity profiles (solid lines) are in good agreement with the
+        analytic solution (dotted lines).}
     \label{fig:SodShock}
 \end{figure}
 
@@ -1589,7 +1617,7 @@ via Mellanox FDR10 Infiniband in a 2:1 blocking configuration.
 
 \fig{SodShock} shows the averaged density, pressure, and velocity profiles
 along the $x$-axis of the Sod-shock simulation at time $t=0.12$.
-The computed results are compareable to those produced with Gadget-2 for
+The computed results are comparable to those produced with Gadget-2 for
 the same setup and in good agreement with the analytical solution
 \cite{ref:Sod1978}.
 
@@ -1610,9 +1638,9 @@ on relatively moderately-sized problems.
 
 The scaling plots are also interesting for what they don't show, namely
 any apparent NUMA-related effects, e.g. performance jumps due to
-uneven numbers of threads per processor.
+odd numbers of threads per processor.
 Such effects are usually
-considered to be a problem for shared-memory parallel codes in
+considered to be a serious problem for shared-memory parallel codes in
 which several cores share the same memory bus and parts of
 the cache hierarchy, thus limiting the effective memory bandwidth
 and higher-level cache capacities \cite{ref:Thacker2006}.
@@ -1698,7 +1726,7 @@ a combination of several factors:
         approach computes all interactions between two sets of contiguous
         particles, allowing them to be kept in the lowest level caches
         for each task.
-        Furthermore since each task has exclusive access to it's particles'
+        Furthermore since each task has exclusive access to its particles'
         data, there is little performance lost to cache coherency maintenance
         across cores.
         This can be seen in the strong scaling up to 16 cores of the same
@@ -1726,7 +1754,7 @@ a combination of several factors:
     \item {\em Asynchronous distributed-memory communication}: The task-based
         computation lends itself especially well for the implementation
         of asynchronous communication: Each node sends data as soon
-        as it is ready, and activates task which depend on communication
+        as it is ready, and activates tasks which depend on communication
         only once the data has been received.
         This avoids any explicit synchronization between nodes to coordinate
         communication, and, by spreading the communication throughout the
@@ -1752,8 +1780,10 @@ architecture for the past decade, i.e.~shared-memory parallel multi-core
 systems, shared hierarchical memory caches, and limited communication
 bandwidth/latency.
 These trends still hold true for more modern architectures such as
-GPUs and the recent Intel MIC, on which task-based parallelism
-is also possible \cite{ref:Chalk2014}.
+the recent Intel MIC and GPUs, with Intel promoting the use of Cilk 
+on the former \cite{ref:Reinders2012},
+and our own work on bringing task-based parallelism to the latter
+\cite{ref:Chalk2014}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
