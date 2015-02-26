@@ -400,7 +400,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    gparts_sort( gparts ,ind , nr_parts , 0 , s->nr_cells-1 );
+    gparts_sort( gparts ,ind , nr_gparts , 0 , s->nr_cells-1 );
     // message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Re-link the parts. */
