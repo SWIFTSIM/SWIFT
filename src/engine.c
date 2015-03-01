@@ -974,7 +974,9 @@ void engine_maketasks ( struct engine *e ) {
     /* Split the tasks. */
     scheduler_splittasks( sched );
     
-    /* Allocate the list of cell-task links. */
+    /* Allocate the list of cell-task links. The maximum number of links
+       is the number of cells (s->tot_cells) times the number of neighbours (27)
+       times the number of interaction types (2, density and force). */
     if ( e->links != NULL )
         free( e->links );
     if ( ( e->links = malloc( sizeof(struct link) * s->tot_cells * 27 * 2 ) ) == NULL )
@@ -1077,7 +1079,7 @@ void engine_maketasks ( struct engine *e ) {
         /* Skip? */
         if ( t->skip )
             continue;
-        
+            
         /* Self-interaction? */
         if ( t->type == task_type_self && t->subtype == task_subtype_density ) {
             scheduler_addunlock( sched , t , t->ci->super->ghost );

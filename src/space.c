@@ -192,6 +192,10 @@ void space_regrid ( struct space *s , double cell_max ) {
     for ( k = 0 ; k < 3 ; k++ )
         cdim[k] = floor( s->dim[k] / fmax( h_max*kernel_gamma*space_stretch , cell_max ) );
         
+    /* Check if we have enough cells for periodicity. */
+    if ( s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3) )
+        error( "Must have at least 3 cells in each spatial dimension when periodicity is switched on." );
+        
     /* In MPI-Land, we're not allowed to change the top-level cell size. */
     #ifdef WITH_MPI
         if ( cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] )
