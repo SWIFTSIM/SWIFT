@@ -24,7 +24,9 @@
 #define scheduler_dosub                      1
 #define scheduler_maxsteal                   10
 #define scheduler_maxtries                   2
-#define scheduler_doforcesplit               0
+#define scheduler_doforcesplit               0 /* Beware: switching this on can/will
+                                                  break engine_addlink as it assumes
+                                                  a maximum number of tasks per cell. */
 
 /* Flags . */
 #define scheduler_flag_none                  0
