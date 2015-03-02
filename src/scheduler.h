@@ -24,7 +24,7 @@
 #define scheduler_dosub                      1
 #define scheduler_maxsteal                   10
 #define scheduler_maxtries                   2
-#define scheduler_doforcesplit               1
+#define scheduler_doforcesplit               0
 
 /* Flags . */
 #define scheduler_flag_none                  0
