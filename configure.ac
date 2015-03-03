@@ -16,10 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # init the project
-AC_INIT(src/space.c)
-VERSION="0.1.0"
-AC_SUBST(VERSION)
-AM_INIT_AUTOMAKE(SWIFT,VERSION)
+AC_INIT([SWIFT],[0.1.0])
+AC_CONFIG_SRCDIR([src/space.c])
+AM_INIT_AUTOMAKE
+
 AC_GNU_SOURCE
 AC_PROG_LIBTOOL
 
@@ -128,13 +128,11 @@ AC_TRY_LINK([#ifdef HAVE_INTRINSICS_H
 #endif], [_rtc()], [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])], [rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
-
 # make the documentation
-DX_INIT_DOXYGEN(libchebfun,doc/Doxyfile,doc/)
+DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 
-# generate the Makefiles
-AC_OUTPUT(Makefile src/Makefile examples/Makefile doc/Makefile)
+# .in files.
+AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile])
 
-# do the same magic in other directories
-# AC_CONFIG_SUBDIRS(src examples)
-
+# generate output.
+AC_OUTPUT
