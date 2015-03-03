@@ -1,8 +1,28 @@
-# http://www.gnu.org/software/automake
+*~
 
+Makefile
 Makefile.in
+COPYING
+INSTALL
+config.guess
+config.h
+config.status
+config.h.in
+config.sub
+ltmain.sh
+libtool
 
-# http://www.gnu.org/software/autoconf
+doc/doxyfile.stamp
+doc/html/
+doc/latex/
+doc/man/
+examples/test
+examples/test_fixdt
+examples/test_fixdt_mpi
+examples/test_mindt
+examples/test_mindt_mpi
+examples/test_mpi
+examples/test_single
 
 /autom4te.cache
 /aclocal.m4
@@ -12,7 +32,9 @@ Makefile.in
 /install-sh
 /missing
 /stamp-h1
+
 # Object files
+.deps/
 *.o
 *.ko
 *.obj
@@ -147,3 +169,4 @@ sympy-plots-for-*.tex/
 
 # xindy
 *.xdy
+
