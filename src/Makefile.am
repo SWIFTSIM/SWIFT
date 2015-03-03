@@ -2,17 +2,17 @@
 # This file is part of SWIFT.
 # Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
 #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -46,7 +46,12 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c multipole.c
-    
+
+# Include files for distribution, not installation.
+noinst_HEADERS = atomic.h cycle.h error.h inline.h kernel.h vector.h \
+	runner_iact_legacy.h runner_iact_grav.h runner_doiact.h \
+	runner_doiact_grav.h units.h
+
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)
 
