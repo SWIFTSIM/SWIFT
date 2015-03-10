@@ -1,24 +1,32 @@
 # ===========================================================================
-#        http://autoconf-archive.cryp.to/ax_check_compiler_flags.html
+#   http://www.gnu.org/software/autoconf-archive/ax_gcc_x86_avx_xgetbv.html
 # ===========================================================================
 #
 # SYNOPSIS
 #
-#   AX_CHECK_COMPILER_FLAGS(FLAGS, [ACTION-SUCCESS], [ACTION-FAILURE])
+#   AX_GCC_X86_AVX_XGETBV
 #
 # DESCRIPTION
 #
-#   Check whether the given compiler FLAGS work with the current language's
-#   compiler, or whether they give an error. (Warnings, however, are
-#   ignored.)
+#   On later x86 processors with AVX SIMD support, with gcc or a compiler
+#   that has a compatible syntax for inline assembly instructions, run a
+#   small program that executes the xgetbv instruction with input OP. This
+#   can be used to detect if the OS supports AVX instruction usage.
 #
-#   ACTION-SUCCESS/ACTION-FAILURE are shell commands to execute on
-#   success/failure.
+#   On output, the values of the eax and edx registers are stored as
+#   hexadecimal strings as "eax:edx" in the cache variable
+#   ax_cv_gcc_x86_avx_xgetbv.
+#
+#   If the xgetbv instruction fails (because you are running a
+#   cross-compiler, or because you are not using gcc, or because you are on
+#   a processor that doesn't have this instruction),
+#   ax_cv_gcc_x86_avx_xgetbv_OP is set to the string "unknown".
+#
+#   This macro mainly exists to be used in AX_EXT.
 #
 # LICENSE
 #
-#   Copyright (c) 2009 Steven G. Johnson <stevenj@alum.mit.edu>
-#   Copyright (c) 2009 Matteo Frigo
+#   Copyright (c) 2013 Michael Petch <mpetch@capp-sysware.com>
 #
 #   This program is free software: you can redistribute it and/or modify it
 #   under the terms of the GNU General Public License as published by the
@@ -46,29 +54,26 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-AC_DEFUN([AX_CHECK_COMPILER_FLAGS],
-[AC_PREREQ(2.59) dnl for _AC_LANG_PREFIX
-AC_MSG_CHECKING([whether _AC_LANG compiler accepts $1])
-dnl Some hackery here since AC_CACHE_VAL can't handle a non-literal varname:
-AS_LITERAL_IF([$1],
-  [AC_CACHE_VAL(AS_TR_SH(ax_cv_[]_AC_LANG_ABBREV[]_flags_[$1]), [
-      ax_save_FLAGS=$[]_AC_LANG_PREFIX[]FLAGS
-      _AC_LANG_PREFIX[]FLAGS="$1"
-      AC_COMPILE_IFELSE([AC_LANG_PROGRAM()],
-        AS_TR_SH(ax_cv_[]_AC_LANG_ABBREV[]_flags_[$1])=yes,
-        AS_TR_SH(ax_cv_[]_AC_LANG_ABBREV[]_flags_[$1])=no)
-      _AC_LANG_PREFIX[]FLAGS=$ax_save_FLAGS])],
-  [ax_save_FLAGS=$[]_AC_LANG_PREFIX[]FLAGS
-   _AC_LANG_PREFIX[]FLAGS="$1"
-   AC_COMPILE_IFELSE([AC_LANG_PROGRAM()],
-     eval AS_TR_SH(ax_cv_[]_AC_LANG_ABBREV[]_flags_[$1])=yes,
-     eval AS_TR_SH(ax_cv_[]_AC_LANG_ABBREV[]_flags_[$1])=no)
-   _AC_LANG_PREFIX[]FLAGS=$ax_save_FLAGS])
-eval ax_check_compiler_flags=$AS_TR_SH(ax_cv_[]_AC_LANG_ABBREV[]_flags_[$1])
-AC_MSG_RESULT($ax_check_compiler_flags)
-if test "x$ax_check_compiler_flags" = xyes; then
-	m4_default([$2], :)
-else
-	m4_default([$3], :)
-fi
-])dnl AX_CHECK_COMPILER_FLAGS
+#serial 1
+
+AC_DEFUN([AX_GCC_X86_AVX_XGETBV],
+[AC_REQUIRE([AC_PROG_CC])
+AC_LANG_PUSH([C])
+AC_CACHE_CHECK(for x86-AVX xgetbv $1 output, ax_cv_gcc_x86_avx_xgetbv_$1,
+ [AC_RUN_IFELSE([AC_LANG_PROGRAM([#include <stdio.h>], [
+     int op = $1, eax, edx;
+     FILE *f;
+      /* Opcodes for xgetbv */
+      __asm__(".byte 0x0f, 0x01, 0xd0"
+        : "=a" (eax), "=d" (edx)
+        : "c" (op));
+     f = fopen("conftest_xgetbv", "w"); if (!f) return 1;
+     fprintf(f, "%x:%x\n", eax, edx);
+     fclose(f);
+     return 0;
+])],
+     [ax_cv_gcc_x86_avx_xgetbv_$1=`cat conftest_xgetbv`; rm -f conftest_xgetbv],
+     [ax_cv_gcc_x86_avx_xgetbv_$1=unknown; rm -f conftest_xgetbv],
+     [ax_cv_gcc_x86_avx_xgetbv_$1=unknown])])
+AC_LANG_POP([C])
+])
