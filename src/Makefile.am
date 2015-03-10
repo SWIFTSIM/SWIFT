@@ -16,16 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Automake stuff
-AUTOMAKE_OPTIONS=gnu
-
 # Add the debug flag to the whole thing
-AM_CFLAGS = -g -O3 -std=gnu99 -Wall -Werror -ffast-math -fstrict-aliasing \
-    -ftree-vectorize -funroll-loops $(SIMD_FLAGS) $(OPENMP_CFLAGS) \
-    -DTIMER -DCOUNTER -DCPU_TPS=2.30e9 \
-    # -fsanitize=address -fno-omit-frame-pointer
-# AM_CFLAGS = -Wall -Werror $(OPENMP_CFLAGS) \
-#     -DTIMER -DCOUNTER -DCPU_TPS=2.67e9
+AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0 # -fsanitize=address
