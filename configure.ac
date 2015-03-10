@@ -20,8 +20,8 @@ AC_INIT([SWIFT],[0.1.0])
 AC_CONFIG_SRCDIR([src/space.c])
 AM_INIT_AUTOMAKE
 
-AC_GNU_SOURCE
-AC_PROG_LIBTOOL
+AC_USE_SYSTEM_EXTENSIONS
+LT_INIT
 
 # my own macro collection
 AC_CONFIG_MACRO_DIR([m4])
@@ -29,17 +29,16 @@ AC_CONFIG_MACRO_DIR([m4])
 # generate header file
 AM_CONFIG_HEADER(config.h)
 
-# compiler settings
-#CFLAGS="-Wall $(CFLAGS)"
-
 # find and test the compiler
-AM_PROG_CC_C_O
+AC_PROG_CC
 AC_PROG_CC_C99
-AC_LANG_C
+AC_C_INLINE
+
 # AX_CC_MAXOPT
 AX_FUNC_POSIX_MEMALIGN
 AX_GCC_ARCHFLAG([no])
 AX_EXT
+
 
 # autoconf stuff
 AC_PROG_INSTALL
@@ -98,7 +97,7 @@ AC_CHECK_LIB(z,gzopen,[
 AX_FUNC_POSIX_MEMALIGN
 
 # Check for OpenMP
-AX_OPENMP
+AC_OPENMP
 AC_SUBST(OPENMP_CFLAGS)
 if test -z "${OPENMP_CFLAGS}"; then
    echo $OPENMP_CFLAGS
@@ -114,7 +113,6 @@ AC_CHECK_FUNC( pthread_setaffinity_np , AC_DEFINE([HAVE_SETAFFINITY],[true],
     [Defined if pthread_setaffinity_np exists.]) )
     
 # Check for timing functions needed by cycle.h
-AC_C_INLINE
 AC_HEADER_TIME
 AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
 AC_CHECK_TYPE([hrtime_t],[AC_DEFINE(HAVE_HRTIME_T, 1, [Define to 1 if hrtime_t is defined in <sys/time.h>])],,[#if HAVE_SYS_TIME_H
@@ -123,9 +121,9 @@ AC_CHECK_TYPE([hrtime_t],[AC_DEFINE(HAVE_HRTIME_T, 1, [Define to 1 if hrtime_t i
 AC_CHECK_FUNCS([gethrtime read_real_time time_base_to_time clock_gettime mach_absolute_time])
 AC_MSG_CHECKING([for _rtc intrinsic])
 rtc_ok=yes
-AC_TRY_LINK([#ifdef HAVE_INTRINSICS_H
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[#ifdef HAVE_INTRINSICS_H
 #include <intrinsics.h>
-#endif], [_rtc()], [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])], [rtc_ok=no])
+#endif]], [[_rtc()]])],[AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
 # make the documentation
