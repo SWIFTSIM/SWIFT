@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Automake stuff
-AUTOMAKE_OPTIONS = gnu
 ACLOCAL_AMFLAGS = -I m4
 
 # Show the way...
