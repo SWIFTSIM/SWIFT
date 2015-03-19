@@ -10,11 +10,11 @@ do
     # Sod-Shock runs
     if [ ! -e SodShock_mindt_${cpu}.dump ]
     then
-        ./test_mindt -c 1.0 -t $cpu -f SodShock/sodShock.hdf5 -m 0.1 -w 5000 -d 1.0 > SodShock_${cpu}.dump
+        ./test_mindt -c 1.0 -t $cpu -f SodShock/sodShock.hdf5 -m 0.01 -w 5000 -d 1.0 > SodShock_${cpu}.dump
     fi
     if [ ! -e SodShock_fixed_${cpu}.dump ]
     then
-        ./test_fixdt -r 1000 -t $cpu -f SodShock/sodShock.hdf5 -m 0.0075 -w 5000 -d 1e-4 > SodShock_fixed_${cpu}.dump
+        ./test_fixdt -r 1000 -t $cpu -f SodShock/sodShock.hdf5 -m 0.01 -w 5000 -d 1e-4 > SodShock_fixed_${cpu}.dump
     fi
     
     # Sedov blast
