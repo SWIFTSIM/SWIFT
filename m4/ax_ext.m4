@@ -31,6 +31,10 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
+#   SWIFT modifications. Intel compilers accept these flags, but warn about
+#   the order of the flags when more than one is used. Given that reverse
+#   the check order and break on the highest accepted.
+
 #serial 13
 
 AC_DEFUN([AX_EXT],
@@ -156,83 +160,92 @@ AC_DEFUN([AX_EXT],
         fi
       fi
 
-      if test "$ax_cv_have_mmx_ext" = yes; then
-        AX_CHECK_COMPILE_FLAG(-mmmx, ax_cv_support_mmx_ext=yes, [])
-        if test x"$ax_cv_support_mmx_ext" = x"yes"; then
-          SIMD_FLAGS="$SIMD_FLAGS -mmmx"
-          AC_DEFINE(HAVE_MMX,,[Support mmx instructions])
-        else
-          AC_MSG_WARN([Your processor supports mmx instructions but not your compiler, can you try another compiler?])
-        fi
-      fi
-
-      if test "$ax_cv_have_sse_ext" = yes; then
-        AX_CHECK_COMPILE_FLAG(-msse, ax_cv_support_sse_ext=yes, [])
-        if test x"$ax_cv_support_sse_ext" = x"yes"; then
-          SIMD_FLAGS="$SIMD_FLAGS -msse"
-          AC_DEFINE(HAVE_SSE,,[Support SSE (Streaming SIMD Extensions) instructions])
-        else
-          AC_MSG_WARN([Your processor supports sse instructions but not your compiler, can you try another compiler?])
-        fi
-      fi
-
-      if test "$ax_cv_have_sse2_ext" = yes; then
-        AX_CHECK_COMPILE_FLAG(-msse2, ax_cv_support_sse2_ext=yes, [])
-        if test x"$ax_cv_support_sse2_ext" = x"yes"; then
-          SIMD_FLAGS="$SIMD_FLAGS -msse2"
-          AC_DEFINE(HAVE_SSE2,,[Support SSE2 (Streaming SIMD Extensions 2) instructions])
-        else
-          AC_MSG_WARN([Your processor supports sse2 instructions but not your compiler, can you try another compiler?])
-        fi
-      fi
-
-      if test "$ax_cv_have_sse3_ext" = yes; then
-        AX_CHECK_COMPILE_FLAG(-msse3, ax_cv_support_sse3_ext=yes, [])
-        if test x"$ax_cv_support_sse3_ext" = x"yes"; then
-          SIMD_FLAGS="$SIMD_FLAGS -msse3"
-          AC_DEFINE(HAVE_SSE3,,[Support SSE3 (Streaming SIMD Extensions 3) instructions])
-        else
-          AC_MSG_WARN([Your processor supports sse3 instructions but not your compiler, can you try another compiler?])
-        fi
-      fi
-
-      if test "$ax_cv_have_ssse3_ext" = yes; then
-        AX_CHECK_COMPILE_FLAG(-mssse3, ax_cv_support_ssse3_ext=yes, [])
-        if test x"$ax_cv_support_ssse3_ext" = x"yes"; then
-          SIMD_FLAGS="$SIMD_FLAGS -mssse3"
-          AC_DEFINE(HAVE_SSSE3,,[Support SSSE3 (Supplemental Streaming SIMD Extensions 3) instructions])
-        else
-          AC_MSG_WARN([Your processor supports ssse3 instructions but not your compiler, can you try another compiler?])
-        fi
-      fi
-
-      if test "$ax_cv_have_sse41_ext" = yes; then
-        AX_CHECK_COMPILE_FLAG(-msse4.1, ax_cv_support_sse41_ext=yes, [])
-        if test x"$ax_cv_support_sse41_ext" = x"yes"; then
-          SIMD_FLAGS="$SIMD_FLAGS -msse4.1"
-          AC_DEFINE(HAVE_SSE4_1,,[Support SSSE4.1 (Streaming SIMD Extensions 4.1) instructions])
-        else
-          AC_MSG_WARN([Your processor supports sse4.1 instructions but not your compiler, can you try another compiler?])
-        fi
-      fi
-
-      if test "$ax_cv_have_sse42_ext" = yes; then
-        AX_CHECK_COMPILE_FLAG(-msse4.2, ax_cv_support_sse42_ext=yes, [])
-        if test x"$ax_cv_support_sse42_ext" = x"yes"; then
-          SIMD_FLAGS="$SIMD_FLAGS -msse4.2"
-          AC_DEFINE(HAVE_SSE4_2,,[Support SSSE4.2 (Streaming SIMD Extensions 4.2) instructions])
-        else
-          AC_MSG_WARN([Your processor supports sse4.2 instructions but not your compiler, can you try another compiler?])
-        fi
-      fi
+      checkmore=yes
 
       if test "$ax_cv_have_avx_ext" = yes; then
         AX_CHECK_COMPILE_FLAG(-mavx, ax_cv_support_avx_ext=yes, [])
         if test x"$ax_cv_support_avx_ext" = x"yes"; then
           SIMD_FLAGS="$SIMD_FLAGS -mavx"
           AC_DEFINE(HAVE_AVX,,[Support AVX (Advanced Vector Extensions) instructions])
+          checkmore=no
         else
           AC_MSG_WARN([Your processor supports avx instructions but not your compiler, can you try another compiler?])
+        fi
+      fi
+
+      if test $checkmore = yes -a "$ax_cv_have_sse42_ext" = yes; then
+        AX_CHECK_COMPILE_FLAG(-msse4.2, ax_cv_support_sse42_ext=yes, [])
+        if test x"$ax_cv_support_sse42_ext" = x"yes"; then
+          SIMD_FLAGS="$SIMD_FLAGS -msse4.2"
+          AC_DEFINE(HAVE_SSE4_2,,[Support SSSE4.2 (Streaming SIMD Extensions 4.2) instructions])
+          checkmore=no
+        else
+          AC_MSG_WARN([Your processor supports sse4.2 instructions but not your compiler, can you try another compiler?])
+        fi
+      fi
+
+      if test $checkmore = yes -a "$ax_cv_have_sse41_ext" = yes; then
+        AX_CHECK_COMPILE_FLAG(-msse4.1, ax_cv_support_sse41_ext=yes, [])
+        if test x"$ax_cv_support_sse41_ext" = x"yes"; then
+          SIMD_FLAGS="$SIMD_FLAGS -msse4.1"
+          AC_DEFINE(HAVE_SSE4_1,,[Support SSSE4.1 (Streaming SIMD Extensions 4.1) instructions])
+          checkmore=no
+        else
+          AC_MSG_WARN([Your processor supports sse4.1 instructions but not your compiler, can you try another compiler?])
+        fi
+      fi
+
+      if test $checkmore = yes -a "$ax_cv_have_ssse3_ext" = yes; then
+        AX_CHECK_COMPILE_FLAG(-mssse3, ax_cv_support_ssse3_ext=yes, [])
+        if test x"$ax_cv_support_ssse3_ext" = x"yes"; then
+          SIMD_FLAGS="$SIMD_FLAGS -mssse3"
+          AC_DEFINE(HAVE_SSSE3,,[Support SSSE3 (Supplemental Streaming SIMD Extensions 3) instructions])
+          checkmore=no
+        else
+          AC_MSG_WARN([Your processor supports ssse3 instructions but not your compiler, can you try another compiler?])
+        fi
+      fi
+
+      if test $checkmore = yes -a "$ax_cv_have_sse3_ext" = yes; then
+        AX_CHECK_COMPILE_FLAG(-msse3, ax_cv_support_sse3_ext=yes, [])
+        if test x"$ax_cv_support_sse3_ext" = x"yes"; then
+          SIMD_FLAGS="$SIMD_FLAGS -msse3"
+          AC_DEFINE(HAVE_SSE3,,[Support SSE3 (Streaming SIMD Extensions 3) instructions])
+          checkmore=no
+        else
+          AC_MSG_WARN([Your processor supports sse3 instructions but not your compiler, can you try another compiler?])
+        fi
+      fi
+
+      if test $checkmore = yes -a "$ax_cv_have_sse2_ext" = yes; then
+        AX_CHECK_COMPILE_FLAG(-msse2, ax_cv_support_sse2_ext=yes, [])
+        if test x"$ax_cv_support_sse2_ext" = x"yes"; then
+          SIMD_FLAGS="$SIMD_FLAGS -msse2"
+          AC_DEFINE(HAVE_SSE2,,[Support SSE2 (Streaming SIMD Extensions 2) instructions])
+          checkmore=no
+        else
+          AC_MSG_WARN([Your processor supports sse2 instructions but not your compiler, can you try another compiler?])
+        fi
+      fi
+
+      if test $checkmore = yes -a "$ax_cv_have_sse_ext" = yes; then
+        AX_CHECK_COMPILE_FLAG(-msse, ax_cv_support_sse_ext=yes, [])
+        if test x"$ax_cv_support_sse_ext" = x"yes"; then
+          SIMD_FLAGS="$SIMD_FLAGS -msse"
+          AC_DEFINE(HAVE_SSE,,[Support SSE (Streaming SIMD Extensions) instructions])
+          checkmore=no
+        else
+          AC_MSG_WARN([Your processor supports sse instructions but not your compiler, can you try another compiler?])
+        fi
+      fi
+
+      if test $checkmore = yes -a "$ax_cv_have_mmx_ext" = yes; then
+        AX_CHECK_COMPILE_FLAG(-mmmx, ax_cv_support_mmx_ext=yes, [])
+        if test x"$ax_cv_support_mmx_ext" = x"yes"; then
+          SIMD_FLAGS="$SIMD_FLAGS -mmmx"
+          AC_DEFINE(HAVE_MMX,,[Support mmx instructions])
+        else
+          AC_MSG_WARN([Your processor supports mmx instructions but not your compiler, can you try another compiler?])
         fi
       fi
 
