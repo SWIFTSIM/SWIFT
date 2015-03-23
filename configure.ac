@@ -18,6 +18,7 @@
 # Init the project.
 AC_INIT([SWIFT],[0.1.0])
 AC_CONFIG_SRCDIR([src/space.c])
+AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
 
 # Add local macro collection.
@@ -46,13 +47,20 @@ AX_COMPILER_VERSION
 
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
 # as this changes the compiler.
+# We should consider using AX_PROG_CC_MPI to replace AC_PROG_CC when compiling
+# whole applications. There are issues with mixing compilers when using this
+# macro. See
+# http://lists.gnu.org/archive/html/autoconf-archive-maintainers/2011-05/msg00004.html.
 AC_ARG_ENABLE([mpi],
-    [AS_HELP_STRING([--enable-mpi],[compile with functionality for distributed-memory parallelim using MPI @<:@default=yes@:>@])],
-    [if test "x$enable_mpi" != "xno"
-     then
-        AX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])
-     fi],
-    [AX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])])
+    [AS_HELP_STRING([--enable-mpi],
+      [Compile with functionality for distributed-memory parallelim using MPI @<:@default=yes@:>@]
+    )],
+    [enable_mpi="$enableval"],
+    [enable_mpi="yes"]
+)
+if test "$enable_mpi" = "yes"; then
+    AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+fi
 AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
 
 # Need C99 and inline support.
@@ -64,9 +72,8 @@ AX_FUNC_POSIX_MEMALIGN
 
 # Only optimize if allowed, otherwise assume user will set CFLAGS as
 # appropriate.
-AC_ARG_ENABLE(optimization,
-  [AC_HELP_STRING(
-    [--enable-optimization],
+AC_ARG_ENABLE([optimization],
+  [AS_HELP_STRING([--enable-optimization],
     [Enable compile time optimization flags for host @<:@default=yes@:>@]
   )],
   [enable_opt="$enableval"],
@@ -94,8 +101,7 @@ fi
 # Add address sanitizer options to flags, if requested. Only useful for GCC
 # version 4.8 and later.
 AC_ARG_ENABLE([sanitizer],
-  [AS_HELP_STRING(
-    [--enable-sanitizer],
+  [AS_HELP_STRING([--enable-sanitizer],
     [Enable memory error detection using address sanitizer @<:@default=no@:>@]
   )],
   [enable_san="$enableval"],
@@ -130,34 +136,40 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 # Check for OpenMP.
 AC_OPENMP
 AC_SUBST(OPENMP_CFLAGS)
+enable_openmp="no"
 if test -z "$OPENMP_CFLAGS"; then
    echo $OPENMP_CFLAGS
    AC_MSG_ERROR(Compiler does not support OpenMP, 1)
 else
    CFLAGS="$CFLAGS $OPENMP_CFLAGS"
+   enable_openmp="yes"
 fi
 
-# Check for metis.
+# Check for metis. Note AX_LIB_METIS exists, but cannot be configured
+# to be default off (i.e. given no option it tries to locate METIS), so we
+# don't use that.
 AC_ARG_WITH([metis],
-    [AS_HELP_STRING([--with-metis=PATH],[prefix where the metis library is installed @<:@default=yes@:>@])],
-    [if test "x$with_metis" != "xno"
-     then
-        if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"
-        then
-            METIS_LDFLAGS="-L$with_metis -lmetis"
-        else
-            METIS_LDFLAGS="-lmetis"
-        fi
-        AC_CHECK_LIB([metis],[METIS_PartGraphKway],,AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LDFLAGS)
-        AC_DEFINE([HAVE_METIS],[true],[The metis library appears to be present.])
-	AC_DEFINE(WITH_METIS, 1, [METIS library installed])
-     fi])
-AC_SUBST(METIS_LDFLAGS)
+    [AS_HELP_STRING([--with-metis=PATH],
+       [prefix where the metis library is installed @<:@default=yes@:>@]
+    )],
+    [],
+    [with_metis="no"]
+)
+if test "x$with_metis" != "xno"; then
+   if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
+      METIS_LDFLAGS="-L$with_metis -lmetis"
+   else
+      METIS_LDFLAGS="-lmetis"
+   fi
+   AC_CHECK_LIB([metis],[METIS_PartGraphKway],
+      AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
+      AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LDFLAGS)
+fi
+AC_SUBST([METIS_LDFLAGS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LDFLAGS"])
 
-
 # Check for zlib.
-AC_CHECK_LIB(z,gzopen,[
+AC_CHECK_LIB([z],[gzopen],[
     AC_DEFINE([HAVE_LIBZ],[1],[Set to 1 if zlib is installed.])
     LDFLAGS="$LDFLAGS -lz"
     ],[])
@@ -194,6 +206,17 @@ DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile])
+
+# Report general configuration.
+AC_MSG_RESULT([
+   Compiler: $CC
+     vendor: $ax_cv_c_compiler_vendor
+    version: $ax_cv_c_compiler_version
+      flags: $CFLAGS
+   MPI enabled: $enable_mpi
+   HDF5 enabled: $with_hdf5
+   OpenMP enabled: $enable_openmp
+])
 
 # Generate output.
 AC_OUTPUT

@@ -22,7 +22,7 @@ MYFLAGS = -DTIMER
 # Add the source directory and debug to CFLAGS
 AM_CFLAGS = -g -std=gnu99 -Wall -Werror -I../src $(OPENMP_CFLAGS) -DCPU_TPS=2.67e9
 
-AM_LDFLAGS =
+AM_LDFLAGS = @METIS_LDFLAGS@
 
 # Set-up the library
 bin_PROGRAMS = test test_fixdt test_mindt test_single
