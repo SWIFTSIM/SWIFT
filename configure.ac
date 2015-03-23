@@ -40,6 +40,10 @@ AC_USE_SYSTEM_EXTENSIONS
 # Add libtool support.
 LT_INIT
 
+# Check for compiler version and vendor.
+AX_COMPILER_VENDOR
+AX_COMPILER_VERSION
+
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
 # as this changes the compiler.
 AC_ARG_ENABLE([mpi],
@@ -58,8 +62,8 @@ AC_C_INLINE
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
-#  Only optimize if allowed, otherwise assume user will set CFLAGS as
-#  appropriate. 
+# Only optimize if allowed, otherwise assume user will set CFLAGS as
+# appropriate.
 AC_ARG_ENABLE(optimization,
   [AC_HELP_STRING(
     [--enable-optimization],
@@ -69,7 +73,7 @@ AC_ARG_ENABLE(optimization,
   [enable_opt="yes"]
 )
 
-if test "${enable_opt}" = "yes" ; then
+if test "$enable_opt" = "yes" ; then
 
    # Add code optimisation flags and tuning to host. This is a funny macro
    # that does not like CFLAGS being already set. Work around that as we have
@@ -84,6 +88,25 @@ if test "${enable_opt}" = "yes" ; then
    AX_EXT
    if test "$SIMD_FLAGS" != ""; then
        CFLAGS="$CFLAGS $SIMD_FLAGS"
+   fi
+fi
+
+# Add address sanitizer options to flags, if requested. Only useful for GCC
+# version 4.8 and later.
+AC_ARG_ENABLE([sanitizer],
+  [AS_HELP_STRING(
+    [--enable-sanitizer],
+    [Enable memory error detection using address sanitizer @<:@default=no@:>@]
+  )],
+  [enable_san="$enableval"],
+  [enable_san="no"]
+)
+
+if test "$enable_san" = "yes" -a "$GCC" = yes; then
+   AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.8.0],
+                       [enable_san="yes"], [enable_san="no"] )
+   if test "$enable_san" = "yes"; then
+       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
    fi
 fi
 
@@ -107,7 +130,7 @@ ACX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 # Check for OpenMP.
 AC_OPENMP
 AC_SUBST(OPENMP_CFLAGS)
-if test -z "${OPENMP_CFLAGS}"; then
+if test -z "$OPENMP_CFLAGS"; then
    echo $OPENMP_CFLAGS
    AC_MSG_ERROR(Compiler does not support OpenMP, 1)
 else
@@ -161,7 +184,7 @@ rtc_ok=yes
 AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [[#ifdef HAVE_INTRINSICS_H
 #include <intrinsics.h>
-#endif]], 
+#endif]],
 [[_rtc()]])],
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)

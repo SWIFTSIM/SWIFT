@@ -52,7 +52,11 @@ You could also add some additional flags:
 
     ./configure --enable-debug --disable-optimization CFLAGS="-O2"
 
-for instance.
+for instance. GCC address sanitizer flags can be included using the 
+
+    ./configure --enable-sanitizer
+
+option. Note this requires a GCC compiler version of at least 4.8.
 
 Dependencies: needs to be filled in...
 
