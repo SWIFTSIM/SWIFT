@@ -50,9 +50,9 @@ AC_ARG_ENABLE([mpi],
     [AS_HELP_STRING([--enable-mpi],[compile with functionality for distributed-memory parallelim using MPI @<:@default=yes@:>@])],
     [if test "x$enable_mpi" != "xno"
      then
-        ACX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])
+        AX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])
      fi],
-    [ACX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])])
+    [AX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])])
 AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
 
 # Need C99 and inline support.
@@ -119,7 +119,7 @@ AC_HEADER_STDC
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 
 # Check for pthreads.
-ACX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     CC="$PTHREAD_CC" LDFLAGS="$PTHREAD_LIBS $LIBS"],
     AC_MSG_ERROR([Could not find a working version of
     the pthread library. Make sure you have the library and header files installed
