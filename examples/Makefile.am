@@ -16,16 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Automake stuff
-AUTOMAKE_OPTIONS=gnu
-
 # Common flags
 MYFLAGS = -DTIMER
 
 # Add the source directory and debug to CFLAGS
 AM_CFLAGS = -g -std=gnu99 -Wall -Werror -I../src $(OPENMP_CFLAGS) -DCPU_TPS=2.67e9
 
-AM_LDFLAGS =
+AM_LDFLAGS = @METIS_LDFLAGS@
 
 # Set-up the library
 bin_PROGRAMS = test test_fixdt test_mindt test_single
@@ -38,35 +35,35 @@ endif
 # Sources for test
 test_SOURCES = test.c
 test_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep | engine_policy_setaffinity"
-test_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
+test_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for test_fixdt
 test_fixdt_SOURCES = test.c
 test_fixdt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep | engine_policy_setaffinity"
-test_fixdt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
+test_fixdt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for test_mindt
 test_mindt_SOURCES = test.c
 test_mindt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep | engine_policy_setaffinity"
-test_mindt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
+test_mindt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for test_mpi
 test_mpi_SOURCES = test.c
 test_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DWITH_MPI -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep"
-test_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS)
+test_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for test_fixdt_mpi
 test_fixdt_mpi_SOURCES = test.c
 test_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DWITH_MPI -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep"
-test_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS)
+test_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for test_mindt_mpi
 test_mindt_mpi_SOURCES = test.c
 test_mindt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DWITH_MPI -DENGINE_POLICY="engine_policy_keep"
-test_mindt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS)
+test_mindt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for test_single
 test_single_SOURCES = test_single.c
 test_single_CFLAGS = $(MYFLAGS) $(AM_CFLAGS)
-test_single_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS)
+test_single_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 

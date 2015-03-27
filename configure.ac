@@ -1,138 +1,222 @@
 
 # This file is part of SWIFT.
-# Coypright (c) 2012 pedro.gonnet@durham.ac.uk.
-# 
+# Copyright (C) 2012 pedro.gonnet@durham.ac.uk.
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# init the project
+# Init the project.
 AC_INIT([SWIFT],[0.1.0])
 AC_CONFIG_SRCDIR([src/space.c])
+AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
 
-AC_GNU_SOURCE
-AC_PROG_LIBTOOL
-
-# my own macro collection
+# Add local macro collection.
 AC_CONFIG_MACRO_DIR([m4])
 
-# generate header file
+# Stop default CFLAGS from anyone except the environment.
+: ${CFLAGS=""}
+
+# Generate header file.
 AM_CONFIG_HEADER(config.h)
 
-# compiler settings
-#CFLAGS="-Wall $(CFLAGS)"
-
-# find and test the compiler
+# Find and test the compiler.
+AX_CHECK_ENABLE_DEBUG
+AC_PROG_CC
 AM_PROG_CC_C_O
-AC_PROG_CC_C99
-AC_LANG_C
-# AX_CC_MAXOPT
-AX_FUNC_POSIX_MEMALIGN
-AX_GCC_ARCHFLAG([no])
-AX_EXT
 
-# autoconf stuff
+# Enable POSIX and platform extension preprocessor macros.
+AC_USE_SYSTEM_EXTENSIONS
+
+# Add libtool support.
+LT_INIT
+
+# Check for compiler version and vendor.
+AX_COMPILER_VENDOR
+AX_COMPILER_VERSION
+
+# Check for MPI. Need to do this before characterising the compiler (C99 mode),
+# as this changes the compiler.
+# We should consider using AX_PROG_CC_MPI to replace AC_PROG_CC when compiling
+# whole applications. There are issues with mixing compilers when using this
+# macro. See
+# http://lists.gnu.org/archive/html/autoconf-archive-maintainers/2011-05/msg00004.html.
+AC_ARG_ENABLE([mpi],
+    [AS_HELP_STRING([--enable-mpi],
+      [Compile with functionality for distributed-memory parallelim using MPI @<:@default=yes@:>@]
+    )],
+    [enable_mpi="$enableval"],
+    [enable_mpi="yes"]
+)
+if test "$enable_mpi" = "yes"; then
+    AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+fi
+AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
+
+# Need C99 and inline support.
+AC_PROG_CC_C99
+AC_C_INLINE
+
+# Define HAVE_POSIX_MEMALIGN if it works.
+AX_FUNC_POSIX_MEMALIGN
+
+# Only optimize if allowed, otherwise assume user will set CFLAGS as
+# appropriate.
+AC_ARG_ENABLE([optimization],
+  [AS_HELP_STRING([--enable-optimization],
+    [Enable compile time optimization flags for host @<:@default=yes@:>@]
+  )],
+  [enable_opt="$enableval"],
+  [enable_opt="yes"]
+)
+
+if test "$enable_opt" = "yes" ; then
+
+   # Add code optimisation flags and tuning to host. This is a funny macro
+   # that does not like CFLAGS being already set. Work around that as we have
+   # at least set it to "", so it is set.
+   ac_test_CFLAGS="no"
+   old_CFLAGS="$CFLAGS"
+   AX_CC_MAXOPT
+   ac_test_CFLAGS="yes"
+   CFLAGS="$old_CFLAGS $CFLAGS"
+
+   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
+   AX_EXT
+   if test "$SIMD_FLAGS" != ""; then
+       CFLAGS="$CFLAGS $SIMD_FLAGS"
+   fi
+fi
+
+# Add address sanitizer options to flags, if requested. Only useful for GCC
+# version 4.8 and later.
+AC_ARG_ENABLE([sanitizer],
+  [AS_HELP_STRING([--enable-sanitizer],
+    [Enable memory error detection using address sanitizer @<:@default=no@:>@]
+  )],
+  [enable_san="$enableval"],
+  [enable_san="no"]
+)
+
+if test "$enable_san" = "yes" -a "$GCC" = yes; then
+   AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.8.0],
+                       [enable_san="yes"], [enable_san="no"] )
+   if test "$enable_san" = "yes"; then
+       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
+   fi
+fi
+
+# Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 AC_HEADER_STDC
 
-# check for the libraries we will need
+# Check for the libraries we will need.
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 
-# Check for pthreads
-ACX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+# Check for pthreads.
+AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     CC="$PTHREAD_CC" LDFLAGS="$PTHREAD_LIBS $LIBS"],
     AC_MSG_ERROR([Could not find a working version of
     the pthread library. Make sure you have the library and header files installed
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
-    
-    
-# Check for MPI
-AC_ARG_ENABLE([mpi],
-    [AS_HELP_STRING([--enable-mpi],[compile with functionality for distributed-memory parallelim using MPI @<:@default=yes@:>@])],
-    [if test "x$enable_mpi" != "xno"
-     then
-        ACX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])
-     fi],
-    [ACX_MPI([ CC="$MPICC" AC_DEFINE(HAVE_MPI,1,[Define if you have the MPI library.]) ])])
-AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
 
-    
-# Check for metis
+
+# Check for OpenMP.
+AC_OPENMP
+AC_SUBST(OPENMP_CFLAGS)
+enable_openmp="no"
+if test -z "$OPENMP_CFLAGS"; then
+   echo $OPENMP_CFLAGS
+   AC_MSG_ERROR(Compiler does not support OpenMP, 1)
+else
+   CFLAGS="$CFLAGS $OPENMP_CFLAGS"
+   enable_openmp="yes"
+fi
+
+# Check for metis. Note AX_LIB_METIS exists, but cannot be configured
+# to be default off (i.e. given no option it tries to locate METIS), so we
+# don't use that.
 AC_ARG_WITH([metis],
-    [AS_HELP_STRING([--with-metis=PATH],[prefix where the metis library is installed @<:@default=yes@:>@])],
-    [if test "x$with_metis" != "xno"
-     then
-        if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"
-        then
-            METIS_LDFLAGS="-L$with_metis -lmetis"
-        else
-            METIS_LDFLAGS="-lmetis"
-        fi
-        AC_CHECK_LIB([metis],[METIS_PartGraphKway],,AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LDFLAGS)
-        AC_DEFINE([HAVE_METIS],[true],[The metis library appears to be present.])
-	AC_DEFINE(WITH_METIS, 1, [METIS library installed])
-     fi])
-AC_SUBST(METIS_LDFLAGS)
+    [AS_HELP_STRING([--with-metis=PATH],
+       [prefix where the metis library is installed @<:@default=yes@:>@]
+    )],
+    [],
+    [with_metis="no"]
+)
+if test "x$with_metis" != "xno"; then
+   if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
+      METIS_LDFLAGS="-L$with_metis -lmetis"
+   else
+      METIS_LDFLAGS="-lmetis"
+   fi
+   AC_CHECK_LIB([metis],[METIS_PartGraphKway],
+      AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
+      AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LDFLAGS)
+fi
+AC_SUBST([METIS_LDFLAGS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LDFLAGS"])
 
-
-# check for zlib
-AC_CHECK_LIB(z,gzopen,[
+# Check for zlib.
+AC_CHECK_LIB([z],[gzopen],[
     AC_DEFINE([HAVE_LIBZ],[1],[Set to 1 if zlib is installed.])
     LDFLAGS="$LDFLAGS -lz"
     ],[])
 
-# check for memalign
-AX_FUNC_POSIX_MEMALIGN
 
-# Check for OpenMP
-AX_OPENMP
-AC_SUBST(OPENMP_CFLAGS)
-if test -z "${OPENMP_CFLAGS}"; then
-   echo $OPENMP_CFLAGS
-   AC_MSG_ERROR(Compiler does not support OpenMP, 1)
-fi
+# Check for HDF5.
+AX_LIB_HDF5
 
-# Check for HDF5
-AX_LIB_HDF5()
-
-# check for setaffinity
-AC_USE_SYSTEM_EXTENSIONS
+# Check for setaffinity.
 AC_CHECK_FUNC( pthread_setaffinity_np , AC_DEFINE([HAVE_SETAFFINITY],[true],
     [Defined if pthread_setaffinity_np exists.]) )
-    
-# Check for timing functions needed by cycle.h
-AC_C_INLINE
+
+# Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
 AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
-AC_CHECK_TYPE([hrtime_t],[AC_DEFINE(HAVE_HRTIME_T, 1, [Define to 1 if hrtime_t is defined in <sys/time.h>])],,[#if HAVE_SYS_TIME_H
+AC_CHECK_TYPE([hrtime_t],[AC_DEFINE(HAVE_HRTIME_T, 1, [Define to 1 if hrtime_t
+is defined in <sys/time.h>])],,
+[#if HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif])
 AC_CHECK_FUNCS([gethrtime read_real_time time_base_to_time clock_gettime mach_absolute_time])
 AC_MSG_CHECKING([for _rtc intrinsic])
 rtc_ok=yes
-AC_TRY_LINK([#ifdef HAVE_INTRINSICS_H
+AC_LINK_IFELSE([AC_LANG_PROGRAM(
+[[#ifdef HAVE_INTRINSICS_H
 #include <intrinsics.h>
-#endif], [_rtc()], [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])], [rtc_ok=no])
+#endif]],
+[[_rtc()]])],
+[AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
-# make the documentation
+# Make the documentation.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 
-# .in files.
+# Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile])
 
-# generate output.
+# Report general configuration.
+AC_MSG_RESULT([
+   Compiler: $CC
+     vendor: $ax_cv_c_compiler_vendor
+    version: $ax_cv_c_compiler_version
+      flags: $CFLAGS
+   MPI enabled: $enable_mpi
+   HDF5 enabled: $with_hdf5
+   OpenMP enabled: $enable_openmp
+])
+
+# Generate output.
 AC_OUTPUT

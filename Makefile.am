@@ -16,8 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Automake stuff
-AUTOMAKE_OPTIONS = gnu
 ACLOCAL_AMFLAGS = -I m4
 
 # Show the way...
 SUBDIRS = src examples doc
+
+# Non-standard files that should be part of the distribution.
+EXTRA_DIST = INSTALL.swift
