@@ -27,6 +27,9 @@
 #include <string.h>
 #include <stddef.h>
 #include <math.h>
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
 #include "const.h"
 #include "cycle.h"

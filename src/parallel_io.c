@@ -23,6 +23,9 @@
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI)
 
+/* Tell hdf5 that we intend to use shared-memory parallel stuff. */
+#define H5_HAVE_PARALLEL
+
 
 /* Some standard headers. */
 #include <stdio.h>
