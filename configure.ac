@@ -53,13 +53,48 @@ AX_COMPILER_VERSION
 # http://lists.gnu.org/archive/html/autoconf-archive-maintainers/2011-05/msg00004.html.
 AC_ARG_ENABLE([mpi],
     [AS_HELP_STRING([--enable-mpi],
-      [Compile with functionality for distributed-memory parallelim using MPI @<:@default=yes@:>@]
+      [Compile with functionality for distributed-memory parallelism using MPI @<:@default=yes@:>@]
     )],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
 if test "$enable_mpi" = "yes"; then
     AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+
+    # Various MPI implementations require additional libraries when also using
+    # threads. Use mpirun (on PATH) as that seems to be only command with
+    # version flag.
+    AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
+    if test "$MPIRUN" = "notfound"; then
+       AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
+    else
+       # Special options we know about.
+       # Intel: -mt_mpi
+       # PLATFORM: -lmtmpi
+       # OpenMPI: nothing, but library should be built correctly.
+       # Set MPI_THREAD_LIBS and add to linker commands as necessary.
+       AC_MSG_CHECKING([MPI threads options])
+       version=`$MPIRUN -version 2>&1`
+       case "$version" in
+         *Intel*MPI*)
+            MPI_THREAD_LIBS="-mt_mpi"
+            AC_MSG_RESULT([Intel MPI])
+         ;;
+         *Platform*)
+            MPI_THREAD_LIBS="-lmtmpi"
+            AC_MSG_RESULT([PLATFORM MPI])
+         ;;
+         *"Open MPI"*)
+            MPI_THREAD_LIBS=""
+            AC_MSG_RESULT([Open MPI])
+         ;;
+         *)
+            MPI_THREAD_LIBS=""
+            AC_MSG_RESULT([unknown])
+         ;;
+       esac
+       AC_SUBST([MPI_THREAD_LIBS])
+    fi
 fi
 AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
 
@@ -73,11 +108,11 @@ AX_FUNC_POSIX_MEMALIGN
 # Only optimize if allowed, otherwise assume user will set CFLAGS as
 # appropriate.
 AC_ARG_ENABLE([optimization],
-  [AS_HELP_STRING([--enable-optimization],
-    [Enable compile time optimization flags for host @<:@default=yes@:>@]
-  )],
-  [enable_opt="$enableval"],
-  [enable_opt="yes"]
+   [AS_HELP_STRING([--enable-optimization],
+     [Enable compile time optimization flags for host @<:@default=yes@:>@]
+   )],
+   [enable_opt="$enableval"],
+   [enable_opt="yes"]
 )
 
 if test "$enable_opt" = "yes" ; then
@@ -101,18 +136,22 @@ fi
 # Add address sanitizer options to flags, if requested. Only useful for GCC
 # version 4.8 and later.
 AC_ARG_ENABLE([sanitizer],
-  [AS_HELP_STRING([--enable-sanitizer],
-    [Enable memory error detection using address sanitizer @<:@default=no@:>@]
-  )],
-  [enable_san="$enableval"],
-  [enable_san="no"]
+   [AS_HELP_STRING([--enable-sanitizer],
+     [Enable memory error detection using address sanitizer @<:@default=no@:>@]
+   )],
+   [enable_san="$enableval"],
+   [enable_san="no"]
 )
 
-if test "$enable_san" = "yes" -a "$GCC" = yes; then
-   AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.8.0],
-                       [enable_san="yes"], [enable_san="no"] )
-   if test "$enable_san" = "yes"; then
-       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
+if test "$enable_san" = "yes"; then
+   if test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.8.0],
+                          [enable_san="yes"], [enable_san="no"] )
+      if test "$enable_san" = "yes"; then
+         CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
+      fi
+   else
+      AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
 fi
 
@@ -131,7 +170,6 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     the pthread library. Make sure you have the library and header files installed
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
-
 
 # Check for OpenMP.
 AC_OPENMP
@@ -157,16 +195,16 @@ AC_ARG_WITH([metis],
 )
 if test "x$with_metis" != "xno"; then
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LDFLAGS="-L$with_metis -lmetis"
+      METIS_LIBS="-L$with_metis -lmetis"
    else
-      METIS_LDFLAGS="-lmetis"
+      METIS_LIBS="-lmetis"
    fi
    AC_CHECK_LIB([metis],[METIS_PartGraphKway],
       AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
-      AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LDFLAGS)
+      AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
 fi
-AC_SUBST([METIS_LDFLAGS])
-AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LDFLAGS"])
+AC_SUBST([METIS_LIBS])
+AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
 # Check for zlib.
 AC_CHECK_LIB([z],[gzopen],[
