@@ -185,8 +185,18 @@ void space_regrid ( struct space *s , double cell_max ) {
             }
         s->h_max = h_max;
         }
-    // message( "h_max is %.3e (cell_max=%.3e)." , h_max , cell_max );
-    // message( "getting h_min and h_max took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+        
+    /* If we are running in parallel, make sure everybody agrees on
+       how large the largest cell should be. */
+    #ifdef WITH_MPI
+    {
+      float buff;
+      if ( MPI_Allreduce( &h_max , &buff , 1 , MPI_FLOAT , MPI_MAX , MPI_COMM_WORLD ) != MPI_SUCCESS )
+          error( "Failed to aggreggate the rebuild flag accross nodes." );
+      h_max = buff;
+    }
+    #endif
+    message( "h_max is %.3e (cell_max=%.3e)." , h_max , cell_max );
     
     /* Get the new putative cell dimensions. */
     for ( k = 0 ; k < 3 ; k++ )
@@ -497,7 +507,7 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel default(none) shared(N,first,last,waiting,qstack,parts,xparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
+    #pragma omp parallel default(shared) shared(N,first,last,waiting,qstack,parts,xparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
     {
     
         /* Main loop. */
@@ -657,7 +667,7 @@ void gparts_sort ( struct gpart *gparts , int *ind , int N , int min , int max )
     first = 0; last = 1; waiting = 1;
     
     /* Parallel bit. */
-    #pragma omp parallel default(none) shared(N,first,last,waiting,qstack,gparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
+    #pragma omp parallel default(shared) shared(N,first,last,waiting,qstack,gparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
     {
     
         /* Main loop. */
