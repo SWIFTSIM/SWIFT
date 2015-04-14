@@ -1,4 +1,3 @@
-
 # This file is part of SWIFT.
 # Copyright (C) 2012 pedro.gonnet@durham.ac.uk.
 #
@@ -165,7 +164,7 @@ AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
 
 # Check for pthreads.
 AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-    CC="$PTHREAD_CC" LDFLAGS="$PTHREAD_LIBS $LIBS"],
+    CC="$PTHREAD_CC" LDFLAGS="$LDFLAGS $PTHREAD_LIBS $LIBS"],
     AC_MSG_ERROR([Could not find a working version of
     the pthread library. Make sure you have the library and header files installed
     or use CPPFLAGS and LDFLAGS if the library is installed in a
