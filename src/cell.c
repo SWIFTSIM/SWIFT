@@ -181,7 +181,6 @@ int cell_pack ( struct cell *c , struct pcell *pc ) {
     pc->dt_min = c->dt_min;
     pc->dt_max = c->dt_max;
     pc->count = c->count;
-    // c->tag = pc->tag = ( ((long long int)c) / sizeof(struct cell) ) % (1 << 30);
     c->tag = pc->tag = cell_next_tag++;
     
     /* Fill in the progeny, depth-first recursion. */
