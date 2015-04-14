@@ -21,6 +21,10 @@
 #define cell_sid_dt                 13
 
 
+/* Global variables. */
+extern int cell_next_tag;
+
+
 /* Packed cell. */
 struct pcell {
 
