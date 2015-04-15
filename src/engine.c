@@ -1948,7 +1948,6 @@ void engine_makeproxies ( struct engine *e ) {
 void engine_split ( struct engine *e , int *grid ) {
 
     int j, k;
-    float scale[3];
     int ind[3];
     struct space *s = e->s;
     struct cell *c;
@@ -1957,16 +1956,14 @@ void engine_split ( struct engine *e , int *grid ) {
     if ( e->nr_nodes != grid[0]*grid[1]*grid[2] )
         error( "Grid size does not match number of nodes." );
         
-    /* Get the scale. */
-    for ( j = 0 ; j < 3 ; j++ )
-        scale[j] = ((float)grid[j]) / s->cdim[j];
-    
     /* Run through the cells and set their nodeID. */
+    // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
     for ( k = 0 ; k < s->nr_cells ; k++ ) {
         c = &s->cells[k];
         for ( j = 0 ; j < 3 ; j++ )
-            ind[j] = c->loc[j] * s->ih[j] * scale[j];
+            ind[j] = c->loc[j] / s->dim[j] * grid[j];
         c->nodeID = ind[0] + grid[0]*( ind[1] + grid[1]*ind[2] );
+	// message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0], c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
         }
         
     /* Make the proxies. */
