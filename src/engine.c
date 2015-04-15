@@ -702,6 +702,7 @@ void engine_exchange_cells ( struct engine *e ) {
         error( "Failed to allocate pcell buffer." );
         
     /* Pack the cells. */
+    cell_next_tag = 0;
     for ( k = 0 ; k < nr_cells ; k++ )
         if ( cells[k].sendto ) {
             cell_pack( &cells[k] , &pcells[ offset[k] ] );
