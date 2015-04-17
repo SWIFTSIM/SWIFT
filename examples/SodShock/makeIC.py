@@ -61,9 +61,9 @@ coord1 = append(coord1, coord1 + [0.25, 0, 0], 0)
 # coord1 = append(coord1, pos1 + [0, 0.5, 0.5], 0)
 N1 = size(coord1)/3
 v1 = zeros((N1, 3))
-h1 = ones((N1, 1)) * 2.251 * 0.5 * vol / (size(pos1)/3)**(1./3.)
-u1 = ones((N1, 1)) * P1 / ((gamma - 1.) * rho1)
-m1 = ones((N1, 1)) * vol * 0.5 * rho1 / N1
+h1 = ones(N1) * 2.251 * 0.5 * vol / (size(pos1)/3)**(1./3.)
+u1 = ones(N1) * P1 / ((gamma - 1.) * rho1)
+m1 = ones(N1) * vol * 0.5 * rho1 / N1
 
 #Generate low density region
 rho2 = 0.25
@@ -74,9 +74,9 @@ coord2 = append(coord2, coord2 + [0.25, 0, 0], 0)
 # coord2 = append(coord2, pos2 + [0, 0.5, 0.5], 0)
 N2 = size(coord2)/3
 v2 = zeros((N2, 3))
-h2 = ones((N2, 1)) * 2.251 * 0.5 * vol / (size(pos2)/3)**(1./3.)
-u2 = ones((N2, 1)) * P2 / ((gamma - 1.) * rho2)
-m2 = ones((N2, 1)) * vol * 0.5 * rho2 / N2
+h2 = ones(N2) * 2.251 * 0.5 * vol / (size(pos2)/3)**(1./3.)
+u2 = ones(N2) * P2 / ((gamma - 1.) * rho2)
+m2 = ones(N2) * vol * 0.5 * rho2 / N2
 
 #Merge arrays
 numPart = N1 + N2
@@ -85,9 +85,12 @@ v = append(v1, v2,0)
 h = append(h1, h2,0)
 u = append(u1, u2,0)
 m = append(m1, m2,0)
-ids = zeros((numPart, 1), dtype='L')
+ids = zeros(numPart, dtype='L')
 for i in range(numPart):
     ids[i] = i
+
+#Final operations
+h /= 2
 
 #File
 file = h5py.File(fileName, 'w')
@@ -109,18 +112,13 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 
 #Particle group
 grp = file.create_group("/PartType0")
-ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
-ds[()] = coords
-ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
-ds[()] = v
-ds = grp.create_dataset('Masses', (numPart,1), 'f')
-ds[()] = m
-ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
-ds[()] = h / 2
-ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
-ds[()] = u
-ds = grp.create_dataset('ParticleIDs', (numPart,1), 'L')
-ds[()] = ids[:]
+grp.create_dataset('Coordinates', data=coords, dtype='d')
+grp.create_dataset('Velocities', data=v, dtype='f')
+grp.create_dataset('Masses', data=m, dtype='f')
+grp.create_dataset('SmoothingLength', data=h, dtype='f')
+grp.create_dataset('InternalEnergy', data=u, dtype='f')
+grp.create_dataset('ParticleIDs', data=ids, dtype='L')
+
 
 file.close()
 

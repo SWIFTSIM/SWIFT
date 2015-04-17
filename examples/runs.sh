@@ -44,11 +44,11 @@ do
     # Sedov blast
     if [ ! -e SedovBlast_mindt_${cpu}.dump ]
     then
-        ./test_mindt -c 0.2 -t $cpu -f SedovBlast/sedov.hdf5 -m 0.1 -w 5000 -d 1e-10 > SedovBlast_${cpu}.dump
+        ./test_mindt -c 0.2 -t $cpu -f SedovBlast/sedov.hdf5 -m 0.02 -w 5000 -d 1e-10 > SedovBlast_${cpu}.dump
     fi
     if [ ! -e SedovBlast_fixed_${cpu}.dump ]
     then
-        ./test_fixdt -r 4096 -t $cpu -f SedovBlast/sedov.hdf5 -m 0.1 -w 5000 -d 5e-5 > SedovBlast_fixed_${cpu}.dump
+        ./test_fixdt -r 4096 -t $cpu -f SedovBlast/sedov.hdf5 -m 0.02 -w 5000 -d 5e-5 > SedovBlast_fixed_${cpu}.dump
     fi
     
     # Cosmological volume

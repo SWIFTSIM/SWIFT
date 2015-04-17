@@ -48,10 +48,10 @@ if L%2 == 0:
 #Generate particles
 coords = zeros((numPart, 3))
 v      = zeros((numPart, 3))
-m      = zeros((numPart, 1))
-h      = zeros((numPart, 1))
-u      = zeros((numPart, 1))
-ids    = zeros((numPart, 1), dtype='L')
+m      = zeros(numPart)
+h      = zeros(numPart)
+u      = zeros(numPart)
+ids    = zeros(numPart, dtype='L')
 
 for i in range(L):
     for j in range(L):
@@ -100,17 +100,11 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 
 #Particle group
 grp = file.create_group("/PartType0")
-ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
-ds[()] = coords
-ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
-ds[()] = v
-ds = grp.create_dataset('Masses', (numPart,1), 'f')
-ds[()] = m
-ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
-ds[()] = h
-ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
-ds[()] = u
-ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
-ds[()] = ids
+grp.create_dataset('Coordinates', data=coords, dtype='d')
+grp.create_dataset('Velocities', data=v, dtype='f')
+grp.create_dataset('Masses', data=m, dtype='f')
+grp.create_dataset('SmoothingLength', data=h, dtype='f')
+grp.create_dataset('InternalEnergy', data=u, dtype='f')
+grp.create_dataset('ParticleIDs', data=ids, dtype='L')
 
 file.close()
