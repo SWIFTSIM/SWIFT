@@ -571,7 +571,9 @@ int main ( int argc , char *argv[] ) {
         message( "MPI is up and running with %i nodes." , nr_nodes );
     fflush(stdout);
 #endif
-    
+
+    /* Greeting message */
+    message( "This is SWIFT version %s\n", git_revision());
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );

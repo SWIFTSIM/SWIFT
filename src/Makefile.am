@@ -32,12 +32,12 @@ endif
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
-    common_io.h multipole.h
+    common_io.h multipole.h git_revision.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
-    units.c common_io.c multipole.c
+    units.c common_io.c multipole.c git_revision.c
 
 # Include files for distribution, not installation.
 noinst_HEADERS = atomic.h cycle.h error.h inline.h kernel.h vector.h \
@@ -52,3 +52,21 @@ libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 libswiftsim_mpi_la_SHORTNAME = mpi
 
+
+# Git revision
+# Generate a file with the Git revision chain using the pre-defined command
+git_revision.c: GIT_REV_CHAIN
+	echo 'const char* git_revision(void) { const char* Git_Revision = "\' > git_revision.c
+	@my_git_revision@                  >> git_revision.c
+	echo '"; return Git_Revision; }'   >> git_revision.c
+
+# If we are in a git directory save the revision number
+if HAVE_GIT_WC
+git_revision: GIT_REV_CHAIN
+	@my_git_revision@ > git_revision
+endif
+
+GIT_REV_CHAIN:
+
+BUILT_SOURCES=git_revision.c 
+EXTRA_DIST=git_revision

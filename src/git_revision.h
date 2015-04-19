@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,36 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  ******************************************************************************/
+#ifndef GIT_REVISION_H
+#define GIT_REVISION_H
 
-/* Config parameters. */
-#include "../config.h"
+/**
+ * @file git_revision.h
+ * @brief Git revision hash key.
+ */
 
-/* Local headers. */
-#include "const.h"
-#include "error.h"
-#include "cycle.h"
-#include "timers.h"
-#include "const.h"
-#include "atomic.h"
-#include "lock.h"
-#include "task.h"
-#include "scheduler.h"
-#include "part.h"
-#include "multipole.h"
-#include "cell.h"
-#include "space.h"
-#include "queue.h"
-#include "runner.h"
-#include "engine.h"
-#include "units.h"
-#include "serial_io.h"
-#include "parallel_io.h"
-#include "debug.h"
-#include "git_revision.h"
 
-#ifdef LEGACY_GADGET2_SPH
-#include "runner_iact_legacy.h"
-#else
-#include "runner_iact.h"
-#endif
-#include "runner_iact_grav.h"
+const char* git_revision(void);
+
+
+
+
+#endif /* GIT_REVISION_H */
