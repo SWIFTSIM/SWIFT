@@ -22,6 +22,9 @@ AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0 # -fsanitize=address
 
+# The git command, if available.
+GIT_CMD = @GIT_CMD@
+
 # Build the libswiftsim library
 lib_LTLIBRARIES = libswiftsim.la
 # Build a MPI-enabled version too?
@@ -32,7 +35,7 @@ endif
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
-    common_io.h multipole.h git_revision.h
+    common_io.h multipole.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -53,20 +56,16 @@ libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 libswiftsim_mpi_la_SHORTNAME = mpi
 
 
-# Git revision
-# Generate a file with the Git revision chain using the pre-defined command
-git_revision.c: GIT_REV_CHAIN
-	echo 'const char* git_revision(void) { const char* Git_Revision = "\' > git_revision.c
-	@my_git_revision@                  >> git_revision.c
-	echo '"; return Git_Revision; }'   >> git_revision.c
+# Git revision, if any sources change then update the git_revision.h file.
+git_revision.h: git_revision.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
+	if test "X$(GIT_CMD)" != "X"; then \
+	    GIT_REVISION=`git describe --abbrev=8  --always --tags --dirty`; \
+	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
+	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," git_revision.h.in > git_revision.h; \
+	fi
 
-# If we are in a git directory save the revision number
-if HAVE_GIT_WC
-git_revision: GIT_REV_CHAIN
-	@my_git_revision@ > git_revision
-endif
+#  Make sure git_revision is built first.
+BUILT_SOURCES = git_revision.h
 
-GIT_REV_CHAIN:
-
-BUILT_SOURCES=git_revision.c 
-EXTRA_DIST=git_revision
+#  And distribute the built file.
+EXTRA_DIST = git_revision.h git_revision.h.in

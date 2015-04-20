@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk).
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,13 +22,13 @@
 
 /**
  * @file git_revision.h
- * @brief Git revision hash key.
+ * @brief Package version and git revision sha.
  */
 
+#define PACKAGE_VERSION "@PACKAGE_VERSION@"
+#define GIT_REVISION "@GIT_REVISION@"
 
+const char* package_version(void);
 const char* git_revision(void);
-
-
-
 
 #endif /* GIT_REVISION_H */

@@ -573,7 +573,7 @@ int main ( int argc , char *argv[] ) {
 #endif
 
     /* Greeting message */
-    message( "This is SWIFT version %s\n", git_revision());
+    message( "This is %s\n", package_version() );
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
