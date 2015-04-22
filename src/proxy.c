@@ -285,7 +285,7 @@ void proxy_parts_load ( struct proxy *p , struct part *parts , struct xpart *xpa
              ( txp = (struct xpart *)malloc( sizeof(struct xpart) * p->size_parts_out ) ) == NULL )
             error( "Failed to re-allocate parts_out buffers." );
         memcpy( tp , p->parts_out , sizeof(struct part) * p->nr_parts_out );
-        memcpy( txp , p->xparts_out , sizeof(struct part) * p->nr_parts_out );
+        memcpy( txp , p->xparts_out , sizeof(struct xpart) * p->nr_parts_out );
         free( p->parts_out ); free( p->xparts_out );
         p->parts_out = tp; p->xparts_out = txp;
         }
