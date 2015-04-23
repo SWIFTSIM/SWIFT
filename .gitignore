@@ -11,7 +11,7 @@ config.sub
 ltmain.sh
 libtool
 
-src/git_revision.h
+src/version.h
 swift*.tar.gz
 doc/doxyfile.stamp
 doc/html/

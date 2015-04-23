@@ -17,18 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  ******************************************************************************/
-#ifndef GIT_REVISION_H
-#define GIT_REVISION_H
+#ifndef SWIFT_VERSION_H
+#define SWIFT_VERSION_H
 
 /**
- * @file git_revision.h
+ * @file version.h.in
  * @brief Package version and git revision sha.
  */
 
 #define PACKAGE_VERSION "@PACKAGE_VERSION@"
 #define GIT_REVISION "@GIT_REVISION@"
 
+const char* package_description( void );
 const char* package_version(void);
 const char* git_revision(void);
 
-#endif /* GIT_REVISION_H */
+#endif /* SWIFT_VERSION_H */

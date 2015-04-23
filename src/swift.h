@@ -41,7 +41,7 @@
 #include "serial_io.h"
 #include "parallel_io.h"
 #include "debug.h"
-#include "git_revision.h"
+#include "version.h"
 
 #ifdef LEGACY_GADGET2_SPH
 #include "runner_iact_legacy.h"

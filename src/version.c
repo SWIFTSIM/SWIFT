@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2015 Peter W. Draper (p.w.draper@durham.ac.uk).
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,15 +19,33 @@
  ******************************************************************************/
 
 #include <stdio.h>
-#include "git_revision.h"
+#include "version.h"
 
-const char* git_revision( void )
+/**
+ * @brief Return the source code git revision
+ *
+ * @details The SHA of the code checked out when the library was last built. 
+ * Will include -dirty if they are local modifications.
+ */
+const char *git_revision( void )
 {
     static const char *revision = GIT_REVISION;
     return revision;
 }
 
-const char* package_version( void )
+/**
+ * @brief The version of SWIFT
+ */
+const char *package_version( void )
+{
+    static const char *version = PACKAGE_VERSION;
+    return version;
+}
+
+/**
+ * @brief A description of the package version and code status.
+ */
+const char *package_description( void )
 {
     static char buf[256];
     static int initialised = 0;

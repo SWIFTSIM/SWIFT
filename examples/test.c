@@ -573,7 +573,7 @@ int main ( int argc , char *argv[] ) {
 #endif
 
     /* Greeting message */
-    message( "This is %s\n", package_version() );
+    message( "This is %s\n", package_description() );
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
