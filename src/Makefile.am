@@ -22,6 +22,9 @@ AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0 # -fsanitize=address
 
+# The git command, if available.
+GIT_CMD = @GIT_CMD@
+
 # Build the libswiftsim library
 lib_LTLIBRARIES = libswiftsim.la
 # Build a MPI-enabled version too?
@@ -37,7 +40,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
-    units.c common_io.c multipole.c
+    units.c common_io.c multipole.c version.c
 
 # Include files for distribution, not installation.
 noinst_HEADERS = atomic.h cycle.h error.h inline.h kernel.h vector.h \
@@ -52,3 +55,18 @@ libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 libswiftsim_mpi_la_SHORTNAME = mpi
 
+
+# Versioning. If any sources change then update the version.h file with
+# the current git revision and package version.
+version.h: version.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
+	if test "X$(GIT_CMD)" != "X"; then \
+	    GIT_REVISION=`git describe --abbrev=8  --always --tags --dirty`; \
+	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
+	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," version.h.in > version.h; \
+	fi
+
+#  Make sure version.h is built first.
+BUILT_SOURCES = version.h
+
+#  And distribute the built files.
+EXTRA_DIST = version.h version.h.in
