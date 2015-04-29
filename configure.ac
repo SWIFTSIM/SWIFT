@@ -238,6 +238,10 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
+# Check for git, needed for revision stamps.
+AC_PATH_PROG([GIT_CMD], [git])
+AC_SUBST([GIT_CMD])
+
 # Make the documentation.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
 
@@ -253,6 +257,7 @@ AC_MSG_RESULT([
    MPI enabled: $enable_mpi
    HDF5 enabled: $with_hdf5
    OpenMP enabled: $enable_openmp
+   Metis enabled: $with_metis
 ])
 
 # Generate output.

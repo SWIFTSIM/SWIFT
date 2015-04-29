@@ -2011,11 +2011,17 @@ void engine_init ( struct engine *e , struct space *s , float dt , int nr_thread
                 cpuid[k] = k;
             }
         else {
+            /*  Get next highest power of 2. */
+            int maxint = 1;
+            while ( maxint < nr_cores )
+                maxint *= 2;
+
             cpuid[0] = 0;
             k = 1;
-            for ( i = 1 ; i < nr_cores ; i *= 2 )
-                for ( j = nr_cores / i / 2 ; j < nr_cores ; j += nr_cores / i )
-                    cpuid[k++] = j;
+            for ( i = 1 ; i < maxint ; i *= 2 )
+                for ( j = maxint / i / 2 ; j < maxint ; j += maxint / i )
+                    if ( j < nr_cores && j != 0 )
+                        cpuid[k++] = j;
             #ifdef WITHMPI
                 printf( "engine_init: cpu map is [ " );
             #else
