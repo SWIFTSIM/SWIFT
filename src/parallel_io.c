@@ -211,9 +211,9 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
-  hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
-  H5Pset_fapl_mpio(plist_id, comm, info);
-  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, plist_id);
+  hid_t h_plist_id = H5Pcreate(H5P_FILE_ACCESS);
+  H5Pset_fapl_mpio(h_plist_id, comm, info);
+  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, h_plist_id);
   if(h_file < 0)
     {
       error( "Error while opening file '%s'." , fileName );
@@ -320,7 +320,7 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, int N_total, int mpi_rank, int offset, char* part_c, struct UnitSystem* us, enum UnitConversionFactor convFactor)
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, long long N_total, int mpi_rank, long long offset, char* part_c, struct UnitSystem* us, enum UnitConversionFactor convFactor)
 {
   hid_t h_data=0, h_err=0, h_memspace=0, h_filespace=0, h_plist_id=0;
   hsize_t shape[2], shape_total[2], offsets[2];
@@ -391,7 +391,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   h_data = H5Dcreate1(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT);
   if(h_data < 0)
     {
-      error( "Error while creating dataspace '%s'." , name );
+      error( "Error while creating dataset '%s'." , name );
     }
   
   H5Sclose(h_filespace);
@@ -425,6 +425,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   H5Dclose(h_data);
   H5Pclose(h_plist_id);
   H5Sclose(h_memspace);
+  H5Sclose(h_filespace);
 }
 
 /**
@@ -452,6 +453,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
  *
  * @param e The engine containing all the system.
+ * @param us The UnitSystem used for the conversion of units in the output
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -493,7 +495,6 @@ void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_ra
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
   H5Pset_fapl_mpio(plist_id, comm, info);
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
-  H5Pclose(plist_id);
   if(h_file < 0)
     {
       error( "Error while opening file '%s'." , fileName );
@@ -581,6 +582,9 @@ void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_ra
     writeXMFfooter(xmfFile);
 
   /* message("Done writing particles..."); */
+
+  /* Close property descriptor */
+  H5Pclose(plist_id);
 
   /* Close file */
   H5Fclose(h_file);
