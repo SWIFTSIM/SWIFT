@@ -21,7 +21,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5) && !defined(WITH_MPI)
+#if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
 
 
 /* Some standard headers. */
@@ -175,7 +175,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
  * Calls #error() if an error occurs.
  *
  */
-void read_ic ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic)
+void read_ic_serial ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info)
 {
   hid_t h_file=0, h_grp=0;
   double boxSize[3]={0.0,-1.0,-1.0};         /* GADGET has only cubic boxes (in cosmological mode) */
@@ -390,7 +390,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * Calls #error() if an error occurs.
  *
  */
-void write_output (struct engine *e, struct UnitSystem* us)
+void write_output_serial ( struct engine* e, struct UnitSystem* us, int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info )
 {
   
   hid_t h_file=0, h_grp=0;

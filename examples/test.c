@@ -677,11 +677,16 @@ int main ( int argc , char *argv[] ) {
 
     /* Read particles and space information from (GADGET) IC */
     tic = getticks();
-#ifdef WITH_MPI
+#if defined( WITH_MPI ) 
+#if defined( HAVE_PARALLEL_HDF5 )
     read_ic_parallel( ICfileName , dim , &parts , &N , &periodic, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
 #else
-    read_ic( ICfileName , dim , &parts , &N , &periodic );
+    read_ic_serial( ICfileName , dim , &parts , &N , &periodic, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
 #endif
+#else
+    read_ic_single( ICfileName , dim , &parts , &N , &periodic );
+#endif
+
     if ( myrank == 0 )
         message( "reading particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
@@ -778,12 +783,17 @@ int main ( int argc , char *argv[] ) {
     engine_redistribute ( &e );
 #endif
 
+    message("Before write !");
     /* Write the state of the system as it is before starting time integration. */
     tic = getticks();
-#ifdef WITH_MPI
+#if defined( WITH_MPI ) 
+#if defined( HAVE_PARALLEL_HDF5 )
     write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-    write_output(&e, &us);
+    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+#endif
+#else
+    write_output_single(&e, &us);
 #endif
     message( "writing particle properties took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
     
@@ -837,11 +847,17 @@ int main ( int argc , char *argv[] ) {
         
         if ( j % 100 == 0 )
 	  {
-#ifdef WITH_MPI
-             write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+#if defined( WITH_MPI ) 
+#if defined( HAVE_PARALLEL_HDF5 )
+	    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-             write_output(&e, &us);
+	    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
+#else
+	    write_output_single(&e, &us);
+#endif
+
           }
                 
         /* Dump a line of agregate output. */
@@ -858,20 +874,18 @@ int main ( int argc , char *argv[] ) {
         /* for ( k = 0 ; k < 5 ; k++ )
             printgParticle( s.gparts , pid[k] , N ); */
         
-        }
+    }
         
     /* Print the values of the runner histogram. */
-    #ifdef HIST
-        printf( "main: runner histogram data:\n" );
-        for ( k = 0 ; k < runner_hist_N ; k++ )
-            printf( " %e %e %e\n" ,
-                runner_hist_a + k * (runner_hist_b - runner_hist_a) / runner_hist_N ,
-                runner_hist_a + (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N ,
-                (double)runner_hist_bins[k] );
-    #endif
+#ifdef HIST
+    printf( "main: runner histogram data:\n" );
+    for ( k = 0 ; k < runner_hist_N ; k++ )
+      printf( " %e %e %e\n" ,
+	      runner_hist_a + k * (runner_hist_b - runner_hist_a) / runner_hist_N ,
+	      runner_hist_a + (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N ,
+	      (double)runner_hist_bins[k] );
+#endif
 
-    // write_output( &e );
-        
     /* Loop over the parts directly. */
     // for ( k = 0 ; k < N ; k++ )
     //     printf( " %i %e %e\n" , s.parts[k].id , s.parts[k].count , s.parts[k].count_dh );
@@ -904,16 +918,20 @@ int main ( int argc , char *argv[] ) {
     #endif */
     
     /* Write final output. */
-#ifdef WITH_MPI
-	write_output_parallel( &e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL );
+#if defined( WITH_MPI ) 
+#if defined( HAVE_PARALLEL_HDF5 )
+    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-	write_output( &e , &us );
+    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+#endif
+#else
+    write_output_single(&e, &us);
 #endif
         
 #ifdef WITH_MPI
-        if ( MPI_Finalize() != MPI_SUCCESS )
-            error( "call to MPI_Finalize failed with error %i." , res );
-    #endif
+    if ( MPI_Finalize() != MPI_SUCCESS )
+      error( "call to MPI_Finalize failed with error %i." , res );
+#endif
     
     /* Say goodbye. */
     message( "done." );
@@ -921,4 +939,4 @@ int main ( int argc , char *argv[] ) {
     /* All is calm, all is bright. */
     return 0;
     
-    }
+}

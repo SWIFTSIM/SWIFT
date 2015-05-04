@@ -21,7 +21,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5) && defined(WITH_MPI)
+#if defined(HAVE_HDF5) && defined(WITH_MPI) && defined(HAVE_PARALLEL_HDF5)
 
 /* Tell hdf5 that we intend to use shared-memory parallel stuff. */
 #define H5_HAVE_PARALLEL
