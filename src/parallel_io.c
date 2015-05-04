@@ -90,24 +90,19 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 	  error( "Compulsory data set '%s' not present in the file." , name );
 	}
       else
-	{
-	  /* message("Optional data set '%s' not present. Zeroing this particle field...", name);	   */
-	  
+	{	  
 	  for(i=0; i<N; ++i)
 	    memset(part_c+i*partSize, 0, copySize);
-	  
 	  return;
 	}
-   }
+    }
 
   /* message( "Reading %s '%s' array...", importance == COMPULSORY ? "compulsory": "optional  ", name); */
 
   /* Open data space in file */
   h_data = H5Dopen2(grp, name, H5P_DEFAULT);
   if(h_data < 0)
-    {
-      error( "Error while opening data space '%s'." , name );
-    }
+    error( "Error while opening data space '%s'." , name );
 
   /* Check data type */
   h_type = H5Dget_type(h_data);
@@ -121,6 +116,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   if(temp == NULL)
     error("Unable to allocate memory for temporary buffer");
 
+  /* Prepare information for hyperslab */
   if(dim > 1)
     {
       rank = 2;
@@ -161,6 +157,9 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   
   /* Free and close everything */
   free(temp);
+  H5Pclose(h_plist_id);
+  H5Sclose(h_filespace);
+  H5Sclose(h_memspace);
   H5Tclose(h_type);
   H5Dclose(h_data);
 }
@@ -285,10 +284,13 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
   /* Close particle group */
   H5Gclose(h_grp);
 
-  /* message("Done Reading particles..."); */
+  /* Close property handler */
+  H5Pclose(h_plist_id);
 
   /* Close file */
   H5Fclose(h_file);
+
+  /* message("Done Reading particles..."); */
 }
 
 
