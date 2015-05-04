@@ -43,11 +43,11 @@ struct UnitSystem
  */
 enum BaseUnits
   {
-    UNIT_MASS,
-    UNIT_LENGTH,
-    UNIT_TIME,
-    UNIT_CURRENT,
-    UNIT_TEMPERATURE
+    UNIT_MASS = 0,
+    UNIT_LENGTH = 1,
+    UNIT_TIME = 2,
+    UNIT_CURRENT = 3,
+    UNIT_TEMPERATURE = 4
   };
 
 
