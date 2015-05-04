@@ -273,7 +273,7 @@ void engine_redistribute ( struct engine *e ) {
 
 
 /**
- * @breif Repartition the cells amongst the nodes.
+ * @brief Repartition the cells amongst the nodes.
  *
  * @param e The #engine.
  */
@@ -582,9 +582,8 @@ void engine_addtasks_grav ( struct engine *e , struct cell *c , struct task *up 
  * @brief Add send tasks to a hierarchy of cells.
  *
  * @param e The #engine.
- * @param c The #cell.
- * @param t_xv The send_xv #task, if it has already been created.
- * @param t_rho The send_rho #task, if it has already been created.
+ * @param ci The sending #cell.
+ * @param cj The receiving #cell
  */
 
 void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj ) {
@@ -906,7 +905,7 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
 /**
  * @brief Fill the #space's task list.
  *
- * @param s The #space we are working in.
+ * @param e The #engine we are working with.
  */
  
 void engine_maketasks ( struct engine *e ) {
@@ -1414,6 +1413,7 @@ void engine_prepare ( struct engine *e ) {
  * @brief Implements a barrier for the #runner threads.
  *
  * @param e The #engine.
+ * @param tid The thread ID
  */
  
 void engine_barrier ( struct engine *e , int tid ) {
@@ -1602,11 +1602,11 @@ void engine_collect_kick2 ( struct cell *c ) {
     
     
 /**
- * @breif Launch the runners.
+ * @brief Launch the runners.
  *
  * @param e The #engine.
- * @param nr_runners The number of #runners to let loose.
- * @param The task mask to launch.
+ * @param nr_runners The number of #runner to let loose.
+ * @param mask The task mask to launch.
  */
  
 void engine_launch ( struct engine *e , int nr_runners , unsigned int mask ) {
@@ -1656,7 +1656,6 @@ void hassorted ( struct cell *c ) {
  * @brief Let the #engine loose to compute the forces.
  *
  * @param e The #engine.
- * @param sort_queues Flag to try to sort the queues topologically.
  */
  
 void engine_step ( struct engine *e ) {
@@ -1995,6 +1994,8 @@ void engine_split ( struct engine *e , int *grid ) {
  * @param dt The initial time step to use.
  * @param nr_threads The number of threads to spawn.
  * @param nr_queues The number of task queues to create.
+ * @param nr_nodes The number of MPI ranks
+ * @param nodeID The MPI rank of this node
  * @param policy The queueing policy to use.
  */
  

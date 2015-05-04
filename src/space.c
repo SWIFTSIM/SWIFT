@@ -467,6 +467,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
  * @brief Sort the particles and condensed particles according to the given indices.
  *
  * @param parts The list of #part
+ * @param xparts The list of reduced particles
  * @param ind The indices with respect to which the parts are sorted.
  * @param N The number of parts
  * @param min Lowest index.
@@ -1140,7 +1141,7 @@ struct cell *space_getcell ( struct space *s ) {
  * @param h_max The maximal interaction radius.
  *
  * Makes a grid of edge length > r_max and fills the particles
- * into the respective cells. Cells containing more than #space_maxppc
+ * into the respective cells. Cells containing more than #space_splitsize
  * parts with a cutoff below half the cell width are then split
  * recursively.
  */

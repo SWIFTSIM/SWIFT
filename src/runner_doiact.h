@@ -1795,7 +1795,8 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
- * @param sid
+ * @param sid The direction linking the cells
+ * @param gettimer Do we have a timer ?
  *
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.

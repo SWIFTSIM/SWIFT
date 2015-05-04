@@ -1053,6 +1053,7 @@ struct task *scheduler_unlock ( struct scheduler *s , struct task *t ) {
  *
  * @param s The #scheduler.
  * @param qid The ID of the prefered #queue.
+ * @param super the super-cell
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
@@ -1134,8 +1135,10 @@ struct task *scheduler_gettask ( struct scheduler *s , int qid , struct cell *su
  * @brief Initialize the #scheduler.
  *
  * @param s The #scheduler.
+ * @param space The #space we are working with
  * @param nr_queues The number of queues in this scheduler.
  * @param flags The #scheduler flags.
+ * @param nodeID The MPI rank
  */
  
 void scheduler_init ( struct scheduler *s , struct space *space , int nr_queues , unsigned int flags , int nodeID ) {

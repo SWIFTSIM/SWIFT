@@ -107,7 +107,7 @@ const char runner_flip[27] = { 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1
  * @param r The #runner.
  * @param c The #cell.
  * @param nodeID The destination node's ID.
- * @param tagbit bit to distinguish between xv and rho sends.
+ * @param tag bit to distinguish between xv and rho sends.
  */
  
 void runner_dosend ( struct runner *r , struct cell *c , int nodeID , int tag ) {
@@ -1025,6 +1025,7 @@ void runner_dokick1 ( struct runner *r , struct cell *c ) {
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param timer The timer 
  */
  
 void runner_dokick ( struct runner *r , struct cell *c , int timer ) {
