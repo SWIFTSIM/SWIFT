@@ -66,12 +66,13 @@
  *  
  * Calls #error() if an error occurs.
  */
-void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, char* part_c, enum DATA_IMPORTANCE importance)
+void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, long long N_total, long long offset, char* part_c, enum DATA_IMPORTANCE importance)
 {
-  hid_t h_data=0, h_err=0, h_type=0;
+  hid_t h_data=0, h_err=0, h_type=0, h_memspace=0, h_filespace=0;
+  hsize_t shape[2], offsets[2];
   htri_t exist=0;
   void* temp;
-  int i=0;
+  int i=0, rank=0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
   const size_t partSize = sizeof(struct part);
@@ -91,23 +92,18 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 	}
       else
 	{
-	  /* message("Optional data set '%s' not present. Zeroing this particle field...", name);	   */
-	  
 	  for(i=0; i<N; ++i)
-	    memset(part_c+i*partSize, 0, copySize);
-	  
+	    memset(part_c+i*partSize, 0, copySize);	  
 	  return;
 	}
-   }
+    }
 
   /* message( "Reading %s '%s' array...", importance == COMPULSORY ? "compulsory": "optional  ", name); */
 
   /* Open data space */
   h_data = H5Dopen1(grp, name);
   if(h_data < 0)
-    {
-      error( "Error while opening data space '%s'." , name );
-    }
+    error( "Error while opening data space '%s'." , name );
 
   /* Check data type */
   h_type = H5Dget_type(h_data);
@@ -121,10 +117,32 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   if(temp == NULL)
     error("Unable to allocate memory for temporary buffer");
 
+  /* Prepare information for hyperslab */
+  if(dim > 1)
+    {
+      rank = 2;
+      shape[0] = N; shape[1] = dim;
+      offsets[0] = offset; offsets[1] = 0;
+    }
+  else
+    {
+      rank = 1;
+      shape[0] = N; shape[1] = 0;
+      offsets[0] = offset; offsets[1] = 0;
+    }
+
+  /* Create data space in memory */
+  h_memspace = H5Screate_simple(rank, shape, NULL);
+
+  /* Select hyperslab in file */
+  h_filespace = H5Dget_space(h_data);
+  H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
+
+
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  h_err = H5Dread(h_data, hdf5Type(type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
+  h_err = H5Dread(h_data, hdf5Type(type), h_memspace, h_filespace, H5P_DEFAULT, temp);
   if(h_err < 0)
     {
       error( "Error while reading data array '%s'." , name );
@@ -137,6 +155,8 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   
   /* Free and close everything */
   free(temp);
+  H5Sclose(h_filespace);
+  H5Sclose(h_memspace);
   H5Tclose(h_type);
   H5Dclose(h_data);
 }
@@ -150,11 +170,13 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
  * @param N The number of particles.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part The array of particles to fill
+ * @param N_total Total number of particles
+ * @param offset Offset in the array where this task starts reading
  * @param field The name of the field (C code name as defined in part.h) to fill
  * @param importance Is the data compulsory or not
  *
  */
-#define readArray(grp, name, type, N, dim, part, field, importance) readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field), importance)
+#define readArray(grp, name, type, N, dim, part, N_total, offset, field, importance) readArrayBackEnd(grp, name, type, N, dim, N_total, offset, (char*)(&(part[0]).field), importance)
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
@@ -180,79 +202,118 @@ void read_ic_serial ( char* fileName, double dim[3], struct part **parts,  int* 
   hid_t h_file=0, h_grp=0;
   double boxSize[3]={0.0,-1.0,-1.0};         /* GADGET has only cubic boxes (in cosmological mode) */
   int numParticles[6]={0};   /* GADGET has 6 particle types. We only keep the type 0*/
+  int numParticles_highWord[6]={0};
+  long long offset = 0;
+  long long N_total = 0;
+  int rank;
 
-  /* Open file */
-  /* message("Opening file '%s' as IC.", fileName); */
-  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
-  if(h_file < 0)
-    {
-      error( "Error while opening file '%s'." , fileName );
-    }
+  /* First read some information about the content */
+  if (mpi_rank == 0) {
 
-  /* Open header to read simulation properties */
-  /* message("Reading runtime parameters..."); */
-  h_grp = H5Gopen1(h_file, "/RuntimePars");
-  if(h_grp < 0)
-    error("Error while opening runtime parameters\n");
-
-  /* Read the relevant information */
-  readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
-
-  /* Close runtime parameters */
-  H5Gclose(h_grp);
-  
-  /* Open header to read simulation properties */
-  /* message("Reading file header..."); */
-  h_grp = H5Gopen1(h_file, "/Header");
-  if(h_grp < 0)
-    error("Error while opening file header\n");
+    /* Open file */
+    /* message("Opening file '%s' as IC.", fileName); */
+    h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+    if(h_file < 0)
+      error( "Error while opening file '%s' for inital read." , fileName );
     
-  /* Read the relevant information and print status */
-  readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
-  readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
+    /* Open header to read simulation properties */
+    /* message("Reading runtime parameters..."); */
+    h_grp = H5Gopen1(h_file, "/RuntimePars");
+    if(h_grp < 0)
+      error("Error while opening runtime parameters\n");
+    
+    /* Read the relevant information */
+    readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
 
-  *N = numParticles[0];
-  dim[0] = boxSize[0];
-  dim[1] = ( boxSize[1] < 0 ) ? boxSize[0] : boxSize[1];
-  dim[2] = ( boxSize[2] < 0 ) ? boxSize[0] : boxSize[2];
+    /* Close runtime parameters */
+    H5Gclose(h_grp);
+  
+    /* Open header to read simulation properties */
+    /* message("Reading file header..."); */
+    h_grp = H5Gopen1(h_file, "/Header");
+    if(h_grp < 0)
+      error("Error while opening file header\n");
+    
+    /* Read the relevant information and print status */
+    readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
+    readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
+    readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
-  /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
+    N_total = ((long long) numParticles[0]) + ((long long) numParticles_highWord[0] << 32);   
+    dim[0] = boxSize[0];
+    dim[1] = ( boxSize[1] < 0 ) ? boxSize[0] : boxSize[1];
+    dim[2] = ( boxSize[2] < 0 ) ? boxSize[0] : boxSize[2];
 
-  /* Close header */
-  H5Gclose(h_grp);
+    /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
+    /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
+    
+    /* Close header */
+    H5Gclose(h_grp);
+
+    /* Close file */
+    H5Fclose(h_file);
+  }
+
+
+  /* Now need to broadcast that information to all ranks. */
+  MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
+  MPI_Bcast(&N_total, 1, MPI_LONG_LONG, 0, comm);
+  MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
+  
+
+  /* Divide the particles among the tasks. */
+  offset = mpi_rank * N_total / mpi_size;
+  *N = (mpi_rank + 1) * N_total / mpi_size - offset;
+
 
   /* Allocate memory to store particles */
-  if(posix_memalign( (void*)parts , part_align , *N * sizeof(struct part)) != 0)
+  if(posix_memalign( (void*)parts , part_align , (*N) * sizeof(struct part)) != 0)
     error("Error while allocating memory for particles");
   bzero( *parts , *N * sizeof(struct part) );
-
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / (1024.*1024.)); */
-		  
-  /* Open SPH particles group */
-  /* message("Reading particle arrays..."); */
-  h_grp = H5Gopen1(h_file, "/PartType0");
-  if(h_grp < 0)
-    error( "Error while opening particle group.\n");
 
-  /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, x, COMPULSORY);
-  readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, v, COMPULSORY);
-  readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, mass, COMPULSORY);
-  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
-  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
-  readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL);
-  readArray(h_grp, "Density", FLOAT, *N, 1, *parts, rho, OPTIONAL );
+  /* Now loop over ranks and read the data */
+  for ( rank = 0; rank < mpi_size ; ++ rank ) {
 
-  /* Close particle group */
-  H5Gclose(h_grp);
+    /* Is it this rank's turn to read ? */
+    if ( rank == mpi_rank ) {
+
+      h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+      if(h_file < 0)
+	error( "Error while opening file '%s' on rank %d." , fileName, mpi_rank );	
+      		  
+      /* Open SPH particles group */
+      /* message("Reading particle arrays..."); */
+      h_grp = H5Gopen1(h_file, "/PartType0");
+      if(h_grp < 0)
+	error( "Error while opening particle group on rank %d.\n", mpi_rank);
+      
+      /* Read arrays */
+      readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, N_total, offset, x, COMPULSORY);
+      readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, N_total, offset, v, COMPULSORY);
+      readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, N_total, offset, mass, COMPULSORY);
+      readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset, h, COMPULSORY);
+      readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset, u, COMPULSORY);
+      readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset, id, COMPULSORY);
+      readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, OPTIONAL);
+      readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a, OPTIONAL);
+      readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho, OPTIONAL );
+      
+      /* Close particle group */
+      H5Gclose(h_grp);
+
+      /* Close file */
+      H5Fclose(h_file);
+
+    }
+
+    /* Wait for the read of the reading to complete */
+    MPI_Barrier(comm);
+
+  }
 
   /* message("Done Reading particles..."); */
 
-  /* Close file */
-  H5Fclose(h_file);
 }
 
 
