@@ -32,6 +32,8 @@
 #include <hdf5.h>
 #include <math.h>
 
+#include "mpi.h"
+
 #include "const.h"
 #include "cycle.h"
 #include "lock.h"
