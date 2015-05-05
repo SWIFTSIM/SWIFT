@@ -18,11 +18,11 @@
  ******************************************************************************/
 
 
-#if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
+#if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
-void read_ic_serial ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info);
+void read_ic_single ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic);
 
-void write_output_serial ( struct engine* e, struct UnitSystem* us, int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info );
+void write_output_single ( struct engine* e, struct UnitSystem* us );
 
 #endif
 

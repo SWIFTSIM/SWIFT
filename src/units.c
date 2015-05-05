@@ -47,7 +47,7 @@ void initUnitSystem(struct UnitSystem* us)
 {
   us->UnitMass_in_cgs = const_unit_mass_in_cgs;
   us->UnitLength_in_cgs = const_unit_length_in_cgs;
-  us->UnitTime_in_cgs = 1.d / (const_unit_velocity_in_cgs / const_unit_length_in_cgs );
+  us->UnitTime_in_cgs = 1. / ((double) const_unit_velocity_in_cgs / ( (double)const_unit_length_in_cgs ));
   us->UnitCurrent_in_cgs = 1.;
   us->UnitTemperature_in_cgs = 1.;
 }
@@ -257,8 +257,7 @@ double generalConversionFactor(struct UnitSystem* us, float baseUnitsExponants[5
 
   for(i = 0 ; i < 5 ; ++i )
     if(baseUnitsExponants[i] != 0)
-	factor *= pow( getBaseUnit( us, i )  , baseUnitsExponants[i] );
-
+      factor *= pow( getBaseUnit( us, i )  , baseUnitsExponants[i] );
   return factor;	
 }
 
