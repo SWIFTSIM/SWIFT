@@ -212,8 +212,22 @@ AC_CHECK_LIB([z],[gzopen],[
     ],[])
 
 
-# Check for HDF5.
+# Check for HDF5. Need to differentiate between parallel and serial.
 AX_LIB_HDF5
+
+# Need to ask the HDF5 compiler about its configuration, -showconfig should
+# have yes/no
+have_parallel_hdf5="no"
+if test "$with_hdf5" = "yes"; then
+    AC_MSG_CHECKING([for HDF5 parallel support])
+    parallel=`$H5CC -showconfig | grep "Parallel HDF5:" | awk '{print $3}'`
+    if test "$parallel" = "yes"; then
+        have_parallel_hdf5="yes"
+        AC_DEFINE([HAVE_PARALLEL_HDF5],1,[HDF5 library supports parallel access])
+    fi
+    AC_MSG_RESULT($parallel)
+fi
+AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
 # Check for setaffinity.
 AC_CHECK_FUNC( pthread_setaffinity_np , AC_DEFINE([HAVE_SETAFFINITY],[true],
@@ -256,6 +270,7 @@ AC_MSG_RESULT([
       flags: $CFLAGS
    MPI enabled: $enable_mpi
    HDF5 enabled: $with_hdf5
+       parallel: $have_parallel_hdf5
    OpenMP enabled: $enable_openmp
    Metis enabled: $with_metis
 ])
