@@ -21,10 +21,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-#if defined(HAVE_HDF5) && defined(WITH_MPI) && defined(HAVE_PARALLEL_HDF5)
-
-/* Tell hdf5 that we intend to use shared-memory parallel stuff. */
-#define H5_HAVE_PARALLEL
+#if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
 
 /* Some standard headers. */
@@ -34,7 +31,6 @@
 #include <stddef.h>
 #include <hdf5.h>
 #include <math.h>
-#include <mpi.h>
 
 #include "const.h"
 #include "cycle.h"
@@ -47,6 +43,12 @@
 #include "error.h"
 #include "kernel.h"
 #include "common_io.h"
+
+
+
+/*-----------------------------------------------------------------------------
+ * Routines reading an IC file
+ *-----------------------------------------------------------------------------*/
 
 /**
  * @brief Reads a data array from a given HDF5 group.
@@ -64,18 +66,16 @@
  *  
  * Calls #error() if an error occurs.
  */
-void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, long long N_total, long long offset, char* part_c, enum DATA_IMPORTANCE importance)
+void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim, char* part_c, enum DATA_IMPORTANCE importance)
 {
-  hid_t h_data=0, h_err=0, h_type=0, h_memspace=0, h_filespace=0, h_plist_id=0;
-  hsize_t shape[2], offsets[2];
+  hid_t h_data=0, h_err=0, h_type=0;
   htri_t exist=0;
   void* temp;
-  int i=0, rank=0;
+  int i=0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
   const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
-
 
   /* Check whether the dataspace exists or not */
   exist = H5Lexists(grp, name, 0);
@@ -90,19 +90,24 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
 	  error( "Compulsory data set '%s' not present in the file." , name );
 	}
       else
-	{	  
+	{
+	  /* message("Optional data set '%s' not present. Zeroing this particle field...", name);	   */
+	  
 	  for(i=0; i<N; ++i)
 	    memset(part_c+i*partSize, 0, copySize);
+	  
 	  return;
 	}
-    }
+   }
 
   /* message( "Reading %s '%s' array...", importance == COMPULSORY ? "compulsory": "optional  ", name); */
 
-  /* Open data space in file */
-  h_data = H5Dopen2(grp, name, H5P_DEFAULT);
+  /* Open data space */
+  h_data = H5Dopen1(grp, name);
   if(h_data < 0)
-    error( "Error while opening data space '%s'." , name );
+    {
+      error( "Error while opening data space '%s'." , name );
+    }
 
   /* Check data type */
   h_type = H5Dget_type(h_data);
@@ -116,35 +121,10 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   if(temp == NULL)
     error("Unable to allocate memory for temporary buffer");
 
-  /* Prepare information for hyperslab */
-  if(dim > 1)
-    {
-      rank = 2;
-      shape[0] = N; shape[1] = dim;
-      offsets[0] = offset; offsets[1] = 0;
-    }
-  else
-    {
-      rank = 1;
-      shape[0] = N; shape[1] = 0;
-      offsets[0] = offset; offsets[1] = 0;
-    }
-
-  /* Create data space in memory */
-  h_memspace = H5Screate_simple(rank, shape, NULL);
- 
-  /* Select hyperslab in file */
-  h_filespace = H5Dget_space(h_data);
-  H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
-
-  /* Set collective reading properties */
-  h_plist_id = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
-
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  h_err = H5Dread(h_data, hdf5Type(type), h_memspace, h_filespace, h_plist_id, temp);
+  h_err = H5Dread(h_data, hdf5Type(type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if(h_err < 0)
     {
       error( "Error while reading data array '%s'." , name );
@@ -157,9 +137,6 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
   
   /* Free and close everything */
   free(temp);
-  H5Pclose(h_plist_id);
-  H5Sclose(h_filespace);
-  H5Sclose(h_memspace);
   H5Tclose(h_type);
   H5Dclose(h_data);
 }
@@ -170,19 +147,17 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
  * @param grp The group from which to read.
  * @param name The name of the array to read.
  * @param type The #DATA_TYPE of the attribute.
- * @param N The number of particles on this MPI task.
+ * @param N The number of particles.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part The array of particles to fill
- * @param N_total Total number of particles
- * @param offset Offset in the array where this task starts reading
  * @param field The name of the field (C code name as defined in part.h) to fill
  * @param importance Is the data compulsory or not
  *
  */
-#define readArray(grp, name, type, N, dim, part, N_total, offset, field, importance) readArrayBackEnd(grp, name, type, N, dim, N_total, offset, (char*)(&(part[0]).field), importance)
+#define readArray(grp, name, type, N, dim, part, field, importance) readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field), importance)
 
 /**
- * @brief Reads an HDF5 initial condition file (GADGET-3 type) in parallel
+ * @brief Reads an HDF5 initial condition file (GADGET-3 type)
  *
  * @param fileName The file to read.
  * @param dim (output) The dimension of the volume read from the file.
@@ -200,20 +175,15 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, int dim
  * Calls #error() if an error occurs.
  *
  */
-void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info)
+void read_ic_single ( char* fileName, double dim[3], struct part **parts,  int* N, int* periodic)
 {
   hid_t h_file=0, h_grp=0;
   double boxSize[3]={0.0,-1.0,-1.0};         /* GADGET has only cubic boxes (in cosmological mode) */
   int numParticles[6]={0};   /* GADGET has 6 particle types. We only keep the type 0*/
-  int numParticles_highWord[6]={0};
-  long long offset = 0;
-  long long N_total = 0;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
-  hid_t h_plist_id = H5Pcreate(H5P_FILE_ACCESS);
-  H5Pset_fapl_mpio(h_plist_id, comm, info);
-  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, h_plist_id);
+  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
   if(h_file < 0)
     {
       error( "Error while opening file '%s'." , fileName );
@@ -240,16 +210,11 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
   /* Read the relevant information and print status */
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
-  readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-  N_total = ((long long) numParticles[0]) + ((long long) numParticles_highWord[0] << 32);   
+  *N = numParticles[0];
   dim[0] = boxSize[0];
   dim[1] = ( boxSize[1] < 0 ) ? boxSize[0] : boxSize[1];
   dim[2] = ( boxSize[2] < 0 ) ? boxSize[0] : boxSize[2];
-
-  /* Divide the particles among the tasks. */
-  offset = mpi_rank * N_total / mpi_size;
-  *N = (mpi_rank + 1) * N_total / mpi_size - offset;
 
   /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
   /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
@@ -271,33 +236,29 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
     error( "Error while opening particle group.\n");
 
   /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, N_total, offset, x, COMPULSORY);
-  readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, N_total, offset, v, COMPULSORY);
-  readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, N_total, offset, mass, COMPULSORY);
-  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset, h, COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset, u, COMPULSORY);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset, id, COMPULSORY);
-  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, OPTIONAL);
-  readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a, OPTIONAL);
-  readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho, OPTIONAL );
+  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, x, COMPULSORY);
+  readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, v, COMPULSORY);
+  readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, mass, COMPULSORY);
+  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
+  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
+  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
+  readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL);
+  readArray(h_grp, "Density", FLOAT, *N, 1, *parts, rho, OPTIONAL );
 
   /* Close particle group */
   H5Gclose(h_grp);
 
-  /* Close property handler */
-  H5Pclose(h_plist_id);
+  /* message("Done Reading particles..."); */
 
   /* Close file */
   H5Fclose(h_file);
-
-  /* message("Done Reading particles..."); */
 }
 
 
 /*-----------------------------------------------------------------------------
  * Routines writing an output file
  *-----------------------------------------------------------------------------*/
-
 
 /**
  * @brief Writes a data array in given HDF5 group.
@@ -309,8 +270,6 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param N_total Total number of particles across all cores
- * @param offset Offset in the array where this mpi task starts writing
  * @param part_c A (char*) pointer on the first occurence of the field of interest in the parts array
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this array
@@ -320,18 +279,17 @@ void read_ic_parallel ( char* fileName, double dim[3], struct part **parts,  int
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, long long N_total, int mpi_rank, long long offset, char* part_c, struct UnitSystem* us, enum UnitConversionFactor convFactor)
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enum DATA_TYPE type, int N, int dim, char* part_c, struct UnitSystem* us, enum UnitConversionFactor convFactor)
 {
-  hid_t h_data=0, h_err=0, h_memspace=0, h_filespace=0, h_plist_id=0;
-  hsize_t shape[2], shape_total[2], offsets[2];
+  hid_t h_data=0, h_err=0, h_space=0;
   void* temp = 0;
   int i=0, rank=0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
   const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
+  hsize_t shape[2];
   char buffer[150];
-
 
   /* message("Writing '%s' array...", name); */
 
@@ -346,72 +304,46 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
     memcpy(&temp_c[i*copySize], part_c+i*partSize, copySize);
 
   /* Create data space */
-  h_memspace = H5Screate(H5S_SIMPLE);
-  if(h_memspace < 0)
+  h_space = H5Screate(H5S_SIMPLE);
+  if(h_space < 0)
     {
-      error( "Error while creating data space (memory) for field '%s'." , name );
-    }
-
-  h_filespace = H5Screate(H5S_SIMPLE);
-  if(h_filespace < 0)
-    {
-      error( "Error while creating data space (file) for field '%s'." , name );
+      error( "Error while creating data space for field '%s'." , name );
     }
   
   if(dim > 1)
     {
       rank = 2;
       shape[0] = N; shape[1] = dim;
-      shape_total[0] = N_total; shape_total[1] = dim;
-      offsets[0] = offset; offsets[1] = 0;
     }
   else
     {
       rank = 1;
       shape[0] = N; shape[1] = 0;
-      shape_total[0] = N_total; shape_total[1] = 0;
-      offsets[0] = offset; offsets[1] = 0;
     }
   
-  /* Change shape of memory data space */
-  h_err = H5Sset_extent_simple(h_memspace, rank, shape, NULL);
+  /* Change shape of data space */
+  h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if(h_err < 0)
     {
-      error( "Error while changing data space (memory) shape for field '%s'." , name );
-    }
-
-  /* Change shape of file data space */
-  h_err = H5Sset_extent_simple(h_filespace, rank, shape_total, NULL);
-  if(h_err < 0)
-    {
-      error( "Error while changing data space (file) shape for field '%s'." , name );
+      error( "Error while changing data space shape for field '%s'." , name );
     }
   
   /* Create dataset */
-  h_data = H5Dcreate1(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT);
+  h_data = H5Dcreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
   if(h_data < 0)
     {
-      error( "Error while creating dataset '%s'." , name );
+      error( "Error while creating dataspace '%s'." , name );
     }
   
-  H5Sclose(h_filespace);
-  h_filespace = H5Dget_space(h_data);
-  H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
-
-  /* Create property list for collective dataset write.    */
-  h_plist_id = H5Pcreate(H5P_DATASET_XFER);
-  H5Pset_dxpl_mpio(h_plist_id, H5FD_MPIO_COLLECTIVE);
-
   /* Write temporary buffer to HDF5 dataspace */
-  h_err = H5Dwrite(h_data, hdf5Type(type), h_memspace, h_filespace, h_plist_id, temp);
+  h_err = H5Dwrite(h_data, hdf5Type(type), h_space, H5S_ALL, H5P_DEFAULT, temp);
   if(h_err < 0)
     {
       error( "Error while writing data array '%s'." , name );
     }
 
   /* Write XMF description for this data set */
-  if(mpi_rank == 0)
-    writeXMFline(xmfFile, fileName, name, N_total, dim, type);
+  writeXMFline(xmfFile, fileName, name, N, dim, type);
 
   /* Write unit conversion factors for this data set */
   conversionString( buffer, us, convFactor );
@@ -419,35 +351,30 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
   writeAttribute_f( h_data, "h-scale exponant", hFactor( us, convFactor ) );
   writeAttribute_f( h_data, "a-scale exponant", aFactor( us, convFactor ) );
   writeAttribute_s( h_data, "Conversion factor", buffer );
-    
+  
   /* Free and close everything */
   free(temp);
   H5Dclose(h_data);
-  H5Pclose(h_plist_id);
-  H5Sclose(h_memspace);
-  H5Sclose(h_filespace);
+  H5Sclose(h_space);
 }
 
 /**
- * @brief A helper macro to call the writeArrayBackEnd function more easily.
+ * @brief A helper macro to call the readArrayBackEnd function more easily.
  *
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
  * @param name The name of the array to write.
  * @param type The #DATA_TYPE of the array.
- * @param N The number of particles to write from this core.
+ * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param N_total Total number of particles across all cores
- * @param mpi_rank The MPI task rank calling the function
- * @param offset Offset in the array where this mpi task starts writing
  * @param part A (char*) pointer on the first occurence of the field of interest in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, mpi_rank, offset, field, us, convFactor) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total, mpi_rank, offset, (char*)(&(part[0]).field), us, convFactor)
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, field, us, convFactor) writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, (char*)(&(part[0]).field), us, convFactor)
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -463,17 +390,14 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name, enu
  * Calls #error() if an error occurs.
  *
  */
-void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info)
+void write_output_single (struct engine *e, struct UnitSystem* us)
 {
   
   hid_t h_file=0, h_grp=0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
-  unsigned int numParticles[6]={N,0};
-  unsigned int numParticlesHighWord[6]={0};
-  unsigned int flagEntropy[6]={0};
-  long long N_total = 0, offset = 0;
-  double offset_d = 0., N_d = 0., N_total_d = 0.;
+  int numParticles[6]={N,0};
+  int numParticlesHighWord[6]={0};
   int numFiles = 1;
   struct part* parts = e->s->parts;
   FILE* xmfFile = 0;
@@ -484,36 +408,23 @@ void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_ra
   sprintf(fileName, "output_%03i.hdf5", outputCount);
 
   /* First time, we need to create the XMF file */
-  if(outputCount == 0 && mpi_rank == 0)
+  if(outputCount == 0)
     createXMFfile();
   
   /* Prepare the XMF file for the new entry */
-  if(mpi_rank == 0)
-    xmfFile = prepareXMFfile();
+  xmfFile = prepareXMFfile();
 
-  /* Open HDF5 file */
-  hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);
-  H5Pset_fapl_mpio(plist_id, comm, info);
-  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+  /* Write the part corresponding to this specific output */
+  writeXMFheader(xmfFile, N, fileName, e->time);
+
+
+  /* Open file */
+  /* message("Opening file '%s'.", fileName); */
+  h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT,H5P_DEFAULT);
   if(h_file < 0)
     {
       error( "Error while opening file '%s'." , fileName );
     }
-
-  /* Compute offset in the file and total number of particles */
-  /* Done using double to allow for up to 2^50=10^15 particles */
-  N_d = (double)N;
-  MPI_Exscan(&N_d, &offset_d, 1, MPI_DOUBLE, MPI_SUM, comm);
-  N_total_d = offset_d + N_d;
-  MPI_Bcast(&N_total_d, 1, MPI_DOUBLE, mpi_size-1, comm);
-  if(N_total_d > 1.e15)
-    error("Error while computing the offest for parallel output: Simulation has more than 10^15 particles.\n");
-  N_total = (long long) N_total_d;
-  offset = (long long) offset_d;
-
-  /* Write the part of the XMF file corresponding to this specific output */
-  if(mpi_rank == 0)
-    writeXMFheader(xmfFile, N_total, fileName, e->time);
 
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
@@ -539,13 +450,11 @@ void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_ra
   writeAttribute(h_grp, "Time", DOUBLE, &e->time, 1);
 
   /* GADGET-2 legacy values */
-  numParticles[0] = (unsigned int) N_total ;
   writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
-  numParticlesHighWord[0] = (unsigned int) (N_total >> 32);
   writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord, 6);
   double MassTable[6] = {0., 0., 0., 0., 0., 0.};
   writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
-  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy, 6);
+  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
 
   /* Close header */
@@ -564,27 +473,23 @@ void write_output_parallel (struct engine *e, struct UnitSystem* us,  int mpi_ra
     error( "Error while creating particle group.\n");
 
   /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, N_total, mpi_rank, offset, x, us, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, N_total, mpi_rank, offset, v, us, UNIT_CONV_SPEED);
-  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, N_total, mpi_rank, offset, mass, us, UNIT_CONV_MASS);
-  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, us, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, N_total, mpi_rank, offset, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
-  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
-  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total, mpi_rank, offset, dt, us, UNIT_CONV_TIME);
-  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);
-  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total, mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
+  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, x, us, UNIT_CONV_LENGTH);
+  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, v, us, UNIT_CONV_SPEED);
+  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, mass, us, UNIT_CONV_MASS);
+  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, h, us, UNIT_CONV_LENGTH);
+  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts, id, us, UNIT_CONV_NO_UNITS);
+  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, dt, us, UNIT_CONV_TIME);
+  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, a, us, UNIT_CONV_ACCELERATION);
+  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, rho, us, UNIT_CONV_DENSITY);
 
   /* Close particle group */
   H5Gclose(h_grp);
 
   /* Write LXMF file descriptor */
-  if(mpi_rank == 0)
-    writeXMFfooter(xmfFile);
+  writeXMFfooter(xmfFile);
 
   /* message("Done writing particles..."); */
-
-  /* Close property descriptor */
-  H5Pclose(plist_id);
 
   /* Close file */
   H5Fclose(h_file);
