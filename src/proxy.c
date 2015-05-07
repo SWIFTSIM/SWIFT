@@ -58,7 +58,7 @@
 /**
  * @brief Exchange cells with a remote node.
  *
- * @paam p The #proxy.
+ * @param p The #proxy.
  */
  
 void proxy_cells_exch1 ( struct proxy *p ) {
@@ -197,7 +197,7 @@ void proxy_addcell_out ( struct proxy *p , struct cell *c ) {
 /**
  * @brief Exchange particles with a remote node.
  *
- * @paam p The #proxy.
+ * @param p The #proxy.
  */
  
 void proxy_parts_exch1 ( struct proxy *p ) {
@@ -304,6 +304,7 @@ void proxy_parts_load ( struct proxy *p , struct part *parts , struct xpart *xpa
  * @brief Initialize the given proxy.
  *
  * @param p The #proxy.
+ * @param mynodeID The node this proxy is running on.
  * @param nodeID The node with which this proxy will communicate.
  */
  

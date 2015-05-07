@@ -142,7 +142,7 @@ void multipole_addparts ( struct multipole *m , struct gpart *p , int N ) {
  * @brief Init a multipole from a set of particles.
  *
  * @param m The #multipole.
- * @param parts The #gparts.
+ * @param parts The #gpart.
  * @param N The number of particles.
  */
  

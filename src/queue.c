@@ -118,7 +118,6 @@ void queue_insert ( struct queue *q , struct task *t ) {
  * @brief Initialize the given queue.
  *
  * @param q The #queue.
- * @param size The maximum size of the queue.
  * @param tasks List of tasks to which the queue indices refer to.
  */
  
@@ -146,8 +145,8 @@ void queue_init ( struct queue *q , struct task *tasks ) {
  * @brief Get a task free of dependencies and conflicts.
  *
  * @param q The task #queue.
+ * @param super The super-cell tat might conflict with the #queue
  * @param blocking Block until access to the queue is granted.
- * @param keep Remove the returned task from this queue.
  */
  
 struct task *queue_gettask ( struct queue *q , struct cell *super , int blocking ) {
