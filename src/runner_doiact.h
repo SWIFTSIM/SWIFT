@@ -317,7 +317,7 @@ void DOSELF_NAIVE ( struct runner *r , struct cell *restrict c ) {
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param parts_i The #parts to interact with @c cj.
+ * @param parts_i The #part to interact with @c cj.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
@@ -520,7 +520,7 @@ void DOPAIR_SUBSET ( struct runner *r , struct cell *restrict ci , struct part *
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param parts_i The #parts to interact with @c cj.
+ * @param parts_i The #part to interact with @c cj.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  * @param cj The second #cell.
@@ -637,7 +637,7 @@ void DOPAIR_SUBSET_NAIVE ( struct runner *r , struct cell *restrict ci , struct 
  *
  * @param r The #runner.
  * @param ci The first #cell.
- * @param parts The #parts to interact.
+ * @param parts The #part to interact.
  * @param ind The list of indices of particles in @c ci to interact with.
  * @param count The number of particles in @c ind.
  */
@@ -1795,7 +1795,8 @@ void DOSELF2 ( struct runner *r , struct cell *restrict c ) {
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The second #cell.
- * @param sid
+ * @param sid The direction linking the cells
+ * @param gettimer Do we have a timer ?
  *
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.

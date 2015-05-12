@@ -21,7 +21,7 @@
 #define SWIFT_VERSION_H
 
 /**
- * @file version.h.in
+ * @file version.h
  * @brief Package version and git revision sha.
  */
 
