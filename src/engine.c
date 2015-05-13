@@ -169,13 +169,18 @@ void engine_redistribute ( struct engine *e ) {
        getting the counts. */
     int *counts, *dest;
     struct part *parts = s->parts;
-    double ih[3];
+    double ih[3], dim[3];
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
+    dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
     if ( ( counts = (int *)malloc( sizeof(int) * nr_nodes * nr_nodes ) ) == NULL ||
          ( dest = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
         error( "Failed to allocate count and dest buffers." );
     bzero( counts , sizeof(int) * nr_nodes * nr_nodes );
     for ( k = 0 ; k < s->nr_parts ; k++ ) {
+        for ( j = 0 ; j < 3 ; j++ ) {
+            if ( parts[k].x[j] < 0.0 ) parts[k].x[j] += dim[j];
+            else if ( parts[k].x[j] >= dim[j] ) parts[k].x[j] -= dim[j];
+            }
         cid = cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] );
         dest[k] = cells[ cid ].nodeID;
         counts[ nodeID*nr_nodes + dest[k] ] += 1;
@@ -292,7 +297,9 @@ void engine_repartition ( struct engine *e ) {
     struct task *t, *tasks = e->sched.tasks;
     struct cell *ci, *cj;
     int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
-    float wscale = 0.0001, vscale = 0.001;
+    float wscale = 1.0, vscale = 1e-3, wscale_buff;
+    idx_t wtot = 0;
+    const idx_t wmax = 1e9 / e->nr_nodes;
     
     /* Clear the repartition flag. */
     e->forcerepart = 0;
@@ -332,12 +339,8 @@ void engine_repartition ( struct engine *e ) {
         }
         
     /* Init the weights arrays. */
-    /* bzero( weights_e , sizeof(idx_t) * 26*nr_cells );
-    bzero( weights_v , sizeof(idx_t) * nr_cells ); */
-    for ( k = 0 ; k < 26*nr_cells ; k++ )
-        weights_e[k] = 1;
-    for ( k = 0 ; k < nr_cells ; k++ )
-        weights_v[k] = 1;
+    bzero( weights_e , sizeof(idx_t) * 26*nr_cells );
+    bzero( weights_v , sizeof(idx_t) * nr_cells );
     
     /* Loop over the tasks... */
     for ( j = 0 ; j < e->sched.nr_tasks ; j++ ) {
@@ -358,6 +361,15 @@ void engine_repartition ( struct engine *e ) {
         w = ( t->toc - t->tic ) * wscale;
         if ( w < 0 )
             error( "Bad task weight (%i)." , w );
+            
+        /* Do we need to re-scale? */
+        wtot += w;
+        if (wtot > wmax) {
+          wscale /= 2;
+          wtot /= 2;
+          for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
+          for (k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
+        }
         
         /* Get the top-level cells involved. */
         for ( ci = t->ci ; ci->parent != NULL ; ci = ci->parent );
@@ -423,6 +435,18 @@ void engine_repartition ( struct engine *e ) {
             }
     
         }
+        
+    /* Get the minimum scaling and re-scale if necessary. */
+    if ( ( res = MPI_Allreduce( &wscale , &wscale_buff , 1 , MPI_FLOAT , MPI_MIN , MPI_COMM_WORLD ) ) != MPI_SUCCESS ) {
+        char buff[ MPI_MAX_ERROR_STRING ];
+        MPI_Error_string( res , buff , &i );
+        error( "Failed to allreduce the weight scales (%s)." , buff );
+    }
+    if (wscale_buff != wscale) {
+      float scale = wscale / wscale_buff;
+      for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
+      for (k = 0; k < nr_cells; k++) weights_v[k] *= scale;
+    }
         
     /* Merge the weights arrays accross all nodes. */
 #if IDXTYPEWIDTH==32
@@ -508,10 +532,10 @@ void engine_repartition ( struct engine *e ) {
             error( "Call to METIS_PartGraphKway failed." );
 
         /* Dump the 3d array of cell IDs. */
-        printf( "engine_repartition: nodeIDs = reshape( [" );
+        /* printf( "engine_repartition: nodeIDs = reshape( [" );
         for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
             printf( "%i " , (int)nodeIDs[ i ] );
-        printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]);
+        printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
     
         }
         

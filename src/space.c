@@ -1159,6 +1159,21 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
     s->nr_queues = 1;
     s->size_parts_foreign = 0;
     
+    /* Check that all the particle positions are reasonable, wrap if periodic. */
+    if ( periodic ) {
+      for ( int k = 0 ; k < N ; k++ )
+        for ( int j = 0 ; j < 3 ; j++ ) {
+          while ( parts[k].x[j] < 0 ) parts[k].x[j] += dim[j];
+          while ( parts[k].x[j] >= dim[j] ) parts[k].x[j] -= dim[j];
+          }
+      }
+    else {
+      for ( int k = 0 ; k < N ; k++ )
+        for ( int j = 0 ; j < 3 ; j++ )
+          if ( parts[k].x[j] < 0 || parts[k].x[j] >= dim[j] )
+            error( "Not all particles are within the specified domain." );
+      }
+    
     /* Allocate the xtra parts array. */
     if ( posix_memalign( (void *)&s->xparts , 32 , N * sizeof(struct xpart) ) != 0 )
         error( "Failed to allocate xparts." );
