@@ -127,7 +127,7 @@ void engine_prepare ( struct engine *e );
 void engine_step ( struct engine *e );
 void engine_maketasks ( struct engine *e );
 void engine_split ( struct engine *e , int *grid );
-int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpart *xparts , int *ind , int N );
+int engine_exchange_strays ( struct engine *e , int offset , int *ind , int N );
 void engine_rebuild ( struct engine *e );
 void engine_repartition ( struct engine *e );
 void engine_makeproxies ( struct engine *e );

@@ -357,7 +357,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
                 ind[k] = ind[ nr_parts ];
                 ind[ nr_parts ] = t;
                 }
-        s->nr_parts = nr_parts + engine_exchange_strays( s->e , &parts[nr_parts] , &xparts[nr_parts] , &ind[nr_parts] , s->nr_parts - nr_parts );
+        s->nr_parts = nr_parts + engine_exchange_strays( s->e , nr_parts , &ind[nr_parts] , s->nr_parts - nr_parts );
         for ( k = nr_parts ; k < s->nr_parts ; k++ ) {
             p = &parts[k];
             ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
@@ -1175,7 +1175,7 @@ void space_init ( struct space *s , double dim[3] , struct part *parts , int N ,
       }
     
     /* Allocate the xtra parts array. */
-    if ( posix_memalign( (void *)&s->xparts , 32 , N * sizeof(struct xpart) ) != 0 )
+    if ( posix_memalign( (void *)&s->xparts , part_align , N * sizeof(struct xpart) ) != 0 )
         error( "Failed to allocate xparts." );
     bzero( s->xparts , N * sizeof(struct xpart) );
     
