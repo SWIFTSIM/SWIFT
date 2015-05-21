@@ -813,15 +813,14 @@ void engine_exchange_cells ( struct engine *e ) {
  * @brief Exchange straying parts with other nodes.
  *
  * @param e The #engine.
- * @param parts An array of straying parts.
- * @param xparts The corresponding xparts.
+ * @param offset The index in the parts array as of which the foreign parts reside.
  * @param ind The ID of the foreign #cell.
  * @param N The number of stray parts.
  *
  * @return The number of arrived parts copied to parts and xparts.
  */
  
-int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpart *xparts , int *ind , int N ) {
+int engine_exchange_strays ( struct engine *e , int offset , int *ind , int N ) {
 
 #ifdef WITH_MPI
 
@@ -830,6 +829,7 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     MPI_Request reqs_out[ 2*engine_maxproxies ];
     MPI_Status status;
     struct proxy *p;
+    struct space *s = e->s;
 
     /* Re-set the proxies. */
     for ( k = 0 ; k < e->nr_proxies ; k++ )
@@ -840,7 +840,7 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
         pid = e->proxy_ind[ e->s->cells[ ind[k] ].nodeID ];
         if ( pid < 0 )
             error( "Do not have a proxy for the requested nodeID." );
-        proxy_parts_load( &e->proxies[pid] , &parts[k] , &xparts[k] , 1 );
+        proxy_parts_load( &e->proxies[pid] , &s->parts[offset + k] , &s->xparts[offset + k] , 1 );
         }
     
     /* Launch the proxies. */
@@ -863,8 +863,28 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     if ( MPI_Waitall( e->nr_proxies , reqs_out , MPI_STATUSES_IGNORE ) != MPI_SUCCESS )
         error( "MPI_Waitall on sends failed." );
         
-    /* Return the number of harvested parts. */
-    /* Set the requests for the particle data. */
+    /* Count the total number of incomming particles and make sure we have
+       enough space to accommodate them. */
+    int count_in = 0;
+    for ( k = 0 ; k < e->nr_proxies ; k++ )
+      count_in += e->proxies[k].nr_parts_in;
+    message("sent out %i particles, got %i back.", N, count_in);
+    if ( offset + count_in > s->size_parts ) {
+      s->size_parts = (offset + count_in) * 1.05;
+      struct part *parts_new;
+      struct xpart *xparts_new;
+      if ( posix_memalign( (void **)&parts_new , part_align , sizeof(struct part) * s->size_parts ) != 0 ||
+           posix_memalign( (void **)&xparts_new , part_align , sizeof(struct xpart) * s->size_parts ) != 0 )
+          error( "Failed to allocate new part data." );
+      memcpy( parts_new , s->parts , sizeof(struct part) * offset );
+      memcpy( xparts_new , s->xparts , sizeof(struct xpart) * offset );
+      free( s->parts );
+      free( s->xparts );
+      s->parts = parts_new;
+      s->xparts = xparts_new;
+    }
+        
+    /* Collect the requests for the particle data from the proxies. */
     for ( k = 0 ; k < e->nr_proxies ; k++ ) {
         if ( e->proxies[k].nr_parts_in > 0 ) {
             reqs_in[2*k] = e->proxies[k].req_parts_in;
@@ -887,21 +907,19 @@ int engine_exchange_strays ( struct engine *e , struct part *parts , struct xpar
     for ( k = 0 ; k < 2*(nr_in + nr_out) ; k++ ) {
         int err;
         if ( ( err = MPI_Waitany( 2*e->nr_proxies , reqs_in , &pid , &status ) ) != MPI_SUCCESS ) {
-        char buff[ MPI_MAX_ERROR_STRING ];
-        int res;
-        MPI_Error_string( err , buff , &res );
-            error( "MPI_Waitany failed (%s)." , buff );
-        }
-    if ( pid == MPI_UNDEFINED )
-        break;
+            char buff[ MPI_MAX_ERROR_STRING ];
+            int res;
+            MPI_Error_string( err , buff , &res );
+                error( "MPI_Waitany failed (%s)." , buff );
+            }
         if ( pid == MPI_UNDEFINED )
             break;
         // message( "request from proxy %i has arrived." , pid );
         if ( reqs_in[pid & ~1] == MPI_REQUEST_NULL &&
              reqs_in[pid | 1 ] == MPI_REQUEST_NULL ) {
             p = &e->proxies[pid/2];
-            memcpy( &parts[count] , p->parts_in , sizeof(struct part) * p->nr_parts_in );
-            memcpy( &xparts[count] , p->xparts_in , sizeof(struct xpart) * p->nr_parts_in );
+            memcpy( &s->parts[offset + count] , p->parts_in , sizeof(struct part) * p->nr_parts_in );
+            memcpy( &s->xparts[offset + count] , p->xparts_in , sizeof(struct xpart) * p->nr_parts_in );
             count += p->nr_parts_in;
             /* for ( int k = 0 ; k < p->nr_parts_in ; k++ )
                 message( "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i." ,
@@ -1993,6 +2011,7 @@ void engine_split ( struct engine *e , int *grid ) {
     engine_makeproxies( e );
         
     /* Re-allocate the local parts. */
+    message("Re-allocating parts array from %i to %i.", s->size_parts, (int)(s->nr_parts * 1.2));
     s->size_parts = s->nr_parts * 1.2;
     struct part *parts_new;
     struct xpart *xparts_new;
