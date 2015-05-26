@@ -358,6 +358,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
                 ind[ nr_parts ] = t;
                 }
         s->nr_parts = nr_parts + engine_exchange_strays( s->e , nr_parts , &ind[nr_parts] , s->nr_parts - nr_parts );
+        parts = s->parts;
+        xparts = s->xparts;
         for ( k = nr_parts ; k < s->nr_parts ; k++ ) {
             p = &parts[k];
             ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
