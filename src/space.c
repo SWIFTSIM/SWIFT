@@ -321,7 +321,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
         
     /* Run through the particles and get their cell index. */
     // tic = getticks();
-    if ( ( ind = (int *)malloc( sizeof(int) * s->size_parts ) ) == NULL )
+    const int ind_size = s->size_parts;
+    if ( ( ind = (int *)malloc( sizeof(int) * ind_size ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
@@ -340,8 +341,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
     // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
 
-    /* Move non-local parts to the end of the list. */
     #ifdef WITH_MPI
+        /* Move non-local parts to the end of the list. */
         int nodeID = s->e->nodeID;
         for ( k = 0 ; k < nr_parts ; k++ )
             if ( cells[ ind[k] ].nodeID != nodeID ) {
@@ -357,7 +358,23 @@ void space_rebuild ( struct space *s , double cell_max ) {
                 ind[k] = ind[ nr_parts ];
                 ind[ nr_parts ] = t;
                 }
+                
+        /* Exchange the strays, note that this potentially re-allocates
+           the parts arrays. */
         s->nr_parts = nr_parts + engine_exchange_strays( s->e , nr_parts , &ind[nr_parts] , s->nr_parts - nr_parts );
+        parts = s->parts;
+        xparts = s->xparts;
+        
+        /* Re-allocate the index array if needed.. */
+        if (s->nr_parts > ind_size) {
+          int *ind_new;
+          if ( ( ind_new = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
+              error( "Failed to allocate temporary particle indices." );
+          memcpy(ind_new, ind, sizeof(int) * nr_parts);
+          free(ind); ind = ind_new;
+        }
+        
+        /* Assign each particle to its cell. */
         for ( k = nr_parts ; k < s->nr_parts ; k++ ) {
             p = &parts[k];
             ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
