@@ -443,7 +443,7 @@ void engine_repartition ( struct engine *e ) {
         error( "Failed to allreduce the weight scales (%s)." , buff );
     }
     if (wscale_buff != wscale) {
-      float scale = wscale / wscale_buff;
+      float scale = wscale_buff / wscale;
       for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
       for (k = 0; k < nr_cells; k++) weights_v[k] *= scale;
     }
