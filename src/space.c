@@ -964,7 +964,7 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
 void space_split ( struct space *s , struct cell *c ) {
 
     int k, count = c->count, gcount = c->gcount, maxdepth = 0;
-    float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
+    float h, h_max = 0.0f, dt, dt_min = FLT_MAX, dt_max = FLT_MIN;
     struct cell *temp;
     struct part *p, *parts = c->parts;
     struct xpart *xp, *xparts = c->xparts;
