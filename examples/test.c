@@ -827,12 +827,12 @@ int main ( int argc , char *argv[] ) {
     
         /* Repartition the space amongst the nodes? */
         #if defined(WITH_MPI) && defined(HAVE_METIS)
-            if ( j == 2 )
+            if ( j % 100 == 2 )
                 e.forcerepart = 1;
         #endif
         
         /* Force a rebuild for testing. */
-        /* if ( j % 4 == 1 )
+        /* if ( j % 4 == 3 )
             e.forcerebuild = 1; */
         
         // message( "starting run %i/%i (t=%.3e) with %i threads and %i queues..." , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
