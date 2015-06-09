@@ -287,7 +287,7 @@ void engine_repartition ( struct engine *e ) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-    int i, j, k, l, cid, cjd, ii, jj, kk, res, w;
+    int i, j, k, l, cid, cjd, ii, jj, kk, res;
     idx_t *inds, *nodeIDs;
     idx_t *weights_v, *weights_e;
     struct space *s = e->s;
@@ -297,7 +297,7 @@ void engine_repartition ( struct engine *e ) {
     struct task *t, *tasks = e->sched.tasks;
     struct cell *ci, *cj;
     int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
-    float wscale = 1.0, vscale = 1e-3, wscale_buff;
+    float wscale = 1e-3, vscale = 1e-3, wscale_buff;
     idx_t wtot = 0;
     const idx_t wmax = 1e9 / e->nr_nodes;
     
@@ -358,15 +358,16 @@ void engine_repartition ( struct engine *e ) {
             continue;
             
         /* Get the task weight. */
-        w = ( t->toc - t->tic ) * wscale;
+        idx_t w = ( t->toc - t->tic ) * wscale;
         if ( w < 0 )
             error( "Bad task weight (%i)." , w );
             
         /* Do we need to re-scale? */
         wtot += w;
-        if (wtot > wmax) {
+        while (wtot > wmax) {
           wscale /= 2;
           wtot /= 2;
+          w /= 2;
           for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
           for (k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
         }
