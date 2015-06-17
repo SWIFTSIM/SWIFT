@@ -541,8 +541,13 @@ void engine_repartition ( struct engine *e ) {
         }
         
     /* Broadcast the result of the partition. */
+#if IDXTYPEWIDTH==32
     if ( MPI_Bcast( nodeIDs , nr_cells , MPI_INT , 0 , MPI_COMM_WORLD ) != MPI_SUCCESS )
         error( "Failed to bcast the node IDs." );
+#else
+    if ( MPI_Bcast( nodeIDs , nr_cells , MPI_LONG_LONG_INT , 0 , MPI_COMM_WORLD ) != MPI_SUCCESS )
+        error( "Failed to bcast the node IDs." );
+#endif
         
     /* Set the cell nodeIDs and clear any non-local parts. */
     for ( k = 0 ; k < nr_cells ; k++ ) {
