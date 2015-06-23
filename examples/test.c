@@ -573,7 +573,8 @@ int main ( int argc , char *argv[] ) {
 #endif
 
     /* Greeting message */
-    message( "This is %s\n", package_description() );
+    if ( myrank == 0 )
+        message( "This is %s\n", package_description() );
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );

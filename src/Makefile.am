@@ -58,11 +58,18 @@ libswiftsim_mpi_la_SHORTNAME = mpi
 
 # Versioning. If any sources change then update the version.h file with
 # the current git revision and package version.
+# May have a checkout without a version.h file and no git command (tar/zip
+# download), allow that, but make sure we know it.
 version.h: version.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
 	if test "X$(GIT_CMD)" != "X"; then \
 	    GIT_REVISION=`git describe --abbrev=8  --always --tags --dirty`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," version.h.in > version.h; \
+	else \
+	    if test ! -f version.h; then \
+	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
+	            -e "s,@GIT_REVISION\@,unknown," version.h.in > version.h; \
+	    fi; \
 	fi
 
 #  Make sure version.h is built first.
