@@ -57,6 +57,7 @@ AC_ARG_ENABLE([mpi],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
+good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
     AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
 
@@ -86,6 +87,15 @@ if test "$enable_mpi" = "yes"; then
          *"Open MPI"*)
             MPI_THREAD_LIBS=""
             AC_MSG_RESULT([Open MPI])
+            #  OpenMPI should be 1.8.6 or later, if not complain.
+            #  Version is last word on first line of -version output.
+            revision=`mpirun -version 2>&1 | grep "Open MPI" | awk '{print $NF}'`
+            AX_COMPARE_VERSION( $revision, [ge], [1.8.6],,[good_mpi="no"] )
+            if test "$good_mpi" = "no"; then
+                AC_MSG_WARN([
+    Open MPI version should be at least 1.8.6 (is $revision)])
+                enable_mpi="yes (but with warning)"
+            fi
          ;;
          *)
             MPI_THREAD_LIBS=""
@@ -96,6 +106,8 @@ if test "$enable_mpi" = "yes"; then
     fi
 fi
 AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
+
+
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
@@ -219,7 +231,7 @@ AX_LIB_HDF5
 # The default is to use MPI support if it is available, i.e. this is
 # a parallel HDF5.
 # To do this need to ask the HDF5 compiler about its configuration,
-# -showconfig should have yes/no. 
+# -showconfig should have yes/no.
 have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
