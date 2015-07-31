@@ -199,22 +199,25 @@ fi
 # don't use that.
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [prefix where the metis library is installed @<:@default=yes@:>@]
+       [root directory where metis is installed @<:@default=yes@:>@]
     )],
     [],
     [with_metis="no"]
 )
 if test "x$with_metis" != "xno"; then
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LIBS="-L$with_metis -lmetis"
+      METIS_LIBS="-L$with_metis/lib -lmetis"
+      METIS_INCS="-I$with_metis/include"
    else
       METIS_LIBS="-lmetis"
+      METIS_INCS=""
    fi
    AC_CHECK_LIB([metis],[METIS_PartGraphKway],
       AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
       AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
 fi
 AC_SUBST([METIS_LIBS])
+AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
 # Check for zlib.

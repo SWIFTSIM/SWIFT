@@ -35,11 +35,11 @@
 /* MPI headers. */
 #ifdef WITH_MPI
     #include <mpi.h>
-#endif
 
-/* METIS headers. */
-#ifdef HAVE_METIS
-    #include <metis.h>
+/* METIS headers only used when MPI is also available. */
+    #ifdef HAVE_METIS
+        #include <metis.h>
+    #endif
 #endif
 
 /* Local headers. */

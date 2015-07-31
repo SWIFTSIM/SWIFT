@@ -52,7 +52,7 @@ libswiftsim_la_SOURCES = $(AM_SOURCES)
 
 # Sources and flags for MPI library
 libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
-libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI $(METIS_INCS)
 libswiftsim_mpi_la_SHORTNAME = mpi
 
 
