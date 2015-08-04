@@ -512,8 +512,8 @@ void engine_repartition ( struct engine *e ) {
         for ( k = 0 ; k < nr_cells ; k++ )
             offsets[k+1] = offsets[k] + 26;
             
-        /* Set the METIS options. */
-        idx_t options[METIS_NOPTIONS];
+        /* Set the METIS options. +1 to keep the GCC sanitizer happy. */
+        idx_t options[METIS_NOPTIONS+1];
         METIS_SetDefaultOptions( options );
         options[ METIS_OPTION_OBJTYPE ] = METIS_OBJTYPE_CUT;
         options[ METIS_OPTION_NUMBERING ] = 0;
