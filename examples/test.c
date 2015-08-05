@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -524,6 +525,23 @@ void density_dump ( int N ) {
 
     }
 
+/**
+ *  Factorize a given integer, attempts to keep larger pair of factors.
+ */
+void factor( int value, int *f1, int *f2 ) {
+    int j;
+    int i;
+
+    j = (int) sqrt( value );
+    for ( i = j; i > 0; i-- ) {
+        if ( ( value % i ) == 0 ) {
+            *f1 = i;
+            *f2 = value / i;
+            break;
+            }
+        }
+    }
+
 
 /**
  * @brief Main routine that loads a few particles and generates some output.
@@ -535,6 +553,7 @@ int main ( int argc , char *argv[] ) {
     int c, icount, j, k, N = -1, periodic = 1;
     int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
     int data[2];
+    int f1, f2, f3;
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
     double h_max = -1.0 , scaling = 1.0;
     double clock = DBL_MAX;
@@ -570,6 +589,14 @@ int main ( int argc , char *argv[] ) {
     if ( myrank == 0 )
         message( "MPI is up and running with %i nodes." , nr_nodes );
     fflush(stdout);
+
+    /* Set a default grid so that f1*f2*f3 == nr_nodes. */
+    factor( nr_nodes, &f1, &f2 );
+    factor( nr_nodes / f2, &f1, &f3 );
+    factor( f1 * f2, &f2, &f1 );
+    grid[0] = f1;
+    grid[1] = f2;
+    grid[2] = f3;
 #endif
 
     /* Greeting message */
@@ -578,6 +605,7 @@ int main ( int argc , char *argv[] ) {
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
+
 
     /* Parse the options */
     while ( ( c = getopt( argc , argv  , "a:c:d:f:g:m:q:r:s:t:w:z:" ) ) != -1 )
@@ -610,8 +638,6 @@ int main ( int argc , char *argv[] ) {
 	case 'g':
 	  if ( sscanf( optarg , "%i %i %i" , &grid[0] , &grid[1] , &grid[2] ) != 3 )
 	    error( "Error parsing grid." );
-	  if ( myrank == 0 )
-        message( "grid set to [ %i %i %i ]." , grid[0] , grid[1] , grid[2] ); fflush(stdout);
 	  break;
 	case 'm':
 	  if ( sscanf( optarg , "%lf" , &h_max ) != 1 )
@@ -655,7 +681,11 @@ int main ( int argc , char *argv[] ) {
 	  break;
 
 	}
-    
+
+#if defined( WITH_MPI )
+    if ( myrank == 0 )
+        message( "grid set to [ %i %i %i ]." , grid[0] , grid[1] , grid[2] ); fflush(stdout);
+#endif
 
     /* How large are the parts? */
     if ( myrank == 0 ) {
