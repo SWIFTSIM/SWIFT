@@ -553,7 +553,6 @@ int main ( int argc , char *argv[] ) {
     int c, icount, j, k, N = -1, periodic = 1;
     int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
     int data[2];
-    int f1, f2, f3;
     double dim[3] = { 1.0 , 1.0 , 1.0 }, shift[3] = { 0.0 , 0.0 , 0.0 };
     double h_max = -1.0 , scaling = 1.0;
     double clock = DBL_MAX;
@@ -590,13 +589,10 @@ int main ( int argc , char *argv[] ) {
         message( "MPI is up and running with %i nodes." , nr_nodes );
     fflush(stdout);
 
-    /* Set a default grid so that f1*f2*f3 == nr_nodes. */
-    factor( nr_nodes, &f1, &f2 );
-    factor( nr_nodes / f2, &f1, &f3 );
-    factor( f1 * f2, &f2, &f1 );
-    grid[0] = f1;
-    grid[1] = f2;
-    grid[2] = f3;
+    /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
+    factor( nr_nodes, &grid[0], &grid[1] );
+    factor( nr_nodes / grid[1], &grid[0], &grid[2] );
+    factor( grid[0] * grid[1], &grid[1], &grid[0] );
 #endif
 
     /* Greeting message */
