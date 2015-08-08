@@ -843,9 +843,12 @@ int engine_exchange_strays ( struct engine *e , int offset , int *ind , int N ) 
     
     /* Put the parts into the corresponding proxies. */
     for ( k = 0 ; k < N ; k++ ) {
-        pid = e->proxy_ind[ e->s->cells[ ind[k] ].nodeID ];
+        int node_id = e->s->cells[ ind[k] ].nodeID;
+        if (node_id < 0 || node_id >= e->nr_nodes)
+          error("Bad node ID %i.", node_id);
+        pid = e->proxy_ind[ node_id ];
         if ( pid < 0 )
-            error( "Do not have a proxy for the requested nodeID." );
+            error( "Do not have a proxy for the requested nodeID %i.", node_id );
         proxy_parts_load( &e->proxies[pid] , &s->parts[offset + k] , &s->xparts[offset + k] , 1 );
         }
     

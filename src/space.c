@@ -336,6 +336,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
             else if ( p->x[j] >= dim[j] )
                 p->x[j] -= dim[j];
         ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
+        if (ind[k] < 0 || ind[k] >= s->nr_cells)
+          error("Bad cell id %i.", ind[k]);
         atomic_inc( &cells[ ind[k] ].count );
         }
     // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
@@ -344,24 +346,25 @@ void space_rebuild ( struct space *s , double cell_max ) {
     #ifdef WITH_MPI
         /* Move non-local parts to the end of the list. */
         int nodeID = s->e->nodeID;
+        int nr_local_parts = s->nr_parts;
         for ( k = 0 ; k < nr_parts ; k++ )
             if ( cells[ ind[k] ].nodeID != nodeID ) {
                 cells[ ind[k] ].count -= 1;
-                nr_parts -= 1;
+                nr_local_parts -= 1;
                 struct part tp = parts[k];
-                parts[k] = parts[ nr_parts ];
-                parts[ nr_parts ] = tp;
+                parts[k] = parts[ nr_local_parts ];
+                parts[ nr_local_parts ] = tp;
                 struct xpart txp = xparts[k];
-                xparts[k] = xparts[ nr_parts ];
-                xparts[ nr_parts ] = txp;
+                xparts[k] = xparts[ nr_local_parts ];
+                xparts[ nr_local_parts ] = txp;
                 int t = ind[k];
-                ind[k] = ind[ nr_parts ];
-                ind[ nr_parts ] = t;
+                ind[k] = ind[ nr_local_parts ];
+                ind[ nr_local_parts ] = t;
                 }
                 
         /* Exchange the strays, note that this potentially re-allocates
            the parts arrays. */
-        s->nr_parts = nr_parts + engine_exchange_strays( s->e , nr_parts , &ind[nr_parts] , s->nr_parts - nr_parts );
+        s->nr_parts = nr_local_parts + engine_exchange_strays( s->e , nr_local_parts , &ind[nr_parts] , nr_parts - nr_local_parts );
         parts = s->parts;
         xparts = s->xparts;
         
