@@ -327,7 +327,6 @@ void space_rebuild ( struct space *s , double cell_max ) {
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
     cdim[0] = s->cdim[0]; cdim[1] = s->cdim[1]; cdim[2] = s->cdim[2];
-    #pragma omp parallel for private(p,j)
     for ( k = 0 ; k < nr_parts ; k++ )  {
         p = &parts[k];
         for ( j = 0 ; j < 3 ; j++ )
@@ -417,7 +416,6 @@ void space_rebuild ( struct space *s , double cell_max ) {
     // tic = getticks();
     if ( ( ind = (int *)malloc( sizeof(int) * s->size_gparts ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
-    #pragma omp parallel for private(gp,j)
     for ( k = 0 ; k < nr_gparts ; k++ )  {
         gp = &gparts[k];
         for ( j = 0 ; j < 3 ; j++ )
@@ -467,7 +465,6 @@ void space_rebuild ( struct space *s , double cell_max ) {
        sure that the parts in each cell are ok. */
     // tic = getticks();
     k = 0;
-    #pragma omp parallel shared(s,k)
     {
         if ( omp_get_thread_num() < 8 )
             while ( 1 ) {
@@ -858,11 +855,9 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
         }
         
     /* Call the recursive function on all higher-level cells. */
-    #pragma omp parallel shared(cid)
     {
         int mycid;
         while ( 1 ) {
-            #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
                 rec_map( &s->cells[mycid] );
@@ -904,11 +899,9 @@ void space_map_cells_post ( struct space *s , int full , void (*fun)( struct cel
         }
         
     /* Call the recursive function on all higher-level cells. */
-    // #pragma omp parallel shared(s,cid)
     {
         int mycid;
         while ( 1 ) {
-            // #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
                 rec_map( &s->cells[mycid] );
@@ -941,11 +934,9 @@ void space_map_cells_pre ( struct space *s , int full , void (*fun)( struct cell
         }
         
     /* Call the recursive function on all higher-level cells. */
-    // #pragma omp parallel shared(s,cid)
     {
         int mycid;
         while ( 1 ) {
-            // #pragma omp critical
             mycid = cid++;
             if ( mycid < s->nr_cells )
                 rec_map( &s->cells[mycid] );
