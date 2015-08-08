@@ -303,7 +303,7 @@ void space_regrid ( struct space *s , double cell_max ) {
  
 void space_rebuild ( struct space *s , double cell_max ) {
 
-    int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
+    int j, k, cdim[3], nr_gparts = s->nr_gparts;
     struct cell *restrict c, *restrict cells;
     struct part *restrict finger, *restrict p, *parts = s->parts;
     struct xpart *xfinger, *xparts = s->xparts;
@@ -327,7 +327,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
     cdim[0] = s->cdim[0]; cdim[1] = s->cdim[1]; cdim[2] = s->cdim[2];
-    for ( k = 0 ; k < nr_parts ; k++ )  {
+    for ( k = 0 ; k < s->nr_parts ; k++ )  {
         p = &parts[k];
         for ( j = 0 ; j < 3 ; j++ )
             if ( p->x[j] < 0.0 )
@@ -346,7 +346,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
         /* Move non-local parts to the end of the list. */
         int nodeID = s->e->nodeID;
         int nr_local_parts = s->nr_parts;
-        for ( k = 0 ; k < nr_parts ; k++ )
+        for ( k = 0 ; k < nr_local_parts ; k++ )
             if ( cells[ ind[k] ].nodeID != nodeID ) {
                 cells[ ind[k] ].count -= 1;
                 nr_local_parts -= 1;
@@ -363,7 +363,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
                 
         /* Exchange the strays, note that this potentially re-allocates
            the parts arrays. */
-        s->nr_parts = nr_local_parts + engine_exchange_strays( s->e , nr_local_parts , &ind[nr_parts] , nr_parts - nr_local_parts );
+        s->nr_parts = nr_local_parts + engine_exchange_strays( s->e , nr_local_parts , &ind[nr_local_parts] , s->nr_parts - nr_local_parts );
         parts = s->parts;
         xparts = s->xparts;
         
@@ -372,29 +372,28 @@ void space_rebuild ( struct space *s , double cell_max ) {
           int *ind_new;
           if ( ( ind_new = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
               error( "Failed to allocate temporary particle indices." );
-          memcpy(ind_new, ind, sizeof(int) * nr_parts);
+          memcpy(ind_new, ind, sizeof(int) * nr_local_parts);
           free(ind); ind = ind_new;
         }
         
         /* Assign each particle to its cell. */
-        for ( k = nr_parts ; k < s->nr_parts ; k++ ) {
+        for ( k = nr_local_parts ; k < s->nr_parts ; k++ ) {
             p = &parts[k];
             ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
             cells[ ind[k] ].count += 1;
-            /* if ( cells[ ind[k] ].nodeID != nodeID )
-                error( "Received part that does not belong to me (nodeID=%i)." , cells[ ind[k] ].nodeID ); */
+            if ( cells[ ind[k] ].nodeID != nodeID )
+                error( "Received part that does not belong to me (nodeID=%i)." , cells[ ind[k] ].nodeID );
             }
-        nr_parts = s->nr_parts;
     #endif
     
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    parts_sort( parts , xparts , ind , nr_parts , 0 , s->nr_cells-1 );
+    parts_sort( parts , xparts , ind , s->nr_parts , 0 , s->nr_cells-1 );
     // message( "parts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Re-link the gparts. */
-    for ( k = 0 ; k < nr_parts ; k++ )
+    for ( k = 0 ; k < s->nr_parts ; k++ )
         if ( parts[k].gpart != NULL )
             parts[k].gpart->part = &parts[k];
     
