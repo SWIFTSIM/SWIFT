@@ -308,7 +308,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
     struct part *restrict finger, *restrict p, *parts = s->parts;
     struct xpart *xfinger, *xparts = s->xparts;
     struct gpart *gp, *gparts = s->gparts, *gfinger;
-    int *ind;
+    int *cell_id;
     double ih[3], dim[3];
     // ticks tic;
     
@@ -321,8 +321,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
         
     /* Run through the particles and get their cell index. */
     // tic = getticks();
-    const int ind_size = s->size_parts;
-    if ( ( ind = (int *)malloc( sizeof(int) * ind_size ) ) == NULL )
+    const int cell_id_size = s->nr_parts;
+    if ( ( cell_id = (int *)malloc( sizeof(int) * cell_id_size ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
     ih[0] = s->ih[0]; ih[1] = s->ih[1]; ih[2] = s->ih[2];
     dim[0] = s->dim[0]; dim[1] = s->dim[1]; dim[2] = s->dim[2];
@@ -334,10 +334,10 @@ void space_rebuild ( struct space *s , double cell_max ) {
                 p->x[j] += dim[j];
             else if ( p->x[j] >= dim[j] )
                 p->x[j] -= dim[j];
-        ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
-        if (ind[k] < 0 || ind[k] >= s->nr_cells)
-          error("Bad cell id %i.", ind[k]);
-        atomic_inc( &cells[ ind[k] ].count );
+        cell_id[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
+        if (cell_id[k] < 0 || cell_id[k] >= s->nr_cells)
+          error("Bad cell id %i.", cell_id[k]);
+        atomic_inc( &cells[ cell_id[k] ].count );
         }
     // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
@@ -347,8 +347,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
         int nodeID = s->e->nodeID;
         int nr_local_parts = s->nr_parts;
         for ( k = 0 ; k < nr_local_parts ; k++ )
-            if ( cells[ ind[k] ].nodeID != nodeID ) {
-                cells[ ind[k] ].count -= 1;
+            if ( cells[ cell_id[k] ].nodeID != nodeID ) {
+                cells[ cell_id[k] ].count -= 1;
                 nr_local_parts -= 1;
                 struct part tp = parts[k];
                 parts[k] = parts[ nr_local_parts ];
@@ -356,40 +356,41 @@ void space_rebuild ( struct space *s , double cell_max ) {
                 struct xpart txp = xparts[k];
                 xparts[k] = xparts[ nr_local_parts ];
                 xparts[ nr_local_parts ] = txp;
-                int t = ind[k];
-                ind[k] = ind[ nr_local_parts ];
-                ind[ nr_local_parts ] = t;
+                int t = cell_id[k];
+                cell_id[k] = cell_id[ nr_local_parts ];
+                cell_id[ nr_local_parts ] = t;
                 }
                 
         /* Exchange the strays, note that this potentially re-allocates
            the parts arrays. */
-        s->nr_parts = nr_local_parts + engine_exchange_strays( s->e , nr_local_parts , &ind[nr_local_parts] , s->nr_parts - nr_local_parts );
+        s->nr_parts = nr_local_parts + engine_exchange_strays( s->e , nr_local_parts , &cell_id[nr_local_parts] , s->nr_parts - nr_local_parts );
         parts = s->parts;
         xparts = s->xparts;
         
         /* Re-allocate the index array if needed.. */
-        if (s->nr_parts > ind_size) {
-          int *ind_new;
-          if ( ( ind_new = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
+        if (s->nr_parts > cell_id_size) {
+          int *cell_id_new;
+          if ( ( cell_id_new = (int *)malloc( sizeof(int) * s->nr_parts ) ) == NULL )
               error( "Failed to allocate temporary particle indices." );
-          memcpy(ind_new, ind, sizeof(int) * nr_local_parts);
-          free(ind); ind = ind_new;
+          memcpy(cell_id_new, cell_id, sizeof(int) * nr_local_parts);
+          free(cell_id); cell_id = cell_id_new;
         }
         
         /* Assign each particle to its cell. */
         for ( k = nr_local_parts ; k < s->nr_parts ; k++ ) {
             p = &parts[k];
-            ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
-            cells[ ind[k] ].count += 1;
-            if ( cells[ ind[k] ].nodeID != nodeID )
-                error( "Received part that does not belong to me (nodeID=%i)." , cells[ ind[k] ].nodeID );
+            cell_id[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
+            cells[ cell_id[k] ].count += 1;
+            if ( cells[ cell_id[k] ].nodeID != nodeID )
+                error( "Received part that does not belong to me (nodeID=%i, x=[%e,%e,%e]).", 
+                cells[ cell_id[k] ].nodeID, p->x[0], p->x[1], p->x[2] );
             }
     #endif
     
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    parts_sort( parts , xparts , ind , s->nr_parts , 0 , s->nr_cells-1 );
+    parts_sort( parts , xparts , cell_id , s->nr_parts , 0 , s->nr_cells-1 );
     // message( "parts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Re-link the gparts. */
@@ -399,21 +400,21 @@ void space_rebuild ( struct space *s , double cell_max ) {
     
     /* Verify sort. */
     /* for ( k = 1 ; k < nr_parts ; k++ ) {
-        if ( ind[k-1] > ind[k] ) {
+        if ( cell_id[k-1] > cell_id[k] ) {
             error( "Sort failed!" );
             }
-        else if ( ind[k] != cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) )
+        else if ( cell_id[k] != cell_getid( cdim , parts[k].x[0]*ih[0] , parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) )
             error( "Incorrect indices!" );
         } */
     
     /* We no longer need the indices as of here. */
-    free( ind );    
+    free( cell_id );    
 
 
 
     /* Run through the gravity particles and get their cell index. */
     // tic = getticks();
-    if ( ( ind = (int *)malloc( sizeof(int) * s->size_gparts ) ) == NULL )
+    if ( ( cell_id = (int *)malloc( sizeof(int) * s->size_gparts ) ) == NULL )
         error( "Failed to allocate temporary particle indices." );
     for ( k = 0 ; k < nr_gparts ; k++ )  {
         gp = &gparts[k];
@@ -422,8 +423,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
                 gp->x[j] += dim[j];
             else if ( gp->x[j] >= dim[j] )
                 gp->x[j] -= dim[j];
-        ind[k] = cell_getid( cdim , gp->x[0]*ih[0] , gp->x[1]*ih[1] , gp->x[2]*ih[2] );
-        atomic_inc( &cells[ ind[k] ].gcount );
+        cell_id[k] = cell_getid( cdim , gp->x[0]*ih[0] , gp->x[1]*ih[1] , gp->x[2]*ih[2] );
+        atomic_inc( &cells[ cell_id[k] ].gcount );
         }
     // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
@@ -431,7 +432,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
 
     /* Sort the parts according to their cells. */
     // tic = getticks();
-    gparts_sort( gparts ,ind , nr_gparts , 0 , s->nr_cells-1 );
+    gparts_sort( gparts ,cell_id , nr_gparts , 0 , s->nr_cells-1 );
     // message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
     /* Re-link the parts. */
@@ -440,7 +441,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
             gparts[k].part->gpart = &gparts[k];
 
     /* We no longer need the indices as of here. */
-    free( ind );    
+    free( cell_id );    
 
 
 
