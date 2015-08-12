@@ -926,14 +926,14 @@ int engine_exchange_strays ( struct engine *e , int offset , int *ind , int N ) 
         // message( "request from proxy %i has arrived." , pid );
         if ( reqs_in[pid & ~1] == MPI_REQUEST_NULL &&
              reqs_in[pid | 1 ] == MPI_REQUEST_NULL ) {
-            p = &e->proxies[pid/2];
+            p = &e->proxies[pid >> 1];
             memcpy( &s->parts[offset + count] , p->parts_in , sizeof(struct part) * p->nr_parts_in );
             memcpy( &s->xparts[offset + count] , p->xparts_in , sizeof(struct xpart) * p->nr_parts_in );
-            count += p->nr_parts_in;
-            /* for ( int k = 0 ; k < p->nr_parts_in ; k++ )
+            for ( int k = offset ; k < offset + count; k++ )
                 message( "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i." ,
-                    p->parts_in[k].id , p->parts_in[k].x[0] , p->parts_in[k].x[1] , p->parts_in[k].x[2] ,
-                    p->parts_in[k].h , p->nodeID ); */
+                    s->parts[k].id , s->parts[k].x[0] , s->parts[k].x[1] , s->parts[k].x[2] ,
+                    s->parts[k].h , p->nodeID );
+            count += p->nr_parts_in;
             }
         }
     

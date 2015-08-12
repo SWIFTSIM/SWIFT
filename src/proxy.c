@@ -215,10 +215,10 @@ void proxy_parts_exch1 ( struct proxy *p ) {
              MPI_Isend( p->xparts_out , sizeof(struct xpart)*p->nr_parts_out , MPI_BYTE , p->nodeID , p->mynodeID*proxy_tag_shift + proxy_tag_xparts , MPI_COMM_WORLD , &p->req_xparts_out ) != MPI_SUCCESS )
             error( "Failed to isend part data." );
         // message( "isent particle data (%i) to node %i." , p->nr_parts_out , p->nodeID ); fflush(stdout);
-        /* for ( int k = 0 ; k < p->nr_parts_out ; k++ )
+        for ( int k = 0 ; k < p->nr_parts_out ; k++ )
             message( "sending particle %lli, x=[%.3e %.3e %.3e], h=%.3e, to node %i." ,
                 p->parts_out[k].id , p->parts_out[k].x[0] , p->parts_out[k].x[1] , p->parts_out[k].x[2] ,
-                p->parts_out[k].h , p->nodeID ); */
+                p->parts_out[k].h , p->nodeID );
         }
 
     /* Receive the number of particles. */
