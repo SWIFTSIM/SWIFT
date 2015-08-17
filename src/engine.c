@@ -643,7 +643,7 @@ void engine_addtasks_send ( struct engine *e , struct cell *ci , struct cell *cj
 
         /* The send_xv task should unlock the super-cell's ghost task. */
         scheduler_addunlock( s , t_xv , ci->super->ghost );
-
+        
         }
         
     /* Recurse? */
@@ -848,7 +848,9 @@ int engine_exchange_strays ( struct engine *e , int offset , int *ind , int N ) 
           error("Bad node ID %i.", node_id);
         pid = e->proxy_ind[ node_id ];
         if ( pid < 0 )
-            error( "Do not have a proxy for the requested nodeID %i.", node_id );
+            error( "Do not have a proxy for the requested nodeID %i for part with id=%llu, x=[%e,%e,%e].",
+              node_id, s->parts[offset + k].id, s->parts[offset + k].x[0],
+              s->parts[offset + k].x[1], s->parts[offset + k].x[2] );
         proxy_parts_load( &e->proxies[pid] , &s->parts[offset + k] , &s->xparts[offset + k] , 1 );
         }
     
@@ -1205,7 +1207,7 @@ void engine_maketasks ( struct engine *e ) {
                 engine_addtasks_send( e , p->cells_out[k] , p->cells_in[0] );
             
             }
-        
+         
     #endif
         
     /* Rank the tasks. */
