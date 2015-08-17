@@ -67,6 +67,7 @@ if test "$enable_mpi" = "yes"; then
     AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
     if test "$MPIRUN" = "notfound"; then
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
+       enable_mpi="no"
     else
        # Special options we know about.
        # Intel: -mt_mpi
@@ -105,9 +106,7 @@ if test "$enable_mpi" = "yes"; then
        AC_SUBST([MPI_THREAD_LIBS])
     fi
 fi
-AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
-
-
+AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
