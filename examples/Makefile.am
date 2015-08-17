@@ -20,7 +20,7 @@
 MYFLAGS = -DTIMER
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -Wall -Werror -I../src -DCPU_TPS=2.67e9
+AM_CFLAGS = -Wall -Werror -I../src -DCPU_TPS=2.67e9 $(HDF5_CPPFLAGS)
 
 AM_LDFLAGS =
 
