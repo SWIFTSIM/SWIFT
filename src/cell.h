@@ -19,6 +19,7 @@
 
 /* Some constants. */
 #define cell_sid_dt                 13
+#define cell_max_tag                (1 << 16)
 
 
 /* Global variables. */

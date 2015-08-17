@@ -102,43 +102,6 @@ const char runner_flip[27] = { 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1
 
 
 /**
- * @brief Send a local cell's particle data to another node.
- *
- * @param r The #runner.
- * @param c The #cell.
- * @param nodeID The destination node's ID.
- * @param tag bit to distinguish between xv and rho sends.
- */
- 
-void runner_dosend ( struct runner *r , struct cell *c , int nodeID , int tag ) {
-
-#ifdef WITH_MPI
-
-    MPI_Request req;
-    
-    /* First check if all the density tasks have been run. */
-    if ( tag & 1 )
-        if ( c->parts[0].rho == 0.0 )
-            error( "Attempting to send rhos before ghost task completed." );
-    
-    /* Emit the isend. */
-    if ( MPI_Isend( c->parts , sizeof(struct part) * c->count , MPI_BYTE , nodeID , tag , MPI_COMM_WORLD , &req ) != MPI_SUCCESS )
-        error( "Failed to isend particle data." );
-        
-    message( "sending %i parts with tag=%i from %i to %i." ,
-        c->count , tag , r->e->nodeID , nodeID ); fflush(stdout);
-    
-    /* Free the request handler as we don't care what happens next. */
-    MPI_Request_free( &req );
-
-#else
-    error( "SWIFT was not compiled with MPI support." );
-#endif
-
-    }
-    
-
-/**
  * @brief Sort the entries in ascending order using QuickSort.
  *
  * @param sort The entries
