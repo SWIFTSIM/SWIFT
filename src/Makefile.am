@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9
+AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9 $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0 # -fsanitize=address
@@ -52,7 +52,7 @@ libswiftsim_la_SOURCES = $(AM_SOURCES)
 
 # Sources and flags for MPI library
 libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
-libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI $(METIS_INCS)
 libswiftsim_mpi_la_SHORTNAME = mpi
 
 

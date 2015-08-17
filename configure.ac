@@ -67,6 +67,7 @@ if test "$enable_mpi" = "yes"; then
     AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
     if test "$MPIRUN" = "notfound"; then
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
+       enable_mpi="no"
     else
        # Special options we know about.
        # Intel: -mt_mpi
@@ -105,9 +106,7 @@ if test "$enable_mpi" = "yes"; then
        AC_SUBST([MPI_THREAD_LIBS])
     fi
 fi
-AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
-
-
+AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
@@ -199,22 +198,25 @@ fi
 # don't use that.
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [prefix where the metis library is installed @<:@default=yes@:>@]
+       [root directory where metis is installed @<:@default=yes@:>@]
     )],
     [],
     [with_metis="no"]
 )
 if test "x$with_metis" != "xno"; then
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LIBS="-L$with_metis -lmetis"
+      METIS_LIBS="-L$with_metis/lib -lmetis"
+      METIS_INCS="-I$with_metis/include"
    else
       METIS_LIBS="-lmetis"
+      METIS_INCS=""
    fi
    AC_CHECK_LIB([metis],[METIS_PartGraphKway],
       AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
       AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
 fi
 AC_SUBST([METIS_LIBS])
+AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
 # Check for zlib.
