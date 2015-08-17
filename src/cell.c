@@ -181,7 +181,7 @@ int cell_pack ( struct cell *c , struct pcell *pc ) {
     pc->dt_min = c->dt_min;
     pc->dt_max = c->dt_max;
     pc->count = c->count;
-    c->tag = pc->tag = atomic_inc(cell_next_tag) % cell_max_tag;
+    c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
     
     /* Fill in the progeny, depth-first recursion. */
     for ( k = 0 ; k < 8 ; k++ )
