@@ -29,7 +29,6 @@
 #include <math.h>
 #include <float.h>
 #include <limits.h>
-#include <omp.h>
 #include <sched.h>
 
 /* MPI headers. */
@@ -1041,7 +1040,6 @@ void engine_maketasks ( struct engine *e ) {
     /* Count the number of tasks associated with each cell and
        store the density tasks in each cell, and make each sort
        depend on the sorts of its progeny. */
-    // #pragma omp parallel for private(t,j)
     for ( k = 0 ; k < sched->nr_tasks ; k++ ) {
         
         /* Get the current task. */
@@ -1112,7 +1110,6 @@ void engine_maketasks ( struct engine *e ) {
        Each force task depends on the cell ghosts and unlocks the kick2 task
        of its super-cell. */
     kk = sched->nr_tasks;
-    // #pragma omp parallel for private(t,t2)
     for ( k = 0 ; k < kk ; k++ ) {
     
         /* Get a pointer to the task. */
