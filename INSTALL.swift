@@ -78,7 +78,8 @@ commands.
 
 MPI: an optional MPI library that fully supports MPI_THREAD_MULTIPLE.  
 Before running configure the "mpirun" command should be available in the
-shell.
+shell. If your command isn't called "mpirun" then define the "MPIRUN"
+environment variable, either in the shell or when running configure.
 
 
 METIS: a build of the METIS library can be optionally used to optimize the
