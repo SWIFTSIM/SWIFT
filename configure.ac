@@ -112,6 +112,9 @@ if test "$enable_mpi" = "yes"; then
 fi
 AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
+# Indicate that MPIRUN can be modified by an environement variable
+AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
+
 # Need C99 and inline support.
 AC_PROG_CC_C99
 AC_C_INLINE
