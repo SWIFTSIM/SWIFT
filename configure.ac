@@ -63,8 +63,12 @@ if test "$enable_mpi" = "yes"; then
 
     # Various MPI implementations require additional libraries when also using
     # threads. Use mpirun (on PATH) as that seems to be only command with
-    # version flag.
-    AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
+    # version flag, allow MPIRUN to override for systems that insist on
+    # a non-standard name (PRACE).
+    : ${MPIRUN='mpirun'}
+    if test "$MPIRUN" = "mpirun"; then
+       AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
+    fi
     if test "$MPIRUN" = "notfound"; then
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
        enable_mpi="no"
