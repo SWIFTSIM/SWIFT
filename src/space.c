@@ -38,7 +38,6 @@
 /* Local headers. */
 #include "const.h"
 #include "cycle.h"
-#include "atomic.h"
 #include "lock.h"
 #include "task.h"
 #include "kernel.h"
@@ -335,7 +334,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
             else if ( p->x[j] >= dim[j] )
                 p->x[j] -= dim[j];
         ind[k] = cell_getid( cdim , p->x[0]*ih[0] , p->x[1]*ih[1] , p->x[2]*ih[2] );
-        atomic_inc( &cells[ ind[k] ].count );
+        cells[ ind[k] ].count++;
         }
     // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
@@ -421,7 +420,7 @@ void space_rebuild ( struct space *s , double cell_max ) {
             else if ( gp->x[j] >= dim[j] )
                 gp->x[j] -= dim[j];
         ind[k] = cell_getid( cdim , gp->x[0]*ih[0] , gp->x[1]*ih[1] , gp->x[2]*ih[2] );
-        atomic_inc( &cells[ ind[k] ].gcount );
+        cells[ ind[k] ].gcount++;
         }
     // message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
@@ -461,15 +460,8 @@ void space_rebuild ( struct space *s , double cell_max ) {
     /* At this point, we have the upper-level cells, old or new. Now make
        sure that the parts in each cell are ok. */
     // tic = getticks();
-    k = 0;
-    if ( omp_get_thread_num() < 8 )
-      while ( 1 ) {
-	int myk = atomic_inc( &k );
-	if ( myk < s->nr_cells )
-	  space_split( s , &cells[myk] );
-	else
-	  break;
-      }
+    for ( k = 0; k < s->nr_cells; k++ )
+      space_split( s , &cells[k] );
      
     // message( "space_split took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
     
@@ -520,122 +512,108 @@ void parts_sort ( struct part *parts , struct xpart *xparts , int *ind , int N ,
         qstack[i].ready = 0;
     first = 0; last = 1; waiting = 1;
     
-    /* Parallel bit. */
-    #pragma omp parallel default(shared) shared(N,first,last,waiting,qstack,parts,xparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_xp,temp_p)
-    {
-    
-        /* Main loop. */
-        if ( omp_get_thread_num() < 8 )
-        while ( waiting > 0 ) {
+    /* Main loop. */
+    while ( waiting > 0 ) {
         
-            /* Grab an interval off the queue. */
-            qid = atomic_inc( &first ) % qstack_size;
+      /* Grab an interval off the queue. */
+      qid = ( first++ ) % qstack_size;
             
-            /* Wait for the interval to be ready. */
-            while ( waiting > 0 && atomic_cas( &qstack[qid].ready , 1 , 1 ) != 1 );
-            
-            /* Broke loop for all the wrong reasons? */
-            if ( waiting == 0 )
-                break;
         
-            /* Get the stack entry. */
-            i = qstack[qid].i;
-            j = qstack[qid].j;
-            min = qstack[qid].min;
-            max = qstack[qid].max;
-            qstack[qid].ready = 0;
-            // message( "thread %i got interval [%i,%i] with values in [%i,%i]." , omp_get_thread_num() , i , j , min , max );
+      /* Get the stack entry. */
+      i = qstack[qid].i;
+      j = qstack[qid].j;
+      min = qstack[qid].min;
+      max = qstack[qid].max;
+      qstack[qid].ready = 0;
+      
             
-            /* Loop over sub-intervals. */
-            while ( 1 ) {
-            
-                /* Bring beer. */
-                pivot = (min + max) / 2;
-                
-                /* One pass of QuickSort's partitioning. */
-                ii = i; jj = j;
-                while ( ii < jj ) {
-                    while ( ii <= j && ind[ii] <= pivot )
-                        ii++;
-                    while ( jj >= i && ind[jj] > pivot )
-                        jj--;
-                    if ( ii < jj ) {
-                        temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
-                        temp_p = parts[ii]; parts[ii] = parts[jj]; parts[jj] = temp_p;
-                        temp_xp = xparts[ii]; xparts[ii] = xparts[jj]; xparts[jj] = temp_xp;
-                        }
-                    }
-
-                /* Verify sort. */
-                /* for ( int k = i ; k <= jj ; k++ )
-                    if ( ind[k] > pivot ) {
-                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                        error( "Partition failed (<=pivot)." );
-                        }
-                for ( int k = jj+1 ; k <= j ; k++ )
-                    if ( ind[k] <= pivot ) {
-                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                        error( "Partition failed (>pivot)." );
-                        } */
+      /* Loop over sub-intervals. */
+      while ( 1 ) {
+	
+	/* Bring beer. */
+	pivot = (min + max) / 2;
+        
+	/* One pass of QuickSort's partitioning. */
+	ii = i; jj = j;
+	while ( ii < jj ) {
+	  while ( ii <= j && ind[ii] <= pivot )
+	    ii++;
+	  while ( jj >= i && ind[jj] > pivot )
+	    jj--;
+	  if ( ii < jj ) {
+	    temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
+	    temp_p = parts[ii]; parts[ii] = parts[jj]; parts[jj] = temp_p;
+	    temp_xp = xparts[ii]; xparts[ii] = xparts[jj]; xparts[jj] = temp_xp;
+	  }
+	}
+	
+	/* Verify sort. */
+	/* for ( int k = i ; k <= jj ; k++ )
+	   if ( ind[k] > pivot ) {
+	   message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
+	   error( "Partition failed (<=pivot)." );
+	   }
+	   for ( int k = jj+1 ; k <= j ; k++ )
+	   if ( ind[k] <= pivot ) {
+	   message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
+	   error( "Partition failed (>pivot)." );
+	   } */
                         
-                /* Split-off largest interval. */
-                if ( jj - i > j - jj+1 ) {
-
-                    /* Recurse on the left? */
-                    if ( jj > i  && pivot > min ) {
-                        qid = atomic_inc( &last ) % qstack_size;
-                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
-                        qstack[qid].i = i;
-                        qstack[qid].j = jj;
-                        qstack[qid].min = min;
-                        qstack[qid].max = pivot;
-                        qstack[qid].ready = 1;
-                        if ( atomic_inc( &waiting ) >= qstack_size )
-                            error( "Qstack overflow." );
-                        }
-
-                    /* Recurse on the right? */
-                    if ( jj+1 < j && pivot+1 < max ) {
-                        i = jj+1;
-                        min = pivot+1;
-                        }
-                    else
-                        break;
-                        
-                    }
-                    
-                else {
-                
-                    /* Recurse on the right? */
-                    if ( jj+1 < j && pivot+1 < max ) {
-                        qid = atomic_inc( &last ) % qstack_size;
-                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
-                        qstack[qid].i = jj+1;
-                        qstack[qid].j = j;
-                        qstack[qid].min = pivot+1;
-                        qstack[qid].max = max;
-                        qstack[qid].ready = 1;
-                        if ( atomic_inc( &waiting ) >= qstack_size )
-                            error( "Qstack overflow." );
-                        }
-                        
-                    /* Recurse on the left? */
-                    if ( jj > i  && pivot > min ) {
-                        j = jj;
-                        max = pivot;
-                        }
-                    else
-                        break;
-
-                    }
-                    
-                } /* loop over sub-intervals. */
+	/* Split-off largest interval. */
+	if ( jj - i > j - jj+1 ) {
+	  
+	  /* Recurse on the left? */
+	  if ( jj > i  && pivot > min ) {
+	    qid = ( last++ ) % qstack_size;
+	    qstack[qid].i = i;
+	    qstack[qid].j = jj;
+	    qstack[qid].min = min;
+	    qstack[qid].max = pivot;
+	    qstack[qid].ready = 1;
+	    if ( waiting++  >= qstack_size )
+	      error( "Qstack overflow." );
+	  }
+	  
+	  /* Recurse on the right? */
+	  if ( jj+1 < j && pivot+1 < max ) {
+	    i = jj+1;
+	    min = pivot+1;
+	  }
+	  else
+	    break;
+	  
+	}
+        
+	else {
+	  
+	  /* Recurse on the right? */
+	  if ( jj+1 < j && pivot+1 < max ) {
+	    qid = ( last++ ) % qstack_size;
+	    qstack[qid].i = jj+1;
+	    qstack[qid].j = j;
+	    qstack[qid].min = pivot+1;
+	    qstack[qid].max = max;
+	    qstack[qid].ready = 1;
+	    if ( ( waiting++ ) >= qstack_size )
+	      error( "Qstack overflow." );
+	  }
+          
+	  /* Recurse on the left? */
+	  if ( jj > i  && pivot > min ) {
+	    j = jj;
+	    max = pivot;
+	  }
+	  else
+	    break;
+	  
+	}
+        
+      } /* loop over sub-intervals. */
+      
+      waiting--;
+      
+    } /* main loop. */
     
-            atomic_dec( &waiting );
-
-            } /* main loop. */
-    
-        } /* parallel bit. */
     
     /* Verify sort. */
     /* for ( i = 1 ; i < N ; i++ )
@@ -680,122 +658,109 @@ void gparts_sort ( struct gpart *gparts , int *ind , int N , int min , int max )
         qstack[i].ready = 0;
     first = 0; last = 1; waiting = 1;
     
-    /* Parallel bit. */
-    #pragma omp parallel default(shared) shared(N,first,last,waiting,qstack,gparts,ind,qstack_size,stderr,engine_rank) private(pivot,i,ii,j,jj,min,max,temp_i,qid,temp_p)
-    {
-    
-        /* Main loop. */
-        if ( omp_get_thread_num() < 8 )
-        while ( waiting > 0 ) {
+    /* Main loop. */
+    while ( waiting > 0 ) {
+      
+      /* Grab an interval off the queue. */
+      qid = ( first++ ) % qstack_size;
+            
+                 
+      /* Get the stack entry. */
+      i = qstack[qid].i;
+      j = qstack[qid].j;
+      min = qstack[qid].min;
+      max = qstack[qid].max;
+      qstack[qid].ready = 0;
+      
+            
+      /* Loop over sub-intervals. */
+      while ( 1 ) {
+            
+	/* Bring beer. */
+	pivot = (min + max) / 2;
         
-            /* Grab an interval off the queue. */
-            qid = atomic_inc( &first ) % qstack_size;
-            
-            /* Wait for the interval to be ready. */
-            while ( waiting > 0 && atomic_cas( &qstack[qid].ready , 1 , 1 ) != 1 );
-            
-            /* Broke loop for all the wrong reasons? */
-            if ( waiting == 0 )
-                break;
+	/* One pass of QuickSort's partitioning. */
+	ii = i; jj = j;
+	while ( ii < jj ) {
+	  while ( ii <= j && ind[ii] <= pivot )
+	    ii++;
+	  while ( jj >= i && ind[jj] > pivot )
+	    jj--;
+	  if ( ii < jj ) {
+	    temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
+	    temp_p = gparts[ii]; gparts[ii] = gparts[jj]; gparts[jj] = temp_p;
+	  }
+	}
+
+	/* Verify sort. */
+	/* for ( int k = i ; k <= jj ; k++ )
+	   if ( ind[k] > pivot ) {
+	   message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
+	   error( "Partition failed (<=pivot)." );
+	   }
+	   for ( int k = jj+1 ; k <= j ; k++ )
+	   if ( ind[k] <= pivot ) {
+	   message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
+	   error( "Partition failed (>pivot)." );
+	   } */
+	
+	/* Split-off largest interval. */
+	if ( jj - i > j - jj+1 ) {
+	  
+	  /* Recurse on the left? */
+	  if ( jj > i  && pivot > min ) {
+	    qid = ( last++ ) % qstack_size;
+	    qstack[qid].i = i;
+	    qstack[qid].j = jj;
+	    qstack[qid].min = min;
+	    qstack[qid].max = pivot;
+	    qstack[qid].ready = 1;
+	    if ( ( waiting++ ) >= qstack_size )
+	      error( "Qstack overflow." );
+	  }
+	  
+	  /* Recurse on the right? */
+	  if ( jj+1 < j && pivot+1 < max ) {
+	    i = jj+1;
+	    min = pivot+1;
+	  }
+	  else
+	    break;
+	  
+	}
+                    
+	else {
+                
+	  /* Recurse on the right? */
+	  if ( jj+1 < j && pivot+1 < max ) {
+	    qid = ( last++ ) % qstack_size;
+	    qstack[qid].i = jj+1;
+	    qstack[qid].j = j;
+	    qstack[qid].min = pivot+1;
+	    qstack[qid].max = max;
+	    qstack[qid].ready = 1;
+	    if ( ( waiting++ ) >= qstack_size )
+	      error( "Qstack overflow." );
+	  }
+          
+	  /* Recurse on the left? */
+	  if ( jj > i  && pivot > min ) {
+	    j = jj;
+	    max = pivot;
+	  }
+	  else
+	    break;
+	  
+	}
         
-            /* Get the stack entry. */
-            i = qstack[qid].i;
-            j = qstack[qid].j;
-            min = qstack[qid].min;
-            max = qstack[qid].max;
-            qstack[qid].ready = 0;
-            // message( "thread %i got interval [%i,%i] with values in [%i,%i]." , omp_get_thread_num() , i , j , min , max );
-            
-            /* Loop over sub-intervals. */
-            while ( 1 ) {
-            
-                /* Bring beer. */
-                pivot = (min + max) / 2;
-                
-                /* One pass of QuickSort's partitioning. */
-                ii = i; jj = j;
-                while ( ii < jj ) {
-                    while ( ii <= j && ind[ii] <= pivot )
-                        ii++;
-                    while ( jj >= i && ind[jj] > pivot )
-                        jj--;
-                    if ( ii < jj ) {
-                        temp_i = ind[ii]; ind[ii] = ind[jj]; ind[jj] = temp_i;
-                        temp_p = gparts[ii]; gparts[ii] = gparts[jj]; gparts[jj] = temp_p;
-                        }
-                    }
-
-                /* Verify sort. */
-                /* for ( int k = i ; k <= jj ; k++ )
-                    if ( ind[k] > pivot ) {
-                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                        error( "Partition failed (<=pivot)." );
-                        }
-                for ( int k = jj+1 ; k <= j ; k++ )
-                    if ( ind[k] <= pivot ) {
-                        message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                        error( "Partition failed (>pivot)." );
-                        } */
-                        
-                /* Split-off largest interval. */
-                if ( jj - i > j - jj+1 ) {
-
-                    /* Recurse on the left? */
-                    if ( jj > i  && pivot > min ) {
-                        qid = atomic_inc( &last ) % qstack_size;
-                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
-                        qstack[qid].i = i;
-                        qstack[qid].j = jj;
-                        qstack[qid].min = min;
-                        qstack[qid].max = pivot;
-                        qstack[qid].ready = 1;
-                        if ( atomic_inc( &waiting ) >= qstack_size )
-                            error( "Qstack overflow." );
-                        }
-
-                    /* Recurse on the right? */
-                    if ( jj+1 < j && pivot+1 < max ) {
-                        i = jj+1;
-                        min = pivot+1;
-                        }
-                    else
-                        break;
-                        
-                    }
-                    
-                else {
-                
-                    /* Recurse on the right? */
-                    if ( jj+1 < j && pivot+1 < max ) {
-                        qid = atomic_inc( &last ) % qstack_size;
-                        while ( atomic_cas( &qstack[qid].ready , 0 , 0 ) != 0 );
-                        qstack[qid].i = jj+1;
-                        qstack[qid].j = j;
-                        qstack[qid].min = pivot+1;
-                        qstack[qid].max = max;
-                        qstack[qid].ready = 1;
-                        if ( atomic_inc( &waiting ) >= qstack_size )
-                            error( "Qstack overflow." );
-                        }
-                        
-                    /* Recurse on the left? */
-                    if ( jj > i  && pivot > min ) {
-                        j = jj;
-                        max = pivot;
-                        }
-                    else
-                        break;
-
-                    }
-                    
-                } /* loop over sub-intervals. */
+      } /* loop over sub-intervals. */
     
-            atomic_dec( &waiting );
+      waiting--;
 
-            } /* main loop. */
+    } /* main loop. */
     
-        } /* parallel bit. */
     
+   
     /* Verify sort. */
     /* for ( i = 1 ; i < N ; i++ )
         if ( ind[i-1] > ind[i] )
