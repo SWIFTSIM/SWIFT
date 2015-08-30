@@ -42,7 +42,6 @@
 #include "atomic.h"
 #include "lock.h"
 #include "space.h"
-#include "part.h"
 #include "multipole.h"
 #include "cell.h"
 #include "task.h"

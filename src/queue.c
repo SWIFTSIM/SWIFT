@@ -37,7 +37,6 @@
 #include "task.h"
 #include "timers.h"
 #include "space.h"
-#include "part.h"
 #include "multipole.h"
 #include "cell.h"
 #include "queue.h"

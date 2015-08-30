@@ -19,6 +19,9 @@
 #ifndef SWIFT_SERIAL_IO_H
 #define SWIFT_SERIAL_IO_H
 
+/* Includes. */
+#include "part.h"
+
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
 
 void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,

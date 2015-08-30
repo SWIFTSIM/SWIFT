@@ -46,7 +46,6 @@
 #include "lock.h"
 #include "task.h"
 #include "timers.h"
-#include "part.h"
 #include "space.h"
 #include "multipole.h"
 #include "cell.h"

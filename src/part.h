@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SIWFT_PART_H
+#ifndef SWIFT_PART_H
 #define SWIFT_PART_H
 
 /* Some constants. */

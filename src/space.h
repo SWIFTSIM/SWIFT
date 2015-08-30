@@ -19,6 +19,9 @@
 #ifndef SWIFT_SPACE_H
 #define SWIFT_SPACE_H
 
+/* Includes. */
+#include "part.h"
+
 /* Some constants. */
 #define space_maxdepth 10
 #define space_cellallocchunk 1000

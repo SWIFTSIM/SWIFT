@@ -20,6 +20,8 @@
 #ifndef SWIFT_RUNNER_IACT_H
 #define SWIFT_RUNNER_IACT_H
 
+/* Includes. */
+#include "part.h"
 #include "kernel.h"
 #include "vector.h"
 

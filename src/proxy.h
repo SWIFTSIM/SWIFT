@@ -19,6 +19,9 @@
 #ifndef SWIFT_PROXY_H
 #define SWIFT_PROXY_H
 
+/* Includes. */
+#include "part.h"
+
 /* Some constants. */
 #define proxy_buffgrow 1.5
 #define proxy_buffinit 100

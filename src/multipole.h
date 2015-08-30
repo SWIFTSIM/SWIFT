@@ -19,6 +19,9 @@
 #ifndef SWIFT_MULTIPOLE_H
 #define SWIFT_MULTIPOLE_H
 
+/* Includes. */
+#include "part.h"
+
 /* Some constants. */
 #define multipole_order 1
 

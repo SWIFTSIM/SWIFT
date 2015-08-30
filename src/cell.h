@@ -19,6 +19,9 @@
 #ifndef SWIFT_CELL_H
 #define SWIFT_CELL_H
 
+/* Includes. */
+#include "part.h"
+
 /* Some constants. */
 #define cell_sid_dt 13
 #define cell_max_tag (1 << 16)

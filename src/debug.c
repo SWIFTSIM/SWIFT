@@ -21,7 +21,6 @@
 #include <stdio.h>
 
 #include "const.h"
-#include "part.h"
 #include "lock.h"
 #include "multipole.h"
 #include "space.h"

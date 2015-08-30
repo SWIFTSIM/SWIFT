@@ -43,7 +43,6 @@
 #include "const.h"
 #include "lock.h"
 #include "task.h"
-#include "part.h"
 #include "space.h"
 #include "multipole.h"
 #include "cell.h"

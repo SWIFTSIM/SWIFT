@@ -19,6 +19,9 @@
 #ifndef SWIFT_DEBUG_H
 #define SWIFT_DEBUG_H
 
+/* Includes. */
+#include "part.h"
+
 void print_cell(struct cell *c);
 void printParticle(struct part *parts, long long int i, int N);
 void printgParticle(struct gpart *parts, long long int i, int N);

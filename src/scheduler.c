@@ -43,7 +43,6 @@
 #include "vector.h"
 #include "lock.h"
 #include "task.h"
-#include "part.h"
 #include "debug.h"
 #include "space.h"
 #include "multipole.h"
