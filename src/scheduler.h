@@ -19,6 +19,9 @@
 #ifndef SWIFT_SCHEDULER_H
 #define SWIFT_SCHEDULER_H
 
+/* Includes. */
+#include "cell.h"
+
 /* Some constants. */
 #define scheduler_maxwait 3
 #define scheduler_maxunlock 40

@@ -47,7 +47,6 @@
 #include "lock.h"
 #include "space.h"
 #include "multipole.h"
-#include "cell.h"
 #include "task.h"
 #include "debug.h"
 #include "proxy.h"

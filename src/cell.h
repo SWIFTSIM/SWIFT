@@ -21,6 +21,10 @@
 
 /* Includes. */
 #include "part.h"
+#include "multipole.h"
+
+/* Forward declaration of space, needed for cell_unpack. */
+struct space;
 
 /* Some constants. */
 #define cell_sid_dt 13

@@ -19,6 +19,8 @@
 #ifndef SWIFT_RUNNER_H
 #define SWIFT_RUNNER_H
 
+/* Includes. */
+#include "cell.h"
 #include "inline.h"
 
 /* Some constants/flags. */

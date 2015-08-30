@@ -19,6 +19,9 @@
 #ifndef SWIFT_QUEUE_H
 #define SWIFT_QUEUE_H
 
+/* Includes. */
+#include "cell.h"
+
 /* Some constants. */
 #define queue_maxsuper 50
 #define queue_sizeinit 100

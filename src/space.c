@@ -44,7 +44,6 @@
 #include "kernel.h"
 #include "space.h"
 #include "multipole.h"
-#include "cell.h"
 #include "scheduler.h"
 #include "engine.h"
 #include "runner.h"

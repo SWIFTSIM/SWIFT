@@ -19,6 +19,9 @@
 #ifndef SWIFT_TASK_H
 #define SWIFT_TASK_H
 
+/* Includes. */
+#include "cell.h"
+
 /* Some constants. */
 #define task_maxwait 3
 #define task_maxunlock 15

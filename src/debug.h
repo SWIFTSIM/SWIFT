@@ -21,6 +21,7 @@
 
 /* Includes. */
 #include "part.h"
+#include "cell.h"
 
 void print_cell(struct cell *c);
 void printParticle(struct part *parts, long long int i, int N);

@@ -46,7 +46,6 @@
 #include "debug.h"
 #include "space.h"
 #include "multipole.h"
-#include "cell.h"
 #include "queue.h"
 #include "kernel.h"
 #include "scheduler.h"

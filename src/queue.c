@@ -38,7 +38,6 @@
 #include "timers.h"
 #include "space.h"
 #include "multipole.h"
-#include "cell.h"
 #include "queue.h"
 #include "error.h"
 #include "inline.h"

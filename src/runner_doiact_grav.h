@@ -19,6 +19,10 @@
 #ifndef SWIFT_RUNNER_DOIACT_GRAV_H
 #define SWIFT_RUNNER_DOIACT_GRAV_H
 
+/* Includes. */
+#include "cell.h"
+#include "part.h"
+
 /**
  * @brief Compute the sorted gravity interactions between a cell pair.
  *

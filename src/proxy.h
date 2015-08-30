@@ -21,6 +21,7 @@
 
 /* Includes. */
 #include "part.h"
+#include "cell.h"
 
 /* Some constants. */
 #define proxy_buffgrow 1.5

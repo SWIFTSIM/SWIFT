@@ -45,7 +45,6 @@
 #include "task.h"
 #include "space.h"
 #include "multipole.h"
-#include "cell.h"
 #include "queue.h"
 #include "scheduler.h"
 #include "engine.h"

@@ -24,7 +24,6 @@
 #include "lock.h"
 #include "multipole.h"
 #include "space.h"
-#include "cell.h"
 
 /**
  * @brief Dump the information pertaining to the given cell.
