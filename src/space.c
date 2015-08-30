@@ -870,7 +870,7 @@ void space_map_parts ( struct space *s , void (*fun)( struct part *p , struct ce
 
 
 /**
- * @brief Map a function to all particles in a aspace.
+ * @brief Map a function to all particles in a space.
  *
  * @param s The #space we are working in.
  * @param full Map to all cells, including cells with sub-cells.
