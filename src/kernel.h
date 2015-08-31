@@ -23,6 +23,7 @@
 /* Includes. */
 #include "vector.h"
 #include "const.h"
+#include "inline.h"
 
 /**
  * @file kernel.h

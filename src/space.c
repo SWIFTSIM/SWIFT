@@ -35,16 +35,13 @@
 #include <mpi.h>
 #endif
 
+/* This object's header. */
+#include "space.h"
+
 /* Local headers. */
-#include "const.h"
-#include "cycle.h"
 #include "atomic.h"
 #include "lock.h"
-#include "task.h"
 #include "kernel.h"
-#include "space.h"
-#include "multipole.h"
-#include "scheduler.h"
 #include "engine.h"
 #include "runner.h"
 #include "error.h"

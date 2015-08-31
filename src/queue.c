@@ -30,17 +30,12 @@
 #include <mpi.h>
 #endif
 
+/* This object's header. */
+#include "queue.h"
+
 /* Local headers. */
 #include "const.h"
-#include "cycle.h"
-#include "lock.h"
-#include "task.h"
-#include "timers.h"
-#include "space.h"
-#include "multipole.h"
-#include "queue.h"
 #include "error.h"
-#include "inline.h"
 
 /* Counter macros. */
 #ifdef COUNTER

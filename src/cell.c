@@ -39,17 +39,14 @@
 #undef TIMER
 #endif
 
+/* This object's header. */
+#include "cell.h"
+
 /* Local headers. */
-#include "const.h"
 #include "atomic.h"
-#include "cycle.h"
-#include "lock.h"
-#include "task.h"
 #include "timers.h"
 #include "space.h"
-#include "multipole.h"
 #include "error.h"
-#include "inline.h"
 
 /* Global variables. */
 int cell_next_tag = 0;

@@ -36,14 +36,12 @@
 #include <mpi.h>
 #endif
 
+/* This object's header. */
+#include "task.h"
+
 /* Local headers. */
-#include "const.h"
-#include "cycle.h"
 #include "atomic.h"
 #include "lock.h"
-#include "space.h"
-#include "multipole.h"
-#include "task.h"
 #include "error.h"
 
 /* Task type names. */

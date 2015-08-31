@@ -20,10 +20,8 @@
 
 #include <stdio.h>
 
-#include "const.h"
-#include "lock.h"
-#include "multipole.h"
-#include "space.h"
+/* This object's header. */
+#include "debug.h"
 
 /**
  * @brief Dump the information pertaining to the given cell.

@@ -20,8 +20,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "cycle.h"
+/* This object's header. */
 #include "timers.h"
 
 /* The timers. */

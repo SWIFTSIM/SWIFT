@@ -37,19 +37,10 @@
 #include <mpi.h>
 #endif
 
-/* Local headers. */
-#include "const.h"
-#include "cycle.h"
-#include "atomic.h"
-#include "timers.h"
-#include "const.h"
-#include "vector.h"
-#include "lock.h"
-#include "space.h"
-#include "multipole.h"
-#include "task.h"
-#include "debug.h"
+/* This object's header. */
 #include "proxy.h"
+
+/* Local headers. */
 #include "error.h"
 
 /**

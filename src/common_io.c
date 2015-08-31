@@ -30,20 +30,19 @@
 #include <stddef.h>
 #include <hdf5.h>
 #include <math.h>
+
+/* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
 #endif
 
+/* This object's header. */
+#include "common_io.h"
+
+/* Local includes. */
 #include "const.h"
-#include "cycle.h"
-#include "lock.h"
-#include "task.h"
-#include "space.h"
-#include "scheduler.h"
-#include "engine.h"
 #include "error.h"
 #include "kernel.h"
-#include "common_io.h"
 
 /**
  * @brief Converts a C data type to the HDF5 equivalent.

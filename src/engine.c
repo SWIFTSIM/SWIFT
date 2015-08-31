@@ -41,17 +41,15 @@
 #include <metis.h>
 #endif
 
-/* Local headers. */
+/* This object's header. */
 #include "engine.h"
-#include "const.h"
+
+/* Local headers. */
 #include "cycle.h"
 #include "atomic.h"
 #include "timers.h"
-#include "const.h"
-#include "vector.h"
 #include "debug.h"
 #include "cell.h"
-#include "queue.h"
 #include "error.h"
 
 #ifdef LEGACY_GADGET2_SPH

@@ -35,20 +35,16 @@
 #include <mpi.h>
 #endif
 
+/* This object's header. */
+#include "runner.h"
+
 /* Local headers. */
 #include "const.h"
-#include "cycle.h"
-#include "atomic.h"
 #include "timers.h"
-#include "const.h"
-#include "lock.h"
 #include "task.h"
 #include "space.h"
-#include "multipole.h"
-#include "queue.h"
 #include "scheduler.h"
 #include "engine.h"
-#include "runner.h"
 #include "error.h"
 
 /* Include the right variant of the SPH interactions */

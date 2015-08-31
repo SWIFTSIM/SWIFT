@@ -33,15 +33,8 @@
 #include <mpi.h>
 #endif
 
-/* Local headers. */
-#include "error.h"
-#include "const.h"
-#include "cycle.h"
-#include "atomic.h"
-#include "lock.h"
-#include "space.h"
+/* This object's header. */
 #include "multipole.h"
-#include "cell.h"
 
 /**
  * @brief Merge two multipoles.

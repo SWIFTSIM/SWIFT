@@ -31,17 +31,16 @@
 #include <hdf5.h>
 #include <math.h>
 
-#include "mpi.h"
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
-#include "const.h"
-#include "cycle.h"
-#include "lock.h"
-#include "task.h"
-#include "space.h"
-#include "scheduler.h"
-#include "engine.h"
+/* This object's header. */
+#include "serial_io.h"
+
+/* Local includes. */
 #include "error.h"
-#include "kernel.h"
 #include "common_io.h"
 
 /*-----------------------------------------------------------------------------

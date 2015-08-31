@@ -34,21 +34,16 @@
 #include <mpi.h>
 #endif
 
+/* This object's header. */
+#include "scheduler.h"
+
 /* Local headers. */
 #include "error.h"
 #include "cycle.h"
 #include "atomic.h"
 #include "timers.h"
 #include "const.h"
-#include "vector.h"
-#include "lock.h"
-#include "task.h"
-#include "debug.h"
-#include "space.h"
-#include "multipole.h"
-#include "queue.h"
 #include "kernel.h"
-#include "scheduler.h"
 
 /**
  * @brief Add an unlock_task to the given task.
