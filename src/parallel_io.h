@@ -25,8 +25,8 @@
 #endif
 
 /* Includes. */
-#include "part.h"
 #include "engine.h"
+#include "part.h"
 #include "units.h"
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && defined(HAVE_PARALLEL_HDF5)

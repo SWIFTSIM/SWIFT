@@ -21,13 +21,13 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
 #include <float.h>
 #include <limits.h>
 #include <math.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -44,9 +44,9 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "timers.h"
-#include "space.h"
 #include "error.h"
+#include "space.h"
+#include "timers.h"
 
 /* Global variables. */
 int cell_next_tag = 0;

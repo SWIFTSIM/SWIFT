@@ -18,7 +18,10 @@
  *
  ******************************************************************************/
 
+/* Some standard headers. */
 #include <stdio.h>
+
+/* This object's header. */
 #include "version.h"
 
 /**

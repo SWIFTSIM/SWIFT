@@ -27,20 +27,20 @@
 #define H5_HAVE_PARALLEL
 
 /* Some standard headers. */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stddef.h>
 #include <hdf5.h>
 #include <math.h>
 #include <mpi.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* This object's header. */
 #include "parallel_io.h"
 
 /* Local includes. */
-#include "error.h"
 #include "common_io.h"
+#include "error.h"
 
 /**
  * @brief Reads a data array from a given HDF5 group.

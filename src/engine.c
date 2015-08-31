@@ -21,15 +21,15 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <math.h>
 #include <float.h>
 #include <limits.h>
+#include <math.h>
 #include <omp.h>
 #include <sched.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -45,12 +45,12 @@
 #include "engine.h"
 
 /* Local headers. */
-#include "cycle.h"
 #include "atomic.h"
-#include "timers.h"
-#include "debug.h"
 #include "cell.h"
+#include "cycle.h"
+#include "debug.h"
 #include "error.h"
+#include "timers.h"
 
 #ifdef LEGACY_GADGET2_SPH
 #include "runner_iact_legacy.h"

@@ -21,9 +21,9 @@
 #define SWIFT_KERNEL_H
 
 /* Includes. */
-#include "vector.h"
 #include "const.h"
 #include "inline.h"
+#include "vector.h"
 
 /**
  * @file kernel.h

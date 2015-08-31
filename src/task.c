@@ -21,15 +21,15 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <omp.h>
+#include <pthread.h>
+#include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
-#include <math.h>
-#include <float.h>
-#include <limits.h>
-#include <omp.h>
-#include <sched.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -41,8 +41,8 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "lock.h"
 #include "error.h"
+#include "lock.h"
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {

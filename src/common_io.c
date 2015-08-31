@@ -24,12 +24,12 @@
 #if defined(HAVE_HDF5)
 
 /* Some standard headers. */
+#include <hdf5.h>
+#include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
-#include <hdf5.h>
-#include <math.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI

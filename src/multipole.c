@@ -21,12 +21,12 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <float.h>
-#include <limits.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI

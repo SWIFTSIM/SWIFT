@@ -21,8 +21,8 @@
 
 /* Includes. */
 #include "lock.h"
-#include "part.h"
 #include "multipole.h"
+#include "part.h"
 
 /* Forward declaration of space, needed for cell_unpack. */
 struct space;

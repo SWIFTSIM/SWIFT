@@ -21,9 +21,9 @@
 #define SWIFT_RUNNER_IACT_LECAGY_H
 
 /* Includes. */
-#include "part.h"
 #include "const.h"
 #include "kernel.h"
+#include "part.h"
 #include "vector.h"
 
 /**

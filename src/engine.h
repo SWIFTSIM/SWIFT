@@ -23,12 +23,12 @@
 #include <pthread.h>
 
 /* Includes. */
+#include "lock.h"
 #include "proxy.h"
+#include "runner.h"
+#include "scheduler.h"
 #include "space.h"
 #include "task.h"
-#include "lock.h"
-#include "scheduler.h"
-#include "runner.h"
 
 /* Some constants. */
 #define engine_policy_none 0

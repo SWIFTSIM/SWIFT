@@ -23,10 +23,10 @@
 #include <math.h>
 
 /* Includes. */
+#include "const.h"
 #include "inline.h"
 #include "kernel.h"
 #include "part.h"
-#include "const.h"
 
 /* Some constants. */
 #define multipole_order 1

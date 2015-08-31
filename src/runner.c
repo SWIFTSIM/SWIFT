@@ -21,14 +21,14 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <omp.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
-#include <math.h>
-#include <float.h>
-#include <limits.h>
-#include <omp.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -40,12 +40,12 @@
 
 /* Local headers. */
 #include "const.h"
-#include "timers.h"
-#include "task.h"
-#include "space.h"
-#include "scheduler.h"
 #include "engine.h"
 #include "error.h"
+#include "scheduler.h"
+#include "space.h"
+#include "task.h"
+#include "timers.h"
 
 /* Include the right variant of the SPH interactions */
 #ifdef LEGACY_GADGET2_SPH

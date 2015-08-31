@@ -22,11 +22,11 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
-#include <math.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI

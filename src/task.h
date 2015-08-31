@@ -20,8 +20,8 @@
 #define SWIFT_TASK_H
 
 /* Includes. */
-#include "cycle.h"
 #include "cell.h"
+#include "cycle.h"
 
 /* Some constants. */
 #define task_maxwait 3

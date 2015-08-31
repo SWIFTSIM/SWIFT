@@ -24,12 +24,12 @@
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
 
 /* Some standard headers. */
+#include <hdf5.h>
+#include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
-#include <hdf5.h>
-#include <math.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -40,8 +40,8 @@
 #include "serial_io.h"
 
 /* Local includes. */
-#include "error.h"
 #include "common_io.h"
+#include "error.h"
 
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file

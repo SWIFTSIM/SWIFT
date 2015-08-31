@@ -24,10 +24,10 @@
 
 /* Includes. */
 #include "cell.h"
-#include "queue.h"
-#include "task.h"
 #include "lock.h"
+#include "queue.h"
 #include "space.h"
+#include "task.h"
 
 /* Some constants. */
 #define scheduler_maxwait 3

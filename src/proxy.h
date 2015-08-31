@@ -20,8 +20,8 @@
 #define SWIFT_PROXY_H
 
 /* Includes. */
-#include "part.h"
 #include "cell.h"
+#include "part.h"
 
 /* Some constants. */
 #define proxy_buffgrow 1.5

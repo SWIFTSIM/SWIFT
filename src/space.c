@@ -21,14 +21,14 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
 #include <float.h>
 #include <limits.h>
 #include <math.h>
 #include <omp.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -40,11 +40,11 @@
 
 /* Local headers. */
 #include "atomic.h"
-#include "lock.h"
-#include "kernel.h"
 #include "engine.h"
-#include "runner.h"
 #include "error.h"
+#include "kernel.h"
+#include "lock.h"
+#include "runner.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;

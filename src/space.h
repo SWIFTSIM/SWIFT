@@ -20,8 +20,8 @@
 #define SWIFT_SPACE_H
 
 /* Includes. */
-#include "part.h"
 #include "cell.h"
+#include "part.h"
 
 /* Forward-declare the engine to avoid cyclic includes. */
 struct engine;

@@ -24,19 +24,19 @@
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
 /* Some standard headers. */
+#include <hdf5.h>
+#include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
-#include <hdf5.h>
-#include <math.h>
 
 /* This object's header. */
 #include "single_io.h"
 
 /* Local includes. */
-#include "error.h"
 #include "common_io.h"
+#include "error.h"
 
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file

@@ -21,13 +21,13 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <limits.h>
+#include <math.h>
+#include <omp.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <pthread.h>
-#include <limits.h>
-#include <omp.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -38,12 +38,12 @@
 #include "scheduler.h"
 
 /* Local headers. */
-#include "error.h"
-#include "cycle.h"
 #include "atomic.h"
-#include "timers.h"
 #include "const.h"
+#include "cycle.h"
+#include "error.h"
 #include "kernel.h"
+#include "timers.h"
 
 /**
  * @brief Add an unlock_task to the given task.

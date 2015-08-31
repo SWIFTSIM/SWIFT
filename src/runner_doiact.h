@@ -18,8 +18,8 @@
  ******************************************************************************/
 
 /* Includes. */
-#include "part.h"
 #include "cell.h"
+#include "part.h"
 
 /* Before including this file, define FUNCTION, which is the
    name of the interaction function. This creates the interaction functions
