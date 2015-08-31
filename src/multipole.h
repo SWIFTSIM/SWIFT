@@ -19,7 +19,12 @@
 #ifndef SWIFT_MULTIPOLE_H
 #define SWIFT_MULTIPOLE_H
 
+/* Some standard headers. */
+#include <math.h>
+
 /* Includes. */
+#include "inline.h"
+#include "kernel.h"
 #include "part.h"
 
 /* Some constants. */
@@ -46,9 +51,6 @@ void multipole_addpart(struct multipole *m, struct gpart *p);
 void multipole_addparts(struct multipole *m, struct gpart *p, int N);
 void multipole_init(struct multipole *m, struct gpart *parts, int N);
 void multipole_reset(struct multipole *m);
-
-#include <math.h>
-#include "kernel.h"
 
 /**
  * @brief Compute the pairwise interaction between two multipoles.

@@ -19,6 +19,17 @@
 #ifndef SWIFT_ENGINE_H
 #define SWIFT_ENGINE_H
 
+/* Some standard headers. */
+#include <pthread.h>
+
+/* Includes. */
+#include "proxy.h"
+#include "space.h"
+#include "task.h"
+#include "lock.h"
+#include "scheduler.h"
+#include "runner.h"
+
 /* Some constants. */
 #define engine_policy_none 0
 #define engine_policy_rand 1

@@ -20,13 +20,15 @@
 #ifndef SWIFT_KERNEL_H
 #define SWIFT_KERNEL_H
 
+/* Includes. */
+#include "vector.h"
+#include "const.h"
+
 /**
  * @file kernel.h
  * @brief SPH kernel functions. Compute W(x,h) and the gradient of W(x,h),
  *        as well as the blending function used for gravity.
  */
-
-#include "vector.h"
 
 /* Gravity kernel stuff
  * -----------------------------------------------------------------------------------------------

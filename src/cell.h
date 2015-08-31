@@ -20,6 +20,7 @@
 #define SWIFT_CELL_H
 
 /* Includes. */
+#include "lock.h"
 #include "part.h"
 #include "multipole.h"
 

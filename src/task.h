@@ -20,6 +20,7 @@
 #define SWIFT_TASK_H
 
 /* Includes. */
+#include "cycle.h"
 #include "cell.h"
 
 /* Some constants. */

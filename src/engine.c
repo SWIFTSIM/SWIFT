@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <pthread.h>
 #include <math.h>
 #include <float.h>
 #include <limits.h>
@@ -43,23 +42,16 @@
 #endif
 
 /* Local headers. */
+#include "engine.h"
 #include "const.h"
 #include "cycle.h"
 #include "atomic.h"
 #include "timers.h"
 #include "const.h"
 #include "vector.h"
-#include "lock.h"
-#include "task.h"
 #include "debug.h"
-#include "space.h"
-#include "multipole.h"
 #include "cell.h"
 #include "queue.h"
-#include "scheduler.h"
-#include "engine.h"
-#include "runner.h"
-#include "proxy.h"
 #include "error.h"
 
 #ifdef LEGACY_GADGET2_SPH
