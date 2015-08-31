@@ -20,7 +20,13 @@
 #ifndef SWIFT_ERROR_H
 #define SWIFT_ERROR_H
 
+/* Some standard headers. */
 #include <stdio.h>
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
 
 /**
  * @brief Error macro. Prints the message given in argument and aborts.

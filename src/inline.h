@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_INLINE_H
+#define SWIFT_INLINE_H
 
 /**
  * @brief Defines inline
@@ -28,3 +30,5 @@
 #define INLINE inline
 #endif
 #endif
+
+#endif /* SWIFT_INLINE_H */

@@ -23,6 +23,9 @@
 #include "part.h"
 #include "cell.h"
 
+/* Forward-declare the engine to avoid cyclic includes. */
+struct engine;
+
 /* Some constants. */
 #define space_maxdepth 10
 #define space_cellallocchunk 1000

@@ -19,6 +19,10 @@
 #ifndef SWIFT_LOCK_H
 #define SWIFT_LOCK_H
 
+/* Some standard headers. */
+#include <pthread.h>
+
+/* Includes. */
 #include "inline.h"
 
 #ifdef PTHREAD_SPINLOCK

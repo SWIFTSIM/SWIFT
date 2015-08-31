@@ -19,8 +19,15 @@
 #ifndef SWIFT_SCHEDULER_H
 #define SWIFT_SCHEDULER_H
 
+/* Some standard headers. */
+#include <pthread.h>
+
 /* Includes. */
 #include "cell.h"
+#include "queue.h"
+#include "task.h"
+#include "lock.h"
+#include "space.h"
 
 /* Some constants. */
 #define scheduler_maxwait 3

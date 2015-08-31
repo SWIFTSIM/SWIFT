@@ -19,8 +19,15 @@
 #ifndef SWIFT_SERIAL_IO_H
 #define SWIFT_SERIAL_IO_H
 
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* Includes. */
 #include "part.h"
+#include "engine.h"
+#include "units.h"
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
 

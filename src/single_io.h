@@ -19,6 +19,11 @@
 #ifndef SWIFT_SINGLE_IO_H
 #define SWIFT_SINGLE_IO_H
 
+/* Includes. */
+#include "part.h"
+#include "engine.h"
+#include "units.h"
+
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
 void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,

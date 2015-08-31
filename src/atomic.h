@@ -19,6 +19,7 @@
 #ifndef SWIFT_ATOMIC_H
 #define SWIFT_ATOMIC_H
 
+/* Includes. */
 #include "inline.h"
 
 #define atomic_add(v, i) __sync_fetch_and_add(v, i)

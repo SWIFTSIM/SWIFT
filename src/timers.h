@@ -19,6 +19,8 @@
 #ifndef SWIFT_TIMERS_H
 #define SWIFT_TIMERS_H
 
+/* Includes. */
+#include "cycle.h"
 #include "inline.h"
 
 /* The timers themselves. */

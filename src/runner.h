@@ -19,9 +19,15 @@
 #ifndef SWIFT_RUNNER_H
 #define SWIFT_RUNNER_H
 
+/* Some standard headers. */
+#include <pthread.h>
+
 /* Includes. */
 #include "cell.h"
 #include "inline.h"
+
+/* Forward-declare the engine type to avoid cyclic header dependencies. */
+struct engine;
 
 /* Some constants/flags. */
 #define runner_prefetch 0

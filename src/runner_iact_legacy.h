@@ -22,6 +22,7 @@
 
 /* Includes. */
 #include "part.h"
+#include "const.h"
 #include "kernel.h"
 #include "vector.h"
 

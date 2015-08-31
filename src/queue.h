@@ -21,6 +21,9 @@
 
 /* Includes. */
 #include "cell.h"
+#include "lock.h"
+#include "task.h"
+#include "queue.h"
 
 /* Some constants. */
 #define queue_maxsuper 50
