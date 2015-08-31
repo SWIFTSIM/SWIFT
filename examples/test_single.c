@@ -31,7 +31,6 @@
 #include <float.h>
 #include <limits.h>
 #include <fenv.h>
-#include <omp.h>
 
 /* Conditional headers. */
 #ifdef HAVE_LIBZ

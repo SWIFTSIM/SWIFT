@@ -32,7 +32,6 @@
 #include <float.h>
 #include <limits.h>
 #include <fenv.h>
-#include <omp.h>
 
 /* Conditional headers. */
 #ifdef HAVE_LIBZ
@@ -271,7 +270,6 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
     double rho_max = 0.0, rho_min = 100;
     
     /* Loop over all particle pairs. */
-    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r2), shared(periodic,parts,dim,N,stdout)
     for ( j = 0 ; j < N ; j++ ) {
         if ( j % 1000 == 0 ) {
             printf( "pairs_n2: j=%i.\n" , j );
@@ -291,13 +289,11 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
             if ( r2 < parts[j].h*parts[j].h || r2 < parts[k].h*parts[k].h ) {
                 runner_iact_density( r2 , NULL , parts[j].h , parts[k].h , &parts[j] , &parts[k] );
                 /* if ( parts[j].h / parts[k].h > maxratio )
-                    #pragma omp critical
                     {
                     maxratio = parts[j].h / parts[k].h;
                     mj = j; mk = k;
                     }
                 else if ( parts[k].h / parts[j].h > maxratio )
-                    #pragma omp critical
                     {
                     maxratio = parts[k].h / parts[j].h;
                     mj = j; mk = k;
@@ -658,7 +654,6 @@ int main ( int argc , char *argv[] ) {
 	case 't':
 	  if ( sscanf( optarg , "%d" , &nr_threads ) != 1 )
 	    error( "Error parsing number of threads." );
-	  omp_set_num_threads( nr_threads );
 	  break;
 	case 'w':
 	  if ( sscanf( optarg , "%d" , &space_subsize ) != 1 )

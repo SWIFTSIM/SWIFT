@@ -28,7 +28,6 @@
 #include <math.h>
 #include <float.h>
 #include <limits.h>
-#include <omp.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI

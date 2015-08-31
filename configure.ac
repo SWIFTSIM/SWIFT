@@ -188,17 +188,6 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
 
-# Check for OpenMP.
-AC_OPENMP
-AC_SUBST(OPENMP_CFLAGS)
-enable_openmp="no"
-if test -z "$OPENMP_CFLAGS"; then
-   echo $OPENMP_CFLAGS
-   AC_MSG_ERROR(Compiler does not support OpenMP, 1)
-else
-   CFLAGS="$CFLAGS $OPENMP_CFLAGS"
-   enable_openmp="yes"
-fi
 
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
@@ -305,7 +294,6 @@ AC_MSG_RESULT([
    MPI enabled: $enable_mpi
    HDF5 enabled: $with_hdf5
        parallel: $have_parallel_hdf5
-   OpenMP enabled: $enable_openmp
    Metis enabled: $with_metis
 ])
 
