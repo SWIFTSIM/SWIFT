@@ -23,7 +23,6 @@
 /* Some standard headers. */
 #include <limits.h>
 #include <math.h>
-#include <omp.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -803,7 +802,6 @@ void scheduler_reweight(struct scheduler *s) {
   /* Run throught the tasks backwards and set their waits and
      weights. */
   // tic = getticks();
-  // #pragma omp parallel for schedule(static) private(t,j)
   for (k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
     t->weight = 0;
@@ -887,7 +885,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   /* Run throught the tasks and set their waits. */
   // tic = getticks();
-  // #pragma omp parallel for schedule(static) private(t,j)
   for (k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
     t->wait = 0;

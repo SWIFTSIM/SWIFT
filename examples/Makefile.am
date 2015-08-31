@@ -20,13 +20,13 @@
 MYFLAGS = -DTIMER
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -Wall -Werror -I../src -DCPU_TPS=2.67e9
+AM_CFLAGS = -Wall -Werror -I../src -DCPU_TPS=2.67e9 $(HDF5_CPPFLAGS)
 
 AM_LDFLAGS =
 
-METIS_LIBS = @METIS_LIBS@
 MPI_THREAD_LIBS = @MPI_THREAD_LIBS@
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
+MPI_FLAGS = -DWITH_MPI $(METIS_INCS)
 
 # Set-up the library
 bin_PROGRAMS = test test_fixdt test_mindt test_single
@@ -53,17 +53,17 @@ test_mindt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for test_mpi
 test_mpi_SOURCES = test.c
-test_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DWITH_MPI -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep"
+test_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep"
 test_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
 # Sources for test_fixdt_mpi
 test_fixdt_mpi_SOURCES = test.c
-test_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DWITH_MPI -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep"
+test_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep"
 test_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
 # Sources for test_mindt_mpi
 test_mindt_mpi_SOURCES = test.c
-test_mindt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DWITH_MPI -DENGINE_POLICY="engine_policy_keep"
+test_mindt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep"
 test_mindt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
 # Sources for test_single

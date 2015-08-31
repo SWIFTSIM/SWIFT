@@ -57,15 +57,21 @@ AC_ARG_ENABLE([mpi],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
+good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
     AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
 
     # Various MPI implementations require additional libraries when also using
     # threads. Use mpirun (on PATH) as that seems to be only command with
-    # version flag.
-    AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
+    # version flag, allow MPIRUN to override for systems that insist on
+    # a non-standard name (PRACE).
+    : ${MPIRUN='mpirun'}
+    if test "$MPIRUN" = "mpirun"; then
+       AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
+    fi
     if test "$MPIRUN" = "notfound"; then
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
+       enable_mpi="no"
     else
        # Special options we know about.
        # Intel: -mt_mpi
@@ -86,6 +92,15 @@ if test "$enable_mpi" = "yes"; then
          *"Open MPI"*)
             MPI_THREAD_LIBS=""
             AC_MSG_RESULT([Open MPI])
+            #  OpenMPI should be 1.8.6 or later, if not complain.
+            #  Version is last word on first line of -version output.
+            revision=`mpirun -version 2>&1 | grep "Open MPI" | awk '{print $NF}'`
+            AX_COMPARE_VERSION( $revision, [ge], [1.8.6],,[good_mpi="no"] )
+            if test "$good_mpi" = "no"; then
+                AC_MSG_WARN([
+    Open MPI version should be at least 1.8.6 (is $revision)])
+                enable_mpi="yes (but with warning)"
+            fi
          ;;
          *)
             MPI_THREAD_LIBS=""
@@ -95,7 +110,10 @@ if test "$enable_mpi" = "yes"; then
        AC_SUBST([MPI_THREAD_LIBS])
     fi
 fi
-AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
+AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
+
+# Indicate that MPIRUN can be modified by an environement variable
+AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
@@ -170,39 +188,31 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
 
-# Check for OpenMP.
-AC_OPENMP
-AC_SUBST(OPENMP_CFLAGS)
-enable_openmp="no"
-if test -z "$OPENMP_CFLAGS"; then
-   echo $OPENMP_CFLAGS
-   AC_MSG_ERROR(Compiler does not support OpenMP, 1)
-else
-   CFLAGS="$CFLAGS $OPENMP_CFLAGS"
-   enable_openmp="yes"
-fi
 
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
 # don't use that.
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [prefix where the metis library is installed @<:@default=yes@:>@]
+       [root directory where metis is installed @<:@default=yes@:>@]
     )],
     [],
     [with_metis="no"]
 )
 if test "x$with_metis" != "xno"; then
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LIBS="-L$with_metis -lmetis"
+      METIS_LIBS="-L$with_metis/lib -lmetis"
+      METIS_INCS="-I$with_metis/include"
    else
       METIS_LIBS="-lmetis"
+      METIS_INCS=""
    fi
    AC_CHECK_LIB([metis],[METIS_PartGraphKway],
       AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
       AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
 fi
 AC_SUBST([METIS_LIBS])
+AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
 # Check for zlib.
@@ -219,7 +229,7 @@ AX_LIB_HDF5
 # The default is to use MPI support if it is available, i.e. this is
 # a parallel HDF5.
 # To do this need to ask the HDF5 compiler about its configuration,
-# -showconfig should have yes/no. 
+# -showconfig should have yes/no.
 have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
@@ -284,7 +294,6 @@ AC_MSG_RESULT([
    MPI enabled: $enable_mpi
    HDF5 enabled: $with_hdf5
        parallel: $have_parallel_hdf5
-   OpenMP enabled: $enable_openmp
    Metis enabled: $with_metis
 ])
 

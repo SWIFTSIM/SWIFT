@@ -24,10 +24,6 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
-#include <omp.h>
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /* MPI headers. */
@@ -297,12 +293,12 @@ void space_regrid(struct space *s, double cell_max) {
 
 void space_rebuild(struct space *s, double cell_max) {
 
-  int j, k, cdim[3], nr_gparts = s->nr_gparts;
+  int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
   struct cell *restrict c, *restrict cells;
   struct part *restrict finger, *restrict p, *parts = s->parts;
   struct xpart *xfinger, *xparts = s->xparts;
   struct gpart *gp, *gparts = s->gparts, *gfinger;
-  int *cell_id;
+  int *ind;
   double ih[3], dim[3];
   // ticks tic;
 
@@ -315,8 +311,8 @@ void space_rebuild(struct space *s, double cell_max) {
 
   /* Run through the particles and get their cell index. */
   // tic = getticks();
-  const int cell_id_size = s->nr_parts;
-  if ((cell_id = (int *)malloc(sizeof(int) * cell_id_size)) == NULL)
+  const int ind_size = s->size_parts;
+  if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
@@ -327,18 +323,16 @@ void space_rebuild(struct space *s, double cell_max) {
   cdim[0] = s->cdim[0];
   cdim[1] = s->cdim[1];
   cdim[2] = s->cdim[2];
-  for (k = 0; k < s->nr_parts; k++) {
+  for (k = 0; k < nr_parts; k++) {
     p = &parts[k];
     for (j = 0; j < 3; j++)
       if (p->x[j] < 0.0)
         p->x[j] += dim[j];
       else if (p->x[j] >= dim[j])
         p->x[j] -= dim[j];
-    cell_id[k] =
+    ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    if (cell_id[k] < 0 || cell_id[k] >= s->nr_cells)
-      error("Bad cell id %i.", cell_id[k]);
-    atomic_inc(&cells[cell_id[k]].count);
+    cells[ind[k]].count++;
   }
 // message( "getting particle indices took %.3f ms." , (double)(getticks() -
 // tic) / CPU_TPS * 1000 );
@@ -346,80 +340,78 @@ void space_rebuild(struct space *s, double cell_max) {
 #ifdef WITH_MPI
   /* Move non-local parts to the end of the list. */
   int nodeID = s->e->nodeID;
-  int nr_local_parts = s->nr_parts;
-  for (k = 0; k < nr_local_parts; k++)
-    if (cells[cell_id[k]].nodeID != nodeID) {
-      cells[cell_id[k]].count -= 1;
-      nr_local_parts -= 1;
+  for (k = 0; k < nr_parts; k++)
+    if (cells[ind[k]].nodeID != nodeID) {
+      cells[ind[k]].count -= 1;
+      nr_parts -= 1;
       struct part tp = parts[k];
-      parts[k] = parts[nr_local_parts];
-      parts[nr_local_parts] = tp;
+      parts[k] = parts[nr_parts];
+      parts[nr_parts] = tp;
       struct xpart txp = xparts[k];
-      xparts[k] = xparts[nr_local_parts];
-      xparts[nr_local_parts] = txp;
-      int t = cell_id[k];
-      cell_id[k] = cell_id[nr_local_parts];
-      cell_id[nr_local_parts] = t;
+      xparts[k] = xparts[nr_parts];
+      xparts[nr_parts] = txp;
+      int t = ind[k];
+      ind[k] = ind[nr_parts];
+      ind[nr_parts] = t;
     }
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
   s->nr_parts =
-      nr_local_parts + engine_exchange_strays(s->e, nr_local_parts,
-                                              &cell_id[nr_local_parts],
-                                              s->nr_parts - nr_local_parts);
+      nr_parts + engine_exchange_strays(s->e, nr_parts, &ind[nr_parts],
+                                        s->nr_parts - nr_parts);
   parts = s->parts;
   xparts = s->xparts;
 
   /* Re-allocate the index array if needed.. */
-  if (s->nr_parts > cell_id_size) {
-    int *cell_id_new;
-    if ((cell_id_new = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
+  if (s->nr_parts > ind_size) {
+    int *ind_new;
+    if ((ind_new = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
       error("Failed to allocate temporary particle indices.");
-    memcpy(cell_id_new, cell_id, sizeof(int) * nr_local_parts);
-    free(cell_id);
-    cell_id = cell_id_new;
+    memcpy(ind_new, ind, sizeof(int) * nr_parts);
+    free(ind);
+    ind = ind_new;
   }
 
   /* Assign each particle to its cell. */
-  for (k = nr_local_parts; k < s->nr_parts; k++) {
+  for (k = nr_parts; k < s->nr_parts; k++) {
     p = &parts[k];
-    cell_id[k] =
+    ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cells[cell_id[k]].count += 1;
-    if (cells[cell_id[k]].nodeID != nodeID)
-      error(
-          "Received part that does not belong to me (nodeID=%i, x=[%e,%e,%e]).",
-          cells[cell_id[k]].nodeID, p->x[0], p->x[1], p->x[2]);
+    cells[ind[k]].count += 1;
+    /* if ( cells[ ind[k] ].nodeID != nodeID )
+        error( "Received part that does not belong to me (nodeID=%i)." , cells[
+       ind[k] ].nodeID ); */
   }
+  nr_parts = s->nr_parts;
 #endif
 
   /* Sort the parts according to their cells. */
   // tic = getticks();
-  parts_sort(parts, xparts, cell_id, s->nr_parts, 0, s->nr_cells - 1);
+  parts_sort(parts, xparts, ind, nr_parts, 0, s->nr_cells - 1);
   // message( "parts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
 
   /* Re-link the gparts. */
-  for (k = 0; k < s->nr_parts; k++)
+  for (k = 0; k < nr_parts; k++)
     if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k];
 
   /* Verify sort. */
   /* for ( k = 1 ; k < nr_parts ; k++ ) {
-      if ( cell_id[k-1] > cell_id[k] ) {
+      if ( ind[k-1] > ind[k] ) {
           error( "Sort failed!" );
           }
-      else if ( cell_id[k] != cell_getid( cdim , parts[k].x[0]*ih[0] ,
+      else if ( ind[k] != cell_getid( cdim , parts[k].x[0]*ih[0] ,
      parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) )
           error( "Incorrect indices!" );
       } */
 
   /* We no longer need the indices as of here. */
-  free(cell_id);
+  free(ind);
 
   /* Run through the gravity particles and get their cell index. */
   // tic = getticks();
-  if ((cell_id = (int *)malloc(sizeof(int) * s->size_gparts)) == NULL)
+  if ((ind = (int *)malloc(sizeof(int) * s->size_gparts)) == NULL)
     error("Failed to allocate temporary particle indices.");
   for (k = 0; k < nr_gparts; k++) {
     gp = &gparts[k];
@@ -428,9 +420,9 @@ void space_rebuild(struct space *s, double cell_max) {
         gp->x[j] += dim[j];
       else if (gp->x[j] >= dim[j])
         gp->x[j] -= dim[j];
-    cell_id[k] =
+    ind[k] =
         cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
-    atomic_inc(&cells[cell_id[k]].gcount);
+    cells[ind[k]].gcount++;
   }
   // message( "getting particle indices took %.3f ms." , (double)(getticks() -
   // tic) / CPU_TPS * 1000 );
@@ -439,7 +431,7 @@ void space_rebuild(struct space *s, double cell_max) {
 
   /* Sort the parts according to their cells. */
   // tic = getticks();
-  gparts_sort(gparts, cell_id, nr_gparts, 0, s->nr_cells - 1);
+  gparts_sort(gparts, ind, nr_gparts, 0, s->nr_cells - 1);
   // message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
 
@@ -448,7 +440,7 @@ void space_rebuild(struct space *s, double cell_max) {
     if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
 
   /* We no longer need the indices as of here. */
-  free(cell_id);
+  free(ind);
 
   /* Hook the cells up to the parts. */
   // tic = getticks();
@@ -470,17 +462,8 @@ void space_rebuild(struct space *s, double cell_max) {
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
   // tic = getticks();
-  k = 0;
-  {
-    if (omp_get_thread_num() < 8)
-      while (1) {
-        int myk = atomic_inc(&k);
-        if (myk < s->nr_cells)
-          space_split(s, &cells[myk]);
-        else
-          break;
-      }
-  }
+  for (k = 0; k < s->nr_cells; k++) space_split(s, &cells[k]);
+
   // message( "space_split took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
 }
@@ -532,130 +515,105 @@ void parts_sort(struct part *parts, struct xpart *xparts, int *ind, int N,
   last = 1;
   waiting = 1;
 
-/* Parallel bit. */
-#pragma omp parallel default(shared)                                           \
-    shared(N, first, last, waiting, qstack, parts, xparts, ind, qstack_size,   \
-           stderr, engine_rank) private(pivot, i, ii, j, jj, min, max, temp_i, \
-                                        qid, temp_xp, temp_p)
-  {
+  /* Main loop. */
+  while (waiting > 0) {
 
-    /* Main loop. */
-    if (omp_get_thread_num() < 8)
-      while (waiting > 0) {
+    /* Grab an interval off the queue. */
+    qid = (first++) % qstack_size;
 
-        /* Grab an interval off the queue. */
-        qid = atomic_inc(&first) % qstack_size;
+    /* Get the stack entry. */
+    i = qstack[qid].i;
+    j = qstack[qid].j;
+    min = qstack[qid].min;
+    max = qstack[qid].max;
+    qstack[qid].ready = 0;
 
-        /* Wait for the interval to be ready. */
-        while (waiting > 0 && atomic_cas(&qstack[qid].ready, 1, 1) != 1)
-          ;
+    /* Loop over sub-intervals. */
+    while (1) {
 
-        /* Broke loop for all the wrong reasons? */
-        if (waiting == 0) break;
+      /* Bring beer. */
+      pivot = (min + max) / 2;
 
-        /* Get the stack entry. */
-        i = qstack[qid].i;
-        j = qstack[qid].j;
-        min = qstack[qid].min;
-        max = qstack[qid].max;
-        qstack[qid].ready = 0;
-        // message( "thread %i got interval [%i,%i] with values in [%i,%i]." ,
-        // omp_get_thread_num() , i , j , min , max );
+      /* One pass of QuickSort's partitioning. */
+      ii = i;
+      jj = j;
+      while (ii < jj) {
+        while (ii <= j && ind[ii] <= pivot) ii++;
+        while (jj >= i && ind[jj] > pivot) jj--;
+        if (ii < jj) {
+          temp_i = ind[ii];
+          ind[ii] = ind[jj];
+          ind[jj] = temp_i;
+          temp_p = parts[ii];
+          parts[ii] = parts[jj];
+          parts[jj] = temp_p;
+          temp_xp = xparts[ii];
+          xparts[ii] = xparts[jj];
+          xparts[jj] = temp_xp;
+        }
+      }
 
-        /* Loop over sub-intervals. */
-        while (1) {
+      /* Verify sort. */
+      /* for ( int k = i ; k <= jj ; k++ )
+         if ( ind[k] > pivot ) {
+         message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i,
+         N=%i." , k , ind[k] , pivot , i , j , N );
+         error( "Partition failed (<=pivot)." );
+         }
+         for ( int k = jj+1 ; k <= j ; k++ )
+         if ( ind[k] <= pivot ) {
+         message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i,
+         N=%i." , k , ind[k] , pivot , i , j , N );
+         error( "Partition failed (>pivot)." );
+         } */
 
-          /* Bring beer. */
-          pivot = (min + max) / 2;
+      /* Split-off largest interval. */
+      if (jj - i > j - jj + 1) {
 
-          /* One pass of QuickSort's partitioning. */
-          ii = i;
-          jj = j;
-          while (ii < jj) {
-            while (ii <= j && ind[ii] <= pivot) ii++;
-            while (jj >= i && ind[jj] > pivot) jj--;
-            if (ii < jj) {
-              temp_i = ind[ii];
-              ind[ii] = ind[jj];
-              ind[jj] = temp_i;
-              temp_p = parts[ii];
-              parts[ii] = parts[jj];
-              parts[jj] = temp_p;
-              temp_xp = xparts[ii];
-              xparts[ii] = xparts[jj];
-              xparts[jj] = temp_xp;
-            }
-          }
+        /* Recurse on the left? */
+        if (jj > i && pivot > min) {
+          qid = (last++) % qstack_size;
+          qstack[qid].i = i;
+          qstack[qid].j = jj;
+          qstack[qid].min = min;
+          qstack[qid].max = pivot;
+          qstack[qid].ready = 1;
+          if (waiting++ >= qstack_size) error("Qstack overflow.");
+        }
 
-          /* Verify sort. */
-          /* for ( int k = i ; k <= jj ; k++ )
-              if ( ind[k] > pivot ) {
-                  message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i,
-          j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                  error( "Partition failed (<=pivot)." );
-                  }
-          for ( int k = jj+1 ; k <= j ; k++ )
-              if ( ind[k] <= pivot ) {
-                  message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i,
-          j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                  error( "Partition failed (>pivot)." );
-                  } */
+        /* Recurse on the right? */
+        if (jj + 1 < j && pivot + 1 < max) {
+          i = jj + 1;
+          min = pivot + 1;
+        } else
+          break;
 
-          /* Split-off largest interval. */
-          if (jj - i > j - jj + 1) {
+      } else {
 
-            /* Recurse on the left? */
-            if (jj > i && pivot > min) {
-              qid = atomic_inc(&last) % qstack_size;
-              while (atomic_cas(&qstack[qid].ready, 0, 0) != 0)
-                ;
-              qstack[qid].i = i;
-              qstack[qid].j = jj;
-              qstack[qid].min = min;
-              qstack[qid].max = pivot;
-              qstack[qid].ready = 1;
-              if (atomic_inc(&waiting) >= qstack_size)
-                error("Qstack overflow.");
-            }
+        /* Recurse on the right? */
+        if (jj + 1 < j && pivot + 1 < max) {
+          qid = (last++) % qstack_size;
+          qstack[qid].i = jj + 1;
+          qstack[qid].j = j;
+          qstack[qid].min = pivot + 1;
+          qstack[qid].max = max;
+          qstack[qid].ready = 1;
+          if ((waiting++) >= qstack_size) error("Qstack overflow.");
+        }
 
-            /* Recurse on the right? */
-            if (jj + 1 < j && pivot + 1 < max) {
-              i = jj + 1;
-              min = pivot + 1;
-            } else
-              break;
+        /* Recurse on the left? */
+        if (jj > i && pivot > min) {
+          j = jj;
+          max = pivot;
+        } else
+          break;
+      }
 
-          } else {
+    } /* loop over sub-intervals. */
 
-            /* Recurse on the right? */
-            if (jj + 1 < j && pivot + 1 < max) {
-              qid = atomic_inc(&last) % qstack_size;
-              while (atomic_cas(&qstack[qid].ready, 0, 0) != 0)
-                ;
-              qstack[qid].i = jj + 1;
-              qstack[qid].j = j;
-              qstack[qid].min = pivot + 1;
-              qstack[qid].max = max;
-              qstack[qid].ready = 1;
-              if (atomic_inc(&waiting) >= qstack_size)
-                error("Qstack overflow.");
-            }
+    waiting--;
 
-            /* Recurse on the left? */
-            if (jj > i && pivot > min) {
-              j = jj;
-              max = pivot;
-            } else
-              break;
-          }
-
-        } /* loop over sub-intervals. */
-
-        atomic_dec(&waiting);
-
-      } /* main loop. */
-
-  } /* parallel bit. */
+  } /* main loop. */
 
   /* Verify sort. */
   /* for ( i = 1 ; i < N ; i++ )
@@ -700,126 +658,102 @@ void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max) {
   last = 1;
   waiting = 1;
 
-/* Parallel bit. */
-#pragma omp parallel default(shared) shared(                           \
-    N, first, last, waiting, qstack, gparts, ind, qstack_size, stderr, \
-    engine_rank) private(pivot, i, ii, j, jj, min, max, temp_i, qid, temp_p)
-  {
+  /* Main loop. */
+  while (waiting > 0) {
 
-    /* Main loop. */
-    if (omp_get_thread_num() < 8)
-      while (waiting > 0) {
+    /* Grab an interval off the queue. */
+    qid = (first++) % qstack_size;
 
-        /* Grab an interval off the queue. */
-        qid = atomic_inc(&first) % qstack_size;
+    /* Get the stack entry. */
+    i = qstack[qid].i;
+    j = qstack[qid].j;
+    min = qstack[qid].min;
+    max = qstack[qid].max;
+    qstack[qid].ready = 0;
 
-        /* Wait for the interval to be ready. */
-        while (waiting > 0 && atomic_cas(&qstack[qid].ready, 1, 1) != 1)
-          ;
+    /* Loop over sub-intervals. */
+    while (1) {
 
-        /* Broke loop for all the wrong reasons? */
-        if (waiting == 0) break;
+      /* Bring beer. */
+      pivot = (min + max) / 2;
 
-        /* Get the stack entry. */
-        i = qstack[qid].i;
-        j = qstack[qid].j;
-        min = qstack[qid].min;
-        max = qstack[qid].max;
-        qstack[qid].ready = 0;
-        // message( "thread %i got interval [%i,%i] with values in [%i,%i]." ,
-        // omp_get_thread_num() , i , j , min , max );
+      /* One pass of QuickSort's partitioning. */
+      ii = i;
+      jj = j;
+      while (ii < jj) {
+        while (ii <= j && ind[ii] <= pivot) ii++;
+        while (jj >= i && ind[jj] > pivot) jj--;
+        if (ii < jj) {
+          temp_i = ind[ii];
+          ind[ii] = ind[jj];
+          ind[jj] = temp_i;
+          temp_p = gparts[ii];
+          gparts[ii] = gparts[jj];
+          gparts[jj] = temp_p;
+        }
+      }
 
-        /* Loop over sub-intervals. */
-        while (1) {
+      /* Verify sort. */
+      /* for ( int k = i ; k <= jj ; k++ )
+         if ( ind[k] > pivot ) {
+         message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i,
+         N=%i." , k , ind[k] , pivot , i , j , N );
+         error( "Partition failed (<=pivot)." );
+         }
+         for ( int k = jj+1 ; k <= j ; k++ )
+         if ( ind[k] <= pivot ) {
+         message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i,
+         N=%i." , k , ind[k] , pivot , i , j , N );
+         error( "Partition failed (>pivot)." );
+         } */
 
-          /* Bring beer. */
-          pivot = (min + max) / 2;
+      /* Split-off largest interval. */
+      if (jj - i > j - jj + 1) {
 
-          /* One pass of QuickSort's partitioning. */
-          ii = i;
-          jj = j;
-          while (ii < jj) {
-            while (ii <= j && ind[ii] <= pivot) ii++;
-            while (jj >= i && ind[jj] > pivot) jj--;
-            if (ii < jj) {
-              temp_i = ind[ii];
-              ind[ii] = ind[jj];
-              ind[jj] = temp_i;
-              temp_p = gparts[ii];
-              gparts[ii] = gparts[jj];
-              gparts[jj] = temp_p;
-            }
-          }
+        /* Recurse on the left? */
+        if (jj > i && pivot > min) {
+          qid = (last++) % qstack_size;
+          qstack[qid].i = i;
+          qstack[qid].j = jj;
+          qstack[qid].min = min;
+          qstack[qid].max = pivot;
+          qstack[qid].ready = 1;
+          if ((waiting++) >= qstack_size) error("Qstack overflow.");
+        }
 
-          /* Verify sort. */
-          /* for ( int k = i ; k <= jj ; k++ )
-              if ( ind[k] > pivot ) {
-                  message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i,
-          j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                  error( "Partition failed (<=pivot)." );
-                  }
-          for ( int k = jj+1 ; k <= j ; k++ )
-              if ( ind[k] <= pivot ) {
-                  message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i,
-          j=%i, N=%i." , k , ind[k] , pivot , i , j , N );
-                  error( "Partition failed (>pivot)." );
-                  } */
+        /* Recurse on the right? */
+        if (jj + 1 < j && pivot + 1 < max) {
+          i = jj + 1;
+          min = pivot + 1;
+        } else
+          break;
 
-          /* Split-off largest interval. */
-          if (jj - i > j - jj + 1) {
+      } else {
 
-            /* Recurse on the left? */
-            if (jj > i && pivot > min) {
-              qid = atomic_inc(&last) % qstack_size;
-              while (atomic_cas(&qstack[qid].ready, 0, 0) != 0)
-                ;
-              qstack[qid].i = i;
-              qstack[qid].j = jj;
-              qstack[qid].min = min;
-              qstack[qid].max = pivot;
-              qstack[qid].ready = 1;
-              if (atomic_inc(&waiting) >= qstack_size)
-                error("Qstack overflow.");
-            }
+        /* Recurse on the right? */
+        if (jj + 1 < j && pivot + 1 < max) {
+          qid = (last++) % qstack_size;
+          qstack[qid].i = jj + 1;
+          qstack[qid].j = j;
+          qstack[qid].min = pivot + 1;
+          qstack[qid].max = max;
+          qstack[qid].ready = 1;
+          if ((waiting++) >= qstack_size) error("Qstack overflow.");
+        }
 
-            /* Recurse on the right? */
-            if (jj + 1 < j && pivot + 1 < max) {
-              i = jj + 1;
-              min = pivot + 1;
-            } else
-              break;
+        /* Recurse on the left? */
+        if (jj > i && pivot > min) {
+          j = jj;
+          max = pivot;
+        } else
+          break;
+      }
 
-          } else {
+    } /* loop over sub-intervals. */
 
-            /* Recurse on the right? */
-            if (jj + 1 < j && pivot + 1 < max) {
-              qid = atomic_inc(&last) % qstack_size;
-              while (atomic_cas(&qstack[qid].ready, 0, 0) != 0)
-                ;
-              qstack[qid].i = jj + 1;
-              qstack[qid].j = j;
-              qstack[qid].min = pivot + 1;
-              qstack[qid].max = max;
-              qstack[qid].ready = 1;
-              if (atomic_inc(&waiting) >= qstack_size)
-                error("Qstack overflow.");
-            }
+    waiting--;
 
-            /* Recurse on the left? */
-            if (jj > i && pivot > min) {
-              j = jj;
-              max = pivot;
-            } else
-              break;
-          }
-
-        } /* loop over sub-intervals. */
-
-        atomic_dec(&waiting);
-
-      } /* main loop. */
-
-  } /* parallel bit. */
+  } /* main loop. */
 
   /* Verify sort. */
   /* for ( i = 1 ; i < N ; i++ )
@@ -872,20 +806,11 @@ void space_map_parts(struct space *s,
   }
 
   /* Call the recursive function on all higher-level cells. */
-  {
-    int mycid;
-    while (1) {
-      mycid = cid++;
-      if (mycid < s->nr_cells)
-        rec_map(&s->cells[mycid]);
-      else
-        break;
-    }
-  }
+  for (cid = 0; cid < s->nr_cells; cid++) rec_map(&s->cells[cid]);
 }
 
 /**
- * @brief Map a function to all particles in a space.
+ * @brief Map a function to all particles in a aspace.
  *
  * @param s The #space we are working in.
  * @param full Map to all cells, including cells with sub-cells.
@@ -912,16 +837,7 @@ void space_map_cells_post(struct space *s, int full,
   }
 
   /* Call the recursive function on all higher-level cells. */
-  {
-    int mycid;
-    while (1) {
-      mycid = cid++;
-      if (mycid < s->nr_cells)
-        rec_map(&s->cells[mycid]);
-      else
-        break;
-    }
-  }
+  for (cid = 0; cid < s->nr_cells; cid++) rec_map(&s->cells[cid]);
 }
 
 void space_map_cells_pre(struct space *s, int full,
@@ -943,16 +859,7 @@ void space_map_cells_pre(struct space *s, int full,
   }
 
   /* Call the recursive function on all higher-level cells. */
-  {
-    int mycid;
-    while (1) {
-      mycid = cid++;
-      if (mycid < s->nr_cells)
-        rec_map(&s->cells[mycid]);
-      else
-        break;
-    }
-  }
+  for (cid = 0; cid < s->nr_cells; cid++) rec_map(&s->cells[cid]);
 }
 
 /**
@@ -965,7 +872,7 @@ void space_map_cells_pre(struct space *s, int full,
 void space_split(struct space *s, struct cell *c) {
 
   int k, count = c->count, gcount = c->gcount, maxdepth = 0;
-  float h, h_max = 0.0f, dt, dt_min = FLT_MAX, dt_max = FLT_MIN;
+  float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
   struct cell *temp;
   struct part *p, *parts = c->parts;
   struct xpart *xp, *xparts = c->xparts;

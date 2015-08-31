@@ -1,7 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -31,7 +32,6 @@
 #include <float.h>
 #include <limits.h>
 #include <fenv.h>
-#include <omp.h>
 
 /* Conditional headers. */
 #ifdef HAVE_LIBZ
@@ -270,7 +270,6 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
     double rho_max = 0.0, rho_min = 100;
     
     /* Loop over all particle pairs. */
-    #pragma omp parallel for schedule(dynamic), default(none), private(k,i,dx,r2), shared(periodic,parts,dim,N,stdout)
     for ( j = 0 ; j < N ; j++ ) {
         if ( j % 1000 == 0 ) {
             printf( "pairs_n2: j=%i.\n" , j );
@@ -290,13 +289,11 @@ void pairs_n2 ( double *dim , struct part *__restrict__ parts , int N , int peri
             if ( r2 < parts[j].h*parts[j].h || r2 < parts[k].h*parts[k].h ) {
                 runner_iact_density( r2 , NULL , parts[j].h , parts[k].h , &parts[j] , &parts[k] );
                 /* if ( parts[j].h / parts[k].h > maxratio )
-                    #pragma omp critical
                     {
                     maxratio = parts[j].h / parts[k].h;
                     mj = j; mk = k;
                     }
                 else if ( parts[k].h / parts[j].h > maxratio )
-                    #pragma omp critical
                     {
                     maxratio = parts[k].h / parts[j].h;
                     mj = j; mk = k;
@@ -524,6 +521,23 @@ void density_dump ( int N ) {
 
     }
 
+/**
+ *  Factorize a given integer, attempts to keep larger pair of factors.
+ */
+void factor( int value, int *f1, int *f2 ) {
+    int j;
+    int i;
+
+    j = (int) sqrt( value );
+    for ( i = j; i > 0; i-- ) {
+        if ( ( value % i ) == 0 ) {
+            *f1 = i;
+            *f2 = value / i;
+            break;
+            }
+        }
+    }
+
 
 /**
  * @brief Main routine that loads a few particles and generates some output.
@@ -570,13 +584,20 @@ int main ( int argc , char *argv[] ) {
     if ( myrank == 0 )
         message( "MPI is up and running with %i nodes." , nr_nodes );
     fflush(stdout);
+
+    /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
+    factor( nr_nodes, &grid[0], &grid[1] );
+    factor( nr_nodes / grid[1], &grid[0], &grid[2] );
+    factor( grid[0] * grid[1], &grid[1], &grid[0] );
 #endif
 
     /* Greeting message */
-    message( "This is %s\n", package_description() );
+    if ( myrank == 0 )
+        message( "This is %s\n", package_description() );
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
+
 
     /* Parse the options */
     while ( ( c = getopt( argc , argv  , "a:c:d:f:g:m:q:r:s:t:w:z:" ) ) != -1 )
@@ -609,8 +630,6 @@ int main ( int argc , char *argv[] ) {
 	case 'g':
 	  if ( sscanf( optarg , "%i %i %i" , &grid[0] , &grid[1] , &grid[2] ) != 3 )
 	    error( "Error parsing grid." );
-	  if ( myrank == 0 )
-        message( "grid set to [ %i %i %i ]." , grid[0] , grid[1] , grid[2] ); fflush(stdout);
 	  break;
 	case 'm':
 	  if ( sscanf( optarg , "%lf" , &h_max ) != 1 )
@@ -635,7 +654,6 @@ int main ( int argc , char *argv[] ) {
 	case 't':
 	  if ( sscanf( optarg , "%d" , &nr_threads ) != 1 )
 	    error( "Error parsing number of threads." );
-	  omp_set_num_threads( nr_threads );
 	  break;
 	case 'w':
 	  if ( sscanf( optarg , "%d" , &space_subsize ) != 1 )
@@ -654,7 +672,11 @@ int main ( int argc , char *argv[] ) {
 	  break;
 
 	}
-    
+
+#if defined( WITH_MPI )
+    if ( myrank == 0 )
+        message( "grid set to [ %i %i %i ]." , grid[0] , grid[1] , grid[2] ); fflush(stdout);
+#endif
 
     /* How large are the parts? */
     if ( myrank == 0 ) {

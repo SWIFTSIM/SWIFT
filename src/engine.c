@@ -23,8 +23,6 @@
 /* Some standard headers. */
 #include <float.h>
 #include <limits.h>
-#include <math.h>
-#include <omp.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,11 +32,10 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-#endif
-
-/* METIS headers. */
+/* METIS headers only used when MPI is also available. */
 #ifdef HAVE_METIS
 #include <metis.h>
+#endif
 #endif
 
 /* This object's header. */

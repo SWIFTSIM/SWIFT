@@ -23,9 +23,6 @@
 /* Some standard headers. */
 #include <float.h>
 #include <limits.h>
-#include <math.h>
-#include <omp.h>
-#include <pthread.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
