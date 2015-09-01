@@ -488,7 +488,7 @@ void parts_sort(struct part *parts, struct xpart *xparts, int *ind, int N,
     volatile int ready;
   };
   struct qstack *qstack;
-  int qstack_size = 2 * (max - min) + 10;
+  unsigned int qstack_size = 2 * (max - min) + 10;
   volatile unsigned int first, last, waiting;
 
   int pivot;
