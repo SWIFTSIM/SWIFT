@@ -795,7 +795,7 @@ int main ( int argc , char *argv[] ) {
     /* Initialize the engine with this space. */
     tic = getticks();
     message( "nr_nodes is %i." , nr_nodes );
-    engine_init( &e , &s , dt_max , nr_threads , nr_queues , nr_nodes , myrank , ENGINE_POLICY | engine_policy_steal );
+    engine_init( &e , &s , dt_max , nr_threads , nr_queues , nr_nodes , myrank , ENGINE_POLICY | engine_policy_steal | engine_policy_paranoid );
     if ( myrank == 0 )
         message( "engine_init took %.3f ms." , ((double)(getticks() - tic)) / CPU_TPS * 1000 ); fflush(stdout);
 
@@ -849,12 +849,12 @@ int main ( int argc , char *argv[] ) {
     
         /* Repartition the space amongst the nodes? */
         #if defined(WITH_MPI) && defined(HAVE_METIS)
-            if ( j == 2 )
+            if ( j % 100 == 2 )
                 e.forcerepart = 1;
         #endif
         
         /* Force a rebuild for testing. */
-        /* if ( j % 4 == 1 )
+        /* if ( j % 4 == 3 )
             e.forcerebuild = 1; */
         
         // message( "starting run %i/%i (t=%.3e) with %i threads and %i queues..." , j+1 , runs , e.time , e.nr_threads , e.nr_queues ); fflush(stdout);
