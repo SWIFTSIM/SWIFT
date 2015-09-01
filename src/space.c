@@ -777,8 +777,34 @@ void space_map_clearsort(struct cell *c, void *data) {
   }
 }
 
+
 /**
- * @brief Map a function to all particles in a aspace.
+ * @brief Map a function to all particles in a cell recursively.
+ *
+ * @param s The #space we are working in.
+ * @param fun Function pointer to apply on the cells.
+ * @param data Data passed to the function fun.
+ */
+
+static void rec_map_parts(struct cell * c,
+		   void (*fun)(struct part *p, struct cell *c, void *data),
+		   void *data) {
+
+  int k;
+
+  /* No progeny? */
+  if (!c->split)
+    for (k = 0; k < c->count; k++) fun(&c->parts[k], c, data);
+  
+  /* Otherwise, recurse. */
+  else
+    for (k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) rec_map_parts(c->progeny[k], fun, data);
+}
+
+
+/**
+ * @brief Map a function to all particles in a space.
  *
  * @param s The #space we are working in.
  * @param fun Function pointer to apply on the cells.
@@ -791,26 +817,38 @@ void space_map_parts(struct space *s,
 
   int cid = 0;
 
-  void rec_map(struct cell * c) {
-
-    int k;
-
-    /* No progeny? */
-    if (!c->split)
-      for (k = 0; k < c->count; k++) fun(&c->parts[k], c, data);
-
-    /* Otherwise, recurse. */
-    else
-      for (k = 0; k < 8; k++)
-        if (c->progeny[k] != NULL) rec_map(c->progeny[k]);
-  }
-
   /* Call the recursive function on all higher-level cells. */
-  for (cid = 0; cid < s->nr_cells; cid++) rec_map(&s->cells[cid]);
+  for (cid = 0; cid < s->nr_cells; cid++) rec_map_parts(&s->cells[cid], fun, data);
 }
 
+
 /**
- * @brief Map a function to all particles in a aspace.
+ * @brief Map a function to all particles in a cell recursively.
+ *
+ * @param s The #space we are working in.
+ * @param full Map to all cells, including cells with sub-cells.
+ * @param fun Function pointer to apply on the cells.
+ * @param data Data passed to the function fun.
+ */
+
+static void rec_map_cells_post(struct cell * c, int full,
+                          void (*fun)(struct cell *c, void *data), 
+			  void *data) {
+
+  int k;
+
+  /* Recurse. */
+  if (c->split)
+    for (k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) rec_map_cells_post(c->progeny[k], full, fun, data);
+  
+  /* No progeny? */
+  if (full || !c->split) fun(c, data);
+}
+
+
+/**
+ * @brief Map a function to all particles in a space.
  *
  * @param s The #space we are working in.
  * @param full Map to all cells, including cells with sub-cells.
@@ -819,48 +857,44 @@ void space_map_parts(struct space *s,
  */
 
 void space_map_cells_post(struct space *s, int full,
-                          void (*fun)(struct cell *c, void *data), void *data) {
+                          void (*fun)(struct cell *c, void *data), 
+			  void *data) {
 
   int cid = 0;
 
-  void rec_map(struct cell * c) {
-
-    int k;
-
-    /* Recurse. */
-    if (c->split)
-      for (k = 0; k < 8; k++)
-        if (c->progeny[k] != NULL) rec_map(c->progeny[k]);
-
-    /* No progeny? */
-    if (full || !c->split) fun(c, data);
-  }
-
   /* Call the recursive function on all higher-level cells. */
-  for (cid = 0; cid < s->nr_cells; cid++) rec_map(&s->cells[cid]);
+  for (cid = 0; cid < s->nr_cells; cid++) rec_map_cells_post(&s->cells[cid], full, fun, data);
 }
+
+
+
+static void rec_map_cells_pre(struct cell * c, int full,
+                         void (*fun)(struct cell *c, void *data), 
+			 void *data) {
+
+  int k;
+  
+  /* No progeny? */
+  if (full || !c->split) fun(c, data);
+  
+  /* Recurse. */
+  if (c->split)
+    for (k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) rec_map_cells_pre(c->progeny[k], full, fun, data);
+}
+
+
 
 void space_map_cells_pre(struct space *s, int full,
-                         void (*fun)(struct cell *c, void *data), void *data) {
+                         void (*fun)(struct cell *c, void *data), 
+			 void *data) {
 
   int cid = 0;
 
-  void rec_map(struct cell * c) {
-
-    int k;
-
-    /* No progeny? */
-    if (full || !c->split) fun(c, data);
-
-    /* Recurse. */
-    if (c->split)
-      for (k = 0; k < 8; k++)
-        if (c->progeny[k] != NULL) rec_map(c->progeny[k]);
-  }
-
   /* Call the recursive function on all higher-level cells. */
-  for (cid = 0; cid < s->nr_cells; cid++) rec_map(&s->cells[cid]);
+  for (cid = 0; cid < s->nr_cells; cid++) rec_map_cells_pre(&s->cells[cid], full, fun, data);
 }
+
 
 /**
  * @brief Split cells that contain too many particles.

@@ -447,6 +447,23 @@ void kernel_dump ( int N ) {
     }
 
 
+float gadget ( float r ) {
+  float fac, h_inv, u, r2 = r*r;
+  if ( r >= const_epsilon )
+    fac = 1.0f / (r2 * r);
+  else {
+    h_inv = 1. / const_epsilon;
+    u = r * h_inv;
+    if ( u < 0.5 )
+      fac = const_iepsilon3 * (10.666666666667 + u * u * (32.0 * u - 38.4));
+    else
+      fac = const_iepsilon3 * (21.333333333333 - 48.0 * u +
+			       38.4 * u * u - 10.666666666667 * u * u * u - 0.066666666667 / (u * u * u));
+  }
+  return const_G * fac;
+}
+
+
 void gravity_dump ( float r_max , int N ) {
 
     int k;
@@ -455,22 +472,6 @@ void gravity_dump ( float r_max , int N ) {
     float w4[4] = {0.0f,0.0f,0.0f,0.0f};
     // float dw_dx4[4] __attribute__ ((aligned (16)));
     
-    float gadget ( float r ) {
-        float fac, h_inv, u, r2 = r*r;
-        if ( r >= const_epsilon )
-            fac = 1.0f / (r2 * r);
-        else {
-            h_inv = 1. / const_epsilon;
-            u = r * h_inv;
-            if ( u < 0.5 )
-                fac = const_iepsilon3 * (10.666666666667 + u * u * (32.0 * u - 38.4));
-            else
-                fac = const_iepsilon3 * (21.333333333333 - 48.0 * u +
-                                     38.4 * u * u - 10.666666666667 * u * u * u - 0.066666666667 / (u * u * u));
-            }
-        return const_G * fac;
-        }
-
     for ( k = 1 ; k <= N ; k++ ) {
         x = (r_max * k) / N;
         x4[3] = x4[2]; x4[2] = x4[1]; x4[1] = x4[0]; x4[0] = x;
