@@ -781,7 +781,7 @@ void space_map_clearsort(struct cell *c, void *data) {
 /**
  * @brief Map a function to all particles in a cell recursively.
  *
- * @param s The #space we are working in.
+ * @param c The #cell we are working in.
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
@@ -825,7 +825,7 @@ void space_map_parts(struct space *s,
 /**
  * @brief Map a function to all particles in a cell recursively.
  *
- * @param s The #space we are working in.
+ * @param c The #cell we are working in.
  * @param full Map to all cells, including cells with sub-cells.
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
