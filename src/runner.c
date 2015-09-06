@@ -23,6 +23,7 @@
 /* Some standard headers. */
 #include <float.h>
 #include <limits.h>
+#include <stdlib.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI

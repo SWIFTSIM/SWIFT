@@ -25,6 +25,7 @@
 #include <limits.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
