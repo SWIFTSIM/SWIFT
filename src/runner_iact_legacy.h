@@ -18,7 +18,7 @@
  *
  ******************************************************************************/
 #ifndef SWIFT_RUNNER_IACT_LEGACY_H
-#define SWIFT_RUNNER_IACT_LECAGY_H
+#define SWIFT_RUNNER_IACT_LEGACY_H
 
 /* Includes. */
 #include "const.h"

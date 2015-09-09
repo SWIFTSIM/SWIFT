@@ -32,8 +32,17 @@ or:
 to use an Intel compiler. The main "programs" can be found in the "examples/"
 directory.
 
+SWIFT has been successfully built and tested with the following compilers:
+
+  - GCC 4.8.x  
+  - Intel ICC 15.0.x
+  - clang 3.4.x 
+
+More recent versions and slightly older ones should also be able to
+built the software.
+
 By default an attempt to choose suitable set of optimizing compiler flags
-will be made, targetted for the host machine of the build. If this doesn't
+will be made, targeted for the host machine of the build. If this doesn't
 work or the binaries will for another architecture then you can stop the
 selection of flags using:
 
@@ -64,7 +73,7 @@ SWIFT currently requires a compiler with OpenMP support.
                                  Dependencies
                                  ============
 
-SWIFT depends on a number of thirdparty libraries that should be available
+SWIFT depends on a number of third party libraries that should be available
 before you can build it.
 
 
