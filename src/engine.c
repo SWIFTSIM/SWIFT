@@ -63,79 +63,6 @@
 int engine_rank;
 
 /**
- * @brief Check if a single particle is OK.
- *
- * @return Zero if all checks passed, non-zero otherwise.
- */
-int engine_check_part(struct part *p) {
-  if (p == NULL || p->mass == 0.0f || p->h == 0.0f) {
-    message("Bad particle data.");
-    printParticle_single(p);
-    return 1;
-  } else if (p->x[0] == 0.0 && p->x[1] == 0.0 && p->x[2] == 0.0) {
-    message("Bad particle location.");
-    printParticle_single(p);
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-/**
- * @brief Check if a cell's data is reasonable, also check if its particles
- *        are OK.
- *
- * @return Zero if all checks passed, non-zero otherwise.
- */
-
-void engine_check_cell(struct cell *c, void *data) {
-  /* Check the cell data. */
-  if (c->count == 0) {
-    print_cell(c);
-    error("Empty cell.");
-  }
-
-  /* Check the particles. */
-  for (int k = 0; k < c->count; k++) {
-    if (engine_check_part(&c->parts[k])) {
-      print_cell(c);
-      error("Bad particle in cell.");
-    }
-  }
-
-  /* Check that the progeny, if any, contain all the particles. */
-  if (c->split) {
-    int count = 0;
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
-        count += c->progeny[k]->count;
-      }
-    }
-    if (count != c->count) {
-      print_cell(c);
-      error("Progeny cell counts don't add up.");
-    }
-  }
-}
-
-/**
- * @brief Runs a series of checks to make sure we have no bad particles.
- */
-
-void engine_check(struct engine *e) {
-  /* Check all particles directly. */
-  struct space *s = e->s;
-  for (int k = 0; k < s->nr_parts; k++) {
-    if (engine_check_part(&s->parts[k])) {
-      error("Bad particle s->parts[%i], aborting.", k);
-    }
-  }
-
-  /* Check each cell in the space. */
-  space_map_cells_post(s, 1, &engine_check_cell, NULL);
-}
-
-/**
  * @brief Link a density/force task to a cell.
  *
  * @param e The #engine.
@@ -1791,7 +1718,6 @@ void hassorted(struct cell *c) {
  *
  * @param e The #engine.
  */
-
 void engine_step(struct engine *e) {
 
   int k;
@@ -1804,11 +1730,6 @@ void engine_step(struct engine *e) {
   struct space *s = e->s;
 
   TIMER_TIC2
-
-  if (e->policy & engine_policy_paranoid) {
-    message("Checking system sanity...");
-    engine_check(e);
-  }
 
   /* Get the maximum dt. */
   if (e->policy & engine_policy_multistep) {
@@ -1843,18 +1764,8 @@ void engine_step(struct engine *e) {
   //   printParticle(parts, k);
   // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
 
-  if (e->policy & engine_policy_paranoid) {
-    message("Checking system sanity...");
-    engine_check(e);
-  }
-
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
-
-  if (e->policy & engine_policy_paranoid) {
-    message("Checking system sanity...");
-    engine_check(e);
-  }
 
   /* Prepare the space. */
   engine_prepare(e);
@@ -1872,11 +1783,6 @@ void engine_step(struct engine *e) {
                     (1 << task_type_grav_pp) | (1 << task_type_grav_mm) |
                     (1 << task_type_grav_up) | (1 << task_type_grav_down) |
                     (1 << task_type_link));
-
-  if (e->policy & engine_policy_paranoid) {
-    message("Checking system sanity...");
-    engine_check(e);
-  }
 
   TIMER_TOC(timer_runners);
 

@@ -20,25 +20,13 @@
 
 #include <stdio.h>
 
-/* This object's header. */
-#include "debug.h"
+#include "const.h"
+#include "part.h"
+
 
 /**
- * @brief Dump the information pertaining to the given cell.
- */
-
-void print_cell(struct cell *c) {
-  printf(
-      "## Cell 0x%0zx: loc=[%.3e,%.3e,%.3e], h=[%.3e,%.3e,%.3e], depth=%i, "
-      "split=%i, maxdepth=%i.\n",
-      (size_t)c, c->loc[0], c->loc[1], c->loc[2], c->h[0], c->h[1], c->h[2],
-      c->depth, c->split, c->maxdepth);
-}
-
-/**
- * @brief Looks for the particle with the given id and prints its information to
- *the standard output.
- *
+ * @brief Looks for the particle with the given id and prints its information to the standard output.
+ * 
  * @param parts The array of particles.
  * @param id The id too look for.
  * @param N The size of the array of particles.
