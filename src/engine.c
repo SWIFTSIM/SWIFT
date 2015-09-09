@@ -137,7 +137,6 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  int i, j, k, cid;
   int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
   struct space *s = e->s;
   int my_cells = 0;
@@ -146,9 +145,9 @@ void engine_redistribute(struct engine *e) {
   int nr_cells = s->nr_cells;
 
   /* Start by sorting the particles according to their nodes and
-     getting the counts. */
+     getting the counts. The counts array is indexed as
+     count[from * nr_nodes + to]. */
   int *counts, *dest;
-  struct part *parts = s->parts;
   double ih[3], dim[3];
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
@@ -160,14 +159,15 @@ void engine_redistribute(struct engine *e) {
       (dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
-  for (k = 0; k < s->nr_parts; k++) {
-    for (j = 0; j < 3; j++) {
+  struct part *parts = s->parts;
+  for (int k = 0; k < s->nr_parts; k++) {
+    for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
         parts[k].x[j] += dim[j];
       else if (parts[k].x[j] >= dim[j])
         parts[k].x[j] -= dim[j];
     }
-    cid = cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
+    const int cid = cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
                      parts[k].x[2] * ih[2]);
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
@@ -181,7 +181,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Get the new number of parts for this node, be generous in allocating. */
   int nr_parts = 0;
-  for (k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
+  for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   struct part *parts_new;
   struct xpart *xparts_new, *xparts = s->xparts;
   if (posix_memalign((void **)&parts_new, part_align,
@@ -195,41 +195,44 @@ void engine_redistribute(struct engine *e) {
   if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 4 * nr_nodes)) ==
       NULL)
     error("Failed to allocate MPI request list.");
-  for (k = 0; k < 4 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
-  for (i = 0, j = 0, k = 0; k < nr_nodes; k++) {
-    if (k == nodeID && counts[nodeID * nr_nodes + k] > 0) {
-      memcpy(&parts_new[j], &parts[i],
-             sizeof(struct part) * counts[k * nr_nodes + nodeID]);
-      memcpy(&xparts_new[j], &xparts[i],
-             sizeof(struct xpart) * counts[k * nr_nodes + nodeID]);
-      i += counts[nodeID * nr_nodes + k];
-      j += counts[k * nr_nodes + nodeID];
+  for (int k = 0; k < 4 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
+  for (int offset_send = 0, offset_recv = 0, k = 0; k < nr_nodes; k++) {
+    int ind_send = nodeID * nr_nodes + k;
+    int ind_recv = k * nr_nodes + nodeID;
+    if (counts[ind_send] > 0) {
+      if (k == nodeID) {
+        memcpy(&parts_new[offset_recv], &s->parts[offset_send],
+               sizeof(struct part) * counts[ind_recv]);
+        memcpy(&xparts_new[offset_recv], &s->xparts[offset_send],
+               sizeof(struct xpart) * counts[ind_recv]);
+        offset_send += counts[ind_send];
+        offset_recv += counts[ind_recv];
+      } else {
+        if (MPI_Isend(&s->parts[offset_send],
+                      sizeof(struct part) * counts[ind_send],
+                      MPI_BYTE, k, 2 * ind_send + 0,
+                      MPI_COMM_WORLD, &reqs[4 * k]) != MPI_SUCCESS)
+          error("Failed to isend parts to node %i.", k);
+        if (MPI_Isend(&s->xparts[offset_send],
+                      sizeof(struct xpart) * counts[ind_send],
+                      MPI_BYTE, k, 2 * ind_send + 1,
+                      MPI_COMM_WORLD, &reqs[4 * k + 1]) != MPI_SUCCESS)
+          error("Failed to isend xparts to node %i.", k);
+        offset_send += counts[ind_send];
+      }
     }
-    if (k != nodeID && counts[nodeID * nr_nodes + k] > 0) {
-      if (MPI_Isend(&parts[i],
-                    sizeof(struct part) * counts[nodeID * nr_nodes + k],
-                    MPI_BYTE, k, 2 * (nodeID * nr_nodes + k) + 0,
-                    MPI_COMM_WORLD, &reqs[4 * k]) != MPI_SUCCESS)
-        error("Failed to isend parts to node %i.", k);
-      if (MPI_Isend(&xparts[i],
-                    sizeof(struct xpart) * counts[nodeID * nr_nodes + k],
-                    MPI_BYTE, k, 2 * (nodeID * nr_nodes + k) + 1,
-                    MPI_COMM_WORLD, &reqs[4 * k + 1]) != MPI_SUCCESS)
-        error("Failed to isend xparts to node %i.", k);
-      i += counts[nodeID * nr_nodes + k];
-    }
-    if (k != nodeID && counts[k * nr_nodes + nodeID] > 0) {
-      if (MPI_Irecv(&parts_new[j],
-                    sizeof(struct part) * counts[k * nr_nodes + nodeID],
-                    MPI_BYTE, k, 2 * (k * nr_nodes + nodeID) + 0,
+    if (k != nodeID && counts[ind_recv] > 0) {
+      if (MPI_Irecv(&parts_new[offset_recv],
+                    sizeof(struct part) * counts[ind_recv],
+                    MPI_BYTE, k, 2 * ind_recv + 0,
                     MPI_COMM_WORLD, &reqs[4 * k + 2]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
-      if (MPI_Irecv(&xparts_new[j],
-                    sizeof(struct xpart) * counts[k * nr_nodes + nodeID],
-                    MPI_BYTE, k, 2 * (k * nr_nodes + nodeID) + 1,
+      if (MPI_Irecv(&xparts_new[offset_recv],
+                    sizeof(struct xpart) * counts[ind_recv],
+                    MPI_BYTE, k, 2 * ind_recv + 1,
                     MPI_COMM_WORLD, &reqs[4 * k + 3]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
-      j += counts[k * nr_nodes + nodeID];
+      offset_recv += counts[ind_recv];
     }
   }
 
@@ -237,7 +240,7 @@ void engine_redistribute(struct engine *e) {
   MPI_Status stats[4 * nr_nodes];
   int res;
   if ((res = MPI_Waitall(4 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
-    for (k = 0; k < 4 * nr_nodes; k++) {
+    for (int k = 0; k < 4 * nr_nodes; k++) {
       char buff[MPI_MAX_ERROR_STRING];
       int res;
       MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
@@ -264,7 +267,7 @@ void engine_redistribute(struct engine *e) {
   s->size_parts = 1.2 * nr_parts;
 
   /* Be verbose about what just happened. */
-  for (k = 0; k < nr_cells; k++)
+  for (int k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID) my_cells += 1;
   message("node %i now has %i parts in %i cells.", nodeID, nr_parts, my_cells);
 
@@ -725,7 +728,6 @@ void engine_exchange_cells(struct engine *e) {
   MPI_Request reqs_in[engine_maxproxies];
   MPI_Request reqs_out[engine_maxproxies];
   MPI_Status status;
-  struct part *parts = &s->parts[s->nr_parts];
 
   /* Run through the cells and get the size of the ones that will be sent off.
    */
@@ -802,7 +804,7 @@ void engine_exchange_cells(struct engine *e) {
   }
 
   /* Unpack the cells and link to the particle data. */
-  parts = s->parts_foreign;
+  struct part *parts = s->parts_foreign;
   for (k = 0; k < nr_proxies; k++) {
     for (count = 0, j = 0; j < e->proxies[k].nr_cells_in; j++) {
       count += cell_link(e->proxies[k].cells_in[j], parts);
