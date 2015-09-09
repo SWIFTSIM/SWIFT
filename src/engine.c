@@ -167,8 +167,8 @@ void engine_redistribute(struct engine *e) {
       else if (parts[k].x[j] >= dim[j])
         parts[k].x[j] -= dim[j];
     }
-    const int cid = cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
-                     parts[k].x[2] * ih[2]);
+    const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
+                               parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
@@ -209,28 +209,28 @@ void engine_redistribute(struct engine *e) {
         offset_recv += counts[ind_recv];
       } else {
         if (MPI_Isend(&s->parts[offset_send],
-                      sizeof(struct part) * counts[ind_send],
-                      MPI_BYTE, k, 2 * ind_send + 0,
-                      MPI_COMM_WORLD, &reqs[4 * k]) != MPI_SUCCESS)
+                      sizeof(struct part) * counts[ind_send], MPI_BYTE, k,
+                      2 * ind_send + 0, MPI_COMM_WORLD,
+                      &reqs[4 * k]) != MPI_SUCCESS)
           error("Failed to isend parts to node %i.", k);
         if (MPI_Isend(&s->xparts[offset_send],
-                      sizeof(struct xpart) * counts[ind_send],
-                      MPI_BYTE, k, 2 * ind_send + 1,
-                      MPI_COMM_WORLD, &reqs[4 * k + 1]) != MPI_SUCCESS)
+                      sizeof(struct xpart) * counts[ind_send], MPI_BYTE, k,
+                      2 * ind_send + 1, MPI_COMM_WORLD,
+                      &reqs[4 * k + 1]) != MPI_SUCCESS)
           error("Failed to isend xparts to node %i.", k);
         offset_send += counts[ind_send];
       }
     }
     if (k != nodeID && counts[ind_recv] > 0) {
       if (MPI_Irecv(&parts_new[offset_recv],
-                    sizeof(struct part) * counts[ind_recv],
-                    MPI_BYTE, k, 2 * ind_recv + 0,
-                    MPI_COMM_WORLD, &reqs[4 * k + 2]) != MPI_SUCCESS)
+                    sizeof(struct part) * counts[ind_recv], MPI_BYTE, k,
+                    2 * ind_recv + 0, MPI_COMM_WORLD,
+                    &reqs[4 * k + 2]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
       if (MPI_Irecv(&xparts_new[offset_recv],
-                    sizeof(struct xpart) * counts[ind_recv],
-                    MPI_BYTE, k, 2 * ind_recv + 1,
-                    MPI_COMM_WORLD, &reqs[4 * k + 3]) != MPI_SUCCESS)
+                    sizeof(struct xpart) * counts[ind_recv], MPI_BYTE, k,
+                    2 * ind_recv + 1, MPI_COMM_WORLD,
+                    &reqs[4 * k + 3]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
       offset_recv += counts[ind_recv];
     }
@@ -953,23 +953,21 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
       count += p->nr_parts_in;
     }
   }
-    
+
   /* Wait for all the sends to have finnished too. */
-  if ( nr_out > 0 )
-    if (MPI_Waitall(2 * e->nr_proxies , reqs_out , MPI_STATUSES_IGNORE) != 
-        MPI_SUCCESS )
-        error("MPI_Waitall on sends failed.");
-        
+  if (nr_out > 0)
+    if (MPI_Waitall(2 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
+        MPI_SUCCESS)
+      error("MPI_Waitall on sends failed.");
+
   /* Return the number of harvested parts. */
   return count;
-    
+
 #else
-  error( "SWIFT was not compiled with MPI support." );
+  error("SWIFT was not compiled with MPI support.");
   return 0;
 #endif
-
 }
-
 
 /**
  * @brief Fill the #space's task list.
