@@ -60,6 +60,9 @@ const char *package_description(void) {
 }
 
 
+/**
+ * @brief Prints a greeting message to the standard output containing code version and revision number
+ */
 void greetings(void) {
 
   printf( " Welcome to the cosmological code\n" );
