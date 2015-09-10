@@ -22,7 +22,6 @@
 #include <stdio.h>
 
 /* This object's header. */
-#include "error.h"
 #include "version.h"
 
 
