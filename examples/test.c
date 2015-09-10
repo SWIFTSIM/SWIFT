@@ -594,7 +594,8 @@ int main ( int argc , char *argv[] ) {
 
     /* Greeting message */
     if ( myrank == 0 )
-        message( "This is %s\n", package_description() );
+        greetings( );
+        
     
     /* Init the space. */
     bzero( &s , sizeof(struct space) );
