@@ -951,23 +951,21 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
       count += p->nr_parts_in;
     }
   }
-    
+
   /* Wait for all the sends to have finnished too. */
-  if ( nr_out > 0 )
-    if (MPI_Waitall(2 * e->nr_proxies , reqs_out , MPI_STATUSES_IGNORE) != 
-        MPI_SUCCESS )
-        error("MPI_Waitall on sends failed.");
-        
+  if (nr_out > 0)
+    if (MPI_Waitall(2 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
+        MPI_SUCCESS)
+      error("MPI_Waitall on sends failed.");
+
   /* Return the number of harvested parts. */
   return count;
-    
+
 #else
-  error( "SWIFT was not compiled with MPI support." );
+  error("SWIFT was not compiled with MPI support.");
   return 0;
 #endif
-
 }
-
 
 /**
  * @brief Fill the #space's task list.

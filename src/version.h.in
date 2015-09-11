@@ -31,5 +31,6 @@
 const char* package_description( void );
 const char* package_version(void);
 const char* git_revision(void);
+void greetings(void);
 
 #endif /* SWIFT_VERSION_H */

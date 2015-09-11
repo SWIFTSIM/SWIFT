@@ -23,10 +23,10 @@
 #include "const.h"
 #include "part.h"
 
-
 /**
- * @brief Looks for the particle with the given id and prints its information to the standard output.
- * 
+ * @brief Looks for the particle with the given id and prints its information to
+ *the standard output.
+ *
  * @param parts The array of particles.
  * @param id The id too look for.
  * @param N The size of the array of particles.
