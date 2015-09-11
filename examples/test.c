@@ -557,7 +557,7 @@ int main ( int argc , char *argv[] ) {
     struct space s;
     struct engine e;
     struct UnitSystem us;
-    char ICfileName[200];
+    char ICfileName[200] = "";
     float dt_max = 0.0f;
     ticks tic;
     int nr_nodes = 1, myrank = 0, grid[3] = { 1 , 1 , 1 };
@@ -565,9 +565,6 @@ int main ( int argc , char *argv[] ) {
     /* Choke on FP-exceptions. */
     // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
     
-    /* Just dump the gravity potential and leave. */
-    /* gravity_dump( 0.005 , 1000 );
-    return 0; */
     
 #ifdef WITH_MPI
     /* Start by initializing MPI. */
@@ -583,7 +580,7 @@ int main ( int argc , char *argv[] ) {
     if ( ( res = MPI_Comm_set_errhandler( MPI_COMM_WORLD , MPI_ERRORS_RETURN ) ) != MPI_SUCCESS )
         error( "Call to MPI_Comm_set_errhandler failed with error %i." , res );
     if ( myrank == 0 )
-        message( "MPI is up and running with %i nodes." , nr_nodes );
+        message( "MPI is up and running with %i node(s)." , nr_nodes );
     fflush(stdout);
 
     /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -626,8 +623,6 @@ int main ( int argc , char *argv[] ) {
 	case 'f':
 	  if( !strcpy(ICfileName, optarg))
 	    error("Error parsing IC file name.");
-	  // if ( myrank == 0 )
-        // message("IC to be read from file '%s'.", ICfileName);
 	  break;
 	case 'g':
 	  if ( sscanf( optarg , "%i %i %i" , &grid[0] , &grid[1] , &grid[2] ) != 3 )
@@ -677,6 +672,14 @@ int main ( int argc , char *argv[] ) {
 
 #if defined( WITH_MPI )
     if ( myrank == 0 )
+      message( "Running with %i thread(s) per node.", nr_threads); 
+#else
+    if ( myrank == 0 )
+      message( "Running with %i thread(s).", nr_threads);
+#endif
+
+#if defined( WITH_MPI )
+    if ( myrank == 0 )
         message( "grid set to [ %i %i %i ]." , grid[0] , grid[1] , grid[2] ); fflush(stdout);
 #endif
 
@@ -698,6 +701,10 @@ int main ( int argc , char *argv[] ) {
 	message( "Density units: %e a^%f h^%f.", conversionFactor(&us, UNIT_CONV_DENSITY), aFactor(&us, UNIT_CONV_DENSITY), hFactor(&us, UNIT_CONV_DENSITY) );
 	message( "Entropy units: %e a^%f h^%f.", conversionFactor(&us, UNIT_CONV_ENTROPY), aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY) );
       }
+
+    /* Check whether an IC file has been provided */
+    if ( strcmp( ICfileName, "" ) == 0 )
+      error( "An IC file name must be provided via the option -f" );
 
     /* Read particles and space information from (GADGET) IC */
     tic = getticks();
