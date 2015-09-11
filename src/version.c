@@ -24,7 +24,6 @@
 /* This object's header. */
 #include "version.h"
 
-
 /**
  * @brief Return the source code git revision
  *
@@ -58,22 +57,21 @@ const char *package_description(void) {
   return buf;
 }
 
-
 /**
- * @brief Prints a greeting message to the standard output containing code version and revision number
+ * @brief Prints a greeting message to the standard output containing code
+ * version and revision number
  */
 void greetings(void) {
 
-  printf( " Welcome to the cosmological code\n" );
-  printf( "    ______       __________________\n"   );
-  printf( "   / ___/ |     / /  _/ ____/_  __/\n"   );
-  printf( "   \\__ \\| | /| / // // /_    / /   \n" );
-  printf( "  ___/ /| |/ |/ // // __/   / /    \n"   );
-  printf( " /____/ |__/|__/___/_/     /_/     \n" );
-  printf( " SPH With Inter-dependent Fine-grained Tasking\n\n");
+  printf(" Welcome to the cosmological code\n");
+  printf("    ______       __________________\n");
+  printf("   / ___/ |     / /  _/ ____/_  __/\n");
+  printf("   \\__ \\| | /| / // // /_    / /   \n");
+  printf("  ___/ /| |/ |/ // // __/   / /    \n");
+  printf(" /____/ |__/|__/___/_/     /_/     \n");
+  printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
 
-  printf( " Version : %s\n", package_version() );
-  printf( " Revision: %s\n", git_revision() );
-  printf( " Webpage : www.swiftsim.com\n\n" );
-
+  printf(" Version : %s\n", package_version());
+  printf(" Revision: %s\n", git_revision());
+  printf(" Webpage : www.swiftsim.com\n\n");
 }
