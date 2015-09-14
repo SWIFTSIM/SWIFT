@@ -296,9 +296,7 @@ void space_rebuild(struct space *s, double cell_max) {
 
   int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
   struct cell *restrict c, *restrict cells;
-  struct part *restrict finger, *restrict p, *parts = s->parts;
-  struct xpart *xfinger, *xparts = s->xparts;
-  struct gpart *gp, *gparts = s->gparts, *gfinger;
+  struct part *restrict p;
   int *ind;
   double ih[3], dim[3];
   // ticks tic;
@@ -325,7 +323,7 @@ void space_rebuild(struct space *s, double cell_max) {
   cdim[1] = s->cdim[1];
   cdim[2] = s->cdim[2];
   for (k = 0; k < nr_parts; k++) {
-    p = &parts[k];
+    p = &s->parts[k];
     for (j = 0; j < 3; j++)
       if (p->x[j] < 0.0)
         p->x[j] += dim[j];
@@ -345,12 +343,12 @@ void space_rebuild(struct space *s, double cell_max) {
     if (cells[ind[k]].nodeID != nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
-      struct part tp = parts[k];
-      parts[k] = parts[nr_parts];
-      parts[nr_parts] = tp;
-      struct xpart txp = xparts[k];
-      xparts[k] = xparts[nr_parts];
-      xparts[nr_parts] = txp;
+      struct part tp = s->parts[k];
+      s->parts[k] = s->parts[nr_parts];
+      s->parts[nr_parts] = tp;
+      struct xpart txp = s->xparts[k];
+      s->xparts[k] = s->xparts[nr_parts];
+      s->xparts[nr_parts] = txp;
       int t = ind[k];
       ind[k] = ind[nr_parts];
       ind[nr_parts] = t;
@@ -361,8 +359,6 @@ void space_rebuild(struct space *s, double cell_max) {
   s->nr_parts =
       nr_parts + engine_exchange_strays(s->e, nr_parts, &ind[nr_parts],
                                         s->nr_parts - nr_parts);
-  parts = s->parts;
-  xparts = s->xparts;
 
   /* Re-allocate the index array if needed.. */
   if (s->nr_parts > ind_size) {
@@ -376,7 +372,7 @@ void space_rebuild(struct space *s, double cell_max) {
 
   /* Assign each particle to its cell. */
   for (k = nr_parts; k < s->nr_parts; k++) {
-    p = &parts[k];
+    p = &s->parts[k];
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count += 1;
@@ -389,13 +385,13 @@ void space_rebuild(struct space *s, double cell_max) {
 
   /* Sort the parts according to their cells. */
   // tic = getticks();
-  parts_sort(parts, xparts, ind, nr_parts, 0, s->nr_cells - 1);
+  parts_sort(s->parts, s->xparts, ind, nr_parts, 0, s->nr_cells - 1);
   // message( "parts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
 
   /* Re-link the gparts. */
   for (k = 0; k < nr_parts; k++)
-    if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k];
+    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
 
   /* Verify sort. */
   /* for ( k = 1 ; k < nr_parts ; k++ ) {
@@ -415,7 +411,7 @@ void space_rebuild(struct space *s, double cell_max) {
   if ((ind = (int *)malloc(sizeof(int) * s->size_gparts)) == NULL)
     error("Failed to allocate temporary particle indices.");
   for (k = 0; k < nr_gparts; k++) {
-    gp = &gparts[k];
+    struct gpart *gp = &s->gparts[k];
     for (j = 0; j < 3; j++)
       if (gp->x[j] < 0.0)
         gp->x[j] += dim[j];
@@ -432,22 +428,22 @@ void space_rebuild(struct space *s, double cell_max) {
 
   /* Sort the parts according to their cells. */
   // tic = getticks();
-  gparts_sort(gparts, ind, nr_gparts, 0, s->nr_cells - 1);
+  gparts_sort(s->gparts, ind, nr_gparts, 0, s->nr_cells - 1);
   // message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
 
   /* Re-link the parts. */
   for (k = 0; k < nr_gparts; k++)
-    if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
+    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
 
   /* We no longer need the indices as of here. */
   free(ind);
 
   /* Hook the cells up to the parts. */
   // tic = getticks();
-  finger = parts;
-  xfinger = xparts;
-  gfinger = gparts;
+  struct part *finger = s->parts;
+  struct xpart *xfinger = s->xparts;
+  struct gpart *gfinger = s->gparts;
   for (k = 0; k < s->nr_cells; k++) {
     c = &cells[k];
     c->parts = finger;
