@@ -573,7 +573,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
     /* Print the relevant information and print status */
     writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
-    writeAttribute(h_grp, "Time", DOUBLE, &e->time, 1);
+    double dblTime = e->time;
+    writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
+
 
     /* GADGET-2 legacy values */
     numParticles[0] = (unsigned int)N_total;

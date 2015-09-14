@@ -430,7 +430,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   /* Print the relevant information and print status */
   writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
   writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
-  writeAttribute(h_grp, "Time", DOUBLE, &e->time, 1);
+  double dblTime = e->time;
+  writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
 
   /* GADGET-2 legacy values */
   writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
