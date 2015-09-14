@@ -737,7 +737,6 @@ int main(int argc, char *argv[]) {
       parts[k].x[2] += shift[2];
     }
 
-
   /* Set default number of queues. */
   if (nr_queues < 0) nr_queues = nr_threads;
 
@@ -827,10 +826,10 @@ int main(int argc, char *argv[]) {
             e.nr_threads, e.sched.nr_queues);
   fflush(stdout);
 
-
   /* Legend. */
   /* if (myrank == 0) */
-/*     printf("# step time e_tot e_kin e_temp dt dt_step count dt_min dt_max\n"); */
+  /*     printf("# step time e_tot e_kin e_temp dt dt_step count dt_min
+   * dt_max\n"); */
 
   /* Let loose a runner on the space. */
   for (j = 0; j < runs && e.time < clock; j++) {
@@ -864,21 +863,22 @@ int main(int argc, char *argv[]) {
     }
 
     /* Dump a line of agregate output. */
-/*     if (myrank == 0) { */
-/*       printf("%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e", j, e.time, */
-/*              e.ekin + e.epot, e.ekin, e.epot, e.dt, e.dt_step, e.count_step, */
-/*              e.dt_min, e.dt_max); */
-/*       for (k = 0; k < timer_count; k++) */
-/*         printf(" %.3f", ((double)timers[k]) / CPU_TPS * 1000); */
-/*       printf("\n"); */
-/*       fflush(stdout); */
-/*     } */
+    /*     if (myrank == 0) { */
+    /*       printf("%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e", j, e.time,
+     */
+    /*              e.ekin + e.epot, e.ekin, e.epot, e.dt, e.dt_step,
+     * e.count_step, */
+    /*              e.dt_min, e.dt_max); */
+    /*       for (k = 0; k < timer_count; k++) */
+    /*         printf(" %.3f", ((double)timers[k]) / CPU_TPS * 1000); */
+    /*       printf("\n"); */
+    /*       fflush(stdout); */
+    /*     } */
     if (myrank == 0) {
-      if (j == 0)
-	printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n"); 
+      if (j == 0) printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
 
-      printf("%i %e %.3e", j, e.time, e.dt );
-      printf(" %.3f", ((double)timers[timer_count-1]) / CPU_TPS * 1000);
+      printf("%i %e %.3e", j, e.time, e.dt);
+      printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
       printf("\n");
       fflush(stdout);
     }
@@ -898,39 +898,37 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-
-/* Dump the task data. */
+  /* Dump the task data. */
+  FILE *file = fopen("thread_info.dat", "w");
 #ifdef WITH_MPI
-for ( j = 0 ; j < nr_nodes ; j++ ) {
-MPI_Barrier( MPI_COMM_WORLD );
-if ( j == myrank ) {
-printf( " %03i 0 0 0 0 %lli 0 0 0 0\n" , myrank , e.tic_step );
-for ( k = 0 ; k < e.sched.nr_tasks ; k++ )
-    if ( !e.sched.tasks[k].skip && !e.sched.tasks[k].implicit )
-        printf( " %03i %i %i %i %i %lli %lli %i %i %i\n" ,
-            myrank ,
-            e.sched.tasks[k].rid , e.sched.tasks[k].type ,
-e.sched.tasks[k].subtype ,
-            (e.sched.tasks[k].cj == NULL) , e.sched.tasks[k].tic ,
-e.sched.tasks[k].toc ,
-            e.sched.tasks[k].ci->count ,
-(e.sched.tasks[k].cj!=NULL)?e.sched.tasks[k].cj->count:0 ,
-e.sched.tasks[k].flags);
-fflush(stdout);
-sleep(1);
-}
-}
+  for (j = 0; j < nr_nodes; j++) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    if (j == myrank) {
+      printf(" %03i 0 0 0 0 %lli 0 0 0 0\n", myrank, e.tic_step);
+      for (k = 0; k < e.sched.nr_tasks; k++)
+        if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
+          fprintf(
+              file, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
+              e.sched.tasks[k].rid, e.sched.tasks[k].type,
+              e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
+              e.sched.tasks[k].tic, e.sched.tasks[k].toc,
+              e.sched.tasks[k].ci->count,
+              (e.sched.tasks[k].cj != NULL) ? e.sched.tasks[k].cj->count : 0,
+              e.sched.tasks[k].flags);
+      fflush(stdout);
+      sleep(1);
+    }
+  }
 #else
-for ( k = 0 ; k < e.sched.nr_tasks ; k++ )
-    if ( !e.sched.tasks[k].skip && !e.sched.tasks[k].implicit )
-      fprintf(stderr, " %i %i %i %i %lli %lli %i %i\n" ,
-            e.sched.tasks[k].rid , e.sched.tasks[k].type ,
-e.sched.tasks[k].subtype ,
-            (e.sched.tasks[k].cj == NULL) , e.sched.tasks[k].tic ,
-e.sched.tasks[k].toc ,
-            e.sched.tasks[k].ci->count ,
-            (e.sched.tasks[k].cj==NULL)?0:e.sched.tasks[k].cj->count );
+  for (k = 0; k < e.sched.nr_tasks; k++)
+    if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
+      fprintf(file, " %i %i %i %i %lli %lli %i %i\n", e.sched.tasks[k].rid,
+              e.sched.tasks[k].type, e.sched.tasks[k].subtype,
+              (e.sched.tasks[k].cj == NULL), e.sched.tasks[k].tic,
+              e.sched.tasks[k].toc, e.sched.tasks[k].ci->count,
+              (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
 #endif
+  fclose(file);
 
 /* Write final output. */
 #if defined(WITH_MPI)
