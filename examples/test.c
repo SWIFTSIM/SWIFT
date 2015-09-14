@@ -797,7 +797,6 @@ int main(int argc, char *argv[]) {
   engine_redistribute(&e);
 #endif
 
-  message("Before write !");
   /* Write the state of the system as it is before starting time integration. */
   tic = getticks();
 #if defined(WITH_MPI)
@@ -830,8 +829,8 @@ int main(int argc, char *argv[]) {
 
 
   /* Legend. */
-  if (myrank == 0)
-    printf("# step time e_tot e_kin e_temp dt dt_step count dt_min dt_max\n");
+  /* if (myrank == 0) */
+/*     printf("# step time e_tot e_kin e_temp dt dt_step count dt_min dt_max\n"); */
 
   /* Let loose a runner on the space. */
   for (j = 0; j < runs && e.time < clock; j++) {
@@ -865,15 +864,25 @@ int main(int argc, char *argv[]) {
     }
 
     /* Dump a line of agregate output. */
+/*     if (myrank == 0) { */
+/*       printf("%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e", j, e.time, */
+/*              e.ekin + e.epot, e.ekin, e.epot, e.dt, e.dt_step, e.count_step, */
+/*              e.dt_min, e.dt_max); */
+/*       for (k = 0; k < timer_count; k++) */
+/*         printf(" %.3f", ((double)timers[k]) / CPU_TPS * 1000); */
+/*       printf("\n"); */
+/*       fflush(stdout); */
+/*     } */
     if (myrank == 0) {
-      printf("%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e", j, e.time,
-             e.ekin + e.epot, e.ekin, e.epot, e.dt, e.dt_step, e.count_step,
-             e.dt_min, e.dt_max);
-      for (k = 0; k < timer_count; k++)
-        printf(" %.3f", ((double)timers[k]) / CPU_TPS * 1000);
+      if (j == 0)
+	printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n"); 
+
+      printf("%i %e %.3e", j, e.time, e.dt );
+      printf(" %.3f", ((double)timers[timer_count-1]) / CPU_TPS * 1000);
       printf("\n");
       fflush(stdout);
     }
+
     /* for ( k = 0 ; k < 5 ; k++ )
         printgParticle( s.gparts , pid[k] , N ); */
   }
@@ -891,7 +900,7 @@ int main(int argc, char *argv[]) {
 
 
 /* Dump the task data. */
-/* #ifdef WITH_MPI
+#ifdef WITH_MPI
 for ( j = 0 ; j < nr_nodes ; j++ ) {
 MPI_Barrier( MPI_COMM_WORLD );
 if ( j == myrank ) {
@@ -914,14 +923,14 @@ sleep(1);
 #else
 for ( k = 0 ; k < e.sched.nr_tasks ; k++ )
     if ( !e.sched.tasks[k].skip && !e.sched.tasks[k].implicit )
-            printf( " %i %i %i %i %lli %lli %i %i\n" ,
+      fprintf(stderr, " %i %i %i %i %lli %lli %i %i\n" ,
             e.sched.tasks[k].rid , e.sched.tasks[k].type ,
 e.sched.tasks[k].subtype ,
             (e.sched.tasks[k].cj == NULL) , e.sched.tasks[k].tic ,
 e.sched.tasks[k].toc ,
             e.sched.tasks[k].ci->count ,
             (e.sched.tasks[k].cj==NULL)?0:e.sched.tasks[k].cj->count );
-#endif */
+#endif
 
 /* Write final output. */
 #if defined(WITH_MPI)
