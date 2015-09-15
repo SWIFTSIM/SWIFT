@@ -565,6 +565,7 @@ int main(int argc, char *argv[]) {
   float dt_max = 0.0f;
   ticks tic;
   int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
+  FILE *file_thread;
 
 /* Choke on FP-exceptions. */
 // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
@@ -899,16 +900,16 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Dump the task data. */
-  FILE *file = fopen("thread_info.dat", "w");
 #ifdef WITH_MPI
+  file_thread = fopen("thread_info_MPI.dat", "w");
   for (j = 0; j < nr_nodes; j++) {
     MPI_Barrier(MPI_COMM_WORLD);
     if (j == myrank) {
-      fprintf(file, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank, e.tic_step);
+      fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank, e.tic_step);
       for (k = 0; k < e.sched.nr_tasks; k++)
         if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
           fprintf(
-              file, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
+              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
               e.sched.tasks[k].rid, e.sched.tasks[k].type,
               e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
               e.sched.tasks[k].tic, e.sched.tasks[k].toc,
@@ -919,16 +920,18 @@ int main(int argc, char *argv[]) {
       sleep(1);
     }
   }
+  fclose(file_thread);
 #else
+  file_thread = fopen("thread_info.dat", "w");
   for (k = 0; k < e.sched.nr_tasks; k++)
     if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
-      fprintf(file, " %i %i %i %i %lli %lli %i %i\n", e.sched.tasks[k].rid,
+      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n", e.sched.tasks[k].rid,
               e.sched.tasks[k].type, e.sched.tasks[k].subtype,
               (e.sched.tasks[k].cj == NULL), e.sched.tasks[k].tic,
               e.sched.tasks[k].toc, e.sched.tasks[k].ci->count,
               (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
+  fclose(file_thread);
 #endif
-  fclose(file);
 
 /* Write final output. */
 #if defined(WITH_MPI)
