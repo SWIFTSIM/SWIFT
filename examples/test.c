@@ -904,7 +904,7 @@ int main(int argc, char *argv[]) {
   for (j = 0; j < nr_nodes; j++) {
     MPI_Barrier(MPI_COMM_WORLD);
     if (j == myrank) {
-      printf(" %03i 0 0 0 0 %lli 0 0 0 0\n", myrank, e.tic_step);
+      fprintf(file, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank, e.tic_step);
       for (k = 0; k < e.sched.nr_tasks; k++)
         if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
           fprintf(
