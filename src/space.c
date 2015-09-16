@@ -505,10 +505,10 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   engine_launch(s->e, s->e->nr_threads, (1 << task_type_psort));
 
   /* Verify space_sort_struct. */
-  for (int i = 1; i < N; i++)
+  /* for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%i]=%i,ind[%i]=%i).", i - 1, ind[i - 1], i,
-            ind[i]);
+            ind[i]); */
 
   // Clean up.
   free(space_sort_struct.stack);
