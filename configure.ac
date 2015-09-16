@@ -52,7 +52,7 @@ AX_COMPILER_VERSION
 # http://lists.gnu.org/archive/html/autoconf-archive-maintainers/2011-05/msg00004.html.
 AC_ARG_ENABLE([mpi],
     [AS_HELP_STRING([--enable-mpi],
-      [Compile with functionality for distributed-memory parallelism using MPI @<:@default=yes@:>@]
+      [Compile with functionality for distributed-memory parallelism using MPI @<:@yes/no@:>@]
     )],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
@@ -126,7 +126,7 @@ AX_FUNC_POSIX_MEMALIGN
 # appropriate.
 AC_ARG_ENABLE([optimization],
    [AS_HELP_STRING([--enable-optimization],
-     [Enable compile time optimization flags for host @<:@default=yes@:>@]
+     [Enable compile time optimization flags for host @<:@yes/no@:>@]
    )],
    [enable_opt="$enableval"],
    [enable_opt="yes"]
@@ -154,7 +154,7 @@ fi
 # version 4.8 and later.
 AC_ARG_ENABLE([sanitizer],
    [AS_HELP_STRING([--enable-sanitizer],
-     [Enable memory error detection using address sanitizer @<:@default=no@:>@]
+     [Enable memory error detection using address sanitizer @<:@no/yes@:>@]
    )],
    [enable_san="$enableval"],
    [enable_san="no"]
@@ -194,7 +194,7 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 # don't use that.
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [root directory where metis is installed @<:@default=yes@:>@]
+       [root directory where metis is installed @<:@yes/no@:>@]
     )],
     [],
     [with_metis="no"]
@@ -234,7 +234,7 @@ have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
        [AS_HELP_STRING([--enable-parallel-hdf5],
-         [Enable parallel HDF5 library MPI functions if available. @<:@default=yes@:>@]
+         [Enable parallel HDF5 library MPI functions if available. @<:@yes/no@:>@]
        )],
        [enable_parallel_hdf5="$enableval"],
        [enable_parallel_hdf5="yes"]
@@ -274,6 +274,25 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [[_rtc()]])],
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
+
+# Add warning flags if these can be used. Allow =error to add -Werror to GCC.
+# Note do this last as compiler tests may become errors, if that's an issue
+# don't use CFLAGS for these.
+AC_ARG_ENABLE([compiler-warnings],
+   [AS_HELP_STRING([--enable-compiler-warnings],
+     [Enable compile time warning flags, if compiler is known @<:@no/yes/error)@:>@]
+   )],
+   [enable_warn="$enableval"],
+   [enable_warn="no"]
+)
+
+if test "$enable_warn" != "no"; then
+    AX_CFLAGS_WARN_ALL
+    if test "$enable_warn" = "error" -a "$ax_cv_c_compiler_vendor" = "gnu"; then
+        CFLAGS="$CFLAGS -Werror"
+    fi     
+fi
+
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
