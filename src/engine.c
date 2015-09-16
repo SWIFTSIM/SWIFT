@@ -1843,7 +1843,7 @@ void engine_step ( struct engine *e ) {
     if ( e->forcerepart )
         engine_repartition( e );
     
-    if (e->policy & engine_policy_paranoid) {
+    else if (e->policy & engine_policy_paranoid) {
       message("Checking system sanity...");
       engine_check(e);
     }
