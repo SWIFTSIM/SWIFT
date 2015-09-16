@@ -64,11 +64,11 @@ const char *package_description(void) {
 void greetings(void) {
 
   printf(" Welcome to the cosmological code\n");
-  printf("    ______       __________________\n");
-  printf("   / ___/ |     / /  _/ ____/_  __/\n");
-  printf("   \\__ \\| | /| / // // /_    / /   \n");
-  printf("  ___/ /| |/ |/ // // __/   / /    \n");
-  printf(" /____/ |__/|__/___/_/     /_/     \n");
+  printf("    ______       _________________\n");
+  printf("   / ___/ |     / /  _/ ___/_  __/\n");
+  printf("   \\__ \\| | /| / // // /_   / /   \n");
+  printf("  ___/ /| |/ |/ // // __/  / /    \n");
+  printf(" /____/ |__/|__/___/_/    /_/     \n");
   printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
 
   printf(" Version : %s\n", package_version());
