@@ -62,13 +62,16 @@ libswiftsim_mpi_la_SHORTNAME = mpi
 # download), allow that, but make sure we know it.
 version.h: version.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
 	if test "X$(GIT_CMD)" != "X"; then \
-	    GIT_REVISION=`git describe --abbrev=8  --always --tags --dirty`; \
+	    GIT_REVISION=`$(GIT_CMD) describe --abbrev=8  --always --tags --dirty`; \
+	    GIT_BRANCH=`$(GIT_CMD) symbolic-ref --short HEAD`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
-	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," version.h.in > version.h; \
+	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
+	        -e "s,@GIT_BRANCH\@,$${GIT_BRANCH}," version.h.in > version.h; \
 	else \
 	    if test ! -f version.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
-	            -e "s,@GIT_REVISION\@,unknown," version.h.in > version.h; \
+	            -e "s,@GIT_REVISION\@,unknown," \
+		    -e "s,@GIT_BRANCH\@,unknown," version.h.in > version.h; \
 	    fi; \
 	fi
 
