@@ -111,9 +111,23 @@ struct space {
   int nr_parts_foreign, size_parts_foreign;
 };
 
+/* Interval stack necessary for parallel particle sorting. */
+struct qstack {
+  volatile int i, j, min, max;
+  volatile int ready;
+};
+struct parallel_sort {
+  struct part *parts;
+  struct xpart *xparts;
+  int *ind;
+  struct qstack *stack;
+  unsigned int stack_size;
+  volatile unsigned int first, last, waiting;
+};
+extern struct parallel_sort space_sort_struct;
+
 /* function prototypes. */
-void parts_sort(struct part *parts, struct xpart *xparts, int *ind, int N,
-                int min, int max);
+void space_parts_sort(struct space *s, int *ind, int N, int min, int max);
 void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max);
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
@@ -130,5 +144,6 @@ void space_map_cells_post(struct space *s, int full,
 void space_rebuild(struct space *s, double h_max);
 void space_recycle(struct space *s, struct cell *c);
 void space_split(struct space *s, struct cell *c);
+void space_do_parts_sort();
 
 #endif /* SWIFT_SPACE_H */

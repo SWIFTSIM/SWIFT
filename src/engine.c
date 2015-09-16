@@ -172,7 +172,7 @@ void engine_redistribute(struct engine *e) {
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
-  parts_sort(s->parts, s->xparts, dest, s->nr_parts, 0, nr_nodes - 1);
+  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -989,6 +989,11 @@ void engine_maketasks(struct engine *e) {
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
+
+  /* Add the space sorting tasks. */
+  for (i = 0; i < e->nr_threads; i++)
+    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
+                      NULL, 0);
 
   /* Run through the highest level of cells and add pairs. */
   for (i = 0; i < cdim[0]; i++)
@@ -2164,12 +2169,17 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Append a kick1 task to each cell. */
-  scheduler_reset(&e->sched, s->tot_cells);
+  scheduler_reset(&e->sched, s->tot_cells + e->nr_threads);
   for (k = 0; k < s->nr_cells; k++)
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
                           &s->cells[k], NULL, 0);
   scheduler_ranktasks(&e->sched);
+
+  /* Create the sorting tasks. */
+  for (i = 0; i < e->nr_threads; i++)
+    scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
+                      NULL, 0);
 
   /* Allocate and init the threads. */
   if ((e->runners =

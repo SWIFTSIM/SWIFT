@@ -1258,12 +1258,12 @@ void *runner_main(void *data) {
       t->rid = r->cpuid;
 
       /* Set super to the first cell that I own. */
-      if (ci->super != NULL && ci->super->owner == r->qid)
+      if (ci != NULL && ci->super != NULL && ci->super->owner == r->qid)
         super = ci->super;
       else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
         super = cj->super;
-      /* else
-          super = NULL; */
+      else
+        super = NULL;
 
       /* Prefetch? */
       if (runner_prefetch && t->type != task_type_kick1 &&
@@ -1340,6 +1340,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_down:
           runner_dograv_down(r, t->ci);
+          break;
+        case task_type_psort:
+          space_do_parts_sort();
           break;
         default:
           error("Unknown task type.");
