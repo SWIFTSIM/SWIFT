@@ -275,9 +275,9 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
-# Add warning flags if these can be used. Allow =error to add -Werror to GCC.
-# Note do this last as compiler tests may become errors, if that's an issue
-# don't use CFLAGS for these.
+# Add warning flags if these can be used. Allow =error to add -Werror to GCC
+# and Intel.  Note do this last as compiler tests may become errors, if that's
+# an issue don't use CFLAGS for these, use an AC_SUBST().
 AC_ARG_ENABLE([compiler-warnings],
    [AS_HELP_STRING([--enable-compiler-warnings],
      [Enable compile time warning flags, if compiler is known @<:@no/yes/error)@:>@]
@@ -288,8 +288,12 @@ AC_ARG_ENABLE([compiler-warnings],
 
 if test "$enable_warn" != "no"; then
     AX_CFLAGS_WARN_ALL
-    if test "$enable_warn" = "error" -a "$ax_cv_c_compiler_vendor" = "gnu"; then
-        CFLAGS="$CFLAGS -Werror"
+    if test "$enable_warn" = "error"; then
+       case "$ax_cv_c_compiler_vendor" in 
+          intel | gnu ) 
+             CFLAGS="$CFLAGS -Werror"
+          ;;
+       esac
     fi     
 fi
 
