@@ -1711,15 +1711,6 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
       error("Error while waiting for barrier.");
 }
 
-void hassorted(struct cell *c) {
-
-  if (c->sorted) error("Suprious sorted flags.");
-
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) hassorted(c->progeny[k]);
-}
-
 /**
  * @brief Let the #engine loose to compute the forces.
  *
