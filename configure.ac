@@ -151,7 +151,7 @@ if test "$enable_opt" = "yes" ; then
 fi
 
 # Add address sanitizer options to flags, if requested. Only useful for GCC
-# version 4.8 and later.
+# version 4.8 and later and clang.
 AC_ARG_ENABLE([sanitizer],
    [AS_HELP_STRING([--enable-sanitizer],
      [Enable memory error detection using address sanitizer @<:@no/yes@:>@]
@@ -164,9 +164,12 @@ if test "$enable_san" = "yes"; then
    if test "$ax_cv_c_compiler_vendor" = "gnu"; then
       AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.8.0],
                           [enable_san="yes"], [enable_san="no"] )
-      if test "$enable_san" = "yes"; then
-         CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
-      fi
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [3.2.0],
+                          [enable_san="yes"], [enable_san="no"] )
+   fi
+   if test "$enable_san" = "yes"; then
+      CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
