@@ -222,8 +222,12 @@ AC_CHECK_LIB([z],[gzopen],[
     ],[])
 
 
-# Check for HDF5.
+# Check for HDF5. This is required.
 AX_LIB_HDF5
+
+if test "$with_hdf5" != "yes"; then
+    AC_MSG_ERROR([Could not find a working HDF5 library])
+fi
 
 # We want to know if this HDF5 supports MPI and whether we should use it.
 # The default is to use MPI support if it is available, i.e. this is

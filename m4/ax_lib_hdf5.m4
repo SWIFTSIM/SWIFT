@@ -22,6 +22,8 @@
 #     yes  - do check for HDF5 library in standard locations.
 #     path - complete path to the HDF5 helper script h5cc or h5pcc.
 #
+#   SWIFT modification: HDF5 is required, so only path is described.
+#
 #   If HDF5 is successfully found, this macro calls
 #
 #     AC_SUBST(HDF5_VERSION)
@@ -110,7 +112,7 @@ fi
 dnl Add a default --with-hdf5 configuration option.
 AC_ARG_WITH([hdf5],
   AS_HELP_STRING(
-    [--with-hdf5=[yes/no/PATH]],
+    [--with-hdf5=[PATH]],
     m4_case(m4_normalize([$1]),
             [serial],   [location of h5cc for serial HDF5 configuration],
             [parallel], [location of h5pcc for parallel HDF5 configuration],
@@ -160,15 +162,15 @@ if test "$with_hdf5" = "yes"; then
             [serial],  [
 Unable to locate serial HDF5 compilation helper script 'h5cc'.
 Please specify --with-hdf5=<LOCATION> as the full path to h5cc.
-HDF5 support is being disabled (equivalent to --with-hdf5=no).
+HDF5 support is being disabled.
 ],            [parallel],[
 Unable to locate parallel HDF5 compilation helper script 'h5pcc'.
 Please specify --with-hdf5=<LOCATION> as the full path to h5pcc.
-HDF5 support is being disabled (equivalent to --with-hdf5=no).
+HDF5 support is being disabled.
 ],            [
 Unable to locate HDF5 compilation helper scripts 'h5cc' or 'h5pcc'.
 Please specify --with-hdf5=<LOCATION> as the full path to h5cc or h5pcc.
-HDF5 support is being disabled (equivalent to --with-hdf5=no).
+HDF5 support is being disabled.
 ]))
         with_hdf5="no"
         with_hdf5_fortran="no"
