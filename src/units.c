@@ -76,6 +76,7 @@ double getBaseUnit(struct UnitSystem* us, enum BaseUnits baseUnit) {
     default:
       error("Invalid base Unit");
   }
+  return 0.0;
 }
 
 /**
@@ -97,6 +98,7 @@ const char* getBaseUnitSymbol(enum BaseUnits baseUnit) {
     default:
       error("Invalid base Unit");
   }
+  return "";
 }
 
 /**
@@ -118,6 +120,7 @@ const char* getBaseUnitCGSSymbol(enum BaseUnits baseUnit) {
     default:
       error("Invalid base Unit");
   }
+  return "";
 }
 
 void getBaseUnitExponantsArray(float baseUnitsExp[5],
