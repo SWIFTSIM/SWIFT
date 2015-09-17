@@ -67,8 +67,6 @@ for instance. GCC address sanitizer flags can be included using the
 
 option. Note this requires a GCC compiler version of at least 4.8.
 
-SWIFT currently requires a compiler with OpenMP support.
-
 
                                  Dependencies
                                  ============
