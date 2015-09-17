@@ -356,6 +356,8 @@ void writeCodeDescription(hid_t h_file) {
   if (h_grpcode < 0) error("Error while creating code group");
 
   writeAttribute_s(h_grpcode, "Code Version", package_version());
+  writeAttribute_s(h_grpcode, "Compiler Name", compiler_name());
+  writeAttribute_s(h_grpcode, "Compiler Version", compiler_version());
   writeAttribute_s(h_grpcode, "Git Branch", git_branch());
   writeAttribute_s(h_grpcode, "Git Revision", git_revision());
 

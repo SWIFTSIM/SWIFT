@@ -45,7 +45,6 @@ const char *git_branch(void) {
   return branch;
 }
 
-
 /**
  * @brief The version of SWIFT
  */
@@ -61,11 +60,48 @@ const char *package_description(void) {
   static char buf[256];
   static int initialised = 0;
   if (!initialised) {
-    sprintf(buf, "SWIFT version: %s, at revision: %s, branch: %s", 
+    sprintf(buf, "SWIFT version: %s, at revision: %s, branch: %s",
             PACKAGE_VERSION, GIT_REVISION, GIT_BRANCH);
     initialised = 1;
   }
   return buf;
+}
+
+const char *compiler_name(void) {
+#if defined(__INTEL_COMPILER)
+  static const char *compiler = "ICC";
+#elif defined(__clang__)
+  static const char *compiler = "LLVM/Clang";
+#elif defined(__xlc__)
+  static const char *compiler = "IBM XL";
+#elif defined(__GNUC__)
+  static const char *compiler = "GCC";
+#else
+  static const char *compiler = "Unknown Compiler";
+#endif
+  return compiler;
+}
+
+const char *compiler_version(void) {
+  static char version[256];
+#if defined(__INTEL_COMPILER)
+  const int major = __INTEL_COMPILER / 100;
+  const int minor = __INTEL_COMPILER - major * 100;
+  sprintf(version, "%i.%i.%i", major, minor, __INTEL_COMPILER_BUILD_DATE);
+#elif defined(__clang__)
+  sprintf(version, "%i.%i.%i", __clang_major__, __clang_minor__,
+          __clang_patchlevel__);
+#elif defined(__xlc__)
+  const int major = __IBMC__ / 100;
+  const int minor = (__IBMC__ - major * 100) / 10;
+  const int patch = (__IBMC__ - major * 100 - minor * 10);
+  sprintf(version, "%i.%i.%i", major, minor, patch);
+#elif defined(__GNUC__)
+  sprintf(version, "%i.%i.%i", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+#else
+  sprintf(version, "---");
+#endif
+  return version;
 }
 
 /**
@@ -83,6 +119,7 @@ void greetings(void) {
   printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
 
   printf(" Version : %s\n", package_version());
-  printf(" Revision: %s, branch: %s\n", git_revision(), git_branch());
-  printf(" Webpage : www.swiftsim.com\n\n");
+  printf(" Revision: %s, Branch: %s\n", git_revision(), git_branch());
+  printf(" Webpage : www.swiftsim.com\n");
+  printf(" Compiler: %s, Version: %s\n\n", compiler_name(), compiler_version());
 }

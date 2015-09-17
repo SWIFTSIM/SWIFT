@@ -22,7 +22,7 @@
 
 /**
  * @file version.h
- * @brief Package version and git revision sha.
+ * @brief Package version, git revision sha and compiler info.
  */
 
 #define PACKAGE_VERSION "@PACKAGE_VERSION@"
@@ -33,6 +33,8 @@ const char* package_description(void);
 const char* package_version(void);
 const char* git_revision(void);
 const char* git_branch(void);
+const char* compiler_name(void);
+const char* compiler_version(void);
 void greetings(void);
 
 #endif /* SWIFT_VERSION_H */
