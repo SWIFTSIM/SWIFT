@@ -325,12 +325,7 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                   enum DATA_TYPE type, long long N_total, int dim,
                   struct UnitSystem* us, enum UnitConversionFactor convFactor) {
   hid_t h_data = 0, h_err = 0, h_space = 0;
-  void* temp = 0;
-  int i = 0, rank = 0;
-  const size_t typeSize = sizeOfType(type);
-  const size_t copySize = typeSize * dim;
-  const size_t partSize = sizeof(struct part);
-  char* temp_c = 0;
+  int rank = 0;
   hsize_t shape[2];
   char buffer[150];
 
@@ -399,7 +394,7 @@ void writeArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                        int dim, long long N_total, long long offset,
                        char* part_c) {
   hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0;
-  hsize_t shape[2], shape_total[2], offsets[2];
+  hsize_t shape[2], offsets[2];
   void* temp = 0;
   int i = 0, rank = 0;
   const size_t typeSize = sizeOfType(type);
@@ -423,16 +418,12 @@ void writeArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
     rank = 2;
     shape[0] = N;
     shape[1] = dim;
-    shape_total[0] = N_total;
-    shape_total[1] = dim;
     offsets[0] = offset;
     offsets[1] = 0;
   } else {
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
-    shape_total[0] = N_total;
-    shape_total[1] = 0;
     offsets[0] = offset;
     offsets[1] = 0;
   }
