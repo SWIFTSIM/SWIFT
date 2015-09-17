@@ -576,7 +576,6 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     double dblTime = e->time;
     writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
 
-
     /* GADGET-2 legacy values */
     numParticles[0] = (unsigned int)N_total;
     writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
@@ -591,6 +590,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
     /* Close header */
     H5Gclose(h_grp);
+
+    /* Print the code version */
+    writeCodeDescription(h_file);
 
     /* Print the SPH parameters */
     writeSPHflavour(h_file);

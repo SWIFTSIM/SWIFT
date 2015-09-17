@@ -558,6 +558,9 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   /* Close header */
   H5Gclose(h_grp);
 
+  /* Print the code version */
+  writeCodeDescription(h_file);
+
   /* Print the SPH parameters */
   writeSPHflavour(h_file);
 
