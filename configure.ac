@@ -52,7 +52,7 @@ AX_COMPILER_VERSION
 # http://lists.gnu.org/archive/html/autoconf-archive-maintainers/2011-05/msg00004.html.
 AC_ARG_ENABLE([mpi],
     [AS_HELP_STRING([--enable-mpi],
-      [Compile with functionality for distributed-memory parallelism using MPI @<:@default=yes@:>@]
+      [Compile with functionality for distributed-memory parallelism using MPI @<:@yes/no@:>@]
     )],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
@@ -126,7 +126,7 @@ AX_FUNC_POSIX_MEMALIGN
 # appropriate.
 AC_ARG_ENABLE([optimization],
    [AS_HELP_STRING([--enable-optimization],
-     [Enable compile time optimization flags for host @<:@default=yes@:>@]
+     [Enable compile time optimization flags for host @<:@yes/no@:>@]
    )],
    [enable_opt="$enableval"],
    [enable_opt="yes"]
@@ -151,10 +151,10 @@ if test "$enable_opt" = "yes" ; then
 fi
 
 # Add address sanitizer options to flags, if requested. Only useful for GCC
-# version 4.8 and later.
+# version 4.8 and later and clang.
 AC_ARG_ENABLE([sanitizer],
    [AS_HELP_STRING([--enable-sanitizer],
-     [Enable memory error detection using address sanitizer @<:@default=no@:>@]
+     [Enable memory error detection using address sanitizer @<:@no/yes@:>@]
    )],
    [enable_san="$enableval"],
    [enable_san="no"]
@@ -164,9 +164,12 @@ if test "$enable_san" = "yes"; then
    if test "$ax_cv_c_compiler_vendor" = "gnu"; then
       AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.8.0],
                           [enable_san="yes"], [enable_san="no"] )
-      if test "$enable_san" = "yes"; then
-         CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
-      fi
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [3.2.0],
+                          [enable_san="yes"], [enable_san="no"] )
+   fi
+   if test "$enable_san" = "yes"; then
+      CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
@@ -194,7 +197,7 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 # don't use that.
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [root directory where metis is installed @<:@default=yes@:>@]
+       [root directory where metis is installed @<:@yes/no@:>@]
     )],
     [],
     [with_metis="no"]
@@ -222,8 +225,12 @@ AC_CHECK_LIB([z],[gzopen],[
     ],[])
 
 
-# Check for HDF5.
+# Check for HDF5. This is required.
 AX_LIB_HDF5
+
+if test "$with_hdf5" != "yes"; then
+    AC_MSG_ERROR([Could not find a working HDF5 library])
+fi
 
 # We want to know if this HDF5 supports MPI and whether we should use it.
 # The default is to use MPI support if it is available, i.e. this is
@@ -234,7 +241,7 @@ have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
        [AS_HELP_STRING([--enable-parallel-hdf5],
-         [Enable parallel HDF5 library MPI functions if available. @<:@default=yes@:>@]
+         [Enable parallel HDF5 library MPI functions if available. @<:@yes/no@:>@]
        )],
        [enable_parallel_hdf5="$enableval"],
        [enable_parallel_hdf5="yes"]
@@ -274,6 +281,28 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [[_rtc()]])],
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
+
+# Add warning flags by default, if these can be used. Option =error adds
+# -Werror to GCC and Intel.  Note do this last as compiler tests may become
+# errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
+AC_ARG_ENABLE([compiler-warnings],
+   [AS_HELP_STRING([--enable-compiler-warnings],
+     [Enable compile time warning flags, if compiler is known @<:@error/no/yes)@:>@]
+   )],
+   [enable_warn="$enableval"],
+   [enable_warn="error"]
+)
+
+if test "$enable_warn" != "no"; then
+    AX_CFLAGS_WARN_ALL
+    if test "$enable_warn" = "error"; then
+       case "$ax_cv_c_compiler_vendor" in 
+          intel | gnu ) 
+             CFLAGS="$CFLAGS -Werror"
+          ;;
+       esac
+    fi     
+fi
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])

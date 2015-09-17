@@ -36,6 +36,17 @@ const char *git_revision(void) {
 }
 
 /**
+ * @brief Return the source code git branch
+ *
+ * @details The name of the current branch when the code was last built.
+ */
+const char *git_branch(void) {
+  static const char *branch = GIT_BRANCH;
+  return branch;
+}
+
+
+/**
  * @brief The version of SWIFT
  */
 const char *package_version(void) {
@@ -50,8 +61,8 @@ const char *package_description(void) {
   static char buf[256];
   static int initialised = 0;
   if (!initialised) {
-    sprintf(buf, "SWIFT version: %s, at revision: %s", PACKAGE_VERSION,
-            GIT_REVISION);
+    sprintf(buf, "SWIFT version: %s, at revision: %s, branch: %s", 
+            PACKAGE_VERSION, GIT_REVISION, GIT_BRANCH);
     initialised = 1;
   }
   return buf;
@@ -72,6 +83,6 @@ void greetings(void) {
   printf(" SPH With Inter-dependent Fine-grained Tasking\n\n");
 
   printf(" Version : %s\n", package_version());
-  printf(" Revision: %s\n", git_revision());
+  printf(" Revision: %s, branch: %s\n", git_revision(), git_branch());
   printf(" Webpage : www.swiftsim.com\n\n");
 }

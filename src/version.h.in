@@ -27,10 +27,12 @@
 
 #define PACKAGE_VERSION "@PACKAGE_VERSION@"
 #define GIT_REVISION "@GIT_REVISION@"
+#define GIT_BRANCH "@GIT_BRANCH@"
 
-const char* package_description( void );
+const char* package_description(void);
 const char* package_version(void);
 const char* git_revision(void);
+const char* git_branch(void);
 void greetings(void);
 
 #endif /* SWIFT_VERSION_H */
