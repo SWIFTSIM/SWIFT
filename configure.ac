@@ -279,15 +279,15 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
-# Add warning flags if these can be used. Allow =error to add -Werror to GCC
-# and Intel.  Note do this last as compiler tests may become errors, if that's
-# an issue don't use CFLAGS for these, use an AC_SUBST().
+# Add warning flags by default, if these can be used. Option =error adds
+# -Werror to GCC and Intel.  Note do this last as compiler tests may become
+# errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
 AC_ARG_ENABLE([compiler-warnings],
    [AS_HELP_STRING([--enable-compiler-warnings],
-     [Enable compile time warning flags, if compiler is known @<:@no/yes/error)@:>@]
+     [Enable compile time warning flags, if compiler is known @<:@error/no/yes)@:>@]
    )],
    [enable_warn="$enableval"],
-   [enable_warn="no"]
+   [enable_warn="error"]
 )
 
 if test "$enable_warn" != "no"; then
@@ -300,7 +300,6 @@ if test "$enable_warn" != "no"; then
        esac
     fi     
 fi
-
 
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
