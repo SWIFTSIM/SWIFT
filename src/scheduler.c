@@ -41,6 +41,7 @@
 #include "const.h"
 #include "cycle.h"
 #include "error.h"
+#include "intrinsics.h"
 #include "kernel.h"
 #include "timers.h"
 
@@ -813,8 +814,8 @@ void scheduler_reweight(struct scheduler *s) {
     else
       switch (t->type) {
         case task_type_sort:
-          t->weight += wscale * __builtin_popcount(t->flags) * t->ci->count *
-                       (sizeof(int) * 8 - __builtin_clz(t->ci->count));
+          t->weight += wscale * intrinsics_popcount(t->flags) * t->ci->count *
+                       (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
           break;
         case task_type_self:
           t->weight += 1 * t->ci->count * t->ci->count;
