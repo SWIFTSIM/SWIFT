@@ -26,9 +26,9 @@
 /* Need to check whether compiler supports this (IBM does not)
    This will prevent the macros to be defined and switch off
    explicit vectorization if the compiled does not support it */
-#ifdef __GNUC__
+#if defined(__GNUC__) && defined(__i386__)
 
-/* Include the header file with the intrinsics (GCC, ICC, Clang). */
+/* Include the header file with the intrinsics for Intel architecture. */
 #include <immintrin.h>
 #endif
 
