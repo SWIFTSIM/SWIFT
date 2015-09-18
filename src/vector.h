@@ -26,7 +26,7 @@
 /* Need to check whether compiler supports this (IBM does not)
    This will prevent the macros to be defined and switch off
    explicit vectorization if the compiled does not support it */
-#ifndef __xlc__
+#ifdef __GNUC__
 
 /* Include the header file with the intrinsics (GCC, ICC, Clang). */
 #include <immintrin.h>
