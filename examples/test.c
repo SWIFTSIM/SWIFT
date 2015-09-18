@@ -544,6 +544,68 @@ void factor(int value, int *f1, int *f2) {
   }
 }
 
+#ifdef WITH_MPI
+void generateICs(double dim[3], struct part **parts, int *N, int *periodic,
+                 int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info) {
+
+  (*periodic) = 1;
+  double boxSize = 1.;
+  long long L = 100;           /* Number of particles along one axis */
+  double rho = 2.;       /* Density */
+  double P = 1.;         /* Pressure */
+  double gamma = 5./3.;  /* Gas adiabatic index */
+
+  /* Number of particles */
+  long long N_total = L*L*L;
+  long long offset = 0;
+  double mass = boxSize*boxSize*boxSize * rho / (*N);
+  double internalEnergy = P / ((gamma - 1.)*rho);
+
+  /* Divide the particles among the tasks. */
+  offset = mpi_rank * N_total / mpi_size;
+  *N = (mpi_rank + 1) * N_total / mpi_size - offset;
+
+  /* Allocate memory to store particles */
+  if (posix_memalign((void*)parts, part_align, (*N) * sizeof(struct part)) != 0)
+    error("Error while allocating memory for particles");
+  bzero(*parts, *N * sizeof(struct part));
+
+
+  /* Now generate particles */
+  message("### MPI_Rank= %d Offset=%lld\n", mpi_rank, offset);
+
+  int i,j,k;
+  for( i = 0; i < L; ++i)
+    for( j = 0; j < L; ++j)
+      for( k = 0; k < L; ++k) {
+	
+	long long index = i*L*L + j*L + k;
+	if( index >= offset && index < offset + (*N)) {
+	  
+	  /* Position */
+	  (*parts)[index].x[0] = i * boxSize / L + boxSize / (2*L);
+	  (*parts)[index].x[1] = j * boxSize / L + boxSize / (2*L);
+	  (*parts)[index].x[2] = k * boxSize / L + boxSize / (2*L);
+
+	  /* Velocity */
+	  (*parts)[index].v[0] = 0.;
+	  (*parts)[index].v[1] = 0.;
+	  (*parts)[index].v[2] = 0.;
+	  
+	  
+	  (*parts)[index].mass = mass;
+	  (*parts)[index].h = 2.251 * boxSize / L;
+	  (*parts)[index].u = internalEnergy;
+	  (*parts)[index].id = index;
+	}
+
+
+      }
+
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+#endif
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -576,10 +638,10 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) !=
       MPI_SUCCESS)
     error("Call to MPI_Init failed with error %i.", res);
-  if (prov != MPI_THREAD_MULTIPLE)
-    error(
-        "MPI does not provide the level of threading required "
-        "(MPI_THREAD_MULTIPLE).");
+  /* if (prov != MPI_THREAD_MULTIPLE) */
+  /*   error( */
+  /*       "MPI does not provide the level of threading required " */
+  /*       "(MPI_THREAD_MULTIPLE)."); */
   if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes) != MPI_SUCCESS))
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
@@ -709,16 +771,21 @@ int main(int argc, char *argv[]) {
 
   /* Read particles and space information from (GADGET) IC */
   tic = getticks();
+/* #if defined(WITH_MPI) */
+/* #if defined(HAVE_PARALLEL_HDF5) */
+/*   read_ic_parallel(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes, */
+/*                    MPI_COMM_WORLD, MPI_INFO_NULL); */
+/* #else */
+/*   read_ic_serial(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes, */
+/*                  MPI_COMM_WORLD, MPI_INFO_NULL); */
+/* #endif */
+/* #else */
+/*   read_ic_single(ICfileName, dim, &parts, &N, &periodic); */
+/* #endif */
+
 #if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
-                   MPI_COMM_WORLD, MPI_INFO_NULL);
-#else
-  read_ic_serial(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
-                 MPI_COMM_WORLD, MPI_INFO_NULL);
-#endif
-#else
-  read_ic_single(ICfileName, dim, &parts, &N, &periodic);
+  generateICs(dim, &parts, &N, &periodic, myrank, nr_nodes, MPI_COMM_WORLD,
+              MPI_INFO_NULL);
 #endif
 
   if (myrank == 0)
@@ -813,6 +880,9 @@ int main(int argc, char *argv[]) {
           ((double)(getticks() - tic)) / CPU_TPS * 1000);
   fflush(stdout);
 
+  error("done");
+
+
 /* Init the runner history. */
 #ifdef HIST
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
@@ -899,7 +969,7 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-  /* Dump the task data. */
+/* Dump the task data. */
 #ifdef WITH_MPI
   file_thread = fopen("thread_info_MPI.dat", "w");
   for (j = 0; j < nr_nodes; j++) {
@@ -925,10 +995,11 @@ int main(int argc, char *argv[]) {
   file_thread = fopen("thread_info.dat", "w");
   for (k = 0; k < e.sched.nr_tasks; k++)
     if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
-      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n", e.sched.tasks[k].rid,
-              e.sched.tasks[k].type, e.sched.tasks[k].subtype,
-              (e.sched.tasks[k].cj == NULL), e.sched.tasks[k].tic,
-              e.sched.tasks[k].toc, e.sched.tasks[k].ci->count,
+      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n",
+              e.sched.tasks[k].rid, e.sched.tasks[k].type,
+              e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
+              e.sched.tasks[k].tic, e.sched.tasks[k].toc,
+              e.sched.tasks[k].ci->count,
               (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
   fclose(file_thread);
 #endif
