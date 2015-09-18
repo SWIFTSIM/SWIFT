@@ -23,9 +23,6 @@
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && defined(HAVE_PARALLEL_HDF5)
 
-/* Tell hdf5 that we intend to use shared-memory parallel stuff. */
-#define H5_HAVE_PARALLEL
-
 /* Some standard headers. */
 #include <hdf5.h>
 #include <math.h>
@@ -557,6 +554,9 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
 
   /* Close header */
   H5Gclose(h_grp);
+
+  /* Print the code version */
+  writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
   writeSPHflavour(h_file);

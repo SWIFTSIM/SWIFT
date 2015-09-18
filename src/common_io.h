@@ -67,7 +67,7 @@ void writeAttribute_d(hid_t grp, char* name, double data);
 void writeAttribute_f(hid_t grp, char* name, float data);
 void writeAttribute_i(hid_t grp, char* name, int data);
 void writeAttribute_l(hid_t grp, char* name, long data);
-void writeAttribute_s(hid_t grp, char* name, char* str);
+void writeAttribute_s(hid_t grp, char* name, const char* str);
 
 void createXMFfile();
 FILE* prepareXMFfile();
@@ -76,16 +76,8 @@ void writeXMFheader(FILE* xmfFile, long long N, char* hdfFileName, float time);
 void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N,
                   int dim, enum DATA_TYPE type);
 
-/**
- * @brief Writes the current model of SPH to the file
- * @param h_file The (opened) HDF5 file in which to write
- */
+void writeCodeDescription(hid_t h_file);
 void writeSPHflavour(hid_t h_file);
-
-/**
- * @brief Writes the current Unit System
- * @param h_file The (opened) HDF5 file in which to write
- */
 void writeUnitSystem(hid_t h_file, struct UnitSystem* us);
 
 #endif

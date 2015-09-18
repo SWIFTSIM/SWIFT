@@ -293,7 +293,7 @@ void engine_repartition(struct engine *e) {
 
   int i, j, k, l, cid, cjd, ii, jj, kk, res;
   idx_t *inds, *nodeIDs;
-  idx_t *weights_v, *weights_e;
+  idx_t *weights_v = NULL, *weights_e = NULL;
   struct space *s = e->s;
   int nr_cells = s->nr_cells, my_cells = 0;
   struct cell *cells = s->cells;
@@ -366,7 +366,7 @@ void engine_repartition(struct engine *e) {
 
     /* Get the task weight. */
     idx_t w = (t->toc - t->tic) * wscale;
-    if (w < 0) error("Bad task weight (%i).", w);
+    if (w < 0) error("Bad task weight (%"SCIDX").", w);
 
     /* Do we need to re-scale? */
     wtot += w;

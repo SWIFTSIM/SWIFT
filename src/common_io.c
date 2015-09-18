@@ -43,6 +43,7 @@
 #include "const.h"
 #include "error.h"
 #include "kernel.h"
+#include "version.h"
 
 /**
  * @brief Converts a C data type to the HDF5 equivalent.
@@ -182,7 +183,7 @@ void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data,
  *
  * Calls #error() if an error occurs.
  */
-void writeStringAttribute(hid_t grp, char* name, char* str, int length) {
+void writeStringAttribute(hid_t grp, char* name, const char* str, int length) {
   hid_t h_space = 0, h_attr = 0, h_err = 0, h_type = 0;
 
   h_space = H5Screate(H5S_SCALAR);
@@ -262,7 +263,7 @@ void writeAttribute_l(hid_t grp, char* name, long data) {
  * @param name The name of the attribute
  * @param str The string to write
  */
-void writeAttribute_s(hid_t grp, char* name, char* str) {
+void writeAttribute_s(hid_t grp, char* name, const char* str) {
   writeStringAttribute(grp, name, str, strlen(str));
 }
 
@@ -342,6 +343,25 @@ void writeUnitSystem(hid_t h_file, struct UnitSystem* us) {
                    getBaseUnit(us, UNIT_TEMPERATURE));
 
   H5Gclose(h_grpunit);
+}
+
+/**
+ * @brief Writes the code version to the file
+ * @param h_file The (opened) HDF5 file in which to write
+ */
+void writeCodeDescription(hid_t h_file) {
+  hid_t h_grpcode = 0;
+
+  h_grpcode = H5Gcreate1(h_file, "/Code", 0);
+  if (h_grpcode < 0) error("Error while creating code group");
+
+  writeAttribute_s(h_grpcode, "Code Version", package_version());
+  writeAttribute_s(h_grpcode, "Compiler Name", compiler_name());
+  writeAttribute_s(h_grpcode, "Compiler Version", compiler_version());
+  writeAttribute_s(h_grpcode, "Git Branch", git_branch());
+  writeAttribute_s(h_grpcode, "Git Revision", git_revision());
+
+  H5Gclose(h_grpcode);
 }
 
 /**
