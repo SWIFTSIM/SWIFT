@@ -548,6 +548,8 @@ void factor(int value, int *f1, int *f2) {
 void generateICs(double dim[3], struct part **parts, int *N, int *periodic,
                  int mpi_rank, int mpi_size, MPI_Comm comm, MPI_Info info) {
 
+  MPI_Barrier(comm);
+
   (*periodic) = 1;
   double boxSize = 1.;
   long long L = 100;           /* Number of particles along one axis */
@@ -558,7 +560,7 @@ void generateICs(double dim[3], struct part **parts, int *N, int *periodic,
   /* Number of particles */
   long long N_total = L*L*L;
   long long offset = 0;
-  double mass = boxSize*boxSize*boxSize * rho / (*N);
+  double mass = boxSize*boxSize*boxSize * rho / (N_total);
   double internalEnergy = P / ((gamma - 1.)*rho);
 
   /* Divide the particles among the tasks. */
@@ -574,7 +576,7 @@ void generateICs(double dim[3], struct part **parts, int *N, int *periodic,
   /* Now generate particles */
   message("### MPI_Rank= %d Offset=%lld\n", mpi_rank, offset);
 
-  int i,j,k;
+  int i,j,k, count=0;
   for( i = 0; i < L; ++i)
     for( j = 0; j < L; ++j)
       for( k = 0; k < L; ++k) {
@@ -583,26 +585,28 @@ void generateICs(double dim[3], struct part **parts, int *N, int *periodic,
 	if( index >= offset && index < offset + (*N)) {
 	  
 	  /* Position */
-	  (*parts)[index].x[0] = i * boxSize / L + boxSize / (2*L);
-	  (*parts)[index].x[1] = j * boxSize / L + boxSize / (2*L);
-	  (*parts)[index].x[2] = k * boxSize / L + boxSize / (2*L);
+	  (*parts)[count].x[0] = i * boxSize / L + boxSize / (2*L);
+	  (*parts)[count].x[1] = j * boxSize / L + boxSize / (2*L);
+	  (*parts)[count].x[2] = k * boxSize / L + boxSize / (2*L);
 
 	  /* Velocity */
-	  (*parts)[index].v[0] = 0.;
-	  (*parts)[index].v[1] = 0.;
-	  (*parts)[index].v[2] = 0.;
+	  (*parts)[count].v[0] = 0.;
+	  (*parts)[count].v[1] = 0.;
+	  (*parts)[count].v[2] = 0.;
 	  
 	  
-	  (*parts)[index].mass = mass;
-	  (*parts)[index].h = 2.251 * boxSize / L;
-	  (*parts)[index].u = internalEnergy;
-	  (*parts)[index].id = index;
+	  (*parts)[count].mass = mass;
+	  (*parts)[count].h = 2.251 * boxSize / L;
+	  (*parts)[count].u = internalEnergy;
+	  (*parts)[count].id = index;
+	  count++;
 	}
 
 
       }
-
-  MPI_Barrier(MPI_COMM_WORLD);
+  fflush(stdout);
+  MPI_Barrier(comm);
+  message("Done generating ICs");
 }
 #endif
 
@@ -879,9 +883,6 @@ int main(int argc, char *argv[]) {
   message("writing particle properties took %.3f ms.",
           ((double)(getticks() - tic)) / CPU_TPS * 1000);
   fflush(stdout);
-
-  error("done");
-
 
 /* Init the runner history. */
 #ifdef HIST
