@@ -551,7 +551,8 @@ void factor(int value, int *f1, int *f2) {
 
 int main(int argc, char *argv[]) {
 
-  int c, icount, j, k, N = -1, periodic = 1;
+  int c, icount, j, k, N, periodic = 1;
+  long long N_total = -1;
   int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
   int data[2];
   double dim[3] = {1.0, 1.0, 1.0}, shift[3] = {0.0, 0.0, 0.0};
@@ -726,6 +727,14 @@ int main(int argc, char *argv[]) {
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
   fflush(stdout);
 
+#if defined(WITH_MPI)
+  long long N_long = N;
+  MPI_reduce(&N_long, &N_total, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+#else
+  N_total = N;
+#endif
+  if (myrank == 0) message("Read %lld particles from the ICs", N_total);
+
   /* Apply h scaling */
   if (scaling != 1.0)
     for (k = 0; k < N; k++) parts[k].h *= scaling;
@@ -820,17 +829,20 @@ int main(int argc, char *argv[]) {
 
   /* Inauguration speech. */
   if (runs < INT_MAX)
-    message("starting for %i steps with %i threads and %i queues...", runs,
-            e.nr_threads, e.sched.nr_queues);
+    message(
+        "Running on %lld particles for %i steps with %i threads and %i "
+        "queues...",
+        N_total, runs, e.nr_threads, e.sched.nr_queues);
   else
-    message("starting for t=%.3e with %i threads and %i queues...", clock,
-            e.nr_threads, e.sched.nr_queues);
+    message(
+        "Running on %lld particles until t=%.3e with %i threads and %i "
+        "queues...",
+        N_total, clock, e.nr_threads, e.sched.nr_queues);
   fflush(stdout);
 
-  /* Legend. */
-  /* if (myrank == 0) */
-  /*     printf("# step time e_tot e_kin e_temp dt dt_step count dt_min
-   * dt_max\n"); */
+  /* Legend */
+  if (myrank == 0)
+    printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
 
   /* Let loose a runner on the space. */
   for (j = 0; j < runs && e.time < clock; j++) {
@@ -876,16 +888,11 @@ int main(int argc, char *argv[]) {
     /*       fflush(stdout); */
     /*     } */
     if (myrank == 0) {
-      if (j == 0) printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
-
       printf("%i %e %.3e", j, e.time, e.dt);
       printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
       printf("\n");
       fflush(stdout);
     }
-
-    /* for ( k = 0 ; k < 5 ; k++ )
-        printgParticle( s.gparts , pid[k] , N ); */
   }
 
 /* Print the values of the runner histogram. */
@@ -899,7 +906,7 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-  /* Dump the task data. */
+/* Dump the task data. */
 #ifdef WITH_MPI
   file_thread = fopen("thread_info_MPI.dat", "w");
   for (j = 0; j < nr_nodes; j++) {
@@ -925,10 +932,11 @@ int main(int argc, char *argv[]) {
   file_thread = fopen("thread_info.dat", "w");
   for (k = 0; k < e.sched.nr_tasks; k++)
     if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
-      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n", e.sched.tasks[k].rid,
-              e.sched.tasks[k].type, e.sched.tasks[k].subtype,
-              (e.sched.tasks[k].cj == NULL), e.sched.tasks[k].tic,
-              e.sched.tasks[k].toc, e.sched.tasks[k].ci->count,
+      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n",
+              e.sched.tasks[k].rid, e.sched.tasks[k].type,
+              e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
+              e.sched.tasks[k].tic, e.sched.tasks[k].toc,
+              e.sched.tasks[k].ci->count,
               (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
   fclose(file_thread);
 #endif
