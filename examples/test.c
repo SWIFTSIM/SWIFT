@@ -574,8 +574,6 @@ void generateICs(double dim[3], struct part **parts, int *N, int *periodic,
 
 
   /* Now generate particles */
-  message("### MPI_Rank= %d Offset=%lld\n", mpi_rank, offset);
-
   int i,j,k, count=0;
   for( i = 0; i < L; ++i)
     for( j = 0; j < L; ++j)
@@ -606,7 +604,8 @@ void generateICs(double dim[3], struct part **parts, int *N, int *periodic,
       }
   fflush(stdout);
   MPI_Barrier(comm);
-  message("Done generating ICs");
+  if( mpi_rank == 0 )
+    message("Generated ICs with %lld particles.", N_total);
 }
 #endif
 
