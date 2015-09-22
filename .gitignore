@@ -40,6 +40,7 @@ m4/lt~obsolete.m4
 /install-sh
 /missing
 /stamp-h1
+/test-driver
 
 # Object files
 .deps/
@@ -47,6 +48,9 @@ m4/lt~obsolete.m4
 *.ko
 *.obj
 *.elf
+
+# Test results
+*.trs
 
 # Precompiled Headers
 *.gch
