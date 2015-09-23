@@ -19,10 +19,10 @@ AM_CFLAGS = -I../src -DCPU_TPS=2.67e9 $(HDF5_CPPFLAGS)
 
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
-# List of test programs to compile
+# List of programs and scripts to run in the test suite
 TESTS = testGreetings
 
-# List of programs and scripts to run in the test suite
+# List of test programs to compile
 check_PROGRAMS = testGreetings 
 
 
