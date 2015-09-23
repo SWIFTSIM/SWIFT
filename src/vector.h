@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,8 +23,14 @@
 /* Have I already read this file? */
 #ifndef VEC_MACRO
 
-/* Include the header file with the intrinsics. */
+/* Need to check whether compiler supports this (IBM does not)
+   This will prevent the macros to be defined and switch off
+   explicit vectorization if the compiled does not support it */
+#if defined(__GNUC__) && defined(__i386__)
+
+/* Include the header file with the intrinsics for Intel architecture. */
 #include <immintrin.h>
+#endif
 
 /* Define the vector macro. */
 #define VEC_MACRO(elcount, type) \

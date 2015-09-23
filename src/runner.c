@@ -531,17 +531,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
     redo = 0;
 
     /* Loop over the parts in this cell. */
-    __builtin_prefetch(&parts[pid[0]], 0, 1);
-    __builtin_prefetch(&parts[pid[0]].rho_dh, 0, 1);
-    __builtin_prefetch(&parts[pid[1]], 0, 1);
-    __builtin_prefetch(&parts[pid[1]].rho_dh, 0, 1);
-    __builtin_prefetch(&parts[pid[2]], 0, 1);
-    __builtin_prefetch(&parts[pid[2]].rho_dh, 0, 1);
     for (i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      __builtin_prefetch(&parts[pid[i + 3]], 0, 1);
-      __builtin_prefetch(&parts[pid[i + 3]].rho_dh, 0, 1);
       p = &parts[pid[i]];
 
       /* Is this part within the timestep? */
@@ -723,21 +715,9 @@ void runner_dokick2(struct runner *r, struct cell *c) {
   hdt = dt / 2;
 
   /* Loop over the particles and kick them. */
-  __builtin_prefetch(&parts[0], 0, 1);
-  __builtin_prefetch(&parts[0].rho_dh, 0, 1);
-  __builtin_prefetch(&xparts[0], 0, 1);
-  __builtin_prefetch(&parts[1], 0, 1);
-  __builtin_prefetch(&parts[1].rho_dh, 0, 1);
-  __builtin_prefetch(&xparts[1], 0, 1);
-  __builtin_prefetch(&parts[2], 0, 1);
-  __builtin_prefetch(&parts[2].rho_dh, 0, 1);
-  __builtin_prefetch(&xparts[2], 0, 1);
   for (k = 0; k < nr_parts; k++) {
 
     /* Get a handle on the part. */
-    __builtin_prefetch(&parts[k + 3], 0, 1);
-    __builtin_prefetch(&parts[k + 3].rho_dh, 0, 1);
-    __builtin_prefetch(&xparts[k + 3], 0, 1);
     p = &parts[k];
     xp = &xparts[k];
 
@@ -865,21 +845,9 @@ void runner_dokick1(struct runner *r, struct cell *c) {
     dx_max = 0.0f;
 
     /* Loop over parts. */
-    __builtin_prefetch(&parts[0], 0, 1);
-    __builtin_prefetch(&parts[0].rho_dh, 0, 1);
-    __builtin_prefetch(&xparts[0], 0, 1);
-    __builtin_prefetch(&parts[1], 0, 1);
-    __builtin_prefetch(&parts[1].rho_dh, 0, 1);
-    __builtin_prefetch(&xparts[1], 0, 1);
-    __builtin_prefetch(&parts[2], 0, 1);
-    __builtin_prefetch(&parts[2].rho_dh, 0, 1);
-    __builtin_prefetch(&xparts[2], 0, 1);
     for (k = 0; k < c->count; k++) {
 
       /* Get a handle on the kth particle. */
-      __builtin_prefetch(&parts[k + 3], 0, 1);
-      __builtin_prefetch(&parts[k + 3].rho_dh, 0, 1);
-      __builtin_prefetch(&xparts[k + 3], 0, 1);
       p = &parts[k];
       xp = &xparts[k];
 
@@ -1025,21 +993,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
     dx_max = 0.0f;
 
     /* Loop over the particles and kick them. */
-    __builtin_prefetch(&parts[0], 0, 1);
-    __builtin_prefetch(&parts[0].rho_dh, 0, 1);
-    __builtin_prefetch(&xparts[0], 0, 1);
-    __builtin_prefetch(&parts[1], 0, 1);
-    __builtin_prefetch(&parts[1].rho_dh, 0, 1);
-    __builtin_prefetch(&xparts[1], 0, 1);
-    __builtin_prefetch(&parts[2], 0, 1);
-    __builtin_prefetch(&parts[2].rho_dh, 0, 1);
-    __builtin_prefetch(&xparts[2], 0, 1);
     for (k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      __builtin_prefetch(&parts[k + 3], 0, 1);
-      __builtin_prefetch(&parts[k + 3].rho_dh, 0, 1);
-      __builtin_prefetch(&xparts[k + 3], 0, 1);
       p = &parts[k];
       xp = &xparts[k];
 
@@ -1264,16 +1220,6 @@ void *runner_main(void *data) {
         super = cj->super;
       /* else
           super = NULL; */
-
-      /* Prefetch? */
-      if (runner_prefetch && t->type != task_type_kick1 &&
-          t->type != task_type_kick2 && t->type != task_type_ghost) {
-        for (int k = 0; k < ci->count; k++)
-          __builtin_prefetch(&ci->parts[k], 1, 3);
-        if (cj != NULL)
-          for (int k = 0; k < cj->count; k++)
-            __builtin_prefetch(&cj->parts[k], 1, 3);
-      }
 
       /* Different types of tasks... */
       switch (t->type) {
