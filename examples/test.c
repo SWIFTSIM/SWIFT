@@ -729,7 +729,7 @@ int main(int argc, char *argv[]) {
 
 #if defined(WITH_MPI)
   long long N_long = N;
-  MPI_reduce(&N_long, &N_total, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&N_long, &N_total, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 #else
   N_total = N;
 #endif
