@@ -273,6 +273,9 @@ AM_CONDITIONAL(HAVESETAFFINITY,
 # Check for libnuma.
 AC_CHECK_LIB([numa], [numa_available])
 
+# Check for Intel intrinsics header optionally used by vector.h.
+AC_CHECK_HEADERS([immintrin.h])
+
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
 AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
