@@ -1018,11 +1018,11 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
              sizeof(struct part) * p->nr_parts_in);
       memcpy(&s->xparts[offset + count], p->xparts_in,
              sizeof(struct xpart) * p->nr_parts_in);
-      /* for (int k = offset; k < offset + count; k++)
-         message(
+      for (int k = offset; k < offset + count; k++)
+        message(
             "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
             s->parts[k].id, s->parts[k].x[0], s->parts[k].x[1],
-            s->parts[k].x[2], s->parts[k].h, p->nodeID); */
+            s->parts[k].x[2], s->parts[k].h, p->nodeID);
       count += p->nr_parts_in;
     }
   }
