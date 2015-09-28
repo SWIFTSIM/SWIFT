@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9
+AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9 $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0 # -fsanitize=address
@@ -45,24 +45,34 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 # Include files for distribution, not installation.
 noinst_HEADERS = atomic.h cycle.h error.h inline.h kernel.h vector.h \
 	runner_iact_legacy.h runner_iact_grav.h runner_doiact.h \
-	runner_doiact_grav.h units.h
+	runner_doiact_grav.h units.h intrinsics.h
 
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)
 
 # Sources and flags for MPI library
 libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
-libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI $(METIS_INCS)
 libswiftsim_mpi_la_SHORTNAME = mpi
 
 
 # Versioning. If any sources change then update the version.h file with
 # the current git revision and package version.
+# May have a checkout without a version.h file and no git command (tar/zip
+# download), allow that, but make sure we know it.
 version.h: version.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
 	if test "X$(GIT_CMD)" != "X"; then \
-	    GIT_REVISION=`git describe --abbrev=8  --always --tags --dirty`; \
+	    GIT_REVISION=`$(GIT_CMD) describe --abbrev=8  --always --tags --dirty`; \
+	    GIT_BRANCH=`$(GIT_CMD) symbolic-ref --short HEAD`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
-	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," version.h.in > version.h; \
+	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
+	        -e "s,@GIT_BRANCH\@,$${GIT_BRANCH}," version.h.in > version.h; \
+	else \
+	    if test ! -f version.h; then \
+	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
+	            -e "s,@GIT_REVISION\@,unknown," \
+		    -e "s,@GIT_BRANCH\@,unknown," version.h.in > version.h; \
+	    fi; \
 	fi
 
 #  Make sure version.h is built first.

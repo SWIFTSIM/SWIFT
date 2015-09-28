@@ -31,7 +31,6 @@
 #include <float.h>
 #include <limits.h>
 #include <fenv.h>
-#include <omp.h>
 
 /* Conditional headers. */
 #ifdef HAVE_LIBZ
@@ -63,6 +62,9 @@ int main ( int argc , char *argv[] ) {
     struct part p1, p2;
     float x, w, dwdx, r2, dx[3] = { 0.0f , 0.0f , 0.0f }, gradw[3];
     
+    /* Greeting message */
+    printf( "This is %s\n", package_description() );
+
     /* Init the particles. */
     for ( k = 0 ; k < 3 ; k++ ) {
         p1.a[k] = 0.0f; p1.v[k] = 0.0f; p1.x[k] = 0.0;

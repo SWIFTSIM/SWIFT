@@ -52,20 +52,26 @@ AX_COMPILER_VERSION
 # http://lists.gnu.org/archive/html/autoconf-archive-maintainers/2011-05/msg00004.html.
 AC_ARG_ENABLE([mpi],
     [AS_HELP_STRING([--enable-mpi],
-      [Compile with functionality for distributed-memory parallelism using MPI @<:@default=yes@:>@]
+      [Compile with functionality for distributed-memory parallelism using MPI @<:@yes/no@:>@]
     )],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
+good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
     AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
 
     # Various MPI implementations require additional libraries when also using
     # threads. Use mpirun (on PATH) as that seems to be only command with
-    # version flag.
-    AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
+    # version flag, allow MPIRUN to override for systems that insist on
+    # a non-standard name (PRACE).
+    : ${MPIRUN='mpirun'}
+    if test "$MPIRUN" = "mpirun"; then
+       AC_PATH_PROG([MPIRUN],[mpirun],[notfound])
+    fi
     if test "$MPIRUN" = "notfound"; then
        AC_MSG_WARN([Cannot find mpirun command on PATH, thread support may not be correct])
+       enable_mpi="no"
     else
        # Special options we know about.
        # Intel: -mt_mpi
@@ -86,6 +92,15 @@ if test "$enable_mpi" = "yes"; then
          *"Open MPI"*)
             MPI_THREAD_LIBS=""
             AC_MSG_RESULT([Open MPI])
+            #  OpenMPI should be 1.8.6 or later, if not complain.
+            #  Version is last word on first line of -version output.
+            revision=`mpirun -version 2>&1 | grep "Open MPI" | awk '{print $NF}'`
+            AX_COMPARE_VERSION( $revision, [ge], [1.8.6],,[good_mpi="no"] )
+            if test "$good_mpi" = "no"; then
+                AC_MSG_WARN([
+    Open MPI version should be at least 1.8.6 (is $revision)])
+                enable_mpi="yes (but with warning)"
+            fi
          ;;
          *)
             MPI_THREAD_LIBS=""
@@ -95,7 +110,10 @@ if test "$enable_mpi" = "yes"; then
        AC_SUBST([MPI_THREAD_LIBS])
     fi
 fi
-AM_CONDITIONAL([HAVEMPI],[test -n "$MPICC"])
+AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
+
+# Indicate that MPIRUN can be modified by an environement variable
+AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
@@ -108,7 +126,7 @@ AX_FUNC_POSIX_MEMALIGN
 # appropriate.
 AC_ARG_ENABLE([optimization],
    [AS_HELP_STRING([--enable-optimization],
-     [Enable compile time optimization flags for host @<:@default=yes@:>@]
+     [Enable compile time optimization flags for host @<:@yes/no@:>@]
    )],
    [enable_opt="$enableval"],
    [enable_opt="yes"]
@@ -133,10 +151,10 @@ if test "$enable_opt" = "yes" ; then
 fi
 
 # Add address sanitizer options to flags, if requested. Only useful for GCC
-# version 4.8 and later.
+# version 4.8 and later and clang.
 AC_ARG_ENABLE([sanitizer],
    [AS_HELP_STRING([--enable-sanitizer],
-     [Enable memory error detection using address sanitizer @<:@default=no@:>@]
+     [Enable memory error detection using address sanitizer @<:@no/yes@:>@]
    )],
    [enable_san="$enableval"],
    [enable_san="no"]
@@ -146,9 +164,12 @@ if test "$enable_san" = "yes"; then
    if test "$ax_cv_c_compiler_vendor" = "gnu"; then
       AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [4.8.0],
                           [enable_san="yes"], [enable_san="no"] )
-      if test "$enable_san" = "yes"; then
-         CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
-      fi
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      AX_COMPARE_VERSION( $ax_cv_c_compiler_version, [ge], [3.2.0],
+                          [enable_san="yes"], [enable_san="no"] )
+   fi
+   if test "$enable_san" = "yes"; then
+      CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
@@ -170,39 +191,31 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
     or use CPPFLAGS and LDFLAGS if the library is installed in a
     non-standard location.]))
 
-# Check for OpenMP.
-AC_OPENMP
-AC_SUBST(OPENMP_CFLAGS)
-enable_openmp="no"
-if test -z "$OPENMP_CFLAGS"; then
-   echo $OPENMP_CFLAGS
-   AC_MSG_ERROR(Compiler does not support OpenMP, 1)
-else
-   CFLAGS="$CFLAGS $OPENMP_CFLAGS"
-   enable_openmp="yes"
-fi
 
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
 # don't use that.
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
-       [prefix where the metis library is installed @<:@default=yes@:>@]
+       [root directory where metis is installed @<:@yes/no@:>@]
     )],
     [],
     [with_metis="no"]
 )
 if test "x$with_metis" != "xno"; then
    if test "x$with_metis" != "xyes" -a "x$with_metis" != "x"; then
-      METIS_LIBS="-L$with_metis -lmetis"
+      METIS_LIBS="-L$with_metis/lib -lmetis"
+      METIS_INCS="-I$with_metis/include"
    else
       METIS_LIBS="-lmetis"
+      METIS_INCS=""
    fi
    AC_CHECK_LIB([metis],[METIS_PartGraphKway],
       AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
       AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
 fi
 AC_SUBST([METIS_LIBS])
+AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
 # Check for zlib.
@@ -212,19 +225,23 @@ AC_CHECK_LIB([z],[gzopen],[
     ],[])
 
 
-# Check for HDF5.
+# Check for HDF5. This is required.
 AX_LIB_HDF5
+
+if test "$with_hdf5" != "yes"; then
+    AC_MSG_ERROR([Could not find a working HDF5 library])
+fi
 
 # We want to know if this HDF5 supports MPI and whether we should use it.
 # The default is to use MPI support if it is available, i.e. this is
 # a parallel HDF5.
 # To do this need to ask the HDF5 compiler about its configuration,
-# -showconfig should have yes/no. 
+# -showconfig should have yes/no.
 have_parallel_hdf5="no"
 if test "$with_hdf5" = "yes"; then
     AC_ARG_ENABLE([parallel-hdf5],
        [AS_HELP_STRING([--enable-parallel-hdf5],
-         [Enable parallel HDF5 library MPI functions if available. @<:@default=yes@:>@]
+         [Enable parallel HDF5 library MPI functions if available. @<:@yes/no@:>@]
        )],
        [enable_parallel_hdf5="$enableval"],
        [enable_parallel_hdf5="yes"]
@@ -265,12 +282,35 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 [AC_DEFINE(HAVE__RTC,1,[Define if you have the UNICOS _rtc() intrinsic.])],[rtc_ok=no])
 AC_MSG_RESULT($rtc_ok)
 
+# Add warning flags by default, if these can be used. Option =error adds
+# -Werror to GCC and Intel.  Note do this last as compiler tests may become
+# errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
+AC_ARG_ENABLE([compiler-warnings],
+   [AS_HELP_STRING([--enable-compiler-warnings],
+     [Enable compile time warning flags, if compiler is known @<:@error/no/yes)@:>@]
+   )],
+   [enable_warn="$enableval"],
+   [enable_warn="error"]
+)
+
+if test "$enable_warn" != "no"; then
+    AX_CFLAGS_WARN_ALL
+    if test "$enable_warn" = "error"; then
+       case "$ax_cv_c_compiler_vendor" in 
+          intel | gnu ) 
+             CFLAGS="$CFLAGS -Werror"
+          ;;
+       esac
+    fi     
+fi
+
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
 
-# Make the documentation.
+# Make the documentation. Add conditional to handle disable option.
 DX_INIT_DOXYGEN(libswift,doc/Doxyfile,doc/)
+AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile])
@@ -284,7 +324,6 @@ AC_MSG_RESULT([
    MPI enabled: $enable_mpi
    HDF5 enabled: $with_hdf5
        parallel: $have_parallel_hdf5
-   OpenMP enabled: $enable_openmp
    Metis enabled: $with_metis
 ])
 

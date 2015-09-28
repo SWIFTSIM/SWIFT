@@ -32,8 +32,17 @@ or:
 to use an Intel compiler. The main "programs" can be found in the "examples/"
 directory.
 
+SWIFT has been successfully built and tested with the following compilers:
+
+  - GCC 4.8.x  
+  - Intel ICC 15.0.x
+  - clang 3.4.x 
+
+More recent versions and slightly older ones should also be able to
+built the software.
+
 By default an attempt to choose suitable set of optimizing compiler flags
-will be made, targetted for the host machine of the build. If this doesn't
+will be made, targeted for the host machine of the build. If this doesn't
 work or the binaries will for another architecture then you can stop the
 selection of flags using:
 
@@ -58,10 +67,34 @@ for instance. GCC address sanitizer flags can be included using the
 
 option. Note this requires a GCC compiler version of at least 4.8.
 
-Dependencies: needs to be filled in...
+
+                                 Dependencies
+                                 ============
+
+SWIFT depends on a number of third party libraries that should be available
+before you can build it.
 
 
-    
+HDF5: a HDF5 library is required to read and write particle data. One of the
+commands "h5cc" or "h5pcc" should be available. If "h5pcc" is located them a
+parallel HDF5 built for the version of MPI located should be provided. If
+the command is not available then it can be located using the "--with-hfd5"
+configure option. The value should be the full path to the "h5cc" or "h5pcc"
+commands.
 
 
+MPI: an optional MPI library that fully supports MPI_THREAD_MULTIPLE.  
+Before running configure the "mpirun" command should be available in the
+shell. If your command isn't called "mpirun" then define the "MPIRUN"
+environment variable, either in the shell or when running configure.
 
+
+METIS: a build of the METIS library can be optionally used to optimize the
+load between MPI nodes (requires an MPI library). This should be found in the
+standard installation directories, or pointed at using the "--with-metis"
+configuration option.  In this case the top-level installation directory of
+the METIS build should be given. Note to use METIS you should at least supply
+"--with-metis".
+
+
+DOXYGEN: the doxygen library is required to create the SWIFT API documentation.
