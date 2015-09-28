@@ -41,6 +41,7 @@
 #define engine_policy_cputight 64
 #define engine_policy_mpi 128
 #define engine_policy_setaffinity 256
+#define engine_policy_paranoid 512
 
 #define engine_queue_scale 1.2
 #define engine_maxtaskspercell 128

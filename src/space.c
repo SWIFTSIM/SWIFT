@@ -844,7 +844,7 @@ static void rec_map_cells_post(struct cell *c, int full,
 }
 
 /**
- * @brief Map a function to all particles in a aspace.
+ * @brief Map a function to all particles in a space.
  *
  * @param s The #space we are working in.
  * @param full Map to all cells, including cells with sub-cells.

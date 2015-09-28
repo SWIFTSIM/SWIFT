@@ -784,8 +784,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with this space. */
   tic = getticks();
   message("nr_nodes is %i.", nr_nodes);
-  engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal);
+  engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank , 
+              ENGINE_POLICY | engine_policy_steal | engine_policy_paranoid);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
