@@ -71,17 +71,17 @@ test_mindt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LI
 # Sources for test_mpi_sync
 test_mpi_sync_SOURCES = test.c
 test_mpi_sync_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS_SYNC) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep"
-test_mpi_sync_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
+test_mpi_sync_LDADD =  ../src/.libs/libswiftsim_mpi_sync.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
 # Sources for test_fixdt_mpi_sync
 test_fixdt_mpi_sync_SOURCES = test.c
 test_fixdt_mpi_sync_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS_SYNC) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep"
-test_fixdt_mpi_sync_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
+test_fixdt_mpi_sync_LDADD =  ../src/.libs/libswiftsim_mpi_sync.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
 # Sources for test_mindt_mpi_sync
 test_mindt_mpi_sync_SOURCES = test.c
 test_mindt_mpi_sync_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS_SYNC) -DENGINE_POLICY="engine_policy_keep"
-test_mindt_mpi_sync_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
+test_mindt_mpi_sync_LDADD =  ../src/.libs/libswiftsim_mpi_sync.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
 # Sources for test_single
 test_single_SOURCES = test_single.c
