@@ -1,7 +1,5 @@
-
 # This file is part of SWIFT.
-# Coypright (c) 2012 pedro.gonnet@durham.ac.uk.
-#               2015 matthieu.schaller@durham.ac.uk.
+# Coypright (c) 2015 matthieu.schaller@durham.ac.uk.
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +14,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Automake stuff
-ACLOCAL_AMFLAGS = -I m4
+# Add the source directory and debug to CFLAGS
+AM_CFLAGS = -I../src -DCPU_TPS=2.67e9 $(HDF5_CPPFLAGS)
 
-# Show the way...
-SUBDIRS = src examples doc tests
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
-# Non-standard files that should be part of the distribution.
-EXTRA_DIST = INSTALL.swift
+# List of programs and scripts to run in the test suite
+TESTS = testGreetings
+
+# List of test programs to compile
+check_PROGRAMS = testGreetings 
+
+
+# Sources for the individual programs
+testGreetings_SOURCES = testGreetings.c
