@@ -96,12 +96,12 @@ void engine_check_cell(struct cell *c, void *data) {
   //}
 
   /* Check the particles. */
-  for (int k = 0; k < c->count; k++) {
-    if (engine_check_part(&c->parts[k])) {
-      print_cell(c);
-      error("Bad particle in cell.");
-    }
-  }
+  //for (int k = 0; k < c->count; k++) {
+  //  if (engine_check_part(&c->parts[k])) {
+  //    print_cell(c);
+  //    error("Bad particle in cell.");
+  //  }
+  //}
 
   /* Check that the progeny, if any, contain all the particles. */
   if (c->split) {
@@ -255,6 +255,9 @@ void engine_redistribute(struct engine *e) {
   /* Get the new number of parts for this node, be generous in allocating. */
   int nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
+  if ( nr_parts == 0 ) {
+      error( "node will have no parts, no point in continuing..." );
+  }
   struct part *parts_new;
   struct xpart *xparts_new, *xparts = s->xparts;
   if (posix_memalign((void **)&parts_new, part_align,
@@ -715,10 +718,29 @@ void engine_repartition(struct engine *e) {
       error("Call to METIS_PartGraphKway failed.");
 
     /* Dump the 3d array of cell IDs. */
-    /* printf( "engine_repartition: nodeIDs = reshape( [" );
+    message( "nodeIDs = reshape( [" );
     for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
-        printf( "%i " , (int)nodeIDs[ i ] );
-    printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
+        printf( "%i " , (int) nodeIDs[i] );
+    printf( "] ,%i,%i,%i);\n",cdim[0], cdim[1], cdim[2] );
+
+    /* Sanity check, all nodes should be present. */
+    int present[nr_nodes];
+    for ( i = 0; i < nr_nodes; i++ ) {
+        present[i] = 0;
+    }
+    for ( i = 0; i < cdim[0]*cdim[1]*cdim[2] ; i++ ) {
+        present[nodeIDs[i]]++;
+    }
+    int stop = 0;
+    for ( i = 0; i < nr_nodes; i++ ) {
+        if ( present[i] == 0 ) {
+            stop = 1;
+            message( "Node %d is not present after partition", i );
+        }
+    }
+    if ( stop ) {
+        error( "METIS repartition has failed" );
+    }
   }
 
 /* Broadcast the result of the partition. */
