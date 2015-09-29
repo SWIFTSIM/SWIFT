@@ -1845,21 +1845,11 @@ void engine_step(struct engine *e) {
   //   printParticle(parts, k);
   // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
 
-  if (e->policy & engine_policy_paranoid) {
-    message("Checking system sanity...");
-    engine_check(e);
-  }
-
   /* Re-distribute the particles amongst the nodes? */
   if ( e->forcerepart )
     engine_repartition( e );
-    
-  else if (e->policy & engine_policy_paranoid) {
-    message("Checking system sanity...");
-    engine_check(e);
-  }
 
-  if (e->policy & engine_policy_paranoid) {
+  else if (e->policy & engine_policy_paranoid) {
     message("Checking system sanity...");
     engine_check(e);
   }
