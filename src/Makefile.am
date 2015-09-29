@@ -30,6 +30,7 @@ lib_LTLIBRARIES = libswiftsim.la
 # Build a MPI-enabled version too?
 if HAVEMPI
 lib_LTLIBRARIES += libswiftsim_mpi.la
+lib_LTLIBRARIES += libswiftsim_mpi_sync.la
 endif
 
 # List required headers
@@ -55,6 +56,10 @@ libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI $(METIS_INCS)
 libswiftsim_mpi_la_SHORTNAME = mpi
 
+# Sources and flags for test sync redistribution MPI library
+libswiftsim_mpi_sync_la_SOURCES = $(AM_SOURCES)
+libswiftsim_mpi_sync_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI -DSYNC_REDISTRIBUTE $(METIS_INCS)
+libswiftsim_mpi_sync_la_SHORTNAME = mpi
 
 # Versioning. If any sources change then update the version.h file with
 # the current git revision and package version.

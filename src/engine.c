@@ -90,10 +90,10 @@ int engine_check_part(struct part *p) {
 
 void engine_check_cell(struct cell *c, void *data) {
   /* Check the cell data. */
-  if (c->count == 0) {
-    print_cell(c);
-    error("Empty cell.");
-  }
+  //if (c->count == 0) {
+    //print_cell(c);
+    //error("Empty cell.");
+  //}
 
   /* Check the particles. */
   for (int k = 0; k < c->count; k++) {
@@ -263,6 +263,99 @@ void engine_redistribute(struct engine *e) {
                      sizeof(struct xpart) * nr_parts * 1.2) != 0)
     error("Failed to allocate new part data.");
 
+  if ( nodeID == 0 ) {
+    message("counts = ");
+    for (int i = 0; i < nr_nodes; i++) {
+      for (int j = 0; j < nr_nodes; j++) {
+        message("-> %d,%d: %ld", i, j, counts[j*nr_nodes+i] * sizeof(struct part));
+      }
+    }
+  }
+
+#if SYNC_REDISTRIBUTE
+
+ /* Emit the sends and recvs for the particle data. */
+  int res = 0;
+  for (int offset_recv = 0, k = 0; k < nr_nodes; k++) {
+    int kk = k;
+
+    /* Rank 0 decides the index of sending node */
+    MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    int ind_recv = kk * nr_nodes + nodeID;
+
+    if ( nodeID == kk ) {
+      message("sends out");
+
+      /*  Send out our particles. */
+      for (int offset_send = 0, j = 0; j < nr_nodes; j++) {
+
+        int ind_send = kk * nr_nodes + j;
+
+        /*  Just copy our own parts */
+        if ( counts[ind_send] > 0 ) {
+          if ( j == nodeID ) {
+            message("self copy: %ld", counts[ind_recv] * sizeof(struct part));
+            memcpy(&parts_new[offset_recv], &s->parts[offset_send],
+                   sizeof(struct part) * counts[ind_recv]);
+            memcpy(&xparts_new[offset_recv], &s->xparts[offset_send],
+                   sizeof(struct xpart) * counts[ind_recv]);
+            offset_send += counts[ind_send];
+            offset_recv += counts[ind_recv];
+          }
+          else {
+            message("send from %i to %i (tag=%i,counts=%li)", kk, j,
+                    ind_send, counts[ind_send] * sizeof(struct part) );
+            res = MPI_Send(&s->parts[offset_send],
+                           sizeof(struct part) * counts[ind_send],
+                           MPI_BYTE, j, ind_send, MPI_COMM_WORLD );
+            if ( res != MPI_SUCCESS ) {
+              mpi_error(res, "Failed to send parts to node %i from %i.",
+                        j, nodeID);
+            }
+            res = MPI_Send(&s->xparts[offset_send],
+                           sizeof(struct xpart) * counts[ind_send],
+                           MPI_BYTE, j, ind_send, MPI_COMM_WORLD );
+            if ( res != MPI_SUCCESS ) {
+              mpi_error(res,"Failed to send xparts to node %i from %i.",
+                        j, nodeID);
+            }
+
+            offset_send += counts[ind_send];
+          }
+        }
+      }
+    }
+    else {
+      message("receives %i from %i (tag=%i,count=%li)", nodeID, kk,
+              ind_recv, counts[ind_recv] * sizeof(struct part));
+
+      /*  Listen for sends from kk. */
+      if (counts[ind_recv] > 0) {
+
+        MPI_Status status;
+        res = MPI_Recv(&parts_new[offset_recv],
+                       sizeof(struct part) * counts[ind_recv], MPI_BYTE, kk,
+                       ind_recv, MPI_COMM_WORLD, &status);
+        if ( res != MPI_SUCCESS ) {
+          mpi_error(res,"Failed to recv of parts from node %i to %i.",
+                    kk, nodeID);
+        }
+
+        res = MPI_Recv(&xparts_new[offset_recv],
+                       sizeof(struct xpart) * counts[ind_recv], MPI_BYTE, kk,
+                       ind_recv, MPI_COMM_WORLD, &status);
+        if ( res != MPI_SUCCESS ) {
+          mpi_error( res, "Failed to irecv of xparts from node %i to %i.",
+                     kk, nodeID);
+        }
+        offset_recv += counts[ind_recv];
+      }
+    }
+  }
+
+#else
+
   /* Emit the sends and recvs for the particle data. */
   MPI_Request *reqs;
   if ((reqs = (MPI_Request *)malloc(sizeof(MPI_Request) * 4 * nr_nodes)) ==
@@ -321,15 +414,16 @@ void engine_redistribute(struct engine *e) {
     }
     error("Failed during waitall for part data.");
   }
+#endif
 
   /* Verify that all parts are in the right place. */
-  /* for ( k = 0 ; k < nr_parts ; k++ ) {
-      cid = cell_getid( cdim , parts_new[k].x[0]*ih[0] , parts_new[k].x[1]*ih[1]
-     , parts_new[k].x[2]*ih[2] );
-      if ( cells[ cid ].nodeID != nodeID )
-          error( "Received particle (%i) that does not belong here (nodeID=%i)."
-     , k , cells[ cid ].nodeID );
-      } */
+  for ( int k = 0 ; k < nr_parts ; k++ ) {
+      int cid = cell_getid(cdim, parts_new[k].x[0]*ih[0], parts_new[k].x[1]*ih[1],
+                           parts_new[k].x[2]*ih[2]);
+      if ( cells[cid].nodeID != nodeID )
+          error("Received particle (%i) that does not belong here (nodeID=%i).",
+                k, cells[ cid ].nodeID);
+  }
 
   /* Set the new part data, free the old. */
   free(parts);
@@ -345,7 +439,9 @@ void engine_redistribute(struct engine *e) {
   message("node %i now has %i parts in %i cells.", nodeID, nr_parts, my_cells);
 
   /* Clean up other stuff. */
+#if !SYNC_REDISTRIBUTE
   free(reqs);
+#endif
   free(counts);
   free(dest);
 
