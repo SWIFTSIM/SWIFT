@@ -827,18 +827,20 @@ int main(int argc, char *argv[]) {
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
 #endif
 
-  /* Inauguration speech. */
-  if (runs < INT_MAX)
-    message(
-        "Running on %lld particles for %i steps with %i threads and %i "
-        "queues...",
-        N_total, runs, e.nr_threads, e.sched.nr_queues);
-  else
-    message(
-        "Running on %lld particles until t=%.3e with %i threads and %i "
-        "queues...",
-        N_total, clock, e.nr_threads, e.sched.nr_queues);
-  fflush(stdout);
+  if (myrank == 0) {
+    /* Inauguration speech. */
+    if (runs < INT_MAX)
+      message(
+          "Running on %lld particles for %i steps with %i threads and %i "
+          "queues...",
+          N_total, runs, e.nr_threads, e.sched.nr_queues);
+    else
+      message(
+          "Running on %lld particles until t=%.3e with %i threads and %i "
+          "queues...",
+          N_total, clock, e.nr_threads, e.sched.nr_queues);
+    fflush(stdout);
+  }
 
   /* Legend */
   if (myrank == 0)
