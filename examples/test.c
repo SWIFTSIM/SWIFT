@@ -730,6 +730,10 @@ int main(int argc, char *argv[]) {
   if (scaling != 1.0)
     for (k = 0; k < N; k++) parts[k].h *= scaling;
 
+  /* Mark particle nodes */
+  for ( k = 0 ; k < N ; k++ )
+      parts[k].lastNodeID = myrank + 1000;
+
   /* Apply shift */
   if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0)
     for (k = 0; k < N; k++) {
@@ -785,7 +789,7 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank , 
-              ENGINE_POLICY | engine_policy_steal | engine_policy_paranoid);
+              ENGINE_POLICY | engine_policy_steal );
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
@@ -819,12 +823,13 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Inauguration speech. */
-  if (runs < INT_MAX)
+  if (runs < INT_MAX) {
     message("starting for %i steps with %i threads and %i queues...", runs,
             e.nr_threads, e.sched.nr_queues);
-  else
+  } else {
     message("starting for t=%.3e with %i threads and %i queues...", clock,
             e.nr_threads, e.sched.nr_queues);
+  }
   fflush(stdout);
 
   /* Legend. */

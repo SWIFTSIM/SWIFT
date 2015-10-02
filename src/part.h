@@ -159,6 +159,9 @@ struct part {
   /* Particle ID. */
   unsigned long long id;
 
+  /* ID of last node */
+  int lastNodeID;
+
   /* Associated gravitas. */
   struct gpart *gpart;
 

@@ -971,9 +971,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           MPI_Error_string(err, buff, &len);
           error("Failed to emit irecv for particle data (%s).", buff);
         }
-        // message( "recieving %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
-        // fflush(stdout);
+        //message("recieving %i parts with tag=%i from %i to %i.",
+        //        t->ci->count, t->flags, t->ci->nodeID, s->nodeID);
+        //fflush(stdout);
         qid = 1 % s->nr_queues;
 #else
         error("SWIFT was not compiled with MPI support.");
@@ -981,6 +981,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
+        for ( int k = 0 ; k < t->ci->count ; k++ ) {
+          t->ci->parts[k].lastNodeID = s->nodeID + 10000;
+        }
+
         if ((err = MPI_Isend(t->ci->parts, sizeof(struct part) * t->ci->count,
                              MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
                              &t->req)) != MPI_SUCCESS) {
@@ -989,9 +993,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           MPI_Error_string(err, buff, &len);
           error("Failed to emit isend for particle data (%s).", buff);
         }
-        // message( "sending %i parts with tag=%i from %i to %i." ,
-        //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
-        // fflush(stdout);
+        //message( "sending %i parts with tag=%i from %i to %i.",
+        //         t->ci->count, t->flags, s->nodeID, t->cj->nodeID );
+        //fflush(stdout);
         qid = 0;
 #else
         error("SWIFT was not compiled with MPI support.");

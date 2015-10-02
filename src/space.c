@@ -376,9 +376,9 @@ void space_rebuild(struct space *s, double cell_max) {
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count += 1;
-    /* if ( cells[ ind[k] ].nodeID != nodeID )
-        error( "Received part that does not belong to me (nodeID=%i)." , cells[
-       ind[k] ].nodeID ); */
+    if (cells[ind[k]].nodeID != nodeID)
+        error("Received part that does not belong to me (nodeID=%i)." ,
+              cells[ind[k] ].nodeID);
   }
   nr_parts = s->nr_parts;
 #endif

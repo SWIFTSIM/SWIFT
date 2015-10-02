@@ -260,11 +260,17 @@ void engine_redistribute(struct engine *e) {
   }
   struct part *parts_new;
   struct xpart *xparts_new, *xparts = s->xparts;
+  int nr_parts_new = nr_parts * 1.2;
   if (posix_memalign((void **)&parts_new, part_align,
-                     sizeof(struct part) * nr_parts * 1.2) != 0 ||
+                     sizeof(struct part) * nr_parts_new) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
-                     sizeof(struct xpart) * nr_parts * 1.2) != 0)
+                     sizeof(struct xpart) * nr_parts_new) != 0)
     error("Failed to allocate new part data.");
+
+  /*  Mark particles with creator node. */
+  for (int k = 0; k < nr_parts_new; k++ ) {
+    parts_new[k].lastNodeID = nodeID + 2000;
+  }
 
   if ( nodeID == 0 ) {
     message("counts = ");
@@ -298,6 +304,12 @@ void engine_redistribute(struct engine *e) {
         /*  Just copy our own parts */
         if ( counts[ind_send] > 0 ) {
           if ( j == nodeID ) {
+
+            /*  Mark particles... */
+            for (int z =0; z < counts[ind_recv]; z++ ) {
+                s->parts[offset_send+z].lastNodeID = nodeID + 3000;
+            }
+
             message("self copy: %ld", counts[ind_recv] * sizeof(struct part));
             memcpy(&parts_new[offset_recv], &s->parts[offset_send],
                    sizeof(struct part) * counts[ind_recv]);
@@ -307,8 +319,26 @@ void engine_redistribute(struct engine *e) {
             offset_recv += counts[ind_recv];
           }
           else {
-            message("send from %i to %i (tag=%i,counts=%li)", kk, j,
-                    ind_send, counts[ind_send] * sizeof(struct part) );
+
+            /*  Mark particles... */
+            for (int z =0; z < counts[ind_send]; z++ ) {
+                s->parts[offset_send+z].lastNodeID = nodeID + 4000;
+            }
+
+            message("send from %i to %i (tag=%i,counts=%i/%li,offset=%i)", kk, j,
+                    ind_send, counts[ind_send], counts[ind_send] * sizeof(struct part),
+                    offset_send );
+
+            /*  Check destinations are correct. */
+            for (int a = 0; a < counts[ind_send]; a++ ) {
+                int ia = offset_send + a;
+                int cid = cell_getid( cdim, s->parts[ia].x[0]*ih[0], s->parts[ia].x[1]*ih[1],
+                                      s->parts[ia].x[2]*ih[2]);
+                if ( cells[cid].nodeID != j ) {
+                    message( "Sending particle to wrong node: %d, %d, %d", ia, j, cells[cid].nodeID );
+                }
+            }
+
             res = MPI_Send(&s->parts[offset_send],
                            sizeof(struct part) * counts[ind_send],
                            MPI_BYTE, j, ind_send, MPI_COMM_WORLD );
@@ -318,7 +348,7 @@ void engine_redistribute(struct engine *e) {
             }
             res = MPI_Send(&s->xparts[offset_send],
                            sizeof(struct xpart) * counts[ind_send],
-                           MPI_BYTE, j, ind_send, MPI_COMM_WORLD );
+                           MPI_BYTE, j, ind_send + (nr_nodes*nr_nodes), MPI_COMM_WORLD );
             if ( res != MPI_SUCCESS ) {
               mpi_error(res,"Failed to send xparts to node %i from %i.",
                         j, nodeID);
@@ -330,11 +360,12 @@ void engine_redistribute(struct engine *e) {
       }
     }
     else {
-      message("receives %i from %i (tag=%i,count=%li)", nodeID, kk,
-              ind_recv, counts[ind_recv] * sizeof(struct part));
-
       /*  Listen for sends from kk. */
       if (counts[ind_recv] > 0) {
+
+        message("receives %i from %i (tag=%i,count=%i/%li,offset=%i)", nodeID, kk,
+                ind_recv, counts[ind_recv], counts[ind_recv] * sizeof(struct part),
+                offset_recv);
 
         MPI_Status status;
         res = MPI_Recv(&parts_new[offset_recv],
@@ -345,9 +376,45 @@ void engine_redistribute(struct engine *e) {
                     kk, nodeID);
         }
 
+        /*  Check destination is correct. */
+        int bad = 0;
+        int minia = -1;
+        int maxia = -1;
+        for (int a = 0; a < counts[ind_recv]; a++ ) {
+            int ia = offset_recv + a;
+            int cid = cell_getid( cdim, parts_new[ia].x[0]*ih[0], parts_new[ia].x[1]*ih[1],
+                                  parts_new[ia].x[2]*ih[2] );
+            if ( cells[cid].nodeID != nodeID ) {
+                bad = 1;
+                if ( minia == -1 ) minia = ia;
+                maxia = ia;
+           }
+        }
+        if ( bad ) {
+            /* Just range to keep output small... */
+            int cid = cell_getid( cdim, 
+                                  parts_new[minia].x[0]*ih[0], 
+                                  parts_new[minia].x[1]*ih[1],
+                                  parts_new[minia].x[2]*ih[2] );
+            message( "First particle %d arrived in wrong node: on %d, target %d, from %d",
+                     minia, nodeID, cells[cid].nodeID, parts_new[minia].lastNodeID );
+            cid = cell_getid( cdim, 
+                              parts_new[maxia].x[0]*ih[0], 
+                              parts_new[maxia].x[1]*ih[1],
+                              parts_new[maxia].x[2]*ih[2] );
+            message( "Last particle %d arrived in wrong node: on %d, target %d, from %d",
+                     maxia, nodeID, cells[cid].nodeID, parts_new[maxia].lastNodeID );
+
+            int count = 0;
+            MPI_Get_count(&status, MPI_CHAR, &count);
+            message( "Task %d: Received %d char(s), %ld parts, from task %d with tag %d",
+                     nodeID, count, count/sizeof(struct part),
+                     status.MPI_SOURCE, status.MPI_TAG);
+        }
+
         res = MPI_Recv(&xparts_new[offset_recv],
                        sizeof(struct xpart) * counts[ind_recv], MPI_BYTE, kk,
-                       ind_recv, MPI_COMM_WORLD, &status);
+                       ind_recv + (nr_nodes*nr_nodes), MPI_COMM_WORLD, &status);
         if ( res != MPI_SUCCESS ) {
           mpi_error( res, "Failed to irecv of xparts from node %i to %i.",
                      kk, nodeID);
@@ -423,9 +490,11 @@ void engine_redistribute(struct engine *e) {
   for ( int k = 0 ; k < nr_parts ; k++ ) {
       int cid = cell_getid(cdim, parts_new[k].x[0]*ih[0], parts_new[k].x[1]*ih[1],
                            parts_new[k].x[2]*ih[2]);
-      if ( cells[cid].nodeID != nodeID )
-          error("Received particle (%i) that does not belong here (nodeID=%i).",
-                k, cells[ cid ].nodeID);
+      if ( cells[cid].nodeID != nodeID ) {
+          printParticle_single( &parts_new[k] );
+          error("Received particle (%i/%i) that does not belong here (nodeID=%i).",
+                k, nr_parts, cells[ cid ].nodeID);
+      }
   }
 
   /* Set the new part data, free the old. */
@@ -434,7 +503,7 @@ void engine_redistribute(struct engine *e) {
   s->parts = parts_new;
   s->xparts = xparts_new;
   s->nr_parts = nr_parts;
-  s->size_parts = 1.2 * nr_parts;
+  s->size_parts = nr_parts_new;
 
   /* Be verbose about what just happened. */
   for (int k = 0; k < nr_cells; k++)
@@ -652,6 +721,7 @@ void engine_repartition(struct engine *e) {
     error("Failed to allreduce edge weights.");
 
   /* As of here, only one node needs to compute the partition. */
+  int failed = 0;
   if (nodeID == 0) {
 
     /* Check that the edge weights are fully symmetric. */
@@ -684,10 +754,22 @@ void engine_repartition(struct engine *e) {
     */
 
     /* Make sure there are no zero weights. */
-    for (k = 0; k < 26 * nr_cells; k++)
-      if (weights_e[k] == 0) weights_e[k] = 1;
-    for (k = 0; k < nr_cells; k++)
-      if ((weights_v[k] *= vscale) == 0) weights_v[k] = 1;
+    int zeroweights = 0;
+    for (k = 0; k < 26 * nr_cells; k++) {
+      if (weights_e[k] == 0) {
+        weights_e[k] = 1;
+        zeroweights++;
+      }
+    }
+    for (k = 0; k < nr_cells; k++) {
+      if ((weights_v[k] *= vscale) == 0) {
+        weights_v[k] = 1;
+        zeroweights++;
+      }
+    }
+    if ( zeroweights > 0 ) {
+      message( "Seen %d zero weights", zeroweights );
+    }
 
     /* Allocate and fill the connection array. */
     idx_t *offsets;
@@ -701,7 +783,7 @@ void engine_repartition(struct engine *e) {
     METIS_SetDefaultOptions(options);
     options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
     options[METIS_OPTION_NUMBERING] = 0;
-    options[METIS_OPTION_CONTIG] = 1;
+    options[METIS_OPTION_CONTIG] = 1; /* Note this option not used by PGR... */
     options[METIS_OPTION_NCUTS] = 10;
     options[METIS_OPTION_NITER] = 20;
     // options[ METIS_OPTION_UFACTOR ] = 1;
@@ -715,7 +797,7 @@ void engine_repartition(struct engine *e) {
     if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
                                  NULL, weights_e, &idx_nr_nodes, NULL, NULL,
                                  options, &objval, nodeIDs) != METIS_OK)
-      error("Call to METIS_PartGraphKway failed.");
+      error("Call to METIS_PartGraphRecursive failed.");
 
     /* Dump the 3d array of cell IDs. */
     message( "nodeIDs = reshape( [" );
@@ -731,16 +813,23 @@ void engine_repartition(struct engine *e) {
     for ( i = 0; i < cdim[0]*cdim[1]*cdim[2] ; i++ ) {
         present[nodeIDs[i]]++;
     }
-    int stop = 0;
     for ( i = 0; i < nr_nodes; i++ ) {
         if ( present[i] == 0 ) {
-            stop = 1;
+            failed = 1;
             message( "Node %d is not present after partition", i );
         }
     }
-    if ( stop ) {
-        error( "METIS repartition has failed" );
-    }
+
+  }
+  if ( failed ) {
+      /* XXX in production skip unnecessary next parts, for now go through the
+       * motions. */
+      /* Reset the initial partition and continue with that. */
+      for (k = 0; k < nr_cells; k++) {
+          nodeIDs[k] = cells[k].nodeID;
+      }
+      message( "METIS repartition has failed, continuing with "
+               "current partition" );
   }
 
 /* Broadcast the result of the partition. */
@@ -992,6 +1081,12 @@ void engine_exchange_cells(struct engine *e) {
     if (posix_memalign((void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
+
+    /*  Mark particles... */
+    for (int z =0; z < s->size_parts_foreign; z++ ) {
+      s->parts_foreign[z].lastNodeID = e->nodeID + 5000;
+    }
+
   }
 
   /* Unpack the cells and link to the particle data. */
@@ -1098,6 +1193,11 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     free(s->xparts);
     s->parts = parts_new;
     s->xparts = xparts_new;
+
+    /*  Mark particles... */
+    for (int z =0; z < s->size_parts; z++ ) {
+      s->parts[z].lastNodeID = e->nodeID + 6000;
+    }
   }
 
   /* Collect the requests for the particle data from the proxies. */
@@ -2265,6 +2365,11 @@ void engine_split(struct engine *e, int *grid) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+
+  /*  Mark particles... */
+  for (int z =0; z < s->size_parts; z++ ) {
+    s->parts[z].lastNodeID = e->nodeID + 7000;
+  }
 }
 
 /**
