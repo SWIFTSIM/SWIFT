@@ -567,6 +567,7 @@ int main(int argc, char *argv[]) {
   ticks tic;
   int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
   FILE *file_thread;
+  int with_outputs = 1;
 
 /* Choke on FP-exceptions. */
 // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
@@ -604,7 +605,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:f:g:m:oq:r:s:t:w:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -635,6 +636,9 @@ int main(int argc, char *argv[]) {
         if (myrank == 0) message("maximum h set to %e.", h_max);
         fflush(stdout);
         break;
+      case 'o':
+        with_outputs = 0;
+	break;
       case 'q':
         if (sscanf(optarg, "%d", &nr_queues) != 1)
           error("Error parsing number of queues.");
@@ -806,21 +810,25 @@ int main(int argc, char *argv[]) {
   engine_redistribute(&e);
 #endif
 
-  /* Write the state of the system as it is before starting time integration. */
-  tic = getticks();
+  if (with_outputs) {
+    /* Write the state of the system as it is before starting time integration.
+     */
+    tic = getticks();
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
+    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
+                          MPI_INFO_NULL);
+#else
+    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
                         MPI_INFO_NULL);
-#else
-  write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(&e, &us);
+    write_output_single(&e, &us);
 #endif
-  message("writing particle properties took %.3f ms.",
-          ((double)(getticks() - tic)) / CPU_TPS * 1000);
-  fflush(stdout);
+    message("writing particle properties took %.3f ms.",
+            ((double)(getticks() - tic)) / CPU_TPS * 1000);
+    fflush(stdout);
+  }
 
 /* Init the runner history. */
 #ifdef HIST
@@ -862,7 +870,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-    if (j % 100 == 0) {
+    if (with_outputs && j % 100 == 0) {
 
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -943,17 +951,20 @@ int main(int argc, char *argv[]) {
   fclose(file_thread);
 #endif
 
+  if (with_outputs) {
 /* Write final output. */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
+    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
+                          MPI_INFO_NULL);
+#else
+    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
                         MPI_INFO_NULL);
-#else
-  write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(&e, &us);
+    write_output_single(&e, &us);
 #endif
+  }
 
 #ifdef WITH_MPI
   if (MPI_Finalize() != MPI_SUCCESS)
