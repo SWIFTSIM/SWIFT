@@ -20,6 +20,7 @@
 
 /* Some standard headers. */
 #include <stdio.h>
+#include <string.h>
 
 /* This object's header. */
 #include "version.h"
@@ -68,22 +69,22 @@ const char *package_description(void) {
 }
 
 const char *compiler_name(void) {
+  static char compiler[256] = {0};
 #if defined(__INTEL_COMPILER)
-  static const char *compiler = "ICC";
+  sprintf(compiler, "ICC");
 #elif defined(__clang__)
-  static const char *compiler = "LLVM/Clang";
+  sprintf(compiler, "LLVM/Clang");
 #elif defined(__xlc__)
-  static const char *compiler = "IBM XL";
+  sprintf(compiler, "IBM XL");
 #elif defined(__GNUC__)
-  static const char *compiler = "GCC";
-#else
-  static const char *compiler = "Unknown Compiler";
+  sprintf(compiler, "GCC");
 #endif
+  if (strlen(compiler) == 0) sprintf(compiler, "Unknown compiler");
   return compiler;
 }
 
 const char *compiler_version(void) {
-  static char version[256];
+  static char version[256] = {0};
 #if defined(__INTEL_COMPILER)
   const int major = __INTEL_COMPILER / 100;
   const int minor = __INTEL_COMPILER - major * 100;
@@ -98,9 +99,8 @@ const char *compiler_version(void) {
   sprintf(version, "%i.%i.%i", major, minor, patch);
 #elif defined(__GNUC__)
   sprintf(version, "%i.%i.%i", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-#else
-  sprintf(version, "---");
 #endif
+  if (strlen(version) == 0) sprintf(version, "Unknown version");
   return version;
 }
 
