@@ -105,7 +105,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   //  error("Non-matching types between the code and the file");
 
   /* Allocate temporary buffer */
-  temp = malloc(N * dim * sizeOfType(type));
+  temp = malloc(N * dim * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Read HDF5 dataspace in temporary buffer */
