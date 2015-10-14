@@ -366,7 +366,7 @@ void engine_repartition(struct engine *e) {
 
     /* Get the task weight. */
     idx_t w = (t->toc - t->tic) * wscale;
-    if (w < 0) error("Bad task weight (%"SCIDX").", w);
+    if (w < 0) error("Bad task weight (%" SCIDX ").", w);
 
     /* Do we need to re-scale? */
     wtot += w;

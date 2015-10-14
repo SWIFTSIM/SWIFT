@@ -40,9 +40,8 @@ struct UnitSystem {
   double UnitCurrent_in_cgs; /*< Conversion factor from Ampere to internal
                                 current units. */
 
-  double
-      UnitTemperature_in_cgs; /*< Conversion factor from Kelvins to internal
-                                 temperature units. */
+  double UnitTemperature_in_cgs; /*< Conversion factor from Kelvins to internal
+                                    temperature units. */
 };
 
 /**
