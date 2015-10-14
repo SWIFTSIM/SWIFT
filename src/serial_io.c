@@ -102,11 +102,11 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   /* Check data type */
   h_type = H5Dget_type(h_data);
   if (h_type < 0) error("Unable to retrieve data type from the file");
-  if (!H5Tequal(h_type, hdf5Type(type)))
-    error("Non-matching types between the code and the file");
+  /* if (!H5Tequal(h_type, hdf5Type(type))) */
+  /*   error("Non-matching types between the code and the file"); */
 
   /* Allocate temporary buffer */
-  temp = malloc(N * dim * sizeOfType(type));
+  temp = malloc(N * dim * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Prepare information for hyperslab */
@@ -134,7 +134,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  h_err = H5Dread(h_data, h_type, h_memspace, h_filespace, H5P_DEFAULT, temp);
+  h_err = H5Dread(h_data, hdf5Type(type), h_memspace, h_filespace, H5P_DEFAULT, temp);
   if (h_err < 0) {
     error("Error while reading data array '%s'.", name);
   }
