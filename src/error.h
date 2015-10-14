@@ -61,4 +61,30 @@ extern int engine_rank;
 #define message(s, ...) printf("%s: " s "\n", __FUNCTION__, ##__VA_ARGS__)
 #endif
 
+/**
+ * @brief Assertion macro compatible with MPI
+ *
+ */
+#ifdef WITH_MPI
+extern int engine_rank;
+#define assert(expr)                                                       \
+  {                                                                        \
+    if (!(expr)) {                                                         \
+      fprintf(stderr, "[%03i] %s:%s():%i: FAILED ASSERTION: " #expr " \n", \
+              engine_rank, __FILE__, __FUNCTION__, __LINE__);              \
+      MPI_Abort(MPI_COMM_WORLD, -1);                                       \
+    }                                                                      \
+  }
+#else
+#define assert(expr)                                                          \
+  {                                                                           \
+    if (!(expr)) {                                                            \
+      fprintf(stderr, "%s:%s():%i: FAILED ASSERTION: " #expr " \n", __FILE__, \
+              __FUNCTION__, __LINE__);                                        \
+      fflush(stderr);                                                         \
+      abort();                                                                \
+    }                                                                         \
+  }
+#endif
+
 #endif /* SWIFT_ERROR_H */
