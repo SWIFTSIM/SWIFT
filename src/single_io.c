@@ -101,7 +101,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   /* Check data type */
   h_type = H5Dget_type(h_data);
   if (h_type < 0) error("Unable to retrieve data type from the file");
-  //if (!H5Tequal(h_type, hdf5Type(type)))
+  // if (!H5Tequal(h_type, hdf5Type(type)))
   //  error("Non-matching types between the code and the file");
 
   /* Allocate temporary buffer */

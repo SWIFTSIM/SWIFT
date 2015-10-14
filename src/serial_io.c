@@ -134,7 +134,8 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  h_err = H5Dread(h_data, hdf5Type(type), h_memspace, h_filespace, H5P_DEFAULT, temp);
+  h_err = H5Dread(h_data, hdf5Type(type), h_memspace, h_filespace, H5P_DEFAULT,
+                  temp);
   if (h_err < 0) {
     error("Error while reading data array '%s'.", name);
   }
