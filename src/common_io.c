@@ -198,7 +198,7 @@ void writeStringAttribute(hid_t grp, char* name, const char* str, int length) {
 
   h_err = H5Tset_size(h_type, length);
   if (h_err < 0) {
-    error("Error while resizing attribute tyep to '%i'.", length);
+    error("Error while resizing attribute type to '%i'.", length);
   }
 
   h_attr = H5Acreate1(grp, name, h_type, h_space, H5P_DEFAULT);
