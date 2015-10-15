@@ -27,7 +27,7 @@ from numpy import *
 # Parameters
 periodic= 1      # 1 For periodic box
 boxSize = 1.
-L = 50           # Number of particles along one axis
+L = 100           # Number of particles along one axis
 rho = 2.         # Density
 P = 1.           # Pressure
 gamma = 5./3.    # Gas adiabatic index
@@ -40,32 +40,19 @@ mass = boxSize**3 * rho / numPart
 internalEnergy = P / ((gamma - 1.)*rho)
 
 #Generate particles
-coords = zeros((numPart, 3))
+ids    = linspace(0, numPart, numPart, endpoint=False, dtype='L').reshape((numPart,1))
 v      = zeros((numPart, 3))
-m      = zeros((numPart, 1))
-h      = zeros((numPart, 1))
-u      = zeros((numPart, 1))
-ids    = zeros((numPart, 1), dtype='L')
+m      = full((numPart, 1), mass)
+h      = full((numPart, 1), 2.251 * boxSize / L)
+u      = full((numPart, 1), internalEnergy)
 
-for i in range(L):
-    for j in range(L):
-        for k in range(L):
-            index = i*L*L + j*L + k
-            x = i * boxSize / L + boxSize / (2*L)
-            y = j * boxSize / L + boxSize / (2*L)
-            z = k * boxSize / L + boxSize / (2*L)
-            coords[index,0] = x
-            coords[index,1] = y
-            coords[index,2] = z
-            v[index,0] = 0.
-            v[index,1] = 0.
-            v[index,2] = 0.
-            m[index] = mass
-            h[index] = 2.251 * boxSize / L
-            u[index] = internalEnergy
-            ids[index] = index
-            
-            
+x      = ids % L;
+y      = ((ids - x) / L) % L;
+z      = (ids - x - L * y) / L**2;
+coords = zeros((numPart, 3))
+coords[:,0] = z[:,0] * boxSize / L + boxSize / (2*L)
+coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
+coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
 
 #--------------------------------------------------
 
