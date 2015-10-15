@@ -1370,7 +1370,7 @@ void engine_rebuild(struct engine *e) {
 
   /* Re-build the space. */
   // tic = getticks();
-  space_rebuild(e->s, 0.0);
+  space_rebuild(e->s, 0.0, e->nodeID == 0);
 // message( "space_rebuild took %.3f ms." , (double)(getticks() -
 // tic)/CPU_TPS*1000 );
 
@@ -2041,8 +2041,9 @@ void engine_split(struct engine *e, int *grid) {
   engine_makeproxies(e);
 
   /* Re-allocate the local parts. */
-  message("Re-allocating parts array from %i to %i.", s->size_parts,
-          (int)(s->nr_parts * 1.2));
+  if (e->nodeID == 0)
+    message("Re-allocating parts array from %i to %i.", s->size_parts,
+            (int)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
   struct part *parts_new;
   struct xpart *xparts_new;
@@ -2094,13 +2095,16 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     for (i = 1; i < maxint; i *= 2)
       for (j = maxint / i / 2; j < maxint; j += maxint / i)
         if (j < nr_cores && j != 0) cpuid[k++] = j;
-#ifdef WITHMPI
-    printf("engine_init: cpu map is [ ");
+
+    if (nodeID == 0) {
+#ifdef WITH_MPI
+      message("engine_init: cpu map is [ ");
 #else
-    printf("[%03i] engine_init: cpu map is [ ", nodeID);
+      printf("[%03i] engine_init: cpu map is [ ", nodeID);
 #endif
-    for (i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
-    printf("].\n");
+      for (i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
+      printf("].\n");
+    }
   }
 #endif
 

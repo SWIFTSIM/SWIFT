@@ -752,7 +752,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the space with this data. */
   tic = getticks();
-  space_init(&s, dim, parts, N, periodic, h_max);
+  space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
   if (myrank == 0)
     message("space_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
@@ -792,7 +792,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the engine with this space. */
   tic = getticks();
-  message("nr_nodes is %i.", nr_nodes);
+  if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
               ENGINE_POLICY | engine_policy_steal);
   if (myrank == 0)
@@ -818,8 +818,9 @@ int main(int argc, char *argv[]) {
 #else
   write_output_single(&e, &us);
 #endif
-  message("writing particle properties took %.3f ms.",
-          ((double)(getticks() - tic)) / CPU_TPS * 1000);
+  if (myrank == 0)
+    message("writing particle properties took %.3f ms.",
+            ((double)(getticks() - tic)) / CPU_TPS * 1000);
   fflush(stdout);
 
 /* Init the runner history. */
@@ -961,7 +962,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Say goodbye. */
-  message("done.");
+  if (myrank == 0) message("done.");
 
   /* All is calm, all is bright. */
   return 0;
