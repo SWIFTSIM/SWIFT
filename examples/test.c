@@ -554,6 +554,7 @@ int main(int argc, char *argv[]) {
   int c, icount, j, k, N, periodic = 1;
   long long N_total = -1;
   int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
+  int dump_tasks = 0;
   int data[2];
   double dim[3] = {1.0, 1.0, 1.0}, shift[3] = {0.0, 0.0, 0.0};
   double h_max = -1.0, scaling = 1.0;
@@ -604,7 +605,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:yz:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -658,6 +659,9 @@ int main(int argc, char *argv[]) {
         if (sscanf(optarg, "%d", &space_subsize) != 1)
           error("Error parsing sub size.");
         if (myrank == 0) message("sub size set to %i.", space_subsize);
+        break;
+      case 'y':
+        dump_tasks = 1;
         break;
       case 'z':
         if (sscanf(optarg, "%d", &space_splitsize) != 1)
@@ -909,40 +913,43 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-/* Dump the task data. */
+  /* Dump the task data. */
+  if (dump_tasks) {
 #ifdef WITH_MPI
-  file_thread = fopen("thread_info_MPI.dat", "w");
-  for (j = 0; j < nr_nodes; j++) {
-    MPI_Barrier(MPI_COMM_WORLD);
-    if (j == myrank) {
-      fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank, e.tic_step);
-      for (k = 0; k < e.sched.nr_tasks; k++)
-        if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
-          fprintf(
-              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
-              e.sched.tasks[k].rid, e.sched.tasks[k].type,
-              e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
-              e.sched.tasks[k].tic, e.sched.tasks[k].toc,
-              e.sched.tasks[k].ci->count,
-              (e.sched.tasks[k].cj != NULL) ? e.sched.tasks[k].cj->count : 0,
-              e.sched.tasks[k].flags);
-      fflush(stdout);
-      sleep(1);
+    file_thread = fopen("thread_info_MPI.dat", "w");
+    for (j = 0; j < nr_nodes; j++) {
+      MPI_Barrier(MPI_COMM_WORLD);
+      if (j == myrank) {
+        fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
+                e.tic_step);
+        for (k = 0; k < e.sched.nr_tasks; k++)
+          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
+            fprintf(
+                file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
+                e.sched.tasks[k].rid, e.sched.tasks[k].type,
+                e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
+                e.sched.tasks[k].tic, e.sched.tasks[k].toc,
+                e.sched.tasks[k].ci->count,
+                (e.sched.tasks[k].cj != NULL) ? e.sched.tasks[k].cj->count : 0,
+                e.sched.tasks[k].flags);
+        fflush(stdout);
+        sleep(1);
+      }
     }
-  }
-  fclose(file_thread);
+    fclose(file_thread);
 #else
-  file_thread = fopen("thread_info.dat", "w");
-  for (k = 0; k < e.sched.nr_tasks; k++)
-    if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
-      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n",
-              e.sched.tasks[k].rid, e.sched.tasks[k].type,
-              e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
-              e.sched.tasks[k].tic, e.sched.tasks[k].toc,
-              e.sched.tasks[k].ci->count,
-              (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
-  fclose(file_thread);
+    file_thread = fopen("thread_info.dat", "w");
+    for (k = 0; k < e.sched.nr_tasks; k++)
+      if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
+        fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n",
+                e.sched.tasks[k].rid, e.sched.tasks[k].type,
+                e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
+                e.sched.tasks[k].tic, e.sched.tasks[k].toc,
+                e.sched.tasks[k].ci->count,
+                (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
+    fclose(file_thread);
 #endif
+  }
 
 /* Write final output. */
 #if defined(WITH_MPI)
