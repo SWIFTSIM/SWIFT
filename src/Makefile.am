@@ -66,7 +66,7 @@ version.h: version.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
-	        -e "s,@GIT_BRANCH\@,$${GIT_BRANCH}," version.h.in > version.h; \
+	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" version.h.in > version.h; \
 	else \
 	    if test ! -f version.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
