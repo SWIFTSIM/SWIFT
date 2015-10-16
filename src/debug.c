@@ -1,7 +1,9 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2013 Matthieu Schaller (matthieu.schaller@durham.ac.uk),
- *                    Pedro Gonnet (pedro.gonnet@durham.ac.uk).
+ * Copyright (c) 2013- 2015:
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk),
+ *                    Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ *                    Peter W. Draper (p.w.draper@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,8 +22,10 @@
 
 #include <stdio.h>
 
+#include "config.h"
 #include "const.h"
 #include "part.h"
+#include "debug.h"
 
 /**
  * @brief Looks for the particle with the given id and prints its information to
@@ -98,3 +102,86 @@ void printParticle_single(struct part *p) {
       p->rho_dh, p->density.div_v, p->u, p->force.u_dt, p->force.balsara,
       p->force.POrho2, p->force.v_sig, p->dt);
 }
+
+#ifdef HAVE_METIS
+
+/**
+ * @brief Dump the METIS graph in standard format to stdout
+ *
+ * @param nvtxs the number of vertices
+ * @param ncon the number vertex weights
+ * @param xadj first part of adjacency info
+ * @param adjncy second part of adjacency info
+ * @param vwgt weights of vertices
+ * @param vsize size of vertices
+ * @param adjwgt weights of edges
+ */
+void printMETISGraph(idx_t nvtxs, idx_t ncon, idx_t *xadj, idx_t *adjncy,
+                     idx_t *vwgt, idx_t *vsize, idx_t *adjwgt) {
+  idx_t i;
+  idx_t j;
+  int hasvwgt = 0;
+  int hasewgt = 0;
+  int hasvsize = 0;
+
+  /* Check for vwgt, vsize and adjwgt values. */
+  if (vwgt) {
+    for (i = 0; i < nvtxs * ncon; i++) {
+      if (vwgt[i] != 1) {
+        hasvwgt = 1;
+        break;
+      }
+    }
+  }
+  if (vsize) {
+    for (i = 0; i < nvtxs; i++) {
+      if (vsize[i] != 1) {
+        hasvsize = 1;
+        break;
+      }
+    }
+  }
+  if (adjwgt) {
+    for (i = 0; i < xadj[nvtxs]; i++) {
+      if (adjwgt[i] != 1) {
+        hasewgt = 1;
+        break;
+      }
+    }
+  }
+
+  /*  Write the header line. */
+  printf("METIS: ");
+  printf("%" PRIDX " %" PRIDX, nvtxs, xadj[nvtxs] / 2);
+  if (hasvwgt || hasvsize || hasewgt) {
+    printf(" %d%d%d", hasvsize, hasvwgt, hasewgt);
+    if (hasvwgt) {
+      printf(" %d", (int)ncon);
+    }
+  }
+
+  /*  Write the rest of the graph. */
+  for (i = 0; i < nvtxs; i++) {
+    printf("\nMETIS: ");
+
+    if (hasvsize) {
+      printf(" %" PRIDX, vsize[i]);
+    }
+
+    if (hasvwgt) {
+      for (j = 0; j < ncon; j++) {
+        printf(" %" PRIDX, vwgt[i * ncon + j]);
+      }
+    }
+
+    for (j = xadj[i]; j < xadj[i + 1]; j++) {
+      printf(" %" PRIDX, adjncy[j] + 1);
+      if (hasewgt) {
+        printf(" %" PRIDX, adjwgt[j]);
+      }
+    }
+  }
+  printf("\n");
+}
+
+#endif

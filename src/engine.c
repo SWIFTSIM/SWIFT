@@ -540,10 +540,15 @@ void engine_repartition(struct engine *e) {
     /* Call METIS. */
     idx_t one = 1, idx_nr_cells = nr_cells, idx_nr_nodes = nr_nodes;
     idx_t objval;
+
+    /* Dump graph in METIS format */
+    printMETISGraph(idx_nr_cells, one, offsets, inds, weights_v, NULL, weights_e);
+
     if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
                                  NULL, weights_e, &idx_nr_nodes, NULL, NULL,
                                  options, &objval, nodeIDs) != METIS_OK)
       error("Call to METIS_PartGraphKway failed.");
+
 
     /* Dump the 3d array of cell IDs. */
     /* printf( "engine_repartition: nodeIDs = reshape( [" );
