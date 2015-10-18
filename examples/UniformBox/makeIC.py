@@ -19,18 +19,19 @@
  ##############################################################################
 
 import h5py
+import sys
 from numpy import *
 
 # Generates a swift IC file containing a cartesian distribution of particles
 # at a constant density and pressure in a cubic box
 
 # Parameters
-periodic= 1      # 1 For periodic box
+periodic= 1           # 1 For periodic box
 boxSize = 1.
-L = 1200           # Number of particles along one axis
-rho = 2.         # Density
-P = 1.           # Pressure
-gamma = 5./3.    # Gas adiabatic index
+L = int(sys.argv[1])  # Number of particles along one axis
+rho = 2.              # Density
+P = 1.                # Pressure
+gamma = 5./3.         # Gas adiabatic index
 fileName = "uniformBox.hdf5" 
 
 
