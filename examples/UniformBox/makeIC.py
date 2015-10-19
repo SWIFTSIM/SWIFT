@@ -19,18 +19,19 @@
  ##############################################################################
 
 import h5py
+import sys
 from numpy import *
 
 # Generates a swift IC file containing a cartesian distribution of particles
 # at a constant density and pressure in a cubic box
 
 # Parameters
-periodic= 1      # 1 For periodic box
+periodic= 1           # 1 For periodic box
 boxSize = 1.
-L = 50           # Number of particles along one axis
-rho = 2.         # Density
-P = 1.           # Pressure
-gamma = 5./3.    # Gas adiabatic index
+L = int(sys.argv[1])  # Number of particles along one axis
+rho = 2.              # Density
+P = 1.                # Pressure
+gamma = 5./3.         # Gas adiabatic index
 fileName = "uniformBox.hdf5" 
 
 
@@ -38,34 +39,6 @@ fileName = "uniformBox.hdf5"
 numPart = L**3
 mass = boxSize**3 * rho / numPart
 internalEnergy = P / ((gamma - 1.)*rho)
-
-#Generate particles
-coords = zeros((numPart, 3))
-v      = zeros((numPart, 3))
-m      = zeros((numPart, 1))
-h      = zeros((numPart, 1))
-u      = zeros((numPart, 1))
-ids    = zeros((numPart, 1), dtype='L')
-
-for i in range(L):
-    for j in range(L):
-        for k in range(L):
-            index = i*L*L + j*L + k
-            x = i * boxSize / L + boxSize / (2*L)
-            y = j * boxSize / L + boxSize / (2*L)
-            z = k * boxSize / L + boxSize / (2*L)
-            coords[index,0] = x
-            coords[index,1] = y
-            coords[index,2] = z
-            v[index,0] = 0.
-            v[index,1] = 0.
-            v[index,2] = 0.
-            m[index] = mass
-            h[index] = 2.251 * boxSize / L
-            u[index] = internalEnergy
-            ids[index] = index
-            
-            
 
 #--------------------------------------------------
 
@@ -90,17 +63,39 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 
 #Particle group
 grp = file.create_group("/PartType0")
-ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
-ds[()] = coords
+
+v  = zeros((numPart, 3))
 ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v
+v = zeros(1)
+
+m = full((numPart, 1), mass)
 ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
+m = zeros(1)
+
+h = full((numPart, 1), 2.251 * boxSize / L)
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
 ds[()] = h
+h = zeros(1)
+
+u = full((numPart, 1), internalEnergy)
 ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
 ds[()] = u
+u = zeros(1)
+
+
+ids = linspace(0, numPart, numPart, endpoint=False, dtype='L').reshape((numPart,1))
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
 ds[()] = ids
+x      = ids % L;
+y      = ((ids - x) / L) % L;
+z      = (ids - x - L * y) / L**2;
+coords = zeros((numPart, 3))
+coords[:,0] = z[:,0] * boxSize / L + boxSize / (2*L)
+coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
+coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
+ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
+ds[()] = coords
 
 file.close()

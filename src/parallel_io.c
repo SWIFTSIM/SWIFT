@@ -110,9 +110,9 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
     offsets[0] = offset;
     offsets[1] = 0;
   } else {
-    rank = 1;
+    rank = 2;
     shape[0] = N;
-    shape[1] = 0;
+    shape[1] = 1;
     offsets[0] = offset;
     offsets[1] = 0;
   }
@@ -238,12 +238,12 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
 
+  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
+  /* 	 N_total, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
+
   /* Divide the particles among the tasks. */
   offset = mpi_rank * N_total / mpi_size;
   *N = (mpi_rank + 1) * N_total / mpi_size - offset;
-
-  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
-  /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
 
   /* Close header */
   H5Gclose(h_grp);
