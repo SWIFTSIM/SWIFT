@@ -119,7 +119,7 @@ struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
 void space_init(struct space *s, double dim[3], struct part *parts, int N,
-                int periodic, double h_max);
+                int periodic, double h_max, int verbose);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
 void space_map_parts(struct space *s,
@@ -127,7 +127,7 @@ void space_map_parts(struct space *s,
                      void *data);
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
-void space_rebuild(struct space *s, double h_max);
+void space_rebuild(struct space *s, double h_max, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_split(struct space *s, struct cell *c);
 

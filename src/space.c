@@ -149,9 +149,10 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
  *
  * @param s The #space.
  * @param cell_max Maximum cell edge length.
+ * @param verbose Print messages to stdout or not.
  */
 
-void space_regrid(struct space *s, double cell_max) {
+void space_regrid(struct space *s, double cell_max, int verbose) {
 
   float h_max = s->cell_min / kernel_gamma / space_stretch, dmin;
   int i, j, k, cdim[3], nr_parts = s->nr_parts;
@@ -182,7 +183,7 @@ void space_regrid(struct space *s, double cell_max) {
     h_max = buff;
   }
 #endif
-  message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
+  if (verbose) message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
 
   /* Get the new putative cell dimensions. */
   for (k = 0; k < 3; k++)
@@ -253,7 +254,9 @@ void space_regrid(struct space *s, double cell_max) {
         }
 
     /* Be verbose about the change. */
-    message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1], cdim[2]);
+    if (verbose)
+      message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
+              cdim[2]);
     fflush(stdout);
 
   } /* re-build upper-level cells? */
@@ -289,10 +292,11 @@ void space_regrid(struct space *s, double cell_max) {
  *
  * @param s The #space in which to update the cells.
  * @param cell_max Maximal cell size.
+ * @param verbose Print messages to stdout or not
  *
  */
 
-void space_rebuild(struct space *s, double cell_max) {
+void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
   struct cell *restrict c, *restrict cells;
@@ -305,7 +309,7 @@ void space_rebuild(struct space *s, double cell_max) {
   // message( "re)building space..." ); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
-  space_regrid(s, cell_max);
+  space_regrid(s, cell_max, verbose);
   cells = s->cells;
 
   /* Run through the particles and get their cell index. */
@@ -1073,6 +1077,7 @@ struct cell *space_getcell(struct space *s) {
  * @param N The number of parts in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param h_max The maximal interaction radius.
+ * @param verbose Print messages to stdout or not
  *
  * Makes a grid of edge length > r_max and fills the particles
  * into the respective cells. Cells containing more than #space_splitsize
@@ -1081,7 +1086,7 @@ struct cell *space_getcell(struct space *s) {
  */
 
 void space_init(struct space *s, double dim[3], struct part *parts, int N,
-                int periodic, double h_max) {
+                int periodic, double h_max, int verbose) {
 
   /* Store eveything in the space. */
   s->dim[0] = dim[0];
@@ -1151,5 +1156,5 @@ void space_init(struct space *s, double dim[3], struct part *parts, int N,
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
   /* Build the cells and the tasks. */
-  space_regrid(s, h_max);
+  space_regrid(s, h_max, verbose);
 }
