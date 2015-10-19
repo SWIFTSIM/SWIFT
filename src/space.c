@@ -466,7 +466,11 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
   // tic = getticks();
-  for (k = 0; k < s->nr_cells; k++) space_split(s, &cells[k]);
+  // for (k = 0; k < s->nr_cells; k++) space_split(s, &cells[k]);
+  for (k = 0; k < s->nr_cells; k++)
+    scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none,
+                      k, 0, &cells[k], NULL, 0);
+  engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell);
 
   // message( "space_split took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
@@ -483,8 +487,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
  */
 
 void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
-  // Populate a parallel_sort structure with the input data.
-  struct parallel_sort sort;
+  // Populate the global parallel_sort structure with the input data.
   space_sort_struct.parts = s->parts;
   space_sort_struct.xparts = s->xparts;
   space_sort_struct.ind = ind;
@@ -511,8 +514,9 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   /* Verify space_sort_struct. */
   /* for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
-      error("Sorting failed (ind[%i]=%i,ind[%i]=%i).", i - 1, ind[i - 1], i,
-            ind[i]); */
+      error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1, ind[i - 1], i,
+            ind[i], min, max);
+  message("Sorting succeeded."); */
 
   // Clean up.
   free(space_sort_struct.stack);
@@ -526,15 +530,17 @@ void space_do_parts_sort() {
   struct xpart *xparts = space_sort_struct.xparts;
 
   /* Main loop. */
-  while (space_sort_struct.waiting > 0) {
+  while (space_sort_struct.waiting) {
 
     /* Grab an interval off the queue. */
     int qid =
         atomic_inc(&space_sort_struct.first) % space_sort_struct.stack_size;
 
-    /* Get the stack entry. */
+    /* Wait for the entry to be ready, or for the sorting do be done. */
     while (!space_sort_struct.stack[qid].ready)
       if (!space_sort_struct.waiting) return;
+      
+    /* Get the stack entry. */
     int i = space_sort_struct.stack[qid].i;
     int j = space_sort_struct.stack[qid].j;
     int min = space_sort_struct.stack[qid].min;
@@ -546,6 +552,8 @@ void space_do_parts_sort() {
 
       /* Bring beer. */
       const int pivot = (min + max) / 2;
+      /* message("Working on interval [%i,%i] with min=%i, max=%i, pivot=%i.",
+              i, j, min, max, pivot); */
 
       /* One pass of QuickSort's partitioning. */
       int ii = i;
@@ -567,18 +575,18 @@ void space_do_parts_sort() {
       }
 
       /* Verify space_sort_struct. */
-      /* for ( int k = i ; k <= jj ; k++ )
-         if ( ind[k] > pivot ) {
-         message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i,
-         N=%i." , k , ind[k] , pivot , i , j , N );
-         error( "Partition failed (<=pivot)." );
-         }
-         for ( int k = jj+1 ; k <= j ; k++ )
-         if ( ind[k] <= pivot ) {
-         message( "sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i,
-         N=%i." , k , ind[k] , pivot , i , j , N );
-         error( "Partition failed (>pivot)." );
-         } */
+      /* for (int k = i; k <= jj; k++)
+        if (ind[k] > pivot) {
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
+                  ind[k], pivot, i, j);
+          error("Partition failed (<=pivot).");
+        }
+      for (int k = jj + 1; k <= j; k++)
+        if (ind[k] <= pivot) {
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
+                  ind[k], pivot, i, j);
+          error("Partition failed (>pivot).");
+        } */
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {

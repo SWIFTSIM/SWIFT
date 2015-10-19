@@ -1290,6 +1290,9 @@ void *runner_main(void *data) {
         case task_type_psort:
           space_do_parts_sort();
           break;
+        case task_type_split_cell:
+          space_split(e->s, t->ci);
+          break;
         default:
           error("Unknown task type.");
       }

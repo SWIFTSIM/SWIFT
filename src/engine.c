@@ -169,6 +169,9 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    /* if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
+            cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
@@ -550,6 +553,11 @@ void engine_repartition(struct engine *e) {
     for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
         printf( "%i " , (int)nodeIDs[ i ] );
     printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
+    
+    /* Check that the nodeIDs are ok. */
+    for (k = 0; k < nr_cells; k++)
+      if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
+        error("Got bad nodeID %i for cell %i.", nodeIDs[k], k);
   }
 
 /* Broadcast the result of the partition. */
@@ -1250,7 +1258,7 @@ int engine_marktasks(struct engine *e) {
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
-  /* Muc less to do here if we're on a fixed time-step. */
+  /* Much less to do here if we're on a fixed time-step. */
   if (!(e->policy & engine_policy_multistep)) {
 
     /* Run through the tasks and mark as skip or not. */
@@ -2164,7 +2172,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Append a kick1 task to each cell. */
-  scheduler_reset(&e->sched, s->tot_cells + e->nr_threads);
+  scheduler_reset(&e->sched, 2 * s->tot_cells + e->nr_threads);
   for (k = 0; k < s->nr_cells; k++)
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
