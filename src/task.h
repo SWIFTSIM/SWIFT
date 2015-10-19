@@ -44,6 +44,7 @@ enum task_types {
   task_type_grav_mm,
   task_type_grav_up,
   task_type_grav_down,
+  task_type_psort,
   task_type_count
 };
 
