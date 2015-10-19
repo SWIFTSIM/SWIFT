@@ -87,13 +87,15 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
     if (importance == COMPULSORY) {
       error("Compulsory data set '%s' not present in the file.", name);
     } else {
-      for (i = 0; i < N; ++i) memset(part_c + i * partSize, 0, copySize);
+      for (i = 0; i < N; ++i)
+        memset(part_c + i * partSize, 0, copySize);
       return;
     }
   }
 
-  /* message( "Reading %s '%s' array...", importance == COMPULSORY ?
-   * "compulsory": "optional  ", name); */
+  /* message( "Reading %s '%s' array...", importance == COMPULSORY ? */
+  /* 	   "compulsory": "optional  ", name); */
+  /* fflush(stdout); */
 
   /* Open data space */
   h_data = H5Dopen1(grp, name);
@@ -117,9 +119,9 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
     offsets[0] = offset;
     offsets[1] = 0;
   } else {
-    rank = 1;
+    rank = 2;
     shape[0] = N;
-    shape[1] = 0;
+    shape[1] = 1;
     offsets[0] = offset;
     offsets[1] = 0;
   }
@@ -130,6 +132,20 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   /* Select hyperslab in file */
   h_filespace = H5Dget_space(h_data);
   H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
+
+  /* int rank_memspace = H5Sget_simple_extent_ndims(h_memspace); */
+  /* int rank_filespace = H5Sget_simple_extent_ndims(h_filespace); */
+
+  /* message("Memspace rank: %d", rank_memspace); */
+  /* message("Filespace rank: %d", rank_filespace); */
+  /* fflush(stdout); */
+
+  /* hsize_t dims_memspace[2], max_dims_memspace[2]; */
+  /* hsize_t dims_filespace[2], max_dims_filespace[2]; */
+
+  /* H5Sget_simple_extent_dims(h_memspace, dims_memspace, max_dims_memspace); */
+  /* H5Sget_simple_extent_dims(h_filespace, dims_filespace, max_dims_filespace);
+   */
 
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
@@ -196,11 +212,11 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
                     int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info) {
   hid_t h_file = 0, h_grp = 0;
-  double boxSize[3] = {
-      0.0, -1.0, -1.0}; /* GADGET has only cubic boxes (in cosmological mode) */
-  int numParticles[6] = {
-      0}; /* GADGET has 6 particle types. We only keep the type 0*/
-  int numParticles_highWord[6] = {0};
+  double boxSize[3] = { 0.0, -1.0, -1.0 };
+      /* GADGET has only cubic boxes (in cosmological mode) */
+  int numParticles[6] = { 0 };
+      /* GADGET has 6 particle types. We only keep the type 0*/
+  int numParticles_highWord[6] = { 0 };
   long long offset = 0;
   long long N_total = 0;
   int rank;
@@ -235,14 +251,17 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
     readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
     readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-    N_total = ((long long)numParticles[0]) +
-              ((long long)numParticles_highWord[0] << 32);
+    N_total = ((long long) numParticles[0]) +
+              ((long long) numParticles_highWord[0] << 32);
     dim[0] = boxSize[0];
     dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
     dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
 
-    /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
-    /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
+    /* message("Found %lld particles in a %speriodic box of size [%f %f %f].",
+     */
+    /* 	    N_total, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
+
+    fflush(stdout);
 
     /* Close header */
     H5Gclose(h_grp);
@@ -264,8 +283,8 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
   if (posix_memalign((void*)parts, part_align, (*N) * sizeof(struct part)) != 0)
     error("Error while allocating memory for particles");
   bzero(*parts, *N * sizeof(struct part));
-  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
-   * (1024.*1024.)); */
+  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / */
+  /* 	  (1024.*1024.)); */
 
   /* Now loop over ranks and read the data */
   for (rank = 0; rank < mpi_size; ++rank) {
@@ -499,9 +518,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   hid_t h_file = 0, h_grp = 0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
-  int numParticles[6] = {N, 0};
-  int numParticlesHighWord[6] = {0};
-  unsigned int flagEntropy[6] = {0};
+  int numParticles[6] = { N, 0 };
+  int numParticlesHighWord[6] = { 0 };
+  unsigned int flagEntropy[6] = { 0 };
   long long N_total = 0, offset = 0;
   double offset_d = 0., N_d = 0., N_total_d = 0.;
   int numFiles = 1;
@@ -516,7 +535,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
   /* Compute offset in the file and total number of particles */
   /* Done using double to allow for up to 2^50=10^15 particles */
-  N_d = (double)N;
+  N_d = (double) N;
   MPI_Exscan(&N_d, &offset_d, 1, MPI_DOUBLE, MPI_SUM, comm);
   N_total_d = offset_d + N_d;
   MPI_Bcast(&N_total_d, 1, MPI_DOUBLE, mpi_size - 1, comm);
@@ -524,8 +543,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     error(
         "Error while computing the offest for parallel output: Simulation has "
         "more than 10^15 particles.\n");
-  N_total = (long long)N_total_d;
-  offset = (long long)offset_d;
+  N_total = (long long) N_total_d;
+  offset = (long long) offset_d;
 
   /* Do common stuff first */
   if (mpi_rank == 0) {
@@ -568,13 +587,13 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
 
     /* GADGET-2 legacy values */
-    numParticles[0] = (unsigned int)N_total;
+    numParticles[0] = (unsigned int) N_total;
     writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
     writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
     numParticlesHighWord[0] = (unsigned int)(N_total >> 32);
     writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord,
                    6);
-    double MassTable[6] = {0., 0., 0., 0., 0., 0.};
+    double MassTable[6] = { 0., 0., 0., 0., 0., 0. };
     writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
     writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy, 6);
     writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
