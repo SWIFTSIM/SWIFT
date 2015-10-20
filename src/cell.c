@@ -87,8 +87,8 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
 
   /* Unpack the current pcell. */
   c->h_max = pc->h_max;
-  c->dt_min = FLT_MAX;  // pc->dt_min;
-  c->dt_max = FLT_MAX;  // pc->dt_max;
+  c->t_end_min = pc->t_end_min;
+  c->t_end_max = pc->t_end_max;
   c->count = pc->count;
   c->tag = pc->tag;
 
@@ -161,8 +161,8 @@ int cell_pack(struct cell *c, struct pcell *pc) {
 
   /* Start by packing the data of the current cell. */
   pc->h_max = c->h_max;
-  pc->dt_min = c->dt_min;
-  pc->dt_max = c->dt_max;
+  c->t_end_min = pc->t_end_min;
+  c->t_end_max = pc->t_end_max;
   pc->count = c->count;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
