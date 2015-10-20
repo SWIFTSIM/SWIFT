@@ -68,11 +68,11 @@ void printgParticle(struct gpart *parts, long long int id, int N) {
     if (parts[i].id == -id || (parts[i].id > 0 && parts[i].part->id == id)) {
       printf(
           "## gParticle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
-          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, dt=%.3e\n",
+          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%.3e, t_end=%.3e\n",
           i, (parts[i].id < 0) ? -parts[i].id : parts[i].part->id,
           parts[i].x[0], parts[i].x[1], parts[i].x[2], parts[i].v[0],
           parts[i].v[1], parts[i].v[2], parts[i].a[0], parts[i].a[1],
-          parts[i].a[2], parts[i].mass, parts[i].dt);
+          parts[i].a[2], parts[i].mass, parts[i].t_begin, parts[i].t_end);
       found = 1;
     }
 
@@ -92,9 +92,9 @@ void printParticle_single(struct part *p) {
       "## Particle: id=%lld, x=[%e,%e,%e], v=[%.3e,%.3e,%.3e], "
       "a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e, "
       "rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, "
-      "v_sig=%.3e, dt=%.3e\n",
+      "v_sig=%.3e, t_begin=%.3e, t_end=%.3e\n",
       p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a[0],
       p->a[1], p->a[2], p->h, p->force.h_dt, p->density.wcount, p->mass, p->rho,
       p->rho_dh, p->density.div_v, p->u, p->force.u_dt, p->force.balsara,
-      p->force.POrho2, p->force.v_sig, p->dt);
+      p->force.POrho2, p->force.v_sig, p->t_begin, p->t_end);
 }

@@ -137,7 +137,23 @@ void scheduler_splittasks(struct scheduler *s) {
     }
 
     /* Non-local kick task? */
-    if ((t->type == task_type_kick1 || t->type == task_type_kick2) &&
+    if ((t->type == task_type_kick) &&
+        t->ci->nodeID != s->nodeID) {
+      t->type = task_type_none;
+      t->skip = 1;
+      continue;
+    }
+
+    /* Non-local drift task? */
+    if ((t->type == task_type_drift) &&
+        t->ci->nodeID != s->nodeID) {
+      t->type = task_type_none;
+      t->skip = 1;
+      continue;
+    }
+
+    /* Non-local init task? */
+    if ((t->type == task_type_init) &&
         t->ci->nodeID != s->nodeID) {
       t->type = task_type_none;
       t->skip = 1;
@@ -849,8 +865,13 @@ void scheduler_reweight(struct scheduler *s) {
         case task_type_ghost:
           if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
           break;
-        case task_type_kick1:
-        case task_type_kick2:
+        case task_type_kick:
+          t->weight += wscale * t->ci->count;
+          break;
+        case task_type_drift:
+          t->weight += wscale * t->ci->count;
+          break;
+        case task_type_init:
           t->weight += wscale * t->ci->count;
           break;
         default:
@@ -950,7 +971,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_self:
       case task_type_sort:
       case task_type_ghost:
-      case task_type_kick2:
+      case task_type_kick:
+      case task_type_drift:
+      case task_type_init:
         qid = t->ci->super->owner;
         break;
       case task_type_pair:

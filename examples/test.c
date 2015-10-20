@@ -802,7 +802,7 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal);
+              ENGINE_POLICY | engine_policy_steal, 0, 1.);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
@@ -903,7 +903,7 @@ int main(int argc, char *argv[]) {
     /*       fflush(stdout); */
     /*     } */
     if (myrank == 0) {
-      printf("%i %e %.3e", j, e.time, e.dt);
+      printf("%i %e", j, e.time);
       printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
       printf("\n");
       fflush(stdout);
