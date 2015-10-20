@@ -32,8 +32,8 @@ struct xpart {
   /* Old position, at last tree rebuild. */
   double x_old[3];
 
-  /* Velocity at the half-step. */
-  float v_hdt[3];
+  /* Velocity at the last full step. */
+  float v_full[3];
 
   /* Entropy at the half-step. */
   float u_hdt;

@@ -41,6 +41,7 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
+#include "timestep.h"
 
 /* Include the right variant of the SPH interactions */
 #ifdef LEGACY_GADGET2_SPH
@@ -491,6 +492,51 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
 #endif
 }
 
+
+
+
+
+/**
+ * @brief Initialize the particles before the density calculation
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+
+void runner_doinit(struct runner *r, struct cell *c) {
+
+  struct part *p, *parts = c->parts;
+  int i, k, count = c->count;
+  float t_end = r->e->time;
+
+  /* Recurse? */
+  if (c->split) {
+    for (k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_doinit(r, c->progeny[k]);
+    return;
+  }
+
+  /* Loop over the parts in this cell. */
+  for (i = 0; i < count; i++) {
+
+    /* Get a direct pointer on the part. */
+    p = &parts[i];
+
+    if (p->id == 0) message("init!");
+
+    if (p->t_end <= t_end) {
+
+      /* Get ready for a density calculation */
+      p->density.wcount = 0.0;
+      p->density.wcount_dh = 0.0;
+      p->rho = 0.0;
+      p->rho_dh = 0.0;
+      p->density.div_v = 0.0;
+      for (k = 0; k < 3; k++) p->density.curl_v[k] = 0.0;
+    }
+  }
+}
+
 /**
  * @brief Intermediate task between density and force
  *
@@ -501,6 +547,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
 void runner_doghost(struct runner *r, struct cell *c) {
 
   struct part *p, *parts = c->parts;
+  struct xpart *xp, *xparts = c->xparts;
   struct cell *finger;
   int i, k, redo, count = c->count;
   int *pid;
@@ -509,7 +556,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
 #ifndef LEGACY_GADGET2_SPH
   float alpha_dot, tau, S;
 #endif
-  float dt_step = r->e->dt_step;
+  float t_end = r->e->time;
+
   TIMER_TIC
 
   /* Recurse? */
@@ -535,9 +583,10 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
       /* Get a direct pointer on the part. */
       p = &parts[pid[i]];
+      xp = &xparts[pid[i]];
 
       /* Is this part within the timestep? */
-      if (p->dt <= dt_step) {
+      if (p->t_end <= t_end) {
 
         /* Some smoothing length multiples. */
         h = p->h;
@@ -554,8 +603,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
             p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
 
         /* If no derivative, double the smoothing length. */
-        if (wcount_dh == 0.0f) h_corr = p->h;
-
+        if (wcount_dh == 0.0f) {
+          h_corr = p->h;
+        }
         /* Otherwise, compute the smoothing length update (Newton step). */
         else {
           h_corr = (kernel_nwneigh - wcount) / wcount_dh;
@@ -565,8 +615,12 @@ void runner_doghost(struct runner *r, struct cell *c) {
           h_corr = fmaxf(h_corr, -h / 2.f);
         }
 
+        if (p->id == 0)
+          message("ghost! h=%f dh=%f wcount=%f rho=%f", p->h, h_corr, wcount,
+                  p->rho);
+
         /* Apply the correction to p->h and to the compact part. */
-        p->h += h_corr;
+        h = p->h += h_corr;
 
         /* Did we get the right number density? */
         if (wcount > kernel_nwneigh + const_delta_nwneigh ||
@@ -586,6 +640,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
           continue;
         }
 
+        /* We now have a particle whose smoothing length has converged */
+
         /* Pre-compute some stuff for the balsara switch. */
         normDiv_v = fabs(p->density.div_v / rho * ih4);
         normCurl_v = sqrtf(p->density.curl_v[0] * p->density.curl_v[0] +
@@ -602,8 +658,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
             sqrtf(const_hydro_gamma * (const_hydro_gamma - 1.0f) * u);
 
         /* Compute the P/Omega/rho2. */
-        p->force.POrho2 =
-            u * (const_hydro_gamma - 1.0f) / (rho + h * rho_dh / 3.0f);
+        xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho;
+        p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (rho * xp->omega);
 
         /* Balsara switch */
         p->force.balsara =
@@ -621,7 +677,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
                     (const_viscosity_alpha_max - p->alpha) * S;
 
         /* Update particle's viscosity paramter */
-        p->alpha += alpha_dot * p->dt;
+        p->alpha += alpha_dot * 1;  // p->dt;
 #endif
 
         /* Reset the acceleration. */
@@ -634,11 +690,12 @@ void runner_doghost(struct runner *r, struct cell *c) {
       }
     }
 
+    /* We now need to treat the particles whose smoothing length had not
+     * converged again */
+
     /* Re-set the counter for the next loop (potentially). */
     count = redo;
     if (count > 0) {
-
-      // error( "Bad smoothing length, fixing this isn't implemented yet." );
 
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
@@ -689,274 +746,95 @@ void runner_doghost(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Compute the second kick of the given cell.
+ * @brief Drift particles forward in time
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param timer Are we timing this ?
  */
+void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
-void runner_dokick2(struct runner *r, struct cell *c) {
-
-  int j, k, count = 0, nr_parts = c->count;
-  float dt_min = FLT_MAX, dt_max = 0.0f;
-  double ekin = 0.0, epot = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  float x[3], v_hdt[3], u_hdt, h, pdt, m;
-  float dt_step = r->e->dt_step, dt = r->e->dt, hdt, idt;
-  float dt_cfl, dt_h_change, dt_u_change, dt_new;
-  float h_dt, u_dt;
+  int k, nr_parts = c->count;
+  float ih, rho, u, w, h = 5.;
+  float dt = r->e->time - r->e->timeOld;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
 
   TIMER_TIC
 
-  /* Init idt to avoid compiler stupidity. */
-  idt = (dt > 0) ? 1.0f / dt : 0.0f;
-  hdt = dt / 2;
-
-  /* Loop over the particles and kick them. */
-  for (k = 0; k < nr_parts; k++) {
-
-    /* Get a handle on the part. */
-    p = &parts[k];
-    xp = &xparts[k];
-
-    /* Get local copies of particle data. */
-    pdt = p->dt;
-    m = p->mass;
-    x[0] = p->x[0];
-    x[1] = p->x[1];
-    x[2] = p->x[2];
-    v_hdt[0] = xp->v_hdt[0];
-    v_hdt[1] = xp->v_hdt[1];
-    v_hdt[2] = xp->v_hdt[2];
-    u_hdt = xp->u_hdt;
-
-    /* Update the particle's data (if active). */
-    if (pdt <= dt_step) {
-
-      /* Increase the number of particles updated. */
-      count += 1;
-
-      /* Scale the derivatives as they're freshly computed. */
-      h = p->h;
-      h_dt = p->force.h_dt *= h * 0.333333333f;
-      xp->omega = 1.0f + h * p->rho_dh / p->rho * 0.3333333333f;
-
-      /* Compute the new time step. */
-      u_dt = p->force.u_dt;
-      dt_cfl = const_cfl * h / p->force.v_sig;
-      dt_h_change =
-          (h_dt != 0.0f) ? fabsf(const_ln_max_h_change * h / h_dt) : FLT_MAX;
-      dt_u_change =
-          (u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / u_dt) : FLT_MAX;
-      dt_new = fminf(dt_cfl, fminf(dt_h_change, dt_u_change));
-      if (pdt == 0.0f)
-        p->dt = pdt = dt_new;
-      else
-        p->dt = pdt = fminf(dt_new, 2.0f * pdt);
-
-      /* Update positions and energies at the full step. */
-      p->v[0] = v_hdt[0] + hdt * p->a[0];
-      p->v[1] = v_hdt[1] + hdt * p->a[1];
-      p->v[2] = v_hdt[2] + hdt * p->a[2];
-      p->u = u_hdt + hdt * u_dt;
-
-      /* Set the new particle-specific time step. */
-      if (dt > 0.0f) {
-        float dt_curr = dt;
-        j = (int)(pdt * idt);
-        while (j > 1) {
-          dt_curr *= 2.0f;
-          j >>= 1;
-        }
-        xp->dt_curr = dt_curr;
-      }
-    }
-
-    /* Get the smallest/largest dt. */
-    dt_min = fminf(dt_min, pdt);
-    dt_max = fmaxf(dt_max, pdt);
-
-    /* Collect total energy. */
-    ekin += 0.5 * m *
-            (v_hdt[0] * v_hdt[0] + v_hdt[1] * v_hdt[1] + v_hdt[2] * v_hdt[2]);
-    epot += m * u_hdt;
-
-    /* Collect momentum */
-    mom[0] += m * v_hdt[0];
-    mom[1] += m * v_hdt[1];
-    mom[2] += m * v_hdt[2];
-
-    /* Collect angular momentum */
-    ang[0] += m * (x[1] * v_hdt[2] - x[2] * v_hdt[1]);
-    ang[1] += m * (x[2] * v_hdt[0] - x[0] * v_hdt[2]);
-    ang[2] += m * (x[0] * v_hdt[1] - x[1] * v_hdt[0]);
-
-    /* Collect entropic function */
-    // lent += u * pow( p->rho, 1.f-const_gamma );
-  }
-
-#ifdef TIMER_VERBOSE
-  message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-          c->depth, ((double)TIMER_TOC(timer_kick2)) / CPU_TPS * 1000);
-  fflush(stdout);
-#else
-  TIMER_TOC(timer_kick2);
-#endif
-
-  /* Store the computed values in the cell. */
-  c->dt_min = dt_min;
-  c->dt_max = dt_max;
-  c->updated = count;
-  c->ekin = ekin;
-  c->epot = epot;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang[0] = ang[0];
-  c->ang[1] = ang[1];
-  c->ang[2] = ang[2];
-}
-
-/**
- * @brief Mapping function to set dt_min and dt_max, do the first
- * kick.
- */
-
-void runner_dokick1(struct runner *r, struct cell *c) {
-
-  int j, k;
-  struct engine *e = r->e;
-  float pdt, dt_step = e->dt_step, dt = e->dt, hdt = dt / 2;
-  float dt_min, dt_max, h_max, dx, dx_max;
-  float a[3], v[3], u, u_dt, h, h_dt, w, rho;
-  double x[3], x_old[3];
-  struct part *restrict p, *restrict parts = c->parts;
-  struct xpart *restrict xp, *restrict xparts = c->xparts;
-
   /* No children? */
   if (!c->split) {
 
-    /* Init the min/max counters. */
-    dt_min = FLT_MAX;
-    dt_max = 0.0f;
-    h_max = 0.0f;
-    dx_max = 0.0f;
+    /* Loop over all the particles in the cell */
+    for (k = 0; k < nr_parts; k++) {
 
-    /* Loop over parts. */
-    for (k = 0; k < c->count; k++) {
-
-      /* Get a handle on the kth particle. */
+      /* Get a handle on the part. */
       p = &parts[k];
       xp = &xparts[k];
 
-      /* Load the data locally. */
-      a[0] = p->a[0];
-      a[1] = p->a[1];
-      a[2] = p->a[2];
-      v[0] = p->v[0];
-      v[1] = p->v[1];
-      v[2] = p->v[2];
-      x[0] = p->x[0];
-      x[1] = p->x[1];
-      x[2] = p->x[2];
-      x_old[0] = xp->x_old[0];
-      x_old[1] = xp->x_old[1];
-      x_old[2] = xp->x_old[2];
+      if (p->id == 0) message("drift !");
+
+      /* Get local copies of particle data. */
       h = p->h;
-      u = p->u;
-      h_dt = p->force.h_dt;
-      u_dt = p->force.u_dt;
-      pdt = p->dt;
+      ih = 1.0f / h;
 
-      /* Store the min/max dt. */
-      dt_min = fminf(dt_min, pdt);
-      dt_max = fmaxf(dt_max, pdt);
+      /* Drift... */
+      p->x[0] += xp->v_full[0] * dt;
+      p->x[1] += xp->v_full[1] * dt;
+      p->x[2] += xp->v_full[2] * dt;
 
-      /* Update the half-step velocities from the current velocities. */
-      xp->v_hdt[0] = v[0] + hdt * a[0];
-      xp->v_hdt[1] = v[1] + hdt * a[1];
-      xp->v_hdt[2] = v[2] + hdt * a[2];
-      xp->u_hdt = u + hdt * u_dt;
+      /* Predict velocities */
+      p->v[0] += p->a[0] * dt;
+      p->v[1] += p->a[1] * dt;
+      p->v[2] += p->a[2] * dt;
 
-      /* Move the particles with the velocities at the half-step. */
-      p->x[0] = x[0] += dt * xp->v_hdt[0];
-      p->x[1] = x[1] += dt * xp->v_hdt[1];
-      p->x[2] = x[2] += dt * xp->v_hdt[2];
-      dx = sqrtf((x[0] - x_old[0]) * (x[0] - x_old[0]) +
-                 (x[1] - x_old[1]) * (x[1] - x_old[1]) +
-                 (x[2] - x_old[2]) * (x[2] - x_old[2]));
-      dx_max = fmaxf(dx_max, dx);
-
-      /* Update positions and energies at the half-step. */
-      p->v[0] = v[0] + dt * a[0];
-      p->v[1] = v[1] + dt * a[1];
-      p->v[2] = v[2] + dt * a[2];
-      w = u_dt / u * dt;
+      /* Predict internal energy */
+      w = p->force.u_dt / p->u * dt;
       if (fabsf(w) < 0.01f)
-        p->u = u *=
+        u = p->u *=
+            1.0f +
+            w * (1.0f + w * (0.5f + w * (1.0f / 6.0f +
+                                         1.0f / 24.0f * w))); /* 1st order
+                                                                 expansion of
+                                                                 exp(w) */
+      else
+        u = p->u *= expf(w);
+
+      /* Predict smoothing length */
+      w = p->force.h_dt * ih * dt;
+      if (fabsf(w) < 0.01f)
+        h = p->h *=
             1.0f +
             w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
       else
-        p->u = u *= expf(w);
-      w = h_dt / h * dt;
-      if (fabsf(w) < 0.01f)
-        p->h = h *=
+        h = p->h *= expf(w);
+
+      /* Predict density */
+      w = -3.0f * p->force.h_dt * ih * dt;
+      if (fabsf(w) < 0.1f)
+        rho = p->rho *=
             1.0f +
             w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
       else
-        p->h = h *= expf(w);
-      h_max = fmaxf(h_max, h);
+        rho = p->rho *= expf(w);
 
-      /* Integrate other values if this particle will not be updated. */
-      /* Init fields for density calculation. */
-      if (pdt > dt_step) {
-        float w = -3.0f * h_dt / h * dt;
-        if (fabsf(w) < 0.1f)
-          rho = p->rho *=
-              1.0f +
-              w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
-        else
-          rho = p->rho *= expf(w);
-        p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (rho * xp->omega);
-      } else {
-        p->density.wcount = 0.0f;
-        p->density.wcount_dh = 0.0f;
-        p->rho = 0.0f;
-        p->rho_dh = 0.0f;
-        p->density.div_v = 0.0f;
-        for (j = 0; j < 3; ++j) p->density.curl_v[j] = 0.0f;
-      }
+      /* Predict gradient term */
+      p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (rho * xp->omega);
+
     }
-
   }
 
-  /* Otherwise, agregate data from children. */
-  else {
 
-    /* Init with the first non-null child. */
-    dt_min = FLT_MAX;
-    dt_max = 0.0f;
-    h_max = 0.0f;
-    dx_max = 0.0f;
-
-    /* Loop over the progeny. */
-    for (k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) {
-        if (c->count < space_subsize) runner_dokick1(r, c->progeny[k]);
-        dt_min = fminf(dt_min, c->progeny[k]->dt_min);
-        dt_max = fmaxf(dt_max, c->progeny[k]->dt_max);
-        h_max = fmaxf(h_max, c->progeny[k]->h_max);
-        dx_max = fmaxf(dx_max, c->progeny[k]->dx_max);
-      }
+  if (timer) {
+#ifdef TIMER_VERBOSE
+    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
+            c->depth, ((double)TIMER_TOC(timer_drift)) / CPU_TPS * 1000);
+    fflush(stdout);
+#else
+    TIMER_TOC(timer_drift);
+#endif
   }
 
-  /* Store the values. */
-  c->dt_min = dt_min;
-  c->dt_max = dt_max;
-  c->h_max = h_max;
-  c->dx_max = dx_max;
 }
 
 /**
@@ -970,14 +848,16 @@ void runner_dokick1(struct runner *r, struct cell *c) {
 void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   int k, count = 0, nr_parts = c->count, updated;
-  float dt_min = FLT_MAX, dt_max = 0.0f;
-  float h_max, dx, dx_max;
+  float new_dt = 0.0f, new_dt_hydro = 0.0f, new_dt_grav = 0.0f,
+        current_dt = 0.0f;
+  float t_start, t_end, t_current = r->e->time, dt, t_end_min = FLT_MAX,
+                        t_end_max = 0.;
+  float dt_max_timeline = r->e->timeEnd - r->e->timeBegin, dt_timeline;
+  float dt_min = r->e->dt_min, dt_max = r->e->dt_max;
+  float h_max, dx_max;
   double ekin = 0.0, epot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  float x[3], x_old[3], v_hdt[3], a[3], u, u_hdt, h, pdt, m, w;
-  float dt = r->e->dt, hdt = 0.5f * dt;
-  float dt_cfl, dt_h_change, dt_u_change, dt_new;
-  float h_dt, u_dt;
+  float m, x[3], v_full[3];
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
 
@@ -987,118 +867,102 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   if (!c->split) {
 
     /* Init the min/max counters. */
-    dt_min = FLT_MAX;
-    dt_max = 0.0f;
     h_max = 0.0f;
     dx_max = 0.0f;
 
-    /* Loop over the particles and kick them. */
+    /* Loop over the particles and kick the active ones. */
     for (k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
       p = &parts[k];
       xp = &xparts[k];
-
-      /* Get local copies of particle data. */
-      pdt = p->dt;
-      u_dt = p->force.u_dt;
-      h = p->h;
       m = p->mass;
-      x[0] = p->x[0];
-      x[1] = p->x[1];
-      x[2] = p->x[2];
-      a[0] = p->a[0];
-      a[1] = p->a[1];
-      a[2] = p->a[2];
-      x_old[0] = xp->x_old[0];
-      x_old[1] = xp->x_old[1];
-      x_old[2] = xp->x_old[2];
-      v_hdt[0] = xp->v_hdt[0];
-      v_hdt[1] = xp->v_hdt[1];
-      v_hdt[2] = xp->v_hdt[2];
-      u_hdt = xp->u_hdt;
+      x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
-      /* Scale the derivatives if they're freshly computed. */
-      h_dt = p->force.h_dt *= h * 0.333333333f;
-      count += 1;
-      xp->omega = 1.0f + h * p->rho_dh / p->rho * 0.3333333333f;
+      if (p->id == 0)
+        message("Kick ! dt=%f t_beg=%f t_end=%f t_cur=%f", dt, p->t_begin,
+                p->t_end, t_current);
 
-      /* Update the particle's time step. */
-      dt_cfl = const_cfl * h / p->force.v_sig;
-      dt_h_change =
-          (h_dt != 0.0f) ? fabsf(const_ln_max_h_change * h / h_dt) : FLT_MAX;
-      dt_u_change =
-          (u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / u_dt) : FLT_MAX;
-      dt_new = fminf(dt_cfl, fminf(dt_h_change, dt_u_change));
-      if (pdt == 0.0f)
-        p->dt = pdt = dt_new;
-      else
-        p->dt = pdt = fminf(dt_new, 2.0f * pdt);
+      /* If particle needs to be kicked */
+      if (p->t_end <= t_current) {
 
-      /* Get the smallest/largest dt. */
-      dt_min = fminf(dt_min, pdt);
-      dt_max = fmaxf(dt_max, pdt);
+        if (p->id == 0) message("Kicking like a boss");
 
-      /* Step and store the velocity and internal energy. */
-      xp->v_hdt[0] = (v_hdt[0] += dt * a[0]);
-      xp->v_hdt[1] = (v_hdt[1] += dt * a[1]);
-      xp->v_hdt[2] = (v_hdt[2] += dt * a[2]);
-      xp->u_hdt = (u_hdt += dt * u_dt);
+        /* First, finish the force loop */
+        p->force.h_dt *= p->h * 0.333333333f;
 
-      /* Move the particles with the velocitie at the half-step. */
-      p->x[0] = x[0] += dt * v_hdt[0];
-      p->x[1] = x[1] += dt * v_hdt[1];
-      p->x[2] = x[2] += dt * v_hdt[2];
-      dx = sqrtf((x[0] - x_old[0]) * (x[0] - x_old[0]) +
-                 (x[1] - x_old[1]) * (x[1] - x_old[1]) +
-                 (x[2] - x_old[2]) * (x[2] - x_old[2]));
-      dx_max = fmaxf(dx_max, dx);
+        /* Recover the current timestep */
+        current_dt = p->t_end - p->t_begin;
 
-      /* Update positions and energies at the next full step. */
-      p->v[0] = v_hdt[0] + hdt * a[0];
-      p->v[1] = v_hdt[1] + hdt * a[1];
-      p->v[2] = v_hdt[2] + hdt * a[2];
-      w = u_dt / u_hdt * hdt;
-      if (fabsf(w) < 0.01f)
-        p->u = u =
-            u_hdt *
-            (1.0f +
-             w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w))));
-      else
-        p->u = u = u_hdt * expf(w);
-      w = h_dt / h * dt;
-      if (fabsf(w) < 0.01f)
-        p->h = h *=
-            (1.0f +
-             w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w))));
-      else
-        p->h = h *= expf(w);
-      h_max = fmaxf(h_max, h);
+        /* Compute the next timestep */
+        new_dt_hydro = compute_timestep_hydro(p, xp);
+        new_dt_grav = compute_timestep_grav(p, xp);
+
+        new_dt = fminf(new_dt_hydro, new_dt_grav);
+
+        /* Limit timestep increase */
+        if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
+
+        /* Limit timestep within the allowed range */
+        new_dt = fminf(new_dt, dt_max);
+        new_dt = fmaxf(new_dt, dt_min);
+
+        /* Put this timestep on the time line */
+        dt_timeline = dt_max_timeline;
+        while (new_dt < dt_timeline) dt_timeline /= 2.;
+
+        /* Now we have a time step, proceed with the kick */
+        new_dt = dt_timeline;
+
+        /* Compute the time step for this kick */
+        t_start = 0.5f * (p->t_begin + p->t_end);
+        t_end = p->t_end + 0.5f * new_dt;
+        dt = t_end - t_start;
+
+        if (p->id == 0)
+          message("Kick ! dt=%f t_beg=%f t_end=%f", dt, p->t_begin, p->t_end);
+
+        /* Move particle forward in time */
+        p->t_begin = p->t_end;
+        p->t_end = p->t_begin + dt;
+
+        if (p->id == 0)
+          message("Kick ! dt=%f t_beg=%f t_end=%f", dt, p->t_begin, p->t_end);
+
+        /* Kick particles in momentum space */
+        xp->v_full[0] += p->a[0] * dt;
+        xp->v_full[1] += p->a[1] * dt;
+        xp->v_full[2] += p->a[2] * dt;
+
+        p->v[0] = xp->v_full[0] - 0.5f * new_dt * p->a[0];
+        p->v[1] = xp->v_full[1] - 0.5f * new_dt * p->a[1];
+        p->v[2] = xp->v_full[2] - 0.5f * new_dt * p->a[2];
+      }
+
+      /* Now collect quantities for statistics */
+
+      v_full[0] = xp->v_full[0], v_full[1] = xp->v_full[1],
+      v_full[2] = xp->v_full[2];
 
       /* Collect momentum */
-      mom[0] += m * v_hdt[0];
-      mom[1] += m * v_hdt[1];
-      mom[2] += m * v_hdt[2];
+      mom[0] += m * v_full[0];
+      mom[1] += m * v_full[1];
+      mom[2] += m * v_full[2];
 
       /* Collect angular momentum */
-      ang[0] += m * (x[1] * v_hdt[2] - x[2] * v_hdt[1]);
-      ang[1] += m * (x[2] * v_hdt[0] - x[0] * v_hdt[2]);
-      ang[2] += m * (x[0] * v_hdt[1] - x[1] * v_hdt[0]);
+      ang[0] += m * (x[1] * v_full[2] - x[2] * v_full[1]);
+      ang[1] += m * (x[2] * v_full[0] - x[0] * v_full[2]);
+      ang[2] += m * (x[0] * v_full[1] - x[1] * v_full[0]);
 
       /* Collect total energy. */
-      ekin += 0.5 * m *
-              (v_hdt[0] * v_hdt[0] + v_hdt[1] * v_hdt[1] + v_hdt[2] * v_hdt[2]);
-      epot += m * u_hdt;
+      ekin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
+                         v_full[2] * v_full[2]);
+      epot += m * xp->u_hdt;
 
-      /* Init fields for density calculation. */
-      p->density.wcount = 0.0f;
-      p->density.wcount_dh = 0.0f;
-      p->rho = 0.0f;
-      p->rho_dh = 0.0f;
-      p->density.div_v = 0.0f;
-      p->density.curl_v[0] = 0.0f;
-      p->density.curl_v[1] = 0.0f;
-      p->density.curl_v[2] = 0.0f;
+      /* Minimal time for next end of time-step */
+      if (p->t_end < t_end_min) t_end_min = p->t_end;
+
+      if (p->t_end > t_end_max) t_end_max = p->t_end;
     }
 
   }
@@ -1107,8 +971,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   else {
 
     /* Init with the first non-null child. */
-    dt_min = FLT_MAX;
-    dt_max = 0.0f;
     h_max = 0.0f;
     dx_max = 0.0f;
     updated = 0;
@@ -1126,8 +988,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
         runner_dokick(r, cp, 0);
-        dt_min = fminf(dt_min, cp->dt_min);
-        dt_max = fmaxf(dt_max, cp->dt_max);
         h_max = fmaxf(h_max, cp->h_max);
         dx_max = fmaxf(dx_max, cp->dx_max);
         updated += cp->count;
@@ -1139,12 +999,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         ang[0] += cp->ang[0];
         ang[1] += cp->ang[1];
         ang[2] += cp->ang[2];
+        if (cp->t_end_min < t_end_min) t_end_min = cp->t_end_min;
+        if (cp->t_end_max > t_end_max) t_end_max = cp->t_end_max;
       }
   }
 
   /* Store the values. */
-  c->dt_min = dt_min;
-  c->dt_max = dt_max;
   c->h_max = h_max;
   c->dx_max = dx_max;
   c->updated = count;
@@ -1156,17 +1016,29 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   c->ang[0] = ang[0];
   c->ang[1] = ang[1];
   c->ang[2] = ang[2];
+  c->t_end_min = t_end_min;
+  c->t_end_max = t_end_max;
+
+  // assert(t_end_min > 0.);
+
+  if (t_end_min == 0.) {
+    message("oO");
+    abort();
+  }
 
   if (timer) {
 #ifdef TIMER_VERBOSE
     message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_kick2)) / CPU_TPS * 1000);
+            c->depth, ((double)TIMER_TOC(timer_kick)) / CPU_TPS * 1000);
     fflush(stdout);
 #else
-    TIMER_TOC(timer_kick2);
+    TIMER_TOC(timer_kick);
 #endif
   }
 }
+
+
+
 
 /**
  * @brief The #runner main thread routine.
@@ -1252,25 +1124,25 @@ void *runner_main(void *data) {
           else
             error("Unknown task subtype.");
           break;
+        case task_type_init:
+          runner_doinit(r, ci);
+          break;
         case task_type_ghost:
           runner_doghost(r, ci);
           break;
-        case task_type_kick1:
-          runner_dokick1(r, ci);
+        case task_type_drift:
+          runner_dodrift(r, ci,1);
           break;
-        case task_type_kick2:
-          if (e->policy & engine_policy_fixdt)
+        case task_type_kick:
             runner_dokick(r, ci, 1);
-          else
-            runner_dokick2(r, ci);
           break;
         case task_type_send:
           break;
         case task_type_recv:
           parts = ci->parts;
           nr_parts = ci->count;
-          for (k = 0; k < nr_parts; k++) parts[k].dt = FLT_MAX;
-          ci->dt_min = ci->dt_max = FLT_MAX;
+          ci->t_end_min = ci->t_end_max = FLT_MAX;
+          for (k = 0; k < nr_parts; k++) parts[k].t_end = FLT_MAX;
           break;
         case task_type_grav_pp:
           if (t->cj == NULL)

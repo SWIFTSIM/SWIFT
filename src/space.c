@@ -1123,9 +1123,9 @@ void space_init(struct space *s, double dim[3], struct part *parts, int N,
   for (int k = 0; k < N; k++) {
     struct part *p = &parts[k];
     struct xpart *xp = &s->xparts[k];
-    xp->v_hdt[0] = p->v[0];
-    xp->v_hdt[1] = p->v[1];
-    xp->v_hdt[2] = p->v[2];
+    xp->v_full[0] = p->v[0];
+    xp->v_full[1] = p->v[1];
+    xp->v_full[2] = p->v[2];
     xp->u_hdt = p->u;
   }
 
