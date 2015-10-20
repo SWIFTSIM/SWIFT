@@ -20,13 +20,15 @@ AM_CFLAGS = -I../src -DCPU_TPS=2.67e9 $(HDF5_CPPFLAGS)
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testReading.sh
+TESTS = testGreetings testReading.sh testTimeIntegration
 
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading
+check_PROGRAMS = testGreetings testReading testTimeIntegration
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
 
 testReading_SOURCES = testReading.c
+
+testTimeIntegration_SOURCES = testTimeIntegration.c
