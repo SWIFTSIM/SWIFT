@@ -850,8 +850,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   int k, count = 0, nr_parts = c->count, updated;
   float new_dt = 0.0f, new_dt_hydro = 0.0f, new_dt_grav = 0.0f,
         current_dt = 0.0f;
-  float t_start, t_end, t_current = r->e->time, dt, t_end_min = FLT_MAX,
-                        t_end_max = 0.;
+  float t_start, t_end, t_current = r->e->time, t_end_min = FLT_MAX,
+    t_end_max = 0., dt;
   float dt_max_timeline = r->e->timeEnd - r->e->timeBegin, dt_timeline;
   float dt_min = r->e->dt_min, dt_max = r->e->dt_max;
   float h_max, dx_max;
@@ -880,7 +880,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
       if (p->id == 0)
-        message("Kick ! dt=%f t_beg=%f t_end=%f t_cur=%f", dt, p->t_begin,
+        message("Kick ! t_beg=%f t_end=%f t_cur=%f", p->t_begin,
                 p->t_end, t_current);
 
       /* If particle needs to be kicked */
