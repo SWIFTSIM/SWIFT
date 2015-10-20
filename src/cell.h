@@ -111,7 +111,7 @@ struct cell {
   int nr_density, nr_force, nr_grav;
 
   /* The ghost task to link density to interactions. */
-  struct task *ghost, *kick1, *kick2;
+  struct task *ghost, *init, *drift, *kick;
 
   /* Task receiving data. */
   struct task *recv_xv, *recv_rho;

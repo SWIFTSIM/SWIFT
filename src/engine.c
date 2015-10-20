@@ -105,15 +105,16 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
       /* Generate the ghost task. */
       c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
-
-      /* Add the kick2 task. */
-      c->kick2 = scheduler_addtask(s, task_type_kick2, task_subtype_none, 0, 0,
+      /* Add the drift task. */
+      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+      /* Add the init task. */
+      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+      /* Add the kick task. */
+      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
-      /* Add the kick1 task if needed. */
-      if (!(e->policy & engine_policy_fixdt))
-        c->kick1 = scheduler_addtask(s, task_type_kick1, task_subtype_none, 0,
-                                     0, c, NULL, 0);
     }
   }
 
@@ -361,7 +362,7 @@ void engine_repartition(struct engine *e) {
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
         t->type != task_type_sub && t->type != task_type_ghost &&
-        t->type != task_type_kick1 && t->type != task_type_kick2)
+        t->type != task_type_kick1 && t->type != task_type_kick)
       continue;
 
     /* Get the task weight. */
@@ -392,7 +393,7 @@ void engine_repartition(struct engine *e) {
 
     /* Different weights for different tasks. */
     if (t->type == task_type_ghost || t->type == task_type_kick1 ||
-        t->type == task_type_kick2) {
+        t->type == task_type_kick) {
 
       /* Particle updates add only to vertex weight. */
       weights_v[cid] += w;
@@ -594,28 +595,29 @@ void engine_repartition(struct engine *e) {
 #endif
 }
 
-/**
- * @brief Add up/down gravity tasks to a cell hierarchy.
- *
- * @param e The #engine.
- * @param c The #cell
- * @param up The upward gravity #task.
- * @param down The downward gravity #task.
- */
 
-void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
-                          struct task *down) {
+/* /\** */
+/*  * @brief Add up/down gravity tasks to a cell hierarchy. */
+/*  * */
+/*  * @param e The #engine. */
+/*  * @param c The #cell */
+/*  * @param up The upward gravity #task. */
+/*  * @param down The downward gravity #task. */
+/*  *\/ */
 
-  /* Link the tasks to this cell. */
-  c->grav_up = up;
-  c->grav_down = down;
+/* void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up, */
+/*                           struct task *down) { */
 
-  /* Recurse? */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_addtasks_grav(e, c->progeny[k], up, down);
-}
+/*   /\* Link the tasks to this cell. *\/ */
+/*   c->grav_up = up; */
+/*   c->grav_down = down; */
+
+/*   /\* Recurse? *\/ */
+/*   if (c->split) */
+/*     for (int k = 0; k < 8; k++) */
+/*       if (c->progeny[k] != NULL) */
+/*         engine_addtasks_grav(e, c->progeny[k], up, down); */
+/* } */
 
 /**
  * @brief Add send tasks to a hierarchy of cells.
@@ -651,8 +653,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
     /* The send_rho task depends on the cell's ghost task. */
     scheduler_addunlock(s, ci->super->ghost, t_rho);
 
-    /* The send_rho task should unlock the super-cell's kick2 task. */
-    scheduler_addunlock(s, t_rho, ci->super->kick2);
+    /* The send_rho task should unlock the super-cell's kick task. */
+    scheduler_addunlock(s, t_rho, ci->super->kick);
 
     /* The send_xv task should unlock the super-cell's ghost task. */
     scheduler_addunlock(s, t_xv, ci->super->ghost);
@@ -1026,16 +1028,16 @@ void engine_maketasks(struct engine *e) {
         }
       }
 
-  /* Add the gravity mm tasks. */
-  for (i = 0; i < nr_cells; i++)
-    if (cells[i].gcount > 0) {
-      scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                        &cells[i], NULL, 0);
-      for (j = i + 1; j < nr_cells; j++)
-        if (cells[j].gcount > 0)
-          scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                            &cells[i], &cells[j], 0);
-    }
+  /* /\* Add the gravity mm tasks. *\/ */
+  /* for (i = 0; i < nr_cells; i++) */
+  /*   if (cells[i].gcount > 0) { */
+  /*     scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
+  /*                       &cells[i], NULL, 0); */
+  /*     for (j = i + 1; j < nr_cells; j++) */
+  /*       if (cells[j].gcount > 0) */
+  /*         scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
+  /*                           &cells[i], &cells[j], 0); */
+  /*   } */
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
@@ -1048,21 +1050,21 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
-  /* Add the gravity up/down tasks at the top-level cells and push them down. */
-  for (k = 0; k < nr_cells; k++)
-    if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
+  /* /\* Add the gravity up/down tasks at the top-level cells and push them down. *\/ */
+  /* for (k = 0; k < nr_cells; k++) */
+  /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
 
-      /* Create tasks at top level. */
-      struct task *up =
-          scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0, 0,
-                            &cells[k], NULL, 0);
-      struct task *down =
-          scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0, 0,
-                            &cells[k], NULL, 0);
+  /*     /\* Create tasks at top level. *\/ */
+  /*     struct task *up = */
+  /*         scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0, 0, */
+  /*                           &cells[k], NULL, 0); */
+  /*     struct task *down = */
+  /*         scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0, 0, */
+  /*                           &cells[k], NULL, 0); */
 
-      /* Push tasks down the cell hierarchy. */
-      engine_addtasks_grav(e, &cells[k], up, down);
-    }
+  /*     /\* Push tasks down the cell hierarchy. *\/ */
+  /*     engine_addtasks_grav(e, &cells[k], up, down); */
+  /*   } */
 
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
@@ -1110,25 +1112,25 @@ void engine_maketasks(struct engine *e) {
       }
     }
 
-    /* Link gravity multipole tasks to the up/down tasks. */
-    if (t->type == task_type_grav_mm ||
-        (t->type == task_type_sub && t->subtype == task_subtype_grav)) {
-      atomic_inc(&t->ci->nr_tasks);
-      scheduler_addunlock(sched, t->ci->grav_up, t);
-      scheduler_addunlock(sched, t, t->ci->grav_down);
-      if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) {
-        scheduler_addunlock(sched, t->cj->grav_up, t);
-        scheduler_addunlock(sched, t, t->cj->grav_down);
-      }
-    }
+    /* /\* Link gravity multipole tasks to the up/down tasks. *\/ */
+    /* if (t->type == task_type_grav_mm || */
+    /*     (t->type == task_type_sub && t->subtype == task_subtype_grav)) { */
+    /*   atomic_inc(&t->ci->nr_tasks); */
+    /*   scheduler_addunlock(sched, t->ci->grav_up, t); */
+    /*   scheduler_addunlock(sched, t, t->ci->grav_down); */
+    /*   if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) { */
+    /*     scheduler_addunlock(sched, t->cj->grav_up, t); */
+    /*     scheduler_addunlock(sched, t, t->cj->grav_down); */
+    /*   } */
+    /* } */
   }
 
-  /* Append a ghost task to each cell, and add kick2 tasks to the
+  /* Append a ghost task to each cell, and add kick tasks to the
      super cells. */
   for (k = 0; k < nr_cells; k++) engine_mkghosts(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
-     Each force task depends on the cell ghosts and unlocks the kick2 task
+     Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
   kk = sched->nr_tasks;
   for (k = 0; k < kk; k++) {
@@ -1145,7 +1147,7 @@ void engine_maketasks(struct engine *e) {
       t2 = scheduler_addtask(sched, task_type_self, task_subtype_force, 0, 0,
                              t->ci, NULL, 0);
       scheduler_addunlock(sched, t->ci->super->ghost, t2);
-      scheduler_addunlock(sched, t2, t->ci->super->kick2);
+      scheduler_addunlock(sched, t2, t->ci->super->kick);
       t->ci->force = engine_addlink(e, t->ci->force, t2);
       atomic_inc(&t->ci->nr_force);
     }
@@ -1157,12 +1159,12 @@ void engine_maketasks(struct engine *e) {
       if (t->ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->ci->super->kick2);
+        scheduler_addunlock(sched, t2, t->ci->super->kick);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
         scheduler_addunlock(sched, t, t->cj->super->ghost);
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->cj->super->kick2);
+        scheduler_addunlock(sched, t2, t->cj->super->kick);
       }
       t->ci->force = engine_addlink(e, t->ci->force, t2);
       atomic_inc(&t->ci->nr_force);
@@ -1177,13 +1179,13 @@ void engine_maketasks(struct engine *e) {
       if (t->ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->ci->super->kick2);
+        scheduler_addunlock(sched, t2, t->ci->super->kick);
       }
       if (t->cj != NULL && t->cj->nodeID == nodeID &&
           t->ci->super != t->cj->super) {
         scheduler_addunlock(sched, t, t->cj->super->ghost);
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->cj->super->kick2);
+        scheduler_addunlock(sched, t2, t->cj->super->kick);
       }
       t->ci->force = engine_addlink(e, t->ci->force, t2);
       atomic_inc(&t->ci->nr_force);
@@ -1193,9 +1195,9 @@ void engine_maketasks(struct engine *e) {
       }
     }
 
-    /* Kick2 tasks should rely on the grav_down tasks of their cell. */
-    else if (t->type == task_type_kick2 && t->ci->grav_down != NULL)
-      scheduler_addunlock(sched, t->ci->grav_down, t);
+    /* /\* Kick tasks should rely on the grav_down tasks of their cell. *\/ */
+    /* else if (t->type == task_type_kick && t->ci->grav_down != NULL) */
+    /*   scheduler_addunlock(sched, t->ci->grav_down, t); */
   }
 
 /* Add the communication tasks if MPI is being used. */
@@ -1241,7 +1243,7 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
-  float dt_step = e->dt_step;
+  float t_end = e->time;
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
@@ -1302,7 +1304,7 @@ int engine_marktasks(struct engine *e) {
                (t->type == task_type_sub && t->cj == NULL)) {
 
         /* Set this task's skip. */
-        t->skip = (t->ci->dt_min > dt_step);
+        t->skip = (t->ci->t_end_min > t_end);
 
       }
 
@@ -1315,7 +1317,7 @@ int engine_marktasks(struct engine *e) {
         cj = t->cj;
 
         /* Set this task's skip. */
-        t->skip = (ci->dt_min > dt_step && cj->dt_min > dt_step);
+        t->skip = (ci->t_end_min > t_end && cj->t_end_min > t_end);
 
         /* Too much particle movement? */
         if (t->tight &&
@@ -1338,8 +1340,16 @@ int engine_marktasks(struct engine *e) {
 
       }
 
-      /* Kick2? */
-      else if (t->type == task_type_kick2)
+      /* Kick? */
+      else if (t->type == task_type_kick)
+        t->skip = 0;
+
+      /* Drift? */
+      else if (t->type == task_type_drift)
+        t->skip = 0;
+
+      /* Init? */
+      else if (t->type == task_type_init)
         t->skip = 0;
 
       /* None? */
@@ -1511,16 +1521,16 @@ void engine_barrier(struct engine *e, int tid) {
  * @brief Mapping function to collect the data from the second kick.
  */
 
-void engine_collect_kick2(struct cell *c) {
+void engine_collect_kick(struct cell *c) {
 
   int k, updated = 0;
-  float dt_min = FLT_MAX, dt_max = 0.0f;
+  float t_end_min = FLT_MAX, t_end_max = 0.0f;
   double ekin = 0.0, epot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   struct cell *cp;
 
   /* If I am a super-cell, return immediately. */
-  if (c->kick2 != NULL || c->count == 0) return;
+  if (c->kick != NULL || c->count == 0) return;
 
   /* If this cell is not split, I'm in trouble. */
   if (!c->split) error("Cell has no super-cell.");
@@ -1528,9 +1538,9 @@ void engine_collect_kick2(struct cell *c) {
   /* Collect the values from the progeny. */
   for (k = 0; k < 8; k++)
     if ((cp = c->progeny[k]) != NULL) {
-      engine_collect_kick2(cp);
-      dt_min = fminf(dt_min, cp->dt_min);
-      dt_max = fmaxf(dt_max, cp->dt_max);
+      engine_collect_kick(cp);
+      t_end_min = fminf(t_end_min, cp->t_end_min);
+      t_end_max = fmaxf(t_end_max, cp->t_end_max);
       updated += cp->updated;
       ekin += cp->ekin;
       epot += cp->epot;
@@ -1543,8 +1553,8 @@ void engine_collect_kick2(struct cell *c) {
     }
 
   /* Store the collected values in the cell. */
-  c->dt_min = dt_min;
-  c->dt_max = dt_max;
+  c->t_end_min = t_end_min;
+  c->t_end_max = t_end_max;
   c->updated = updated;
   c->ekin = ekin;
   c->epot = epot;
@@ -1723,7 +1733,7 @@ void hassorted(struct cell *c) {
 void engine_step(struct engine *e) {
 
   int k;
-  float dt = e->dt, dt_step, dt_max = 0.0f, dt_min = FLT_MAX;
+  float t_end_min = FLT_MAX, t_end_max = 0.f;
   double epot = 0.0, ekin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
@@ -1732,39 +1742,6 @@ void engine_step(struct engine *e) {
   struct space *s = e->s;
 
   TIMER_TIC2
-
-  /* Get the maximum dt. */
-  if (e->policy & engine_policy_multistep) {
-    dt_step = 2.0f * dt;
-    for (k = 0; k < 32 && (e->step & (1 << k)) == 0; k++) dt_step *= 2;
-  } else
-    dt_step = FLT_MAX;
-
-  /* Set the maximum dt. */
-  e->dt_step = dt_step;
-  e->s->dt_step = dt_step;
-  // message( "dt_step set to %.3e (dt=%.3e)." , dt_step , e->dt );
-  // fflush(stdout);
-
-  // printParticle( parts , 432626 );
-
-  /* First kick. */
-  if (e->step == 0 || !(e->policy & engine_policy_fixdt)) {
-    TIMER_TIC
-    engine_launch(e, (e->nr_threads > 8) ? 8 : e->nr_threads,
-                  (1 << task_type_kick1) | (1 << task_type_link));
-    TIMER_TOC(timer_kick1);
-  }
-
-  /* Check if all the kick1 threads have executed. */
-  /* for ( k = 0 ; k < e->sched.nr_tasks ; k++ )
-      if ( e->sched.tasks[k].type == task_type_kick1 &&
-           e->sched.tasks[k].toc == 0 )
-          error( "Not all kick1 tasks completed." ); */
-
-  // for(k=0; k<10; ++k)
-  //   printParticle(parts, k);
-  // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
@@ -1780,10 +1757,10 @@ void engine_step(struct engine *e) {
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
                     (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_ghost) | (1 << task_type_kick2) |
+                    (1 << task_type_ghost) | (1 << task_type_kick) |
                     (1 << task_type_send) | (1 << task_type_recv) |
-                    (1 << task_type_grav_pp) | (1 << task_type_grav_mm) |
-                    (1 << task_type_grav_up) | (1 << task_type_grav_down) |
+                    /* (1 << task_type_grav_pp) | (1 << task_type_grav_mm) | */
+                    /* (1 << task_type_grav_up) | (1 << task_type_grav_down) | */
                     (1 << task_type_link));
 
   TIMER_TOC(timer_runners);
@@ -1801,9 +1778,9 @@ void engine_step(struct engine *e) {
   for (k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
       c = &s->cells[k];
-      engine_collect_kick2(c);
-      dt_min = fminf(dt_min, c->dt_min);
-      dt_max = fmaxf(dt_max, c->dt_max);
+      engine_collect_kick(c);
+      t_end_min = fminf(t_end_min, c->t_end_min);
+      t_end_max = fmaxf(t_end_max, c->t_end_max);
       ekin += c->ekin;
       epot += c->epot;
       count += c->updated;
@@ -1845,8 +1822,6 @@ if ( e->nodeID == 0 )
     message( "nr_parts=%i." , nr_parts ); */
 #endif
 
-  e->dt_min = dt_min;
-  e->dt_max = dt_max;
   e->count_step = count;
   e->ekin = ekin;
   e->epot = epot;
@@ -1864,51 +1839,51 @@ if ( e->nodeID == 0 )
   /* Increase the step. */
   e->step += 1;
 
-  /* Does the time step need adjusting? */
-  if (e->policy & engine_policy_fixdt) {
-    dt = e->dt_orig;
-  } else {
-    if (dt == 0) {
-      e->nullstep += 1;
-      if (e->dt_orig > 0.0) {
-        dt = e->dt_orig;
-        while (dt_min < dt) dt *= 0.5;
-        while (dt_min > 2 * dt) dt *= 2.0;
-      } else
-        dt = dt_min;
-      for (k = 0; k < s->nr_parts; k++) {
-        /* struct part *p = &s->parts[k];
-        struct xpart *xp = &s->xparts[k];
-        float dt_curr = dt;
-        for ( int j = (int)( p->dt / dt ) ; j > 1 ; j >>= 1 )
-            dt_curr *= 2.0f;
-        xp->dt_curr = dt_curr; */
-        s->parts[k].dt = dt;
-        s->xparts[k].dt_curr = dt;
-      }
-      // message( "dt_min=%.3e, adjusting time step to dt=%e." , dt_min , e->dt
-      // );
-    } else {
-      while (dt_min < dt) {
-        dt *= 0.5;
-        e->step *= 2;
-        e->nullstep *= 2;
-        // message( "dt_min dropped below time step, adjusting to dt=%e." ,
-        // e->dt );
-      }
-      while (dt_min > 2 * dt && (e->step & 1) == 0) {
-        dt *= 2.0;
-        e->step /= 2;
-        e->nullstep /= 2;
-        // message( "dt_min is larger than twice the time step, adjusting to
-        // dt=%e." , e->dt );
-      }
-    }
-  }
-  e->dt = dt;
+  /* /\* Does the time step need adjusting? *\/ */
+  /* if (e->policy & engine_policy_fixdt) { */
+  /*   dt = e->dt_orig; */
+  /* } else { */
+  /*   if (dt == 0) { */
+  /*     e->nullstep += 1; */
+  /*     if (e->dt_orig > 0.0) { */
+  /*       dt = e->dt_orig; */
+  /*       while (dt_min < dt) dt *= 0.5; */
+  /*       while (dt_min > 2 * dt) dt *= 2.0; */
+  /*     } else */
+  /*       dt = dt_min; */
+  /*     for (k = 0; k < s->nr_parts; k++) { */
+  /*       /\* struct part *p = &s->parts[k]; */
+  /*       struct xpart *xp = &s->xparts[k]; */
+  /*       float dt_curr = dt; */
+  /*       for ( int j = (int)( p->dt / dt ) ; j > 1 ; j >>= 1 ) */
+  /*           dt_curr *= 2.0f; */
+  /*       xp->dt_curr = dt_curr; *\/ */
+  /*       s->parts[k].dt = dt; */
+  /*       s->xparts[k].dt_curr = dt; */
+  /*     } */
+  /*     // message( "dt_min=%.3e, adjusting time step to dt=%e." , dt_min , e->dt */
+  /*     // ); */
+  /*   } else { */
+  /*     while (dt_min < dt) { */
+  /*       dt *= 0.5; */
+  /*       e->step *= 2; */
+  /*       e->nullstep *= 2; */
+  /*       // message( "dt_min dropped below time step, adjusting to dt=%e." , */
+  /*       // e->dt ); */
+  /*     } */
+  /*     while (dt_min > 2 * dt && (e->step & 1) == 0) { */
+  /*       dt *= 2.0; */
+  /*       e->step /= 2; */
+  /*       e->nullstep /= 2; */
+  /*       // message( "dt_min is larger than twice the time step, adjusting to */
+  /*       // dt=%e." , e->dt ); */
+  /*     } */
+  /*   } */
+  /* } */
+  /* e->dt = dt; */
 
-  /* Set the system time. */
-  e->time = dt * (e->step - e->nullstep);
+  /* /\* Set the system time. *\/ */
+  /* e->time = dt * (e->step - e->nullstep); */
 
   TIMER_TOC2(timer_step);
 }
@@ -2075,10 +2050,9 @@ void engine_split(struct engine *e, int *grid) {
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy) {
+                 int nr_queues, int nr_nodes, int nodeID, int policy, float timeBegin, float timeEnd) {
 
   int k;
-  float dt_min = dt;
 #if defined(HAVE_SETAFFINITY)
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   int i, j, cpuid[nr_cores];
@@ -2153,27 +2127,27 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->barrier_launch = 0;
   e->barrier_launchcount = 0;
 
-  /* Run through the parts and get the minimum time step. */
-  e->dt_orig = dt;
-  for (k = 0; k < s->nr_parts; k++)
-    if (s->parts[k].dt < dt_min) dt_min = s->parts[k].dt;
-  if (dt_min == 0.0f)
-    dt = 0.0f;
-  else
-    while (dt > dt_min) dt *= 0.5f;
-  e->dt = dt;
+  /* /\* Run through the parts and get the minimum time step. *\/ */
+  /* e->dt_orig = dt; */
+  /* for (k = 0; k < s->nr_parts; k++) */
+  /*   if (s->parts[k].dt < dt_min) dt_min = s->parts[k].dt; */
+  /* if (dt_min == 0.0f) */
+  /*   dt = 0.0f; */
+  /* else */
+  /*   while (dt > dt_min) dt *= 0.5f; */
+  /* e->dt = dt; */
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, nr_queues, scheduler_flag_steal, e->nodeID);
   s->nr_queues = nr_queues;
 
-  /* Append a kick1 task to each cell. */
-  scheduler_reset(&e->sched, s->tot_cells);
-  for (k = 0; k < s->nr_cells; k++)
-    s->cells[k].kick1 =
-        scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
-                          &s->cells[k], NULL, 0);
-  scheduler_ranktasks(&e->sched);
+  /* /\* Append a kick1 task to each cell. *\/ */
+  /* scheduler_reset(&e->sched, s->tot_cells); */
+  /* for (k = 0; k < s->nr_cells; k++) */
+  /*   s->cells[k].kick1 = */
+  /*       scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0, */
+  /*                         &s->cells[k], NULL, 0); */
+  /* scheduler_ranktasks(&e->sched); */
 
   /* Allocate and init the threads. */
   if ((e->runners =
