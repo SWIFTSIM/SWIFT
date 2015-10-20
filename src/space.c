@@ -902,7 +902,7 @@ void space_map_cells_pre(struct space *s, int full,
 void space_split(struct space *s, struct cell *c) {
 
   int k, count = c->count, gcount = c->gcount, maxdepth = 0;
-  float h, h_max = 0.0f, dt, dt_min = c->parts[0].dt, dt_max = dt_min;
+  float h, h_max = 0.0f, t_end_min = FLT_MAX, t_end_max = 0., t_end;
   struct cell *temp;
   struct part *p, *parts = c->parts;
   struct xpart *xp, *xparts = c->xparts;
@@ -951,16 +951,16 @@ void space_split(struct space *s, struct cell *c) {
       } else {
         space_split(s, c->progeny[k]);
         h_max = fmaxf(h_max, c->progeny[k]->h_max);
-        dt_min = fminf(dt_min, c->progeny[k]->dt_min);
-        dt_max = fmaxf(dt_max, c->progeny[k]->dt_max);
+        t_end_min = fminf(t_end_min, c->progeny[k]->t_end_min);
+        t_end_max = fmaxf(t_end_max, c->progeny[k]->t_end_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
 
     /* Set the values for this cell. */
     c->h_max = h_max;
-    c->dt_min = dt_min;
-    c->dt_max = dt_max;
+    c->t_end_min = t_end_min;
+    c->t_end_max = t_end_max;
     c->maxdepth = maxdepth;
 
   }
@@ -981,15 +981,14 @@ void space_split(struct space *s, struct cell *c) {
       xp->x_old[0] = p->x[0];
       xp->x_old[1] = p->x[1];
       xp->x_old[2] = p->x[2];
-      dt = p->dt;
       h = p->h;
       if (h > h_max) h_max = h;
-      if (dt < dt_min) dt_min = dt;
-      if (dt > dt_max) dt_max = dt;
+      if (t_end < t_end_min) t_end_min = t_end;
+      if (t_end > t_end_max) t_end_max = t_end;
     }
     c->h_max = h_max;
-    c->dt_min = dt_min;
-    c->dt_max = dt_max;
+    c->t_end_min = t_end_min;
+    c->t_end_max = t_end_max;
   }
 
   /* Set ownership accorind to the start of the parts array. */
