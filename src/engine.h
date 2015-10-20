@@ -78,14 +78,23 @@ struct engine {
   /* The task scheduler. */
   struct scheduler sched;
 
-  /* The maximum dt to step (current). */
-  float dt_step;
-
-  /* The minimum dt over all particles in the system. */
+  /* The minimum and maximum allowed dt */
   float dt_min, dt_max;
 
-  /* The system time step. */
-  float dt, dt_orig;
+  /* Time of the simulation beginning */
+  float timeBegin;
+
+  /* Time of the simulation end */
+  float timeEnd;
+
+  /* The previous system time. */
+  float timeOld;
+
+  /* The current system time. */
+  float time;
+
+  /* Time step */
+  float timeStep;
 
   /* The system energies from the previous step. */
   double ekin, epot;
@@ -95,9 +104,6 @@ struct engine {
 
   /* The number of particles updated in the previous step. */
   int count_step;
-
-  /* The current system time. */
-  float time;
 
   /* Data for the threads' barrier. */
   pthread_mutex_t barrier_mutex;
@@ -128,7 +134,8 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy);
+                 int nr_queues, int nr_nodes, int nodeID, int policy,
+		 float timeBegin, float timeEnd);
 void engine_prepare(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
