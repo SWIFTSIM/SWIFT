@@ -29,8 +29,9 @@ void printParticle_single(struct part *p);
 
 #ifdef HAVE_METIS
 #include "metis.h"
-void printMETISGraph(idx_t nvtxs, idx_t ncon, idx_t *xadj, idx_t *adjncy, 
-                     idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
+void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon,
+                    idx_t *xadj, idx_t *adjncy, idx_t *vwgt, idx_t *vsize,
+                    idx_t *adjwgt);
 
 #endif
 #endif /* SWIFT_DEBUG_H */

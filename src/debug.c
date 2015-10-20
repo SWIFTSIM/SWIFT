@@ -106,82 +106,132 @@ void printParticle_single(struct part *p) {
 #ifdef HAVE_METIS
 
 /**
- * @brief Dump the METIS graph in standard format to stdout
+ * @brief Dump the METIS graph in standard format, simple format and weights
+ * only, to a file.
  *
- * @param nvtxs the number of vertices
- * @param ncon the number vertex weights
- * @param xadj first part of adjacency info
- * @param adjncy second part of adjacency info
- * @param vwgt weights of vertices
- * @param vsize size of vertices
- * @param adjwgt weights of edges
+ * @description The standard format output can be read into the METIS
+ * command-line tools. The simple format is just the cell connectivity (this
+ * should not change between calls).  The weights format is the standard one,
+ * minus the cell connectivity.
+ *
+ * The output filenames are generated from the prefix and the sequence number
+ * of calls. So the first is called <prefix>_std_001.dat, <prefix>_simple_001.dat,
+ * <prefix>_weights_001.dat, etc.
+ *
+ * @param prefix base output filename
+ * @param nvertices the number of vertices
+ * @param nvertexweights the number vertex weights
+ * @param cellconruns first part of cell connectivity info (CSR)
+ * @param cellcon second part of cell connectivity info (CSR)
+ * @param vertexweights weights of vertices
+ * @param vertexsizes size of vertices
+ * @param edgeweights weights of edges
  */
-void printMETISGraph(idx_t nvtxs, idx_t ncon, idx_t *xadj, idx_t *adjncy,
-                     idx_t *vwgt, idx_t *vsize, idx_t *adjwgt) {
+void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
+                    idx_t *cellconruns, idx_t *cellcon, idx_t *vertexweights, 
+                    idx_t *vertexsizes, idx_t *edgeweights) {
+  FILE *stdfile = NULL;
+  FILE *simplefile = NULL;
+  FILE *weightfile = NULL;
+  char fname[200];
   idx_t i;
   idx_t j;
-  int hasvwgt = 0;
-  int hasewgt = 0;
-  int hasvsize = 0;
+  int haveedgeweight = 0;
+  int havevertexsize = 0;
+  int havevertexweight = 0;
+  static int nseq = 0;
+  nseq++;
 
-  /* Check for vwgt, vsize and adjwgt values. */
-  if (vwgt) {
-    for (i = 0; i < nvtxs * ncon; i++) {
-      if (vwgt[i] != 1) {
-        hasvwgt = 1;
-        break;
-      }
-    }
-  }
-  if (vsize) {
-    for (i = 0; i < nvtxs; i++) {
-      if (vsize[i] != 1) {
-        hasvsize = 1;
-        break;
-      }
-    }
-  }
-  if (adjwgt) {
-    for (i = 0; i < xadj[nvtxs]; i++) {
-      if (adjwgt[i] != 1) {
-        hasewgt = 1;
+  if (vertexweights != NULL) {
+    for (i = 0; i < nvertices * nvertexweights; i++) {
+      if (vertexweights[i] != 1) {
+        havevertexweight = 1;
         break;
       }
     }
   }
 
-  /*  Write the header line. */
-  printf("METIS: ");
-  printf("%" PRIDX " %" PRIDX, nvtxs, xadj[nvtxs] / 2);
-  if (hasvwgt || hasvsize || hasewgt) {
-    printf(" %d%d%d", hasvsize, hasvwgt, hasewgt);
-    if (hasvwgt) {
-      printf(" %d", (int)ncon);
+  if (vertexsizes != NULL) {
+    for (i = 0; i < nvertices; i++) {
+      if (vertexsizes[i] != 1) {
+        havevertexsize = 1;
+        break;
+      }
+    }
+  }
+
+  if (edgeweights != NULL) {
+    for (i = 0; i < cellconruns[nvertices]; i++) {
+      if (edgeweights[i] != 1) {
+        haveedgeweight = 1;
+        break;
+      }
+    }
+  }
+
+  /*  Open output files. */
+  sprintf(fname, "%s_std_%03d.dat", prefix, nseq);
+  stdfile = fopen( fname, "w" );
+
+  sprintf(fname, "%s_simple_%03d.dat", prefix, nseq);
+  simplefile = fopen( fname, "w" );
+
+  if (havevertexweight || havevertexsize || haveedgeweight) {
+    sprintf(fname, "%s_weights_%03d.dat", prefix, nseq);
+    weightfile = fopen( fname, "w" );
+  }
+
+  /*  Write the header lines. */
+  fprintf(stdfile, "%" PRIDX " %" PRIDX, nvertices, cellconruns[nvertices] / 2);
+  fprintf(simplefile, "%" PRIDX " %" PRIDX, nvertices, cellconruns[nvertices] / 2);
+  if (havevertexweight || havevertexsize || haveedgeweight) {
+    fprintf(weightfile, "%" PRIDX " %" PRIDX, nvertices, cellconruns[nvertices] / 2);
+
+    fprintf(stdfile, " %d%d%d", havevertexsize, havevertexweight, haveedgeweight);
+    fprintf(weightfile, " %d%d%d", havevertexsize, havevertexweight, haveedgeweight);
+
+    if (havevertexweight) {
+      fprintf(stdfile, " %d", (int)nvertexweights);
+      fprintf(weightfile, " %d", (int)nvertexweights);
     }
   }
 
   /*  Write the rest of the graph. */
-  for (i = 0; i < nvtxs; i++) {
-    printf("\nMETIS: ");
+  for (i = 0; i < nvertices; i++) {
+    fprintf(stdfile, "\n");
+    fprintf(simplefile, "\n");
+    fprintf(weightfile, "\n");
 
-    if (hasvsize) {
-      printf(" %" PRIDX, vsize[i]);
+    if (havevertexsize) {
+      fprintf(stdfile, " %" PRIDX, vertexsizes[i]);
+      fprintf(weightfile, " %" PRIDX, vertexsizes[i]);
     }
 
-    if (hasvwgt) {
-      for (j = 0; j < ncon; j++) {
-        printf(" %" PRIDX, vwgt[i * ncon + j]);
+    if (havevertexweight) {
+      for (j = 0; j < nvertexweights; j++) {
+        fprintf(stdfile, " %" PRIDX, vertexweights[i * nvertexweights + j]);
+        fprintf(weightfile, " %" PRIDX, vertexweights[i * nvertexweights + j]);
       }
     }
 
-    for (j = xadj[i]; j < xadj[i + 1]; j++) {
-      printf(" %" PRIDX, adjncy[j] + 1);
-      if (hasewgt) {
-        printf(" %" PRIDX, adjwgt[j]);
+    for (j = cellconruns[i]; j < cellconruns[i + 1]; j++) {
+      fprintf(stdfile, " %" PRIDX, cellcon[j] + 1);
+      fprintf(simplefile, " %" PRIDX, cellcon[j] + 1);
+      if (haveedgeweight) {
+        fprintf(stdfile, " %" PRIDX, edgeweights[j]);
+        fprintf(weightfile, " %" PRIDX, edgeweights[j]);
       }
     }
   }
-  printf("\n");
+  fprintf(stdfile, "\n");
+  fprintf(simplefile, "\n");
+  fprintf(weightfile, "\n");
+
+  fclose(stdfile);
+  fclose(simplefile);
+  if (weightfile != NULL) {
+    fclose(weightfile);
+  }
 }
 
 #endif
