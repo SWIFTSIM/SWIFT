@@ -109,12 +109,11 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
       /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
+                                  NULL, 0);
       /* Add the kick task. */
-      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
-
+      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
+                                  NULL, 0);
     }
   }
 
@@ -595,7 +594,6 @@ void engine_repartition(struct engine *e) {
 #endif
 }
 
-
 /* /\** */
 /*  * @brief Add up/down gravity tasks to a cell hierarchy. */
 /*  * */
@@ -605,7 +603,8 @@ void engine_repartition(struct engine *e) {
 /*  * @param down The downward gravity #task. */
 /*  *\/ */
 
-/* void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up, */
+/* void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
+ */
 /*                           struct task *down) { */
 
 /*   /\* Link the tasks to this cell. *\/ */
@@ -1031,11 +1030,13 @@ void engine_maketasks(struct engine *e) {
   /* /\* Add the gravity mm tasks. *\/ */
   /* for (i = 0; i < nr_cells; i++) */
   /*   if (cells[i].gcount > 0) { */
-  /*     scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
+  /*     scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
+   */
   /*                       &cells[i], NULL, 0); */
   /*     for (j = i + 1; j < nr_cells; j++) */
   /*       if (cells[j].gcount > 0) */
-  /*         scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
+  /*         scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1,
+   * 0, */
   /*                           &cells[i], &cells[j], 0); */
   /*   } */
 
@@ -1050,16 +1051,19 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
-  /* /\* Add the gravity up/down tasks at the top-level cells and push them down. *\/ */
+  /* /\* Add the gravity up/down tasks at the top-level cells and push them
+   * down. *\/ */
   /* for (k = 0; k < nr_cells; k++) */
   /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
 
   /*     /\* Create tasks at top level. *\/ */
   /*     struct task *up = */
-  /*         scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0, 0, */
+  /*         scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0,
+   * 0, */
   /*                           &cells[k], NULL, 0); */
   /*     struct task *down = */
-  /*         scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0, 0, */
+  /*         scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0,
+   * 0, */
   /*                           &cells[k], NULL, 0); */
 
   /*     /\* Push tasks down the cell hierarchy. *\/ */
@@ -1754,14 +1758,15 @@ void engine_step(struct engine *e) {
 
   /* Send off the runners. */
   TIMER_TIC
-  engine_launch(e, e->nr_threads,
-                (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_ghost) | (1 << task_type_kick) |
-                    (1 << task_type_send) | (1 << task_type_recv) |
-                    /* (1 << task_type_grav_pp) | (1 << task_type_grav_mm) | */
-                    /* (1 << task_type_grav_up) | (1 << task_type_grav_down) | */
-                    (1 << task_type_link));
+  engine_launch(
+      e, e->nr_threads,
+      (1 << task_type_sort) | (1 << task_type_self) | (1 << task_type_pair) |
+          (1 << task_type_sub) | (1 << task_type_ghost) |
+          (1 << task_type_kick) | (1 << task_type_send) |
+          (1 << task_type_recv) |
+          /* (1 << task_type_grav_pp) | (1 << task_type_grav_mm) | */
+          /* (1 << task_type_grav_up) | (1 << task_type_grav_down) | */
+          (1 << task_type_link));
 
   TIMER_TOC(timer_runners);
 
@@ -1861,21 +1866,24 @@ if ( e->nodeID == 0 )
   /*       s->parts[k].dt = dt; */
   /*       s->xparts[k].dt_curr = dt; */
   /*     } */
-  /*     // message( "dt_min=%.3e, adjusting time step to dt=%e." , dt_min , e->dt */
+  /*     // message( "dt_min=%.3e, adjusting time step to dt=%e." , dt_min ,
+   * e->dt */
   /*     // ); */
   /*   } else { */
   /*     while (dt_min < dt) { */
   /*       dt *= 0.5; */
   /*       e->step *= 2; */
   /*       e->nullstep *= 2; */
-  /*       // message( "dt_min dropped below time step, adjusting to dt=%e." , */
+  /*       // message( "dt_min dropped below time step, adjusting to dt=%e." ,
+   */
   /*       // e->dt ); */
   /*     } */
   /*     while (dt_min > 2 * dt && (e->step & 1) == 0) { */
   /*       dt *= 2.0; */
   /*       e->step /= 2; */
   /*       e->nullstep /= 2; */
-  /*       // message( "dt_min is larger than twice the time step, adjusting to */
+  /*       // message( "dt_min is larger than twice the time step, adjusting to
+   */
   /*       // dt=%e." , e->dt ); */
   /*     } */
   /*   } */
@@ -2050,7 +2058,8 @@ void engine_split(struct engine *e, int *grid) {
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy, float timeBegin, float timeEnd) {
+                 int nr_queues, int nr_nodes, int nodeID, int policy,
+                 float timeBegin, float timeEnd) {
 
   int k;
 #if defined(HAVE_SETAFFINITY)
@@ -2145,7 +2154,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   /* scheduler_reset(&e->sched, s->tot_cells); */
   /* for (k = 0; k < s->nr_cells; k++) */
   /*   s->cells[k].kick1 = */
-  /*       scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0, */
+  /*       scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0,
+   * 0, */
   /*                         &s->cells[k], NULL, 0); */
   /* scheduler_ranktasks(&e->sched); */
 

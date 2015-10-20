@@ -492,10 +492,6 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
 #endif
 }
 
-
-
-
-
 /**
  * @brief Initialize the particles before the density calculation
  *
@@ -820,10 +816,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
       /* Predict gradient term */
       p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (rho * xp->omega);
-
     }
   }
-
 
   if (timer) {
 #ifdef TIMER_VERBOSE
@@ -834,7 +828,6 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
     TIMER_TOC(timer_drift);
 #endif
   }
-
 }
 
 /**
@@ -851,7 +844,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   float new_dt = 0.0f, new_dt_hydro = 0.0f, new_dt_grav = 0.0f,
         current_dt = 0.0f;
   float t_start, t_end, t_current = r->e->time, t_end_min = FLT_MAX,
-    t_end_max = 0., dt;
+                        t_end_max = 0., dt;
   float dt_max_timeline = r->e->timeEnd - r->e->timeBegin, dt_timeline;
   float dt_min = r->e->dt_min, dt_max = r->e->dt_max;
   float h_max, dx_max;
@@ -880,8 +873,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
       if (p->id == 0)
-        message("Kick ! t_beg=%f t_end=%f t_cur=%f", p->t_begin,
-                p->t_end, t_current);
+        message("Kick ! t_beg=%f t_end=%f t_cur=%f", p->t_begin, p->t_end,
+                t_current);
 
       /* If particle needs to be kicked */
       if (p->t_end <= t_current) {
@@ -1037,9 +1030,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   }
 }
 
-
-
-
 /**
  * @brief The #runner main thread routine.
  *
@@ -1131,10 +1121,10 @@ void *runner_main(void *data) {
           runner_doghost(r, ci);
           break;
         case task_type_drift:
-          runner_dodrift(r, ci,1);
+          runner_dodrift(r, ci, 1);
           break;
         case task_type_kick:
-            runner_dokick(r, ci, 1);
+          runner_dokick(r, ci, 1);
           break;
         case task_type_send:
           break;

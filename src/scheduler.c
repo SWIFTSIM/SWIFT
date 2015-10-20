@@ -137,24 +137,21 @@ void scheduler_splittasks(struct scheduler *s) {
     }
 
     /* Non-local kick task? */
-    if ((t->type == task_type_kick) &&
-        t->ci->nodeID != s->nodeID) {
+    if ((t->type == task_type_kick) && t->ci->nodeID != s->nodeID) {
       t->type = task_type_none;
       t->skip = 1;
       continue;
     }
 
     /* Non-local drift task? */
-    if ((t->type == task_type_drift) &&
-        t->ci->nodeID != s->nodeID) {
+    if ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) {
       t->type = task_type_none;
       t->skip = 1;
       continue;
     }
 
     /* Non-local init task? */
-    if ((t->type == task_type_init) &&
-        t->ci->nodeID != s->nodeID) {
+    if ((t->type == task_type_init) && t->ci->nodeID != s->nodeID) {
       t->type = task_type_none;
       t->skip = 1;
       continue;
