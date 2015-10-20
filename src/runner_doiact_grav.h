@@ -42,7 +42,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
   double pix[3];
   float dx[3], r2, h_max, di, dj;
   int count_i, count_j, cnj, cnj_new;
-  float dt_step = e->dt_step;
+  float t_end = e->time;
   struct multipole m;
 #ifdef VECTORIZE
   int icount = 0;
@@ -53,7 +53,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+  if (ci->t_end_min > t_end && cj->t_end_min > t_end) return;
 
   /* Get the sort ID. */
   sid = space_getsid(e->s, &ci, &cj, shift);
@@ -93,7 +93,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
     /* Get a hold of the ith part in ci. */
     pi = &parts_i[sort_i[pid].i];
-    if (pi->dt > dt_step) continue;
+    if (pi->t_end > t_end) continue;
     di = sort_i[pid].d + h_max - rshift;
 
     for (k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
@@ -347,7 +347,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
   struct gpart *restrict pi, *restrict pj;
   double pix[3];
   float dx[3], r2;
-  float dt_step = e->dt_step;
+  float t_end = r->e->time;
 #ifdef VECTORIZE
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -357,7 +357,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+  if (ci->t_end_min > t_end && cj->t_end_min > t_end) return;
 
   /* Get the relative distance between the pairs, wrapping. */
   if (e->s->periodic)
@@ -449,13 +449,12 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
 
 void runner_doself_grav(struct runner *r, struct cell *restrict c) {
 
-  struct engine *e = r->e;
   int pid, pjd, k, count = c->gcount;
   struct gpart *restrict parts = c->gparts;
   struct gpart *restrict pi, *restrict pj;
   double pix[3] = {0.0, 0.0, 0.0};
   float dx[3], r2;
-  float dt_step = e->dt_step;
+  float t_end = r->e->time;
 #ifdef VECTORIZE
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -465,7 +464,7 @@ void runner_doself_grav(struct runner *r, struct cell *restrict c) {
   TIMER_TIC
 
   /* Anything to do here? */
-  if (c->dt_min > dt_step) return;
+  if (c->t_end_min > t_end) return;
 
   /* Loop over every part in c. */
   for (pid = 0; pid < count; pid++) {
