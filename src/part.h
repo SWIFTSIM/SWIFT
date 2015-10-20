@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durhm.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -60,8 +61,11 @@ struct gpart {
   /* Particle mass. */
   float mass;
 
-  /* Particle time step. */
-  float dt;
+  /* Particle time of beginning of time-step. */
+  float t_begin;
+
+  /* Particle time of end of time-step. */
+  float t_end;
 
   /* Anonymous union for id/part. */
   union {
@@ -81,7 +85,7 @@ struct part {
   /* Particle position. */
   double x[3];
 
-  /* Particle velocity. */
+  /* Particle predicted velocity. */
   float v[3];
 
   /* Particle acceleration. */
@@ -90,8 +94,11 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
-  /* Particle time-step. */
-  float dt;
+  /* Particle time of beginning of time-step. */
+  float t_begin;
+
+  /* Particle time of end of time-step. */
+  float t_end;
 
   /* Particle internal energy. */
   float u;
