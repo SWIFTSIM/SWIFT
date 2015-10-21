@@ -361,7 +361,8 @@ void engine_repartition(struct engine *e) {
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
         t->type != task_type_sub && t->type != task_type_ghost &&
-        t->type != task_type_kick1 && t->type != task_type_kick)
+        t->type != task_type_drift && t->type != task_type_kick &&
+	t->type != task_type_init)
       continue;
 
     /* Get the task weight. */
@@ -391,8 +392,8 @@ void engine_repartition(struct engine *e) {
     cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_ghost || t->type == task_type_kick1 ||
-        t->type == task_type_kick) {
+    if (t->type == task_type_ghost || t->type == task_type_drift ||
+        t->type == task_type_kick || t->type == task_type_drift) {
 
       /* Particle updates add only to vertex weight. */
       weights_v[cid] += w;
@@ -1800,16 +1801,16 @@ void engine_step(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   double in[3], out[3];
-  out[0] = dt_min;
+  out[0] = t_end_min;
   if (MPI_Allreduce(out, in, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate dt_min.");
-  dt_min = in[0];
-  out[0] = dt_max;
+  t_end_min = in[0];
+  out[0] = t_end_max;
   if (MPI_Allreduce(out, in, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate dt_max.");
-  dt_max = in[0];
+  t_end_max = in[0];
   out[0] = count;
   out[1] = ekin;
   out[2] = epot;
@@ -2052,9 +2053,11 @@ void engine_split(struct engine *e, int *grid) {
  * @param dt The initial time step to use.
  * @param nr_threads The number of threads to spawn.
  * @param nr_queues The number of task queues to create.
- * @param nr_nodes The number of MPI ranks
- * @param nodeID The MPI rank of this node
+ * @param nr_nodes The number of MPI ranks.
+ * @param nodeID The MPI rank of this node.
  * @param policy The queueing policy to use.
+ * @param timeBegin Time at the begininning of the simulation.
+ * @param timeEnd Time at the end of the simulation.
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,

@@ -314,8 +314,8 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
                 u, COMPULSORY);
       readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset,
                 id, COMPULSORY);
-      readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
-                OPTIONAL);
+      /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, */
+      /*           OPTIONAL); */
       readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a,
                 OPTIONAL);
       readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho,
@@ -627,8 +627,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
                  us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
     prepareArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N_total, 1,
                  us, UNIT_CONV_NO_UNITS);
-    prepareArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N_total, 1, us,
-                 UNIT_CONV_TIME);
+    /* prepareArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N_total, 1, us, */
+    /*              UNIT_CONV_TIME); */
     prepareArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N_total, 3,
                  us, UNIT_CONV_ACCELERATION);
     prepareArray(h_grp, fileName, xmfFile, "Density", FLOAT, N_total, 1, us,
