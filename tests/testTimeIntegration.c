@@ -23,35 +23,38 @@
 #include <string.h>
 
 /**
- * @brief Test the kick-drift-kick leapfrog integration 
- * via a Sun-Earth simulation 
+ * @brief Test the kick-drift-kick leapfrog integration
+ * via a Sun-Earth simulation
  */
 int main() {
 
   struct cell c;
   int i;
 
-  /* Orbit parameters */
-  int N_orbits = 8;               /* Number of orbits */  
-  float G = 6.67384e-11;          /* Newton's constant */
-  float M_sun  = 1.9885e30;       /* Sun mass [kg] */
-  float M_earth  = 5.97219e24;    /* Earth mass [kg] */
-  float r_max = 152097701000.;    /* [m] */
-  float v_max = 30287.;           /* [m/s] */
-  float r_min = 147098074000.;    /* [m] */
-  //float v_min = 29291.;           /* [m/s] */
+  /* Orbital parameters */
+  int N_orbits = 8;            /* Number of orbits */
+  float G = 6.67384e-11;       /* Newton's constant */
+  float M_sun = 1.9885e30;     /* Sun mass [kg] */
+  float M_earth = 5.97219e24;  /* Earth mass [kg] */
+  float r_max = 152097701000.; /* [m] */
+  float r_min = 147098074000.; /* [m] */
+  float v_max = 30287.;        /* [m/s] */
+  // float v_min = 29291.;           /* [m/s] */
+
 
   /* Derived quantities */
   float e = (r_max - r_min) / (r_max + r_min); /* Eccentricity */
-  float b = sqrt(r_max * r_min);               /* Semi-minor axis */  
-  float p = b * sqrt(1-e*e);                   /* Semi-lactus rectum */
-  float a = p / (1-e*e);                       /* Semi-major axis */
-  float T = sqrt(4 * M_PI * M_PI * a*a*a / (G*(M_sun+M_earth))); /* Period [s] */
+  float b = sqrtf(r_max * r_min);              /* Semi-minor axis */
+  float p = b * sqrtf(1 - e * e);              /* Semi-lactus rectum */
+  float a = p / (1 - e * e);                   /* Semi-major axis */
+  float T = sqrtf(4 * M_PI * M_PI * a * a * a /
+                 (G * (M_sun + M_earth))); /* Period [s] */
 
+  /* Print some info */
   message("Semi-major axis: a=%e [m]", a);
   message("Semi-minor axis: b=%e [m]", b);
   message("Eccentricity e=%f", e);
-  message("Period T=%f [s] = %f days", T, T / (60*60*24));
+  message("Period T=%f [s] = %f days", T, T / (60 * 60 * 24));
 
   /* Time-step size */
   float dt = 0.001 * T;
@@ -71,7 +74,7 @@ int main() {
   parts[0].x[0] = r_max;
   parts[0].x[1] = 0.;
   parts[0].x[2] = 0.;
-  
+
   parts[0].v[0] = 0.;
   parts[0].v[1] = v_max;
   parts[0].v[2] = 0.;
@@ -86,7 +89,7 @@ int main() {
   c.count = 1;
   c.split = 0;
 
-  /* Create a fake runner and engine */
+  /* Create an engine and a fake runner */
   struct runner run;
   struct engine eng;
 
@@ -95,27 +98,33 @@ int main() {
   eng.time = 0.;
   eng.timeBegin = 0.;
   eng.timeEnd = N_orbits * T;
-  eng.dt_min = dt;
-  eng.dt_max = dt;
+  eng.dt_min = dt;              /* This forces the time-step to be dt        */
+  eng.dt_max = dt;              /* irrespective of the state of the particle */
 
-  for(i=0 ; i < N; i++) {
-    
+  /* Simulate ! */
+  for (i = 0; i < N; i++) {
+
+    /* Move forward in time */
     eng.timeOld = eng.time;
     eng.time += dt;
 
     /* Compute gravitational acceleration */
-    float r2 = c.parts[0].x[0] * c.parts[0].x[0] + c.parts[0].x[1] * c.parts[0].x[1];
-    float r = sqrt(r2);
-    c.parts[0].a[0] = -(G*M_sun *c.parts[0].x[0] / r*r*r);
-    c.parts[0].a[1] = -(G*M_sun *c.parts[0].x[1] / r*r*r);
+    float r2 =
+        c.parts[0].x[0] * c.parts[0].x[0] + c.parts[0].x[1] * c.parts[0].x[1];
+    float r = sqrtf(r2);
+    c.parts[0].a[0] = -(G * M_sun * c.parts[0].x[0] / r * r * r);
+    c.parts[0].a[1] = -(G * M_sun * c.parts[0].x[1] / r * r * r);
 
     /* Kick... */
     runner_dokick(&run, &c, 0);
 
     /* Drift... */
     runner_dodrift(&run, &c, 0);
+  }
 
-  } 
+  /* Clean-up */
+  free(parts);
+  free(xparts);
 
   return 0;
 }
