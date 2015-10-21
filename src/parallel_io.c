@@ -274,8 +274,8 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
             COMPULSORY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset, id,
             COMPULSORY);
-  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
-            OPTIONAL);
+  /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, */
+  /*           OPTIONAL); */
   readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a,
             OPTIONAL);
   readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho,
@@ -582,8 +582,8 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
              N_total, mpi_rank, offset, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
-  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total,
-             mpi_rank, offset, dt, us, UNIT_CONV_TIME);
+  /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total, */
+  /*            mpi_rank, offset, dt, us, UNIT_CONV_TIME); */
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts,
              N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);
   writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total,
