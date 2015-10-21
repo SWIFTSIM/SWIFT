@@ -200,7 +200,9 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   for (i = 0; i < nvertices; i++) {
     fprintf(stdfile, "\n");
     fprintf(simplefile, "\n");
-    fprintf(weightfile, "\n");
+    if (weightfile != NULL) {
+        fprintf(weightfile, "\n");
+    }
 
     if (havevertexsize) {
       fprintf(stdfile, " %" PRIDX, vertexsizes[i]);
@@ -225,7 +227,9 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
   fprintf(stdfile, "\n");
   fprintf(simplefile, "\n");
-  fprintf(weightfile, "\n");
+  if (weightfile != NULL) {
+      fprintf(weightfile, "\n");
+  }
 
   fclose(stdfile);
   fclose(simplefile);
