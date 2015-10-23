@@ -303,7 +303,8 @@ void engine_repartition(struct engine *e) {
   int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
   float wscale = 1e-3, vscale = 1e-3, wscale_buff;
   idx_t wtot = 0;
-  const idx_t wmax = 1e9 / e->nr_nodes;
+  idx_t wmax = 1e9 / e->nr_nodes;
+  idx_t wmin;
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;
@@ -454,7 +455,7 @@ void engine_repartition(struct engine *e) {
     for (k = 0; k < nr_cells; k++) weights_v[k] *= scale;
   }
 
-/* Merge the weights arrays accross all nodes. */
+/* Merge the weights arrays across all nodes. */
 #if IDXTYPEWIDTH == 32
   if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
                         nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD)) !=
@@ -481,6 +482,26 @@ void engine_repartition(struct engine *e) {
 
   /* As of here, only one node needs to compute the partition. */
   if (nodeID == 0) {
+
+    /* Soften weights to avoid a large range. This seems to be problematic
+     * with initial partitions from very inhomogeneous distributions that
+     * also have bad h_max. */
+    wmin = wmax;
+    wmax = 0.0;
+    for (k = 0; k < 26 * nr_cells; k++) {
+      wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
+      wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
+    }
+    if (wmax > 1000) {
+      wscale = 1000.0f / (wmax - wmin);
+      message( "wscale = %f", wscale );
+      for (k = 0; k < 26 * nr_cells; k++) {
+        weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
+      }
+      for (k = 0; k < nr_cells; k++) {
+        weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
+      }
+    }
 
     /* Check that the edge weights are fully symmetric. */
     /* for ( cid = 0 ; cid < nr_cells ; cid++ )
@@ -543,7 +564,7 @@ void engine_repartition(struct engine *e) {
 
     /* Dump graph in METIS format */
     dumpMETISGraph("metis_graph", idx_nr_cells, one, offsets, inds,
-                   weights_v, NULL, weights_e); 
+                   weights_v, NULL, weights_e);
 
     if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
                                  NULL, weights_e, &idx_nr_nodes, NULL, NULL,
