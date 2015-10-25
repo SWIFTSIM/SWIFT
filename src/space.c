@@ -492,8 +492,8 @@ void parts_sort(struct part *parts, struct xpart *xparts, int *ind, int N,
   unsigned int qstack_size = 2 * (max - min) + 10;
   volatile unsigned int first, last, waiting;
 
-  int pivot;
-  int i, ii, j, jj, temp_i, qid;
+  unsigned int pivot;
+  unsigned int i, ii, j, jj, temp_i, qid;
   struct part temp_p;
   struct xpart temp_xp;
 
@@ -636,8 +636,8 @@ void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max) {
   int qstack_size = 2 * (max - min) + 10;
   volatile unsigned int first, last, waiting;
 
-  int pivot;
-  int i, ii, j, jj, temp_i, qid;
+  unsigned int pivot;
+  unsigned int i, ii, j, jj, temp_i, qid;
   struct gpart temp_p;
 
   /* for ( int k = 0 ; k < N ; k++ )
