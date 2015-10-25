@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,42 +17,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
 
-/* Config parameters. */
-#include "../config.h"
 
-/* Local headers. */
-#include "atomic.h"
+/* Includes. */
 #include "cell.h"
-#include "const.h"
-#include "const.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
-#include "error.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
 #include "part.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "units.h"
-#include "version.h"
 
-#ifdef LEGACY_GADGET2_SPH
-#include "runner_iact_legacy.h"
-#else
-#include "runner_iact.h"
-#endif
-#include "runner_iact_grav.h"
-
-#endif /* SWIFT_SWIFT_H */
+void map_cells_plot(struct cell *c, void *data);
+void map_check(struct part *p, struct cell *c, void *data);
+void map_cellcheck(struct cell *c, void *data);
+void map_maxdepth(struct cell *c, void *data);
+void map_count(struct part *p, struct cell *c, void *data);
+void map_wcount_min(struct part *p, struct cell *c, void *data);
+void map_wcount_max(struct part *p, struct cell *c, void *data);
+void map_h_min(struct part *p, struct cell *c, void *data);
+void map_h_max(struct part *p, struct cell *c, void *data);
+void map_icount(struct part *p, struct cell *c, void *data);
+void map_dump(struct part *p, struct cell *c, void *data);
