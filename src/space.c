@@ -480,6 +480,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
  * @brief Sort the particles and condensed particles according to the given
  *indices.
  *
+ * @param s The #space.
  * @param ind The indices with respect to which the parts are sorted.
  * @param N The number of parts
  * @param min Lowest index.
