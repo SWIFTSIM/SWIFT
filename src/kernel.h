@@ -609,4 +609,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float x,
 
 #endif  // Kernel choice
 
+/* Some cross-check functions */
+void SPH_kernel_dump(int N);
+void gravity_kernel_dump(float r_max, int N);
+
 #endif  // SWIFT_KERNEL_H

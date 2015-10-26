@@ -23,14 +23,12 @@
 
 #include "kernel.h"
 
-
-
 /**
  * @brief Test the SPH kernel function by dumping it in the interval [0,1].
  *
  * @param N number of intervals in [0,1].
  */
-void kernel_dump(int N) {
+void SPH_kernel_dump(int N) {
 
   int k;
   float x, w, dw_dx;
@@ -49,7 +47,6 @@ void kernel_dump(int N) {
     printf(" %e %e %e %e %e %e %e\n", x, w, dw_dx, w4[0], w4[1], w4[2], w4[3]);
   }
 }
-
 
 /**
  * @brief The Gadget-2 gravity kernel function
@@ -73,14 +70,13 @@ float gadget(float r) {
   return const_G * fac;
 }
 
-
 /**
  * @brief Test the gravity kernel function by dumping it in the interval [0,1].
  *
  * @param r_max The radius up to which the kernel is dumped.
  * @param N number of intervals in [0,1].
  */
-void gravity_dump(float r_max, int N) {
+void gravity_kernel_dump(float r_max, int N) {
 
   int k;
   float x, w;
