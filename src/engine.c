@@ -492,8 +492,8 @@ void engine_repartition(struct engine *e) {
       wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
       wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
     }
-    if (wmax > 1000) {
-      wscale = 1000.0f / (wmax - wmin);
+    if (wmax > 10000) {
+      wscale = 10000.0f / (wmax - wmin);
       message( "wscale = %f", wscale );
       for (k = 0; k < 26 * nr_cells; k++) {
         weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
