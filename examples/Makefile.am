@@ -29,7 +29,7 @@ MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
 MPI_FLAGS = -DWITH_MPI $(METIS_INCS)
 
 # Set-up the library
-bin_PROGRAMS = swift swift_fixdt swift_mindt test_single
+bin_PROGRAMS = swift swift_fixdt swift_mindt
 
 # Build MPI versions as well?
 if HAVEMPI
@@ -65,9 +65,4 @@ swift_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_L
 swift_mindt_mpi_SOURCES = main.c
 swift_mindt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep"
 swift_mindt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
-
-# Sources for test_single
-test_single_SOURCES = test_single.c
-test_single_CFLAGS = $(MYFLAGS) $(AM_CFLAGS)
-test_single_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
