@@ -1,2 +1,2 @@
 #!/bin/bash
-wget http://www.dur.ac.uk/pedro.gonnet/cosmoVolume.hdf5
+wget http://icc.dur.ac.uk/~jlvc76/Files/SWIFT/cosmoVolume.hdf5
