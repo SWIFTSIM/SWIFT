@@ -1,5 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,6 +25,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "error.h"
 #include "part.h"
 #include "cell.h"
 #include "tools.h"

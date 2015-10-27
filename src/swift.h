@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -45,6 +45,7 @@
 #include "task.h"
 #include "timers.h"
 #include "units.h"
+#include "tools.h"
 #include "version.h"
 
 #ifdef LEGACY_GADGET2_SPH
