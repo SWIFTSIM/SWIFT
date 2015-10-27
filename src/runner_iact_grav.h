@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav(
   /* Scale the acceleration. */
   acc *= const_G * ir * ir * ir;
 
-  /* Aggregate the accellerations. */
+  /* Aggregate the accelerations. */
   for (k = 0; k < 3; k++) {
     w = acc * dx[k];
     pi->a[k] -= w * mj;
@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_grav(
   /* Scale the acceleration. */
   acc.v *= vec_set1(const_G) * ir.v * ir.v * ir.v;
 
-  /* Aggregate the accellerations. */
+  /* Aggregate the accelerations. */
   for (k = 0; k < 3; k++) {
     w.v = acc.v * dx[k].v;
     ai.v = w.v * mj.v;
