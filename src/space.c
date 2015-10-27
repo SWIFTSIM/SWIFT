@@ -542,10 +542,10 @@ void space_do_parts_sort() {
       if (!space_sort_struct.waiting) return;
       
     /* Get the stack entry. */
-    unsigned int i = space_sort_struct.stack[qid].i;
-    unsigned int j = space_sort_struct.stack[qid].j;
-    unsigned int min = space_sort_struct.stack[qid].min;
-    unsigned int max = space_sort_struct.stack[qid].max;
+    int i = space_sort_struct.stack[qid].i;
+    int j = space_sort_struct.stack[qid].j;
+    int min = space_sort_struct.stack[qid].min;
+    int max = space_sort_struct.stack[qid].max;
     space_sort_struct.stack[qid].ready = 0;
 
     /* Loop over sub-intervals. */
@@ -654,8 +654,8 @@ void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max) {
   int qstack_size = 2 * (max - min) + 10;
   volatile unsigned int first, last, waiting;
 
-  unsigned int pivot;
-  unsigned int i, ii, j, jj, temp_i, qid;
+  int pivot;
+  int i, ii, j, jj, temp_i, qid;
   struct gpart temp_p;
 
   /* for ( int k = 0 ; k < N ; k++ )
