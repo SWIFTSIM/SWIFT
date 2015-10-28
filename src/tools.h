@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,43 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
 
-/* Config parameters. */
-#include "../config.h"
+void factor(int value, int *f1, int *f2);
+void density_dump(int N);
+void pairs_single_grav(double *dim, long long int pid,
+                       struct gpart *__restrict__ parts, int N, int periodic);
+void pairs_single_density(double *dim, long long int pid,
+                          struct part *__restrict__ parts, int N,
+                          int periodic);
 
-/* Local headers. */
-#include "atomic.h"
-#include "cell.h"
-#include "const.h"
-#include "const.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
-#include "error.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "units.h"
-#include "tools.h"
-#include "version.h"
+void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
+              int periodic);
 
-#ifdef LEGACY_GADGET2_SPH
-#include "runner_iact_legacy.h"
-#else
-#include "runner_iact.h"
-#endif
-#include "runner_iact_grav.h"
-
-#endif /* SWIFT_SWIFT_H */

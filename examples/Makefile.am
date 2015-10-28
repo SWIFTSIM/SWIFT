@@ -29,45 +29,40 @@ MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)
 MPI_FLAGS = -DWITH_MPI $(METIS_INCS)
 
 # Set-up the library
-bin_PROGRAMS = test test_fixdt test_mindt test_single
+bin_PROGRAMS = swift swift_fixdt swift_mindt
 
 # Build MPI versions as well?
 if HAVEMPI
-bin_PROGRAMS += test_mpi test_fixdt_mpi test_mindt_mpi
+bin_PROGRAMS += swift_mpi swift_fixdt_mpi swift_mindt_mpi
 endif
 
-# Sources for test
-test_SOURCES = test.c
-test_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep | engine_policy_setaffinity"
-test_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
+# Sources for swift
+swift_SOURCES = main.c
+swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep | engine_policy_setaffinity"
+swift_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
-# Sources for test_fixdt
-test_fixdt_SOURCES = test.c
-test_fixdt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep | engine_policy_setaffinity"
-test_fixdt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
+# Sources for swift_fixdt
+swift_fixdt_SOURCES = main.c
+swift_fixdt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep | engine_policy_setaffinity"
+swift_fixdt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
-# Sources for test_mindt
-test_mindt_SOURCES = test.c
-test_mindt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep | engine_policy_setaffinity"
-test_mindt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
+# Sources for swift_mindt
+swift_mindt_SOURCES = main.c
+swift_mindt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep | engine_policy_setaffinity"
+swift_mindt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
-# Sources for test_mpi
-test_mpi_SOURCES = test.c
-test_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep"
-test_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
+# Sources for swift_mpi
+swift_mpi_SOURCES = main.c
+swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep"
+swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
-# Sources for test_fixdt_mpi
-test_fixdt_mpi_SOURCES = test.c
-test_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep"
-test_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
+# Sources for swift_fixdt_mpi
+swift_fixdt_mpi_SOURCES = main.c
+swift_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep"
+swift_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
-# Sources for test_mindt_mpi
-test_mindt_mpi_SOURCES = test.c
-test_mindt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep"
-test_mindt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
-
-# Sources for test_single
-test_single_SOURCES = test_single.c
-test_single_CFLAGS = $(MYFLAGS) $(AM_CFLAGS)
-test_single_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
+# Sources for swift_mindt_mpi
+swift_mindt_mpi_SOURCES = main.c
+swift_mindt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep"
+swift_mindt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
