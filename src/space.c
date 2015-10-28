@@ -592,7 +592,7 @@ void parts_sort(struct part *parts, struct xpart *xparts, int *ind, int N,
       } else {
 
         /* Recurse on the right? */
-        if (jj + 1 < j && pivot + 1 < max) {
+        if (pivot + 1 < max) {
           qid = (last++) % qstack_size;
           qstack[qid].i = jj + 1;
           qstack[qid].j = j;
@@ -732,7 +732,7 @@ void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max) {
       } else {
 
         /* Recurse on the right? */
-        if (jj + 1 < j && pivot + 1 < max) {
+        if (pivot + 1 < max) {
           qid = (last++) % qstack_size;
           qstack[qid].i = jj + 1;
           qstack[qid].j = j;
