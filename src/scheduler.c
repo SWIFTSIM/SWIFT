@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -173,7 +173,7 @@ void scheduler_splittasks(struct scheduler *s) {
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
 
-          /* Add the self taks. */
+          /* Add the self task. */
           for (k = 0; ci->progeny[k] == NULL; k++)
             ;
           t->ci = ci->progeny[k];
@@ -595,7 +595,7 @@ void scheduler_splittasks(struct scheduler *s) {
           /* Ignore this task if the cell has no gparts. */
           if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
 
-          /* Split the interacton? */
+          /* Split the interaction? */
           else if (theta < const_theta_max * const_theta_max) {
 
             /* Are both ci and cj split? */
@@ -703,7 +703,7 @@ void scheduler_ranktasks(struct scheduler *s) {
   struct task *t, *tasks = s->tasks;
   int *tid = s->tasks_ind, nr_tasks = s->nr_tasks;
 
-  /* Run throught the tasks and get all the waits right. */
+  /* Run through the tasks and get all the waits right. */
   for (i = 0, k = 0; k < nr_tasks; k++) {
     tid[k] = k;
     for (j = 0; j < tasks[k].nr_unlock_tasks; j++)
@@ -761,7 +761,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   /* Do we need to re-allocate? */
   if (size > s->size) {
 
-    /* Free exising task lists if necessary. */
+    /* Free existing task lists if necessary. */
     if (s->tasks != NULL) free(s->tasks);
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
@@ -800,7 +800,7 @@ void scheduler_reweight(struct scheduler *s) {
   float wscale = 0.001;
   // ticks tic;
 
-  /* Run throught the tasks backwards and set their waits and
+  /* Run through the tasks backwards and set their waits and
      weights. */
   // tic = getticks();
   for (k = nr_tasks - 1; k >= 0; k--) {
@@ -884,7 +884,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
-  /* Run throught the tasks and set their waits. */
+  /* Run through the tasks and set their waits. */
   // tic = getticks();
   for (k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
@@ -971,7 +971,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           MPI_Error_string(err, buff, &len);
           error("Failed to emit irecv for particle data (%s).", buff);
         }
-        // message( "recieving %i parts with tag=%i from %i to %i." ,
+        // message( "receiving %i parts with tag=%i from %i to %i." ,
         //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
         // fflush(stdout);
         qid = 1 % s->nr_queues;
@@ -1110,7 +1110,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  * @brief Get a task, preferably from the given queue.
  *
  * @param s The #scheduler.
- * @param qid The ID of the prefered #queue.
+ * @param qid The ID of the preferred #queue.
  * @param super the super-cell
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
@@ -1141,7 +1141,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         if (res != NULL) break;
       }
 
-      /* If unsucessful, try stealing from the other queues. */
+      /* If unsuccessful, try stealing from the other queues. */
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
         for (k = 0; k < nr_queues; k++)

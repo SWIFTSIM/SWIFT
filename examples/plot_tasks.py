@@ -1,6 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Coypright (c) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ # Copyright (c) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  #                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 

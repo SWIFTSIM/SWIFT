@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -299,7 +299,7 @@ int cell_glocktree(struct cell *c) {
 }
 
 /**
- * @brief Unock a cell's parents.
+ * @brief Unlock a cell's parents.
  *
  * @param c The #cell.
  */

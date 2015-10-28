@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -127,7 +127,7 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
 }
 
 /**
- * @brief Redistribute the particles amongst the nodes accorind
+ * @brief Redistribute the particles amongst the nodes according
  *      to their cell's node IDs.
  *
  * @param e The #engine.
@@ -454,7 +454,7 @@ void engine_repartition(struct engine *e) {
     for (k = 0; k < nr_cells; k++) weights_v[k] *= scale;
   }
 
-/* Merge the weights arrays accross all nodes. */
+/* Merge the weights arrays across all nodes. */
 #if IDXTYPEWIDTH == 32
   if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
                         nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD)) !=
@@ -577,7 +577,7 @@ void engine_repartition(struct engine *e) {
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
      how many particles go from where to where, then re-allocating
-     the parts array, and emiting the sends and receives.
+     the parts array, and emitting the sends and receives.
      Finally, the space, tasks, and proxies need to be rebuilt. */
 
   /* Redistribute the particles between the nodes. */
@@ -765,7 +765,7 @@ void engine_exchange_cells(struct engine *e) {
     proxy_cells_exch2(&e->proxies[pid]);
   }
 
-  /* Wait for all the sends to have finnished too. */
+  /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
 
@@ -786,7 +786,7 @@ void engine_exchange_cells(struct engine *e) {
                            e->proxies[pid].cells_in[j], e->s);
   }
 
-  /* Wait for all the sends to have finnished too. */
+  /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
 
@@ -883,11 +883,11 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     proxy_parts_exch2(&e->proxies[pid]);
   }
 
-  /* Wait for all the sends to have finnished too. */
+  /* Wait for all the sends to have finished too. */
   if (MPI_Waitall(e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
     error("MPI_Waitall on sends failed.");
 
-  /* Count the total number of incomming particles and make sure we have
+  /* Count the total number of incoming particles and make sure we have
      enough space to accommodate them. */
   int count_in = 0;
   for (k = 0; k < e->nr_proxies; k++) count_in += e->proxies[k].nr_parts_in;
@@ -954,7 +954,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     }
   }
 
-  /* Wait for all the sends to have finnished too. */
+  /* Wait for all the sends to have finished too. */
   if (nr_out > 0)
     if (MPI_Waitall(2 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
@@ -1207,7 +1207,7 @@ void engine_maketasks(struct engine *e) {
     /* Get a handle on the proxy. */
     struct proxy *p = &e->proxies[pid];
 
-    /* Loop through the proxy's incomming cells and add the
+    /* Loop through the proxy's incoming cells and add the
        recv tasks. */
     for (k = 0; k < p->nr_cells_in; k++)
       engine_addtasks_recv(e, p->cells_in[k], NULL, NULL);
@@ -1245,7 +1245,7 @@ int engine_marktasks(struct engine *e) {
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
-  /* Muc less to do here if we're on a fixed time-step. */
+  /* Much less to do here if we're on a fixed time-step. */
   if (!(e->policy & engine_policy_multistep)) {
 
     /* Run through the tasks and mark as skip or not. */
@@ -1440,7 +1440,7 @@ void engine_prepare(struct engine *e) {
   int buff;
   if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
-    error("Failed to aggreggate the rebuild flag accross nodes.");
+    error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
 // message( "rebuild allreduce took %.3f ms." , (double)(getticks() -
 // tic)/CPU_TPS*1000 );
@@ -1491,7 +1491,7 @@ void engine_barrier(struct engine *e, int tid) {
   /* Wait for the barrier to open. */
   while (e->barrier_launch == 0 || tid >= e->barrier_launchcount)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
-      error("Eror waiting for barrier to close.");
+      error("Error waiting for barrier to close.");
 
   /* This thread has been launched. */
   e->barrier_running += 1;
@@ -1708,7 +1708,7 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
 
 void hassorted(struct cell *c) {
 
-  if (c->sorted) error("Suprious sorted flags.");
+  if (c->sorted) error("Spurious sorted flags.");
 
   if (c->split)
     for (int k = 0; k < 8; k++)
@@ -2071,7 +2071,7 @@ void engine_split(struct engine *e, int *grid) {
  * @param nr_queues The number of task queues to create.
  * @param nr_nodes The number of MPI ranks
  * @param nodeID The MPI rank of this node
- * @param policy The queueing policy to use.
+ * @param policy The queuing policy to use.
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,

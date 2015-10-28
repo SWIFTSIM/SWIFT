@@ -1,6 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ from numpy import *
 
 # Input values?
 if len(sys.argv) < 3 :
-    print "Useage: " , sys.argv[0] , " <filename> <nr. bins>"
+    print "Usage: " , sys.argv[0] , " <filename> <nr. bins>"
     exit()
     
 # Get the input arguments

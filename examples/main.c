@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
             (long int)sizeof(struct gpart));
   }
 
-  /* Initilaize unit system */
+  /* Initialize unit system */
   initUnitSystem(&us);
   if (myrank == 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
@@ -296,7 +296,7 @@ int main(int argc, char *argv[]) {
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
 
-  /* Verify that each particle is in it's propper cell. */
+  /* Verify that each particle is in it's proper cell. */
   if (myrank == 0) {
     icount = 0;
     space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
@@ -405,7 +405,7 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-    /* Dump a line of agregate output. */
+    /* Dump a line of aggregate output. */
     /*     if (myrank == 0) { */
     /*       printf("%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e", j, e.time,
      */
