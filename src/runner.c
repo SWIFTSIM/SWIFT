@@ -518,8 +518,6 @@ void runner_doinit(struct runner *r, struct cell *c) {
     /* Get a direct pointer on the part. */
     p = &parts[i];
 
-    if (p->id == 0) message("init!");
-
     if (p->t_end <= t_end) {
 
       /* Get ready for a density calculation */
@@ -593,8 +591,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
         /* Final operation on the density. */
         p->rho = rho = ih * ih2 * (p->rho + p->mass * kernel_root);
         p->rho_dh = rho_dh = (p->rho_dh - 3.0f * p->mass * kernel_root) * ih4;
-        wcount = (p->density.wcount + kernel_root) *
-                 (4.0f / 3.0 * M_PI * kernel_gamma3);
+        p->density.wcount = wcount = (p->density.wcount + kernel_root) *
+                                     (4.0f / 3.0 * M_PI * kernel_gamma3);
         wcount_dh =
             p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
 
@@ -610,20 +608,12 @@ void runner_doghost(struct runner *r, struct cell *c) {
           h_corr = fmaxf(h_corr, -h / 2.f);
         }
 
-        if (p->id == 0)
-          message("ghost! h=%f dh=%f wcount=%f rho=%f", p->h, h_corr, wcount,
-                  p->rho);
-
-        /* Apply the correction to p->h and to the compact part. */
-        h = p->h += h_corr;
-
         /* Did we get the right number density? */
         if (wcount > kernel_nwneigh + const_delta_nwneigh ||
             wcount < kernel_nwneigh - const_delta_nwneigh) {
-          // message( "particle %lli (h=%e,depth=%i) has bad wcount=%.3f." ,
-          // p->id , p->h , c->depth , wcount ); fflush(stdout);
-          // p->h += ( p->density.wcount + kernel_root - kernel_nwneigh ) /
-          // p->density.wcount_dh;
+          h = p->h += h_corr;
+          p->h += (p->density.wcount + kernel_root - kernel_nwneigh) /
+                  p->density.wcount_dh;
           pid[redo] = pid[i];
           redo += 1;
           p->density.wcount = 0.0;
@@ -672,7 +662,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
                     (const_viscosity_alpha_max - p->alpha) * S;
 
         /* Update particle's viscosity paramter */
-        p->alpha += alpha_dot * 1;  // p->dt;
+        p->alpha += alpha_dot * (p->t_end - p->t_begin);
 #endif
 
         /* Reset the acceleration. */
@@ -768,8 +758,6 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p = &parts[k];
       xp = &xparts[k];
 
-      if (p->id == 0) message("drift !");
-
       /* Get local copies of particle data. */
       h = p->h;
       ih = 1.0f / h;
@@ -816,10 +804,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
       /* Predict gradient term */
       p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (rho * xp->omega);
-
     }
   }
-
 
   if (timer) {
 #ifdef TIMER_VERBOSE
@@ -830,10 +816,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
     TIMER_TOC(timer_drift);
 #endif
   }
-
-  
 }
-
 
 /**
  * @brief Combined second and first kick for fixed dt.
@@ -879,14 +862,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       m = p->mass;
       x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
-      if (p->id == 0)
-        message("Kick ! t_beg=%f t_end=%f t_cur=%f", p->t_begin, p->t_end,
-                t_current);
+      /* if (p->id == 0) */
+      /*   message("Kick ! t_beg=%f t_end=%f t_cur=%f", p->t_begin, p->t_end, */
+      /*           t_current); */
 
       /* If particle needs to be kicked */
       if (p->t_end <= t_current) {
-
-        if (p->id == 0) message("Kicking like a boss");
 
         /* First, finish the force loop */
         p->force.h_dt *= p->h * 0.333333333f;
@@ -919,15 +900,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         t_end = p->t_end + 0.5f * new_dt;
         dt = t_end - t_start;
 
-        if (p->id == 0)
-          message("Kick ! dt=%f t_beg=%f t_end=%f", dt, p->t_begin, p->t_end);
-
         /* Move particle forward in time */
         p->t_begin = p->t_end;
         p->t_end = p->t_begin + dt;
-
-        if (p->id == 0)
-          message("Kick ! dt=%f t_beg=%f t_end=%f", dt, p->t_begin, p->t_end);
 
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;

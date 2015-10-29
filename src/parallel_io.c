@@ -441,7 +441,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param N_total Total number of particles across all cores
  * @param mpi_rank The MPI task rank calling the function
  * @param offset Offset in the array where this mpi task starts writing
- * @param part A (char*) pointer on the first occurrence of the field of interest
+ * @param part A (char*) pointer on the first occurrence of the field of
+ *interest
  *in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
@@ -582,7 +583,8 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
              N_total, mpi_rank, offset, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
-  /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total, */
+  /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts,
+   * N_total, */
   /*            mpi_rank, offset, dt, us, UNIT_CONV_TIME); */
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts,
              N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);

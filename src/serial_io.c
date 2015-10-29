@@ -314,7 +314,8 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
                 u, COMPULSORY);
       readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset,
                 id, COMPULSORY);
-      /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, */
+      /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
+       */
       /*           OPTIONAL); */
       readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a,
                 OPTIONAL);
@@ -487,7 +488,8 @@ void writeArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part A (char*) pointer on the first occurrence of the field of interest
+ * @param part A (char*) pointer on the first occurrence of the field of
+ *interest
  *in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
@@ -627,7 +629,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
                  us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
     prepareArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N_total, 1,
                  us, UNIT_CONV_NO_UNITS);
-    /* prepareArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N_total, 1, us, */
+    /* prepareArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N_total, 1, us,
+     */
     /*              UNIT_CONV_TIME); */
     prepareArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N_total, 3,
                  us, UNIT_CONV_ACCELERATION);

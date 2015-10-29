@@ -24,9 +24,7 @@ void density_dump(int N);
 void pairs_single_grav(double *dim, long long int pid,
                        struct gpart *__restrict__ parts, int N, int periodic);
 void pairs_single_density(double *dim, long long int pid,
-                          struct part *__restrict__ parts, int N,
-                          int periodic);
+                          struct part *__restrict__ parts, int N, int periodic);
 
 void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
               int periodic);
-

@@ -19,7 +19,6 @@
  *
  ******************************************************************************/
 
-
 #include <math.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -30,7 +29,6 @@
 #include "cell.h"
 #include "tools.h"
 #include "swift.h"
-
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -48,8 +46,6 @@ void factor(int value, int *f1, int *f2) {
     }
   }
 }
-
-
 
 /**
  * @brief Compute the average number of pairs per particle using
@@ -233,7 +229,6 @@ void pairs_single_grav(double *dim, long long int pid,
       "acceleration on gpart %lli is a=[ %e %e %e ], |a|=[ %.2e %.2e %.2e ].\n",
       pi.part->id, a[0], a[1], a[2], aabs[0], aabs[1], aabs[2]);
 }
-
 
 /**
  * @brief Test the density function by dumping it for two random parts.

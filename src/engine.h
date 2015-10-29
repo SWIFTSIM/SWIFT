@@ -137,6 +137,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
                  float timeBegin, float timeEnd);
 void engine_prepare(struct engine *e);
+void engine_print(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, int *grid);

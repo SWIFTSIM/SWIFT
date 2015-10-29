@@ -353,7 +353,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part A (char*) pointer on the first occurrence of the field of interest
+ * @param part A (char*) pointer on the first occurrence of the field of
+ *interest
  *in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
