@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -40,7 +40,7 @@ struct proxy {
   /* ID of the node this proxy represents. */
   int mynodeID, nodeID;
 
-  /* Incomming cells. */
+  /* Incoming cells. */
   struct cell **cells_in;
   struct pcell *pcells_in;
   int nr_cells_in, size_cells_in, size_pcells_in;

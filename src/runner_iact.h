@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -421,7 +421,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Apply balsara switch */
   Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
-  /* Termal conductivity */
+  /* Thermal conductivity */
   v_sig_u = sqrtf(2.f * (const_hydro_gamma - 1.f) *
                   fabs(rhoi * pi->u - rhoj * pj->u) / (rhoi + rhoj));
   tc = const_conductivity_alpha * v_sig_u / (rhoi + rhoj);
@@ -622,7 +622,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   Pi_ij.v = balsara.v * alpha_ij.v * v_sig.v * omega_ij.v / (pirho.v + pjrho.v);
   Pi_ij.v *= (wi_dr.v + wj_dr.v);
 
-  /* Termal conductivity */
+  /* Thermal conductivity */
   v_sig_u.v = vec_sqrt(vec_set1(2.f * (const_hydro_gamma - 1.f)) *
                        vec_fabs(pirho.v * piu.v - pjrho.v * pju.v) /
                        (pirho.v + pjrho.v));
@@ -737,7 +737,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Apply balsara switch */
   Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
-  /* Termal conductivity */
+  /* Thermal conductivity */
   v_sig_u = sqrtf(2.f * (const_hydro_gamma - 1.f) *
                   fabs(rhoi * pi->u - rhoj * pj->u) / (rhoi + rhoj));
   tc = const_conductivity_alpha * v_sig_u / (rhoi + rhoj);
@@ -929,7 +929,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   Pi_ij.v = balsara.v * alpha_ij.v * v_sig.v * omega_ij.v / (pirho.v + pjrho.v);
   Pi_ij.v *= (wi_dr.v + wj_dr.v);
 
-  /* Termal conductivity */
+  /* Thermal conductivity */
   v_sig_u.v = vec_sqrt(vec_set1(2.f * (const_hydro_gamma - 1.f)) *
                        vec_fabs(pirho.v * piu.v - pjrho.v * pju.v) /
                        (pirho.v + pjrho.v));

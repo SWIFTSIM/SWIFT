@@ -1,6 +1,6 @@
 
 # This file is part of SWIFT.
-# Coypright (c) 2012 pedro.gonnet@durham.ac.uk.
+# Copyright (c) 2012 pedro.gonnet@durham.ac.uk.
 #               2015 matthieu.schaller@durham.ac.uk.
 # 
 # This program is free software: you can redistribute it and/or modify

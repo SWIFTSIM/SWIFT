@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -143,14 +143,14 @@ float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
 float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
 
 /**
- * @brief Returns a string containg the exponants of the base units making up
+ * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors (expressed in terms of the 5 fundamental units)
  */
 void generalConversionString(char* buffer, struct UnitSystem* us,
                              float baseUnitsExponants[5]);
 
 /**
- * @brief Returns a string containg the exponants of the base units making up
+ * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors
  */
 void conversionString(char* buffer, struct UnitSystem* us,
