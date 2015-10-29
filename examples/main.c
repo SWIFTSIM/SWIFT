@@ -91,14 +91,12 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res, prov;
-  if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) !=
-      MPI_SUCCESS)
+  if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) != MPI_SUCCESS)
     error("Call to MPI_Init failed with error %i.", res);
   if (prov != MPI_THREAD_MULTIPLE)
-    error(
-        "MPI does not provide the level of threading required "
-        "(MPI_THREAD_MULTIPLE).");
-  if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes) != MPI_SUCCESS))
+    error("MPI does not provide the level of threading required "
+          "(MPI_THREAD_MULTIPLE).");
+  if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes)) != MPI_SUCCESS)
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
     error("Call to MPI_Comm_rank failed with error %i.", res);
@@ -154,7 +152,7 @@ int main(int argc, char *argv[]) {
         break;
       case 'o':
         with_outputs = 0;
-	break;
+        break;
       case 'q':
         if (sscanf(optarg, "%d", &nr_queues) != 1)
           error("Error parsing number of queues.");
@@ -193,15 +191,18 @@ int main(int argc, char *argv[]) {
     }
 
 #if defined(WITH_MPI)
-  if (myrank == 0) message("Running with %i thread(s) per node.", nr_threads);
+  if (myrank == 0) {
+    message("Running with %i thread(s) per node.", nr_threads);
+    message("grid set to [ %i %i %i ].", grid[0], grid[1], grid[2]);
+
+    if (nr_nodes == 1) {
+      message("WARNING: you are running with one MPI rank.");
+      message("WARNING: you should use the non-MPI version of this program." );
+    }
+    fflush(stdout);
+  }
 #else
   if (myrank == 0) message("Running with %i thread(s).", nr_threads);
-#endif
-
-#if defined(WITH_MPI)
-  if (myrank == 0)
-    message("grid set to [ %i %i %i ].", grid[0], grid[1], grid[2]);
-  fflush(stdout);
 #endif
 
   /* How large are the parts? */

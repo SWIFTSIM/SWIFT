@@ -277,7 +277,7 @@ void engine_redistribute(struct engine *e) {
   free(dest);
 
 #else
-  error("SWIFT was not compiled with MPI and METIS support.");
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -307,6 +307,10 @@ void engine_repartition(struct engine *e) {
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;
+
+  /* Nothing to do if only using a single node. Also avoids METIS
+   * bug that doesn't handle this case well. */
+  if ( nr_nodes == 1 ) return;
 
   /* Allocate the inds and weights. */
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 *nr_cells)) == NULL ||
