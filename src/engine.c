@@ -1748,38 +1748,7 @@ void engine_step(struct engine *e) {
 
   TIMER_TIC2
 
-  /* Get the maximum dt. */
-  if (e->policy & engine_policy_multistep) {
-    dt_step = 2.0f * dt;
-    for (k = 0; k < 32 && (e->step & (1 << k)) == 0; k++) dt_step *= 2;
-  } else
-    dt_step = FLT_MAX;
 
-  /* Set the maximum dt. */
-  e->dt_step = dt_step;
-  e->s->dt_step = dt_step;
-  // message( "dt_step set to %.3e (dt=%.3e)." , dt_step , e->dt );
-  // fflush(stdout);
-
-  // printParticle( parts , 432626 );
-
-  /* First kick. */
-  if (e->step == 0 || !(e->policy & engine_policy_fixdt)) {
-    TIMER_TIC
-    engine_launch(e, (e->nr_threads > 8) ? 8 : e->nr_threads,
-                  (1 << task_type_kick1) | (1 << task_type_link));
-    TIMER_TOC(timer_kick1);
-  }
-
-  /* Check if all the kick1 threads have executed. */
-  /* for ( k = 0 ; k < e->sched.nr_tasks ; k++ )
-      if ( e->sched.tasks[k].type == task_type_kick1 &&
-           e->sched.tasks[k].toc == 0 )
-          error( "Not all kick1 tasks completed." ); */
-
-  // for(k=0; k<10; ++k)
-  //   printParticle(parts, k);
-  // printParticle( e->s->parts , 3392063069037 , e->s->nr_parts );
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
@@ -1861,8 +1830,6 @@ if ( e->nodeID == 0 )
     message( "nr_parts=%i." , nr_parts ); */
 #endif
 
-  e->dt_min = dt_min;
-  e->dt_max = dt_max;
   e->count_step = count;
   e->ekin = ekin;
   e->epot = epot;
