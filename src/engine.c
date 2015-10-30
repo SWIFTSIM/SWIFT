@@ -2055,6 +2055,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->forcerepart = 0;
   e->links = NULL;
   e->nr_links = 0;
+  e->timeBegin = timeBegin;
+  e->timeEnd = timeEnd;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
@@ -2085,28 +2087,11 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->barrier_launch = 0;
   e->barrier_launchcount = 0;
 
-  /* /\* Run through the parts and get the minimum time step. *\/ */
-  /* e->dt_orig = dt; */
-  /* for (k = 0; k < s->nr_parts; k++) */
-  /*   if (s->parts[k].dt < dt_min) dt_min = s->parts[k].dt; */
-  /* if (dt_min == 0.0f) */
-  /*   dt = 0.0f; */
-  /* else */
-  /*   while (dt > dt_min) dt *= 0.5f; */
-  /* e->dt = dt; */
 
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, nr_queues, scheduler_flag_steal, e->nodeID);
   s->nr_queues = nr_queues;
 
-  /* /\* Append a kick1 task to each cell. *\/ */
-  /* scheduler_reset(&e->sched, s->tot_cells); */
-  /* for (k = 0; k < s->nr_cells; k++) */
-  /*   s->cells[k].kick1 = */
-  /*       scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0,
-   * 0, */
-  /*                         &s->cells[k], NULL, 0); */
-  /* scheduler_ranktasks(&e->sched); */
 
   /* Allocate and init the threads. */
   if ((e->runners =
