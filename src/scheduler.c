@@ -128,7 +128,7 @@ void scheduler_splittasks(struct scheduler *s) {
       else
         break;
     }
-    
+
     /* Skip sorting tasks. */
     if (t->type == task_type_psort) continue;
 
@@ -1029,45 +1029,34 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
-  int k, res;
-  struct task *t2, *next = NULL;
-  struct cell *super = t->ci->super;
-
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
-  for (k = 0; k < t->nr_unlock_tasks; k++) {
-    t2 = t->unlock_tasks[k];
-    if ((res = atomic_dec(&t2->wait)) < 1) error("Negative wait!");
-    if (res == 1 && !t2->skip) {
-      if (0 && !t2->implicit && t2->ci->super == super &&
-          (next == NULL || t2->weight > next->weight) && task_lock(t2)) {
-        if (next != NULL) {
-          task_unlock(next);
-          scheduler_enqueue(s, next);
-        }
-        next = t2;
-      } else
-        scheduler_enqueue(s, t2);
+  for (int k = 0; k < t->nr_unlock_tasks; k++) {
+    struct task *t2 = t->unlock_tasks[k];
+    int res = atomic_dec(&t2->wait);
+    if (res < 1) {
+      error("Negative wait!");
+    } else if (res == 1 && !t2->skip) {
+      scheduler_enqueue(s, t2);
     }
   }
 
-  /* Task definitely done. */
+  /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);
-    if (next == NULL) atomic_dec(&s->waiting);
+    atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
 
-  /* Start the clock on the follow-up task. */
-  if (next != NULL) next->tic = getticks();
-
-  /* Return the next best task. */
-  return next;
+  /* Return the next best task. Note that we currently do not
+     implement anything that does this, as getting it to respect
+     priorities is too tricky and currently unnecessary. */
+  return NULL;
 }
 
 /**
