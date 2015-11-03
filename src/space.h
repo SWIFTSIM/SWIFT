@@ -125,6 +125,8 @@ void space_map_cells_pre(struct space *s, int full,
 void space_map_parts(struct space *s,
                      void (*fun)(struct part *p, struct cell *c, void *data),
                      void *data);
+void space_map_parts_xparts(struct space *s,
+			    void (*fun)(struct part *p, struct xpart *xp, struct cell *c));
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_rebuild(struct space *s, double h_max, int verbose);

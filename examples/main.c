@@ -85,8 +85,8 @@ int main(int argc, char *argv[]) {
   FILE *file_thread;
   int with_outputs = 1;
 
-/* Choke on FP-exceptions. */
-// feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+  /* Choke on FP-exceptions. */
+  //feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
 
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
@@ -207,6 +207,7 @@ int main(int argc, char *argv[]) {
   /* How large are the parts? */
   if (myrank == 0) {
     message("sizeof(struct part) is %li bytes.", (long int)sizeof(struct part));
+    message("sizeof(struct xpart) is %li bytes.", (long int)sizeof(struct xpart));
     message("sizeof(struct gpart) is %li bytes.",
             (long int)sizeof(struct gpart));
   }
@@ -370,6 +371,9 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
+  /* Initialise the particles */
+  engine_init_particles(&e);
+  
   /* Legend */
   if (myrank == 0)
     printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
@@ -390,6 +394,8 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
+    break;
+    
     if (with_outputs && j % 100 == 0) {
 
 #if defined(WITH_MPI)

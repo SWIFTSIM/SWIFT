@@ -824,6 +824,48 @@ void space_map_parts(struct space *s,
     rec_map_parts(&s->cells[cid], fun, data);
 }
 
+
+/**
+ * @brief Map a function to all particles in a cell recursively.
+ *
+ * @param c The #cell we are working in.
+ * @param fun Function pointer to apply on the cells.
+ * @param data Data passed to the function fun.
+ */
+
+static void rec_map_parts_xparts(struct cell *c,
+				 void (*fun)(struct part *p, struct xpart *xp, struct cell *c)) {
+
+  int k;
+
+  /* No progeny? */
+  if (!c->split)
+    for (k = 0; k < c->count; k++) fun(&c->parts[k], &c->xparts[k], c);
+
+  /* Otherwise, recurse. */
+  else
+    for (k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) rec_map_parts_xparts(c->progeny[k], fun);
+}
+
+/**
+ * @brief Map a function to all particles (#part and #xpart) in a space.
+ *
+ * @param s The #space we are working in.
+ * @param fun Function pointer to apply on the particles in the cells.
+ */
+
+void space_map_parts_xparts(struct space *s,
+			    void (*fun)(struct part *p, struct xpart *xp, struct cell *c)) {
+
+  int cid = 0;
+
+  /* Call the recursive function on all higher-level cells. */
+  for (cid = 0; cid < s->nr_cells; cid++)
+    rec_map_parts_xparts(&s->cells[cid], fun);
+}
+
+
 /**
  * @brief Map a function to all particles in a cell recursively.
  *

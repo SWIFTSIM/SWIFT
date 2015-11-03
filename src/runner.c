@@ -512,6 +512,8 @@ void runner_doinit(struct runner *r, struct cell *c) {
     return;
   }
 
+  //  message("in here count=%d", count);
+  
   /* Loop over the parts in this cell. */
   for (i = 0; i < count; i++) {
 
@@ -528,6 +530,12 @@ void runner_doinit(struct runner *r, struct cell *c) {
       p->density.div_v = 0.0;
       for (k = 0; k < 3; k++) p->density.curl_v[k] = 0.0;
     }
+
+    if(p->id==1000) {
+      
+      message("p->id=%lld p->h=%f p->rho=%f", p->id, p->h, p->rho);
+    }
+
   }
 }
 
@@ -554,6 +562,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
   TIMER_TIC
 
+    //message("start");
+    
   /* Recurse? */
   if (c->split) {
     for (k = 0; k < 8; k++)
@@ -561,6 +571,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
     return;
   }
 
+  //message("done recursing");
+  
   /* Init the IDs that have to be updated. */
   if ((pid = (int *)alloca(sizeof(int) * count)) == NULL)
     error("Call to alloca failed.");
@@ -569,9 +581,11 @@ void runner_doghost(struct runner *r, struct cell *c) {
   /* While there are particles that need to be updated... */
   while (count > 0) {
 
+    //message("count=%d redo=%d", count, redo);
+    
     /* Reset the redo-count. */
     redo = 0;
-
+    
     /* Loop over the parts in this cell. */
     for (i = 0; i < count; i++) {
 
@@ -596,6 +610,12 @@ void runner_doghost(struct runner *r, struct cell *c) {
         wcount_dh =
             p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
 
+	if(p->id==1000) {
+	
+	  message("p->id=%lld p->h=%f p->N_ngb=%f p->rho=%f", p->id, p->h, wcount, p->rho);
+	  //error("");
+	}
+	
         /* If no derivative, double the smoothing length. */
         if (wcount_dh == 0.0f) h_corr = p->h;
 
@@ -612,8 +632,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
         if (wcount > kernel_nwneigh + const_delta_nwneigh ||
             wcount < kernel_nwneigh - const_delta_nwneigh) {
           h = p->h += h_corr;
-          p->h += (p->density.wcount + kernel_root - kernel_nwneigh) /
-                  p->density.wcount_dh;
+          //p->h += (p->density.wcount + kernel_root - kernel_nwneigh) /
+          //        p->density.wcount_dh;
           pid[redo] = pid[i];
           redo += 1;
           p->density.wcount = 0.0;
@@ -672,9 +692,11 @@ void runner_doghost(struct runner *r, struct cell *c) {
         p->force.u_dt = 0.0f;
         p->force.h_dt = 0.0f;
         p->force.v_sig = 0.0f;
+
       }
     }
 
+    
     /* We now need to treat the particles whose smoothing length had not
      * converged again */
 
@@ -682,8 +704,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
     count = redo;
     if (count > 0) {
 
-      // error( "Bad smoothing length, fixing this isn't implemented yet." );
-
+      //message("count=%d", count);
+    
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
 

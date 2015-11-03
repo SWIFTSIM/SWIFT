@@ -138,6 +138,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  float timeBegin, float timeEnd);
 void engine_prepare(struct engine *e);
 void engine_print(struct engine *e);
+void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, int *grid);

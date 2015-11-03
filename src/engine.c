@@ -93,12 +93,16 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
   int k;
   struct scheduler *s = &e->sched;
 
+  //  message("in here");
+  
   /* Am I the super-cell? */
   if (super == NULL && c->nr_tasks > 0) {
 
     /* Remember me. */
     super = c;
 
+    //message("Adding tasks");
+    
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
@@ -1148,6 +1152,7 @@ void engine_maketasks(struct engine *e) {
 
     /* Self-interaction? */
     if (t->type == task_type_self && t->subtype == task_subtype_density) {
+      scheduler_addunlock(sched, t->ci->super->init, t);
       scheduler_addunlock(sched, t, t->ci->super->ghost);
       t2 = scheduler_addtask(sched, task_type_self, task_subtype_force, 0, 0,
                              t->ci, NULL, 0);
@@ -1162,11 +1167,13 @@ void engine_maketasks(struct engine *e) {
       t2 = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0, 0,
                              t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
+	scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->ci->super->kick);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+        scheduler_addunlock(sched, t->cj->super->init, t);	
         scheduler_addunlock(sched, t, t->cj->super->ghost);
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
@@ -1182,12 +1189,14 @@ void engine_maketasks(struct engine *e) {
       t2 = scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
                              0, t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
+	scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->ci->super->kick);
       }
       if (t->cj != NULL && t->cj->nodeID == nodeID &&
           t->ci->super != t->cj->super) {
+        scheduler_addunlock(sched, t->cj->super->init, t);
         scheduler_addunlock(sched, t, t->cj->super->ghost);
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
@@ -1252,116 +1261,119 @@ int engine_marktasks(struct engine *e) {
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
-  /* Much less to do here if we're on a fixed time-step. */
-  if (!(e->policy & engine_policy_multistep)) {
+  
+  
+  /* /\* Much less to do here if we're on a fixed time-step. *\/ */
+  /* if (!(e->policy & engine_policy_multistep)) { */
 
-    /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+  /*   /\* Run through the tasks and mark as skip or not. *\/ */
+  /*   for (k = 0; k < nr_tasks; k++) { */
 
-      /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
+  /*     /\* Get a handle on the kth task. *\/ */
+  /*     t = &tasks[ind[k]]; */
 
-      /* Pair? */
-      if (t->type == task_type_pair ||
-          (t->type == task_type_sub && t->cj != NULL)) {
+  /*     /\* Pair? *\/ */
+  /*     if (t->type == task_type_pair || */
+  /*         (t->type == task_type_sub && t->cj != NULL)) { */
 
-        /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
+  /*       /\* Local pointers. *\/ */
+  /*       ci = t->ci; */
+  /*       cj = t->cj; */
 
-        /* Too much particle movement? */
-        if (t->tight &&
-            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-             ci->dx_max > space_maxreldx * ci->h_max ||
-             cj->dx_max > space_maxreldx * cj->h_max))
-          return 1;
+  /*       /\* Too much particle movement? *\/ */
+  /*       if (t->tight && */
+  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin || */
+  /*            ci->dx_max > space_maxreldx * ci->h_max || */
+  /*            cj->dx_max > space_maxreldx * cj->h_max)) */
+  /*         return 1; */
 
-      }
+  /*     } */
 
-      /* Sort? */
-      else if (t->type == task_type_sort) {
+  /*     /\* Sort? *\/ */
+  /*     else if (t->type == task_type_sort) { */
 
-        /* If all the sorts have been done, make this task implicit. */
-        if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1;
-      }
+  /*       /\* If all the sorts have been done, make this task implicit. *\/ */
+  /*       if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1; */
+  /*     } */
+  /*   } */
+
+  /* } else { */
+
+  /* Run through the tasks and mark as skip or not. */
+  for (k = 0; k < nr_tasks; k++) {
+
+    /* Get a handle on the kth task. */
+    t = &tasks[ind[k]];
+
+    
+    /* Sort-task? Note that due to the task ranking, the sorts
+       will all come before the pairs. */
+    if (t->type == task_type_sort) {
+
+      /* Re-set the flags. */
+      t->flags = 0;
+      t->skip = 1;
+
     }
 
-  } else {
+    /* Single-cell task? */
+    else if (t->type == task_type_self || t->type == task_type_ghost ||
+	     (t->type == task_type_sub && t->cj == NULL)) {
 
-    /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+      /* Set this task's skip. */
+      //t->skip = (t->ci->t_end_min >= t_end);
 
-      /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
-
-      /* Sort-task? Note that due to the task ranking, the sorts
-         will all come before the pairs. */
-      if (t->type == task_type_sort) {
-
-        /* Re-set the flags. */
-        t->flags = 0;
-        t->skip = 1;
-
-      }
-
-      /* Single-cell task? */
-      else if (t->type == task_type_self || t->type == task_type_ghost ||
-               (t->type == task_type_sub && t->cj == NULL)) {
-
-        /* Set this task's skip. */
-        t->skip = (t->ci->t_end_min > t_end);
-
-      }
-
-      /* Pair? */
-      else if (t->type == task_type_pair ||
-               (t->type == task_type_sub && t->cj != NULL)) {
-
-        /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
-
-        /* Set this task's skip. */
-        t->skip = (ci->t_end_min > t_end && cj->t_end_min > t_end);
-
-        /* Too much particle movement? */
-        if (t->tight &&
-            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-             ci->dx_max > space_maxreldx * ci->h_max ||
-             cj->dx_max > space_maxreldx * cj->h_max))
-          return 1;
-
-        /* Set the sort flags. */
-        if (!t->skip && t->type == task_type_pair) {
-          if (!(ci->sorted & (1 << t->flags))) {
-            ci->sorts->flags |= (1 << t->flags);
-            ci->sorts->skip = 0;
-          }
-          if (!(cj->sorted & (1 << t->flags))) {
-            cj->sorts->flags |= (1 << t->flags);
-            cj->sorts->skip = 0;
-          }
-        }
-
-      }
-
-      /* Kick? */
-      else if (t->type == task_type_kick)
-        t->skip = 0;
-
-      /* Drift? */
-      else if (t->type == task_type_drift)
-        t->skip = 0;
-
-      /* Init? */
-      else if (t->type == task_type_init)
-        t->skip = 0;
-
-      /* None? */
-      else if (t->type == task_type_none)
-        t->skip = 1;
     }
+
+    /* Pair? */
+    else if (t->type == task_type_pair ||
+	     (t->type == task_type_sub && t->cj != NULL)) {
+
+      /* Local pointers. */
+      ci = t->ci;
+      cj = t->cj;
+
+      /* Set this task's skip. */
+      //t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
+
+      /* Too much particle movement? */
+      if (t->tight &&
+	  (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+	   ci->dx_max > space_maxreldx * ci->h_max ||
+	   cj->dx_max > space_maxreldx * cj->h_max))
+	return 1;
+
+      /* Set the sort flags. */
+      if (!t->skip && t->type == task_type_pair) {
+	if (!(ci->sorted & (1 << t->flags))) {
+	  ci->sorts->flags |= (1 << t->flags);
+	  ci->sorts->skip = 0;
+	}
+	if (!(cj->sorted & (1 << t->flags))) {
+	  cj->sorts->flags |= (1 << t->flags);
+	  cj->sorts->skip = 0;
+	}
+      }
+
+    }
+
+    /* Kick? */
+    else if (t->type == task_type_kick)
+      t->skip = 0;
+
+    /* Drift? */
+    else if (t->type == task_type_drift)
+      t->skip = 0;
+
+    /* Init? */
+    else if (t->type == task_type_init)
+      t->skip = 0;
+
+    /* None? */
+    else if (t->type == task_type_none)
+      t->skip = 1;
   }
+    //}
 
   // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
 
@@ -1742,6 +1754,78 @@ void hassorted(struct cell *c) {
       if (c->progeny[k] != NULL) hassorted(c->progeny[k]);
 }
 
+/**
+ * @brief Initialises the particles and set them in a state ready to move forward in time.
+ *
+ * @param e The #engine
+ */
+void engine_init_particles(struct engine *e) {
+
+  struct space *s = e->s;
+
+  //engine_repartition(e);
+
+  engine_prepare(e);
+
+  engine_print(e);
+
+  //engine_maketasks(e);
+
+  engine_print(e);
+  
+  engine_marktasks(e);
+
+  engine_print(e);
+  
+  fflush(stdout);
+  message("Engine prepared");
+  
+  /* Make sure all particles are ready to go */
+  void initParts(struct part *p, struct xpart *xp, struct cell *c) {
+    p->t_end = 0.;
+    p->t_begin = 0.;
+    p->rho = -1.;
+    p->h = 1.12349f / 20;
+    xp->v_full[0] = p->v[0];
+    xp->v_full[1] = p->v[1];
+    xp->v_full[2] = p->v[2];
+    c->t_end_min = 0.;
+  }
+
+  message("Initialising particles");
+  space_map_parts_xparts(s, initParts);
+
+
+  /* Now everybody should have sensible smoothing length */
+  void printParts(struct part *p, struct xpart *xp, struct cell *c) {
+    if( p->id == 1000)
+      message("id=%lld h=%f rho=%f", p->id, p->h, p->rho);
+  }
+  //space_map_parts_xparts(s, printParts);
+
+  void printCells(struct part *p, struct xpart *xp, struct cell *c) {
+    if(c->super != NULL && 0)
+      message("c->t_end_min=%f c->t_end_max=%f c->super=%p sort=%p ghost=%p kick=%p", c->t_end_min, c->t_end_max, c->super, c->sorts, c->ghost, c->kick);
+  }
+  space_map_parts_xparts(s, printCells);
+
+  
+  /* Now do a density calculation */
+  TIMER_TIC;
+  engine_launch(e, e->nr_threads,
+                (1 << task_type_sort) | (1 << task_type_self) |
+		(1 << task_type_pair) | (1 << task_type_sub) |
+		(1 << task_type_init) | (1 << task_type_ghost) |
+		(1 << task_type_send) | (1 << task_type_recv) |
+		(1 << task_type_link));
+
+  TIMER_TOC(timer_runners);
+
+  space_map_parts_xparts(s, printParts);
+
+  
+}
+ 
 /**
  * @brief Let the #engine loose to compute the forces.
  *
