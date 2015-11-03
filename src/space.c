@@ -616,7 +616,7 @@ void space_do_parts_sort() {
       } else {
 
         /* Recurse on the right? */
-        if (jj + 1 < j && pivot + 1 < max) {
+        if (pivot + 1 < max) {
           qid = atomic_inc(&space_sort_struct.last) %
                 space_sort_struct.stack_size;
           space_sort_struct.stack[qid].i = jj + 1;
