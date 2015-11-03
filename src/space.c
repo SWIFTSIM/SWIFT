@@ -492,7 +492,7 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   space_sort_struct.parts = s->parts;
   space_sort_struct.xparts = s->xparts;
   space_sort_struct.ind = ind;
-  space_sort_struct.stack_size = 2 * (max - min) + 10;
+  space_sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
   if ((space_sort_struct.stack = malloc(sizeof(struct qstack) *
                                         space_sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
