@@ -557,7 +557,7 @@ void engine_repartition(struct engine *e) {
     /* Check that the nodeIDs are ok. */
     for (k = 0; k < nr_cells; k++)
       if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
-        error("Got bad nodeID %i for cell %i.", nodeIDs[k], k);
+        error("Got bad nodeID %"PRIDX" for cell %i.", nodeIDs[k], k);
   }
 
 /* Broadcast the result of the partition. */
