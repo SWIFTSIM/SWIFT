@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -536,7 +536,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
       /* Get a direct pointer on the part. */
       p = &parts[pid[i]];
 
-      /* Is this part within the timestep? */
+      /* Is this part within the time step? */
       if (p->dt <= dt_step) {
 
         /* Some smoothing length multiples. */
@@ -620,7 +620,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
         alpha_dot = (const_viscosity_alpha_min - p->alpha) / tau +
                     (const_viscosity_alpha_max - p->alpha) * S;
 
-        /* Update particle's viscosity paramter */
+        /* Update particle's viscosity parameter */
         p->alpha += alpha_dot * p->dt;
 #endif
 
@@ -932,7 +932,7 @@ void runner_dokick1(struct runner *r, struct cell *c) {
 
   }
 
-  /* Otherwise, agregate data from children. */
+  /* Otherwise, aggregate data from children. */
   else {
 
     /* Init with the first non-null child. */
@@ -1045,7 +1045,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       xp->v_hdt[2] = (v_hdt[2] += dt * a[2]);
       xp->u_hdt = (u_hdt += dt * u_dt);
 
-      /* Move the particles with the velocitie at the half-step. */
+      /* Move the particles with the velocity at the half-step. */
       p->x[0] = x[0] += dt * v_hdt[0];
       p->x[1] = x[1] += dt * v_hdt[1];
       p->x[2] = x[2] += dt * v_hdt[2];
@@ -1103,7 +1103,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   }
 
-  /* Otherwise, agregate data from children. */
+  /* Otherwise, aggregate data from children. */
   else {
 
     /* Init with the first non-null child. */

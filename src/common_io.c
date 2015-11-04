@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -218,7 +218,7 @@ void writeStringAttribute(hid_t grp, char* name, const char* str, int length) {
 
 /**
  * @brief Writes a double value as an attribute
- * @param grp The groupm in which to write
+ * @param grp The group in which to write
  * @param name The name of the attribute
  * @param data The value to write
  */
@@ -228,7 +228,7 @@ void writeAttribute_d(hid_t grp, char* name, double data) {
 
 /**
  * @brief Writes a float value as an attribute
- * @param grp The groupm in which to write
+ * @param grp The group in which to write
  * @param name The name of the attribute
  * @param data The value to write
  */
@@ -238,7 +238,7 @@ void writeAttribute_f(hid_t grp, char* name, float data) {
 
 /**
  * @brief Writes an int value as an attribute
- * @param grp The groupm in which to write
+ * @param grp The group in which to write
  * @param name The name of the attribute
  * @param data The value to write
  */
@@ -249,7 +249,7 @@ void writeAttribute_i(hid_t grp, char* name, int data) {
 
 /**
  * @brief Writes a long value as an attribute
- * @param grp The groupm in which to write
+ * @param grp The group in which to write
  * @param name The name of the attribute
  * @param data The value to write
  */
@@ -259,7 +259,7 @@ void writeAttribute_l(hid_t grp, char* name, long data) {
 
 /**
  * @brief Writes a string value as an attribute
- * @param grp The groupm in which to write
+ * @param grp The group in which to write
  * @param name The name of the attribute
  * @param str The string to write
  */

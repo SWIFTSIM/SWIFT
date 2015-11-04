@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -49,6 +50,9 @@ struct scheduler {
 
   /* Scheduler flags. */
   unsigned int flags;
+
+  /* Scheduler mask */
+  unsigned int mask;
 
   /* Number of queues in this scheduler. */
   int nr_queues;
