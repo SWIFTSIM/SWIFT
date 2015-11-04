@@ -936,7 +936,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #endif
 
   /* Ignore skipped tasks and tasks not in the mask. */
-  if (t->skip || (!((1 << t->type) & (s->mask)) && t->type != task_type_link) ||
+  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link) ||
       atomic_cas(&t->rid, -1, 0) != -1)
     return;
 
@@ -944,7 +944,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->implicit) {
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
-      if (atomic_dec(&t2->wait) == 1 && !t2->skip) scheduler_enqueue(s, t2);
+      if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
   }
 
@@ -1033,8 +1033,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
-  unsigned int mask = s->mask;
-
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
@@ -1045,7 +1043,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
-    } else if (res == 1 && !t2->skip && ((1 << t->type) & mask)) {
+    } else if (res == 1) {
       scheduler_enqueue(s, t2);
     }
   }
@@ -1077,8 +1075,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
-  unsigned int mask = s->mask;
-
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
@@ -1086,7 +1082,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
     int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
-    } else if (res == 1 && !t2->skip && ((1 << t->type) & mask)) {
+    } else if (res == 1) {
       scheduler_enqueue(s, t2);
     }
   }
