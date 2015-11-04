@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -779,6 +780,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_tasks = 0;
   s->tasks_next = 0;
   s->waiting = 0;
+  s->mask = 0;
 
   /* Set the task pointers in the queues. */
   for (k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -914,6 +916,9 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   }
   // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) /
   // CPU_TPS * 1000 );
+
+  /* Store the mask */
+  s->mask = mask;
 }
 
 /**
@@ -1026,28 +1031,20 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
-  int k, res;
-  struct task *t2, *next = NULL;
-  struct cell *super = t->ci->super;
+  unsigned int mask = s->mask;
 
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
-  for (k = 0; k < t->nr_unlock_tasks; k++) {
-    t2 = t->unlock_tasks[k];
-    if ((res = atomic_dec(&t2->wait)) < 1) error("Negative wait!");
-    if (res == 1 && !t2->skip) {
-      if (0 && !t2->implicit && t2->ci->super == super &&
-          (next == NULL || t2->weight > next->weight) && task_lock(t2)) {
-        if (next != NULL) {
-          task_unlock(next);
-          scheduler_enqueue(s, next);
-        }
-        next = t2;
-      } else
-        scheduler_enqueue(s, t2);
+  for (int k = 0; k < t->nr_unlock_tasks; k++) {
+    struct task *t2 = t->unlock_tasks[k];
+    int res = atomic_dec(&t2->wait);
+    if (res < 1) {
+      error("Negative wait!");
+    } else if (res == 1 && !t2->skip && (1 << t->type) & mask) {
+      scheduler_enqueue(s, t2);
     }
   }
 
@@ -1055,16 +1052,15 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);
-    if (next == NULL) atomic_dec(&s->waiting);
+    atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
 
-  /* Start the clock on the follow-up task. */
-  if (next != NULL) next->tic = getticks();
-
-  /* Return the next best task. */
-  return next;
+  /* Return the next best task. Note that we currently do not
+     implement anything that does this, as getting it to respect
+     priorities is too tricky and currently unnecessary. */
+  return NULL;
 }
 
 /**
@@ -1079,31 +1075,34 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
-  int k, res;
-  struct task *t2, *next = NULL;
+  unsigned int mask = s->mask;
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
-  for (k = 0; k < t->nr_unlock_tasks; k++) {
-    t2 = t->unlock_tasks[k];
-    if ((res = atomic_dec(&t2->wait)) < 1) error("Negative wait!");
-    if (res == 1 && !t2->skip) scheduler_enqueue(s, t2);
+  for (int k = 0; k < t->nr_unlock_tasks; k++) {
+    struct task *t2 = t->unlock_tasks[k];
+    int res = atomic_dec(&t2->wait);
+    if (res < 1) {
+      error("Negative wait!");
+    }
+    else if (res == 1 && !t2->skip && (1 << t->type) & mask) {
+      scheduler_enqueue(s, t2);
+    }
   }
 
   /* Task definitely done. */
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);
-    if (next == NULL) atomic_dec(&s->waiting);
+    atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
 
-  /* Start the clock on the follow-up task. */
-  if (next != NULL) next->tic = getticks();
-
-  /* Return the next best task. */
-  return next;
+  /* Return the next best task. Note that we currently do not
+     implement anything that does this, as getting it to respect
+     priorities is too tricky and currently unnecessary. */
+  return NULL;
 }
 
 /**
