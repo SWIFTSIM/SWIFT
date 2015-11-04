@@ -886,13 +886,16 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
+  /* Store the mask */
+  s->mask = mask;
+
   /* Run through the tasks and set their waits. */
   // tic = getticks();
   for (k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
     t->wait = 0;
     t->rid = -1;
-    if (!((1 << t->type) & mask) || t->skip) continue;
+    if (!((1 << t->type) & s->mask) || t->skip) continue;
     for (j = 0; j < t->nr_unlock_tasks; j++)
       atomic_inc(&t->unlock_tasks[j]->wait);
   }
@@ -900,13 +903,13 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   // CPU_TPS * 1000 );
 
   /* Don't enqueue link tasks directly. */
-  mask &= ~(1 << task_type_link);
+  s->mask &= ~(1 << task_type_link);
 
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (k = 0; k < nr_tasks; k++) {
     t = &tasks[tid[k]];
-    if (((1 << t->type) & mask) && !t->skip) {
+    if (((1 << t->type) & s->mask) && !t->skip) {
       if (t->wait == 0) {
         scheduler_enqueue(s, t);
         pthread_cond_broadcast(&s->sleep_cond);
@@ -916,9 +919,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   }
   // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) /
   // CPU_TPS * 1000 );
-
-  /* Store the mask */
-  s->mask = mask;
 }
 
 /**
@@ -935,8 +935,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   int err;
 #endif
 
-  /* Ignore skipped tasks. */
-  if (t->skip || atomic_cas(&t->rid, -1, 0) != -1) return;
+  /* Ignore skipped tasks and tasks not in the mask. */
+  if (t->skip || (!((1 << t->type) & (s->mask)) && t->type != task_type_link) ||
+      atomic_cas(&t->rid, -1, 0) != -1)
+    return;
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
@@ -1043,7 +1045,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
-    } else if (res == 1 && !t2->skip && (1 << t->type) & mask) {
+    } else if (res == 1 && !t2->skip && ((1 << t->type) & mask)) {
       scheduler_enqueue(s, t2);
     }
   }
@@ -1084,8 +1086,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
     int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
-    }
-    else if (res == 1 && !t2->skip && (1 << t->type) & mask) {
+    } else if (res == 1 && !t2->skip && ((1 << t->type) & mask)) {
       scheduler_enqueue(s, t2);
     }
   }
