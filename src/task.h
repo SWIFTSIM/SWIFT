@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -91,5 +92,6 @@ void task_cleanunlock(struct task *t, int type);
 void task_addunlock(struct task *ta, struct task *tb);
 void task_unlock(struct task *t);
 int task_lock(struct task *t);
+void task_print_mask(unsigned int mask);
 
 #endif /* SWIFT_TASK_H */

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -251,4 +252,14 @@ void task_addunlock_old(struct task *ta, struct task *tb) {
   ta->nr_unlock_tasks += 1;
 
   lock_unlock_blind(&ta->lock);
+}
+
+void task_print_mask(unsigned int mask) {
+
+  int k;
+
+  printf("task_print_mask: The tasks to run are [");
+  for (k = 1; k < task_type_count; k++)
+    printf(" %s=%s", taskID_names[k], (mask & (1 << k)) ? "yes" : "no");
+  printf(" ]\n");
 }
