@@ -74,7 +74,7 @@ ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
 m = zeros(1)
 
-h = full((numPart, 1), 2.251 * boxSize / L)
+h = full((numPart, 1), 1.1255 * boxSize / L)
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
 ds[()] = h
 h = zeros(1)

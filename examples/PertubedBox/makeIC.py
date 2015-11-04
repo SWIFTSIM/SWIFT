@@ -63,7 +63,7 @@ for i in range(L):
             v[index,1] = 0.
             v[index,2] = 0.
             m[index] = mass
-            h[index] = 2.251 * boxSize / L
+            h[index] = 1.1255 * boxSize / L
             u[index] = internalEnergy
             ids[index] = index
             
