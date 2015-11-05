@@ -1,6 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
@@ -67,7 +67,7 @@ for i in range(L):
             v[index,1] = 0.
             v[index,2] = 0.
             m[index] = mass
-            h[index] = 2.251 / 2 * boxSize / L
+            h[index] = 1.1255 * boxSize / L
             u[index] = internalEnergy
             ids[index] = index
             if sqrt((x - boxSize/2.)**2 + (y - boxSize/2.)**2 + (z - boxSize/2.)**2) < 2.01 * boxSize/L:

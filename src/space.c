@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -182,7 +182,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     float buff;
     if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
-      error("Failed to aggreggate the rebuild flag accross nodes.");
+      error("Failed to aggregate the rebuild flag across nodes.");
     h_max = buff;
   }
 #endif
@@ -750,7 +750,7 @@ void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max) {
       } else {
 
         /* Recurse on the right? */
-        if (jj + 1 < j && pivot + 1 < max) {
+        if (pivot + 1 < max) {
           qid = (last++) % qstack_size;
           qstack[qid].i = jj + 1;
           qstack[qid].j = j;
@@ -1010,7 +1010,7 @@ void space_split(struct space *s, struct cell *c) {
     c->dt_max = dt_max;
   }
 
-  /* Set ownership accorind to the start of the parts array. */
+  /* Set ownership according to the start of the parts array. */
   c->owner = ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
 }
 
@@ -1106,7 +1106,7 @@ struct cell *space_getcell(struct space *s) {
 void space_init(struct space *s, double dim[3], struct part *parts, int N,
                 int periodic, double h_max, int verbose) {
 
-  /* Store eveything in the space. */
+  /* Store everything in the space. */
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];

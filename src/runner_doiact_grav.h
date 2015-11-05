@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -241,7 +241,7 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 
 /**
  * @brief Compute the recursive downward sweep, i.e. apply the multipole
- *        accelleration on all the particles.
+ *        acceleration on all the particles.
  *
  * @param r The #runner.
  * @param c The top-level #cell.
@@ -254,7 +254,7 @@ void runner_dograv_down(struct runner *r, struct cell *c) {
   /* Split? */
   if (c->split) {
 
-    /* Apply this cell's accelleration on the multipoles below. */
+    /* Apply this cell's acceleration on the multipoles below. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct multipole *mp = &c->progeny[k]->multipole;
@@ -272,7 +272,7 @@ void runner_dograv_down(struct runner *r, struct cell *c) {
   /* No, leaf node. */
   else {
 
-    /* Apply the multipole accelleration to all gparts. */
+    /* Apply the multipole acceleration to all gparts. */
     for (int k = 0; k < c->gcount; k++) {
       struct gpart *p = &c->gparts[k];
       p->a[0] += m->a[0];
@@ -590,7 +590,7 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
     theta = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
             (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]);
 
-    /* Split the interacton? */
+    /* Split the interaction? */
     if (theta < const_theta_max * const_theta_max) {
 
       /* Are both ci and cj split? */
