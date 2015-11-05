@@ -51,6 +51,14 @@
 #endif
 #include "runner_iact_grav.h"
 
+
+#define PRINT_PART if(p->id==1000) { \
+	  message("t->t_end p->id=%lld p->h=%f p->N_ngb=%f p->rho=%f p->t_beg=%f p->t_end=%f",\
+		  p->id, p->h, p->density.wcount, p->rho, p->t_begin, p->t_end);	\
+}
+
+
+
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
@@ -189,6 +197,8 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
 
   TIMER_TIC
 
+    message("sort!");
+    
   /* Clean-up the flags, i.e. filter out what's already been sorted. */
   flags &= ~c->sorted;
   if (flags == 0) return;
@@ -512,8 +522,6 @@ void runner_doinit(struct runner *r, struct cell *c) {
     return;
   }
 
-  //  message("in here count=%d", count);
-  
   /* Loop over the parts in this cell. */
   for (i = 0; i < count; i++) {
 
@@ -531,10 +539,7 @@ void runner_doinit(struct runner *r, struct cell *c) {
       for (k = 0; k < 3; k++) p->density.curl_v[k] = 0.0;
     }
 
-    if(p->id==1000) {
-      
-      message("p->id=%lld p->h=%f p->rho=%f", p->id, p->h, p->rho);
-    }
+    PRINT_PART;
 
   }
 }
@@ -560,10 +565,10 @@ void runner_doghost(struct runner *r, struct cell *c) {
 #endif
   float t_end = r->e->time;
 
-  TIMER_TIC
+  TIMER_TIC;
 
-    //message("start");
-    
+  //message("start");
+
   /* Recurse? */
   if (c->split) {
     for (k = 0; k < 8; k++)
@@ -571,8 +576,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
     return;
   }
 
-  //message("done recursing");
-  
   /* Init the IDs that have to be updated. */
   if ((pid = (int *)alloca(sizeof(int) * count)) == NULL)
     error("Call to alloca failed.");
@@ -581,11 +584,11 @@ void runner_doghost(struct runner *r, struct cell *c) {
   /* While there are particles that need to be updated... */
   while (count > 0) {
 
-    //message("count=%d redo=%d", count, redo);
-    
+    // message("count=%d redo=%d", count, redo);
+
     /* Reset the redo-count. */
     redo = 0;
-    
+
     /* Loop over the parts in this cell. */
     for (i = 0; i < count; i++) {
 
@@ -610,11 +613,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
         wcount_dh =
             p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
 
-	if(p->id==1000) {
-	
-	  message("p->id=%lld p->h=%f p->N_ngb=%f p->rho=%f", p->id, p->h, wcount, p->rho);
-	  //error("");
-	}
+	PRINT_PART
 	
         /* If no derivative, double the smoothing length. */
         if (wcount_dh == 0.0f) h_corr = p->h;
@@ -631,9 +630,11 @@ void runner_doghost(struct runner *r, struct cell *c) {
         /* Did we get the right number density? */
         if (wcount > kernel_nwneigh + const_delta_nwneigh ||
             wcount < kernel_nwneigh - const_delta_nwneigh) {
-          h = p->h += h_corr;
-          //p->h += (p->density.wcount + kernel_root - kernel_nwneigh) /
-          //        p->density.wcount_dh;
+
+          /* Ok, correct then */
+          p->h += h_corr;
+
+          /* And flag for another round of fun */
           pid[redo] = pid[i];
           redo += 1;
           p->density.wcount = 0.0;
@@ -692,11 +693,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
         p->force.u_dt = 0.0f;
         p->force.h_dt = 0.0f;
         p->force.v_sig = 0.0f;
-
       }
     }
 
-    
     /* We now need to treat the particles whose smoothing length had not
      * converged again */
 
@@ -704,8 +703,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
     count = redo;
     if (count > 0) {
 
-      //message("count=%d", count);
-    
+      // message("count=%d", count);
+
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
 
@@ -784,6 +783,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       h = p->h;
       ih = 1.0f / h;
 
+      PRINT_PART;
+      
       /* Drift... */
       p->x[0] += xp->v_full[0] * dt;
       p->x[1] += xp->v_full[1] * dt;
@@ -884,10 +885,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       m = p->mass;
       x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
-      /* if (p->id == 0) */
-      /*   message("Kick ! t_beg=%f t_end=%f t_cur=%f", p->t_begin, p->t_end, */
-      /*           t_current); */
-
       /* If particle needs to be kicked */
       if (p->t_end <= t_current) {
 
@@ -926,6 +923,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->t_begin = p->t_end;
         p->t_end = p->t_begin + dt;
 
+	PRINT_PART
+	
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;
         xp->v_full[1] += p->a[1] * dt;

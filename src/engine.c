@@ -49,11 +49,6 @@
 #include "error.h"
 #include "timers.h"
 
-#ifdef LEGACY_GADGET2_SPH
-#include "runner_iact_legacy.h"
-#else
-#include "runner_iact.h"
-#endif
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
@@ -1728,6 +1723,11 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   if (pthread_cond_broadcast(&e->barrier_cond) != 0)
     error("Failed to broadcast barrier open condition.");
 
+  /* Print out what we do */
+  printf("\n");
+  task_print_mask(mask);
+  printf("\n");
+  
   /* Load the tasks. */
   pthread_mutex_unlock(&e->barrier_mutex);
   scheduler_start(&e->sched, mask);
@@ -1745,14 +1745,14 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
       error("Error while waiting for barrier.");
 }
 
-void hassorted(struct cell *c) {
+/* void hassorted(struct cell *c) { */
 
-  if (c->sorted) error("Suprious sorted flags.");
+/*   if (c->sorted) error("Suprious sorted flags."); */
 
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) hassorted(c->progeny[k]);
-}
+/*   if (c->split) */
+/*     for (int k = 0; k < 8; k++) */
+/*       if (c->progeny[k] != NULL) hassorted(c->progeny[k]); */
+/* } */
 
 /**
  * @brief Initialises the particles and set them in a state ready to move forward in time.
@@ -1782,10 +1782,9 @@ void engine_init_particles(struct engine *e) {
   
   /* Make sure all particles are ready to go */
   void initParts(struct part *p, struct xpart *xp, struct cell *c) {
-    p->t_end = 0.;
     p->t_begin = 0.;
+    p->t_end = 0.;
     p->rho = -1.;
-    p->h = 1.12349f / 20;
     xp->v_full[0] = p->v[0];
     xp->v_full[1] = p->v[1];
     xp->v_full[2] = p->v[2];
@@ -1799,7 +1798,7 @@ void engine_init_particles(struct engine *e) {
   /* Now everybody should have sensible smoothing length */
   void printParts(struct part *p, struct xpart *xp, struct cell *c) {
     if( p->id == 1000)
-      message("id=%lld h=%f rho=%f", p->id, p->h, p->rho);
+      message("id=%lld h=%f rho=%f t_begin=%f t_end=%f", p->id, p->h, p->rho, p->t_begin, p->t_end);
   }
   //space_map_parts_xparts(s, printParts);
 
@@ -1807,7 +1806,7 @@ void engine_init_particles(struct engine *e) {
     if(c->super != NULL && 0)
       message("c->t_end_min=%f c->t_end_max=%f c->super=%p sort=%p ghost=%p kick=%p", c->t_end_min, c->t_end_max, c->super, c->sorts, c->ghost, c->kick);
   }
-  space_map_parts_xparts(s, printCells);
+  //space_map_parts_xparts(s, printCells);
 
   
   /* Now do a density calculation */
@@ -1821,9 +1820,12 @@ void engine_init_particles(struct engine *e) {
 
   TIMER_TOC(timer_runners);
 
-  space_map_parts_xparts(s, printParts);
+  //space_map_parts_xparts(s, printParts);
 
-  
+  printf("\n\n");
+
+  /* Ready to go */
+  e->step = -1;
 }
  
 /**
@@ -1844,28 +1846,7 @@ void engine_step(struct engine *e) {
 
   TIMER_TIC2;
 
-  message("Begin step: %d", e->step);
-
-  /* Re-distribute the particles amongst the nodes? */
-  if (e->forcerepart) engine_repartition(e);
-
-  /* Prepare the space. */
-  engine_prepare(e);
-
-  engine_print(e);
-
-  /* Send off the runners. */
-  TIMER_TIC;
-  engine_launch(e, e->nr_threads,
-                (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_kick) | (1 << task_type_send) |
-                    (1 << task_type_recv) | (1 << task_type_link));
-
-  TIMER_TOC(timer_runners);
-
-  /* Collect the cell data from the kick. */
+  /* Collect the cell data. */
   for (k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
       c = &s->cells[k];
@@ -1905,24 +1886,49 @@ void engine_step(struct engine *e) {
   count = in[0];
   ekin = in[1];
   epot = in[2];
-/* int nr_parts;
-if ( MPI_Allreduce( &s->nr_parts , &nr_parts , 1 , MPI_INT , MPI_SUM ,
-MPI_COMM_WORLD ) != MPI_SUCCESS )
-    error( "Failed to aggregate particle count." );
-if ( e->nodeID == 0 )
-    message( "nr_parts=%i." , nr_parts ); */
 #endif
+
+  
+  message("t_end_min=%f t_end_max=%f", t_end_min, t_end_max);
+
 
   /* Move forward in time */
   e->timeOld = e->time;
   e->time = t_end_min;
   e->step += 1;
+  message("Step: %d e->time=%f", e->step, e->time);
 
-  message("e->time=%f", e->time);
-  message("Ready to drift");
+  
+  /* Drift everybody */
+  engine_launch(e, e->nr_threads, 1<<task_type_drift);
 
-  /* Drift all particles */
-  engine_launch(e, e->nr_threads, (1 << task_type_drift));
+  
+  /* Re-distribute the particles amongst the nodes? */
+  if (e->forcerepart) engine_repartition(e);
+
+  /* Prepare the space. */
+  engine_prepare(e);
+
+  engine_maketasks(e);
+  
+  engine_marktasks(e);
+  
+  engine_print(e);
+  message("Go !");
+  fflush(stdout);
+  
+  /* Send off the runners. */
+  TIMER_TIC;
+  engine_launch(e, e->nr_threads,
+  		    (1 << task_type_sort) | (1 << task_type_self) |
+                    (1 << task_type_pair) | (1 << task_type_sub) |
+                    (1 << task_type_init) | (1 << task_type_ghost) |
+                    (1 << task_type_kick) | (1 << task_type_send) |
+                    (1 << task_type_recv) | (1 << task_type_link));
+
+  TIMER_TOC(timer_runners);
+
+
 
   TIMER_TOC2(timer_step);
 }
