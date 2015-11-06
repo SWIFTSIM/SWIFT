@@ -17,7 +17,7 @@ Contents:
    Motivation/index.rst
    TaskBasedParallelism/index.rst
    FAQ/index.rst
-   
+   Physics/index.rst
 
 
 Indices and tables
