@@ -60,7 +60,7 @@ enum task_subtypes {
   task_subtype_count
 };
 
-extern const char *taskID_names[];
+extern const char *subtaskID_names[];
 
 /* Data of a task. */
 struct task {
