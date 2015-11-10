@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -50,14 +50,14 @@
  * @param type The #DATA_TYPE of the attribute.
  * @param N The number of particles.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurence of the field of
+ * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
  * @param importance If COMPULSORY, the data must be present in the IC file. If
  *OPTIONAL, the array will be zeroed when the data is not present.
  *
- * @todo A better version using HDF5 hyperslabs to read the file directly into
+ * @todo A better version using HDF5 hyper-slabs to read the file directly into
  *the part array
- * will be written once the strucutres have been stabilized.
+ * will be written once the structures have been stabilized.
  *
  * Calls #error() if an error occurs.
  */
@@ -159,7 +159,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * in the file.
  *
  * @warning Can not read snapshot distributed over more than 1 file !!!
- * @todo Read snaphsots distributed in more than one file.
+ * @todo Read snapshots distributed in more than one file.
  *
  * Calls #error() if an error occurs.
  *
@@ -257,14 +257,14 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurence of the field of
+ * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this array
  *
- * @todo A better version using HDF5 hyperslabs to write the file directly from
+ * @todo A better version using HDF5 hyper-slabs to write the file directly from
  *the part array
- * will be written once the strucutres have been stabilized.
+ * will be written once the structures have been stabilized.
  *
  * Calls #error() if an error occurs.
  */
@@ -334,8 +334,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   conversionString(buffer, us, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
                    conversionFactor(us, convFactor));
-  writeAttribute_f(h_data, "h-scale exponant", hFactor(us, convFactor));
-  writeAttribute_f(h_data, "a-scale exponant", aFactor(us, convFactor));
+  writeAttribute_f(h_data, "h-scale exponent", hFactor(us, convFactor));
+  writeAttribute_f(h_data, "a-scale exponent", aFactor(us, convFactor));
   writeAttribute_s(h_data, "Conversion factor", buffer);
 
   /* Free and close everything */
@@ -354,7 +354,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part A (char*) pointer on the first occurence of the field of interest
+ * @param part A (char*) pointer on the first occurrence of the field of interest
  *in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use

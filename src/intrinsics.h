@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Matthieu Schaller matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2015 Matthieu Schaller matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -24,7 +24,7 @@
  * significant bit position. If x is 0, the result is undefined.
  *
  * This is a wrapper for the GCC intrinsics with an implementation (from
- * Hacker's Delight) if the compiler intrisincs are not available.
+ * Hacker's Delight) if the compiler intrinsics are not available.
  */
 __attribute__((always_inline))
     INLINE static int intrinsics_clz(unsigned int x) {
@@ -64,7 +64,7 @@ __attribute__((always_inline))
  * @brief Returns the number of 1-bits in x.
  *
  * This is a wrapper for the GCC intrinsics with an implementation (from
- * Hacker's Delight) if the compiler intrisincs are not available.
+ * Hacker's Delight) if the compiler intrinsics are not available.
  */
 __attribute__((always_inline))
     INLINE static int intrinsics_popcount(unsigned int x) {

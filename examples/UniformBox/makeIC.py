@@ -1,6 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Coypright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ # Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
@@ -74,7 +74,7 @@ ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
 m = zeros(1)
 
-h = full((numPart, 1), 2.251 * boxSize / L)
+h = full((numPart, 1), 1.1255 * boxSize / L)
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
 ds[()] = h
 h = zeros(1)

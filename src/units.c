@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -300,7 +300,7 @@ float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit) {
 }
 
 /**
- * @brief Returns a string containg the exponants of the base units making up
+ * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors
  */
 void conversionString(char* buffer, struct UnitSystem* us,
@@ -316,7 +316,7 @@ void conversionString(char* buffer, struct UnitSystem* us,
  * @brief Returns the conversion factor for a given unit (expressed in terms of
  * the 5 fundamental units) in the chosen unit system
  * @param us The unit system used
- * @param baseUnitsExponants The exponant of each base units required to form
+ * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 double generalConversionFactor(struct UnitSystem* us,
@@ -334,7 +334,7 @@ double generalConversionFactor(struct UnitSystem* us,
  * @brief Returns the h factor exponentiation for a given unit (expressed in
  * terms of the 5 fundamental units)
  * @param us The unit system used
- * @param baseUnitsExponants The exponant of each base units required to form
+ * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
@@ -351,7 +351,7 @@ float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
  * @brief Returns the scaling factor exponentiation for a given unit (expressed
  * in terms of the 5 fundamental units)
  * @param us The unit system used
- * @param baseUnitsExponants The exponant of each base units required to form
+ * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
@@ -363,12 +363,12 @@ float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
 }
 
 /**
- * @brief Returns a string containg the exponants of the base units making up
+ * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors (expressed in terms of the 5 fundamental units)
  * @param buffer The buffer in which to write (The buffer must be long enough,
  * 140 chars at most)
- * @param us The UnistSystem in use.
- * @param baseUnitsExponants The exponant of each base units required to form
+ * @param us The UnitsSystem in use.
+ * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
 void generalConversionString(char* buffer, struct UnitSystem* us,

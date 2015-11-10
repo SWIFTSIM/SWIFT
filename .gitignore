@@ -18,13 +18,17 @@ doc/html/
 doc/latex/
 doc/man/
 doc/Doxyfile
-examples/test
-examples/test_fixdt
-examples/test_fixdt_mpi
-examples/test_mindt
-examples/test_mindt_mpi
-examples/test_mpi
-examples/test_single
+examples/swift
+examples/swift_fixdt
+examples/swift_fixdt_mpi
+examples/swift_mindt
+examples/swift_mindt_mpi
+examples/swift_mpi
+
+tests/testGreetings
+tests/testReading
+tests/input.hdf5
+tests/testSingle
 
 m4/libtool.m4
 m4/ltoptions.m4

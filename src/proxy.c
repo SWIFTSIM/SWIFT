@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -142,7 +142,7 @@ void proxy_addcell_in(struct proxy *p, struct cell *c) {
   if (p->nr_cells_in == p->size_cells_in) {
     p->size_cells_in *= proxy_buffgrow;
     if ((temp = malloc(sizeof(struct cell *) * p->size_cells_in)) == NULL)
-      error("Failed to allocate ingoing cell list.");
+      error("Failed to allocate incoming cell list.");
     memcpy(temp, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
     free(p->cells_in);
     p->cells_in = temp;

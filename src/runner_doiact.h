@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -1299,7 +1299,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
           } else {
 
-            /* Add this interaction to the non-summetric queue. */
+            /* Add this interaction to the non-symmetric queue. */
             r2q1[icount1] = r2;
             dxq1[3 * icount1 + 0] = dx[0];
             dxq1[3 * icount1 + 1] = dx[1];
@@ -1818,7 +1818,7 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
     }
 
-    /* Otherwsie, compute self-interaction. */
+    /* Otherwise, compute self-interaction. */
     else
       DOSELF1(r, ci);
 
@@ -2093,7 +2093,7 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
     }
 
-    /* Otherwsie, compute self-interaction. */
+    /* Otherwise, compute self-interaction. */
     else
       DOSELF2(r, ci);
 
@@ -2382,7 +2382,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
     }
 
-    /* Otherwsie, compute self-interaction. */
+    /* Otherwise, compute self-interaction. */
     else
       DOSELF_SUBSET(r, ci, parts, ind, count);
 

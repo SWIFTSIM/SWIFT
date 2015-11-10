@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -173,7 +174,7 @@ void scheduler_splittasks(struct scheduler *s) {
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
 
-          /* Add the self taks. */
+          /* Add the self task. */
           for (k = 0; ci->progeny[k] == NULL; k++)
             ;
           t->ci = ci->progeny[k];
@@ -595,7 +596,7 @@ void scheduler_splittasks(struct scheduler *s) {
           /* Ignore this task if the cell has no gparts. */
           if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
 
-          /* Split the interacton? */
+          /* Split the interaction? */
           else if (theta < const_theta_max * const_theta_max) {
 
             /* Are both ci and cj split? */
@@ -703,7 +704,7 @@ void scheduler_ranktasks(struct scheduler *s) {
   struct task *t, *tasks = s->tasks;
   int *tid = s->tasks_ind, nr_tasks = s->nr_tasks;
 
-  /* Run throught the tasks and get all the waits right. */
+  /* Run through the tasks and get all the waits right. */
   for (i = 0, k = 0; k < nr_tasks; k++) {
     tid[k] = k;
     for (j = 0; j < tasks[k].nr_unlock_tasks; j++)
@@ -761,7 +762,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   /* Do we need to re-allocate? */
   if (size > s->size) {
 
-    /* Free exising task lists if necessary. */
+    /* Free existing task lists if necessary. */
     if (s->tasks != NULL) free(s->tasks);
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
@@ -779,6 +780,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_tasks = 0;
   s->tasks_next = 0;
   s->waiting = 0;
+  s->mask = 0;
 
   /* Set the task pointers in the queues. */
   for (k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -800,7 +802,7 @@ void scheduler_reweight(struct scheduler *s) {
   float wscale = 0.001;
   // ticks tic;
 
-  /* Run throught the tasks backwards and set their waits and
+  /* Run through the tasks backwards and set their waits and
      weights. */
   // tic = getticks();
   for (k = nr_tasks - 1; k >= 0; k--) {
@@ -884,13 +886,16 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
-  /* Run throught the tasks and set their waits. */
+  /* Store the mask */
+  s->mask = mask;
+
+  /* Run through the tasks and set their waits. */
   // tic = getticks();
   for (k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
     t->wait = 0;
     t->rid = -1;
-    if (!((1 << t->type) & mask) || t->skip) continue;
+    if (!((1 << t->type) & s->mask) || t->skip) continue;
     for (j = 0; j < t->nr_unlock_tasks; j++)
       atomic_inc(&t->unlock_tasks[j]->wait);
   }
@@ -898,13 +903,13 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   // CPU_TPS * 1000 );
 
   /* Don't enqueue link tasks directly. */
-  mask &= ~(1 << task_type_link);
+  s->mask &= ~(1 << task_type_link);
 
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (k = 0; k < nr_tasks; k++) {
     t = &tasks[tid[k]];
-    if (((1 << t->type) & mask) && !t->skip) {
+    if (((1 << t->type) & s->mask) && !t->skip) {
       if (t->wait == 0) {
         scheduler_enqueue(s, t);
         pthread_cond_broadcast(&s->sleep_cond);
@@ -930,14 +935,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   int err;
 #endif
 
-  /* Ignore skipped tasks. */
-  if (t->skip || atomic_cas(&t->rid, -1, 0) != -1) return;
+  /* Ignore skipped tasks and tasks not in the mask. */
+  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link) ||
+      atomic_cas(&t->rid, -1, 0) != -1)
+    return;
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
-      if (atomic_dec(&t2->wait) == 1 && !t2->skip) scheduler_enqueue(s, t2);
+      if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
   }
 
@@ -971,7 +978,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           MPI_Error_string(err, buff, &len);
           error("Failed to emit irecv for particle data (%s).", buff);
         }
-        // message( "recieving %i parts with tag=%i from %i to %i." ,
+        // message( "receiving %i parts with tag=%i from %i to %i." ,
         //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
         // fflush(stdout);
         qid = 1 % s->nr_queues;
@@ -1026,28 +1033,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
-  int k, res;
-  struct task *t2, *next = NULL;
-  struct cell *super = t->ci->super;
-
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
-  for (k = 0; k < t->nr_unlock_tasks; k++) {
-    t2 = t->unlock_tasks[k];
-    if ((res = atomic_dec(&t2->wait)) < 1) error("Negative wait!");
-    if (res == 1 && !t2->skip) {
-      if (0 && !t2->implicit && t2->ci->super == super &&
-          (next == NULL || t2->weight > next->weight) && task_lock(t2)) {
-        if (next != NULL) {
-          task_unlock(next);
-          scheduler_enqueue(s, next);
-        }
-        next = t2;
-      } else
-        scheduler_enqueue(s, t2);
+  for (int k = 0; k < t->nr_unlock_tasks; k++) {
+    struct task *t2 = t->unlock_tasks[k];
+    int res = atomic_dec(&t2->wait);
+    if (res < 1) {
+      error("Negative wait!");
+    } else if (res == 1) {
+      scheduler_enqueue(s, t2);
     }
   }
 
@@ -1055,16 +1052,15 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);
-    if (next == NULL) atomic_dec(&s->waiting);
+    atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
 
-  /* Start the clock on the follow-up task. */
-  if (next != NULL) next->tic = getticks();
-
-  /* Return the next best task. */
-  return next;
+  /* Return the next best task. Note that we currently do not
+     implement anything that does this, as getting it to respect
+     priorities is too tricky and currently unnecessary. */
+  return NULL;
 }
 
 /**
@@ -1079,38 +1075,38 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
 
-  int k, res;
-  struct task *t2, *next = NULL;
-
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
-  for (k = 0; k < t->nr_unlock_tasks; k++) {
-    t2 = t->unlock_tasks[k];
-    if ((res = atomic_dec(&t2->wait)) < 1) error("Negative wait!");
-    if (res == 1 && !t2->skip) scheduler_enqueue(s, t2);
+  for (int k = 0; k < t->nr_unlock_tasks; k++) {
+    struct task *t2 = t->unlock_tasks[k];
+    int res = atomic_dec(&t2->wait);
+    if (res < 1) {
+      error("Negative wait!");
+    } else if (res == 1) {
+      scheduler_enqueue(s, t2);
+    }
   }
 
   /* Task definitely done. */
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);
-    if (next == NULL) atomic_dec(&s->waiting);
+    atomic_dec(&s->waiting);
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
 
-  /* Start the clock on the follow-up task. */
-  if (next != NULL) next->tic = getticks();
-
-  /* Return the next best task. */
-  return next;
+  /* Return the next best task. Note that we currently do not
+     implement anything that does this, as getting it to respect
+     priorities is too tricky and currently unnecessary. */
+  return NULL;
 }
 
 /**
  * @brief Get a task, preferably from the given queue.
  *
  * @param s The #scheduler.
- * @param qid The ID of the prefered #queue.
+ * @param qid The ID of the preferred #queue.
  * @param super the super-cell
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
@@ -1141,7 +1137,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         if (res != NULL) break;
       }
 
-      /* If unsucessful, try stealing from the other queues. */
+      /* If unsuccessful, try stealing from the other queues. */
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
         for (k = 0; k < nr_queues; k++)

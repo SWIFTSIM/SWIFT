@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -608,5 +608,9 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float x,
 #error "A kernel function must be chosen in const.h !!"
 
 #endif  // Kernel choice
+
+/* Some cross-check functions */
+void SPH_kernel_dump(int N);
+void gravity_kernel_dump(float r_max, int N);
 
 #endif  // SWIFT_KERNEL_H
