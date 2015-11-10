@@ -893,11 +893,11 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   // tic = getticks();
   for (k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
+    if (!((1 << t->type) & s->mask) || t->skip) continue;
     t->wait = 0;
     t->rid = -1;
-    if (!((1 << t->type) & s->mask) || t->skip) continue;
     for (j = 0; j < t->nr_unlock_tasks; j++)
-      atomic_inc(&t->unlock_tasks[j]->wait);
+      t->unlock_tasks[j]->wait++;
   }
   // message( "waiting tasks took %.3f ms." , (double)( getticks() - tic ) /
   // CPU_TPS * 1000 );
