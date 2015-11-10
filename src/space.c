@@ -596,6 +596,7 @@ void space_do_parts_sort() {
         if (jj > i && pivot > min) {
           qid = atomic_inc(&space_sort_struct.last) %
                 space_sort_struct.stack_size;
+          while (!space_sort_struct.stack[qid].ready);
           space_sort_struct.stack[qid].i = i;
           space_sort_struct.stack[qid].j = jj;
           space_sort_struct.stack[qid].min = min;
@@ -619,6 +620,7 @@ void space_do_parts_sort() {
         if (pivot + 1 < max) {
           qid = atomic_inc(&space_sort_struct.last) %
                 space_sort_struct.stack_size;
+          while (!space_sort_struct.stack[qid].ready);
           space_sort_struct.stack[qid].i = jj + 1;
           space_sort_struct.stack[qid].j = j;
           space_sort_struct.stack[qid].min = pivot + 1;
