@@ -882,7 +882,7 @@ void scheduler_reweight(struct scheduler *s) {
 
 void scheduler_start(struct scheduler *s, unsigned int mask) {
 
-  int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
+  int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
@@ -891,7 +891,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   
   /* Clear all the waits and rids. */
   // tic = getticks();
-  for (k = 0; k < s->nr_tasks; k++) {
+  for (int k = 0; k < s->nr_tasks; k++) {
     s->tasks[k].wait = 0;
     s->tasks[k].rid = -1;
   }
@@ -899,15 +899,15 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   /* Enqueue a set of extraenous tasks to set the task waits. */
   struct task rewait_tasks[s->nr_queues];
   const int waiting_old = s->waiting;  // Remember that engine_launch may fiddle with this value.
-  for (k = 0; k < s->nr_queues; k++) {
+  for (int k = 0; k < s->nr_queues; k++) {
     rewait_tasks[k].type = task_type_rewait;
-    rewait_tasks[k].cid = (struct cell *)k * nr_tasks / s->nr_queues;
-    rewait_tasks[k].cjd = (struct cell *)(k + 1) * nr_tasks / s->nr_queues;
+    rewait_tasks[k].ci = (struct cell *)&s->tasks[k * nr_tasks / s->nr_queues];
+    rewait_tasks[k].cj = (struct cell *)&s->tasks[(k + 1) * nr_tasks / s->nr_queues];
     rewait_tasks[k].skip = 0;
     rewait_tasks[k].wait = 0;
     rewait_tasks[k].weight = 1;
     rewait_tasks[k].implicit = 0;
-    rewait_tasks[k].nr_unlock = 0;
+    rewait_tasks[k].nr_unlock_tasks = 0;
     scheduler_enqueue(s, &rewait_tasks[k]);
     pthread_cond_broadcast(&s->sleep_cond);
   }
@@ -926,7 +926,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
-  for (k = 0; k < nr_tasks; k++) {
+  for (int k = 0; k < nr_tasks; k++) {
     t = &tasks[tid[k]];
     if (((1 << t->type) & s->mask) && !t->skip) {
       if (t->wait == 0) {
