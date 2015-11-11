@@ -907,6 +907,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
     rewait_tasks[k].wait = 0;
     rewait_tasks[k].weight = 1;
     rewait_tasks[k].implicit = 0;
+    rewait_tasks[k].nr_unlock = 0;
     scheduler_enqueue(s, &rewait_tasks[k]);
     pthread_cond_broadcast(&s->sleep_cond);
   }
