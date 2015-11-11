@@ -1291,7 +1291,8 @@ void *runner_main(void *data) {
           runner_dograv_down(r, t->ci);
           break;
         case task_type_rewait:
-          for (struct task *t2 = (struct task *)t->ci; t2 != (struct task *)t->cj; t2++) {
+          for (struct task *t2 = (struct task *)t->ci;
+               t2 != (struct task *)t->cj; t2++) {
             for (k = 0; k < t2->nr_unlock_tasks; k++)
               atomic_inc(&t2->unlock_tasks[k]->wait);
           }

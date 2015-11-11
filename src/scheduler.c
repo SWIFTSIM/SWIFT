@@ -888,21 +888,23 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   /* Store the mask */
   s->mask = mask;
-  
+
   /* Clear all the waits and rids. */
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
     s->tasks[k].wait = 0;
     s->tasks[k].rid = -1;
   }
-  
+
   /* Enqueue a set of extraenous tasks to set the task waits. */
   struct task rewait_tasks[s->nr_queues];
-  const int waiting_old = s->waiting;  // Remember that engine_launch may fiddle with this value.
+  const int waiting_old =
+      s->waiting;  // Remember that engine_launch may fiddle with this value.
   for (int k = 0; k < s->nr_queues; k++) {
     rewait_tasks[k].type = task_type_rewait;
     rewait_tasks[k].ci = (struct cell *)&s->tasks[k * nr_tasks / s->nr_queues];
-    rewait_tasks[k].cj = (struct cell *)&s->tasks[(k + 1) * nr_tasks / s->nr_queues];
+    rewait_tasks[k].cj =
+        (struct cell *)&s->tasks[(k + 1) * nr_tasks / s->nr_queues];
     rewait_tasks[k].skip = 0;
     rewait_tasks[k].wait = 0;
     rewait_tasks[k].weight = 1;
@@ -911,7 +913,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
     scheduler_enqueue(s, &rewait_tasks[k]);
     pthread_cond_broadcast(&s->sleep_cond);
   }
-  
+
   /* Wait for the rewait tasks to have executed. */
   pthread_mutex_lock(&s->sleep_mutex);
   while (s->waiting > waiting_old) {
