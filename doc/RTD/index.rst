@@ -15,10 +15,9 @@ Contents:
    :maxdepth: 2
 
    Motivation/index.rst
-   TaskBasedParallelism/index.rst
-   FAQ/index.rst
+   Innovation/index.rst
    Physics/index.rst
-
+   FAQ/index.rst
 
 Indices and tables
 ==================
