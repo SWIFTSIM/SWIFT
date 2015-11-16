@@ -270,6 +270,9 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[true],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
+# Check for libnuma.
+AC_CHECK_LIB([numa], [numa_available])
+
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
 AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
