@@ -601,10 +601,10 @@ void space_do_parts_sort() {
           space_sort_struct.stack[qid].j = jj;
           space_sort_struct.stack[qid].min = min;
           space_sort_struct.stack[qid].max = pivot;
-          space_sort_struct.stack[qid].ready = 1;
           if (atomic_inc(&space_sort_struct.waiting) >=
               space_sort_struct.stack_size)
             error("Qstack overflow.");
+          space_sort_struct.stack[qid].ready = 1;
         }
 
         /* Recurse on the right? */
@@ -625,10 +625,10 @@ void space_do_parts_sort() {
           space_sort_struct.stack[qid].j = j;
           space_sort_struct.stack[qid].min = pivot + 1;
           space_sort_struct.stack[qid].max = max;
-          space_sort_struct.stack[qid].ready = 1;
           if (atomic_inc(&space_sort_struct.waiting) >=
               space_sort_struct.stack_size)
             error("Qstack overflow.");
+          space_sort_struct.stack[qid].ready = 1;
         }
 
         /* Recurse on the left? */
