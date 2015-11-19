@@ -568,8 +568,8 @@ void engine_repartition(struct engine *e) {
     idx_t objval;
 
     /* Dump graph in METIS format */
-    dumpMETISGraph("metis_graph", idx_nr_cells, one, offsets, inds,
-                   weights_v, NULL, weights_e);
+    /*dumpMETISGraph("metis_graph", idx_nr_cells, one, offsets, inds,
+                   weights_v, NULL, weights_e);*/
 
     if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
                                  NULL, weights_e, &idx_nr_nodes, NULL, NULL,
