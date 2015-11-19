@@ -1214,12 +1214,12 @@ void *runner_main(void *data) {
       t->rid = r->cpuid;
 
       /* Set super to the first cell that I own. */
-      if (ci->super != NULL && ci->super->owner == r->qid)
+      if (ci != NULL && ci->super != NULL && ci->super->owner == r->qid)
         super = ci->super;
       else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
         super = cj->super;
-      /* else
-          super = NULL; */
+      else
+        super = NULL;
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1286,6 +1286,12 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_down:
           runner_dograv_down(r, t->ci);
+          break;
+        case task_type_psort:
+          space_do_parts_sort();
+          break;
+        case task_type_split_cell:
+          space_split(e->s, t->ci);
           break;
         default:
           error("Unknown task type.");

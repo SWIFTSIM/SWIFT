@@ -130,6 +130,9 @@ void scheduler_splittasks(struct scheduler *s) {
         break;
     }
 
+    /* Skip sorting tasks. */
+    if (t->type == task_type_psort) continue;
+
     /* Empty task? */
     if (t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) {
       t->type = task_type_none;
@@ -1048,7 +1051,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     }
   }
 
-  /* Task definitely done. */
+  /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);

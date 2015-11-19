@@ -169,10 +169,13 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    /* if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
+            cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
-  parts_sort(s->parts, s->xparts, dest, s->nr_parts, 0, nr_nodes - 1);
+  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -579,6 +582,11 @@ void engine_repartition(struct engine *e) {
         printf( "%i " , (int)nodeIDs[ i ] );
     printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
 
+    /* Check that the nodeIDs are ok. */
+    for (k = 0; k < nr_cells; k++)
+      if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
+        error("Got bad nodeID %"PRIDX" for cell %i.", nodeIDs[k], k);
+
     /* Check that the partition is complete and all nodes have some work. */
     int present[nr_nodes];
     int failed = 0;
@@ -598,6 +606,7 @@ void engine_repartition(struct engine *e) {
               "the current partition, load balance will not be optimal");
       for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
     }
+    
   }
 
 /* Broadcast the result of the partition. */
@@ -1037,6 +1046,11 @@ void engine_maketasks(struct engine *e) {
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
+
+  /* Add the space sorting tasks. */
+  for (i = 0; i < e->nr_threads; i++)
+    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
+                      NULL, 0);
 
   /* Run through the highest level of cells and add pairs. */
   for (i = 0; i < cdim[0]; i++)
@@ -1754,15 +1768,6 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
       error("Error while waiting for barrier.");
 }
 
-void hassorted(struct cell *c) {
-
-  if (c->sorted) error("Spurious sorted flags.");
-
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) hassorted(c->progeny[k]);
-}
-
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -2216,12 +2221,17 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Append a kick1 task to each cell. */
-  scheduler_reset(&e->sched, s->tot_cells);
+  scheduler_reset(&e->sched, 2 * s->tot_cells + e->nr_threads);
   for (k = 0; k < s->nr_cells; k++)
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
                           &s->cells[k], NULL, 0);
   scheduler_ranktasks(&e->sched);
+
+  /* Create the sorting tasks. */
+  for (i = 0; i < e->nr_threads; i++)
+    scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
+                      NULL, 0);
 
   /* Allocate and init the threads. */
   if ((e->runners =
