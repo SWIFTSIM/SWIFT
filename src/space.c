@@ -484,7 +484,6 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
 void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   // Populate a parallel_sort structure with the input data.
-  struct parallel_sort sort;
   space_sort_struct.parts = s->parts;
   space_sort_struct.xparts = s->xparts;
   space_sort_struct.ind = ind;
