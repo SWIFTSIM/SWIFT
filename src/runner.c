@@ -1220,8 +1220,6 @@ void *runner_main(void *data) {
           super = ci->super;
         else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
           super = cj->super;
-        /* else
-            super = NULL; */
       }
 
       /* Different types of tasks... */
@@ -1290,7 +1288,10 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           runner_dograv_down(r, t->ci);
           break;
-        case task_type_rewait:
+        case task_type_psort:
+          space_do_parts_sort();
+          break;
+         case task_type_rewait:
           for (struct task *t2 = (struct task *)t->ci;
                t2 != (struct task *)t->cj; t2++) {
             for (k = 0; k < t2->nr_unlock_tasks; k++)
