@@ -169,6 +169,9 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    /* if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
+            cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
@@ -303,7 +306,8 @@ void engine_repartition(struct engine *e) {
   int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
   float wscale = 1e-3, vscale = 1e-3, wscale_buff;
   idx_t wtot = 0;
-  const idx_t wmax = 1e9 / e->nr_nodes;
+  idx_t wmax = 1e9 / e->nr_nodes;
+  idx_t wmin;
 
   /* Clear the repartition flag. */
   e->forcerepart = 0;
@@ -486,6 +490,24 @@ void engine_repartition(struct engine *e) {
   /* As of here, only one node needs to compute the partition. */
   if (nodeID == 0) {
 
+    /* Final rescale of all weights to avoid a large range. Large ranges have
+     * been seen to cause an incomplete graph. */
+    wmin = wmax;
+    wmax = 0.0;
+    for (k = 0; k < 26 * nr_cells; k++) {
+      wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
+      wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
+    }
+    if ((wmax - wmin) > engine_maxmetisweight) {
+      wscale = engine_maxmetisweight / (wmax - wmin);
+      for (k = 0; k < 26 * nr_cells; k++) {
+        weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
+      }
+      for (k = 0; k < nr_cells; k++) {
+        weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
+      }
+    }
+
     /* Check that the edge weights are fully symmetric. */
     /* for ( cid = 0 ; cid < nr_cells ; cid++ )
         for ( k = 0 ; k < 26 ; k++ ) {
@@ -544,16 +566,47 @@ void engine_repartition(struct engine *e) {
     /* Call METIS. */
     idx_t one = 1, idx_nr_cells = nr_cells, idx_nr_nodes = nr_nodes;
     idx_t objval;
+
+    /* Dump graph in METIS format */
+    /*dumpMETISGraph("metis_graph", idx_nr_cells, one, offsets, inds,
+                   weights_v, NULL, weights_e);*/
+
     if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
                                  NULL, weights_e, &idx_nr_nodes, NULL, NULL,
                                  options, &objval, nodeIDs) != METIS_OK)
-      error("Call to METIS_PartGraphKway failed.");
+      error("Call to METIS_PartGraphRecursive failed.");
 
     /* Dump the 3d array of cell IDs. */
     /* printf( "engine_repartition: nodeIDs = reshape( [" );
     for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
         printf( "%i " , (int)nodeIDs[ i ] );
     printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
+
+    /* Check that the nodeIDs are ok. */
+    for (k = 0; k < nr_cells; k++)
+      if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
+        error("Got bad nodeID %"PRIDX" for cell %i.", nodeIDs[k], k);
+
+    /* Check that the partition is complete and all nodes have some work. */
+    int present[nr_nodes];
+    int failed = 0;
+    for (i = 0; i < nr_nodes; i++) present[i] = 0;
+    for (i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
+    for (i = 0; i < nr_nodes; i++) {
+      if (! present[i]) {
+        failed = 1;
+        message("Node %d is not present after repartition", i);
+      }
+    }
+
+    /* If partition failed continue with the current one, but make this
+     * clear. */
+    if (failed) {
+      message("WARNING: METIS repartition has failed, continuing with "
+              "the current partition, load balance will not be optimal");
+      for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
+    }
+    
   }
 
 /* Broadcast the result of the partition. */
@@ -2168,7 +2221,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Append a kick1 task to each cell. */
-  scheduler_reset(&e->sched, s->tot_cells + e->nr_threads);
+  scheduler_reset(&e->sched, 2 * s->tot_cells + e->nr_threads);
   for (k = 0; k < s->nr_cells; k++)
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
