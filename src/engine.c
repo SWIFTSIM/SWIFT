@@ -2130,11 +2130,11 @@ void engine_split(struct engine *e, int *grid) {
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy) {
 
-  int k;
+  int i, k;
   float dt_min = dt;
 #if defined(HAVE_SETAFFINITY)
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int i, j, cpuid[nr_cores];
+  int j, cpuid[nr_cores];
   cpu_set_t cpuset;
   if (policy & engine_policy_cputight) {
     for (k = 0; k < nr_cores; k++) cpuid[k] = k;
