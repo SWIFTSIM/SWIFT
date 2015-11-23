@@ -54,6 +54,9 @@
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
+/* Histograms bins. */
+long long int runner_hist_bins[runner_hist_N];
+
 /* The counters. */
 int runner_counter[runner_counter_count];
 

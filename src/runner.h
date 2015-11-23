@@ -58,7 +58,7 @@ extern int runner_counter[runner_counter_count];
 #define runner_hist_a 1.0
 #define runner_hist_b 100.0
 #define runner_hist_N 99
-long long int runner_hist_bins[runner_hist_N];
+extern long long int runner_hist_bins[runner_hist_N];
 #define runner_hist_hit(x)                                                   \
   __sync_add_and_fetch(                                                      \
       &runner_hist_bins[(int)fmax(                                           \
