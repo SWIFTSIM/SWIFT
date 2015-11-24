@@ -197,7 +197,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
 
   TIMER_TIC
 
-    message("sort!");
+    //    message("sort!");
     
   /* Clean-up the flags, i.e. filter out what's already been sorted. */
   flags &= ~c->sorted;
@@ -1051,6 +1051,8 @@ void *runner_main(void *data) {
   struct part *parts;
   int k, nr_parts;
 
+  message("here");fflush(stdout);
+  
   /* Main loop. */
   while (1) {
 
@@ -1071,6 +1073,8 @@ void *runner_main(void *data) {
         t = scheduler_gettask(sched, r->qid, super);
         TIMER_TOC(timer_gettask);
 
+	//message("Got task %p", t->type); fflush(stdout);
+	
         /* Did I get anything? */
         if (t == NULL) break;
       }

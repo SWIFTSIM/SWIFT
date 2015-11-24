@@ -378,6 +378,8 @@ int main(int argc, char *argv[]) {
   if (myrank == 0)
     printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
 
+  return 0;
+  
   /* Let loose a runner on the space. */
   for (j = 0; j < runs && e.time < clock; j++) {
 
@@ -391,10 +393,11 @@ int main(int argc, char *argv[]) {
     for (k = 0; k < runner_counter_count; k++) runner_counter[k] = 0;
 #endif
 
+    printf("-----------------------------\n");
     /* Take a step. */
     engine_step(&e);
 
-    break;
+    if (j == 0)  break;
     
     if (with_outputs && j % 100 == 0) {
 
@@ -423,12 +426,14 @@ int main(int argc, char *argv[]) {
     /*       printf("\n"); */
     /*       fflush(stdout); */
     /*     } */
-    if (myrank == 0) {
-      printf("%i %e", j, e.time);
-      printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
-      printf("\n");
-      fflush(stdout);
-    }
+
+    
+    /* if (myrank == 0) { */
+    /*   printf("%i %e", j, e.time); */
+    /*   printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000); */
+    /*   printf("\n"); */
+    /*   fflush(stdout); */
+    /* } */
   }
 
 /* Print the values of the runner histogram. */

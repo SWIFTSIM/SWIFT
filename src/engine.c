@@ -1727,22 +1727,29 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   printf("\n");
   task_print_mask(mask);
   printf("\n");
+  fflush(stdout);
+
+  engine_print(e);
   
   /* Load the tasks. */
   pthread_mutex_unlock(&e->barrier_mutex);
   scheduler_start(&e->sched, mask);
   pthread_mutex_lock(&e->barrier_mutex);
-
+  
   /* Remove the safeguard. */
   pthread_mutex_lock(&e->sched.sleep_mutex);
   atomic_dec(&e->sched.waiting);
   pthread_cond_broadcast(&e->sched.sleep_cond);
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
+  message("Before barrier");fflush(stdout);
+
   /* Sit back and wait for the runners to come home. */
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
+
+  message("After barrier"); fflush(stdout);
 }
 
 /* void hassorted(struct cell *c) { */
@@ -1911,7 +1918,7 @@ void engine_step(struct engine *e) {
 
   engine_maketasks(e);
   
-  engine_marktasks(e);
+  //engine_marktasks(e);
   
   engine_print(e);
   message("Go !");
