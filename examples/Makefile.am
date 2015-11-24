@@ -36,19 +36,26 @@ if HAVEMPI
 bin_PROGRAMS += swift_mpi swift_fixdt_mpi swift_mindt_mpi
 endif
 
+# engine_policy_setaffinity is available?
+if HAVESETAFFINITY
+ENGINE_POLICY_SETAFFINITY=| engine_policy_setaffinity
+else
+ENGINE_POLICY_SETAFFINITY=
+endif
+
 # Sources for swift
 swift_SOURCES = main.c
-swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep | engine_policy_setaffinity"
+swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
 swift_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for swift_fixdt
 swift_fixdt_SOURCES = main.c
-swift_fixdt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep | engine_policy_setaffinity"
+swift_fixdt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
 swift_fixdt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for swift_mindt
 swift_mindt_SOURCES = main.c
-swift_mindt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep | engine_policy_setaffinity"
+swift_mindt_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
 swift_mindt_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # Sources for swift_mpi
