@@ -1215,7 +1215,7 @@ void *runner_main(void *data) {
       t->rid = r->cpuid;
 
       /* Set super to the first cell that I own. */
-      if (t->type != task_type_rewait) {
+      if (t->type != task_type_rewait && t->type != task_type_psort) {
         if (ci->super != NULL && ci->super->owner == r->qid)
           super = ci->super;
         else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
@@ -1294,7 +1294,7 @@ void *runner_main(void *data) {
         case task_type_split_cell:
           space_split(e->s, t->ci);
           break;
-         case task_type_rewait:
+        case task_type_rewait:
           for (struct task *t2 = (struct task *)t->ci;
                t2 != (struct task *)t->cj; t2++) {
             for (k = 0; k < t2->nr_unlock_tasks; k++)
