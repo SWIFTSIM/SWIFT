@@ -42,6 +42,7 @@
 
 /* Local headers. */
 #include "error.h"
+#include "poisson_disc.h"
 
 /* Useful defines. */
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -211,7 +212,8 @@ void poisson_free(struct grid_data *grid) {
  * @param k number of attempts to pick an unmarked position (30 is a good
  * choice).
  */
-void poisson_disc(struct grid_data *grid, int dims[3], float radius, int k) {
+static void poisson_disc(struct grid_data *grid, int dims[3], float radius, 
+                         int k) {
 
   grid->radius = radius;
   grid->cell_size = radius / sqrtf(3.0f);
@@ -293,53 +295,54 @@ void poisson_disc(struct grid_data *grid, int dims[3], float radius, int k) {
   }
 }
 
-int main(int argc, char *argv[]) {
-  int dims[3];
-  float radius = 0.0f;
-  int k = 30;
-  struct grid_data grid;
+/**
+ * @brief Apply poisson disc partitioning to a cell structure.
+ *
+ * Generates a poisson disc sample for the 3D space of the cells and assigns
+ * each cells nodeID to the nearest sample point index, thus partitioning 
+ * the space into contiguous regions.
+ *
+ * @param s the space containing the cells to split into partitions.
+ * @param nparts number of parititions to generate.
+ * @result true if the partitioning succeeded.
+ */
+int poisson_split(struct space *s, int nparts) {
 
-  /* Expected sample size. */
-  int N = 90;
-
-  /* Dimensions. */
-  dims[0] = 300;
-  dims[1] = 300;
-  dims[2] = 300;
-
+  /* Randomize randoms. */
   srand(time(NULL));
 
   /*  Pick radius for expected sample size. */
-  radius = pow((dims[0] * dims[1] * dims[2]) / (N), 0.3333);
-  printf("# Radius = %f\n", radius);
+  float radius = pow((s->cdim[0]*s->cdim[1]*s->cdim[2])/(1.5*nparts), 0.3333);
+  message("# Radius = %f\n", radius);
 
-  /*  Sample is stocastic, so we may need to ask more than one to get the
+  /*  Sample is stocastic, so we may need to ask more than once to get the
    *  number of samples we require as a minimum. */
+  struct grid_data grid;
   grid.samplelen = 0;
-  while (grid.samplelen < N) {
-    printf("# Sampling...\n");
-    poisson_disc(&grid, dims, radius, k);
-    printf("# Samples = %d\n", grid.samplelen);
+  while (grid.samplelen < nparts) {
+    message("# Sampling...\n");
+    poisson_disc(&grid, s->cdim, radius, 30);
+    message("# Samples = %d\n", grid.samplelen);
   }
 
   for (int i = 0; i < grid.samplelen; i++) {
-    printf("# %f %f %f\n", grid.samplelist[i].x[0], grid.samplelist[i].x[1],
+    message("# %f %f %f\n", grid.samplelist[i].x[0], grid.samplelist[i].x[1],
            grid.samplelist[i].x[2]);
   }
 
   /*  Partition the space. Slow .... */
-
-  unsigned long int counts[N];
-  for (int i = 0; i < N; i++) {
+  unsigned long int counts[nparts];
+  for (int i = 0; i < nparts; i++) {
     counts[i] = 0;
   }
 
-  for (int i = 0; i < dims[0]; i++) {
-    for (int j = 0; j < dims[1]; j++) {
-      for (int k = 0; k < dims[2]; k++) {
+  int n = 0;
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
         int select = -1;
         float rsqmax = FLT_MAX;
-        for (int l = 0; l < N; l++) {
+        for (int l = 0; l < nparts; l++) {
           float dx = grid.samplelist[l].x[0] - (i + 0.5);
           float dy = grid.samplelist[l].x[1] - (j + 0.5);
           float dz = grid.samplelist[l].x[2] - (k + 0.5);
@@ -349,21 +352,22 @@ int main(int argc, char *argv[]) {
             select = l;
           }
         }
+        s->cells[n].nodeID = select;
         counts[select]++;
-        printf("%f %f %f %d\n", i + 0.5, j + 0.5, k + 0.5, select);
+        message("%f %f %f %d\n", i + 0.5, j + 0.5, k + 0.5, select);
       }
     }
   }
 
-  printf("# Counts:\n");
+  message("# Counts:\n");
   unsigned long int total = 0;
-  for (int i = 0; i < N; i++) {
-    printf("#  %d %ld\n", i, counts[i]);
+  for (int i = 0; i < nparts; i++) {
+    message("#  %d %ld\n", i, counts[i]);
     total += counts[i];
   }
-  printf("# total = %ld\n", total);
+  message("# total = %ld\n", total);
 
   poisson_free( &grid );
 
-  return 0;
+  return 1;
 }
