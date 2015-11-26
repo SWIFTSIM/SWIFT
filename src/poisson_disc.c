@@ -57,9 +57,9 @@ struct point {
 };
 
 /**
- * @brief collection of data for the grid.
+ * @brief collection of data for the various elements in constructing the grid.
  */
-struct grid_data {
+struct poisson_data {
   struct point *cells;
   float cell_size;
   float radius;
@@ -83,18 +83,18 @@ static float randone() { return (float)(rand() / (double)RAND_MAX); }
 /**
  *  @brief Add a position to the active list.
  */
-static void add_active(struct grid_data *grid, struct point *p) {
+static void add_active(struct poisson_data *data, struct point *p) {
 
   for (int i = 0; i < 3; i++)
-    grid->activelist[grid->actlen].x[i] = p->x[i];
-  grid->actlen++;
+    data->activelist[data->actlen].x[i] = p->x[i];
+  data->actlen++;
 
   /*  Add more space to activelist, if needed. */
-  if (grid->actlen >= grid->actsize) {
-    grid->actsize = grid->actlen + CHUNK;
-    grid->activelist =
-        realloc(grid->activelist, grid->actsize * sizeof(struct point));
-    if ( grid->activelist == NULL ) {
+  if (data->actlen >= data->actsize) {
+    data->actsize = data->actlen + CHUNK;
+    data->activelist =
+        realloc(data->activelist, data->actsize * sizeof(struct point));
+    if ( data->activelist == NULL ) {
         error( "Failed to realloc active list" );
     }
   }
@@ -103,32 +103,32 @@ static void add_active(struct grid_data *grid, struct point *p) {
 /**
  *  @brief Remove a position from the active list.
  */
-static void remove_active(struct grid_data *grid, int index) {
+static void remove_active(struct poisson_data *data, int index) {
 
   /*  Shuffle activelist removing index. */
-  for (int i = index; i < grid->actlen - 1; i++)
+  for (int i = index; i < data->actlen - 1; i++)
     for (int j = 0; j < 3; j++)
-      grid->activelist[i].x[j] = grid->activelist[i + 1].x[j];
+      data->activelist[i].x[j] = data->activelist[i + 1].x[j];
 
-  grid->actlen--;
+  data->actlen--;
 }
 
 /**
  * @brief Mark a position on the grid and add to the active list.
  */
-static void mark_position(struct grid_data *grid, struct point *p) {
+static void mark_position(struct poisson_data *data, struct point *p) {
 
   /* Index of point on grid. */
-  int index = (int)grid->dims[1] * grid->dims[0] * floor(p->x[2] / grid->cell_size) +
-              grid->dims[0] * floor(p->x[1] / grid->cell_size) +
-              floor(p->x[0] / grid->cell_size);
+  int index = (int)data->dims[1] * data->dims[0] * floor(p->x[2] / data->cell_size) +
+              data->dims[0] * floor(p->x[1] / data->cell_size) +
+              floor(p->x[0] / data->cell_size);
 
   /* Check if already seen, nothing to do. */
-  if (grid->cells[index].x[0] == -1.0f) {
+  if (data->cells[index].x[0] == -1.0f) {
     for (int i = 0; i < 3; i++)
-      grid->cells[index].x[i] = p->x[i];
+      data->cells[index].x[i] = p->x[i];
 
-    add_active(grid, p);
+    add_active(data, p);
   }
 }
 
@@ -138,29 +138,29 @@ static void mark_position(struct grid_data *grid, struct point *p) {
  *  That is further than the radius away from positions already marked on the
  *  grid and not marked.
  */
-static int not_marked(struct grid_data *grid, struct point *p) {
+static int not_marked(struct poisson_data *data, struct point *p) {
 
-  int i = (int)p->x[1] / grid->cell_size;
-  int j = (int)p->x[0] / grid->cell_size;
-  int l = (int)p->x[2] / grid->cell_size;
+  int i = (int)p->x[1] / data->cell_size;
+  int j = (int)p->x[0] / data->cell_size;
+  int l = (int)p->x[2] / data->cell_size;
   int i0 = MAX(i - 2, 0);
   int j0 = MAX(j - 2, 0);
   int l0 = MAX(l - 2, 0);
-  int j1 = MIN(j + 3, grid->dims[0]);
-  int i1 = MIN(i + 3, grid->dims[1]);
-  int l1 = MIN(l + 3, grid->dims[2]);
+  int j1 = MIN(j + 3, data->dims[0]);
+  int i1 = MIN(i + 3, data->dims[1]);
+  int l1 = MIN(l + 3, data->dims[2]);
 
   for (int j = j0; j < j1; j++) {
     for (int i = i0; i < i1; i++) {
       for (int l = l0; l < l1; l++) {
-        int index = l * grid->dims[1] * grid->dims[0] + i * grid->dims[0] + j;
-        if (grid->cells[index].x[0] != -1.0) {
+        int index = l * data->dims[1] * data->dims[0] + i * data->dims[0] + j;
+        if (data->cells[index].x[0] != -1.0) {
           double dsq = 0.0;
           for (int j = 0; j < 3; j++) {
-            float dx = grid->cells[index].x[j] - p->x[j];
+            float dx = data->cells[index].x[j] - p->x[j];
             dsq += dx * dx;
           }
-          if (dsq < (grid->radius * grid->radius)) {
+          if (dsq < (data->radius * data->radius)) {
             return 0;
           }
         }
@@ -173,92 +173,49 @@ static int not_marked(struct grid_data *grid, struct point *p) {
 /**
  * @brief Add a position to final sample.
  */
-static void add_sample(struct grid_data *grid, struct point *p) {
+static void add_sample(struct poisson_data *data, struct point *p) {
 
   for (int i = 0; i < 3; i++)
-    grid->samplelist[grid->samplelen].x[i] = p->x[i];
-  grid->samplelen++;
+    data->samplelist[data->samplelen].x[i] = p->x[i];
+  data->samplelen++;
 
   /*  Add more space to samples, if needed. */
-  if (grid->samplelen >= grid->samplesize) {
-    grid->samplesize = grid->samplesize + CHUNK;
-    grid->samplelist =
-        realloc(grid->samplelist, grid->samplesize * sizeof(struct point));
-    if ( grid->samplelist == NULL ) {
+  if (data->samplelen >= data->samplesize) {
+    data->samplesize = data->samplesize + CHUNK;
+    data->samplelist =
+        realloc(data->samplelist, data->samplesize * sizeof(struct point));
+    if ( data->samplelist == NULL ) {
       error("Failed to realloc sample list");
     }
   }
 }
 
 /**
- * @brief free up any resources allocated by the grid.
- */
-void poisson_free(struct grid_data *grid) {
-
-  if (grid->cells != NULL) free(grid->cells);
-  if (grid->activelist != NULL) free(grid->activelist);
-  if (grid->samplelist != NULL) free(grid->samplelist);
-}
-
-/**
  * @brief Generate a sample of positions.
  *
- * On return the grid_data struct is populated with a samplelist containing
+ * On return the poisson_data struct is populated with a samplelist containing
  * the selected positions.
  *
- * @param grid the struct to contain all the data about the sample selection.
+ * @param data the struct to contain all the data about the sample selection.
  * @param dims the dimensions of the space to sample.
  * @param radius minimum radius between selected positions.
  * @param k number of attempts to pick an unmarked position (30 is a good
  * choice).
  */
-static void poisson_disc(struct grid_data *grid, int dims[3], float radius, 
+static void poisson_disc(struct poisson_data *data, int dims[3], float radius,
                          int k) {
-
-  grid->radius = radius;
-  grid->cell_size = radius / sqrtf(3.0f);
-  grid->ncells = 1;
-  for (int i = 0; i < 3; i++) {
-    grid->dims[i] = (int)ceilf(dims[i] / grid->cell_size);
-    grid->ncells *= grid->dims[i];
-  }
-
-  grid->cells = (struct point *)malloc(sizeof(struct point) * grid->ncells );
-  if (grid->cells == NULL) {
-    error("Failed to allocate grid cells");
-  }
-
-  for (int i = 0; i < grid->ncells; i++) {
-    grid->cells[i].x[0] = -1.0;
-  }
-
-  /*  Queue for active list. */
-  grid->activelist = (struct point *)malloc(CHUNK * sizeof(struct point));
-  if (grid->activelist == NULL) {
-    error("Failed to allocate an active list");
-  }
-  grid->actsize = CHUNK;
-  grid->actlen = 0;
-
-  /*  Space for results. */
-  grid->samplelist = (struct point *)malloc(CHUNK * sizeof(struct point));
-  if ( grid->samplelist == NULL ) {
-    error("Failed to allocate a sample list");
-  }
-  grid->samplesize = CHUNK;
-  grid->samplelen = 0;
 
   /* Initialise a seed point. */
   struct point ip;
   for (int i = 0; i < 3; i++)
       ip.x[i] = randone() * dims[i];
-  mark_position(grid, &ip);
+  mark_position(data, &ip);
 
-  while (grid->actlen > 0) {
+  while (data->actlen > 0) {
 
     /*  Grab a position from the activelist. */
-    int index = (int)(randone() * grid->actlen);
-    struct point *p = &grid->activelist[index];
+    int index = (int)(randone() * data->actlen);
+    struct point *p = &data->activelist[index];
     int havenew = 0;
 
     /*  Look for a random position that is far enough away and not already
@@ -277,10 +234,10 @@ static void poisson_disc(struct grid_data *grid, int dims[3], float radius,
       if (np.x[0] >= 0.0f && np.x[0] < dims[0] &&
           np.x[1] >= 0.0f && np.x[1] < dims[1] &&
           np.x[2] >= 0.0f && np.x[2] < dims[2] &&
-          not_marked(grid, &np)) {
+          not_marked(data, &np)) {
 
         /* Accepted, so mark and add to the active list. */
-        mark_position(grid, &np);
+        mark_position(data, &np);
         havenew = 1;
         break;
       }
@@ -289,48 +246,127 @@ static void poisson_disc(struct grid_data *grid, int dims[3], float radius,
     /*  Remove point from active list and keep as no other position is
      *  near. */
     if (!havenew) {
-      add_sample(grid, p);
-      remove_active(grid, index);
+      add_sample(data, p);
+      remove_active(data, index);
     }
   }
 }
 
 /**
- * @brief Apply poisson disc partitioning to a cell structure.
+ * @brief Generate a poisson disc sample for a 3D space.
  *
- * Generates a poisson disc sample for the 3D space of the cells and assigns
- * each cells nodeID to the nearest sample point index, thus partitioning 
+ * Generates a poisson disc sample for the 3D space of the cells returning
+ * a structure that can be applied to the cells of a space to partition
  * the space into contiguous regions.
  *
- * @param s the space containing the cells to split into partitions.
+ * @param s the space to partitions.
  * @param nparts number of parititions to generate.
- * @result true if the partitioning succeeded.
+ * @param samplelist memory for a list of nparts*3 float coordinates that are
+ *                   the sample points. 
+ * @return 1 for success, 0 for failure.
  */
-int poisson_split(struct space *s, int nparts) {
+int poisson_generate(struct space *s, int nparts, float *samplelist) {
+
+  int result = 1;
 
   /* Randomize randoms. */
   srand(time(NULL));
 
-  /*  Pick radius for expected sample size. */
+  /* Pick radius for expected sample size. This part is tricky, we want a
+   * radius that will sample the space well, but the random selection stops a
+   * space filling solution from ever working, so we guess and need to
+   * possibly seek more than one solution.
+   */
   float radius = pow((s->cdim[0]*s->cdim[1]*s->cdim[2])/(1.5*nparts), 0.3333);
-  message("# Radius = %f\n", radius);
+  message("# Radius = %f", radius);
 
-  /*  Sample is stocastic, so we may need to ask more than once to get the
-   *  number of samples we require as a minimum. */
-  struct grid_data grid;
-  grid.samplelen = 0;
-  while (grid.samplelen < nparts) {
-    message("# Sampling...\n");
-    poisson_disc(&grid, s->cdim, radius, 30);
-    message("# Samples = %d\n", grid.samplelen);
+  /* Initialise the data struct. */
+  struct poisson_data data;
+  data.radius = radius;
+
+  /* Cell size for this resolution. */
+  data.cell_size = radius / sqrtf(3.0f);
+  data.ncells = 1;
+  for (int i = 0; i < 3; i++) {
+    data.dims[i] = (int)ceilf(s->cdim[i] / data.cell_size);
+    data.ncells *= data.dims[i];
   }
 
-  for (int i = 0; i < grid.samplelen; i++) {
-    message("# %f %f %f\n", grid.samplelist[i].x[0], grid.samplelist[i].x[1],
-           grid.samplelist[i].x[2]);
+  data.cells = (struct point *)malloc(sizeof(struct point) * data.ncells );
+  if (data.cells == NULL) {
+    error("Failed to allocate data cells");
+  }
+  for (int i = 0; i < data.ncells; i++) {
+    data.cells[i].x[0] = -1.0;
   }
 
-  /*  Partition the space. Slow .... */
+  /*  Queue for active list. */
+  data.activelist = (struct point *)malloc(CHUNK * sizeof(struct point));
+  if (data.activelist == NULL) {
+    error("Failed to allocate an active list");
+  }
+  data.actsize = CHUNK;
+  data.actlen = 0;
+
+  /*  Space for results. */
+  data.samplelist = (struct point *)malloc(CHUNK * sizeof(struct point));
+  if (data.samplelist == NULL) {
+    error("Failed to allocate a sample list");
+  }
+  data.samplesize = CHUNK;
+  data.samplelen = 0;
+
+  /* Get the sample, try a number of times, but give up so that we never get a
+   * loop if our guess ever fails completely. */
+  int ntries = 0;
+  while (data.samplelen < nparts && ntries < 10) {
+    poisson_disc(&data, s->cdim, radius, 30);
+    message("# Samples = %d", data.samplelen);
+    ntries++;
+  }
+  if ( data.samplelen < nparts ) {
+    message("Failed to partition space (last sample size: %d, expected: %d)",
+            data.samplelen, nparts);
+    result = 0;
+  } else {
+
+     /* Extract the samplelist. */
+     for (int i = 0, k = 0; i < nparts; i++)
+       for (int j = 0; j < 3; j++)
+         samplelist[k++] = data.samplelist[i].x[j];
+
+     for ( int i = 0; i < data.samplelen; i++) {
+       message("# %f %f %f",
+               data.samplelist[i].x[0],
+               data.samplelist[i].x[1],
+               data.samplelist[i].x[2]);
+     }
+  }
+
+  if (data.cells != NULL) free(data.cells);
+  if (data.activelist != NULL) free(data.activelist);
+  if (data.samplelist != NULL) free(data.samplelist);
+
+  return result;
+}
+
+/**
+ * @brief Apply poisson disc partitioning to a cell structure.
+ *
+ * Uses the results of poisson_generate to assign each cell's nodeID to the
+ * nearest sample point index, thus partitioning the space into contiguous
+ * regions.
+ *
+ * @param s the space containing the cells to split into partitions.
+ * @param nparts number of parititions.
+ * @param samplelist pointer to sample coordinates (from poisson_generate).
+ */
+void poisson_split(struct space *s, int nparts, float *samplelist) {
+
+  for (int l = 0, m = 0; l < nparts; l++, m += 3)
+    message( "# %f %f %f", samplelist[m], samplelist[m+1], samplelist[m+2]);
+
+  /*  Partition the space. Slow ??? */
   unsigned long int counts[nparts];
   for (int i = 0; i < nparts; i++) {
     counts[i] = 0;
@@ -342,32 +378,46 @@ int poisson_split(struct space *s, int nparts) {
       for (int k = 0; k < s->cdim[2]; k++) {
         int select = -1;
         float rsqmax = FLT_MAX;
+        int m = 0;
         for (int l = 0; l < nparts; l++) {
-          float dx = grid.samplelist[l].x[0] - (i + 0.5);
-          float dy = grid.samplelist[l].x[1] - (j + 0.5);
-          float dz = grid.samplelist[l].x[2] - (k + 0.5);
+          float dx = samplelist[m++] - (i + 0.5);
+          float dy = samplelist[m++] - (j + 0.5);
+          float dz = samplelist[m++] - (k + 0.5);
           float rsq = dx * dx + dy * dy + dz * dz;
           if (rsq < rsqmax) {
             rsqmax = rsq;
             select = l;
           }
         }
-        s->cells[n].nodeID = select;
+        s->cells[n++].nodeID = select;
         counts[select]++;
-        message("%f %f %f %d\n", i + 0.5, j + 0.5, k + 0.5, select);
+        //message("%f %f %f %d", i + 0.5, j + 0.5, k + 0.5, select);
       }
     }
   }
 
-  message("# Counts:\n");
+  message("# Counts:");
   unsigned long int total = 0;
   for (int i = 0; i < nparts; i++) {
-    message("#  %d %ld\n", i, counts[i]);
+    message("#  %d %ld", i, counts[i]);
     total += counts[i];
   }
-  message("# total = %ld\n", total);
-
-  poisson_free( &grid );
-
-  return 1;
+  message("# total = %ld", total);
 }
+
+/*
+int main( int argc, char *argv[] )
+{
+
+    float *samplelist = NULL;
+    struct space s;
+    s.cdim[0] = 100;
+    s.cdim[1] = 12;
+    s.cdim[2] = 12;
+
+    samplelist = poisson_generate(&s, 2);
+
+    poisson_split(&s, 2, samplelist);
+
+}
+*/

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -607,7 +608,7 @@ void engine_repartition(struct engine *e) {
               "the current partition, load balance will not be optimal");
       for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
     }
-    
+
   }
 
 /* Broadcast the result of the partition. */
@@ -2072,6 +2073,8 @@ void engine_makeproxies(struct engine *e) {
 
 void engine_split(struct engine *e, int *grid) {
 
+#ifdef WITH_MPI
+
   //int j, k;
   //int ind[3];
   struct space *s = e->s;
@@ -2091,8 +2094,25 @@ void engine_split(struct engine *e, int *grid) {
   //  // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
   //}
 
-  if (! poisson_split(s, e->nr_nodes) )
-    error("Failed to partition cells");
+  /* Poisson split is stochastic so can only be done by one node. */
+  float *samplelist = malloc(sizeof( float ) * e->nr_nodes * 3);
+  if ( samplelist == NULL )
+    error("Failed to allocate samplelist");
+
+  if (e->nodeID == 0) {
+    if ( poisson_generate(s, e->nr_nodes, samplelist) == 0 )
+      error("Failed to partition cells");
+    message("samplelist[0,1,2] = %f,%f,%f", samplelist[0], samplelist[1], samplelist[2]);
+  }
+
+  /* Share the samplelist of points around all the nodes. */
+  int res = MPI_Bcast(samplelist, e->nr_nodes * 3, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  if (res != MPI_SUCCESS)
+    mpi_error(res,"Failed to bcast the partition samples.");
+
+  /* And apply to our cells */
+  poisson_split(s, e->nr_nodes, samplelist);
+  free(samplelist);
 
   /* Make the proxies. */
   engine_makeproxies(e);
@@ -2115,6 +2135,8 @@ void engine_split(struct engine *e, int *grid) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+
+#endif /* WITH_MPI */
 }
 
 /**

@@ -20,6 +20,9 @@
 #define SWIFT_POISSON_DISC_H
 
 #include "space.h"
-int poisson_split(struct space *s, int nparts);
+#include "cell.h"
+
+int poisson_generate(struct space *s, int nparts, float *samplelist);
+void poisson_split(struct space *s, int nparts, float *samplelist);
 
 #endif /* SWIFT_POISSON_DISC_H */
