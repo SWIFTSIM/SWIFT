@@ -496,6 +496,8 @@ void scheduler_splittasks(struct scheduler *s) {
       /* Otherwise, if not spilt, stitch-up the sorting. */
       else {
 
+	//message("called");
+	
         /* Create the sort for ci. */
         // lock_lock( &ci->lock );
         if (ci->sorts == NULL)
@@ -670,13 +672,15 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
 
   /* Get the next free task. */
   ind = atomic_inc(&s->tasks_next);
-
+  
   /* Overflow? */
   if (ind >= s->size) error("Task list overflow.");
 
   /* Get a pointer to the new task. */
   t = &s->tasks[ind];
 
+  if (t->type == task_type_sort) message("sort!");
+  
   /* Copy the data. */
   t->type = type;
   t->subtype = subtype;
@@ -904,8 +908,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
-  message("begin");
-  fflush(stdout);
+  //message("begin");
+  //fflush(stdout);
   
   /* Store the mask */
   s->mask = mask;
@@ -921,17 +925,19 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
     if (!((1 << t->type) & s->mask) || t->skip) continue;
     for (j = 0; j < t->nr_unlock_tasks; j++) {
       atomic_inc(&t->unlock_tasks[j]->wait);
-      if(t->unlock_tasks[j] == &tasks[9563] ) {
-	message("task %d %s %s unlocking task %d %s %s\n",
-		k, taskID_names[t->type], subtaskID_names[t->subtype],
-		9563, taskID_names[t->unlock_tasks[j]->type], subtaskID_names[t->unlock_tasks[j]->type]);
-      }
+      /* if(t->unlock_tasks[j] == &tasks[9563] ) { */
+      /* 	message("task %d %s %s unlocking task %d %s %s\n", */
+      /* 		k, taskID_names[t->type], subtaskID_names[t->subtype], */
+      /* 		9563, taskID_names[t->unlock_tasks[j]->type], subtaskID_names[t->unlock_tasks[j]->type]); */
+      /* } */
     }
 
   }
 
     for (k = nr_tasks - 1; k >= 0; k--) {
       t = &tasks[tid[k]];
+      //if (t->type == task_type_sort)
+      //	message("%d %s %s %d %d %d\n", k, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t->skip);
       if (!((1 << t->type) & s->mask) || t->skip) continue;
       fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
     }
@@ -941,7 +947,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   fclose(file);
   
-  message("All waits set");
+  //message("All waits set");
   fflush(stdout);
   
   /* Don't enqueue link tasks directly. */
@@ -961,10 +967,10 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   }
 
   scheduler_dump_queue(s);
-  
+   
 
   
-  message("Done enqueieing");fflush(stdout);
+  //message("Done enqueieing");fflush(stdout);
   
   // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) /
   // CPU_TPS * 1000 );
@@ -984,8 +990,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   int err;
 #endif
 
-  //message("Enqueuing a %s", taskID_names[t->type]);
-  //fflush(stdout);
+  //if(t->type == task_type_pair) {
+  //  message("Enqueuing a %s", taskID_names[t->type]);
+  //  fflush(stdout);
+  // }
   
   /* Ignore skipped tasks and tasks not in the mask. */
   if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link) ||
@@ -1087,9 +1095,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
-  int k, res;
-  struct task *t2, *next = NULL;
-  struct cell *super = t->ci->super;
 
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
@@ -1132,9 +1137,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
  */
 
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
-
-  int k, res;
-  struct task *t2, *next = NULL;
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */

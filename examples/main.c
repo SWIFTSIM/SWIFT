@@ -378,7 +378,6 @@ int main(int argc, char *argv[]) {
   if (myrank == 0)
     printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
 
-  return 0;
   
   /* Let loose a runner on the space. */
   for (j = 0; j < runs && e.time < clock; j++) {
@@ -397,7 +396,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-    if (j == 0)  break;
+    if (j == 1)  break;
     
     if (with_outputs && j % 100 == 0) {
 

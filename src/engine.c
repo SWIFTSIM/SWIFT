@@ -1252,7 +1252,7 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
-  float t_end = e->time;
+  //float t_end = e->time;
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
