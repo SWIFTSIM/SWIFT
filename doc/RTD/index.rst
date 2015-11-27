@@ -17,6 +17,7 @@ Contents:
    Motivation/index.rst
    Innovation/index.rst
    Physics/index.rst
+   DeveloperGuide/index.rst
    FAQ/index.rst
 
 Indices and tables
