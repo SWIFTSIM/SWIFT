@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'SWIFT'
-copyright = u'2015, John Regan, James Willis, Stefan Arridge, Matthieu Schaller'
+copyright = u'2015: John Regan, James Willis, Stefan Arridge, Matthieu Schaller'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

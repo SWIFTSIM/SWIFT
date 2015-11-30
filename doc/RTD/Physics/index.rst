@@ -1,4 +1,4 @@
-.. _GettingStarted:
+.. _SWIFTPhysics:
 
 What Physics does SWIFT Simulate?
 =================================
@@ -7,4 +7,5 @@ What Physics does SWIFT Simulate?
 .. toctree::
    :maxdepth: 1
 
-   SPH/index.rst
+   SPH/sph.rst
+   Gravity/gravity.rst

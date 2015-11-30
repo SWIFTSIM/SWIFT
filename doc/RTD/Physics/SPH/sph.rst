@@ -1,4 +1,4 @@
-.. _GettingStarted:
+.. _SWIFTSPH:
 
 Smooth Particle Hydrodynamics
 =============================
