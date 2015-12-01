@@ -119,9 +119,10 @@ static void remove_active(struct poisson_data *data, int index) {
 static void mark_position(struct poisson_data *data, struct point *p) {
 
   /* Index of point on grid. */
-  int index = (int)data->dims[1] * data->dims[0] * floor(p->x[2] / data->cell_size) +
-              data->dims[0] * floor(p->x[1] / data->cell_size) +
-              floor(p->x[0] / data->cell_size);
+    int index =
+        data->dims[1] * data->dims[0] * (int)(p->x[2] / data->cell_size) +
+        data->dims[0] * (int)(p->x[1] / data->cell_size) +
+        (int)(p->x[0] / data->cell_size);
 
   /* Check if already seen, nothing to do. */
   if (data->cells[index].x[0] == -1.0f) {
@@ -140,9 +141,9 @@ static void mark_position(struct poisson_data *data, struct point *p) {
  */
 static int not_marked(struct poisson_data *data, struct point *p) {
 
-  int i = (int)p->x[1] / data->cell_size;
-  int j = (int)p->x[0] / data->cell_size;
-  int l = (int)p->x[2] / data->cell_size;
+  int i = (int)(p->x[1] / data->cell_size);
+  int j = (int)(p->x[0] / data->cell_size);
+  int l = (int)(p->x[2] / data->cell_size);
   int i0 = MAX(i - 2, 0);
   int j0 = MAX(j - 2, 0);
   int l0 = MAX(l - 2, 0);
@@ -225,7 +226,7 @@ static void poisson_disc(struct poisson_data *data, int dims[3], float radius,
       float phi = 2.0f * M_PI * randone();
 
       /*  Radius to this position is outside the expected radius. */
-      float r = randone() * radius + radius;
+      float r = randone() * radius + 2.0f * radius;
       struct point np;
       np.x[0] = p->x[0] + r * sin(theta) * cos(phi);
       np.x[1] = p->x[1] + r * sin(theta) * sin(phi);
@@ -262,7 +263,7 @@ static void poisson_disc(struct poisson_data *data, int dims[3], float radius,
  * @param s the space to partitions.
  * @param nparts number of parititions to generate.
  * @param samplelist memory for a list of nparts*3 float coordinates that are
- *                   the sample points. 
+ *                   the sample points.
  * @return 1 for success, 0 for failure.
  */
 int poisson_generate(struct space *s, int nparts, float *samplelist) {
@@ -277,7 +278,7 @@ int poisson_generate(struct space *s, int nparts, float *samplelist) {
    * space filling solution from ever working, so we guess and need to
    * possibly seek more than one solution.
    */
-  float radius = pow((s->cdim[0]*s->cdim[1]*s->cdim[2])/(1.5*nparts), 0.3333);
+  float radius = pow((s->cdim[0]*s->cdim[1]*s->cdim[2])/(4.18*nparts), 0.3333);
   message("# Radius = %f", radius);
 
   /* Initialise the data struct. */
@@ -320,6 +321,15 @@ int poisson_generate(struct space *s, int nparts, float *samplelist) {
    * loop if our guess ever fails completely. */
   int ntries = 0;
   while (data.samplelen < nparts && ntries < 10) {
+
+    /* Re-initialize data struct making sure it is clean of previous
+     * attempts. */
+    for (int i = 0; i < data.ncells; i++) {
+      data.cells[i].x[0] = -1.0;
+    }
+    data.samplelen = 0;
+    data.actlen = 0;
+
     poisson_disc(&data, s->cdim, radius, 30);
     message("# Samples = %d", data.samplelen);
     ntries++;
@@ -340,6 +350,23 @@ int poisson_generate(struct space *s, int nparts, float *samplelist) {
                data.samplelist[i].x[0],
                data.samplelist[i].x[1],
                data.samplelist[i].x[2]);
+     }
+
+     /* Check the radii are as expected. */
+     for (int i = 0; i < data.samplelen; i++) {
+       float ref[3];
+       ref[0] = data.samplelist[i].x[0];
+       ref[1] = data.samplelist[i].x[1];
+       ref[2] = data.samplelist[i].x[2];
+       for (int j = i + 1; j < data.samplelen; j++) {
+         float dx = ref[0] - data.samplelist[j].x[0];
+         float dy = ref[1] - data.samplelist[j].x[1];
+         float dz = ref[2] - data.samplelist[j].x[2];
+         if (sqrtf(dx*dx+dy*dy+dz*dz) < radius) {
+           message( "point too close: %d,%d (%f)", i, j,
+                    sqrtf(dx*dx+dy*dy+dz*dz));
+         }
+       }
      }
   }
 
@@ -391,7 +418,7 @@ void poisson_split(struct space *s, int nparts, float *samplelist) {
         }
         s->cells[n++].nodeID = select;
         counts[select]++;
-        //message("%f %f %f %d", i + 0.5, j + 0.5, k + 0.5, select);
+        //message("@ %f %f %f %d", i + 0.5, j + 0.5, k + 0.5, select);
       }
     }
   }
@@ -400,6 +427,9 @@ void poisson_split(struct space *s, int nparts, float *samplelist) {
   unsigned long int total = 0;
   for (int i = 0; i < nparts; i++) {
     message("#  %d %ld", i, counts[i]);
+    if ( counts[i] == 0 ) {
+        message( "sampling failed" );
+    }
     total += counts[i];
   }
   message("# total = %ld", total);
@@ -408,16 +438,17 @@ void poisson_split(struct space *s, int nparts, float *samplelist) {
 /*
 int main( int argc, char *argv[] )
 {
+    const int N = 5;
 
-    float *samplelist = NULL;
+    float samplelist[N*3];
     struct space s;
-    s.cdim[0] = 100;
-    s.cdim[1] = 12;
-    s.cdim[2] = 12;
+    s.cdim[0] = 3;
+    s.cdim[1] = 3;
+    s.cdim[2] = 3;
 
-    samplelist = poisson_generate(&s, 2);
+    if ( poisson_generate(&s, N, samplelist))
+        poisson_split(&s, N, samplelist);
 
-    poisson_split(&s, 2, samplelist);
-
+    return 0;
 }
 */
