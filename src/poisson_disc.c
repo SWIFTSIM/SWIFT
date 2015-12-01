@@ -211,6 +211,7 @@ static void poisson_disc(struct poisson_data *data, int dims[3], float radius,
   for (int i = 0; i < 3; i++)
       ip.x[i] = randone() * dims[i];
   mark_position(data, &ip);
+  message( "# initial position: %f, %f, %f", ip.x[0], ip.x[1], ip.x[2]);
 
   while (data->actlen > 0) {
 
@@ -269,36 +270,46 @@ static void poisson_disc(struct poisson_data *data, int dims[3], float radius,
 int poisson_generate(struct space *s, int nparts, float *samplelist) {
 
   int result = 1;
+  struct poisson_data data;
 
   /* Randomize randoms. */
   srand(time(NULL));
 
   /* Pick radius for expected sample size. This part is tricky, we want a
-   * radius that will sample the space well, but the random selection stops a
-   * space filling solution from ever working, so we guess and need to
-   * possibly seek more than one solution.
+   * radius that will sample the space well, but the random selection and,
+   * potentially, non-cube nature of the space stops a space filling solution
+   * from ever working, so we guess and need to possibly seek more than one
+   * solution. The 4.18 is space filling, but we allow centres to be closer to
+   * the edges than radius, giving the slop and allowing a dimension to be
+   * smaller than 2*radius.
    */
   float radius = pow((s->cdim[0]*s->cdim[1]*s->cdim[2])/(4.18*nparts), 0.3333);
-  message("# Radius = %f", radius);
-
-  /* Initialise the data struct. */
-  struct poisson_data data;
   data.radius = radius;
+  message("# radius = %f", radius);
 
   /* Cell size for this resolution. */
   data.cell_size = radius / sqrtf(3.0f);
+
+  /* Count cells in the sample space. */
   data.ncells = 1;
   for (int i = 0; i < 3; i++) {
     data.dims[i] = (int)ceilf(s->cdim[i] / data.cell_size);
     data.ncells *= data.dims[i];
   }
+  message("# partition space has %d cells (%dx%dx%d, size:%f)", data.ncells,
+          data.dims[0], data.dims[1], data.dims[2], data.cell_size);
+
+  /* If we want more samples than cells, then things are not going to work. */
+  if (nparts > data.ncells) {
+    message("Cannot sub-sample space");
+    return 0;
+  }
+
+  /* There is one problem which is when nparts is a good fraction of ncells. */
 
   data.cells = (struct point *)malloc(sizeof(struct point) * data.ncells );
   if (data.cells == NULL) {
     error("Failed to allocate data cells");
-  }
-  for (int i = 0; i < data.ncells; i++) {
-    data.cells[i].x[0] = -1.0;
   }
 
   /*  Queue for active list. */
@@ -307,7 +318,6 @@ int poisson_generate(struct space *s, int nparts, float *samplelist) {
     error("Failed to allocate an active list");
   }
   data.actsize = CHUNK;
-  data.actlen = 0;
 
   /*  Space for results. */
   data.samplelist = (struct point *)malloc(CHUNK * sizeof(struct point));
@@ -315,11 +325,11 @@ int poisson_generate(struct space *s, int nparts, float *samplelist) {
     error("Failed to allocate a sample list");
   }
   data.samplesize = CHUNK;
-  data.samplelen = 0;
 
   /* Get the sample, try a number of times, but give up so that we never get a
    * loop if our guess ever fails completely. */
   int ntries = 0;
+  data.samplelen = 0;
   while (data.samplelen < nparts && ntries < 10) {
 
     /* Re-initialize data struct making sure it is clean of previous
@@ -331,11 +341,11 @@ int poisson_generate(struct space *s, int nparts, float *samplelist) {
     data.actlen = 0;
 
     poisson_disc(&data, s->cdim, radius, 30);
-    message("# Samples = %d", data.samplelen);
+    message("# samples = %d", data.samplelen);
     ntries++;
   }
-  if ( data.samplelen < nparts ) {
-    message("Failed to partition space (last sample size: %d, expected: %d)",
+  if (data.samplelen < nparts) {
+    message("failed to partition space (last sample size: %d, expected: %d)",
             data.samplelen, nparts);
     result = 0;
   } else {
@@ -345,8 +355,8 @@ int poisson_generate(struct space *s, int nparts, float *samplelist) {
        for (int j = 0; j < 3; j++)
          samplelist[k++] = data.samplelist[i].x[j];
 
-     for ( int i = 0; i < data.samplelen; i++) {
-       message("# %f %f %f",
+     for (int i = 0; i < data.samplelen; i++) {
+         message("# %d: %f %f %f", i,
                data.samplelist[i].x[0],
                data.samplelist[i].x[1],
                data.samplelist[i].x[2]);
@@ -416,14 +426,14 @@ void poisson_split(struct space *s, int nparts, float *samplelist) {
             select = l;
           }
         }
-        s->cells[n++].nodeID = select;
+        //s->cells[n++].nodeID = select;
         counts[select]++;
-        //message("@ %f %f %f %d", i + 0.5, j + 0.5, k + 0.5, select);
+        message("@ %f %f %f %d", i + 0.5, j + 0.5, k + 0.5, select);
       }
     }
   }
 
-  message("# Counts:");
+  message("# counts:");
   unsigned long int total = 0;
   for (int i = 0; i < nparts; i++) {
     message("#  %d %ld", i, counts[i]);
@@ -435,20 +445,22 @@ void poisson_split(struct space *s, int nparts, float *samplelist) {
   message("# total = %ld", total);
 }
 
-/*
+
 int main( int argc, char *argv[] )
 {
-    const int N = 5;
+    int N = 5;
+    if ( argc > 1 ) {
+        N = atoi( argv[1] );
+    }
 
     float samplelist[N*3];
     struct space s;
-    s.cdim[0] = 3;
-    s.cdim[1] = 3;
-    s.cdim[2] = 3;
+    s.cdim[0] = 6;
+    s.cdim[1] = 6;
+    s.cdim[2] = 6;
 
     if ( poisson_generate(&s, N, samplelist))
         poisson_split(&s, N, samplelist);
 
     return 0;
 }
-*/
