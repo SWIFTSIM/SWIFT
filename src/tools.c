@@ -180,6 +180,16 @@ void pairs_single_density(double *dim, long long int pid,
   fflush(stdout);
 }
 
+
+ 
+void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  
+  
+  
+}
+
+
 void pairs_single_grav(double *dim, long long int pid,
                        struct gpart *__restrict__ parts, int N, int periodic) {
 

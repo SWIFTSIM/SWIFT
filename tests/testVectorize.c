@@ -50,7 +50,26 @@ struct cell *make_cell(size_t n, double *offset, double h,
   return cell;
 }
 
+/**
+ * @brief Initializes all particles field to be ready for a density calculation
+ */
+void zero_particle_fields(struct cell *c) {
+
+  for (size_t pid = 0; pid < c->count; pid++) {
+    c->parts[pid].rho = 0.f;
+    c->parts[pid].rho_dh = 0.f;
+    c->parts[pid].density.wcount = 0.f;
+    c->parts[pid].density.wcount_dh = 0.f;
+    c->parts[pid].density.div_v = 0.f;
+    c->parts[pid].density.curl_v[0] = 0.f;
+    c->parts[pid].density.curl_v[1] = 0.f;
+    c->parts[pid].density.curl_v[2] = 0.f;
+  }
+}
+
+/* Just forward declarations... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj);
 
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
@@ -86,7 +105,7 @@ int main(int argc, char *argv[]) {
         "\nThese are then interacted using runner_dopair1_density."
         "\n\nOptions:"
         "\n-t TYPE=0          - cells share face (0), edge (1) or corner (2)"
-        "\n-h DISTANCE=1.1255 - smoothing length",
+        "\n-h DISTANCE=1.1255 - smoothing length\n",
         argv[0]);
     exit(1);
   }
@@ -108,10 +127,19 @@ int main(int argc, char *argv[]) {
   runner.e = &engine;
 
   printf(
-      "#ID, rho, rho_dh, density.wcount, density.wcount_dh, div_v, "
+      "# ID, rho, rho_dh, wcount, wcount_dh, div_v, "
       "curl_v:[x,y,z]\n");
 
   for (size_t i = 0; i < runs; ++i) {
+
+    /* Zero the fields */
+    zero_particle_fields(ci);
+    zero_particle_fields(cj);
+
+    /* Run the test */
+    runner_dopair1_density(&runner, ci, cj);
+
+    /* Dump if necessary */
     if (i % 50 == 0) {
       for (size_t pid = 0; pid < ci->count; pid++) {
         printf("%llu,%f,%f,%f,%f,%f,[%f,%f,%f]\n", ci->parts[pid].id,
@@ -121,15 +149,23 @@ int main(int argc, char *argv[]) {
                ci->parts[pid].density.curl_v[1],
                ci->parts[pid].density.curl_v[2]);
       }
-      for (size_t pid = 0; pid < cj->count; pid++) {
-        printf("%llu,%f,%f,%f,%f,%f,[%f,%f,%f]\n", cj->parts[pid].id,
-               cj->parts[pid].rho, cj->parts[pid].rho_dh,
-               cj->parts[pid].density.wcount, cj->parts[pid].density.wcount_dh,
-               cj->parts[pid].density.div_v, cj->parts[pid].density.curl_v[0],
-               cj->parts[pid].density.curl_v[1],
-               cj->parts[pid].density.curl_v[2]);
+      for (size_t pjd = 0; pjd < cj->count; pjd++) {
+        printf("%llu,%f,%f,%f,%f,%f,[%f,%f,%f]\n", cj->parts[pjd].id,
+               cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+               cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
+               cj->parts[pjd].density.div_v, cj->parts[pjd].density.curl_v[0],
+               cj->parts[pjd].density.curl_v[1],
+               cj->parts[pjd].density.curl_v[2]);
       }
     }
-    runner_dopair1_density(&runner, ci, cj);
   }
+
+  /* Now perform a brute-force version for accuracy tests */
+  zero_particle_fields(ci);
+  zero_particle_fields(cj);
+
+  pairs_all_density(&runner, ci, cj);
+
+return 0;
+
 }
