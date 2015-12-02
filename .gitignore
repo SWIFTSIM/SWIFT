@@ -26,6 +26,8 @@ examples/swift_mindt_mpi
 examples/swift_mpi
 
 tests/testVectorize
+tests/brute_force.dat
+tests/swift_dopair.dat
 tests/testGreetings
 tests/testReading
 tests/input.hdf5

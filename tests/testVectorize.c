@@ -67,9 +67,39 @@ void zero_particle_fields(struct cell *c) {
   }
 }
 
-/* Just forward declarations... */
+/**
+ * @brief Dump all the particles to a file
+ */
+void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
+
+  FILE *file = fopen(fileName, "w");
+
+  fprintf(file,
+          "# ID  rho  rho_dh  wcount  wcount_dh  div_v  curl_v:[x y z]\n");
+
+  for (size_t pid = 0; pid < ci->count; pid++) {
+    fprintf(file, "%6llu %f %f %f %f %f %f %f %f\n", ci->parts[pid].id,
+            ci->parts[pid].rho, ci->parts[pid].rho_dh,
+            ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
+            ci->parts[pid].density.div_v, ci->parts[pid].density.curl_v[0],
+            ci->parts[pid].density.curl_v[1], ci->parts[pid].density.curl_v[2]);
+  }
+
+  fprintf(file, "# -----------------------------------\n");
+
+  for (size_t pjd = 0; pjd < cj->count; pjd++) {
+    fprintf(file, "%6llu %f %f %f %f %f %f %f %f\n", cj->parts[pjd].id,
+            cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+            cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
+            cj->parts[pjd].density.div_v, cj->parts[pjd].density.curl_v[0],
+            cj->parts[pjd].density.curl_v[1], cj->parts[pjd].density.curl_v[2]);
+  }
+
+  fclose(file);
+}
+
+/* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
-void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj);
 
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
@@ -126,10 +156,6 @@ int main(int argc, char *argv[]) {
   engine.dt_step = 0.1;
   runner.e = &engine;
 
-  printf(
-      "# ID, rho, rho_dh, wcount, wcount_dh, div_v, "
-      "curl_v:[x,y,z]\n");
-
   for (size_t i = 0; i < runs; ++i) {
 
     /* Zero the fields */
@@ -140,24 +166,7 @@ int main(int argc, char *argv[]) {
     runner_dopair1_density(&runner, ci, cj);
 
     /* Dump if necessary */
-    if (i % 50 == 0) {
-      for (size_t pid = 0; pid < ci->count; pid++) {
-        printf("%llu,%f,%f,%f,%f,%f,[%f,%f,%f]\n", ci->parts[pid].id,
-               ci->parts[pid].rho, ci->parts[pid].rho_dh,
-               ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
-               ci->parts[pid].density.div_v, ci->parts[pid].density.curl_v[0],
-               ci->parts[pid].density.curl_v[1],
-               ci->parts[pid].density.curl_v[2]);
-      }
-      for (size_t pjd = 0; pjd < cj->count; pjd++) {
-        printf("%llu,%f,%f,%f,%f,%f,[%f,%f,%f]\n", cj->parts[pjd].id,
-               cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
-               cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-               cj->parts[pjd].density.div_v, cj->parts[pjd].density.curl_v[0],
-               cj->parts[pjd].density.curl_v[1],
-               cj->parts[pjd].density.curl_v[2]);
-      }
-    }
+    if (i % 50 == 0) dump_particle_fields("swift_dopair.dat", ci, cj);
   }
 
   /* Now perform a brute-force version for accuracy tests */
@@ -166,6 +175,7 @@ int main(int argc, char *argv[]) {
 
   pairs_all_density(&runner, ci, cj);
 
-return 0;
+  dump_particle_fields("brute_force.dat", ci, cj);
 
+  return 0;
 }
