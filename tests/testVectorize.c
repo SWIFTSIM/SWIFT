@@ -12,7 +12,7 @@ struct cell *make_cell(size_t n, double *offset, double h, unsigned long long *p
   size_t count = n*n*n;
   struct cell *cell = malloc(sizeof *cell);
   struct part *part;
-  size_t x, y, z, i, size;
+  size_t x, y, z, size;
   
   size = count*sizeof(*cell->parts);
   if (posix_memalign((void**)&cell->parts, 32, size) != 0) {
@@ -110,10 +110,10 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < runs; ++i) {
       if(i%50 == 0) {
         for (size_t pid = 0; pid < ci->count; pid++) {
-            printf("%lu,%f,%f,%f,%f,%f,[%f,%f,%f]\n",ci->parts[pid].id,ci->parts[pid].rho,ci->parts[pid].rho_dh,ci->parts[pid].density.wcount,ci->parts[pid].density.wcount_dh,ci->parts[pid].density.div_v,ci->parts[pid].density.curl_v[0],ci->parts[pid].density.curl_v[1],ci->parts[pid].density.curl_v[2]);
+            printf("%llu,%f,%f,%f,%f,%f,[%f,%f,%f]\n",ci->parts[pid].id,ci->parts[pid].rho,ci->parts[pid].rho_dh,ci->parts[pid].density.wcount,ci->parts[pid].density.wcount_dh,ci->parts[pid].density.div_v,ci->parts[pid].density.curl_v[0],ci->parts[pid].density.curl_v[1],ci->parts[pid].density.curl_v[2]);
         }
         for (size_t pid = 0; pid < cj->count; pid++) {
-            printf("%lu,%f,%f,%f,%f,%f,[%f,%f,%f]\n",cj->parts[pid].id,cj->parts[pid].rho,cj->parts[pid].rho_dh,cj->parts[pid].density.wcount,cj->parts[pid].density.wcount_dh,cj->parts[pid].density.div_v,cj->parts[pid].density.curl_v[0],cj->parts[pid].density.curl_v[1],cj->parts[pid].density.curl_v[2]);
+            printf("%llu,%f,%f,%f,%f,%f,[%f,%f,%f]\n",cj->parts[pid].id,cj->parts[pid].rho,cj->parts[pid].rho_dh,cj->parts[pid].density.wcount,cj->parts[pid].density.wcount_dh,cj->parts[pid].density.div_v,cj->parts[pid].density.curl_v[0],cj->parts[pid].density.curl_v[1],cj->parts[pid].density.curl_v[2]);
         }
       }
     runner_dopair1_density(&runner, ci, cj);  
