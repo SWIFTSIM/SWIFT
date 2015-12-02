@@ -27,6 +27,9 @@ struct cell *make_cell(size_t n, double *offset, double h, unsigned long long *p
         part->x[0] = x + offset[0] + 0.5;
         part->x[1] = y + offset[1] + 0.5;
         part->x[2] = z + offset[2] + 0.5;
+        part->v[0] = 1.0f;
+        part->v[1] = 1.0f;
+        part->v[2] = 1.0f;
         part->dt = 0.01;
         part->h = h;
         part->id = ++(*partId);
