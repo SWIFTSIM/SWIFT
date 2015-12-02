@@ -120,6 +120,7 @@ int main(int argc, char *argv[]) {
   struct runner runner;
   char c;
   static unsigned long long partId = 0;
+  ticks tic, toc, time;
 
   while ((c = getopt(argc, argv, "h:p:r:t:")) != -1) {
     switch (c) {
@@ -172,18 +173,39 @@ int main(int argc, char *argv[]) {
     zero_particle_fields(ci);
     zero_particle_fields(cj);
 
+    tic = getticks();
+
     /* Run the test */
     runner_dopair1_density(&runner, ci, cj);
 
+    toc = getticks();
+    time += toc - tic;
+    
     /* Dump if necessary */
     if (i % 50 == 0) dump_particle_fields("swift_dopair.dat", ci, cj);
   }
 
+  /* Output timing */
+  message("SWIFT calculation took       %lli ticks." , time / runs);
+
   /* Now perform a brute-force version for accuracy tests */
+
+  /* Zero the fields */
   zero_particle_fields(ci);
   zero_particle_fields(cj);
+
+  tic = getticks();
+
+  /* Run the test */
   pairs_all_density(&runner, ci, cj);
+
+  toc = getticks();
+
+  /* Dump */
   dump_particle_fields("brute_force.dat", ci, cj);
+
+  /* Output timing */
+  message("Brute force calculation took %lli ticks." , toc - tic);
 
   /* Clean things to make the sanitizer happy ... */
   clean_up(ci);
