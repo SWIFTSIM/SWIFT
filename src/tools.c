@@ -202,14 +202,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        // message("hit %d %d %f %f %f %f", i, j, sqrt(r2), hi, pi->mass,
-        // pi->rho);
-
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
-
-        // message("hit %d %d %f %f %f %f", i, j, sqrt(r2), hi, pi->mass,
-        // pi->rho);
       }
     }
   }
