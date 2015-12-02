@@ -43,6 +43,10 @@ struct cell *make_cell(size_t n, double *offset, double h,
   cell->split = 0;
   cell->h_max = h;
   cell->count = count;
+  cell->dx_max = 1.;
+  cell->h[0] = n;
+  cell->h[1] = n;
+  cell->h[2] = n;
 
   cell->sort = malloc(13 * count * sizeof *cell->sort);
   runner_dosort(NULL, cell, 0x1FFF, 0);
