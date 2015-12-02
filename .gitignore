@@ -25,6 +25,7 @@ examples/swift_mindt
 examples/swift_mindt_mpi
 examples/swift_mpi
 
+tests/testVectorize
 tests/testGreetings
 tests/testReading
 tests/input.hdf5
