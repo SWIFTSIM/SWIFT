@@ -20,7 +20,6 @@ struct cell *make_cell(size_t n, double *offset, double h,
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
 
-  
   part = cell->parts;
   for (x = 0; x < n; ++x) {
     for (y = 0; y < n; ++y) {
@@ -181,7 +180,6 @@ int main(int argc, char *argv[]) {
   zero_particle_fields(cj);
   pairs_all_density(&runner, ci, cj);
   dump_particle_fields("brute_force.dat", ci, cj);
-
 
   /* Clean things to make the sanitizer happy ... */
   clean_up(ci);
