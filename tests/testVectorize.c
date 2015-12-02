@@ -15,11 +15,12 @@ struct cell *make_cell(size_t n, double *offset, double h,
   struct part *part;
   size_t x, y, z, size;
 
-  size = count * sizeof(*cell->parts);
-  if (posix_memalign((void **)&cell->parts, 32, size) != 0) {
+  size = count * sizeof(struct part);
+  if (posix_memalign((void **)&cell->parts, part_align, size) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
 
+  
   part = cell->parts;
   for (x = 0; x < n; ++x) {
     for (y = 0; y < n; ++y) {
@@ -48,6 +49,12 @@ struct cell *make_cell(size_t n, double *offset, double h,
   runner_dosort(NULL, cell, 0x1FFF, 0);
 
   return cell;
+}
+
+void clean_up(struct cell *ci) {
+  free(ci->parts);
+  free(ci->sort);
+  free(ci);
 }
 
 /**
@@ -172,10 +179,13 @@ int main(int argc, char *argv[]) {
   /* Now perform a brute-force version for accuracy tests */
   zero_particle_fields(ci);
   zero_particle_fields(cj);
-
   pairs_all_density(&runner, ci, cj);
-
   dump_particle_fields("brute_force.dat", ci, cj);
+
+
+  /* Clean things to make the sanitizer happy ... */
+  clean_up(ci);
+  clean_up(cj);
 
   return 0;
 }
