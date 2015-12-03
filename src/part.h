@@ -19,6 +19,8 @@
 #ifndef SWIFT_PART_H
 #define SWIFT_PART_H
 
+#include "const.h"
+
 /* Some constants. */
 #define part_maxwait 3
 #define part_maxunlock 39
