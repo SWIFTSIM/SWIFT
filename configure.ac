@@ -270,8 +270,13 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[true],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
-# Check for libnuma.
-AC_CHECK_LIB([numa], [numa_available])
+if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
+  # Check for libnuma.
+  AC_CHECK_HEADER([numa.h])
+  if test "$ac_cv_header_numa_h" = "yes"; then
+    AC_CHECK_LIB([numa], [numa_available])
+  fi
+fi
 
 # Check for Intel intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
