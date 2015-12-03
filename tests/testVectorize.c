@@ -167,6 +167,7 @@ int main(int argc, char *argv[]) {
   engine.dt_step = 0.1;
   runner.e = &engine;
 
+  time = 0;
   for (size_t i = 0; i < runs; ++i) {
 
     /* Zero the fields */

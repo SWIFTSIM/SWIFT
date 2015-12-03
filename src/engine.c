@@ -185,8 +185,8 @@ void engine_redistribute(struct engine *e) {
   /* Get the new number of parts for this node, be generous in allocating. */
   int nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
-  struct part *parts_new;
-  struct xpart *xparts_new, *xparts = s->xparts;
+  struct part *parts_new = NULL;
+  struct xpart *xparts_new = NULL, *xparts = s->xparts;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * nr_parts * 1.2) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
@@ -951,8 +951,8 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   message("sent out %i particles, got %i back.", N, count_in);
   if (offset + count_in > s->size_parts) {
     s->size_parts = (offset + count_in) * 1.05;
-    struct part *parts_new;
-    struct xpart *xparts_new;
+    struct part *parts_new = NULL;
+    struct xpart *xparts_new = NULL;
     if (posix_memalign((void **)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0 ||
         posix_memalign((void **)&xparts_new, part_align,
@@ -2098,8 +2098,8 @@ void engine_split(struct engine *e, int *grid) {
     message("Re-allocating parts array from %i to %i.", s->size_parts,
             (int)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
-  struct part *parts_new;
-  struct xpart *xparts_new;
+  struct part *parts_new = NULL;
+  struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * s->size_parts) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
