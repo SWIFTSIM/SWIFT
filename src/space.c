@@ -1026,6 +1026,7 @@ void space_split(struct space *s, struct cell *c) {
       xp->x_old[1] = p->x[1];
       xp->x_old[2] = p->x[2];
       h = p->h;
+      t_end = p->t_end;
       if (h > h_max) h_max = h;
       if (t_end < t_end_min) t_end_min = t_end;
       if (t_end > t_end_max) t_end_max = t_end;
