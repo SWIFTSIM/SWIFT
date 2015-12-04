@@ -628,6 +628,7 @@ void engine_repartition(struct engine *e) {
 
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
+#ifdef WITH_MPI
   int k;
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
@@ -664,6 +665,11 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
   else if (ci->split)
     for (k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) engine_addtasks_send(e, ci->progeny[k], cj);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+
 }
 
 /**
@@ -678,6 +684,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho) {
 
+#ifdef WITH_MPI
   int k;
   struct scheduler *s = &e->sched;
 
@@ -707,6 +714,11 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
     for (k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+
 }
 
 /**
@@ -1417,6 +1429,8 @@ void engine_print(struct engine *e) {
  */
 
 void engine_rebuild(struct engine *e) {
+
+  message("REBUILD !!!");
 
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;

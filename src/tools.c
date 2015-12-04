@@ -37,7 +37,7 @@ void factor(int value, int *f1, int *f2) {
   int j;
   int i;
 
-  j = (int)sqrt(value);
+  j = (int) sqrt(value);
   for (i = j; i > 0; i--) {
     if ((value % i) == 0) {
       *f1 = i;
@@ -110,7 +110,7 @@ void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
 
   /* Dump the result. */
   printf("pairs_n2: avg. density per part is %.3f (nr. pairs %.3f).\n",
-         rho / N + 32.0 / 3, ((double)count) / N);
+         rho / N + 32.0 / 3, ((double) count) / N);
   printf("pairs_n2: densities are in [ %e , %e ].\n", rho_min / N + 32.0 / 3,
          rho_max / N + 32.0 / 3);
   /* printf( "pairs_n2: maximum ratio between parts %i [%e,%e,%e] and %i
@@ -183,7 +183,7 @@ void pairs_single_grav(double *dim, long long int pid,
   // int mj, mk;
   // double maxratio = 1.0;
   double r2, dx[3];
-  float fdx[3], a[3] = {0.0, 0.0, 0.0}, aabs[3] = {0.0, 0.0, 0.0};
+  float fdx[3], a[3] = { 0.0, 0.0, 0.0 }, aabs[3] = { 0.0, 0.0, 0.0 };
   struct gpart pi, pj;
   // double ih = 12.0/6.25;
 
@@ -239,7 +239,7 @@ void pairs_single_grav(double *dim, long long int pid,
 void density_dump(int N) {
 
   int k;
-  float r2[4] = {0.0f, 0.0f, 0.0f, 0.0f}, hi[4], hj[4];
+  float r2[4] = { 0.0f, 0.0f, 0.0f, 0.0f }, hi[4], hj[4];
   struct part *pi[4], *pj[4], Pi[4], Pj[4];
 
   /* Init the interaction parameters. */
@@ -260,7 +260,7 @@ void density_dump(int N) {
     r2[3] = r2[2];
     r2[2] = r2[1];
     r2[1] = r2[0];
-    r2[0] = ((float)k) / N;
+    r2[0] = ((float) k) / N;
     Pi[0].density.wcount = 0;
     Pj[0].density.wcount = 0;
     runner_iact_density(r2[0], NULL, hi[0], hj[0], &Pi[0], &Pj[0]);
@@ -277,4 +277,119 @@ void density_dump(int N) {
     printf(" %e %e %e %e\n", Pi[0].density.wcount, Pi[1].density.wcount,
            Pi[2].density.wcount, Pi[3].density.wcount);
   }
+}
+
+/**
+ * @brief Compute the force on a single particle brute-force.
+ */
+
+void engine_single_density(double *dim, long long int pid,
+                           struct part *__restrict__ parts, int N,
+                           int periodic) {
+
+  int i, k;
+  double r2, dx[3];
+  float fdx[3], ih;
+  struct part p;
+
+  /* Find "our" part. */
+  for (k = 0; k < N && parts[k].id != pid; k++)
+    ;
+  if (k == N) error("Part not found.");
+  p = parts[k];
+
+  /* Clear accumulators. */
+  ih = 1.0f / p.h;
+  p.rho = 0.0f;
+  p.rho_dh = 0.0f;
+  p.density.wcount = 0.0f;
+  p.density.wcount_dh = 0.0f;
+  p.density.div_v = 0.0;
+  for (k = 0; k < 3; k++)
+    p.density.curl_v[k] = 0.0;
+
+  /* Loop over all particle pairs (force). */
+  for (k = 0; k < N; k++) {
+    if (parts[k].id == p.id) continue;
+    for (i = 0; i < 3; i++) {
+      dx[i] = p.x[i] - parts[k].x[i];
+      if (periodic) {
+        if (dx[i] < -dim[i] / 2)
+          dx[i] += dim[i];
+        else if (dx[i] > dim[i] / 2)
+          dx[i] -= dim[i];
+      }
+      fdx[i] = dx[i];
+    }
+    r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
+    if (r2 < p.h * p.h * kernel_gamma2) {
+      runner_iact_nonsym_density(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+    }
+  }
+
+  /* Dump the result. */
+  p.rho = ih * ih * ih * (p.rho + p.mass * kernel_root);
+  p.rho_dh = p.rho_dh * ih * ih * ih * ih;
+  p.density.wcount =
+      (p.density.wcount + kernel_root) * (4.0f / 3.0 * M_PI * kernel_gamma3);
+  message("part %lli (h=%e) has wcount=%e, rho=%e, rho_dh=%e.", p.id, p.h,
+          p.density.wcount, p.rho, p.rho_dh);
+  fflush(stdout);
+
+}
+
+void engine_single_force(double *dim, long long int pid,
+                         struct part *__restrict__ parts, int N, int periodic) {
+
+  int i, k;
+  double r2, dx[3];
+  float fdx[3];
+  struct part p;
+
+  /* Find "our" part. */
+  for (k = 0; k < N && parts[k].id != pid; k++)
+    ;
+  if (k == N) error("Part not found.");
+  p = parts[k];
+
+  /* Clear accumulators. */
+  p.a[0] = 0.0f;
+  p.a[1] = 0.0f;
+  p.a[2] = 0.0f;
+  p.force.u_dt = 0.0f;
+  p.force.h_dt = 0.0f;
+  p.force.v_sig = 0.0f;
+
+  /* Loop over all particle pairs (force). */
+  for (k = 0; k < N; k++) {
+    // for ( k = N-1 ; k >= 0 ; k-- ) {
+    if (parts[k].id == p.id) continue;
+    for (i = 0; i < 3; i++) {
+      dx[i] = p.x[i] - parts[k].x[i];
+      if (periodic) {
+        if (dx[i] < -dim[i] / 2)
+          dx[i] += dim[i];
+        else if (dx[i] > dim[i] / 2)
+          dx[i] -= dim[i];
+      }
+      fdx[i] = dx[i];
+    }
+    r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
+    if (r2 < p.h * p.h * kernel_gamma2 ||
+        r2 < parts[k].h * parts[k].h * kernel_gamma2) {
+      p.a[0] = 0.0f;
+      p.a[1] = 0.0f;
+      p.a[2] = 0.0f;
+      p.force.u_dt = 0.0f;
+      p.force.h_dt = 0.0f;
+      p.force.v_sig = 0.0f;
+      runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
+    }
+  }
+
+  /* Dump the result. */
+  message( "part %lli (h=%e) has a=[%.3e,%.3e,%.3e], udt=%e." , p.id ,
+	   p.h , p.a[0] , p.a[1] , p.a[2] , p.force.u_dt );
+  fflush(stdout);
+
 }
