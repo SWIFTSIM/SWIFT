@@ -885,32 +885,56 @@ void scheduler_reweight(struct scheduler *s) {
 
 void scheduler_start(struct scheduler *s, unsigned int mask) {
 
-  int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
+  int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
-  // ticks tic;
 
   /* Store the mask */
-  s->mask = mask;
+  s->mask = mask | (1 << task_type_rewait);
 
-  /* Run through the tasks and set their waits. */
-  // tic = getticks();
-  for (k = nr_tasks - 1; k >= 0; k--) {
-    t = &tasks[tid[k]];
-    t->wait = 0;
-    t->rid = -1;
-    if (!((1 << t->type) & s->mask) || t->skip) continue;
-    for (j = 0; j < t->nr_unlock_tasks; j++)
-      atomic_inc(&t->unlock_tasks[j]->wait);
+  /* Clear all the waits and rids. */
+  // ticks tic = getticks();
+  for (int k = 0; k < s->nr_tasks; k++) {
+    s->tasks[k].wait = 0;
+    s->tasks[k].rid = -1;
   }
-  // message( "waiting tasks took %.3f ms." , (double)( getticks() - tic ) /
-  // CPU_TPS * 1000 );
+
+  /* Enqueue a set of extraenous tasks to set the task waits. */
+  struct task *rewait_tasks = &s->tasks[s->nr_tasks];
+  const int num_rewait_tasks = s->nr_queues > s->size - s->nr_tasks
+                                   ? s->size - s->nr_tasks
+                                   : s->nr_queues;
+  const int waiting_old =
+      s->waiting;  // Remember that engine_launch may fiddle with this value.
+  for (int k = 0; k < num_rewait_tasks; k++) {
+    rewait_tasks[k].type = task_type_rewait;
+    rewait_tasks[k].ci = (struct cell *)&s->tasks[k * nr_tasks / s->nr_queues];
+    rewait_tasks[k].cj =
+        (struct cell *)&s->tasks[(k + 1) * nr_tasks / s->nr_queues];
+    rewait_tasks[k].skip = 0;
+    rewait_tasks[k].wait = 0;
+    rewait_tasks[k].rid = -1;
+    rewait_tasks[k].weight = 1;
+    rewait_tasks[k].implicit = 0;
+    rewait_tasks[k].nr_unlock_tasks = 0;
+    scheduler_enqueue(s, &rewait_tasks[k]);
+    pthread_cond_broadcast(&s->sleep_cond);
+  }
+
+  /* Wait for the rewait tasks to have executed. */
+  pthread_mutex_lock(&s->sleep_mutex);
+  while (s->waiting > waiting_old) {
+    pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+  }
+  pthread_mutex_unlock(&s->sleep_mutex);
+  /* message("waiting tasks took %.3f ms.",
+          (double)(getticks() - tic) / CPU_TPS * 1000); */
 
   /* Don't enqueue link tasks directly. */
   s->mask &= ~(1 << task_type_link);
 
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
-  for (k = 0; k < nr_tasks; k++) {
+  for (int k = 0; k < nr_tasks; k++) {
     t = &tasks[tid[k]];
     if (((1 << t->type) & s->mask) && !t->skip) {
       if (t->wait == 0) {
@@ -940,8 +964,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Ignore skipped tasks and tasks not in the mask. */
   if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link) ||
-      atomic_cas(&t->rid, -1, 0) != -1)
+      atomic_cas(&t->rid, -1, 0) != -1) {
     return;
+  }
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {

@@ -34,6 +34,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "atomic.h"
 #include "const.h"
 #include "engine.h"
 #include "error.h"
@@ -1217,12 +1218,12 @@ void *runner_main(void *data) {
       t->rid = r->cpuid;
 
       /* Set super to the first cell that I own. */
-      if (ci != NULL && ci->super != NULL && ci->super->owner == r->qid)
-        super = ci->super;
-      else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
-        super = cj->super;
-      else
-        super = NULL;
+      if (t->type != task_type_rewait && t->type != task_type_psort) {
+        if (ci->super != NULL && ci->super->owner == r->qid)
+          super = ci->super;
+        else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
+          super = cj->super;
+      }
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1295,6 +1296,13 @@ void *runner_main(void *data) {
           break;
         case task_type_split_cell:
           space_split(e->s, t->ci);
+          break;
+        case task_type_rewait:
+          for (struct task *t2 = (struct task *)t->ci;
+               t2 != (struct task *)t->cj; t2++) {
+            for (k = 0; k < t2->nr_unlock_tasks; k++)
+              atomic_inc(&t2->unlock_tasks[k]->wait);
+          }
           break;
         default:
           error("Unknown task type.");
