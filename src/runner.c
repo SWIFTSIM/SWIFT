@@ -712,13 +712,11 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
-
-	message("aa"); fflush(stdout);
 	
         /* Run through this cell's density interactions. */
         for (struct link *l = finger->density; l != NULL; l = l->next) {
 	  
-	  message("link: %p next: %p", l, l->next); fflush(stdout);
+	  //message("link: %p next: %p", l, l->next); fflush(stdout);
 	  
           /* Self-interaction? */
           if (l->t->type == task_type_self)
@@ -727,7 +725,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
           /* Otherwise, pair interaction? */
           else if (l->t->type == task_type_pair) {
 
-	    message("pair");
+	    //message("pair");
 	    
             /* Left or right? */
             if (l->t->ci == finger)
@@ -742,7 +740,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
           /* Otherwise, sub interaction? */
           else if (l->t->type == task_type_sub) {
 
-	    message("sub");
+	    //message("sub");
 	    
             /* Left or right? */
             if (l->t->ci == finger)

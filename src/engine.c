@@ -1070,6 +1070,8 @@ void engine_maketasks(struct engine *e) {
   /*     engine_addtasks_grav(e, &cells[k], up, down); */
   /*   } */
 
+  message("nb tasks: %d", sched->nr_tasks);
+  
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
