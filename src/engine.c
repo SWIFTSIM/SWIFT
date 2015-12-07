@@ -1109,27 +1109,27 @@ void engine_maketasks(struct engine *e) {
     if (t->type == task_type_self) {
       atomic_inc(&t->ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        t->ci->density = engine_addlink(e, t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+        t->ci->link_density = engine_addlink(e, t->ci->link_density, t);
+        atomic_inc(&t->ci->nr_link_density);
       }
     } else if (t->type == task_type_pair) {
       atomic_inc(&t->ci->nr_tasks);
       atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        t->ci->density = engine_addlink(e, t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        t->cj->density = engine_addlink(e, t->cj->density, t);
-        atomic_inc(&t->cj->nr_density);
+        t->ci->link_density = engine_addlink(e, t->ci->link_density, t);
+        atomic_inc(&t->ci->nr_link_density);
+        t->cj->link_density = engine_addlink(e, t->cj->link_density, t);
+        atomic_inc(&t->cj->nr_link_density);
       }
     } else if (t->type == task_type_sub) {
       atomic_inc(&t->ci->nr_tasks);
       if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        t->ci->density = engine_addlink(e, t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+        t->ci->link_density = engine_addlink(e, t->ci->link_density, t);
+        atomic_inc(&t->ci->nr_link_density);
         if (t->cj != NULL) {
-          t->cj->density = engine_addlink(e, t->cj->density, t);
-          atomic_inc(&t->cj->nr_density);
+          t->cj->link_density = engine_addlink(e, t->cj->link_density, t);
+          atomic_inc(&t->cj->nr_link_density);
         }
       }
     }
@@ -1171,8 +1171,8 @@ void engine_maketasks(struct engine *e) {
                              t->ci, NULL, 0);
       scheduler_addunlock(sched, t->ci->super->ghost, t2);
       scheduler_addunlock(sched, t2, t->ci->super->kick);
-      t->ci->force = engine_addlink(e, t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
+      t->ci->link_force = engine_addlink(e, t->ci->link_force, t2);
+      atomic_inc(&t->ci->nr_link_force);
     }
 
     /* Otherwise, pair interaction? */
@@ -1191,10 +1191,10 @@ void engine_maketasks(struct engine *e) {
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
       }
-      t->ci->force = engine_addlink(e, t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
-      t->cj->force = engine_addlink(e, t->cj->force, t2);
-      atomic_inc(&t->cj->nr_force);
+      t->ci->link_force = engine_addlink(e, t->ci->link_force, t2);
+      atomic_inc(&t->ci->nr_link_force);
+      t->cj->link_force = engine_addlink(e, t->cj->link_force, t2);
+      atomic_inc(&t->cj->nr_link_force);
     }
 
     /* Otherwise, sub interaction? */
@@ -1214,11 +1214,11 @@ void engine_maketasks(struct engine *e) {
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
       }
-      t->ci->force = engine_addlink(e, t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
+      t->ci->link_force = engine_addlink(e, t->ci->link_force, t2);
+      atomic_inc(&t->ci->nr_link_force);
       if (t->cj != NULL) {
-        t->cj->force = engine_addlink(e, t->cj->force, t2);
-        atomic_inc(&t->cj->nr_force);
+        t->cj->link_force = engine_addlink(e, t->cj->link_force, t2);
+        atomic_inc(&t->cj->nr_link_force);
       }
     }
 

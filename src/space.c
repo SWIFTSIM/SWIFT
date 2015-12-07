@@ -271,10 +271,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       space_rebuild_recycle(s, &s->cells[k]);
       s->cells[k].sorts = NULL;
       s->cells[k].nr_tasks = 0;
-      s->cells[k].nr_density = 0;
-      s->cells[k].nr_force = 0;
-      s->cells[k].density = NULL;
-      s->cells[k].force = NULL;
+      s->cells[k].nr_link_density = 0;
+      s->cells[k].nr_link_force = 0;
+      s->cells[k].link_density = NULL;
+      s->cells[k].link_force = NULL;
       s->cells[k].dx_max = 0.0f;
       s->cells[k].sorted = 0;
       s->cells[k].count = 0;
@@ -1219,8 +1219,11 @@ void space_init(struct space *s, double dim[3], struct part *parts, int N,
 void space_link_cleanup(struct space *s) {
 
   void cell_clean_links(struct cell * c, void * data) {
-    c->density = NULL;
-    c->force = NULL;
+    c->link_density = NULL;
+    c->nr_link_density = 0;
+
+    c->link_force = NULL;
+    c->nr_link_force = 0;
   }
 
   space_map_cells_pre(s, 1, cell_clean_links, NULL);

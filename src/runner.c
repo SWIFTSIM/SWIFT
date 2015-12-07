@@ -714,7 +714,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
       for (finger = c; finger != NULL; finger = finger->parent) {
 	
         /* Run through this cell's density interactions. */
-        for (struct link *l = finger->density; l != NULL; l = l->next) {
+        for (struct link *l = finger->link_density; l != NULL; l = l->next) {
 	  
 	  //message("link: %p next: %p", l, l->next); fflush(stdout);
 	  

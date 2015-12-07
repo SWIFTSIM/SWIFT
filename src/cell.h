@@ -107,8 +107,8 @@ struct cell {
   int sortsize, gsortsize;
 
   /* The tasks computing this cell's density. */
-  struct link *density, *force, *grav;
-  int nr_density, nr_force, nr_grav;
+  struct link *link_density, *link_force, *link_grav;
+  int nr_link_density, nr_link_force, nr_link_grav;
 
   /* The ghost task to link density to interactions. */
   struct task *ghost, *init, *drift, *kick;
