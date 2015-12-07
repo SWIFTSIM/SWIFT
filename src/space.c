@@ -824,7 +824,6 @@ void space_map_parts(struct space *s,
     rec_map_parts(&s->cells[cid], fun, data);
 }
 
-
 /**
  * @brief Map a function to all particles in a cell recursively.
  *
@@ -834,7 +833,8 @@ void space_map_parts(struct space *s,
  */
 
 static void rec_map_parts_xparts(struct cell *c,
-				 void (*fun)(struct part *p, struct xpart *xp, struct cell *c)) {
+                                 void (*fun)(struct part *p, struct xpart *xp,
+                                             struct cell *c)) {
 
   int k;
 
@@ -856,7 +856,8 @@ static void rec_map_parts_xparts(struct cell *c,
  */
 
 void space_map_parts_xparts(struct space *s,
-			    void (*fun)(struct part *p, struct xpart *xp, struct cell *c)) {
+                            void (*fun)(struct part *p, struct xpart *xp,
+                                        struct cell *c)) {
 
   int cid = 0;
 
@@ -864,7 +865,6 @@ void space_map_parts_xparts(struct space *s,
   for (cid = 0; cid < s->nr_cells; cid++)
     rec_map_parts_xparts(&s->cells[cid], fun);
 }
-
 
 /**
  * @brief Map a function to all particles in a cell recursively.
@@ -926,6 +926,14 @@ static void rec_map_cells_pre(struct cell *c, int full,
         rec_map_cells_pre(c->progeny[k], full, fun, data);
 }
 
+/**
+ * @brief Calls function fun on the cells in the space s
+ *
+ * @param s The #space
+ * @param full If true calls the function on all cells and not just on leaves
+ * @param fun The function to call.
+ * @param data Additional data passed to fun() when called
+ */
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data) {
 
@@ -1201,4 +1209,19 @@ void space_init(struct space *s, double dim[3], struct part *parts, int N,
 
   /* Build the cells and the tasks. */
   space_regrid(s, h_max, verbose);
+}
+
+/**
+ * @brief Cleans-up all the cell links in the space
+ *
+ * Expensive funtion. Should only be used for debugging purposes.
+ */
+void space_link_cleanup(struct space *s) {
+
+  void cell_clean_links(struct cell * c, void * data) {
+    c->density = NULL;
+    c->force = NULL;
+  }
+
+  space_map_cells_pre(s, 1, cell_clean_links, NULL);
 }

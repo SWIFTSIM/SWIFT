@@ -49,7 +49,6 @@
 #include "error.h"
 #include "timers.h"
 
-
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
@@ -71,7 +70,7 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
   const int ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
-      error("Link table overflow.");
+    error("Link table overflow.");
   }
   struct link *res = &e->links[ind];
   res->next = l;
@@ -93,15 +92,15 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
   struct scheduler *s = &e->sched;
 
   //  message("in here");
-  
+
   /* Am I the super-cell? */
   if (super == NULL && c->nr_tasks > 0) {
 
     /* Remember me. */
     super = c;
 
-    //message("Adding tasks");
-    
+    // message("Adding tasks");
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
@@ -673,7 +672,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
-
 }
 
 /**
@@ -722,7 +720,6 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
-
 }
 
 /**
@@ -1068,6 +1065,8 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
+  space_link_cleanup(s);
+
   /* /\* Add the gravity up/down tasks at the top-level cells and push them
    * down. *\/ */
   /* for (k = 0; k < nr_cells; k++) */
@@ -1088,7 +1087,7 @@ void engine_maketasks(struct engine *e) {
   /*   } */
 
   message("nb tasks: %d", sched->nr_tasks);
-  
+
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
@@ -1181,13 +1180,13 @@ void engine_maketasks(struct engine *e) {
       t2 = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0, 0,
                              t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
-	scheduler_addunlock(sched, t->ci->super->init, t);
+        scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->ci->super->kick);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        scheduler_addunlock(sched, t->cj->super->init, t);	
+        scheduler_addunlock(sched, t->cj->super->init, t);
         scheduler_addunlock(sched, t, t->cj->super->ghost);
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
@@ -1203,7 +1202,7 @@ void engine_maketasks(struct engine *e) {
       t2 = scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
                              0, t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
-	scheduler_addunlock(sched, t->ci->super->init, t);
+        scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->ci->super->kick);
@@ -1271,12 +1270,10 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
-  //float t_end = e->time;
+  // float t_end = e->time;
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
-  
-  
   /* /\* Much less to do here if we're on a fixed time-step. *\/ */
   /* if (!(e->policy & engine_policy_multistep)) { */
 
@@ -1296,7 +1293,8 @@ int engine_marktasks(struct engine *e) {
 
   /*       /\* Too much particle movement? *\/ */
   /*       if (t->tight && */
-  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin || */
+  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin
+   * || */
   /*            ci->dx_max > space_maxreldx * ci->h_max || */
   /*            cj->dx_max > space_maxreldx * cj->h_max)) */
   /*         return 1; */
@@ -1319,7 +1317,6 @@ int engine_marktasks(struct engine *e) {
     /* Get a handle on the kth task. */
     t = &tasks[ind[k]];
 
-    
     /* Sort-task? Note that due to the task ranking, the sorts
        will all come before the pairs. */
     if (t->type == task_type_sort) {
@@ -1332,41 +1329,41 @@ int engine_marktasks(struct engine *e) {
 
     /* Single-cell task? */
     else if (t->type == task_type_self || t->type == task_type_ghost ||
-	     (t->type == task_type_sub && t->cj == NULL)) {
+             (t->type == task_type_sub && t->cj == NULL)) {
 
       /* Set this task's skip. */
-      //t->skip = (t->ci->t_end_min >= t_end);
+      // t->skip = (t->ci->t_end_min >= t_end);
 
     }
 
     /* Pair? */
     else if (t->type == task_type_pair ||
-	     (t->type == task_type_sub && t->cj != NULL)) {
+             (t->type == task_type_sub && t->cj != NULL)) {
 
       /* Local pointers. */
       ci = t->ci;
       cj = t->cj;
 
       /* Set this task's skip. */
-      //t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
+      // t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
 
       /* Too much particle movement? */
       if (t->tight &&
-	  (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-	   ci->dx_max > space_maxreldx * ci->h_max ||
-	   cj->dx_max > space_maxreldx * cj->h_max))
-	return 1;
+          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+           ci->dx_max > space_maxreldx * ci->h_max ||
+           cj->dx_max > space_maxreldx * cj->h_max))
+        return 1;
 
       /* Set the sort flags. */
       if (!t->skip && t->type == task_type_pair) {
-	if (!(ci->sorted & (1 << t->flags))) {
-	  ci->sorts->flags |= (1 << t->flags);
-	  ci->sorts->skip = 0;
-	}
-	if (!(cj->sorted & (1 << t->flags))) {
-	  cj->sorts->flags |= (1 << t->flags);
-	  cj->sorts->skip = 0;
-	}
+        if (!(ci->sorted & (1 << t->flags))) {
+          ci->sorts->flags |= (1 << t->flags);
+          ci->sorts->skip = 0;
+        }
+        if (!(cj->sorted & (1 << t->flags))) {
+          cj->sorts->flags |= (1 << t->flags);
+          cj->sorts->skip = 0;
+        }
       }
 
     }
@@ -1387,7 +1384,7 @@ int engine_marktasks(struct engine *e) {
     else if (t->type == task_type_none)
       t->skip = 1;
   }
-    //}
+  //}
 
   // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
 
@@ -1751,26 +1748,28 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   fflush(stdout);
 
   engine_print(e);
-  
+
   /* Load the tasks. */
   pthread_mutex_unlock(&e->barrier_mutex);
   scheduler_start(&e->sched, mask);
   pthread_mutex_lock(&e->barrier_mutex);
-  
+
   /* Remove the safeguard. */
   pthread_mutex_lock(&e->sched.sleep_mutex);
   atomic_dec(&e->sched.waiting);
   pthread_cond_broadcast(&e->sched.sleep_cond);
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
-  message("Before barrier");fflush(stdout);
+  message("Before barrier");
+  fflush(stdout);
 
   /* Sit back and wait for the runners to come home. */
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
 
-  message("After barrier"); fflush(stdout);
+  message("After barrier");
+  fflush(stdout);
 }
 
 /* void hassorted(struct cell *c) { */
@@ -1783,7 +1782,8 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
 /* } */
 
 /**
- * @brief Initialises the particles and set them in a state ready to move forward in time.
+ * @brief Initialises the particles and set them in a state ready to move
+ *forward in time.
  *
  * @param e The #engine
  */
@@ -1791,25 +1791,25 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
-  //engine_repartition(e);
+  // engine_repartition(e);
 
   engine_prepare(e);
 
   engine_print(e);
 
-  //engine_maketasks(e);
+  // engine_maketasks(e);
 
   engine_print(e);
-  
+
   engine_marktasks(e);
 
   engine_print(e);
-  
+
   fflush(stdout);
   message("Engine prepared");
-  
+
   /* Make sure all particles are ready to go */
-  void initParts(struct part *p, struct xpart *xp, struct cell *c) {
+  void initParts(struct part * p, struct xpart * xp, struct cell * c) {
     p->t_begin = 0.;
     p->t_end = 0.;
     p->rho = -1.;
@@ -1822,40 +1822,42 @@ void engine_init_particles(struct engine *e) {
   message("Initialising particles");
   space_map_parts_xparts(s, initParts);
 
-
   /* Now everybody should have sensible smoothing length */
-  void printParts(struct part *p, struct xpart *xp, struct cell *c) {
-    if( p->id == 1000)
-      message("id=%lld h=%f rho=%f t_begin=%f t_end=%f", p->id, p->h, p->rho, p->t_begin, p->t_end);
+  void printParts(struct part * p, struct xpart * xp, struct cell * c) {
+    if (p->id == 1000)
+      message("id=%lld h=%f rho=%f t_begin=%f t_end=%f", p->id, p->h, p->rho,
+              p->t_begin, p->t_end);
   }
-  //space_map_parts_xparts(s, printParts);
+  // space_map_parts_xparts(s, printParts);
 
-  void printCells(struct part *p, struct xpart *xp, struct cell *c) {
-    if(c->super != NULL && 0)
-      message("c->t_end_min=%f c->t_end_max=%f c->super=%p sort=%p ghost=%p kick=%p", c->t_end_min, c->t_end_max, c->super, c->sorts, c->ghost, c->kick);
+  void printCells(struct part * p, struct xpart * xp, struct cell * c) {
+    if (c->super != NULL && 0)
+      message(
+          "c->t_end_min=%f c->t_end_max=%f c->super=%p sort=%p ghost=%p "
+          "kick=%p",
+          c->t_end_min, c->t_end_max, c->super, c->sorts, c->ghost, c->kick);
   }
-  //space_map_parts_xparts(s, printCells);
+  // space_map_parts_xparts(s, printCells);
 
-  
   /* Now do a density calculation */
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-		(1 << task_type_pair) | (1 << task_type_sub) |
-		(1 << task_type_init) | (1 << task_type_ghost) |
-		(1 << task_type_send) | (1 << task_type_recv) |
-		(1 << task_type_link));
+                    (1 << task_type_pair) | (1 << task_type_sub) |
+                    (1 << task_type_init) | (1 << task_type_ghost) |
+                    (1 << task_type_send) | (1 << task_type_recv) |
+                    (1 << task_type_link));
 
   TIMER_TOC(timer_runners);
 
-  //space_map_parts_xparts(s, printParts);
+  // space_map_parts_xparts(s, printParts);
 
   printf("\n\n");
 
   /* Ready to go */
   e->step = -1;
 }
- 
+
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -1916,9 +1918,7 @@ void engine_step(struct engine *e) {
   epot = in[2];
 #endif
 
-  
   message("t_end_min=%f t_end_max=%f", t_end_min, t_end_max);
-
 
   /* Move forward in time */
   e->timeOld = e->time;
@@ -1926,11 +1926,9 @@ void engine_step(struct engine *e) {
   e->step += 1;
   message("Step: %d e->time=%f", e->step, e->time);
 
-  
   /* Drift everybody */
-  engine_launch(e, e->nr_threads, 1<<task_type_drift);
+  engine_launch(e, e->nr_threads, 1 << task_type_drift);
 
-  
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
 
@@ -1938,25 +1936,23 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
   engine_maketasks(e);
-  
-  //engine_marktasks(e);
-  
+
+  // engine_marktasks(e);
+
   engine_print(e);
   message("Go !");
   fflush(stdout);
-  
+
   /* Send off the runners. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
-  		    (1 << task_type_sort) | (1 << task_type_self) |
+                (1 << task_type_sort) | (1 << task_type_self) |
                     (1 << task_type_pair) | (1 << task_type_sub) |
                     (1 << task_type_init) | (1 << task_type_ghost) |
                     (1 << task_type_kick) | (1 << task_type_send) |
                     (1 << task_type_recv) | (1 << task_type_link));
 
   TIMER_TOC(timer_runners);
-
-
 
   TIMER_TOC2(timer_step);
 }
@@ -2205,11 +2201,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->barrier_launch = 0;
   e->barrier_launchcount = 0;
 
-
   /* Init the scheduler. */
   scheduler_init(&e->sched, e->s, nr_queues, scheduler_flag_steal, e->nodeID);
   s->nr_queues = nr_queues;
-
 
   /* Allocate and init the threads. */
   if ((e->runners =
