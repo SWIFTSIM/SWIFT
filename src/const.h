@@ -48,7 +48,7 @@
 #define const_eta_kernel \
   1.2349f /* Corresponds to 48 ngbs with the cubic spline kernel */
 #define const_delta_nwneigh 1.f
-#define const_smoothing_max_iter 3
+#define const_smoothing_max_iter 30
 #define CUBIC_SPLINE_KERNEL
 
 /* Gravity stuff. */

@@ -51,13 +51,12 @@
 #endif
 #include "runner_iact_grav.h"
 
-
-#define PRINT_PART if(p->id==1000) { \
-	  message("p->id=%lld p->h=%f p->N_ngb=%f p->rho=%f p->t_beg=%f p->t_end=%f",\
-		  p->id, p->h, p->density.wcount, p->rho, p->t_begin, p->t_end); \
-}
-
-
+#define PRINT_PART                                                          \
+  if (p->id == 1000) {                                                      \
+    message(                                                                \
+        "p->id=%lld p->h=%f p->N_ngb=%f p->rho=%f p->t_beg=%f p->t_end=%f", \
+        p->id, p->h, p->density.wcount, p->rho, p->t_begin, p->t_end);      \
+  }
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
@@ -197,8 +196,8 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
 
   TIMER_TIC
 
-    //    message("sort!");
-    
+  //    message("sort!");
+
   /* Clean-up the flags, i.e. filter out what's already been sorted. */
   flags &= ~c->sorted;
   if (flags == 0) return;
@@ -540,7 +539,6 @@ void runner_doinit(struct runner *r, struct cell *c) {
     }
 
     PRINT_PART;
-
   }
 }
 
@@ -567,7 +565,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
   TIMER_TIC;
 
-  //message("start");
+  // message("start");
 
   /* Recurse? */
   if (c->split) {
@@ -582,7 +580,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
   for (k = 0; k < count; k++) pid[k] = k;
 
   /* While there are particles that need to be updated... */
-  for (num_reruns = 0; count > 0 && num_reruns < const_smoothing_max_iter; num_reruns++) {
+  for (num_reruns = 0; count > 0 && num_reruns < const_smoothing_max_iter;
+       num_reruns++) {
 
     // message("count=%d redo=%d", count, redo);
 
@@ -613,11 +612,10 @@ void runner_doghost(struct runner *r, struct cell *c) {
         wcount_dh =
             p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
 
-	PRINT_PART;
-	//if(p->id==1000)
-	//  message("wcount_dh=%f", wcount_dh);
-	  
-	
+        PRINT_PART;
+        // if(p->id==1000)
+        //  message("wcount_dh=%f", wcount_dh);
+
         /* If no derivative, double the smoothing length. */
         if (wcount_dh == 0.0f) h_corr = p->h;
 
@@ -637,8 +635,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
           /* Ok, correct then */
           p->h += h_corr;
 
-	  //message("Not converged: wcount=%f", p->density.wcount);
-	  
+          // message("Not converged: wcount=%f", p->density.wcount);
+
           /* And flag for another round of fun */
           pid[redo] = pid[i];
           redo += 1;
@@ -651,7 +649,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
           continue;
         }
 
-	/* We now have a particle whose smoothing length has converged */
+        /* We now have a particle whose smoothing length has converged */
 
         /* Pre-compute some stuff for the balsara switch. */
         normDiv_v = fabs(p->density.div_v / rho * ih4);
@@ -708,16 +706,16 @@ void runner_doghost(struct runner *r, struct cell *c) {
     count = redo;
     if (count > 0) {
 
-      message("count=%d", count);fflush(stdout);
+      // message("count=%d", count);fflush(stdout);
 
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
-	
+
         /* Run through this cell's density interactions. */
         for (struct link *l = finger->link_density; l != NULL; l = l->next) {
-	  
-	  //message("link: %p next: %p", l, l->next); fflush(stdout);
-	  
+
+          // message("link: %p next: %p", l, l->next); fflush(stdout);
+
           /* Self-interaction? */
           if (l->t->type == task_type_self)
             runner_doself_subset_density(r, finger, parts, pid, count);
@@ -725,8 +723,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
           /* Otherwise, pair interaction? */
           else if (l->t->type == task_type_pair) {
 
-	    //message("pair");
-	    
+            // message("pair");
+
             /* Left or right? */
             if (l->t->ci == finger)
               runner_dopair_subset_density(r, finger, parts, pid, count,
@@ -740,8 +738,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
           /* Otherwise, sub interaction? */
           else if (l->t->type == task_type_sub) {
 
-	    //message("sub");
-	    
+            // message("sub");
+
             /* Left or right? */
             if (l->t->ci == finger)
               runner_dosub_subset_density(r, finger, parts, pid, count,
@@ -751,16 +749,14 @@ void runner_doghost(struct runner *r, struct cell *c) {
                                           l->t->ci, -1, 1);
           }
         }
-	error("done");
+        // error("done");
       }
     }
   }
-  
+
   if (count)
-    message("Smoothing length failed to converge on %i particles.", count );
+    message("Smoothing length failed to converge on %i particles.", count);
 
-
-  
 #ifdef TIMER_VERBOSE
   message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
           c->depth, ((double)TIMER_TOC(timer_doghost)) / CPU_TPS * 1000);
@@ -801,7 +797,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       ih = 1.0f / h;
 
       PRINT_PART;
-      
+
       /* Drift... */
       p->x[0] += xp->v_full[0] * dt;
       p->x[1] += xp->v_full[1] * dt;
@@ -825,12 +821,12 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
         u = p->u *= expf(w);
 
       /* Predict smoothing length */
-      //w = p->force.h_dt * ih * dt;
-      //if (fabsf(w) < 0.01f)
+      // w = p->force.h_dt * ih * dt;
+      // if (fabsf(w) < 0.01f)
       //  h = p->h *=
       //      1.0f +
       //      w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
-      //else
+      // else
       //  h = p->h *= expf(w);
 
       /* Predict density */
@@ -940,8 +936,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->t_begin = p->t_end;
         p->t_end = p->t_begin + dt;
 
-	PRINT_PART
-	
+        PRINT_PART
+
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;
         xp->v_full[1] += p->a[1] * dt;
@@ -1068,8 +1064,9 @@ void *runner_main(void *data) {
   struct part *parts;
   int k, nr_parts;
 
-  message("here");fflush(stdout);
-  
+  message("here");
+  fflush(stdout);
+
   /* Main loop. */
   while (1) {
 
@@ -1090,8 +1087,8 @@ void *runner_main(void *data) {
         t = scheduler_gettask(sched, r->qid, super);
         TIMER_TOC(timer_gettask);
 
-	//message("Got task %p", t->type); fflush(stdout);
-	
+        // message("Got task %p", t->type); fflush(stdout);
+
         /* Did I get anything? */
         if (t == NULL) break;
       }
@@ -1112,7 +1109,7 @@ void *runner_main(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-	  //message("self");
+          // message("self");
           if (t->subtype == task_subtype_density)
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)

@@ -396,7 +396,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-    if (j == 1)  break;
+    if (j == 2)  break;
     
     if (with_outputs && j % 100 == 0) {
 
@@ -505,7 +505,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Say goodbye. */
-  if (myrank == 0) message("done.");
+  if (myrank == 0) message("done. Bye.");
 
   /* All is calm, all is bright. */
   return 0;

@@ -48,9 +48,8 @@ const char *taskID_names[task_type_count] = {
     "ghost",   "drift",   "kick",    "send",     "recv", "link",
     "grav_pp", "grav_mm", "grav_up", "grav_down"};
 
-const char *subtaskID_names[task_type_count] = {
-    "none",    "density",    "force",    "grav"};
-
+const char *subtaskID_names[task_type_count] = {"none",  "density",
+                                                "force", "grav"};
 
 /**
  * @brief Unlock the cell held by this task.
