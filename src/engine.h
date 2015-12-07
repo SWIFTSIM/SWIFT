@@ -29,6 +29,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "param.h"
 
 /* Some constants. */
 #define engine_policy_none 0
@@ -135,7 +136,7 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask);
 void engine_prepare(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
-void engine_split(struct engine *e, int *grid);
+void engine_split(struct engine *e, struct pgrid *grid);
 int engine_exchange_strays(struct engine *e, int offset, int *ind, int N);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);

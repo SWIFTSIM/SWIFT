@@ -81,9 +81,17 @@ int main(int argc, char *argv[]) {
   char ICfileName[200] = "";
   float dt_max = 0.0f;
   ticks tic;
-  int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
+  int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
+  struct pgrid pgrid;
+
+  /* Default parition type is grid. */
+  pgrid.type = GRID_GRID;
+  pgrid.grid[0] = 1;
+  pgrid.grid[1] = 1;
+  pgrid.grid[2] = 1;
+
 
 /* Choke on FP-exceptions. */
 // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
@@ -107,9 +115,9 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
-  factor(nr_nodes, &grid[0], &grid[1]);
-  factor(nr_nodes / grid[1], &grid[0], &grid[2]);
-  factor(grid[0] * grid[1], &grid[1], &grid[0]);
+  factor(nr_nodes, &pgrid.grid[0], &pgrid.grid[1]);
+  factor(nr_nodes / pgrid.grid[1], &pgrid.grid[0], &pgrid.grid[2]);
+  factor(pgrid.grid[0] * pgrid.grid[1], &pgrid.grid[1], &pgrid.grid[0]);
 #endif
 
   /* Greeting message */
@@ -142,8 +150,30 @@ int main(int argc, char *argv[]) {
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
         break;
       case 'g':
-        if (sscanf(optarg, "%i %i %i", &grid[0], &grid[1], &grid[2]) != 3)
-          error("Error parsing grid.");
+        /* Grid is one of "g", "r", "m", "w", or "v". g can be followed by three
+         * numbers. */
+        switch (optarg[0]) {
+          case 'g':
+            pgrid.type = GRID_GRID;
+            if (strlen(optarg) > 2) {
+              if (sscanf(optarg, "g %i %i %i", &pgrid.grid[0], &pgrid.grid[1],
+                         &pgrid.grid[2]) != 3) 
+                error("Error parsing grid.");
+            }
+            break;
+          case 'r':
+            pgrid.type = GRID_RANDOM;
+            break;
+          case 'm':
+            pgrid.type = GRID_METIS_NOWEIGHT;
+            break;
+          case 'w':
+            pgrid.type = GRID_METIS_WEIGHT;
+            break;
+          case 'v':
+            pgrid.type = GRID_VECTORIZE;
+            break;
+        }
         break;
       case 'm':
         if (sscanf(optarg, "%lf", &h_max) != 1) error("Error parsing h_max.");
@@ -193,7 +223,7 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   if (myrank == 0) {
     message("Running with %i thread(s) per node.", nr_threads);
-    message("grid set to [ %i %i %i ].", grid[0], grid[1], grid[2]);
+    message("grid set to [ %i %i %i ].", pgrid.grid[0], pgrid.grid[1], pgrid.grid[2]);
 
     if (nr_nodes == 1) {
       message("WARNING: you are running with one MPI rank.");
@@ -326,7 +356,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef WITH_MPI
   /* Split the space. */
-  engine_split(&e, grid);
+  engine_split(&e, &pgrid);
   engine_redistribute(&e);
 #endif
 
@@ -380,7 +410,8 @@ int main(int argc, char *argv[]) {
 
 /* Repartition the space amongst the nodes? */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
-    if (j % 100 == 2) e.forcerepart = 1;
+    //if (j % 100 == 2) e.forcerepart = 1;
+    if (j % 10 == 9) e.forcerepart = 1;
 #endif
 
     timers_reset(timers_mask_all);

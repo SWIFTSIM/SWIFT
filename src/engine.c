@@ -49,7 +49,7 @@
 #include "debug.h"
 #include "error.h"
 #include "timers.h"
-#include "poisson_disc.h"
+#include "partition.h"
 
 #ifdef LEGACY_GADGET2_SPH
 #include "runner_iact_legacy.h"
@@ -2067,52 +2067,142 @@ void engine_makeproxies(struct engine *e) {
 /**
  * @brief Split the underlying space according to the given grid.
  *
+ * Only used with MPI the partitions produced associate cells with nodes.
+ *
  * @param e The #engine.
  * @param grid The grid.
  */
-
-void engine_split(struct engine *e, int *grid) {
+void engine_split(struct engine *e, struct pgrid *grid) {
 
 #ifdef WITH_MPI
 
-  //int j, k;
-  //int ind[3];
   struct space *s = e->s;
-  //struct cell *c;
 
-  /* If we've got the wrong number of nodes, fail. */
-  //if (e->nr_nodes != grid[0] * grid[1] * grid[2])
-  //   error("Grid size does not match number of nodes.");
+  if (grid->type == GRID_GRID) {
+    int j, k;
+    int ind[3];
+    struct cell *c;
 
-  /* Run through the cells and set their nodeID. */
-  // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
-  //for (k = 0; k < s->nr_cells; k++) {
-  //  c = &s->cells[k];
-  //  for (j = 0; j < 3; j++) ind[j] = c->loc[j] / s->dim[j] * grid[j];
-  //  c->nodeID = ind[0] + grid[0] * (ind[1] + grid[1] * ind[2]);
-  //  // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
-  //  // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
-  //}
+    /* If we've got the wrong number of nodes, fail. */
+    if (e->nr_nodes != grid->grid[0] * grid->grid[1] * grid->grid[2])
+      error("Grid size does not match number of nodes.");
 
-  /* Poisson split is stochastic so can only be done by one node. */
-  float *samplelist = malloc(sizeof( float ) * e->nr_nodes * 3);
-  if ( samplelist == NULL )
-    error("Failed to allocate samplelist");
-
-  if (e->nodeID == 0) {
-    if ( poisson_generate(s, e->nr_nodes, samplelist) == 0 )
-      error("Failed to partition cells");
-    message("samplelist[0,1,2] = %f,%f,%f", samplelist[0], samplelist[1], samplelist[2]);
+    /* Run through the cells and set their nodeID. */
+    // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
+    for (k = 0; k < s->nr_cells; k++) {
+      c = &s->cells[k];
+      for (j = 0; j < 3; j++) ind[j] = c->loc[j] / s->dim[j] * grid->grid[j];
+      c->nodeID = ind[0] + grid->grid[0] * (ind[1] + grid->grid[1] * ind[2]);
+      // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
+      // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
+    }
   }
+  else if (grid->type == GRID_RANDOM) {
 
-  /* Share the samplelist of points around all the nodes. */
-  int res = MPI_Bcast(samplelist, e->nr_nodes * 3, MPI_FLOAT, 0, MPI_COMM_WORLD);
-  if (res != MPI_SUCCESS)
-    mpi_error(res,"Failed to bcast the partition samples.");
+    /* Random can only be done by one node, each node requires a list of
+     * the sampling positions. */
+    float *samplelist = malloc(sizeof( float ) * e->nr_nodes * 4);
+    if ( samplelist == NULL )
+      error("Failed to allocate samplelist");
 
-  /* And apply to our cells */
-  poisson_split(s, e->nr_nodes, samplelist);
-  free(samplelist);
+    if (e->nodeID == 0) {
+      if ( part_pick_random(s, e->nr_nodes, samplelist) == 0 )
+        error("Failed to partition cells");
+    }
+
+    /* Share the samplelist of points around all the nodes. */
+    int res = MPI_Bcast(samplelist, e->nr_nodes * 4, MPI_FLOAT, 0,
+                        MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res,"Failed to bcast the partition samples.");
+
+    /* And apply to our cells */
+    part_split_random(s, e->nr_nodes, samplelist);
+    free(samplelist);
+  }
+  else if (grid->type == GRID_METIS_WEIGHT || grid->type == GRID_METIS_NOWEIGHT) {
+
+    /* Simple k-way partition selected by METIS using cell particle counts as
+     * weights or not. Should be best when starting with a inhomogeneous dist. */
+
+    /* Space for particles per cell counts, which will be used as weights or not. */
+    int *weights = NULL;
+    if (grid->type == GRID_METIS_WEIGHT) {
+      if ((weights = malloc(sizeof(int) * s->nr_cells)) == NULL)
+        error("Failed to allocate weights buffer.");
+      bzero(weights, sizeof(int) * s->nr_cells);
+
+      /* Check each particle and accumilate the counts per cell. */
+      struct part *parts = s->parts;
+      int *cdim = s->cdim;
+      double ih[3], dim[3];
+      ih[0] = s->ih[0];
+      ih[1] = s->ih[1];
+      ih[2] = s->ih[2];
+      dim[0] = s->dim[0];
+      dim[1] = s->dim[1];
+      dim[2] = s->dim[2];
+      for (int k = 0; k < s->nr_parts; k++) {
+        for (int j = 0; j < 3; j++) {
+          if (parts[k].x[j] < 0.0)
+            parts[k].x[j] += dim[j];
+          else if (parts[k].x[j] >= dim[j])
+            parts[k].x[j] -= dim[j];
+        }
+        const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
+                                   parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+        weights[cid]++;
+      }
+      
+      /* Get all the counts from all the nodes. */
+      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT, MPI_SUM,
+                        MPI_COMM_WORLD) != MPI_SUCCESS)
+        error("Failed to allreduce particle cell weights.");
+    }
+
+
+    /* Main node does the partition calculation. */
+    int *celllist = malloc(sizeof( int ) * s->nr_cells);
+    if (celllist == NULL)
+      error("Failed to allocate celllist");
+
+    if (e->nodeID == 0)
+      part_pick_metis(s, e->nr_nodes, weights, celllist);
+
+    /* Distribute the celllist partition and apply. */
+    int res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res,"Failed to bcast the cell list");
+
+    /* And apply to our cells */
+    part_split_metis(s, e->nr_nodes, celllist);
+
+    if (weights != NULL) free(weights);
+    free(celllist);
+  }
+  else if (grid->type == GRID_VECTORIZE) {
+
+    /* Vectorised selection, guaranteed to work, but not very clumpy in the
+     * selection of regions. */
+    int *samplecells = malloc(sizeof( int ) * e->nr_nodes * 3);
+    if ( samplecells == NULL )
+      error("Failed to allocate samplecells");
+
+    if (e->nodeID == 0) {
+      part_pick_vector(s, e->nr_nodes, samplecells);
+    }
+
+    /* Share the samplecells around all the nodes. */
+    int res = MPI_Bcast(samplecells, e->nr_nodes * 3, MPI_INT, 0,
+                        MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res,"Failed to bcast the partition sample cells.");
+
+    /* And apply to our cells */
+    part_split_vector(s, e->nr_nodes, samplecells);
+    free(samplecells);
+
+  }
 
   /* Make the proxies. */
   engine_makeproxies(e);
@@ -2136,7 +2226,7 @@ void engine_split(struct engine *e, int *grid) {
   s->parts = parts_new;
   s->xparts = xparts_new;
 
-#endif /* WITH_MPI */
+#endif
 }
 
 /**

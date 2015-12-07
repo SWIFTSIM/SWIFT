@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,45 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
+#ifndef SWIFT_PARTITION_H
+#define SWIFT_PARTITION_H
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Local headers. */
-#include "atomic.h"
-#include "cell.h"
-#include "const.h"
-#include "const.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
-#include "error.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
 #include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "units.h"
-#include "tools.h"
-#include "param.h"
-#include "partition.h"
-#include "version.h"
+#include "cell.h"
 
-#ifdef LEGACY_GADGET2_SPH
-#include "runner_iact_legacy.h"
-#else
-#include "runner_iact.h"
-#endif
-#include "runner_iact_grav.h"
+int part_pick_random(struct space *s, int nregions, float *samplelist);
+void part_split_random(struct space *s, int nregions, float *samplelist);
 
-#endif /* SWIFT_SWIFT_H */
+void part_pick_vector(struct space *s, int nregions, int *samplecells);
+void part_split_vector(struct space *s, int nregions, int *samplecells);
+
+void part_pick_metis(struct space *s, int nregions, int *weight, int *celllist);
+void part_split_metis(struct space *s, int nregions, int *celllist);
+
+#endif /* SWIFT_POISSON_DISC_H */
