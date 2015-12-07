@@ -69,7 +69,11 @@ int engine_rank;
 
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
-  struct link *res = &e->links[atomic_inc(&e->nr_links)];
+  const int ind = atomic_inc(&e->nr_links);
+  if (ind >= e->size_links) {
+      error("Link table overflow.");
+  }
+  struct link *res = &e->links[ind];
   res->next = l;
   res->t = t;
   return res;
@@ -1058,8 +1062,9 @@ void engine_maketasks(struct engine *e) {
   /* Allocate the list of cell-task links. The maximum number of links
      is the number of cells (s->tot_cells) times the number of neighbours (27)
      times the number of interaction types (2, density and force). */
-  if (e->links != NULL) free(e->links);
-  if ((e->links = malloc(sizeof(struct link) * s->tot_cells * 27 * 2)) == NULL)
+  free(e->links);
+  e->size_links = s->tot_cells * 27 * 2;
+  if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
