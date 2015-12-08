@@ -65,7 +65,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
       ta = ta->unlock_tasks[task_maxunlock];
 
     /* Get the index of the next free task. */
-    int ind = atomic_inc(&ta->nr_unlock_tasks);
+    const int ind = atomic_inc(&ta->nr_unlock_tasks);
 
     /* Is there room in this task? */
     if (ind < task_maxunlock) {
@@ -894,7 +894,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   /* Clear all the waits and rids. */
   // ticks tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
-    s->tasks[k].wait = 0;
+    s->tasks[k].wait = 1;
     s->tasks[k].rid = -1;
   }
 
@@ -934,14 +934,13 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
-  for (int k = 0; k < nr_tasks; k++) {
+  for (int k = 0; k < s->nr_tasks; k++) {
     t = &tasks[tid[k]];
-    if (((1 << t->type) & s->mask) && !t->skip) {
-      if (t->wait == 0) {
-        scheduler_enqueue(s, t);
-        pthread_cond_broadcast(&s->sleep_cond);
-      } else
-        break;
+    if (atomic_dec(&t->wait) == 1 &&
+        ((1 << t->type) & s->mask) && 
+        !t->skip) {
+      scheduler_enqueue(s, t);
+      pthread_cond_broadcast(&s->sleep_cond);
     }
   }
   // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) /
@@ -962,9 +961,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   int err;
 #endif
 
+  /* Fail if this task has already been enqueued before. */
+  if (t->rid >= 0) error("Task has already been enqueued.");
+
   /* Ignore skipped tasks and tasks not in the mask. */
-  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link) ||
-      atomic_cas(&t->rid, -1, 0) != -1) {
+  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link)) {
     return;
   }
 
