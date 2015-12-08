@@ -2231,12 +2231,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
                           &s->cells[k], NULL, 0);
-  scheduler_ranktasks(&e->sched);
 
   /* Create the sorting tasks. */
   for (i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
+                      
+  scheduler_ranktasks(&e->sched);
 
   /* Allocate and init the threads. */
   if ((e->runners =
