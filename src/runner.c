@@ -51,16 +51,7 @@
 #endif
 #include "runner_iact_grav.h"
 
-/* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k) \
-  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
-
-/* Histograms bins. */
-long long int runner_hist_bins[runner_hist_N];
-
-/* The counters. */
-int runner_counter[runner_counter_count];
-
+/* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
     5.773502691896258e-01, 5.773502691896258e-01,  5.773502691896258e-01,
     7.071067811865475e-01, 7.071067811865475e-01,  0.0,
@@ -75,6 +66,8 @@ const float runner_shift[13 * 3] = {
     0.0,                   1.0,                    0.0,
     0.0,                   7.071067811865475e-01,  -7.071067811865475e-01,
     0.0,                   0.0,                    1.0, };
+
+/* Does the axis need flipping ? */
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
