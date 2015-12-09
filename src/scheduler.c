@@ -61,11 +61,8 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
      thread-safe. */                       
   if (lock_lock(&s->lock) != 0) error("Unable to lock scheduler.");
                          
-  /* Get the index of the next free unlock. */
-  const int ind = atomic_inc(&s->nr_unlocks);
-  
-  /* Am I the ungrateful one that has to re-allocate the list? */
-  if (ind == s->size_unlocks) {
+  /* Does the buffer need to be grown? */
+  if (s->nr_unlocks == s->size_unlocks) {
     struct task **unlocks_new;
     int *unlock_ind_new;
     s->size_unlocks *= 2;
@@ -81,6 +78,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   }
   
   /* Write the unlock to the scheduler. */
+  const int ind = atomic_inc(&s->nr_unlocks);
   s->unlocks[ind] = tb;
   s->unlock_ind[ind] = s->tasks - ta;
   
