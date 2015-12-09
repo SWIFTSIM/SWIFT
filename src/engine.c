@@ -318,7 +318,7 @@ void engine_repartition(struct engine *e) {
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
-  if ( nr_nodes == 1 ) return;
+  if (nr_nodes == 1) return;
 
   /* Allocate the inds and weights. */
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 *nr_cells)) == NULL ||
@@ -589,7 +589,7 @@ void engine_repartition(struct engine *e) {
     /* Check that the nodeIDs are ok. */
     for (k = 0; k < nr_cells; k++)
       if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
-        error("Got bad nodeID %"PRIDX" for cell %i.", nodeIDs[k], k);
+        error("Got bad nodeID %" PRIDX " for cell %i.", nodeIDs[k], k);
 
     /* Check that the partition is complete and all nodes have some work. */
     int present[nr_nodes];
@@ -597,7 +597,7 @@ void engine_repartition(struct engine *e) {
     for (i = 0; i < nr_nodes; i++) present[i] = 0;
     for (i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
     for (i = 0; i < nr_nodes; i++) {
-      if (! present[i]) {
+      if (!present[i]) {
         failed = 1;
         message("Node %d is not present after repartition", i);
       }
@@ -606,11 +606,11 @@ void engine_repartition(struct engine *e) {
     /* If partition failed continue with the current one, but make this
      * clear. */
     if (failed) {
-      message("WARNING: METIS repartition has failed, continuing with "
-              "the current partition, load balance will not be optimal");
+      message(
+          "WARNING: METIS repartition has failed, continuing with "
+          "the current partition, load balance will not be optimal");
       for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
     }
-    
   }
 
 /* Broadcast the result of the partition. */
@@ -2238,7 +2238,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   for (i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
-                      
+
   scheduler_ranktasks(&e->sched);
 
   /* Allocate and init the threads. */

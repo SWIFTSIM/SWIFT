@@ -71,7 +71,7 @@ struct scheduler {
 
   /* The task indices. */
   int *tasks_ind;
-  
+
   /* The task unlocks. */
   struct task **unlocks;
   int *unlock_ind;

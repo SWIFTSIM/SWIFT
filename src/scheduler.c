@@ -56,17 +56,18 @@
 
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
-  
+
   /* Lock the scheduler since re-allocating the unlocks is not
-     thread-safe. */                       
+     thread-safe. */
   if (lock_lock(&s->lock) != 0) error("Unable to lock scheduler.");
-                         
+
   /* Does the buffer need to be grown? */
   if (s->nr_unlocks == s->size_unlocks) {
     struct task **unlocks_new;
     int *unlock_ind_new;
     s->size_unlocks *= 2;
-    if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) * s->size_unlocks)) == NULL ||
+    if ((unlocks_new = (struct task **)malloc(
+             sizeof(struct task *) *s->size_unlocks)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * s->size_unlocks)) == NULL)
       error("Failed to re-allocate unlocks.");
     memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->nr_unlocks);
@@ -76,12 +77,12 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     s->unlocks = unlocks_new;
     s->unlock_ind = unlock_ind_new;
   }
-  
+
   /* Write the unlock to the scheduler. */
   const int ind = atomic_inc(&s->nr_unlocks);
   s->unlocks[ind] = tb;
   s->unlock_ind[ind] = ta - s->tasks;
-  
+
   /* Release the scheduler. */
   if (lock_unlock(&s->lock) != 0) error("Unable to unlock scheduler.");
 }
@@ -695,7 +696,7 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
  *
  * @param s The #scheduler.
  */
- 
+
 void scheduler_set_unlocks(struct scheduler *s) {
 
   /* Store the counts for each task. */
@@ -703,20 +704,19 @@ void scheduler_set_unlocks(struct scheduler *s) {
   if ((counts = (int *)malloc(sizeof(int) * s->nr_tasks)) == NULL)
     error("Failed to allocate temporary counts array.");
   bzero(counts, sizeof(int) * s->nr_tasks);
-  for (int k = 0; k < s->nr_unlocks; k++)
-    counts[s->unlock_ind[k]] += 1;
-    
+  for (int k = 0; k < s->nr_unlocks; k++) counts[s->unlock_ind[k]] += 1;
+
   /* Compute the offset for each unlock block. */
   int *offsets;
   if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
-  for (int k = 0; k < s->nr_tasks; k++)
-    offsets[k + 1] = offsets[k] + counts[k];
-    
+  for (int k = 0; k < s->nr_tasks; k++) offsets[k + 1] = offsets[k] + counts[k];
+
   /* Create and fill a temporary array with the sorted unlocks. */
   struct task **unlocks;
-  if ((unlocks = (struct task **)malloc(sizeof(struct task *) * s->size_unlocks)) == NULL)
+  if ((unlocks = (struct task **)malloc(sizeof(struct task *) *
+                                        s->size_unlocks)) == NULL)
     error("Failed to allocate temporary unlocks array.");
   for (int k = 0; k < s->nr_unlocks; k++) {
     const int ind = s->unlock_ind[k];
@@ -727,24 +727,22 @@ void scheduler_set_unlocks(struct scheduler *s) {
   /* Swap the unlocks. */
   free(s->unlocks);
   s->unlocks = unlocks;
-  
+
   /* Re-set the offsets. */
   offsets[0] = 0;
   for (int k = 1; k < s->nr_tasks; k++)
     offsets[k] = offsets[k - 1] + counts[k - 1];
   for (int k = 0; k < s->nr_tasks; k++)
-    for (int j = offsets[k]; j < offsets[k + 1]; j++)
-      s->unlock_ind[j] = k;
-    
+    for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
+
   /* Set the unlocks in the tasks. */
   for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
     t->nr_unlock_tasks = counts[k];
     t->unlock_tasks = &s->unlocks[offsets[k]];
-    for (int j = offsets[k]; j < offsets[k + 1]; j++)
-      s->unlock_ind[j] = k;
+    for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
   }
-  
+
   /* Clean up. */
   free(counts);
   free(offsets);
@@ -989,9 +987,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
     t = &tasks[tid[k]];
-    if (atomic_dec(&t->wait) == 1 &&
-        ((1 << t->type) & s->mask) && 
-        !t->skip) {
+    if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) && !t->skip) {
       scheduler_enqueue(s, t);
       pthread_cond_broadcast(&s->sleep_cond);
     }
@@ -1290,10 +1286,12 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
   if (pthread_cond_init(&s->sleep_cond, NULL) != 0 ||
       pthread_mutex_init(&s->sleep_mutex, NULL) != 0)
     error("Failed to initialize sleep barrier.");
-    
+
   /* Init the unlocks. */
-  if ((s->unlocks = (struct task **)malloc(sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
-      (s->unlock_ind = (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
+  if ((s->unlocks = (struct task **)malloc(
+           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
+      (s->unlock_ind =
+           (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
   s->nr_unlocks = 0;
   s->size_unlocks = scheduler_init_nr_unlocks;
