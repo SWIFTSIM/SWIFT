@@ -26,7 +26,7 @@
 
 /* Some constants. */
 #define task_maxwait 3
-#define task_maxunlock 15
+#define task_maxunlock 100
 
 /* The different task types. */
 enum task_types {

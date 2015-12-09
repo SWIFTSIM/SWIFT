@@ -46,6 +46,10 @@
 #include "kernel.h"
 #include "timers.h"
 
+#define to_check 5394
+#define num_checks 11
+struct task *check[num_checks];
+
 /**
  * @brief Add an unlock_task to the given task.
  *
@@ -65,7 +69,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
       ta = ta->unlock_tasks[task_maxunlock];
 
     /* Get the index of the next free task. */
-    int ind = atomic_inc(&ta->nr_unlock_tasks);
+    const int ind = atomic_inc(&ta->nr_unlock_tasks);
 
     /* Is there room in this task? */
     if (ind < task_maxunlock) {
@@ -113,7 +117,7 @@ void scheduler_splittasks(struct scheduler *s) {
                    {-1, -1, -1, -1, -1, -1, -1, 12}};
   float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
                          0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.5788};
-
+  
   /* Loop through the tasks... */
   redo = 0;
   t_old = t = NULL;
@@ -521,131 +525,131 @@ void scheduler_splittasks(struct scheduler *s) {
 
     } /* pair interaction? */
 
-    /* Gravity interaction? */
-    else if (t->type == task_type_grav_mm) {
+    /* /\* Gravity interaction? *\/ */
+    /* else if (t->type == task_type_grav_mm) { */
 
-      /* Get a handle on the cells involved. */
-      ci = t->ci;
-      cj = t->cj;
+    /*   /\* Get a handle on the cells involved. *\/ */
+    /*   ci = t->ci; */
+    /*   cj = t->cj; */
 
-      /* Self-interaction? */
-      if (cj == NULL) {
+    /*   /\* Self-interaction? *\/ */
+    /*   if (cj == NULL) { */
 
-        /* Ignore this task if the cell has no gparts. */
-        if (ci->gcount == 0) t->type = task_type_none;
+    /*     /\* Ignore this task if the cell has no gparts. *\/ */
+    /*     if (ci->gcount == 0) t->type = task_type_none; */
 
-        /* If the cell is split, recurse. */
-        else if (ci->split) {
+    /*     /\* If the cell is split, recurse. *\/ */
+    /*     else if (ci->split) { */
 
-          /* Make a single sub-task? */
-          if (scheduler_dosub && ci->count < space_subsize / ci->count) {
+    /*       /\* Make a single sub-task? *\/ */
+    /*       if (scheduler_dosub && ci->count < space_subsize / ci->count) { */
 
-            t->type = task_type_sub;
-            t->subtype = task_subtype_grav;
+    /*         t->type = task_type_sub; */
+    /*         t->subtype = task_subtype_grav; */
 
-          }
+    /*       } */
 
-          /* Otherwise, just split the task. */
-          else {
+    /*       /\* Otherwise, just split the task. *\/ */
+    /*       else { */
 
-            /* Split this task into tasks on its progeny. */
-            t->type = task_type_none;
-            for (j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                if (t->type == task_type_none) {
-                  t->type = task_type_grav_mm;
-                  t->ci = ci->progeny[j];
-                  t->cj = NULL;
-                } else
-                  t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none,
-                                        0, 0, ci->progeny[j], NULL, 0);
-                for (k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) {
-                    if (t->type == task_type_none) {
-                      t->type = task_type_grav_mm;
-                      t->ci = ci->progeny[j];
-                      t->cj = ci->progeny[k];
-                    } else
-                      t = scheduler_addtask(s, task_type_grav_mm,
-                                            task_subtype_none, 0, 0,
-                                            ci->progeny[j], ci->progeny[k], 0);
-                  }
-              }
-            redo = (t->type != task_type_none);
-          }
+    /*         /\* Split this task into tasks on its progeny. *\/ */
+    /*         t->type = task_type_none; */
+    /*         for (j = 0; j < 8; j++) */
+    /*           if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) { */
+    /*             if (t->type == task_type_none) { */
+    /*               t->type = task_type_grav_mm; */
+    /*               t->ci = ci->progeny[j]; */
+    /*               t->cj = NULL; */
+    /*             } else */
+    /*               t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none, */
+    /*                                     0, 0, ci->progeny[j], NULL, 0); */
+    /*             for (k = j + 1; k < 8; k++) */
+    /*               if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) { */
+    /*                 if (t->type == task_type_none) { */
+    /*                   t->type = task_type_grav_mm; */
+    /*                   t->ci = ci->progeny[j]; */
+    /*                   t->cj = ci->progeny[k]; */
+    /*                 } else */
+    /*                   t = scheduler_addtask(s, task_type_grav_mm, */
+    /*                                         task_subtype_none, 0, 0, */
+    /*                                         ci->progeny[j], ci->progeny[k], 0); */
+    /*               } */
+    /*           } */
+    /*         redo = (t->type != task_type_none); */
+    /*       } */
 
-        }
+    /*     } */
 
-        /* Otherwise, just make a pp task out of it. */
-        else
-          t->type = task_type_grav_pp;
+    /*     /\* Otherwise, just make a pp task out of it. *\/ */
+    /*     else */
+    /*       t->type = task_type_grav_pp; */
 
-      }
+    /*   } */
 
-      /* Nope, pair. */
-      else {
+    /*   /\* Nope, pair. *\/ */
+    /*   else { */
 
-        /* Make a sub-task? */
-        if (scheduler_dosub && ci->count < space_subsize / cj->count) {
+    /*     /\* Make a sub-task? *\/ */
+    /*     if (scheduler_dosub && ci->count < space_subsize / cj->count) { */
 
-          t->type = task_type_sub;
-          t->subtype = task_subtype_grav;
+    /*       t->type = task_type_sub; */
+    /*       t->subtype = task_subtype_grav; */
 
-        }
+    /*     } */
 
-        /* Otherwise, split the task. */
-        else {
+    /*     /\* Otherwise, split the task. *\/ */
+    /*     else { */
 
-          /* Get the opening angle theta. */
-          float dx[3], theta;
-          for (k = 0; k < 3; k++) {
-            dx[k] = fabsf(ci->loc[k] - cj->loc[k]);
-            if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k])
-              dx[k] = -dx[k] + s->space->dim[k];
-            if (dx[k] > 0.0f) dx[k] -= ci->h[k];
-          }
-          theta =
-              (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
-              (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]);
+    /*       /\* Get the opening angle theta. *\/ */
+    /*       float dx[3], theta; */
+    /*       for (k = 0; k < 3; k++) { */
+    /*         dx[k] = fabsf(ci->loc[k] - cj->loc[k]); */
+    /*         if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k]) */
+    /*           dx[k] = -dx[k] + s->space->dim[k]; */
+    /*         if (dx[k] > 0.0f) dx[k] -= ci->h[k]; */
+    /*       } */
+    /*       theta = */
+    /*           (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) / */
+    /*           (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]); */
 
-          /* Ignore this task if the cell has no gparts. */
-          if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
+    /*       /\* Ignore this task if the cell has no gparts. *\/ */
+    /*       if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none; */
 
-          /* Split the interaction? */
-          else if (theta < const_theta_max * const_theta_max) {
+    /*       /\* Split the interaction? *\/ */
+    /*       else if (theta < const_theta_max * const_theta_max) { */
 
-            /* Are both ci and cj split? */
-            if (ci->split && cj->split) {
+    /*         /\* Are both ci and cj split? *\/ */
+    /*         if (ci->split && cj->split) { */
 
-              /* Split this task into tasks on its progeny. */
-              t->type = task_type_none;
-              for (j = 0; j < 8; j++)
-                if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                  for (k = 0; k < 8; k++)
-                    if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) {
-                      if (t->type == task_type_none) {
-                        t->type = task_type_grav_mm;
-                        t->ci = ci->progeny[j];
-                        t->cj = cj->progeny[k];
-                      } else
-                        t = scheduler_addtask(
-                            s, task_type_grav_mm, task_subtype_none, 0, 0,
-                            ci->progeny[j], cj->progeny[k], 0);
-                    }
-                }
-              redo = (t->type != task_type_none);
+    /*           /\* Split this task into tasks on its progeny. *\/ */
+    /*           t->type = task_type_none; */
+    /*           for (j = 0; j < 8; j++) */
+    /*             if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) { */
+    /*               for (k = 0; k < 8; k++) */
+    /*                 if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) { */
+    /*                   if (t->type == task_type_none) { */
+    /*                     t->type = task_type_grav_mm; */
+    /*                     t->ci = ci->progeny[j]; */
+    /*                     t->cj = cj->progeny[k]; */
+    /*                   } else */
+    /*                     t = scheduler_addtask( */
+    /*                         s, task_type_grav_mm, task_subtype_none, 0, 0, */
+    /*                         ci->progeny[j], cj->progeny[k], 0); */
+    /*                 } */
+    /*             } */
+    /*           redo = (t->type != task_type_none); */
 
-            }
+    /*         } */
 
-            /* Otherwise, make a pp task out of it. */
-            else
-              t->type = task_type_grav_pp;
-          }
-        }
+    /*         /\* Otherwise, make a pp task out of it. *\/ */
+    /*         else */
+    /*           t->type = task_type_grav_pp; */
+    /*       } */
+    /*     } */
 
-      } /* gravity pair interaction? */
+    /*   } /\* gravity pair interaction? *\/ */
 
-    } /* gravity interaction? */
+    /* } /\* gravity interaction? *\/ */
 
   } /* loop over all tasks. */
 }
@@ -679,7 +683,7 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
   /* Get a pointer to the new task. */
   t = &s->tasks[ind];
 
-  if (t->type == task_type_sort) message("sort!");
+  //if (t->type == task_type_sort) message("sort!");
 
   /* Copy the data. */
   t->type = type;
@@ -906,6 +910,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
+  struct task *store = NULL;
+  int count = 0;
   // ticks tic;
 
   // message("begin");
@@ -914,61 +920,102 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   /* Store the mask */
   s->mask = mask;
 
-  FILE *file = fopen("tasks.dat", "w");
-
+  for (k = 0;k<num_checks; ++k)
+    check[k] = NULL;
+  
   /* Run through the tasks and set their waits. */
   // tic = getticks();
   for (k = nr_tasks - 1; k >= 0; k--) {
     t = &tasks[tid[k]];
-    t->wait = 0;
+    t->wait = 1;
     t->rid = -1;
-    if (!((1 << t->type) & s->mask) || t->skip) continue;
+
+    if(k==to_check) {
+
+      //message("LOOP1: task %d type=%s-%s unlock=%d wait=%d", k, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
+
+      store = t;
+      
+    }
+
+    if (!((1 << t->type) & mask) || t->skip) continue;
     for (j = 0; j < t->nr_unlock_tasks; j++) {
       atomic_inc(&t->unlock_tasks[j]->wait);
+
+      /* if(t->unlock_tasks[j] == store) { */
+      /* 	message("task %d type=%s-%s unlocks the pair unlock=%d wait=%d %p", k, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t); */
+      /* 	message("Link index: %6li", t->nr_unlock_tasks == task_maxunlock + 1 ? t->unlock_tasks[task_maxunlock] - s->tasks : -1); */
+	
+      /* 	check[count] = t; */
+      /* 	++count; */
+      /* } */
+      
       /* if(t->unlock_tasks[j] == &tasks[9563] ) { */
       /* 	message("task %d %s %s unlocking task %d %s %s\n", */
-      /* 		k, taskID_names[t->type], subtaskID_names[t->subtype],
-       */
-      /* 		9563, taskID_names[t->unlock_tasks[j]->type],
-       * subtaskID_names[t->unlock_tasks[j]->type]); */
+      /* 		k, taskID_names[t->type], subtaskID_names[t->subtype], */
+      /* 		9563, taskID_names[t->unlock_tasks[j]->type], */
+      /* subtaskID_names[t->unlock_tasks[j]->type]); */
       /* } */
     }
-  }
-
-  for (k = nr_tasks - 1; k >= 0; k--) {
-    t = &tasks[tid[k]];
-    // if (t->type == task_type_sort)
-    //	message("%d %s %s %d %d %d\n", k, taskID_names[t->type],
-    // subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t->skip);
-    if (!((1 << t->type) & s->mask) || t->skip) continue;
-    fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type],
-            subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
   }
 
   // message( "waiting tasks took %.3f ms." , (double)( getticks() - tic ) /
   // CPU_TPS * 1000 );
 
-  fclose(file);
+  scheduler_print_tasks(s, "tasks_start.dat");
 
-  // message("All waits set");
-  fflush(stdout);
+  //message("All waits set nr_tasks=%d", nr_tasks);
+  //fflush(stdout);
 
   /* Don't enqueue link tasks directly. */
-  s->mask &= ~(1 << task_type_link);
+  mask &= ~(1 << task_type_link);
+  s->mask = mask;
 
-  /* Loop over the tasks and enqueue whoever is ready. */
-  // tic = getticks();
   for (k = 0; k < nr_tasks; k++) {
     t = &tasks[tid[k]];
-    if (((1 << t->type) & s->mask) && !t->skip) {
-      if (t->wait == 0) {
-        scheduler_enqueue(s, t);
-        pthread_cond_broadcast(&s->sleep_cond);
-      } else
-        break;
-    }
-  }
 
+    /* if(k==to_check) { */
+    /*   message("LOOP2: task %5d type=%s-%s unlock=%d wait=%d t=%p", k, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t); */
+    /*   fflush(stdout); */
+    /* } */
+
+    for (j = 0; j < t->nr_unlock_tasks; j++) {
+      if(t->unlock_tasks[j] == store) {
+    	//message("task %d type=%s-%s unlocks the pair unlock=%d wait=%d %p", k, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t);
+	//message("Link index: %6li", t->nr_unlock_tasks == task_maxunlock + 1 ? t->unlock_tasks[task_maxunlock] - s->tasks : -1);
+	
+    	check[count] = t;
+    	++count;
+      }
+
+    }
+
+  }
+  
+  /* Loop over the tasks and enqueue whoever is ready. */
+  // tic = getticks();
+  for (k = 0; k < s->nr_tasks; k++) {
+    t = &tasks[tid[k]];
+
+
+    /* if (((1 << t->type) & mask) && !t->skip) { */
+    /*   if (t->wait == 0) { */
+    /*     scheduler_enqueue(s, t); */
+    /*     pthread_cond_broadcast(&s->sleep_cond); */
+    /*   } else */
+    /*     break; */
+    /* } */
+
+    if (atomic_dec(&t->wait) == 1 &&
+	((1 << t->type) & s->mask) &&
+	!t->skip) {
+      
+      scheduler_enqueue(s, t);
+      pthread_cond_broadcast(&s->sleep_cond);
+
+    }
+
+  }
   scheduler_dump_queue(s);
 
   // message("Done enqueieing");fflush(stdout);
@@ -996,13 +1043,44 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   //  fflush(stdout);
   // }
 
-  /* Ignore skipped tasks and tasks not in the mask. */
-  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link) ||
-      atomic_cas(&t->rid, -1, 0) != -1)
-    return;
+  /* Fail if this task has already been enqueued before. */
+  if (t->rid >= 0) error("Task has already been enqueued.");
 
+  
+  for(int k=0; k<num_checks; ++k) {
+
+    if(t == check[k]) {
+      //message("task %5d type=%s-%s unlock=%d wait=%d %p", 0, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t);
+
+
+    }
+
+  }
+  
+  /* Ignore skipped tasks and tasks not in the mask. */
+  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link)) {
+    return;
+  }
+
+
+  for(int k=0; k<num_checks; ++k) {
+
+    if(t == check[k]) {
+      //message("not ignored !");
+
+    }
+
+  }
+
+  
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
+
+  for(int k=0; k<num_checks; ++k) {
+    if(t == check[k]) {
+      //message("implicit");
+    }
+  }
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
@@ -1096,6 +1174,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
+
+  for(int k=0; k<num_checks; ++k) {
+
+    if(t == check[k]) {
+      //message("task %5d type=%s-%s unlock=%d wait=%d %p", 0, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t);
+
+
+    }
+
+  }
+
+  
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
@@ -1104,6 +1194,22 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
     int res = atomic_dec(&t2->wait);
+    /* if (t->type == task_type_init) */
+    /*   message("Done with init ! Unlocking a %s task. %d dependencies left", */
+    /*           taskID_names[t2->type], res); */
+    /* if (t->type == task_type_pair) */
+    /*   message("Done with pair ! Unlocking a %s task. %d dependencies left", */
+    /*           taskID_names[t2->type], res); */
+
+    for(int k=0; k<num_checks; ++k) {
+
+      if(t2 == check[k]) {
+	//message("Unlocking the task %p", t2);
+      }
+
+    }
+	
+    
     if (res < 1) {
       error("Negative wait!");
     } else if (res == 1) {
@@ -1326,4 +1432,29 @@ void scheduler_dump_queue(struct scheduler *s) {
     /* Be nice and clean */
     fclose(file);
   }
+}
+
+/**
+ * @brief Prints the list of tasks to a file
+ *
+ * @param s The #scheduler
+ * @param fileName Name of the file to write to
+ */
+void scheduler_print_tasks(struct scheduler *s, char *fileName) {
+
+  const int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
+  struct task *t, *tasks = s->tasks;
+
+  FILE *file = fopen(fileName, "w");
+
+  fprintf(file, "# Rank  Name  Subname  unlocks  waits\n");
+
+  for (int k = nr_tasks - 1; k >= 0; k--) {
+    t = &tasks[tid[k]];
+    if (!((1 << t->type)) || t->skip) continue;
+    fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type],
+            subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
+  }
+
+  fclose(file);
 }

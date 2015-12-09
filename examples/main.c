@@ -318,7 +318,7 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal, 0, 1.);
+              ENGINE_POLICY | engine_policy_steal, 0, 1., 1e-7, 0.01);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
@@ -396,7 +396,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-    if (j == 2)  break;
+    if (j == 5)  break;
     
     if (with_outputs && j % 100 == 0) {
 

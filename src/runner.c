@@ -43,6 +43,7 @@
 #include "timers.h"
 #include "timestep.h"
 
+
 /* Include the right variant of the SPH interactions */
 #ifdef LEGACY_GADGET2_SPH
 #include "runner_iact_legacy.h"
@@ -54,9 +55,11 @@
 #define PRINT_PART                                                          \
   if (p->id == 1000) {                                                      \
     message(                                                                \
-        "p->id=%lld p->h=%f p->N_ngb=%f p->rho=%f p->t_beg=%f p->t_end=%f", \
-        p->id, p->h, p->density.wcount, p->rho, p->t_begin, p->t_end);      \
+        "p->id=%lld p->h=%3.2f p->N_ngb=%3.2f p->rho=%3.2f p->t_beg=%3.2f p->t_end=%3.2f pos=[%3.2f %3.2f %3.2f] a=[%3.2f %3.2f %3.2f]", \
+        p->id, p->h, p->density.wcount, p->rho, p->t_begin, p->t_end, p->x[0], p->x[1], p->x[2], p->a[0], p->a[1], p->a[2]); \
   }
+
+
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
@@ -821,14 +824,14 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
         u = p->u *= expf(w);
 
       /* Predict smoothing length */
-      // w = p->force.h_dt * ih * dt;
-      // if (fabsf(w) < 0.01f)
-      //  h = p->h *=
-      //      1.0f +
-      //      w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
-      // else
-      //  h = p->h *= expf(w);
-
+      w = p->force.h_dt * ih * dt;
+      if (fabsf(w) < 0.01f)
+      	h = p->h *=
+      	  1.0f +
+      	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
+      else
+      	h = p->h *= expf(w);
+      
       /* Predict density */
       w = -3.0f * p->force.h_dt * ih * dt;
       if (fabsf(w) < 0.1f)
@@ -864,14 +867,17 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
 void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
-  int k, count = 0, nr_parts = c->count, updated;
+  const float dt_max_timeline = r->e->timeEnd - r->e->timeBegin;
+  const float global_dt_min = r->e->dt_min, global_dt_max = r->e->dt_max;
+  const float t_current = r->e->time;
+  const int nr_parts = c->count;
+  
+  int count = 0, updated;
   float new_dt = 0.0f, new_dt_hydro = 0.0f, new_dt_grav = 0.0f,
         current_dt = 0.0f;
-  float t_start, t_end, t_current = r->e->time, t_end_min = FLT_MAX,
-                        t_end_max = 0., dt;
-  float dt_max_timeline = r->e->timeEnd - r->e->timeBegin, dt_timeline;
-  float dt_min = r->e->dt_min, dt_max = r->e->dt_max;
-  float h_max, dx_max;
+  float t_start, t_end, t_end_min = FLT_MAX, t_end_max = 0., dt;
+  float dt_timeline;
+  float h_max, dx_max, dt_min, dt_max;
   double ekin = 0.0, epot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   float m, x[3], v_full[3];
@@ -890,7 +896,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
     dx_max = 0.0f;
 
     /* Loop over the particles and kick the active ones. */
-    for (k = 0; k < nr_parts; k++) {
+    for (int k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
       p = &parts[k];
@@ -917,8 +923,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
 
         /* Limit timestep within the allowed range */
-        new_dt = fminf(new_dt, dt_max);
-        new_dt = fmaxf(new_dt, dt_min);
+        new_dt = fminf(new_dt, global_dt_max);
+        new_dt = fmaxf(new_dt, global_dt_min);
 
         /* Put this timestep on the time line */
         dt_timeline = dt_max_timeline;
@@ -995,7 +1001,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
     ang[2] = 0.0f;
 
     /* Loop over the progeny. */
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
         runner_dokick(r, cp, 0);
@@ -1109,7 +1115,7 @@ void *runner_main(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          // message("self");
+	  //message("self");
           if (t->subtype == task_subtype_density)
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
@@ -1118,6 +1124,7 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_pair:
+	  //message("pair unlocking %d tasks", t->nr_unlock_tasks);
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
@@ -1139,12 +1146,15 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_init:
+	  //message("init");
           runner_doinit(r, ci);
           break;
         case task_type_ghost:
+	  //message("ghost");
           runner_doghost(r, ci);
           break;
         case task_type_drift:
+	  
           runner_dodrift(r, ci, 1);
           break;
         case task_type_kick:

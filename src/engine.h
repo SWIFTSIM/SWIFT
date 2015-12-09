@@ -135,7 +135,8 @@ struct engine {
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd);
+                 float timeBegin, float timeEnd,
+		 float dt_min, float dt_max);
 void engine_prepare(struct engine *e);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e);

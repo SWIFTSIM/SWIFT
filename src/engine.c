@@ -1065,7 +1065,7 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
-  space_link_cleanup(s);
+  //space_link_cleanup(s); // MATTHIEU
 
   /* /\* Add the gravity up/down tasks at the top-level cells and push them
    * down. *\/ */
@@ -1760,16 +1760,16 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   pthread_cond_broadcast(&e->sched.sleep_cond);
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
-  message("Before barrier");
-  fflush(stdout);
+  //message("Before barrier");
+  //fflush(stdout);
 
   /* Sit back and wait for the runners to come home. */
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
 
-  message("After barrier");
-  fflush(stdout);
+  //message("After barrier");
+  //fflush(stdout);
 }
 
 /* void hassorted(struct cell *c) { */
@@ -1929,13 +1929,17 @@ void engine_step(struct engine *e) {
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift);
 
+  scheduler_print_tasks(&e->sched, "tasks_after_drift.dat");
+
+  //error("Done drift");
+  
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
 
   /* Prepare the space. */
   engine_prepare(e);
 
-  engine_maketasks(e);
+  //engine_maketasks(e);
 
   // engine_marktasks(e);
 
@@ -1947,11 +1951,15 @@ void engine_step(struct engine *e) {
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_kick) | (1 << task_type_send) |
-                    (1 << task_type_recv) | (1 << task_type_link));
+		(1 << task_type_pair) | (1 << task_type_sub) |
+		(1 << task_type_init) | (1 << task_type_ghost) |
+		(1 << task_type_kick) | (1 << task_type_send) |
+		(1 << task_type_recv) | (1 << task_type_link));
 
+  scheduler_print_tasks(&e->sched, "tasks_after.dat");
+
+  //error("done step");
+  
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);
@@ -2122,7 +2130,8 @@ void engine_split(struct engine *e, int *grid) {
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd) {
+                 float timeBegin, float timeEnd,
+		 float dt_min, float dt_max) {
 
   int k;
 #if defined(HAVE_SETAFFINITY)
@@ -2171,6 +2180,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->nr_links = 0;
   e->timeBegin = timeBegin;
   e->timeEnd = timeEnd;
+  e->dt_min = dt_min;
+  e->dt_max = dt_max;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */

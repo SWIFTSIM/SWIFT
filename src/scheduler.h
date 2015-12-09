@@ -104,5 +104,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);
 void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
 void scheduler_dump_queue(struct scheduler *s);
+void scheduler_print_tasks(struct scheduler *s, char *fileName);
 
 #endif /* SWIFT_SCHEDULER_H */
