@@ -710,11 +710,11 @@ void scheduler_set_unlocks(struct scheduler *s) {
     
   /* Compute the offset for each unlock block. */
   int *offsets;
-  if ((offsets = (int *)malloc(sizeof(int) * s->nr_tasks)) == NULL)
+  if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
     error("Failed to allocate temporary offsets array.");
   offsets[0] = 0;
-  for (int k = 1; k < s->nr_tasks; k++)
-    offsets[k] = offsets[k - 1] + counts[k - 1];
+  for (int k = 0; k < s->nr_tasks; k++)
+    offsets[k + 1] = offsets[k] + counts[k];
     
   /* Create and fill a temporary array with the sorted unlocks. */
   struct task **unlocks;
@@ -725,7 +725,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
     unlocks[offset[ind]] = s->unlocks[k];
     offset[ind] += 1;
   }
-  
+
   /* Swap the unlocks. */
   free(s->unlocks);
   s->unlocks = unlocks;
@@ -734,12 +734,17 @@ void scheduler_set_unlocks(struct scheduler *s) {
   offsets[0] = 0;
   for (int k = 1; k < s->nr_tasks; k++)
     offsets[k] = offsets[k - 1] + counts[k - 1];
+  for (int k = 0; k < s->nr_tasks; k++)
+    for (int j = offsets[k]; j < offsets[k + 1]; j++)
+      s->unlock_ind[j] = k;
     
   /* Set the unlocks in the tasks. */
   for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
     t->nr_unlock_tasks = count[k];
     t->unlock_tasks = &s->unlocks[offset[k]];
+    for (int j = offsets[k]; j < offsets[k + 1]; j++)
+      s->unlock_ind[j] = k;
   }
   
   /* Clean up. */
