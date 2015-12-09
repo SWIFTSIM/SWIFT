@@ -47,14 +47,28 @@
 #include "partition.h"
 #include "const.h"
 #include "error.h"
-#include "param.h"
 #include "debug.h"
-
 
 /* Useful defines. */
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) > (b) ? (b) : (a))
 #define CHUNK 512
+
+/* Simple descriptions of initial partition types for reports. */
+const char *initpart_name[] = {
+  "gridded cells",
+  "random point associated cells",
+  "vectorized point associated cells",
+  "METIS particle weighted cells",
+  "METIS unweighted cells"
+};
+
+/* Simple descriptions of repartition types for reports. */
+const char *repart_name[] = {
+  "METIS edge and vertex weighted cells",
+  "METIS vertex weighted cells",
+  "METIS edge weights"
+};
 
 /*  Vectorisation support */
 /*  ===================== */
@@ -744,12 +758,16 @@ int main(int argc, char *argv[]) {
  *
  * @param s the space of cells to partition.
  * @param nregions the number of regions required in the partition.
-* @param weights for the cells, sizeof number of cells if used, NULL 
- *        for unit weights.
- * @param celllist on exit this contains the ids of the select region,
+ * @param vertexw weights for the cells, sizeof number of cells if used, 
+ *        NULL for unit weights.
+ * @param edgew weights for the graph edges between all cells, sizeof number
+ *        of cells * 26 if used, NULL for unit weights. Need to be packed
+ *        in CSR format, so same as adjcny array.
+ * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells.
  */
-void part_pick_metis(struct space *s, int nregions, int *weights, int *celllist) {
+void part_pick_metis(struct space *s, int nregions, int *vertexw,
+                     int *edgew, int *celllist) {
 
 #if defined(HAVE_METIS)
 
@@ -770,9 +788,14 @@ void part_pick_metis(struct space *s, int nregions, int *weights, int *celllist)
   idx_t *adjncy;
   if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
     error("Failed to allocate adjncy array.");
-  idx_t *weights_v;
-  if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-    error("Failed to allocate weights array");
+  idx_t *weights_v = NULL;
+  if (vertexw != NULL)
+    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate vertex weights array");
+  idx_t *weights_e = NULL;
+  if (edgew != NULL)
+    if ((weights_e = (idx_t *)malloc( 26 *sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate edge weights array");
   idx_t *regionid;
   if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
     error("Failed to allocate regionid array");
@@ -823,17 +846,25 @@ void part_pick_metis(struct space *s, int nregions, int *weights, int *celllist)
   for (int k = 0; k < ncells; k++) xadj[k + 1] = xadj[k] + 26;
 
   /* Init the vertex weights array. */
-  if ( weights != NULL) {
+  if (vertexw != NULL) {
     for (int k = 0; k < ncells; k++) {
-      if ( weights[k] > 0 ) {
-        weights_v[k] = weights[k];
+      if ( vertexw[k] > 0 ) {
+        weights_v[k] = vertexw[k];
       } else {
         weights_v[k] = 1;
       }
     }
-  } else {
-    for (int k = 0; k < ncells; k++)
-      weights_v[k] = 1;
+  }
+
+  /* Init the edges weights array. */
+  if (edgew != NULL) {
+    for (int k = 0; k < 26 * ncells; k++) {
+      if (edgew[k] > 0 ) {
+        weights_e[k] = edgew[k];
+      } else {
+        weights_e[k] = 1;
+      }
+    }
   }
 
   /* Set the METIS options. */
@@ -853,10 +884,10 @@ void part_pick_metis(struct space *s, int nregions, int *weights, int *celllist)
 
   /* Dump graph in METIS format */
   dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
-                 weights_v, NULL, NULL);
+                 weights_v, weights_e, NULL);
 
   if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v,
-                          NULL, NULL, &idx_nregions, NULL, NULL,
+                          weights_e, NULL, &idx_nregions, NULL, NULL,
                           options, &objval, regionid) != METIS_OK)
     error("Call to METIS_PartGraphKway failed.");
 
@@ -894,7 +925,7 @@ void part_pick_metis(struct space *s, int nregions, int *weights, int *celllist)
   for (int l = 0, k = 0; l < s->cdim[0]; l++) {
     for (int m = 0; m < s->cdim[1]; m++) {
       for (int n = 0; n < s->cdim[2]; n++) {
-        message("node %d %d %d -> %d %d", l, m, n, regionid[k], weights_v[k]);
+        message("node %d %d %d -> %d", l, m, n, regionid[k]);
         k++;
       }
     }

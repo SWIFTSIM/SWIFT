@@ -22,13 +22,43 @@
 #include "space.h"
 #include "cell.h"
 
+/* Initial partitioning types. */
+enum initpart_type {
+  INITPART_GRID = 0,
+  INITPART_RANDOM,
+  INITPART_VECTORIZE,
+  INITPART_METIS_WEIGHT,
+  INITPART_METIS_NOWEIGHT
+};
+
+/* Simple descriptions of types for reports. */
+extern const char *initpart_name[];
+
+/* The selected initial partition type and any related metadata. */
+struct initpart {
+  enum initpart_type type;
+  int grid[3];
+};
+
+/* Repartition type to use. */
+enum repart_type {
+  REPART_NONE = 0,
+  REPART_METIS_BOTH,
+  REPART_METIS_VERTEX,
+  REPART_METIS_EDGE
+};
+
+/* Simple descriptions of types for reports. */
+extern const char *repart_name[];
+
 int part_pick_random(struct space *s, int nregions, float *samplelist);
 void part_split_random(struct space *s, int nregions, float *samplelist);
 
 void part_pick_vector(struct space *s, int nregions, int *samplecells);
 void part_split_vector(struct space *s, int nregions, int *samplecells);
 
-void part_pick_metis(struct space *s, int nregions, int *weight, int *celllist);
+void part_pick_metis(struct space *s, int nregions, int *vertexw, 
+                     int *edgew, int *celllist);
 void part_split_metis(struct space *s, int nregions, int *celllist);
 
-#endif /* SWIFT_POISSON_DISC_H */
+#endif /* SWIFT_PARTITION_H */

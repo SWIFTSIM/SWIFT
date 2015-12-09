@@ -29,7 +29,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
-#include "param.h"
+#include "partition.h"
 
 /* Some constants. */
 #define engine_policy_none 0
@@ -118,7 +118,8 @@ struct engine {
   ticks tic_step;
 
   /* Force the engine to rebuild? */
-  int forcerebuild, forcerepart;
+  int forcerebuild;
+  enum repart_type forcerepart;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -136,7 +137,7 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask);
 void engine_prepare(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
-void engine_split(struct engine *e, struct pgrid *grid);
+void engine_split(struct engine *e, struct initpart *ipart);
 int engine_exchange_strays(struct engine *e, int offset, int *ind, int N);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);

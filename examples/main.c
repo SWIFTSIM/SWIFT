@@ -84,14 +84,20 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
-  struct pgrid pgrid;
+  struct initpart ipart;
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+  enum repart_type reparttype = REPART_METIS_BOTH;
+#endif
 
-  /* Default parition type is grid. */
-  pgrid.type = GRID_GRID;
-  pgrid.grid[0] = 1;
-  pgrid.grid[1] = 1;
-  pgrid.grid[2] = 1;
-
+  /* Default initial partition type is grid for shared memory and when
+   * METIS is not available. */
+  ipart.type = INITPART_GRID;
+  ipart.grid[0] = 1;
+  ipart.grid[1] = 1;
+  ipart.grid[2] = 1;
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+  ipart.type = INITPART_METIS_NOWEIGHT;
+#endif
 
 /* Choke on FP-exceptions. */
 // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
@@ -115,9 +121,9 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
-  factor(nr_nodes, &pgrid.grid[0], &pgrid.grid[1]);
-  factor(nr_nodes / pgrid.grid[1], &pgrid.grid[0], &pgrid.grid[2]);
-  factor(pgrid.grid[0] * pgrid.grid[1], &pgrid.grid[1], &pgrid.grid[0]);
+  factor(nr_nodes, &ipart.grid[0], &ipart.grid[1]);
+  factor(nr_nodes / ipart.grid[1], &ipart.grid[0], &ipart.grid[2]);
+  factor(ipart.grid[0] * ipart.grid[1], &ipart.grid[1], &ipart.grid[0]);
 #endif
 
   /* Greeting message */
@@ -127,7 +133,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:yz:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:m:p:q:r:s:t:w:yz:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -146,32 +152,48 @@ int main(int argc, char *argv[]) {
         if (myrank == 0) message("dt set to %e.", dt_max);
         fflush(stdout);
         break;
+      case 'e':
+        /* REpartition type "b", "v", "e". */
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+        switch (optarg[0]) {
+          case 'b':
+            reparttype = REPART_METIS_BOTH;
+            break;
+          case 'v':
+            reparttype = REPART_METIS_VERTEX;
+            break;
+          case 'e':
+            reparttype = REPART_METIS_EDGE;
+            break;
+        }
+#endif
+        break;
       case 'f':
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
         break;
-      case 'g':
-        /* Grid is one of "g", "r", "m", "w", or "v". g can be followed by three
-         * numbers. */
+      case 'p':
+        /* Parition type is one of "g", "r", "m", "w", or "v"; "g" can be
+         * followed by three numbers defining the grid. */
         switch (optarg[0]) {
           case 'g':
-            pgrid.type = GRID_GRID;
+            ipart.type = INITPART_GRID;
             if (strlen(optarg) > 2) {
-              if (sscanf(optarg, "g %i %i %i", &pgrid.grid[0], &pgrid.grid[1],
-                         &pgrid.grid[2]) != 3) 
+              if (sscanf(optarg, "g %i %i %i", &ipart.grid[0], &ipart.grid[1],
+                         &ipart.grid[2]) != 3) 
                 error("Error parsing grid.");
             }
             break;
           case 'r':
-            pgrid.type = GRID_RANDOM;
+            ipart.type = INITPART_RANDOM;
             break;
           case 'm':
-            pgrid.type = GRID_METIS_NOWEIGHT;
+            ipart.type = INITPART_METIS_NOWEIGHT;
             break;
           case 'w':
-            pgrid.type = GRID_METIS_WEIGHT;
+            ipart.type = INITPART_METIS_WEIGHT;
             break;
           case 'v':
-            pgrid.type = GRID_VECTORIZE;
+            ipart.type = INITPART_VECTORIZE;
             break;
         }
         break;
@@ -223,7 +245,8 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   if (myrank == 0) {
     message("Running with %i thread(s) per node.", nr_threads);
-    message("grid set to [ %i %i %i ].", pgrid.grid[0], pgrid.grid[1], pgrid.grid[2]);
+    
+    message("grid set to [ %i %i %i ].", ipart.grid[0], ipart.grid[1], ipart.grid[2]);
 
     if (nr_nodes == 1) {
       message("WARNING: you are running with one MPI rank.");
@@ -356,7 +379,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef WITH_MPI
   /* Split the space. */
-  engine_split(&e, &pgrid);
+  engine_split(&e, &ipart);
   engine_redistribute(&e);
 #endif
 
@@ -410,8 +433,8 @@ int main(int argc, char *argv[]) {
 
 /* Repartition the space amongst the nodes? */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
-    //if (j % 100 == 2) e.forcerepart = 1;
-    if (j % 10 == 9) e.forcerepart = 1;
+    //if (j % 100 == 2) e.forcerepart = reparttype;
+    if (j % 10 == 9) e.forcerepart = reparttype;
 #endif
 
     timers_reset(timers_mask_all);
