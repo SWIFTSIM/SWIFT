@@ -326,9 +326,9 @@ void engine_repartition(struct engine *e) {
       error("Failed to allocate the inds array");
 
     for (int cid = 0; cid < nr_cells; cid++) {
-      ind[0] = cells[cid].loc[0] / s->cells[cid].h[0] + 0.5;
-      ind[1] = cells[cid].loc[1] / s->cells[cid].h[1] + 0.5;
-      ind[2] = cells[cid].loc[2] / s->cells[cid].h[2] + 0.5;
+      ind[0] = cells[cid].loc[0] / cells[cid].h[0] + 0.5;
+      ind[1] = cells[cid].loc[1] / cells[cid].h[1] + 0.5;
+      ind[2] = cells[cid].loc[2] / cells[cid].h[2] + 0.5;
       int l = 0;
       for (int i = -1; i <= 1; i++) {
         int ii = ind[0] + i;

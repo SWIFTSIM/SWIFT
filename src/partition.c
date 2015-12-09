@@ -65,6 +65,7 @@ const char *initpart_name[] = {
 
 /* Simple descriptions of repartition types for reports. */
 const char *repart_name[] = {
+  "no",
   "METIS edge and vertex weighted cells",
   "METIS vertex weighted cells",
   "METIS edge weights"

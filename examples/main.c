@@ -153,9 +153,12 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
         break;
       case 'e':
-        /* REpartition type "b", "v", "e". */
+        /* REpartition type "n", "b", "v", "e". */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
         switch (optarg[0]) {
+          case 'n':
+            reparttype = REPART_NONE;
+            break;
           case 'b':
             reparttype = REPART_METIS_BOTH;
             break;
@@ -245,8 +248,10 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   if (myrank == 0) {
     message("Running with %i thread(s) per node.", nr_threads);
-    
-    message("grid set to [ %i %i %i ].", ipart.grid[0], ipart.grid[1], ipart.grid[2]);
+    message("Initial partition: %s", initpart_name[ipart.type]);
+    if (ipart.type == INITPART_GRID) 
+      message("grid set to [ %i %i %i ].", ipart.grid[0], ipart.grid[1], ipart.grid[2]);
+    message("Using %s repartitioning", repart_name[reparttype]);
 
     if (nr_nodes == 1) {
       message("WARNING: you are running with one MPI rank.");
