@@ -62,12 +62,12 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   if (lock_lock(&s->lock) != 0) error("Unable to lock scheduler.");
                          
   /* Get the index of the next free unlock. */
-  const int ind = atomic_add(&s->nr_unlocks);
+  const int ind = atomic_inc(&s->nr_unlocks);
   
   /* Am I the ungrateful one that has to re-allocate the list? */
   if (ind == s->size_unlocks) {
     struct task **unlocks_new;
-    struct int **unlock_ind_new;
+    int *unlock_ind_new;
     s->size_unlocks *= 2;
     if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) * s->size_unlocks)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * s->size_unlocks)) == NULL)
@@ -722,8 +722,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
     error("Failed to allocate temporary unlocks array.");
   for (int k = 0; k < s->nr_unlocks; k++) {
     const int ind = s->unlock_ind[k];
-    unlocks[offset[ind]] = s->unlocks[k];
-    offset[ind] += 1;
+    unlocks[offsets[ind]] = s->unlocks[k];
+    offsets[ind] += 1;
   }
 
   /* Swap the unlocks. */
@@ -741,8 +741,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
   /* Set the unlocks in the tasks. */
   for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
-    t->nr_unlock_tasks = count[k];
-    t->unlock_tasks = &s->unlocks[offset[k]];
+    t->nr_unlock_tasks = counts[k];
+    t->unlock_tasks = &s->unlocks[offsets[k]];
     for (int j = offsets[k]; j < offsets[k + 1]; j++)
       s->unlock_ind[j] = k;
   }
