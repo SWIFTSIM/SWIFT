@@ -80,7 +80,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   /* Write the unlock to the scheduler. */
   const int ind = atomic_inc(&s->nr_unlocks);
   s->unlocks[ind] = tb;
-  s->unlock_ind[ind] = s->tasks - ta;
+  s->unlock_ind[ind] = ta - s->tasks;
   
   /* Release the scheduler. */
   if (lock_unlock(&s->lock) != 0) error("Unable to unlock scheduler.");
