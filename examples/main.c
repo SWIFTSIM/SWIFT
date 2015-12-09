@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
         break;
       case 'e':
-        /* REpartition type "n", "b", "v", "e". */
+        /* REpartition type "n", "b", "v", "e" or "x". */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
         switch (optarg[0]) {
           case 'n':
@@ -167,6 +167,9 @@ int main(int argc, char *argv[]) {
             break;
           case 'e':
             reparttype = REPART_METIS_EDGE;
+            break;
+          case 'x':
+            reparttype = REPART_METIS_VERTEX_EDGE;
             break;
         }
 #endif

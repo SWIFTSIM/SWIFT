@@ -33,10 +33,6 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-/* METIS headers only used when MPI is also available. */
-#ifdef HAVE_METIS
-#include <metis.h>
-#endif
 #endif
 
 /* This object's header. */
@@ -308,17 +304,20 @@ void engine_repartition(struct engine *e) {
    * bug that doesn't handle this case well. */
   if (nr_nodes == 1) return;
 
-  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE) {
+  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE||
+      reparttype == REPART_METIS_VERTEX_EDGE) {
 
-    /* Use task ticks as vertex and edge weights. */
+    /* Create weight arrays using task ticks for vertices and edges (edges
+     * assume the same graph structure as used in the part_ calls), we will
+     * drop the vertices for _EDGE and _VERTEX_EDGE. */
     int nr_cells = s->nr_cells;
     struct cell *cells = s->cells;
     int ind[3], *cdim = s->cdim;
     struct task *t, *tasks = e->sched.tasks;
     float wscale = 1e-3, vscale = 1e-3, wscale_buff;
-    idx_t wtot = 0;
-    idx_t wmax = 1e9 / e->nr_nodes;
-    idx_t wmin;
+    int wtot = 0;
+    int wmax = 1e9 / e->nr_nodes;
+    int wmin;
 
     /* Allocate and fill the adjcny indexing array. */
     int *inds;
@@ -379,7 +378,7 @@ void engine_repartition(struct engine *e) {
         continue;
 
       /* Get the task weight. */
-      idx_t w = (t->toc - t->tic) * wscale;
+      int w = (t->toc - t->tic) * wscale;
       if (w < 0) error("Bad task weight (%" SCIDX ").", w);
 
       /* Do we need to re-scale? */
@@ -454,6 +453,38 @@ void engine_repartition(struct engine *e) {
       }
     }
 
+    /* Re-calculate the vertices if using particle counts.
+     * XXX could be a scaling issue that makes this useless. */
+    if (reparttype == REPART_METIS_VERTEX_EDGE) {
+      struct part *parts = s->parts;
+      int *cdim = s->cdim;
+      double ih[3], dim[3];
+      ih[0] = s->ih[0];
+      ih[1] = s->ih[1];
+      ih[2] = s->ih[2];
+      dim[0] = s->dim[0];
+      dim[1] = s->dim[1];
+      dim[2] = s->dim[2];
+      bzero(weights_v, sizeof(int) * s->nr_cells);
+      for (int k = 0; k < s->nr_parts; k++) {
+        for (int j = 0; j < 3; j++) {
+          if (parts[k].x[j] < 0.0)
+            parts[k].x[j] += dim[j];
+          else if (parts[k].x[j] >= dim[j])
+            parts[k].x[j] -= dim[j];
+        }
+        const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
+                                   parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+        weights_v[cid]++;
+      }
+
+      /*  Rescale to balance times. */
+      float vwscale = (float) wtot / (float) e->sched.nr_tasks;
+      for (int k = 0; k < nr_cells; k++) {
+        weights_v[k] *= vwscale;
+      }
+    }
+
     /* Get the minimum scaling and re-scale if necessary. */
     int res;
     if ((res = MPI_Allreduce(&wscale, &wscale_buff, 1, MPI_FLOAT, MPI_MIN,
@@ -488,11 +519,16 @@ void engine_repartition(struct engine *e) {
       /* Final rescale of all weights to avoid a large range. Large ranges
        * have been seen to cause an incomplete graph. */
       wmin = wmax;
-      wmax = 0.0;
+      wmax = 0;
       for (int k = 0; k < 26 * nr_cells; k++) {
         wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
         wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
       }
+      for (int k = 0; k < nr_cells; k++) {
+        wmax = weights_v[k] > wmax ? weights_v[k] : wmax;
+        wmin = weights_v[k] < wmin ? weights_v[k] : wmin;
+      }
+
       if ((wmax - wmin) > engine_maxmetisweight) {
         wscale = engine_maxmetisweight / (wmax - wmin);
         for (int k = 0; k < 26 * nr_cells; k++) {
@@ -564,7 +600,7 @@ void engine_repartition(struct engine *e) {
       error("Failed to allocate weights buffer.");
     bzero(weights, sizeof(int) * s->nr_cells);
 
-    /* Check each particle and accumilate the counts per cell. */
+    /* Check each particle and accumulate the counts per cell. */
     struct part *parts = s->parts;
     int *cdim = s->cdim;
     double ih[3], dim[3];

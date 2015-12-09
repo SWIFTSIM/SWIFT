@@ -66,9 +66,10 @@ const char *initpart_name[] = {
 /* Simple descriptions of repartition types for reports. */
 const char *repart_name[] = {
   "no",
-  "METIS edge and vertex weighted cells",
-  "METIS vertex weighted cells",
-  "METIS edge weights"
+  "METIS edge and vertex time weighted cells",
+  "METIS particle count vertex weighted cells",
+  "METIS time edge weighted cells",
+  "METIS particle count vertex and time edge cells"
 };
 
 /*  Vectorisation support */
@@ -923,6 +924,7 @@ void part_pick_metis(struct space *s, int nregions, int *vertexw,
     celllist[k] = regionid[k];
   }
 
+  /*
   for (int l = 0, k = 0; l < s->cdim[0]; l++) {
     for (int m = 0; m < s->cdim[1]; m++) {
       for (int n = 0; n < s->cdim[2]; n++) {
@@ -931,6 +933,7 @@ void part_pick_metis(struct space *s, int nregions, int *vertexw,
       }
     }
   }
+  */
 
   /* Clean up. */
   free(adjncy);

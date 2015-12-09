@@ -45,7 +45,8 @@ enum repart_type {
   REPART_NONE = 0,
   REPART_METIS_BOTH,
   REPART_METIS_VERTEX,
-  REPART_METIS_EDGE
+  REPART_METIS_EDGE,
+  REPART_METIS_VERTEX_EDGE
 };
 
 /* Simple descriptions of types for reports. */
