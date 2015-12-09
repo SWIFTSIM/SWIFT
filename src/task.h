@@ -83,7 +83,7 @@ struct task {
   ticks tic, toc;
 
   int nr_unlock_tasks;
-  struct task *unlock_tasks[task_maxunlock + 1];
+  struct task **unlock_tasks;
 };
 
 /* Function prototypes. */
