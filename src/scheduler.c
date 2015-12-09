@@ -985,9 +985,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   /* message("waiting tasks took %.3f ms.",
           (double)(getticks() - tic) / CPU_TPS * 1000); */
 
-  /* Don't enqueue link tasks directly. */
-  s->mask &= ~(1 << task_type_link);
-
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
@@ -1021,7 +1018,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->rid >= 0) error("Task has already been enqueued.");
 
   /* Ignore skipped tasks and tasks not in the mask. */
-  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link)) {
+  if (t->skip || (1 << t->type) & ~(s->mask)) {
     return;
   }
 

@@ -39,7 +39,6 @@ enum task_types {
   task_type_kick2,
   task_type_send,
   task_type_recv,
-  task_type_link,
   task_type_grav_pp,
   task_type_grav_mm,
   task_type_grav_up,

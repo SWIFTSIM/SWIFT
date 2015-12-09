@@ -1813,7 +1813,7 @@ void engine_step(struct engine *e) {
   if (e->step == 0 || !(e->policy & engine_policy_fixdt)) {
     TIMER_TIC
     engine_launch(e, (e->nr_threads > 8) ? 8 : e->nr_threads,
-                  (1 << task_type_kick1) | (1 << task_type_link));
+                  (1 << task_type_kick1));
     TIMER_TOC(timer_kick1);
   }
 
@@ -1844,8 +1844,7 @@ void engine_step(struct engine *e) {
                     (1 << task_type_ghost) | (1 << task_type_kick2) |
                     (1 << task_type_send) | (1 << task_type_recv) |
                     (1 << task_type_grav_pp) | (1 << task_type_grav_mm) |
-                    (1 << task_type_grav_up) | (1 << task_type_grav_down) |
-                    (1 << task_type_link));
+                    (1 << task_type_grav_up) | (1 << task_type_grav_down));
 
   TIMER_TOC(timer_runners);
 
