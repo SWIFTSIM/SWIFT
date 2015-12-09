@@ -32,7 +32,7 @@
 
 /* Some constants. */
 #define scheduler_maxwait 3
-#define scheduler_maxunlock 40
+#define scheduler_init_nr_unlocks 10000
 #define scheduler_dosub 1
 #define scheduler_maxsteal 10
 #define scheduler_maxtries 2
@@ -72,6 +72,11 @@ struct scheduler {
   /* The task indices. */
   int *tasks_ind;
 
+  /* The task unlocks. */
+  struct task **unlocks;
+  int *unlock_ind;
+  int nr_unlocks, size_unlocks;
+  
   /* Lock for this scheduler. */
   lock_type lock;
 
@@ -103,6 +108,7 @@ void scheduler_splittasks(struct scheduler *s);
 struct task *scheduler_done(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);
 void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
+void scheduler_set_unlocks(struct scheduler *s);
 void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(struct scheduler *s, char *fileName);
 

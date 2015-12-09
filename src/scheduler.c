@@ -61,38 +61,68 @@ struct task *check[num_checks];
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 
-  /* Main loop. */
-  while (1) {
+  /* /\* Main loop. *\/ */
+  /* while (1) { */
 
-    /* Follow the links. */
-    while (ta->nr_unlock_tasks == task_maxunlock + 1)
-      ta = ta->unlock_tasks[task_maxunlock];
+  /*   /\* Follow the links. *\/ */
+  /*   while (ta->nr_unlock_tasks == task_maxunlock + 1) */
+  /*     ta = ta->unlock_tasks[task_maxunlock]; */
 
-    /* Get the index of the next free task. */
-    const int ind = atomic_inc(&ta->nr_unlock_tasks);
+  /*   /\* Get the index of the next free task. *\/ */
+  /*   const int ind = atomic_inc(&ta->nr_unlock_tasks); */
 
-    /* Is there room in this task? */
-    if (ind < task_maxunlock) {
-      ta->unlock_tasks[ind] = tb;
-      break;
-    }
+  /*   /\* Is there room in this task? *\/ */
+  /*   if (ind < task_maxunlock) { */
+  /*     ta->unlock_tasks[ind] = tb; */
+  /*     break; */
+  /*   } */
 
-    /* Otherwise, generate a link task. */
-    else {
+  /*   /\* Otherwise, generate a link task. *\/ */
+  /*   else { */
 
-      /* Only one thread should have to do this. */
-      if (ind == task_maxunlock) {
-        ta->unlock_tasks[task_maxunlock] =
-            scheduler_addtask(s, task_type_link, task_subtype_none, ta->flags,
-                              0, ta->ci, ta->cj, 0);
-        ta->unlock_tasks[task_maxunlock]->implicit = 1;
-      }
+  /*     /\* Only one thread should have to do this. *\/ */
+  /*     if (ind == task_maxunlock) { */
+  /*       ta->unlock_tasks[task_maxunlock] = */
+  /*           scheduler_addtask(s, task_type_link, task_subtype_none,
+   * ta->flags, */
+  /*                             0, ta->ci, ta->cj, 0); */
+  /*       ta->unlock_tasks[task_maxunlock]->implicit = 1; */
+  /*     } */
 
-      /* Otherwise, reduce the count. */
-      else
-        atomic_dec(&ta->nr_unlock_tasks);
-    }
+  /*     /\* Otherwise, reduce the count. *\/ */
+  /*     else */
+  /*       atomic_dec(&ta->nr_unlock_tasks); */
+  /*   } */
+  /* } */
+
+  /* Lock the scheduler since re-allocating the unlocks is not
+     thread-safe. */
+  if (lock_lock(&s->lock) != 0) error("Unable to lock scheduler.");
+
+  /* Does the buffer need to be grown? */
+  if (s->nr_unlocks == s->size_unlocks) {
+    struct task **unlocks_new;
+    int *unlock_ind_new;
+    s->size_unlocks *= 2;
+    if ((unlocks_new = (struct task **)malloc(
+             sizeof(struct task *) *s->size_unlocks)) == NULL ||
+        (unlock_ind_new = (int *)malloc(sizeof(int) * s->size_unlocks)) == NULL)
+      error("Failed to re-allocate unlocks.");
+    memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->nr_unlocks);
+    memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * s->nr_unlocks);
+    free(s->unlocks);
+    free(s->unlock_ind);
+    s->unlocks = unlocks_new;
+    s->unlock_ind = unlock_ind_new;
   }
+
+  /* Write the unlock to the scheduler. */
+  const int ind = atomic_inc(&s->nr_unlocks);
+  s->unlocks[ind] = tb;
+  s->unlock_ind[ind] = ta - s->tasks;
+
+  /* Release the scheduler. */
+  if (lock_unlock(&s->lock) != 0) error("Unable to unlock scheduler.");
 }
 
 /**
@@ -117,7 +147,7 @@ void scheduler_splittasks(struct scheduler *s) {
                    {-1, -1, -1, -1, -1, -1, -1, 12}};
   float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
                          0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.5788};
-  
+
   /* Loop through the tasks... */
   redo = 0;
   t_old = t = NULL;
@@ -500,8 +530,6 @@ void scheduler_splittasks(struct scheduler *s) {
       /* Otherwise, if not spilt, stitch-up the sorting. */
       else {
 
-        // message("called");
-
         /* Create the sort for ci. */
         // lock_lock( &ci->lock );
         if (ci->sorts == NULL)
@@ -525,131 +553,131 @@ void scheduler_splittasks(struct scheduler *s) {
 
     } /* pair interaction? */
 
-    /* /\* Gravity interaction? *\/ */
-    /* else if (t->type == task_type_grav_mm) { */
+    /* Gravity interaction? */
+    else if (t->type == task_type_grav_mm) {
 
-    /*   /\* Get a handle on the cells involved. *\/ */
-    /*   ci = t->ci; */
-    /*   cj = t->cj; */
+      /* Get a handle on the cells involved. */
+      ci = t->ci;
+      cj = t->cj;
 
-    /*   /\* Self-interaction? *\/ */
-    /*   if (cj == NULL) { */
+      /* Self-interaction? */
+      if (cj == NULL) {
 
-    /*     /\* Ignore this task if the cell has no gparts. *\/ */
-    /*     if (ci->gcount == 0) t->type = task_type_none; */
+        /* Ignore this task if the cell has no gparts. */
+        if (ci->gcount == 0) t->type = task_type_none;
 
-    /*     /\* If the cell is split, recurse. *\/ */
-    /*     else if (ci->split) { */
+        /* If the cell is split, recurse. */
+        else if (ci->split) {
 
-    /*       /\* Make a single sub-task? *\/ */
-    /*       if (scheduler_dosub && ci->count < space_subsize / ci->count) { */
+          /* Make a single sub-task? */
+          if (scheduler_dosub && ci->count < space_subsize / ci->count) {
 
-    /*         t->type = task_type_sub; */
-    /*         t->subtype = task_subtype_grav; */
+            t->type = task_type_sub;
+            t->subtype = task_subtype_grav;
 
-    /*       } */
+          }
 
-    /*       /\* Otherwise, just split the task. *\/ */
-    /*       else { */
+          /* Otherwise, just split the task. */
+          else {
 
-    /*         /\* Split this task into tasks on its progeny. *\/ */
-    /*         t->type = task_type_none; */
-    /*         for (j = 0; j < 8; j++) */
-    /*           if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) { */
-    /*             if (t->type == task_type_none) { */
-    /*               t->type = task_type_grav_mm; */
-    /*               t->ci = ci->progeny[j]; */
-    /*               t->cj = NULL; */
-    /*             } else */
-    /*               t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none, */
-    /*                                     0, 0, ci->progeny[j], NULL, 0); */
-    /*             for (k = j + 1; k < 8; k++) */
-    /*               if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) { */
-    /*                 if (t->type == task_type_none) { */
-    /*                   t->type = task_type_grav_mm; */
-    /*                   t->ci = ci->progeny[j]; */
-    /*                   t->cj = ci->progeny[k]; */
-    /*                 } else */
-    /*                   t = scheduler_addtask(s, task_type_grav_mm, */
-    /*                                         task_subtype_none, 0, 0, */
-    /*                                         ci->progeny[j], ci->progeny[k], 0); */
-    /*               } */
-    /*           } */
-    /*         redo = (t->type != task_type_none); */
-    /*       } */
+            /* Split this task into tasks on its progeny. */
+            t->type = task_type_none;
+            for (j = 0; j < 8; j++)
+              if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
+                if (t->type == task_type_none) {
+                  t->type = task_type_grav_mm;
+                  t->ci = ci->progeny[j];
+                  t->cj = NULL;
+                } else
+                  t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none,
+                                        0, 0, ci->progeny[j], NULL, 0);
+                for (k = j + 1; k < 8; k++)
+                  if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) {
+                    if (t->type == task_type_none) {
+                      t->type = task_type_grav_mm;
+                      t->ci = ci->progeny[j];
+                      t->cj = ci->progeny[k];
+                    } else
+                      t = scheduler_addtask(s, task_type_grav_mm,
+                                            task_subtype_none, 0, 0,
+                                            ci->progeny[j], ci->progeny[k], 0);
+                  }
+              }
+            redo = (t->type != task_type_none);
+          }
 
-    /*     } */
+        }
 
-    /*     /\* Otherwise, just make a pp task out of it. *\/ */
-    /*     else */
-    /*       t->type = task_type_grav_pp; */
+        /* Otherwise, just make a pp task out of it. */
+        else
+          t->type = task_type_grav_pp;
 
-    /*   } */
+      }
 
-    /*   /\* Nope, pair. *\/ */
-    /*   else { */
+      /* Nope, pair. */
+      else {
 
-    /*     /\* Make a sub-task? *\/ */
-    /*     if (scheduler_dosub && ci->count < space_subsize / cj->count) { */
+        /* Make a sub-task? */
+        if (scheduler_dosub && ci->count < space_subsize / cj->count) {
 
-    /*       t->type = task_type_sub; */
-    /*       t->subtype = task_subtype_grav; */
+          t->type = task_type_sub;
+          t->subtype = task_subtype_grav;
 
-    /*     } */
+        }
 
-    /*     /\* Otherwise, split the task. *\/ */
-    /*     else { */
+        /* Otherwise, split the task. */
+        else {
 
-    /*       /\* Get the opening angle theta. *\/ */
-    /*       float dx[3], theta; */
-    /*       for (k = 0; k < 3; k++) { */
-    /*         dx[k] = fabsf(ci->loc[k] - cj->loc[k]); */
-    /*         if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k]) */
-    /*           dx[k] = -dx[k] + s->space->dim[k]; */
-    /*         if (dx[k] > 0.0f) dx[k] -= ci->h[k]; */
-    /*       } */
-    /*       theta = */
-    /*           (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) / */
-    /*           (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]); */
+          /* Get the opening angle theta. */
+          float dx[3], theta;
+          for (k = 0; k < 3; k++) {
+            dx[k] = fabsf(ci->loc[k] - cj->loc[k]);
+            if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k])
+              dx[k] = -dx[k] + s->space->dim[k];
+            if (dx[k] > 0.0f) dx[k] -= ci->h[k];
+          }
+          theta =
+              (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
+              (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]);
 
-    /*       /\* Ignore this task if the cell has no gparts. *\/ */
-    /*       if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none; */
+          /* Ignore this task if the cell has no gparts. */
+          if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
 
-    /*       /\* Split the interaction? *\/ */
-    /*       else if (theta < const_theta_max * const_theta_max) { */
+          /* Split the interaction? */
+          else if (theta < const_theta_max * const_theta_max) {
 
-    /*         /\* Are both ci and cj split? *\/ */
-    /*         if (ci->split && cj->split) { */
+            /* Are both ci and cj split? */
+            if (ci->split && cj->split) {
 
-    /*           /\* Split this task into tasks on its progeny. *\/ */
-    /*           t->type = task_type_none; */
-    /*           for (j = 0; j < 8; j++) */
-    /*             if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) { */
-    /*               for (k = 0; k < 8; k++) */
-    /*                 if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) { */
-    /*                   if (t->type == task_type_none) { */
-    /*                     t->type = task_type_grav_mm; */
-    /*                     t->ci = ci->progeny[j]; */
-    /*                     t->cj = cj->progeny[k]; */
-    /*                   } else */
-    /*                     t = scheduler_addtask( */
-    /*                         s, task_type_grav_mm, task_subtype_none, 0, 0, */
-    /*                         ci->progeny[j], cj->progeny[k], 0); */
-    /*                 } */
-    /*             } */
-    /*           redo = (t->type != task_type_none); */
+              /* Split this task into tasks on its progeny. */
+              t->type = task_type_none;
+              for (j = 0; j < 8; j++)
+                if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
+                  for (k = 0; k < 8; k++)
+                    if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) {
+                      if (t->type == task_type_none) {
+                        t->type = task_type_grav_mm;
+                        t->ci = ci->progeny[j];
+                        t->cj = cj->progeny[k];
+                      } else
+                        t = scheduler_addtask(
+                            s, task_type_grav_mm, task_subtype_none, 0, 0,
+                            ci->progeny[j], cj->progeny[k], 0);
+                    }
+                }
+              redo = (t->type != task_type_none);
 
-    /*         } */
+            }
 
-    /*         /\* Otherwise, make a pp task out of it. *\/ */
-    /*         else */
-    /*           t->type = task_type_grav_pp; */
-    /*       } */
-    /*     } */
+            /* Otherwise, make a pp task out of it. */
+            else
+              t->type = task_type_grav_pp;
+          }
+        }
 
-    /*   } /\* gravity pair interaction? *\/ */
+      } /* gravity pair interaction? */
 
-    /* } /\* gravity interaction? *\/ */
+    } /* gravity interaction? */
 
   } /* loop over all tasks. */
 }
@@ -683,8 +711,6 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
   /* Get a pointer to the new task. */
   t = &s->tasks[ind];
 
-  //if (t->type == task_type_sort) message("sort!");
-
   /* Copy the data. */
   t->type = type;
   t->subtype = subtype;
@@ -711,6 +737,63 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
 
   /* Return a pointer to the new task. */
   return t;
+}
+
+/**
+ * @brief Set the unlock pointers in each task.
+ *
+ * @param s The #scheduler.
+ */
+
+void scheduler_set_unlocks(struct scheduler *s) {
+
+  /* Store the counts for each task. */
+  int *counts;
+  if ((counts = (int *)malloc(sizeof(int) * s->nr_tasks)) == NULL)
+    error("Failed to allocate temporary counts array.");
+  bzero(counts, sizeof(int) * s->nr_tasks);
+  for (int k = 0; k < s->nr_unlocks; k++) counts[s->unlock_ind[k]] += 1;
+
+  /* Compute the offset for each unlock block. */
+  int *offsets;
+  if ((offsets = (int *)malloc(sizeof(int) * (s->nr_tasks + 1))) == NULL)
+    error("Failed to allocate temporary offsets array.");
+  offsets[0] = 0;
+  for (int k = 0; k < s->nr_tasks; k++) offsets[k + 1] = offsets[k] + counts[k];
+
+  /* Create and fill a temporary array with the sorted unlocks. */
+  struct task **unlocks;
+  if ((unlocks = (struct task **)malloc(sizeof(struct task *) *
+                                        s->size_unlocks)) == NULL)
+    error("Failed to allocate temporary unlocks array.");
+  for (int k = 0; k < s->nr_unlocks; k++) {
+    const int ind = s->unlock_ind[k];
+    unlocks[offsets[ind]] = s->unlocks[k];
+    offsets[ind] += 1;
+  }
+
+  /* Swap the unlocks. */
+  free(s->unlocks);
+  s->unlocks = unlocks;
+
+  /* Re-set the offsets. */
+  offsets[0] = 0;
+  for (int k = 1; k < s->nr_tasks; k++)
+    offsets[k] = offsets[k - 1] + counts[k - 1];
+  for (int k = 0; k < s->nr_tasks; k++)
+    for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
+
+  /* Set the unlocks in the tasks. */
+  for (int k = 0; k < s->nr_tasks; k++) {
+    struct task *t = &s->tasks[k];
+    t->nr_unlock_tasks = counts[k];
+    t->unlock_tasks = &s->unlocks[offsets[k]];
+    for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
+  }
+
+  /* Clean up. */
+  free(counts);
+  free(offsets);
 }
 
 /**
@@ -802,6 +885,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->tasks_next = 0;
   s->waiting = 0;
   s->mask = 0;
+  s->nr_unlocks = 0;
 
   /* Set the task pointers in the queues. */
   for (k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -905,7 +989,72 @@ void scheduler_reweight(struct scheduler *s) {
  * @param s The #scheduler.
  * @param mask The task types to enqueue.
  */
+void scheduler_start(struct scheduler *s, unsigned int mask) {
 
+  int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
+  struct task *t, *tasks = s->tasks;
+
+  /* Store the mask */
+  s->mask = mask | (1 << task_type_rewait);
+
+  /* Clear all the waits and rids. */
+  // ticks tic = getticks();
+  for (int k = 0; k < s->nr_tasks; k++) {
+    s->tasks[k].wait = 1;
+    s->tasks[k].rid = -1;
+  }
+
+  /* Enqueue a set of extraenous tasks to set the task waits. */
+  struct task *rewait_tasks = &s->tasks[s->nr_tasks];
+  const int num_rewait_tasks = s->nr_queues > s->size - s->nr_tasks
+                                   ? s->size - s->nr_tasks
+                                   : s->nr_queues;
+  const int waiting_old =
+      s->waiting;  // Remember that engine_launch may fiddle with this value.
+  for (int k = 0; k < num_rewait_tasks; k++) {
+    rewait_tasks[k].type = task_type_rewait;
+    rewait_tasks[k].ci = (struct cell *)&s->tasks[k * nr_tasks / s->nr_queues];
+    rewait_tasks[k].cj =
+        (struct cell *)&s->tasks[(k + 1) * nr_tasks / s->nr_queues];
+    rewait_tasks[k].skip = 0;
+    rewait_tasks[k].wait = 0;
+    rewait_tasks[k].rid = -1;
+    rewait_tasks[k].weight = 1;
+    rewait_tasks[k].implicit = 0;
+    rewait_tasks[k].nr_unlock_tasks = 0;
+    scheduler_enqueue(s, &rewait_tasks[k]);
+    pthread_cond_broadcast(&s->sleep_cond);
+  }
+
+  /* Wait for the rewait tasks to have executed. */
+  pthread_mutex_lock(&s->sleep_mutex);
+  while (s->waiting > waiting_old) {
+    pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+  }
+  pthread_mutex_unlock(&s->sleep_mutex);
+  /* message("waiting tasks took %.3f ms.",
+     (double)(getticks() - tic) / CPU_TPS * 1000); */
+
+  /* Loop over the tasks and enqueue whoever is ready. */
+  // tic = getticks();
+  for (int k = 0; k < s->nr_tasks; k++) {
+    t = &tasks[tid[k]];
+    if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) && !t->skip) {
+
+      scheduler_enqueue(s, t);
+      pthread_cond_broadcast(&s->sleep_cond);
+    }
+  }
+
+  // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) /
+  // CPU_TPS * 1000 );
+}
+
+
+
+
+
+#if 0
 void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
@@ -1024,6 +1173,12 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   // CPU_TPS * 1000 );
 }
 
+#endif
+
+
+
+
+
 /**
  * @brief Put a task on one of the queues.
  *
@@ -1046,41 +1201,35 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Fail if this task has already been enqueued before. */
   if (t->rid >= 0) error("Task has already been enqueued.");
 
-  
-  for(int k=0; k<num_checks; ++k) {
+  for (int k = 0; k < num_checks; ++k) {
 
-    if(t == check[k]) {
-      //message("task %5d type=%s-%s unlock=%d wait=%d %p", 0, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t);
-
-
+    if (t == check[k]) {
+      // message("task %5d type=%s-%s unlock=%d wait=%d %p", 0,
+      // taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks,
+      // t->wait, t);
     }
-
   }
-  
+
   /* Ignore skipped tasks and tasks not in the mask. */
-  if (t->skip || ((1 << t->type) & ~(s->mask) && t->type != task_type_link)) {
+  if (t->skip || (1 << t->type) & ~(s->mask)) {
     return;
   }
 
+  for (int k = 0; k < num_checks; ++k) {
 
-  for(int k=0; k<num_checks; ++k) {
-
-    if(t == check[k]) {
-      //message("not ignored !");
-
+    if (t == check[k]) {
+      // message("not ignored !");
     }
-
   }
 
-  
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
 
-  for(int k=0; k<num_checks; ++k) {
-    if(t == check[k]) {
-      //message("implicit");
+    for (int k = 0; k < num_checks; ++k) {
+      if (t == check[k]) {
+        // message("implicit");
+      }
     }
-  }
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
@@ -1174,18 +1323,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
+  for (int k = 0; k < num_checks; ++k) {
 
-  for(int k=0; k<num_checks; ++k) {
-
-    if(t == check[k]) {
-      //message("task %5d type=%s-%s unlock=%d wait=%d %p", 0, taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait, t);
-
-
+    if (t == check[k]) {
+      // message("task %5d type=%s-%s unlock=%d wait=%d %p", 0,
+      // taskID_names[t->type], subtaskID_names[t->subtype], t->nr_unlock_tasks,
+      // t->wait, t);
     }
-
   }
 
-  
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
@@ -1195,21 +1341,21 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     struct task *t2 = t->unlock_tasks[k];
     int res = atomic_dec(&t2->wait);
     /* if (t->type == task_type_init) */
-    /*   message("Done with init ! Unlocking a %s task. %d dependencies left", */
+    /*   message("Done with init ! Unlocking a %s task. %d dependencies left",
+     */
     /*           taskID_names[t2->type], res); */
     /* if (t->type == task_type_pair) */
-    /*   message("Done with pair ! Unlocking a %s task. %d dependencies left", */
+    /*   message("Done with pair ! Unlocking a %s task. %d dependencies left",
+     */
     /*           taskID_names[t2->type], res); */
 
-    for(int k=0; k<num_checks; ++k) {
+    for (int k = 0; k < num_checks; ++k) {
 
-      if(t2 == check[k]) {
-	//message("Unlocking the task %p", t2);
+      if (t2 == check[k]) {
+        // message("Unlocking the task %p", t2);
       }
-
     }
-	
-    
+
     if (res < 1) {
       error("Negative wait!");
     } else if (res == 1) {
@@ -1217,7 +1363,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     }
   }
 
-  /* Task definitely done. */
+  /* Task definitely done, signal any sleeping runners. */
   if (!t->implicit) {
     t->toc = getticks();
     pthread_mutex_lock(&s->sleep_mutex);
@@ -1377,6 +1523,15 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
   if (pthread_cond_init(&s->sleep_cond, NULL) != 0 ||
       pthread_mutex_init(&s->sleep_mutex, NULL) != 0)
     error("Failed to initialize sleep barrier.");
+
+  /* Init the unlocks. */
+  if ((s->unlocks = (struct task **)malloc(
+           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
+      (s->unlock_ind =
+           (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
+    error("Failed to allocate unlocks.");
+  s->nr_unlocks = 0;
+  s->size_unlocks = scheduler_init_nr_unlocks;
 
   /* Set the scheduler variables. */
   s->nr_queues = nr_queues;

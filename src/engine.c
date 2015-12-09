@@ -171,6 +171,9 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    /* if (cid < 0 || cid >= s->nr_cells)
+       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
+             cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
@@ -184,8 +187,8 @@ void engine_redistribute(struct engine *e) {
   /* Get the new number of parts for this node, be generous in allocating. */
   int nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
-  struct part *parts_new;
-  struct xpart *xparts_new, *xparts = s->xparts;
+  struct part *parts_new = NULL;
+  struct xpart *xparts_new = NULL, *xparts = s->xparts;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * nr_parts * 1.2) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
@@ -305,11 +308,16 @@ void engine_repartition(struct engine *e) {
   int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
   float wscale = 1e-3, vscale = 1e-3, wscale_buff;
   idx_t wtot = 0;
-  const idx_t wmax = 1e9 / e->nr_nodes;
-
+  idx_t wmax = 1e9 / e->nr_nodes;
+  idx_t wmin;
+  
   /* Clear the repartition flag. */
   e->forcerepart = 0;
 
+  /* Nothing to do if only using a single node. Also avoids METIS
+   * bug that doesn't handle this case well. */
+  if (nr_nodes == 1) return;
+  
   /* Allocate the inds and weights. */
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 *nr_cells)) == NULL ||
       (weights_v = (idx_t *)malloc(sizeof(idx_t) *nr_cells)) == NULL ||
@@ -485,6 +493,24 @@ void engine_repartition(struct engine *e) {
   /* As of here, only one node needs to compute the partition. */
   if (nodeID == 0) {
 
+    /* Final rescale of all weights to avoid a large range. Large ranges have
+     * been seen to cause an incomplete graph. */
+    wmin = wmax;
+    wmax = 0.0;
+    for (k = 0; k < 26 * nr_cells; k++) {
+      wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
+      wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
+    }
+    if ((wmax - wmin) > engine_maxmetisweight) {
+      wscale = engine_maxmetisweight / (wmax - wmin);
+      for (k = 0; k < 26 * nr_cells; k++) {
+	weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
+      }
+      for (k = 0; k < nr_cells; k++) {
+	weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
+      }
+    }
+    
     /* Check that the edge weights are fully symmetric. */
     /* for ( cid = 0 ; cid < nr_cells ; cid++ )
         for ( k = 0 ; k < 26 ; k++ ) {
@@ -543,16 +569,49 @@ void engine_repartition(struct engine *e) {
     /* Call METIS. */
     idx_t one = 1, idx_nr_cells = nr_cells, idx_nr_nodes = nr_nodes;
     idx_t objval;
+    
+    /* Dump graph in METIS format */
+    /*dumpMETISGraph("metis_graph", idx_nr_cells, one, offsets, inds,
+                   weights_v, NULL, weights_e);*/
+
     if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
                                  NULL, weights_e, &idx_nr_nodes, NULL, NULL,
                                  options, &objval, nodeIDs) != METIS_OK)
-      error("Call to METIS_PartGraphKway failed.");
+      error("Call to METIS_PartGrapRecursive failed.");
 
     /* Dump the 3d array of cell IDs. */
     /* printf( "engine_repartition: nodeIDs = reshape( [" );
     for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
         printf( "%i " , (int)nodeIDs[ i ] );
     printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
+
+
+    /* Check that the nodeIDs are ok. */
+    for (k = 0; k < nr_cells; k++)
+      if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
+	error("Got bad nodeID %" PRIDX " for cell %i.", nodeIDs[k], k);
+
+    /* Check that the partition is complete and all nodes have some work. */
+    int present[nr_nodes];
+    int failed = 0;
+    for (i = 0; i < nr_nodes; i++) present[i] = 0;
+    for (i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
+    for (i = 0; i < nr_nodes; i++) {
+      if (!present[i]) {
+	failed = 1;
+	message("Node %d is not present after repartition", i);
+      }
+    }
+
+    /* If partition failed continue with the current one, but make this
+     * clear. */
+    if (failed) {
+      message(
+	      "WARNING: METIS repartition has failed, continuing with "
+	      "the current partition, load balance will not be optimal");
+      for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
+    }
+    
   }
 
 /* Broadcast the result of the partition. */
@@ -908,8 +967,8 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   message("sent out %i particles, got %i back.", N, count_in);
   if (offset + count_in > s->size_parts) {
     s->size_parts = (offset + count_in) * 1.05;
-    struct part *parts_new;
-    struct xpart *xparts_new;
+    struct part *parts_new = NULL;
+    struct xpart *xparts_new = NULL;
     if (posix_memalign((void **)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0 ||
         posix_memalign((void **)&xparts_new, part_align,
@@ -1249,6 +1308,9 @@ void engine_maketasks(struct engine *e) {
 
 #endif
 
+  /* Set the unlocks per task. */
+  scheduler_set_unlocks(sched);
+  
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
 
@@ -1772,15 +1834,6 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   //fflush(stdout);
 }
 
-/* void hassorted(struct cell *c) { */
-
-/*   if (c->sorted) error("Suprious sorted flags."); */
-
-/*   if (c->split) */
-/*     for (int k = 0; k < 8; k++) */
-/*       if (c->progeny[k] != NULL) hassorted(c->progeny[k]); */
-/* } */
-
 /**
  * @brief Initialises the particles and set them in a state ready to move
  *forward in time.
@@ -1845,8 +1898,7 @@ void engine_init_particles(struct engine *e) {
                 (1 << task_type_sort) | (1 << task_type_self) |
                     (1 << task_type_pair) | (1 << task_type_sub) |
                     (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_send) | (1 << task_type_recv) |
-                    (1 << task_type_link));
+                    (1 << task_type_send) | (1 << task_type_recv));
 
   TIMER_TOC(timer_runners);
 
@@ -1954,7 +2006,7 @@ void engine_step(struct engine *e) {
 		(1 << task_type_pair) | (1 << task_type_sub) |
 		(1 << task_type_init) | (1 << task_type_ghost) |
 		(1 << task_type_kick) | (1 << task_type_send) |
-		(1 << task_type_recv) | (1 << task_type_link));
+		(1 << task_type_recv));
 
   scheduler_print_tasks(&e->sched, "tasks_after.dat");
 
@@ -2097,8 +2149,8 @@ void engine_split(struct engine *e, int *grid) {
     message("Re-allocating parts array from %i to %i.", s->size_parts,
             (int)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
-  struct part *parts_new;
-  struct xpart *xparts_new;
+  struct part *parts_new = NULL;
+  struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * s->size_parts) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
