@@ -1287,6 +1287,9 @@ void engine_maketasks(struct engine *e) {
 
 #endif
 
+  /* Set the unlocks per task. */
+  scheduler_set_unlocks(sched);
+
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
 
