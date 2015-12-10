@@ -2122,6 +2122,22 @@ void engine_split(struct engine *e, int *grid) {
   s->xparts = xparts_new;
 }
 
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+static bool hyperthreads_present(void) {
+#ifdef __linux__
+  FILE *f = fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
+
+  int c;
+  while ((c = fgetc(f)) != EOF && c != ',');
+  fclose(f);
+
+  return c == ',';
+#else
+  return true; // just guess
+#endif
+}
+#endif
+
 /**
  * @brief init an engine with the given number of threads, queues, and
  *      the given policy.
@@ -2164,7 +2180,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
       if (nodeID == 0) message("prefer NUMA-local CPUs");
 
       int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
-      bool done = false;
+      bool done = false, swap_hyperthreads = hyperthreads_present();
+      if (swap_hyperthreads) message("prefer physical cores to hyperthreads");
+
       while (!done) {
         done = true;
         for (i = 1; i < nr_cores; i++) {
@@ -2174,8 +2192,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
           /* Avoid using local hyperthreads over unused remote physical cores.
            * Assume two hyperthreads, and that cpuid >= half partitions them.
            */
-          int thread_a = cpuid[i-1] >= half;
-          int thread_b = cpuid[i] >= half;
+          int thread_a = swap_hyperthreads && cpuid[i-1] >= half;
+          int thread_b = swap_hyperthreads && cpuid[i] >= half;
 
           bool swap = thread_a > thread_b;
           if (thread_a == thread_b)
