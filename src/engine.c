@@ -53,10 +53,6 @@
 #include "runner_iact.h"
 #endif
 
-/* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k) \
-  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
-
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
@@ -71,7 +67,6 @@ int engine_rank;
  */
 
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
-
   struct link *res = &e->links[atomic_inc(&e->nr_links)];
   res->next = l;
   res->t = t;
@@ -87,19 +82,16 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  */
 
 void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
-
   int k;
   struct scheduler *s = &e->sched;
 
   /* Am I the super-cell? */
   if (super == NULL && c->nr_tasks > 0) {
-
     /* Remember me. */
     super = c;
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
-
       /* Generate the ghost task. */
       c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
@@ -132,7 +124,6 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
  */
 
 void engine_redistribute(struct engine *e) {
-
 #ifdef WITH_MPI
 
   int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
@@ -153,7 +144,7 @@ void engine_redistribute(struct engine *e) {
   dim[0] = s->dim[0];
   dim[1] = s->dim[1];
   dim[2] = s->dim[2];
-  if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
+  if ((counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL ||
       (dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
@@ -289,7 +280,6 @@ void engine_redistribute(struct engine *e) {
  */
 
 void engine_repartition(struct engine *e) {
-
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
   int nr_nodes = e->nr_nodes;
@@ -304,9 +294,8 @@ void engine_repartition(struct engine *e) {
    * bug that doesn't handle this case well. */
   if (nr_nodes == 1) return;
 
-  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE||
+  if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE ||
       reparttype == REPART_METIS_VERTEX_EDGE) {
-
     /* Create weight arrays using task ticks for vertices and edges (edges
      * assume the same graph structure as used in the part_ calls), we will
      * drop the vertices for _EDGE and _VERTEX_EDGE. */
@@ -321,7 +310,7 @@ void engine_repartition(struct engine *e) {
 
     /* Allocate and fill the adjcny indexing array. */
     int *inds;
-    if ((inds = (int *)malloc(sizeof(int) * 26 *nr_cells)) == NULL)
+    if ((inds = (int *)malloc(sizeof(int) * 26 * nr_cells)) == NULL)
       error("Failed to allocate the inds array");
 
     for (int cid = 0; cid < nr_cells; cid++) {
@@ -367,7 +356,6 @@ void engine_repartition(struct engine *e) {
 
     /* Loop over the tasks... */
     for (int j = 0; j < e->sched.nr_tasks; j++) {
-
       /* Get a pointer to the kth task. */
       t = &tasks[j];
 
@@ -393,9 +381,11 @@ void engine_repartition(struct engine *e) {
 
       /* Get the top-level cells involved. */
       struct cell *ci, *cj;
-      for (ci = t->ci; ci->parent != NULL; ci = ci->parent);
+      for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
+        ;
       if (t->cj != NULL)
-        for (cj = t->cj; cj->parent != NULL; cj = cj->parent);
+        for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
+          ;
       else
         cj = NULL;
 
@@ -405,7 +395,6 @@ void engine_repartition(struct engine *e) {
       /* Different weights for different tasks. */
       if (t->type == task_type_ghost || t->type == task_type_kick1 ||
           t->type == task_type_kick2) {
-
         /* Particle updates add only to vertex weight. */
         weights_v[cid] += w;
 
@@ -415,7 +404,6 @@ void engine_repartition(struct engine *e) {
       else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
                (t->type == task_type_sub && cj == NULL &&
                 ci->nodeID == nodeID)) {
-
         /* Self interactions add only to vertex weight. */
         weights_v[cid] += w;
 
@@ -424,10 +412,8 @@ void engine_repartition(struct engine *e) {
       /* Pair? */
       else if (t->type == task_type_pair ||
                (t->type == task_type_sub && cj != NULL)) {
-
         /* In-cell pair? */
         if (ci == cj) {
-
           /* Add weight to vertex for ci. */
           weights_v[cid] += w;
 
@@ -435,7 +421,6 @@ void engine_repartition(struct engine *e) {
 
         /* Distinct cells with local ci? */
         else if (ci->nodeID == nodeID) {
-
           /* Index of the jth cell. */
           int cjd = cj - cells;
 
@@ -445,16 +430,17 @@ void engine_repartition(struct engine *e) {
 
           /* Add weights to edge. */
           int kk;
-          for (kk = 26 * cid; inds[kk] != cjd; kk++);
+          for (kk = 26 * cid; inds[kk] != cjd; kk++)
+            ;
           weights_e[kk] += w;
-          for (kk = 26 * cjd; inds[kk] != cid; kk++);
+          for (kk = 26 * cjd; inds[kk] != cid; kk++)
+            ;
           weights_e[kk] += w;
         }
       }
     }
 
-    /* Re-calculate the vertices if using particle counts.
-     * XXX could be a scaling issue that makes this useless. */
+    /* Re-calculate the vertices if using particle counts. */
     if (reparttype == REPART_METIS_VERTEX_EDGE) {
       struct part *parts = s->parts;
       int *cdim = s->cdim;
@@ -473,13 +459,14 @@ void engine_repartition(struct engine *e) {
           else if (parts[k].x[j] >= dim[j])
             parts[k].x[j] -= dim[j];
         }
-        const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
-                                   parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+        const int cid =
+            cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
+                       parts[k].x[2] * ih[2]);
         weights_v[cid]++;
       }
 
       /*  Rescale to balance times. */
-      float vwscale = (float) wtot / (float) e->sched.nr_tasks;
+      float vwscale = (float)wtot / (float)e->sched.nr_tasks;
       for (int k = 0; k < nr_cells; k++) {
         weights_v[k] *= vwscale;
       }
@@ -489,7 +476,7 @@ void engine_repartition(struct engine *e) {
     int res;
     if ((res = MPI_Allreduce(&wscale, &wscale_buff, 1, MPI_FLOAT, MPI_MIN,
                              MPI_COMM_WORLD)) != MPI_SUCCESS)
-      mpi_error(res,"Failed to allreduce the weight scales.");
+      mpi_error(res, "Failed to allreduce the weight scales.");
 
     if (wscale_buff != wscale) {
       float scale = wscale_buff / wscale;
@@ -499,23 +486,21 @@ void engine_repartition(struct engine *e) {
 
     /* Merge the weights arrays across all nodes. */
     if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
-                          nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD))
-        != MPI_SUCCESS)
-      mpi_error(res,"Failed to allreduce vertex weights.");
+                          nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD)) !=
+        MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce vertex weights.");
 
-    if ((res=MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                        26 * nr_cells, MPI_INT, MPI_SUM, 0,
-                        MPI_COMM_WORLD)) != MPI_SUCCESS)
-      mpi_error(res,"Failed to allreduce edge weights.");
+    if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
+                          26 * nr_cells, MPI_INT, MPI_SUM, 0,
+                          MPI_COMM_WORLD)) != MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce edge weights.");
 
     /* Allocate cell list for the partition. */
-    int *celllist = malloc(sizeof(int) * s->nr_cells);
-    if (celllist == NULL)
-      error("Failed to allocate celllist");
+    int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
+    if (celllist == NULL) error("Failed to allocate celllist");
 
     /* As of here, only one node needs to compute the partition. */
     if (nodeID == 0) {
-
       /* Final rescale of all weights to avoid a large range. Large ranges
        * have been seen to cause an incomplete graph. */
       wmin = wmax;
@@ -554,7 +539,7 @@ void engine_repartition(struct engine *e) {
       /* Check that all cells have good values. */
       for (int k = 0; k < nr_cells; k++)
         if (celllist[k] < 0 || celllist[k] >= nr_nodes)
-          error("Got bad nodeID %"PRIDX" for cell %i.", celllist[k], k);
+          error("Got bad nodeID %" PRIDX " for cell %i.", celllist[k], k);
 
       /* Check that the partition is complete and all nodes have some work. */
       int present[nr_nodes];
@@ -562,7 +547,7 @@ void engine_repartition(struct engine *e) {
       for (int i = 0; i < nr_nodes; i++) present[i] = 0;
       for (int i = 0; i < nr_cells; i++) present[celllist[i]]++;
       for (int i = 0; i < nr_nodes; i++) {
-        if (! present[i]) {
+        if (!present[i]) {
           failed = 1;
           message("Node %d is not present after repartition", i);
         }
@@ -571,17 +556,17 @@ void engine_repartition(struct engine *e) {
       /* If partition failed continue with the current one, but make this
        * clear. */
       if (failed) {
-        message("WARNING: METIS repartition has failed, continuing with "
-                "the current partition, load balance will not be optimal");
+        message(
+            "WARNING: METIS repartition has failed, continuing with "
+            "the current partition, load balance will not be optimal");
         for (int k = 0; k < nr_cells; k++) celllist[k] = cells[k].nodeID;
       }
-
     }
 
     /* Distribute the celllist partition and apply. */
-    if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD))
-        != MPI_SUCCESS)
-      mpi_error(res,"Failed to bcast the cell list");
+    if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
+        MPI_SUCCESS)
+      mpi_error(res, "Failed to bcast the cell list");
 
     /* And apply to our cells */
     part_split_metis(s, e->nr_nodes, celllist);
@@ -592,11 +577,10 @@ void engine_repartition(struct engine *e) {
     free(celllist);
 
   } else if (reparttype == REPART_METIS_VERTEX) {
-
     /* Use particle counts as vertex weights. */
     /* Space for particles per cell counts, which will be used as weights. */
     int *weights = NULL;
-    if ((weights = malloc(sizeof(int) * s->nr_cells)) == NULL)
+    if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate weights buffer.");
     bzero(weights, sizeof(int) * s->nr_cells);
 
@@ -624,22 +608,21 @@ void engine_repartition(struct engine *e) {
 
     /* Get all the counts from all the nodes. */
     int res;
-    if ((res=MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT,
-                           MPI_SUM, MPI_COMM_WORLD)) != MPI_SUCCESS)
-      mpi_error(res,"Failed to allreduce particle cell weights.");
+    if ((res = MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT,
+                             MPI_SUM, MPI_COMM_WORLD)) != MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce particle cell weights.");
 
     /* Main node does the partition calculation. */
-    int *celllist = malloc(sizeof(int) * s->nr_cells);
-    if (celllist == NULL)
-      error("Failed to allocate celllist");
+    int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
+    if (celllist == NULL) error("Failed to allocate celllist");
 
     if (e->nodeID == 0)
       part_pick_metis(s, e->nr_nodes, weights, NULL, celllist);
 
     /* Distribute the celllist partition and apply. */
-    if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD))
-        != MPI_SUCCESS)
-      mpi_error(res,"Failed to bcast the cell list");
+    if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
+        MPI_SUCCESS)
+      mpi_error(res, "Failed to bcast the cell list");
 
     /* And apply to our cells */
     part_split_metis(s, e->nr_nodes, celllist);
@@ -679,7 +662,6 @@ void engine_repartition(struct engine *e) {
 
 void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
                           struct task *down) {
-
   /* Link the tasks to this cell. */
   c->grav_up = up;
   c->grav_down = down;
@@ -700,7 +682,6 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  */
 
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
-
   int k;
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
@@ -713,7 +694,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
   /* If so, attach send tasks. */
   if (l != NULL) {
-
     /* Create the tasks. */
     struct task *t_xv =
         scheduler_addtask(&e->sched, task_type_send, task_subtype_none,
@@ -750,13 +730,11 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho) {
-
   int k;
   struct scheduler *s = &e->sched;
 
   /* Do we need to construct a recv task? */
   if (t_xv == NULL && c->nr_density > 0) {
-
     /* Create the tasks. */
     t_xv = c->recv_xv =
         scheduler_addtask(&e->sched, task_type_recv, task_subtype_none,
@@ -789,7 +767,6 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
  */
 
 void engine_exchange_cells(struct engine *e) {
-
 #ifdef WITH_MPI
 
   int j, k, pid, count = 0;
@@ -912,7 +889,6 @@ void engine_exchange_cells(struct engine *e) {
  */
 
 int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
-
 #ifdef WITH_MPI
 
   int k, pid, count = 0, nr_in = 0, nr_out = 0;
@@ -1005,7 +981,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     int err;
     if ((err = MPI_Waitany(2 * e->nr_proxies, reqs_in, &pid, &status)) !=
         MPI_SUCCESS) {
-      mpi_error(err,"MPI_Waitany failed.");
+      mpi_error(err, "MPI_Waitany failed.");
     }
     if (pid == MPI_UNDEFINED) break;
     // message( "request from proxy %i has arrived." , pid );
@@ -1047,7 +1023,6 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
  */
 
 void engine_maketasks(struct engine *e) {
-
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   struct cell *cells = s->cells;
@@ -1127,7 +1102,6 @@ void engine_maketasks(struct engine *e) {
   /* Add the gravity up/down tasks at the top-level cells and push them down. */
   for (k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
-
       /* Create tasks at top level. */
       struct task *up =
           scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0, 0,
@@ -1144,7 +1118,6 @@ void engine_maketasks(struct engine *e) {
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
   for (k = 0; k < sched->nr_tasks; k++) {
-
     /* Get the current task. */
     t = &sched->tasks[k];
     if (t->skip) continue;
@@ -1208,7 +1181,6 @@ void engine_maketasks(struct engine *e) {
      of its super-cell. */
   kk = sched->nr_tasks;
   for (k = 0; k < kk; k++) {
-
     /* Get a pointer to the task. */
     t = &sched->tasks[k];
 
@@ -1279,7 +1251,6 @@ void engine_maketasks(struct engine *e) {
 
   /* Loop over the proxies. */
   for (int pid = 0; pid < e->nr_proxies; pid++) {
-
     /* Get a handle on the proxy. */
     struct proxy *p = &e->proxies[pid];
 
@@ -1313,7 +1284,6 @@ void engine_maketasks(struct engine *e) {
  */
 
 int engine_marktasks(struct engine *e) {
-
   struct scheduler *s = &e->sched;
   int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
@@ -1323,17 +1293,14 @@ int engine_marktasks(struct engine *e) {
 
   /* Much less to do here if we're on a fixed time-step. */
   if (!(e->policy & engine_policy_multistep)) {
-
     /* Run through the tasks and mark as skip or not. */
     for (k = 0; k < nr_tasks; k++) {
-
       /* Get a handle on the kth task. */
       t = &tasks[ind[k]];
 
       /* Pair? */
       if (t->type == task_type_pair ||
           (t->type == task_type_sub && t->cj != NULL)) {
-
         /* Local pointers. */
         ci = t->ci;
         cj = t->cj;
@@ -1349,24 +1316,20 @@ int engine_marktasks(struct engine *e) {
 
       /* Sort? */
       else if (t->type == task_type_sort) {
-
         /* If all the sorts have been done, make this task implicit. */
         if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1;
       }
     }
 
   } else {
-
     /* Run through the tasks and mark as skip or not. */
     for (k = 0; k < nr_tasks; k++) {
-
       /* Get a handle on the kth task. */
       t = &tasks[ind[k]];
 
       /* Sort-task? Note that due to the task ranking, the sorts
          will all come before the pairs. */
       if (t->type == task_type_sort) {
-
         /* Re-set the flags. */
         t->flags = 0;
         t->skip = 1;
@@ -1376,7 +1339,6 @@ int engine_marktasks(struct engine *e) {
       /* Single-cell task? */
       else if (t->type == task_type_self || t->type == task_type_ghost ||
                (t->type == task_type_sub && t->cj == NULL)) {
-
         /* Set this task's skip. */
         t->skip = (t->ci->dt_min > dt_step);
 
@@ -1385,7 +1347,6 @@ int engine_marktasks(struct engine *e) {
       /* Pair? */
       else if (t->type == task_type_pair ||
                (t->type == task_type_sub && t->cj != NULL)) {
-
         /* Local pointers. */
         ci = t->ci;
         cj = t->cj;
@@ -1437,7 +1398,6 @@ int engine_marktasks(struct engine *e) {
  */
 
 void engine_rebuild(struct engine *e) {
-
   int k;
   struct scheduler *sched = &e->sched;
 
@@ -1499,7 +1459,6 @@ void engine_rebuild(struct engine *e) {
  */
 
 void engine_prepare(struct engine *e) {
-
   int rebuild;
 
   TIMER_TIC
@@ -1551,7 +1510,6 @@ void engine_prepare(struct engine *e) {
  */
 
 void engine_barrier(struct engine *e, int tid) {
-
   /* First, get the barrier mutex. */
   if (pthread_mutex_lock(&e->barrier_mutex) != 0)
     error("Failed to get barrier mutex.");
@@ -1588,7 +1546,6 @@ void engine_barrier(struct engine *e, int tid) {
  */
 
 void engine_collect_kick2(struct cell *c) {
-
   int k, updated = 0;
   float dt_min = FLT_MAX, dt_max = 0.0f;
   double ekin = 0.0, epot = 0.0;
@@ -1755,7 +1712,6 @@ void engine_collect_kick2(struct cell *c) {
  */
 
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
-
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
 
@@ -1788,7 +1744,6 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
  * @param e The #engine.
  */
 void engine_step(struct engine *e) {
-
   int k;
   float dt = e->dt, dt_step, dt_max = 0.0f, dt_min = FLT_MAX;
   double epot = 0.0, ekin = 0.0;
@@ -1987,7 +1942,6 @@ if ( e->nodeID == 0 )
  */
 
 void engine_makeproxies(struct engine *e) {
-
   int i, j, k, ii, jj, kk;
   int cid, cjd, pid, ind[3], *cdim = e->s->cdim;
   struct space *s = e->s;
@@ -2009,7 +1963,6 @@ void engine_makeproxies(struct engine *e) {
   for (ind[0] = 0; ind[0] < cdim[0]; ind[0]++)
     for (ind[1] = 0; ind[1] < cdim[1]; ind[1]++)
       for (ind[2] = 0; ind[2] < cdim[2]; ind[2]++) {
-
         /* Get the cell ID. */
         cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
@@ -2084,10 +2037,10 @@ void engine_makeproxies(struct engine *e) {
  * struct.
  *
  * @param e The #engine.
- * @param grid The grid.
+ * @param ipart initpart structure define the partition technique and any
+ *              additional metadata.
  */
 void engine_split(struct engine *e, struct initpart *ipart) {
-
 #ifdef WITH_MPI
 
   struct space *s = e->s;
@@ -2110,39 +2063,27 @@ void engine_split(struct engine *e, struct initpart *ipart) {
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }
-  }
-  else if (ipart->type == INITPART_RANDOM) {
-
-    /* Random can only be done by one node, each node requires a list of
-     * the sampling positions. */
-    float *samplelist = malloc(sizeof( float ) * e->nr_nodes * 4);
-    if ( samplelist == NULL )
-      error("Failed to allocate samplelist");
-
-    if (e->nodeID == 0) {
-      if ( part_pick_random(s, e->nr_nodes, samplelist) == 0 )
-        error("Failed to partition cells");
+    
+    /* The grid technique can fail, so check for this before proceeding. */
+    if (!part_check_complete(s, (e->nodeID == 0), e->nr_nodes)) {
+      if (e->nodeID == 0)
+        message("Grid initial partition failed, using a vectorised partition");
+      ipart->type = INITPART_VECTORIZE;
+      engine_split(e, ipart);
+      return;
     }
 
-    /* Share the samplelist of points around all the nodes. */
-    int res = MPI_Bcast(samplelist, e->nr_nodes * 4, MPI_FLOAT, 0,
-                        MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res,"Failed to bcast the partition samples.");
-
-    /* And apply to our cells */
-    part_split_random(s, e->nr_nodes, samplelist);
-    free(samplelist);
-  }
-  else if (ipart->type == INITPART_METIS_WEIGHT || ipart->type == INITPART_METIS_NOWEIGHT) {
-
+  } else if (ipart->type == INITPART_METIS_WEIGHT ||
+             ipart->type == INITPART_METIS_NOWEIGHT) {
     /* Simple k-way partition selected by METIS using cell particle counts as
-     * weights or not. Should be best when starting with a inhomogeneous dist. */
+     * weights or not. Should be best when starting with a inhomogeneous dist.
+     */
 
-    /* Space for particles per cell counts, which will be used as weights or not. */
+    /* Space for particles per cell counts, which will be used as weights or
+     * not. */
     int *weights = NULL;
     if (ipart->type == INITPART_METIS_WEIGHT) {
-      if ((weights = malloc(sizeof(int) * s->nr_cells)) == NULL)
+        if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
         error("Failed to allocate weights buffer.");
       bzero(weights, sizeof(int) * s->nr_cells);
 
@@ -2163,8 +2104,9 @@ void engine_split(struct engine *e, struct initpart *ipart) {
           else if (parts[k].x[j] >= dim[j])
             parts[k].x[j] -= dim[j];
         }
-        const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
-                                   parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+        const int cid =
+            cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
+                       parts[k].x[2] * ih[2]);
         weights[cid]++;
       }
 
@@ -2174,48 +2116,50 @@ void engine_split(struct engine *e, struct initpart *ipart) {
         error("Failed to allreduce particle cell weights.");
     }
 
-
     /* Main node does the partition calculation. */
-    int *celllist = malloc(sizeof( int ) * s->nr_cells);
-    if (celllist == NULL)
-      error("Failed to allocate celllist");
-
+    int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
+    if (celllist == NULL) error("Failed to allocate celllist");
     if (e->nodeID == 0)
       part_pick_metis(s, e->nr_nodes, weights, NULL, celllist);
 
     /* Distribute the celllist partition and apply. */
     int res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
-    if (res != MPI_SUCCESS)
-      mpi_error(res,"Failed to bcast the cell list");
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to bcast the cell list");
 
     /* And apply to our cells */
     part_split_metis(s, e->nr_nodes, celllist);
 
+    /* It's not known if this can fail, but check for this before proceeding. */
+    if (!part_check_complete(s, (e->nodeID == 0), e->nr_nodes)) {
+      if (e->nodeID == 0) 
+        message("METIS initial partition failed, using a vectorised partition");
+      ipart->type = INITPART_VECTORIZE;
+      engine_split(e, ipart);
+    }
+
     if (weights != NULL) free(weights);
     free(celllist);
-  }
-  else if (ipart->type == INITPART_VECTORIZE) {
 
-    /* Vectorised selection, guaranteed to work, but not very clumpy in the
-     * selection of regions. */
-    int *samplecells = malloc(sizeof( int ) * e->nr_nodes * 3);
-    if ( samplecells == NULL )
-      error("Failed to allocate samplecells");
+  } else if (ipart->type == INITPART_VECTORIZE) {
+
+    /* Vectorised selection, guaranteed to work for samples less than the
+     * number of cells, but not very clumpy in the selection of regions. */
+    int *samplecells = (int *)malloc(sizeof(int) * e->nr_nodes * 3);
+    if (samplecells == NULL) error("Failed to allocate samplecells");
 
     if (e->nodeID == 0) {
       part_pick_vector(s, e->nr_nodes, samplecells);
     }
 
     /* Share the samplecells around all the nodes. */
-    int res = MPI_Bcast(samplecells, e->nr_nodes * 3, MPI_INT, 0,
-                        MPI_COMM_WORLD);
+    int res =
+        MPI_Bcast(samplecells, e->nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS)
-      mpi_error(res,"Failed to bcast the partition sample cells.");
+      mpi_error(res, "Failed to bcast the partition sample cells.");
 
     /* And apply to our cells */
     part_split_vector(s, e->nr_nodes, samplecells);
     free(samplecells);
-
   }
 
   /* Make the proxies. */
@@ -2259,7 +2203,6 @@ void engine_split(struct engine *e, struct initpart *ipart) {
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy) {
-
   int k;
   float dt_min = dt;
 #if defined(HAVE_SETAFFINITY)

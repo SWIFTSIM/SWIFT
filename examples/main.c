@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
         break;
       case 'p':
-        /* Parition type is one of "g", "r", "m", "w", or "v"; "g" can be
+        /* Parition type is one of "g", "m", "w", or "v"; "g" can be
          * followed by three numbers defining the grid. */
         switch (optarg[0]) {
           case 'g':
@@ -188,9 +188,6 @@ int main(int argc, char *argv[]) {
                          &ipart.grid[2]) != 3) 
                 error("Error parsing grid.");
             }
-            break;
-          case 'r':
-            ipart.type = INITPART_RANDOM;
             break;
           case 'm':
             ipart.type = INITPART_METIS_NOWEIGHT;
@@ -251,7 +248,7 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   if (myrank == 0) {
     message("Running with %i thread(s) per node.", nr_threads);
-    message("Initial partition: %s", initpart_name[ipart.type]);
+    message("Using initial partition %s", initpart_name[ipart.type]);
     if (ipart.type == INITPART_GRID) 
       message("grid set to [ %i %i %i ].", ipart.grid[0], ipart.grid[1], ipart.grid[2]);
     message("Using %s repartitioning", repart_name[reparttype]);

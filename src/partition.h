@@ -25,7 +25,6 @@
 /* Initial partitioning types. */
 enum initpart_type {
   INITPART_GRID = 0,
-  INITPART_RANDOM,
   INITPART_VECTORIZE,
   INITPART_METIS_WEIGHT,
   INITPART_METIS_NOWEIGHT
@@ -52,14 +51,13 @@ enum repart_type {
 /* Simple descriptions of types for reports. */
 extern const char *repart_name[];
 
-int part_pick_random(struct space *s, int nregions, float *samplelist);
-void part_split_random(struct space *s, int nregions, float *samplelist);
-
 void part_pick_vector(struct space *s, int nregions, int *samplecells);
 void part_split_vector(struct space *s, int nregions, int *samplecells);
 
-void part_pick_metis(struct space *s, int nregions, int *vertexw, 
-                     int *edgew, int *celllist);
+void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
+                     int *celllist);
 void part_split_metis(struct space *s, int nregions, int *celllist);
+
+int part_check_complete(struct space *s, int verbose, int nregions);
 
 #endif /* SWIFT_PARTITION_H */
