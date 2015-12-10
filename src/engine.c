@@ -367,7 +367,7 @@ void engine_repartition(struct engine *e) {
 
       /* Get the task weight. */
       int w = (t->toc - t->tic) * wscale;
-      if (w < 0) error("Bad task weight (%" SCIDX ").", w);
+      if (w < 0) error("Bad task weight (%d).", w);
 
       /* Do we need to re-scale? */
       wtot += w;
@@ -539,7 +539,7 @@ void engine_repartition(struct engine *e) {
       /* Check that all cells have good values. */
       for (int k = 0; k < nr_cells; k++)
         if (celllist[k] < 0 || celllist[k] >= nr_nodes)
-          error("Got bad nodeID %" PRIDX " for cell %i.", celllist[k], k);
+          error("Got bad nodeID %d for cell %i.", celllist[k], k);
 
       /* Check that the partition is complete and all nodes have some work. */
       int present[nr_nodes];
