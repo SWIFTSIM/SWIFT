@@ -15,15 +15,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -I../src -DCPU_TPS=2.67e9 $(HDF5_CPPFLAGS)
+AM_CFLAGS = -I../src -DCPU_TPS=2.67e9 $(HDF5_CPPFLAGS) -DTIMER
+
 
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testReading.sh testSingle testTimeIntegration testSPHStep
+TESTS = testGreetings testReading.sh testSingle testTimeIntegration
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration testSPHStep
+check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration testSPHStep testVectorize
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -35,5 +36,5 @@ testTimeIntegration_SOURCES = testTimeIntegration.c
 testSPHStep_SOURCES = testSPHStep.c
 
 testSingle_SOURCES = testSingle.c
-testSingle_CFLAGS = $(MYFLAGS) $(AM_CFLAGS)
-testSingle_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
+
+testVectorize_SOURCES = testVectorize.c

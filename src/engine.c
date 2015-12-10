@@ -91,15 +91,11 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
   int k;
   struct scheduler *s = &e->sched;
 
-  //  message("in here");
-
   /* Am I the super-cell? */
   if (super == NULL && c->nr_tasks > 0) {
 
     /* Remember me. */
     super = c;
-
-    // message("Adding tasks");
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -177,7 +173,7 @@ void engine_redistribute(struct engine *e) {
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
-  parts_sort(s->parts, s->xparts, dest, s->nr_parts, 0, nr_nodes - 1);
+  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -282,7 +278,7 @@ void engine_redistribute(struct engine *e) {
   free(dest);
 
 #else
-  error("SWIFT was not compiled with MPI and METIS support.");
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -310,14 +306,14 @@ void engine_repartition(struct engine *e) {
   idx_t wtot = 0;
   idx_t wmax = 1e9 / e->nr_nodes;
   idx_t wmin;
-  
+
   /* Clear the repartition flag. */
   e->forcerepart = 0;
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
   if (nr_nodes == 1) return;
-  
+
   /* Allocate the inds and weights. */
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 *nr_cells)) == NULL ||
       (weights_v = (idx_t *)malloc(sizeof(idx_t) *nr_cells)) == NULL ||
@@ -577,7 +573,7 @@ void engine_repartition(struct engine *e) {
     if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
                                  NULL, weights_e, &idx_nr_nodes, NULL, NULL,
                                  options, &objval, nodeIDs) != METIS_OK)
-      error("Call to METIS_PartGrapRecursive failed.");
+      error("Call to METIS_PartGraphRecursive failed.");
 
     /* Dump the 3d array of cell IDs. */
     /* printf( "engine_repartition: nodeIDs = reshape( [" );
@@ -656,29 +652,28 @@ void engine_repartition(struct engine *e) {
 #endif
 }
 
-/* /\** */
-/*  * @brief Add up/down gravity tasks to a cell hierarchy. */
-/*  * */
-/*  * @param e The #engine. */
-/*  * @param c The #cell */
-/*  * @param up The upward gravity #task. */
-/*  * @param down The downward gravity #task. */
-/*  *\/ */
-
-/* void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
+/**
+ * @brief Add up/down gravity tasks to a cell hierarchy.
+ *
+ * @param e The #engine.
+ * @param c The #cell
+ * @param up The upward gravity #task.
+ * @param down The downward gravity #task.
  */
-/*                           struct task *down) { */
 
-/*   /\* Link the tasks to this cell. *\/ */
-/*   c->grav_up = up; */
-/*   c->grav_down = down; */
+void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
+                          struct task *down) {
 
-/*   /\* Recurse? *\/ */
-/*   if (c->split) */
-/*     for (int k = 0; k < 8; k++) */
-/*       if (c->progeny[k] != NULL) */
-/*         engine_addtasks_grav(e, c->progeny[k], up, down); */
-/* } */
+  /* Link the tasks to this cell. */
+  c->grav_up = up;
+  c->grav_down = down;
+
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_grav(e, c->progeny[k], up, down);
+}
 
 /**
  * @brief Add send tasks to a hierarchy of cells.
@@ -1104,18 +1099,16 @@ void engine_maketasks(struct engine *e) {
         }
       }
 
-  /* /\* Add the gravity mm tasks. *\/ */
-  /* for (i = 0; i < nr_cells; i++) */
-  /*   if (cells[i].gcount > 0) { */
-  /*     scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-   */
-  /*                       &cells[i], NULL, 0); */
-  /*     for (j = i + 1; j < nr_cells; j++) */
-  /*       if (cells[j].gcount > 0) */
-  /*         scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1,
-   * 0, */
-  /*                           &cells[i], &cells[j], 0); */
-  /*   } */
+  /* Add the gravity mm tasks. */
+  for (i = 0; i < nr_cells; i++)
+    if (cells[i].gcount > 0) {
+      scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
+                        &cells[i], NULL, 0);
+      for (j = i + 1; j < nr_cells; j++)
+        if (cells[j].gcount > 0)
+          scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
+                            &cells[i], &cells[j], 0);
+    }
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
@@ -1129,28 +1122,21 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
-  //space_link_cleanup(s); // MATTHIEU
+  /* Add the gravity up/down tasks at the top-level cells and push them down. */
+  for (k = 0; k < nr_cells; k++)
+    if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
 
-  /* /\* Add the gravity up/down tasks at the top-level cells and push them
-   * down. *\/ */
-  /* for (k = 0; k < nr_cells; k++) */
-  /*   if (cells[k].nodeID == nodeID && cells[k].gcount > 0) { */
+      /* Create tasks at top level. */
+      struct task *up =
+          scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0, 0,
+                            &cells[k], NULL, 0);
+      struct task *down =
+          scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0, 0,
+                            &cells[k], NULL, 0);
 
-  /*     /\* Create tasks at top level. *\/ */
-  /*     struct task *up = */
-  /*         scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0,
-   * 0, */
-  /*                           &cells[k], NULL, 0); */
-  /*     struct task *down = */
-  /*         scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0,
-   * 0, */
-  /*                           &cells[k], NULL, 0); */
-
-  /*     /\* Push tasks down the cell hierarchy. *\/ */
-  /*     engine_addtasks_grav(e, &cells[k], up, down); */
-  /*   } */
-
-  message("nb tasks: %d", sched->nr_tasks);
+      /* Push tasks down the cell hierarchy. */
+      engine_addtasks_grav(e, &cells[k], up, down);
+    }
 
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
@@ -1173,42 +1159,42 @@ void engine_maketasks(struct engine *e) {
     if (t->type == task_type_self) {
       atomic_inc(&t->ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        t->ci->link_density = engine_addlink(e, t->ci->link_density, t);
-        atomic_inc(&t->ci->nr_link_density);
+        t->ci->density = engine_addlink(e, t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
       }
     } else if (t->type == task_type_pair) {
       atomic_inc(&t->ci->nr_tasks);
       atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        t->ci->link_density = engine_addlink(e, t->ci->link_density, t);
-        atomic_inc(&t->ci->nr_link_density);
-        t->cj->link_density = engine_addlink(e, t->cj->link_density, t);
-        atomic_inc(&t->cj->nr_link_density);
+        t->ci->density = engine_addlink(e, t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
+        t->cj->density = engine_addlink(e, t->cj->density, t);
+        atomic_inc(&t->cj->nr_density);
       }
     } else if (t->type == task_type_sub) {
       atomic_inc(&t->ci->nr_tasks);
       if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        t->ci->link_density = engine_addlink(e, t->ci->link_density, t);
-        atomic_inc(&t->ci->nr_link_density);
+        t->ci->density = engine_addlink(e, t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
         if (t->cj != NULL) {
-          t->cj->link_density = engine_addlink(e, t->cj->link_density, t);
-          atomic_inc(&t->cj->nr_link_density);
+          t->cj->density = engine_addlink(e, t->cj->density, t);
+          atomic_inc(&t->cj->nr_density);
         }
       }
     }
 
-    /* /\* Link gravity multipole tasks to the up/down tasks. *\/ */
-    /* if (t->type == task_type_grav_mm || */
-    /*     (t->type == task_type_sub && t->subtype == task_subtype_grav)) { */
-    /*   atomic_inc(&t->ci->nr_tasks); */
-    /*   scheduler_addunlock(sched, t->ci->grav_up, t); */
-    /*   scheduler_addunlock(sched, t, t->ci->grav_down); */
-    /*   if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) { */
-    /*     scheduler_addunlock(sched, t->cj->grav_up, t); */
-    /*     scheduler_addunlock(sched, t, t->cj->grav_down); */
-    /*   } */
-    /* } */
+    /* Link gravity multipole tasks to the up/down tasks. */
+    if (t->type == task_type_grav_mm ||
+        (t->type == task_type_sub && t->subtype == task_subtype_grav)) {
+      atomic_inc(&t->ci->nr_tasks);
+      scheduler_addunlock(sched, t->ci->grav_up, t);
+      scheduler_addunlock(sched, t, t->ci->grav_down);
+      if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) {
+        scheduler_addunlock(sched, t->cj->grav_up, t);
+        scheduler_addunlock(sched, t, t->cj->grav_down);
+      }
+    }
   }
 
   /* Append a ghost task to each cell, and add kick tasks to the
@@ -1235,8 +1221,8 @@ void engine_maketasks(struct engine *e) {
                              t->ci, NULL, 0);
       scheduler_addunlock(sched, t->ci->super->ghost, t2);
       scheduler_addunlock(sched, t2, t->ci->super->kick);
-      t->ci->link_force = engine_addlink(e, t->ci->link_force, t2);
-      atomic_inc(&t->ci->nr_link_force);
+      t->ci->force = engine_addlink(e, t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
     }
 
     /* Otherwise, pair interaction? */
@@ -1255,10 +1241,10 @@ void engine_maketasks(struct engine *e) {
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
       }
-      t->ci->link_force = engine_addlink(e, t->ci->link_force, t2);
-      atomic_inc(&t->ci->nr_link_force);
-      t->cj->link_force = engine_addlink(e, t->cj->link_force, t2);
-      atomic_inc(&t->cj->nr_link_force);
+      t->ci->force = engine_addlink(e, t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
+      t->cj->force = engine_addlink(e, t->cj->force, t2);
+      atomic_inc(&t->cj->nr_force);
     }
 
     /* Otherwise, sub interaction? */
@@ -1266,23 +1252,21 @@ void engine_maketasks(struct engine *e) {
       t2 = scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
                              0, t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->ci->super->kick);
       }
       if (t->cj != NULL && t->cj->nodeID == nodeID &&
           t->ci->super != t->cj->super) {
-        scheduler_addunlock(sched, t->cj->super->init, t);
         scheduler_addunlock(sched, t, t->cj->super->ghost);
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
       }
-      t->ci->link_force = engine_addlink(e, t->ci->link_force, t2);
-      atomic_inc(&t->ci->nr_link_force);
+      t->ci->force = engine_addlink(e, t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
       if (t->cj != NULL) {
-        t->cj->link_force = engine_addlink(e, t->cj->link_force, t2);
-        atomic_inc(&t->cj->nr_link_force);
+        t->cj->force = engine_addlink(e, t->cj->force, t2);
+        atomic_inc(&t->cj->nr_force);
       }
     }
 
@@ -1341,99 +1325,99 @@ int engine_marktasks(struct engine *e) {
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
-  /* /\* Much less to do here if we're on a fixed time-step. *\/ */
-  /* if (!(e->policy & engine_policy_multistep)) { */
+  /* Much less to do here if we're on a fixed time-step. */
+  if (!(e->policy & engine_policy_multistep)) {
 
-  /*   /\* Run through the tasks and mark as skip or not. *\/ */
-  /*   for (k = 0; k < nr_tasks; k++) { */
+    /* Run through the tasks and mark as skip or not. */
+    for (k = 0; k < nr_tasks; k++) {
 
-  /*     /\* Get a handle on the kth task. *\/ */
-  /*     t = &tasks[ind[k]]; */
+      /* Get a handle on the kth task. */
+      t = &tasks[ind[k]];
 
-  /*     /\* Pair? *\/ */
-  /*     if (t->type == task_type_pair || */
-  /*         (t->type == task_type_sub && t->cj != NULL)) { */
+      /* Pair? */
+      if (t->type == task_type_pair ||
+          (t->type == task_type_sub && t->cj != NULL)) {
 
-  /*       /\* Local pointers. *\/ */
-  /*       ci = t->ci; */
-  /*       cj = t->cj; */
+        /* Local pointers. */
+        ci = t->ci;
+        cj = t->cj;
 
-  /*       /\* Too much particle movement? *\/ */
-  /*       if (t->tight && */
-  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin
-   * || */
-  /*            ci->dx_max > space_maxreldx * ci->h_max || */
-  /*            cj->dx_max > space_maxreldx * cj->h_max)) */
-  /*         return 1; */
+        /* Too much particle movement? */
+        if (t->tight &&
+            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+             ci->dx_max > space_maxreldx * ci->h_max ||
+             cj->dx_max > space_maxreldx * cj->h_max))
+          return 1;
 
-  /*     } */
+      }
 
-  /*     /\* Sort? *\/ */
-  /*     else if (t->type == task_type_sort) { */
+      /* Sort? */
+      else if (t->type == task_type_sort) {
 
-  /*       /\* If all the sorts have been done, make this task implicit. *\/ */
-  /*       if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1; */
-  /*     } */
-  /*   } */
-
-  /* } else { */
-
-  /* Run through the tasks and mark as skip or not. */
-  for (k = 0; k < nr_tasks; k++) {
-
-    /* Get a handle on the kth task. */
-    t = &tasks[ind[k]];
-
-    /* Sort-task? Note that due to the task ranking, the sorts
-       will all come before the pairs. */
-    if (t->type == task_type_sort) {
-
-      /* Re-set the flags. */
-      t->flags = 0;
-      t->skip = 1;
-
+        /* If all the sorts have been done, make this task implicit. */
+        if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1;
+      }
     }
 
-    /* Single-cell task? */
-    else if (t->type == task_type_self || t->type == task_type_ghost ||
-             (t->type == task_type_sub && t->cj == NULL)) {
+  } else {
+
+    /* Run through the tasks and mark as skip or not. */
+    for (k = 0; k < nr_tasks; k++) {
+
+      /* Get a handle on the kth task. */
+      t = &tasks[ind[k]];
+
+      /* Sort-task? Note that due to the task ranking, the sorts
+         will all come before the pairs. */
+      if (t->type == task_type_sort) {
+
+        /* Re-set the flags. */
+        t->flags = 0;
+        t->skip = 1;
+
+      }
+
+      /* Single-cell task? */
+      else if (t->type == task_type_self || t->type == task_type_ghost ||
+               (t->type == task_type_sub && t->cj == NULL)) {
 
       /* Set this task's skip. */
       // t->skip = (t->ci->t_end_min >= t_end);
 
-    }
+      }
 
-    /* Pair? */
-    else if (t->type == task_type_pair ||
-             (t->type == task_type_sub && t->cj != NULL)) {
+      /* Pair? */
+      else if (t->type == task_type_pair ||
+               (t->type == task_type_sub && t->cj != NULL)) {
 
-      /* Local pointers. */
-      ci = t->ci;
-      cj = t->cj;
+        /* Local pointers. */
+        ci = t->ci;
+        cj = t->cj;
 
       /* Set this task's skip. */
       // t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
 
-      /* Too much particle movement? */
-      if (t->tight &&
-          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
-        return 1;
+        /* Too much particle movement? */
+        if (t->tight &&
+            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+             ci->dx_max > space_maxreldx * ci->h_max ||
+             cj->dx_max > space_maxreldx * cj->h_max))
+          return 1;
 
-      /* Set the sort flags. */
-      if (!t->skip && t->type == task_type_pair) {
-        if (!(ci->sorted & (1 << t->flags))) {
-          ci->sorts->flags |= (1 << t->flags);
-          ci->sorts->skip = 0;
+        /* Set the sort flags. */
+        if (!t->skip && t->type == task_type_pair) {
+          if (!(ci->sorted & (1 << t->flags))) {
+            ci->sorts->flags |= (1 << t->flags);
+            ci->sorts->skip = 0;
+          }
+          if (!(cj->sorted & (1 << t->flags))) {
+            cj->sorts->flags |= (1 << t->flags);
+            cj->sorts->skip = 0;
+          }
         }
-        if (!(cj->sorted & (1 << t->flags))) {
-          cj->sorts->flags |= (1 << t->flags);
-          cj->sorts->skip = 0;
-        }
+
       }
 
-    }
 
     /* Kick? */
     else if (t->type == task_type_kick)
@@ -1451,7 +1435,7 @@ int engine_marktasks(struct engine *e) {
     else if (t->type == task_type_none)
       t->skip = 1;
   }
-  //}
+  }
 
   // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
 
@@ -1847,6 +1831,13 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
  */
 void engine_init_particles(struct engine *e) {
 
+  int k;
+  float dt_max = 0.0f, dt_min = FLT_MAX;
+  double epot = 0.0, ekin = 0.0;
+  float mom[3] = {0.0, 0.0, 0.0};
+  float ang[3] = {0.0, 0.0, 0.0};
+  int count = 0;
+  struct cell *c;
   struct space *s = e->s;
 
   // engine_repartition(e);
@@ -1973,6 +1964,12 @@ void engine_step(struct engine *e) {
   count = in[0];
   ekin = in[1];
   epot = in[2];
+/* int nr_parts;
+if ( MPI_Allreduce( &s->nr_parts , &nr_parts , 1 , MPI_INT , MPI_SUM ,
+MPI_COMM_WORLD ) != MPI_SUCCESS )
+    error( "Failed to aggregate particle count." );
+if ( e->nodeID == 0 )
+    message( "nr_parts=%i." , nr_parts ); */
 #endif
 
   message("t_end_min=%f t_end_max=%f", t_end_min, t_end_max);

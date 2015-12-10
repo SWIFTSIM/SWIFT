@@ -19,6 +19,12 @@
  *
  ******************************************************************************/
 
+#ifndef SWIFT_TOOL_H
+#define SWIFT_TOOL_H
+
+#include "runner.h"
+#include "cell.h"
+
 void factor(int value, int *f1, int *f2);
 void density_dump(int N);
 void pairs_single_grav(double *dim, long long int pid,
@@ -26,5 +32,9 @@ void pairs_single_grav(double *dim, long long int pid,
 void pairs_single_density(double *dim, long long int pid,
                           struct part *__restrict__ parts, int N, int periodic);
 
+void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj);
+
 void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
               int periodic);
+
+#endif /* SWIFT_TOOL_H */

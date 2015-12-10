@@ -139,6 +139,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
                  float timeBegin, float timeEnd,
 		 float dt_min, float dt_max);
+void engine_launch(struct engine *e, int nr_runners, unsigned int mask);
 void engine_prepare(struct engine *e);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e);

@@ -76,7 +76,7 @@ struct scheduler {
   struct task **unlocks;
   int *unlock_ind;
   int nr_unlocks, size_unlocks;
-  
+
   /* Lock for this scheduler. */
   lock_type lock;
 
