@@ -1134,10 +1134,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
 struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
-  int k, res;
-  struct task *t2, *next = NULL;
-  struct cell *super = t->ci->super;
-
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
