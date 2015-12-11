@@ -74,7 +74,11 @@ int engine_rank;
 
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
-  struct link *res = &e->links[atomic_inc(&e->nr_links)];
+  const int ind = atomic_inc(&e->nr_links);
+  if (ind >= e->size_links) {
+    error("Link table overflow.");
+  }
+  struct link *res = &e->links[ind];
   res->next = l;
   res->t = t;
   return res;
@@ -314,7 +318,7 @@ void engine_repartition(struct engine *e) {
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
-  if ( nr_nodes == 1 ) return;
+  if (nr_nodes == 1) return;
 
   /* Allocate the inds and weights. */
   if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 *nr_cells)) == NULL ||
@@ -585,7 +589,7 @@ void engine_repartition(struct engine *e) {
     /* Check that the nodeIDs are ok. */
     for (k = 0; k < nr_cells; k++)
       if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
-        error("Got bad nodeID %"PRIDX" for cell %i.", nodeIDs[k], k);
+        error("Got bad nodeID %" PRIDX " for cell %i.", nodeIDs[k], k);
 
     /* Check that the partition is complete and all nodes have some work. */
     int present[nr_nodes];
@@ -593,7 +597,7 @@ void engine_repartition(struct engine *e) {
     for (i = 0; i < nr_nodes; i++) present[i] = 0;
     for (i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
     for (i = 0; i < nr_nodes; i++) {
-      if (! present[i]) {
+      if (!present[i]) {
         failed = 1;
         message("Node %d is not present after repartition", i);
       }
@@ -602,11 +606,11 @@ void engine_repartition(struct engine *e) {
     /* If partition failed continue with the current one, but make this
      * clear. */
     if (failed) {
-      message("WARNING: METIS repartition has failed, continuing with "
-              "the current partition, load balance will not be optimal");
+      message(
+          "WARNING: METIS repartition has failed, continuing with "
+          "the current partition, load balance will not be optimal");
       for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
     }
-    
   }
 
 /* Broadcast the result of the partition. */
@@ -1106,7 +1110,8 @@ void engine_maketasks(struct engine *e) {
      is the number of cells (s->tot_cells) times the number of neighbours (27)
      times the number of interaction types (2, density and force). */
   if (e->links != NULL) free(e->links);
-  if ((e->links = malloc(sizeof(struct link) * s->tot_cells * 27 * 2)) == NULL)
+  e->size_links = s->tot_cells * 27 * 2;
+  if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
@@ -1281,6 +1286,9 @@ void engine_maketasks(struct engine *e) {
   }
 
 #endif
+
+  /* Set the unlocks per task. */
+  scheduler_set_unlocks(sched);
 
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
@@ -1805,7 +1813,7 @@ void engine_step(struct engine *e) {
   if (e->step == 0 || !(e->policy & engine_policy_fixdt)) {
     TIMER_TIC
     engine_launch(e, (e->nr_threads > 8) ? 8 : e->nr_threads,
-                  (1 << task_type_kick1) | (1 << task_type_link));
+                  (1 << task_type_kick1));
     TIMER_TOC(timer_kick1);
   }
 
@@ -1836,8 +1844,7 @@ void engine_step(struct engine *e) {
                     (1 << task_type_ghost) | (1 << task_type_kick2) |
                     (1 << task_type_send) | (1 << task_type_recv) |
                     (1 << task_type_grav_pp) | (1 << task_type_grav_mm) |
-                    (1 << task_type_grav_up) | (1 << task_type_grav_down) |
-                    (1 << task_type_link));
+                    (1 << task_type_grav_up) | (1 << task_type_grav_down));
 
   TIMER_TOC(timer_runners);
 
@@ -2226,12 +2233,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
                           &s->cells[k], NULL, 0);
-  scheduler_ranktasks(&e->sched);
 
   /* Create the sorting tasks. */
   for (i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
+
+  scheduler_ranktasks(&e->sched);
 
   /* Allocate and init the threads. */
   if ((e->runners =
