@@ -500,13 +500,13 @@ void engine_repartition(struct engine *e) {
     if ((wmax - wmin) > engine_maxmetisweight) {
       wscale = engine_maxmetisweight / (wmax - wmin);
       for (k = 0; k < 26 * nr_cells; k++) {
-	weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
+        weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
       }
       for (k = 0; k < nr_cells; k++) {
-	weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
+        weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
       }
     }
-    
+
     /* Check that the edge weights are fully symmetric. */
     /* for ( cid = 0 ; cid < nr_cells ; cid++ )
         for ( k = 0 ; k < 26 ; k++ ) {
@@ -565,7 +565,7 @@ void engine_repartition(struct engine *e) {
     /* Call METIS. */
     idx_t one = 1, idx_nr_cells = nr_cells, idx_nr_nodes = nr_nodes;
     idx_t objval;
-    
+
     /* Dump graph in METIS format */
     /*dumpMETISGraph("metis_graph", idx_nr_cells, one, offsets, inds,
                    weights_v, NULL, weights_e);*/
@@ -581,11 +581,10 @@ void engine_repartition(struct engine *e) {
         printf( "%i " , (int)nodeIDs[ i ] );
     printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
 
-
     /* Check that the nodeIDs are ok. */
     for (k = 0; k < nr_cells; k++)
       if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
-	error("Got bad nodeID %" PRIDX " for cell %i.", nodeIDs[k], k);
+        error("Got bad nodeID %" PRIDX " for cell %i.", nodeIDs[k], k);
 
     /* Check that the partition is complete and all nodes have some work. */
     int present[nr_nodes];
@@ -594,8 +593,8 @@ void engine_repartition(struct engine *e) {
     for (i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
     for (i = 0; i < nr_nodes; i++) {
       if (!present[i]) {
-	failed = 1;
-	message("Node %d is not present after repartition", i);
+        failed = 1;
+        message("Node %d is not present after repartition", i);
       }
     }
 
@@ -603,11 +602,10 @@ void engine_repartition(struct engine *e) {
      * clear. */
     if (failed) {
       message(
-	      "WARNING: METIS repartition has failed, continuing with "
-	      "the current partition, load balance will not be optimal");
+          "WARNING: METIS repartition has failed, continuing with "
+          "the current partition, load balance will not be optimal");
       for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
     }
-    
   }
 
 /* Broadcast the result of the partition. */
@@ -1061,8 +1059,8 @@ void engine_maketasks(struct engine *e) {
   /* Add the space sorting tasks. */
   for (i = 0; i < e->nr_threads; i++)
     scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
-		      NULL, 0);
-  
+                      NULL, 0);
+
   /* Run through the highest level of cells and add pairs. */
   for (i = 0; i < cdim[0]; i++)
     for (j = 0; j < cdim[1]; j++)
@@ -1299,7 +1297,7 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the unlocks per task. */
   scheduler_set_unlocks(sched);
-  
+
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
 
@@ -1381,8 +1379,8 @@ int engine_marktasks(struct engine *e) {
       else if (t->type == task_type_self || t->type == task_type_ghost ||
                (t->type == task_type_sub && t->cj == NULL)) {
 
-      /* Set this task's skip. */
-      // t->skip = (t->ci->t_end_min >= t_end);
+        /* Set this task's skip. */
+        // t->skip = (t->ci->t_end_min >= t_end);
 
       }
 
@@ -1394,8 +1392,8 @@ int engine_marktasks(struct engine *e) {
         ci = t->ci;
         cj = t->cj;
 
-      /* Set this task's skip. */
-      // t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
+        /* Set this task's skip. */
+        // t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
 
         /* Too much particle movement? */
         if (t->tight &&
@@ -1418,23 +1416,22 @@ int engine_marktasks(struct engine *e) {
 
       }
 
+      /* Kick? */
+      else if (t->type == task_type_kick)
+        t->skip = 0;
 
-    /* Kick? */
-    else if (t->type == task_type_kick)
-      t->skip = 0;
+      /* Drift? */
+      else if (t->type == task_type_drift)
+        t->skip = 0;
 
-    /* Drift? */
-    else if (t->type == task_type_drift)
-      t->skip = 0;
+      /* Init? */
+      else if (t->type == task_type_init)
+        t->skip = 0;
 
-    /* Init? */
-    else if (t->type == task_type_init)
-      t->skip = 0;
-
-    /* None? */
-    else if (t->type == task_type_none)
-      t->skip = 1;
-  }
+      /* None? */
+      else if (t->type == task_type_none)
+        t->skip = 1;
+    }
   }
 
   // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
@@ -1811,16 +1808,16 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   pthread_cond_broadcast(&e->sched.sleep_cond);
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
-  //message("Before barrier");
-  //fflush(stdout);
+  // message("Before barrier");
+  // fflush(stdout);
 
   /* Sit back and wait for the runners to come home. */
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
 
-  //message("After barrier");
-  //fflush(stdout);
+  // message("After barrier");
+  // fflush(stdout);
 }
 
 /**
@@ -1985,15 +1982,15 @@ if ( e->nodeID == 0 )
 
   scheduler_print_tasks(&e->sched, "tasks_after_drift.dat");
 
-  //error("Done drift");
-  
+  // error("Done drift");
+
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
 
   /* Prepare the space. */
   engine_prepare(e);
 
-  //engine_maketasks(e);
+  // engine_maketasks(e);
 
   // engine_marktasks(e);
 
@@ -2005,15 +2002,15 @@ if ( e->nodeID == 0 )
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-		(1 << task_type_pair) | (1 << task_type_sub) |
-		(1 << task_type_init) | (1 << task_type_ghost) |
-		(1 << task_type_kick) | (1 << task_type_send) |
-		(1 << task_type_recv));
+                    (1 << task_type_pair) | (1 << task_type_sub) |
+                    (1 << task_type_init) | (1 << task_type_ghost) |
+                    (1 << task_type_kick) | (1 << task_type_send) |
+                    (1 << task_type_recv));
 
   scheduler_print_tasks(&e->sched, "tasks_after.dat");
 
-  //error("done step");
-  
+  // error("done step");
+
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);
@@ -2184,8 +2181,7 @@ void engine_split(struct engine *e, int *grid) {
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd,
-		 float dt_min, float dt_max) {
+                 float timeBegin, float timeEnd, float dt_min, float dt_max) {
 
   int k;
 #if defined(HAVE_SETAFFINITY)
@@ -2270,13 +2266,15 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   scheduler_init(&e->sched, e->s, nr_queues, scheduler_flag_steal, e->nodeID);
   s->nr_queues = nr_queues;
 
+  scheduler_reset(&e->sched, 2 * s->tot_cells + e->nr_threads);
+
   /* Create the sorting tasks. */
   for (i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
-		      NULL, 0);
+                      NULL, 0);
 
   scheduler_ranktasks(&e->sched);
-  
+
   /* Allocate and init the threads. */
   if ((e->runners =
            (struct runner *)malloc(sizeof(struct runner) * nr_threads)) == NULL)
