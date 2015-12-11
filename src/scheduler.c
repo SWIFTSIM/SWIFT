@@ -46,6 +46,8 @@
 #include "kernel.h"
 #include "timers.h"
 
+extern struct task *store;
+
 /**
  * @brief Add an unlock_task to the given task.
  *
@@ -961,6 +963,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
+  store = NULL;
+
   /* Store the mask */
   s->mask = mask | (1 << task_type_rewait);
 
@@ -978,6 +982,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   const int num_rewait_tasks = s->nr_queues > s->size - s->nr_tasks
                                    ? s->size - s->nr_tasks
                                    : s->nr_queues;
+
   const int waiting_old =
       s->waiting;  // Remember that engine_launch may fiddle with this value.
   for (int k = 0; k < num_rewait_tasks; k++) {
@@ -1003,6 +1008,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   pthread_mutex_unlock(&s->sleep_mutex);
   /* message("waiting tasks took %.3f ms.",
           (double)(getticks() - tic) / CPU_TPS * 1000); */
+
+  scheduler_print_tasks(s, "tasks_start.dat");
 
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
@@ -1043,6 +1050,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->implicit) {
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
+
+      if (t2 == store) {
+        message("Unlocked by task %s-%s address: %p", taskID_names[t->type],
+                subtaskID_names[t->subtype], t);
+      }
+
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
   }
@@ -1137,10 +1150,20 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
+  if (t == store)
+    message("\nChecking task %s-%s address: %p", taskID_names[t->type],
+            subtaskID_names[t->subtype], t);
+
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
+
+    if (t2 == store) {
+      message("Unlocked by task %s-%s address: %p", taskID_names[t->type],
+              subtaskID_names[t->subtype], t);
+    }
+
     int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
@@ -1175,9 +1198,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
  */
 
 struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
-
-  int k, res;
-  struct task *t2, *next = NULL;
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
@@ -1337,28 +1357,27 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
   s->tasks_next = 0;
 }
 
-
 /**
  * @brief Prints the list of tasks to a file
  *
  * @param s The #scheduler
  * @param fileName Name of the file to write to
  */
- void scheduler_print_tasks(struct scheduler *s, char *fileName) {
+void scheduler_print_tasks(struct scheduler *s, char *fileName) {
 
-   const int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
-   struct task *t, *tasks = s->tasks;
+  const int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
+  struct task *t, *tasks = s->tasks;
 
-   FILE *file = fopen(fileName, "w");
+  FILE *file = fopen(fileName, "w");
 
-   fprintf(file, "# Rank  Name  Subname  unlocks  waits\n");
+  fprintf(file, "# Rank  Name  Subname  unlocks  waits\n");
 
-   for (int k = nr_tasks - 1; k >= 0; k--) {
-     t = &tasks[tid[k]];
-     if (!((1 << t->type)) || t->skip) continue;
-     fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type],
-	     subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
-   }
+  for (int k = nr_tasks - 1; k >= 0; k--) {
+    t = &tasks[tid[k]];
+    if (!((1 << t->type)) || t->skip) continue;
+    fprintf(file, "%d %s %s %d %d\n", k, taskID_names[t->type],
+            subtaskID_names[t->subtype], t->nr_unlock_tasks, t->wait);
+  }
 
-   fclose(file);
- }
+  fclose(file);
+}

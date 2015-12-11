@@ -1323,41 +1323,41 @@ int engine_marktasks(struct engine *e) {
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
-  /* Much less to do here if we're on a fixed time-step. */
-  if (!(e->policy & engine_policy_multistep)) {
+  /* /\* Much less to do here if we're on a fixed time-step. *\/ */
+  /* if (!(e->policy & engine_policy_multistep)) { */
 
-    /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+  /*   /\* Run through the tasks and mark as skip or not. *\/ */
+  /*   for (k = 0; k < nr_tasks; k++) { */
 
-      /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
+  /*     /\* Get a handle on the kth task. *\/ */
+  /*     t = &tasks[ind[k]]; */
 
-      /* Pair? */
-      if (t->type == task_type_pair ||
-          (t->type == task_type_sub && t->cj != NULL)) {
+  /*     /\* Pair? *\/ */
+  /*     if (t->type == task_type_pair || */
+  /*         (t->type == task_type_sub && t->cj != NULL)) { */
 
-        /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
+  /*       /\* Local pointers. *\/ */
+  /*       ci = t->ci; */
+  /*       cj = t->cj; */
 
-        /* Too much particle movement? */
-        if (t->tight &&
-            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-             ci->dx_max > space_maxreldx * ci->h_max ||
-             cj->dx_max > space_maxreldx * cj->h_max))
-          return 1;
+  /*       /\* Too much particle movement? *\/ */
+  /*       if (t->tight && */
+  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin || */
+  /*            ci->dx_max > space_maxreldx * ci->h_max || */
+  /*            cj->dx_max > space_maxreldx * cj->h_max)) */
+  /*         return 1; */
 
-      }
+  /*     } */
 
-      /* Sort? */
-      else if (t->type == task_type_sort) {
+  /*     /\* Sort? *\/ */
+  /*     else if (t->type == task_type_sort) { */
 
-        /* If all the sorts have been done, make this task implicit. */
-        if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1;
-      }
-    }
+  /*       /\* If all the sorts have been done, make this task implicit. *\/ */
+  /*       if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1; */
+  /*     } */
+  /*   } */
 
-  } else {
+  /* } else { */
 
     /* Run through the tasks and mark as skip or not. */
     for (k = 0; k < nr_tasks; k++) {
@@ -1432,7 +1432,7 @@ int engine_marktasks(struct engine *e) {
       else if (t->type == task_type_none)
         t->skip = 1;
     }
-  }
+    //}
 
   // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
 
@@ -1841,15 +1841,15 @@ void engine_init_particles(struct engine *e) {
 
   engine_prepare(e);
 
-  engine_print(e);
+  //engine_print(e);
 
   // engine_maketasks(e);
 
-  engine_print(e);
+  //engine_print(e);
 
   engine_marktasks(e);
 
-  engine_print(e);
+  //engine_print(e);
 
   fflush(stdout);
   message("Engine prepared");
@@ -1990,7 +1990,7 @@ if ( e->nodeID == 0 )
   /* Prepare the space. */
   engine_prepare(e);
 
-  // engine_maketasks(e);
+  //engine_maketasks(e);
 
   // engine_marktasks(e);
 
@@ -2002,14 +2002,14 @@ if ( e->nodeID == 0 )
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_kick) | (1 << task_type_send) |
-                    (1 << task_type_recv));
+		(1 << task_type_pair) | (1 << task_type_sub) |
+		(1 << task_type_init) | (1 << task_type_ghost) |
+		(1 << task_type_kick) | (1 << task_type_send) |
+		(1 << task_type_recv));
 
   scheduler_print_tasks(&e->sched, "tasks_after.dat");
 
-  // error("done step");
+  error("done step");
 
   TIMER_TOC(timer_runners);
 
