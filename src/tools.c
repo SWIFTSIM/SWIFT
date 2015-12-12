@@ -19,7 +19,6 @@
  *
  ******************************************************************************/
 
-
 #include <math.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -30,7 +29,6 @@
 #include "cell.h"
 #include "tools.h"
 #include "swift.h"
-
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -48,8 +46,6 @@ void factor(int value, int *f1, int *f2) {
     }
   }
 }
-
-
 
 /**
  * @brief Compute the average number of pairs per particle using
@@ -180,6 +176,66 @@ void pairs_single_density(double *dim, long long int pid,
   fflush(stdout);
 }
 
+void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  float r2, hi, hj, hig2, hjg2, dx[3];
+  struct part *pi, *pj;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->count; ++i) {
+
+    pi = &ci->parts[i];
+    hi = pi->h;
+    hig2 = hi * hi * kernel_gamma2;
+
+    for (int j = 0; j < cj->count; ++j) {
+
+      pj = &cj->parts[j];
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2) {
+
+        /* Interact */
+        runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
+      }
+    }
+  }
+
+  /* Reverse double-for loop and checks every interaction */
+  for (int j = 0; j < cj->count; ++j) {
+
+    pj = &cj->parts[j];
+    hj = pj->h;
+    hjg2 = hj * hj * kernel_gamma2;
+
+    for (int i = 0; i < ci->count; ++i) {
+
+      pi = &ci->parts[i];
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hjg2) {
+
+        /* Interact */
+        runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi);
+      }
+    }
+  }
+}
+
 void pairs_single_grav(double *dim, long long int pid,
                        struct gpart *__restrict__ parts, int N, int periodic) {
 
@@ -233,7 +289,6 @@ void pairs_single_grav(double *dim, long long int pid,
       "acceleration on gpart %lli is a=[ %e %e %e ], |a|=[ %.2e %.2e %.2e ].\n",
       pi.part->id, a[0], a[1], a[2], aabs[0], aabs[1], aabs[2]);
 }
-
 
 /**
  * @brief Test the density function by dumping it for two random parts.

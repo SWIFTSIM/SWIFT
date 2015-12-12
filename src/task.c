@@ -45,8 +45,8 @@
 const char *taskID_names[task_type_count] = {
     "none",  "sort",    "self",    "pair",    "sub",
     "ghost", "kick1",   "kick2",   "send",    "recv",
-    "link",  "grav_pp", "grav_mm", "grav_up", "grav_down",
-    "psort", "split_cell"};
+    "grav_pp", "grav_mm", "grav_up", "grav_down",
+    "psort", "split_cell", "rewait"};
 
 /**
  * @brief Unlock the cell held by this task.

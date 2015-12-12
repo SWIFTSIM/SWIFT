@@ -67,7 +67,12 @@ int engine_rank;
  */
 
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
-  struct link *res = &e->links[atomic_inc(&e->nr_links)];
+
+  const int ind = atomic_inc(&e->nr_links);
+  if (ind >= e->size_links) {
+    error("Link table overflow.");
+  }
+  struct link *res = &e->links[ind];
   res->next = l;
   res->t = t;
   return res;
@@ -174,8 +179,8 @@ void engine_redistribute(struct engine *e) {
   /* Get the new number of parts for this node, be generous in allocating. */
   int nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
-  struct part *parts_new;
-  struct xpart *xparts_new, *xparts = s->xparts;
+  struct part *parts_new = NULL;
+  struct xpart *xparts_new = NULL, *xparts = s->xparts;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * nr_parts * 1.2) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
@@ -944,8 +949,8 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   message("sent out %i particles, got %i back.", N, count_in);
   if (offset + count_in > s->size_parts) {
     s->size_parts = (offset + count_in) * 1.05;
-    struct part *parts_new;
-    struct xpart *xparts_new;
+    struct part *parts_new = NULL;
+    struct xpart *xparts_new = NULL;
     if (posix_memalign((void **)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0 ||
         posix_memalign((void **)&xparts_new, part_align,
@@ -1095,7 +1100,8 @@ void engine_maketasks(struct engine *e) {
      is the number of cells (s->tot_cells) times the number of neighbours (27)
      times the number of interaction types (2, density and force). */
   if (e->links != NULL) free(e->links);
-  if ((e->links = malloc(sizeof(struct link) * s->tot_cells * 27 * 2)) == NULL)
+  e->size_links = s->tot_cells * 27 * 2;
+  if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
@@ -1266,6 +1272,9 @@ void engine_maketasks(struct engine *e) {
   }
 
 #endif
+
+  /* Set the unlocks per task. */
+  scheduler_set_unlocks(sched);
 
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
@@ -1774,7 +1783,7 @@ void engine_step(struct engine *e) {
   if (e->step == 0 || !(e->policy & engine_policy_fixdt)) {
     TIMER_TIC
     engine_launch(e, (e->nr_threads > 8) ? 8 : e->nr_threads,
-                  (1 << task_type_kick1) | (1 << task_type_link));
+                  (1 << task_type_kick1));
     TIMER_TOC(timer_kick1);
   }
 
@@ -1805,8 +1814,7 @@ void engine_step(struct engine *e) {
                     (1 << task_type_ghost) | (1 << task_type_kick2) |
                     (1 << task_type_send) | (1 << task_type_recv) |
                     (1 << task_type_grav_pp) | (1 << task_type_grav_mm) |
-                    (1 << task_type_grav_up) | (1 << task_type_grav_down) |
-                    (1 << task_type_link));
+                    (1 << task_type_grav_up) | (1 << task_type_grav_down));
 
   TIMER_TOC(timer_runners);
 
@@ -2170,8 +2178,8 @@ void engine_split(struct engine *e, struct initpart *ipart) {
     message("Re-allocating parts array from %i to %i.", s->size_parts,
             (int)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
-  struct part *parts_new;
-  struct xpart *xparts_new;
+  struct part *parts_new = NULL;
+  struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * s->size_parts) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
@@ -2203,11 +2211,12 @@ void engine_split(struct engine *e, struct initpart *ipart) {
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy) {
-  int k;
+
+  int i, k;
   float dt_min = dt;
 #if defined(HAVE_SETAFFINITY)
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int i, j, cpuid[nr_cores];
+  int j, cpuid[nr_cores];
   cpu_set_t cpuset;
   if (policy & engine_policy_cputight) {
     for (k = 0; k < nr_cores; k++) cpuid[k] = k;
@@ -2299,12 +2308,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
                           &s->cells[k], NULL, 0);
-  scheduler_ranktasks(&e->sched);
 
   /* Create the sorting tasks. */
   for (i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
+
+  scheduler_ranktasks(&e->sched);
 
   /* Allocate and init the threads. */
   if ((e->runners =

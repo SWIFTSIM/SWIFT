@@ -19,53 +19,12 @@
 #ifndef SWIFT_RUNNER_H
 #define SWIFT_RUNNER_H
 
-/* Some standard headers. */
-#include <pthread.h>
-
 /* Includes. */
 #include "cell.h"
 #include "inline.h"
 
-/* Forward-declare the engine type to avoid cyclic header dependencies. */
-struct engine;
-
-/* Some constants/flags. */
-#define runner_prefetch 0
-
-/* SID stuff. */
-extern const char runner_flip[];
-
-/* Counters. */
-enum runner_counters {
-  runner_counter_swap = 0,
-  runner_counter_stall,
-  runner_counter_steal_stall,
-  runner_counter_steal_empty,
-  runner_counter_keep,
-  runner_counter_iact,
-  runner_counter_count,
-};
-extern int runner_counter[runner_counter_count];
-
-/* Counter macros. */
-#ifdef COUNTER
-#define COUNT(c) (__sync_add_and_fetch(&runner_counter[c], 1))
-#else
-#define COUNT(c)
-#endif
-
-/* Histogram functions. */
-#define runner_hist_a 1.0
-#define runner_hist_b 100.0
-#define runner_hist_N 99
-long long int runner_hist_bins[runner_hist_N];
-#define runner_hist_hit(x)                                                   \
-  __sync_add_and_fetch(                                                      \
-      &runner_hist_bins[(int)fmax(                                           \
-          0.0, fmin(runner_hist_N - 1, ((x) - runner_hist_a) /               \
-                                           (runner_hist_b - runner_hist_a) * \
-                                           runner_hist_N))],                 \
-      1)
+extern const float runner_shift[13 * 3];
+extern const char runner_flip[27];
 
 /* A struct representing a runner's thread and its data. */
 struct runner {

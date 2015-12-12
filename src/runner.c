@@ -34,6 +34,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "atomic.h"
 #include "const.h"
 #include "engine.h"
 #include "error.h"
@@ -50,13 +51,7 @@
 #endif
 #include "runner_iact_grav.h"
 
-/* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k) \
-  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
-
-/* The counters. */
-int runner_counter[runner_counter_count];
-
+/* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
     5.773502691896258e-01, 5.773502691896258e-01,  5.773502691896258e-01,
     7.071067811865475e-01, 7.071067811865475e-01,  0.0,
@@ -71,6 +66,8 @@ const float runner_shift[13 * 3] = {
     0.0,                   1.0,                    0.0,
     0.0,                   7.071067811865475e-01,  -7.071067811865475e-01,
     0.0,                   0.0,                    1.0, };
+
+/* Does the axis need flipping ? */
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -1214,12 +1211,12 @@ void *runner_main(void *data) {
       t->rid = r->cpuid;
 
       /* Set super to the first cell that I own. */
-      if (ci != NULL && ci->super != NULL && ci->super->owner == r->qid)
-        super = ci->super;
-      else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
-        super = cj->super;
-      else
-        super = NULL;
+      if (t->type != task_type_rewait && t->type != task_type_psort) {
+        if (ci->super != NULL && ci->super->owner == r->qid)
+          super = ci->super;
+        else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
+          super = cj->super;
+      }
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1292,6 +1289,13 @@ void *runner_main(void *data) {
           break;
         case task_type_split_cell:
           space_split(e->s, t->ci);
+          break;
+        case task_type_rewait:
+          for (struct task *t2 = (struct task *)t->ci;
+               t2 != (struct task *)t->cj; t2++) {
+            for (k = 0; k < t2->nr_unlock_tasks; k++)
+              atomic_inc(&t2->unlock_tasks[k]->wait);
+          }
           break;
         default:
           error("Unknown task type.");

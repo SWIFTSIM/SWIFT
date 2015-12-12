@@ -126,7 +126,7 @@ struct engine {
 
   /* Linked list for cell-task association. */
   struct link *links;
-  int nr_links;
+  int nr_links, size_links;
 };
 
 /* Function prototypes. */
