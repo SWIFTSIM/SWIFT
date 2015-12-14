@@ -32,8 +32,17 @@
  * Will include -dirty if they are local modifications.
  */
 const char *git_revision(void) {
+  static char buf[256];
+  static int initialised = 0;
   static const char *revision = GIT_REVISION;
-  return revision;
+  if(!initialised) {
+    if(strlen(revision) == 0)
+      sprintf(buf, "Unknown");
+    else
+      sprintf(buf, revision);
+    initialised = 1;
+  }
+  return buf;
 }
 
 /**
@@ -42,8 +51,17 @@ const char *git_revision(void) {
  * @details The name of the current branch when the code was last built.
  */
 const char *git_branch(void) {
+  static char buf[256];
+  static int initialised = 0;
   static const char *branch = GIT_BRANCH;
-  return branch;
+  if(!initialised) {
+    if(strlen(branch) == 0)
+      sprintf(buf, "Unknown");
+    else
+      sprintf(buf, branch);
+    initialised = 1;
+  }
+  return buf;
 }
 
 /**
