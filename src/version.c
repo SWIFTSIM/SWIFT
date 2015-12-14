@@ -37,9 +37,9 @@ const char *git_revision(void) {
   static const char *revision = GIT_REVISION;
   if(!initialised) {
     if(strlen(revision) == 0)
-      sprintf(buf, "Unknown");
+      sprintf(buf, "%s", "unknown");
     else
-      sprintf(buf, revision);
+      sprintf(buf, "%s", revision);
     initialised = 1;
   }
   return buf;
@@ -56,9 +56,9 @@ const char *git_branch(void) {
   static const char *branch = GIT_BRANCH;
   if(!initialised) {
     if(strlen(branch) == 0)
-      sprintf(buf, "Unknown");
+      sprintf(buf, "%s", "unknown");
     else
-      sprintf(buf, branch);
+      sprintf(buf, "%s", branch);
     initialised = 1;
   }
   return buf;
