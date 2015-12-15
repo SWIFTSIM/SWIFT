@@ -447,13 +447,13 @@ int main(int argc, char *argv[]) {
         fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
                 e.tic_step);
         for (k = 0; k < e.sched.nr_tasks; k++)
-          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit && !e.sched.tasks[k].type == task_type_psort)
+          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
             fprintf(
                 file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
                 e.sched.tasks[k].rid, e.sched.tasks[k].type,
                 e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
                 e.sched.tasks[k].tic, e.sched.tasks[k].toc,
-                e.sched.tasks[k].ci->count,
+                (e.sched.tasks[k].ci != NULL) ? e.sched.tasks[k].ci->count : 0,
                 (e.sched.tasks[k].cj != NULL) ? e.sched.tasks[k].cj->count : 0,
                 e.sched.tasks[k].flags);
         fflush(stdout);
