@@ -447,7 +447,7 @@ int main(int argc, char *argv[]) {
         fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
                 e.tic_step);
         for (k = 0; k < e.sched.nr_tasks; k++)
-          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
+          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit && !e.sched.tasks[k].type == task_type_psort)
             fprintf(
                 file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
                 e.sched.tasks[k].rid, e.sched.tasks[k].type,
