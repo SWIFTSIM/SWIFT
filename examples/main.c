@@ -469,7 +469,7 @@ int main(int argc, char *argv[]) {
                 e.sched.tasks[k].rid, e.sched.tasks[k].type,
                 e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
                 e.sched.tasks[k].tic, e.sched.tasks[k].toc,
-                e.sched.tasks[k].ci->count,
+                (e.sched.tasks[k].ci == NULL) ? 0 : e.sched.tasks[k].ci->count,
                 (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
     fclose(file_thread);
 #endif
