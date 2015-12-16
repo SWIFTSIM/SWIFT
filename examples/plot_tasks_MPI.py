@@ -37,7 +37,7 @@ params = {'axes.labelsize': 10,
           'xtick.labelsize': 10,
           'ytick.labelsize': 10,
           'text.usetex': False,
-          'figure.figsize' : (10., 4.),
+          'figure.figsize' : (12., 4.),
           'figure.subplot.left' : 0.03,
           'figure.subplot.right' : 0.995,
           'figure.subplot.bottom' : 0.1,
@@ -55,21 +55,20 @@ types = {"0": "task_none",
          "1": "task_sort",
          "2": "task_self",
          "3": "task_pair",
-         "4": "task_pair",
-         "5": "task_sub",
-         "6": "task_ghost",
-         "7": "task_kick1",
-         "8": "task_kick2",
-         "9": "task_send",
-         "10": "task_recv",
-         "11": "task_grav_pp",
-         "12": "task_grav_mm",
-         "13": "task_grav_up",
-         "14": "task_grav_down",
-         "15": "task_psort",
-         "16": "task_split_cell",
-         "17": "task_rewait",
-         "18": "task_count"}
+         "4": "task_sub",
+         "5": "task_ghost",
+         "6": "task_kick1",
+         "7": "task_kick2",
+         "8": "task_send",
+         "9": "task_recv",
+         "10": "task_grav_pp",
+         "11": "task_grav_mm",
+         "12": "task_grav_up",
+         "13": "task_grav_down",
+         "14": "task_psort",
+         "15": "task_split_cell",
+         "16": "task_rewait",
+         "17": "task_count"}
 
 subtypes = {"0": "subtask_none",
             "1": "subtask_density",
@@ -143,6 +142,7 @@ for index in range(nthread*nranks):
     for task in tasks[index]:
         if task["type"] not in types:
             types.append(task["type"])
+            print "seen: ", task["type"], "/", task["subtype"]
         if lasttype == "" or not lasttype == task["type"]:
             combtasks[index].append({})
             combtasks[index][-1]["type"] = task["type"]
@@ -177,4 +177,4 @@ pl.ylabel("Thread ID*MPI Rank")
 pl.yticks(pl.array(range(nthread*nranks)) + 0.5, pl.array(range(nthread*nranks)))
 
 pl.show()
-pl.savefig("task_graph.png")
+pl.savefig("task_graph_MPI.png")
