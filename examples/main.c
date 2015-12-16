@@ -440,14 +440,27 @@ int main(int argc, char *argv[]) {
   /* Dump the task data. */
   if (dump_tasks) {
 #ifdef WITH_MPI
+
+    /* Make sure output file is empty. */
     file_thread = fopen("thread_info_MPI.dat", "w");
+    fclose(file_thread);
+
     for (j = 0; j < nr_nodes; j++) {
-      MPI_Barrier(MPI_COMM_WORLD);
+
+      /* Rank 0 decides the index of writing node, this happens one-by-one. */
+      int kk = j;
+      MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
       if (j == myrank) {
+
+        /* Open file and position at end. */
+        file_thread = fopen("thread_info_MPI.dat", "a");
+
         fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
                 e.tic_step);
+        int count = 0;
         for (k = 0; k < e.sched.nr_tasks; k++)
-          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
+          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit) {
             fprintf(
                 file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
                 e.sched.tasks[k].rid, e.sched.tasks[k].type,
@@ -456,11 +469,18 @@ int main(int argc, char *argv[]) {
                 (e.sched.tasks[k].ci != NULL) ? e.sched.tasks[k].ci->count : 0,
                 (e.sched.tasks[k].cj != NULL) ? e.sched.tasks[k].cj->count : 0,
                 e.sched.tasks[k].flags);
-        fflush(stdout);
-        sleep(1);
+            fflush(stdout);
+            count++;
+          }
+        message("rank %d counted %d tasks", myrank, count);
+
+        fclose(file_thread);
       }
+
+      /* And we wait for all to synchronize. */
+      MPI_Barrier(MPI_COMM_WORLD);
     }
-    fclose(file_thread);
+
 #else
     file_thread = fopen("thread_info.dat", "w");
     for (k = 0; k < e.sched.nr_tasks; k++)
