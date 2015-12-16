@@ -122,7 +122,7 @@ for line in range(num_lines):
     if tic > 0 and toc > 0:
         rank = int(data[line,0])
         thread = int(data[line,1])
-        index = thread*nranks + rank
+        index = rank*nranks + thread
         tasks[index].append({})
         tasks[index][-1]["type"] = types[ str(int(data[line,2])) ]
         tasks[index][-1]["subtype"] = subtypes[str(int(data[line,3]))]
