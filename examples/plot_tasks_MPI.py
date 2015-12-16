@@ -128,7 +128,7 @@ for line in range(num_lines):
         tasks[index][-1]["subtype"] = subtypes[str(int(data[line,3]))]
         tasks[index][-1]["tic"] = tic
         tasks[index][-1]["toc"] = toc
-        tasks[index][-1]["t"] = (toc - tic)/ 2
+        tasks[index][-1]["t"] = (toc + tic)/ 2
 
 combtasks = {}
 combtasks[-1] = []
@@ -142,7 +142,6 @@ for index in range(nthread*nranks):
     for task in tasks[index]:
         if task["type"] not in types:
             types.append(task["type"])
-            print "seen: ", task["type"], "/", task["subtype"]
         if lasttype == "" or not lasttype == task["type"]:
             combtasks[index].append({})
             combtasks[index][-1]["type"] = task["type"]

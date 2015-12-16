@@ -130,7 +130,6 @@ for thread in range(nthread):
     for task in tasks[thread]:
         if task["type"] not in types:
             types.append(task["type"])
-            print "seen: ", task["type"], "/", task["subtype"]
         if lasttype == "" or not lasttype == task["type"]:
             combtasks[thread].append({})
             combtasks[thread][-1]["type"] = task["type"]
