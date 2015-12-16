@@ -23,9 +23,10 @@
 
 
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import pylab as pl
 import numpy as np
+import sys
 
 CPU_CLOCK = 2.7e9
 
@@ -122,7 +123,7 @@ for line in range(num_lines):
     if tic > 0 and toc > 0:
         rank = int(data[line,0])
         thread = int(data[line,1])
-        index = rank*nranks + thread
+        index = rank*nthread + thread
         tasks[index].append({})
         tasks[index][-1]["type"] = types[ str(int(data[line,2])) ]
         tasks[index][-1]["subtype"] = subtypes[str(int(data[line,3]))]
