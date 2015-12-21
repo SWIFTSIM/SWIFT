@@ -23,6 +23,7 @@
 
 
 import matplotlib
+import matplotlib.collections as collections
 matplotlib.use("Agg")
 import pylab as pl
 import numpy as np
@@ -170,11 +171,28 @@ for rank in range(nranks):
     print "Combination done..."
 
     typesseen = []
-    pl.figure()
+    fig = pl.figure()
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlim(0, delta_t * 1.03 * 1000 / CPU_CLOCK)
+    ax.set_ylim(0, nthread)
+    tictoc = np.zeros(2)
     for i in range(nthread):
+
+        #  Collect ranges and colours into arrays.
+        tictocs = np.zeros(len(combtasks[i])*2)
+        colours = np.empty(len(combtasks[i])*2, dtype='object')
+        coloursseen = []
+        j = 0
         for task in combtasks[i]:
-            pl.fill_between([task["tic"], task["toc"]], i+0.05, i+0.95,
-                            facecolor=task["colour"], linewidths=0)
+            tictocs[j] = task["tic"]
+            tictocs[j+1] = task["toc"]
+            colours[j] = task["colour"]
+            colours[j+1] = task["colour"]
+            j = j + 2
+            if task["colour"] not in coloursseen:
+                coloursseen.append(task["colour"])
+
+            #  Legend support, collections don't add to this.
             if task["subtype"] != "none":
                 qtask = task["type"] + "/" + task["subtype"]
             else:
@@ -183,17 +201,26 @@ for rank in range(nranks):
                 pl.plot([], [], color=task["colour"], label=qtask)
                 typesseen.append(qtask)
 
+        #  Now plot each colour, faster to use a mask to select colour ranges.
+        for colour in coloursseen:
+            collection = collections.BrokenBarHCollection.span_where(tictocs, ymin=i+0.05, ymax=i+0.95,
+                                                                     where=colours == colour,
+                                                                     facecolor=colour,
+                                                                     linewidths=0)
+            ax.add_collection(collection)
+
+
     #  Legend and room for it.
     nrow = len(typesseen) / 5
     if len(typesseen) * 5 < nrow:
         nrow = nrow + 1
-    pl.fill_between([0, 0], nthread+0.5, nthread + nrow + 0.5, facecolor="white")
-    pl.legend(loc=1, shadow=True, mode="expand", ncol=5)
+    ax.fill_between([0, 0], nthread+0.5, nthread + nrow + 0.5, facecolor="white")
+    ax.set_ylim(0, nthread + nrow + 1)
+    ax.legend(loc=1, shadow=True, mode="expand", ncol=5)
 
-    pl.xlabel("Wall clock time [ms]")
-    pl.xlim(0, delta_t * 1.03 * 1000 / CPU_CLOCK)
-    pl.ylabel("Thread ID for MPI Rank " + str(rank) )
-    pl.yticks(pl.array(range(nthread)) + 0.5, pl.array(range(nthread)))
+    ax.set_xlabel("Wall clock time [ms]")
+    ax.set_ylabel("Thread ID for MPI Rank " + str(rank) )
+    ax.set_yticks(pl.array(range(nthread)), True)
 
     pl.show()
     outpng = outbase + str(rank) + ".png"
