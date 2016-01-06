@@ -47,6 +47,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "part.h"
 #include "timers.h"
 
 #ifdef LEGACY_GADGET2_SPH
@@ -215,28 +216,24 @@ void engine_redistribute(struct engine *e) {
         offset_send += counts[ind_send];
         offset_recv += counts[ind_recv];
       } else {
-        if (MPI_Isend(&s->parts[offset_send],
-                      sizeof(struct part) * counts[ind_send], MPI_BYTE, k,
-                      2 * ind_send + 0, MPI_COMM_WORLD,
+        if (MPI_Isend(&s->parts[offset_send], counts[ind_send],
+                      *(e->part_mpi_type), k, 2 * ind_send + 0, MPI_COMM_WORLD,
                       &reqs[4 * k]) != MPI_SUCCESS)
           error("Failed to isend parts to node %i.", k);
-        if (MPI_Isend(&s->xparts[offset_send],
-                      sizeof(struct xpart) * counts[ind_send], MPI_BYTE, k,
-                      2 * ind_send + 1, MPI_COMM_WORLD,
+        if (MPI_Isend(&s->xparts[offset_send], counts[ind_send],
+                      *(e->xpart_mpi_type), k, 2 * ind_send + 1, MPI_COMM_WORLD,
                       &reqs[4 * k + 1]) != MPI_SUCCESS)
           error("Failed to isend xparts to node %i.", k);
         offset_send += counts[ind_send];
       }
     }
     if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv],
-                    sizeof(struct part) * counts[ind_recv], MPI_BYTE, k,
-                    2 * ind_recv + 0, MPI_COMM_WORLD,
+      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv],
+                    *(e->part_mpi_type), k, 2 * ind_recv + 0, MPI_COMM_WORLD,
                     &reqs[4 * k + 2]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
-      if (MPI_Irecv(&xparts_new[offset_recv],
-                    sizeof(struct xpart) * counts[ind_recv], MPI_BYTE, k,
-                    2 * ind_recv + 1, MPI_COMM_WORLD,
+      if (MPI_Irecv(&xparts_new[offset_recv], counts[ind_recv],
+                    *(e->xpart_mpi_type), k, 2 * ind_recv + 1, MPI_COMM_WORLD,
                     &reqs[4 * k + 3]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
       offset_recv += counts[ind_recv];
@@ -2201,6 +2198,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     e->nr_proxies = 0;
 #endif
   }
+
+/* Construct types for MPI communications */
+#ifdef WITH_MPI
+  part_create_mpi_type(e->part_mpi_type);
+  xpart_create_mpi_type(e->xpart_mpi_type);
+#endif
 
   /* First of all, init the barrier and lock it. */
   if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)

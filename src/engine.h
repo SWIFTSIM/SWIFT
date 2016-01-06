@@ -19,6 +19,14 @@
 #ifndef SWIFT_ENGINE_H
 #define SWIFT_ENGINE_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* Some standard headers. */
 #include <pthread.h>
 
@@ -125,6 +133,10 @@ struct engine {
   /* Linked list for cell-task association. */
   struct link *links;
   int nr_links, size_links;
+
+  /* MPI data type for the particle transfers */
+  MPI_Datatype *part_mpi_type;
+  MPI_Datatype *xpart_mpi_type;
 };
 
 /* Function prototypes. */
