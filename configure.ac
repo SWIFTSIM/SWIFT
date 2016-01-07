@@ -92,15 +92,16 @@ if test "$enable_mpi" = "yes"; then
          *"Open MPI"*)
             MPI_THREAD_LIBS=""
             AC_MSG_RESULT([Open MPI])
-            #  OpenMPI should be 1.8.6 or later, if not complain.
-            #  Version is last word on first line of -version output.
-            revision=`mpirun -version 2>&1 | grep "Open MPI" | awk '{print $NF}'`
-            AX_COMPARE_VERSION( $revision, [ge], [1.8.6],,[good_mpi="no"] )
-            if test "$good_mpi" = "no"; then
-                AC_MSG_WARN([
-    Open MPI version should be at least 1.8.6 (is $revision)])
-                enable_mpi="yes (but with warning)"
-            fi
+#            #  OpenMPI should be 1.8.6 or later, if not complain.
+#            #  Version is last word on first line of -version output.
+#            revision=`mpirun -version 2>&1 | grep "Open MPI" | awk '{print $NF}'`
+#            AX_COMPARE_VERSION( $revision, [ge], [1.8.6],,[good_mpi="no"] )
+#            if test "$good_mpi" = "no"; then
+#                AC_MSG_WARN([
+#    Open MPI version should be at least 1.8.6 (is $revision)])
+#                enable_mpi="yes (but with warning)"
+#		good_mpi="yes"
+#            fi
          ;;
          *)
             MPI_THREAD_LIBS=""
