@@ -24,6 +24,9 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
 #endif
 
 #ifdef HAVE_HDF5
@@ -47,8 +50,8 @@ const char *git_revision(void) {
   static char buf[256];
   static int initialised = 0;
   static const char *revision = GIT_REVISION;
-  if(!initialised) {
-    if(strlen(revision) == 0)
+  if (!initialised) {
+    if (strlen(revision) == 0)
       sprintf(buf, "%s", "unknown");
     else
       sprintf(buf, "%s", revision);
@@ -66,8 +69,8 @@ const char *git_branch(void) {
   static char buf[256];
   static int initialised = 0;
   static const char *branch = GIT_BRANCH;
-  if(!initialised) {
-    if(strlen(branch) == 0)
+  if (!initialised) {
+    if (strlen(branch) == 0)
       sprintf(buf, "%s", "unknown");
     else
       sprintf(buf, "%s", branch);
@@ -134,7 +137,6 @@ const char *compiler_version(void) {
   return version;
 }
 
-
 const char *mpi_version(void) {
   static char version[256] = {0};
 #ifdef WITH_MPI
@@ -147,24 +149,35 @@ const char *mpi_version(void) {
   sprintf(lib_version, "Unknow library");
 #endif
   MPI_Get_version(&std_version, &std_subversion);
-  sprintf(version, "%s (standard v %i.%i)", lib_version, std_version, std_subversion);
+  sprintf(version, "%s (standard v %i.%i)", lib_version, std_version,
+          std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
 #endif
   return version;
 }
 
-
-
 const char *hdf5_version(void) {
 
   static char version[256] = {0};
 #ifdef HAVE_HDF5
   unsigned int majnum, minnum, relnum;
-  H5get_libversion( &majnum, &minnum, &relnum ) ;
+  H5get_libversion(&majnum, &minnum, &relnum);
   sprintf(version, "%i.%i.%i", majnum, minnum, relnum);
 #else
-  sprintf(lib_version, "Unknow version");
+  sprintf(version, "Unknow version");
+#endif
+  return version;
+}
+
+const char *metis_version(void) {
+
+  static char version[256] = {0};
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+  sprintf(version, "%i.%i.%i", METIS_VER_MAJOR, METIS_VER_MINOR,
+          METIS_VER_SUBMINOR);
+#else
+  sprintf(version, "Unknow version");
 #endif
   return version;
 }
@@ -187,11 +200,14 @@ void greetings(void) {
   printf(" Revision: %s, Branch: %s\n", git_revision(), git_branch());
   printf(" Webpage : www.swiftsim.com\n\n");
   printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
-#ifdef WITH_MPI
-  printf(" MPI library: %s\n", mpi_version());
-#endif
 #ifdef HAVE_HDF5
   printf(" HDF5 library version: %s\n", hdf5_version());
+#endif
+#ifdef WITH_MPI
+  printf(" MPI library: %s\n", mpi_version());
+#ifdef HAVE_METIS
+  printf(" METIS library: %s\n", metis_version());
+#endif
 #endif
   printf("\n");
 }
