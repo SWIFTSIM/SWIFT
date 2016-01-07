@@ -141,16 +141,19 @@ const char *mpi_version(void) {
   static char version[256] = {0};
 #ifdef WITH_MPI
   int len, std_version, std_subversion;
+/* Check that the library implements the version string routine */
 #ifdef MPI_MAX_LIBRARY_VERSION_STRING
   static char lib_version[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
   MPI_Get_library_version(lib_version, &len);
+  /* Intel-MPI adds a tailing '\n' at the end of the string that looks ugly. */
+  if (lib_version[len - 1] == '\n') lib_version[len - 1] = ' ';
 #else
   static char lib_version[256] = {0};
   sprintf(lib_version, "Unknow library");
 #endif
   MPI_Get_version(&std_version, &std_subversion);
-  sprintf(version, "%s (standard v %i.%i)", lib_version, std_version,
-          std_subversion);
+  sprintf(version, "%s (implementing MPI standard v %i.%i)", lib_version,
+          std_version, std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
 #endif
