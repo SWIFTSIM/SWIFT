@@ -36,6 +36,7 @@ const char* git_branch(void);
 const char* compiler_name(void);
 const char* compiler_version(void);
 const char* mpi_version(void);
+const char *hdf5_version(void);
 void greetings(void);
 
 #endif /* SWIFT_VERSION_H */
