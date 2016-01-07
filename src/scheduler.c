@@ -1066,9 +1066,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        if ((err = MPI_Isend(t->ci->parts, sizeof(struct part) * t->ci->count,
-                             s->part_mpi_type, t->cj->nodeID, t->flags,
-                             MPI_COMM_WORLD, &t->req)) != MPI_SUCCESS) {
+        if ((err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type, 
+			     t->cj->nodeID, t->flags, MPI_COMM_WORLD, 
+			     &t->req)) != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
           MPI_Error_string(err, buff, &len);
