@@ -1048,8 +1048,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if ((err = MPI_Irecv(t->ci->parts, sizeof(struct part) * t->ci->count,
-                             MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
+        if ((err = MPI_Irecv(t->ci->parts, t->ci->count,
+                             s->part_mpi_type, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
                              &t->req)) != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
@@ -1067,7 +1067,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         if ((err = MPI_Isend(t->ci->parts, sizeof(struct part) * t->ci->count,
-                             MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
+                             s->part_mpi_type, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
                              &t->req)) != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
@@ -1309,4 +1309,11 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
   s->size = 0;
   s->nr_tasks = 0;
   s->tasks_next = 0;
+
+/* Construct types for MPI communications */
+#ifdef WITH_MPI
+  part_create_mpi_type(&s->part_mpi_type);
+  xpart_create_mpi_type(&s->xpart_mpi_type);
+#endif
+
 }
