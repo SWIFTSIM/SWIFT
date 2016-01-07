@@ -228,8 +228,8 @@ void engine_redistribute(struct engine *e) {
       }
     }
     if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv],
-                    e->part_mpi_type, k, 2 * ind_recv + 0, MPI_COMM_WORLD,
+      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv], e->part_mpi_type,
+                    k, 2 * ind_recv + 0, MPI_COMM_WORLD,
                     &reqs[4 * k + 2]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
       if (MPI_Irecv(&xparts_new[offset_recv], counts[ind_recv],

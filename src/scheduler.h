@@ -103,7 +103,6 @@ struct scheduler {
   MPI_Datatype part_mpi_type;
   MPI_Datatype xpart_mpi_type;
 #endif
-
 };
 
 /* Function prototypes. */
