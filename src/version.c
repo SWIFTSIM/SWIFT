@@ -206,7 +206,7 @@ void greetings(void) {
 #ifdef WITH_MPI
   printf(" MPI library: %s\n", mpi_version());
 #ifdef HAVE_METIS
-  printf(" METIS library: %s\n", metis_version());
+  printf(" METIS library version: %s\n", metis_version());
 #endif
 #endif
   printf("\n");
