@@ -134,16 +134,11 @@ const char *compiler_version(void) {
 const char *mpi_version(void) {
   static char version[256] = {0};
 #ifdef WITH_MPI
-  int len, std_version, std_subversion;
-#ifdef MPI_MAX_LIBRARY_VERSION_STRING
   static char lib_version[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
-  MPI_Get_library_version(lib_version, &len);
-#else
-  static char lib_version[256] = {0};
-  sprintf(lib_version, "Unknow library");
-#endif
+  int len, std_version, std_subversion;
+  MPI_Get_library_lib_version(version, &len);
   MPI_Get_version(&std_version, &std_subversion);
-  sprintf(version, "%s (standard v %i.%i)", lib_version, std_version, std_subversion);
+  sprintf("%s (standard v %i.%i)", lib_version, std_version, std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
 #endif
