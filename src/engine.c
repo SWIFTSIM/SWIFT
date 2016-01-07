@@ -2187,7 +2187,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
-#ifndef HAVE_MPI
+#ifndef WITH_MPI
     error("SWIFT was not compiled with MPI support.");
 #else
     e->policy |= engine_policy_mpi;
