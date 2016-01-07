@@ -134,9 +134,11 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
+#ifdef WITH_MPI
   /* MPI data type for the particle transfers */
-  MPI_Datatype *part_mpi_type;
-  MPI_Datatype *xpart_mpi_type;
+  MPI_Datatype part_mpi_type;
+  MPI_Datatype xpart_mpi_type;
+#endif
 };
 
 /* Function prototypes. */
