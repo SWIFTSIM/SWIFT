@@ -18,6 +18,14 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* Some standard headers. */
 #include <stdio.h>
 #include <string.h>
@@ -122,6 +130,21 @@ const char *compiler_version(void) {
   return version;
 }
 
+
+const char *mpi_version(void) {
+  static char version[256] = {0};
+#ifdef WITH_MPI
+  static char lib_version[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
+  int len, std_version, std_subversion;
+  MPI_Get_library_lib_version(version, &len);
+  MPI_Get_version(&std_version, &std_subversion);
+  sprintf("%s (standard v %i.%i)", lib_version, std_version, std_subversion);
+#else
+  sprintf(version, "Code was not compiled with MPI support");
+#endif
+  return version;
+}
+
 /**
  * @brief Prints a greeting message to the standard output containing code
  * version and revision number
@@ -139,5 +162,9 @@ void greetings(void) {
   printf(" Version : %s\n", package_version());
   printf(" Revision: %s, Branch: %s\n", git_revision(), git_branch());
   printf(" Webpage : www.swiftsim.com\n");
-  printf(" Compiler: %s, Version: %s\n\n", compiler_name(), compiler_version());
+  printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
+#ifdef WITH_MPI
+  printf(" MPI library: %s\n", mpi_version());
+#endif
+  printf("\n");
 }
