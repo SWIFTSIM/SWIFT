@@ -145,15 +145,19 @@ const char *mpi_version(void) {
 #ifdef MPI_MAX_LIBRARY_VERSION_STRING
   static char lib_version[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
   MPI_Get_library_version(lib_version, &len);
-  /* Intel-MPI adds a tailing '\n' at the end of the string that looks ugly. */
-  if (lib_version[len - 1] == '\n') lib_version[len - 1] = ' ';
+
+  /* Find first \n and truncate string to this length, get many lines from 
+   * some MPIs (MPICH). */
+  char *ptr = strchr(lib_version, '\n');
+  if (ptr != NULL) *ptr = '\0';
+
 #else
   static char lib_version[256] = {0};
-  sprintf(lib_version, "Unknow library");
+  sprintf(lib_version, "Unknown library");
 #endif
   MPI_Get_version(&std_version, &std_subversion);
-  sprintf(version, "%s (implementing MPI standard v %i.%i)", lib_version,
-          std_version, std_subversion);
+  snprintf(version, 256, "%s (implementing MPI standard v %i.%i)", lib_version,
+           std_version, std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
 #endif
@@ -168,7 +172,7 @@ const char *hdf5_version(void) {
   H5get_libversion(&majnum, &minnum, &relnum);
   sprintf(version, "%i.%i.%i", majnum, minnum, relnum);
 #else
-  sprintf(version, "Unknow version");
+  sprintf(version, "Unknown version");
 #endif
   return version;
 }
@@ -180,7 +184,7 @@ const char *metis_version(void) {
   sprintf(version, "%i.%i.%i", METIS_VER_MAJOR, METIS_VER_MINOR,
           METIS_VER_SUBMINOR);
 #else
-  sprintf(version, "Unknow version");
+  sprintf(version, "Unknown version");
 #endif
   return version;
 }
