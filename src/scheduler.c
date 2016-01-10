@@ -1303,5 +1303,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the tasks array. */
   s->size = 0;
+  s->tasks = NULL;
+  s->tasks_ind = NULL;
   scheduler_reset(s, nr_tasks);
 }
