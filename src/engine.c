@@ -2223,12 +2223,14 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     while (dt > dt_min) dt *= 0.5f;
   e->dt = dt;
 
-  /* Init the scheduler. */
-  scheduler_init(&e->sched, e->s, nr_queues, scheduler_flag_steal, e->nodeID);
+  /* Init the scheduler with sufficient tasks for the initial kick1 and sorting
+     tasks. */
+  int nr_tasks = 2 * s->tot_cells + e->nr_threads;
+  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
+                 e->nodeID);
   s->nr_queues = nr_queues;
 
   /* Append a kick1 task to each cell. */
-  scheduler_reset(&e->sched, 2 * s->tot_cells + e->nr_threads);
   for (k = 0; k < s->nr_cells; k++)
     s->cells[k].kick1 =
         scheduler_addtask(&e->sched, task_type_kick1, task_subtype_none, 0, 0,
