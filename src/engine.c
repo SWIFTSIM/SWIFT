@@ -688,7 +688,6 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
 
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
-  int k;
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
 
@@ -722,7 +721,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
   /* Recurse? */
   else if (ci->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) engine_addtasks_send(e, ci->progeny[k], cj);
 }
 
@@ -738,7 +737,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho) {
 
-  int k;
   struct scheduler *s = &e->sched;
 
   /* Do we need to construct a recv task? */
@@ -764,7 +762,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
 
   /* Recurse? */
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho);
 }
@@ -779,12 +777,10 @@ void engine_exchange_cells(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  int j, k, pid, count = 0;
-  struct pcell *pcells;
   struct space *s = e->s;
   struct cell *cells = s->cells;
-  int nr_cells = s->nr_cells;
-  int nr_proxies = e->nr_proxies;
+  const int nr_cells = s->nr_cells;
+  const int nr_proxies = e->nr_proxies;
   int offset[nr_cells];
   MPI_Request reqs_in[engine_maxproxies];
   MPI_Request reqs_out[engine_maxproxies];
@@ -792,33 +788,36 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Run through the cells and get the size of the ones that will be sent off.
    */
-  for (k = 0; k < nr_cells; k++) {
-    offset[k] = count;
+  int count_out = 0;
+  for (int k = 0; k < nr_cells; k++) {
+    offset[k] = count_out;
     if (cells[k].sendto)
-      count += (cells[k].pcell_size = cell_getsize(&cells[k]));
+      count_out += (cells[k].pcell_size = cell_getsize(&cells[k]));
   }
 
   /* Allocate the pcells. */
-  if ((pcells = (struct pcell *)malloc(sizeof(struct pcell) * count)) == NULL)
+  struct pcell *pcells;
+  if ((pcells = (struct pcell *)malloc(sizeof(struct pcell) * count_out)) == NULL)
     error("Failed to allocate pcell buffer.");
 
   /* Pack the cells. */
   cell_next_tag = 0;
-  for (k = 0; k < nr_cells; k++)
+  for (int k = 0; k < nr_cells; k++)
     if (cells[k].sendto) {
       cell_pack(&cells[k], &pcells[offset[k]]);
       cells[k].pcell = &pcells[offset[k]];
     }
 
   /* Launch the proxies. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
     proxy_cells_exch1(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_cells_count_in;
     reqs_out[k] = e->proxies[k].req_cells_count_out;
   }
 
   /* Wait for each count to come in and start the recv. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
+    int pid;
     if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
@@ -831,18 +830,19 @@ void engine_exchange_cells(struct engine *e) {
     error("MPI_Waitall on sends failed.");
 
   /* Set the requests for the cells. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
     reqs_in[k] = e->proxies[k].req_cells_in;
     reqs_out[k] = e->proxies[k].req_cells_out;
   }
 
   /* Wait for each pcell array to come in from the proxies. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
+    int pid;
     if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
-    for (count = 0, j = 0; j < e->proxies[pid].nr_cells_in; j++)
+    for (int count = 0, j = 0; j < e->proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&e->proxies[pid].pcells_in[count],
                            e->proxies[pid].cells_in[j], e->s);
   }
@@ -853,12 +853,13 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
-  for (count = 0, k = 0; k < nr_proxies; k++)
-    for (j = 0; j < e->proxies[k].nr_cells_in; j++)
-      count += e->proxies[k].cells_in[j]->count;
-  if (count > s->size_parts_foreign) {
+  int count_in = 0;
+  for (int k = 0; k < nr_proxies; k++)
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++)
+      count_in += e->proxies[k].cells_in[j]->count;
+  if (count_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) free(s->parts_foreign);
-    s->size_parts_foreign = 1.1 * count;
+    s->size_parts_foreign = 1.1 * count_in;
     if (posix_memalign((void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
@@ -866,9 +867,9 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
-  for (k = 0; k < nr_proxies; k++) {
-    for (count = 0, j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      count += cell_link(e->proxies[k].cells_in[j], parts);
+  for (int k = 0; k < nr_proxies; k++) {
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+      cell_link(e->proxies[k].cells_in[j], parts);
       parts = &parts[e->proxies[k].cells_in[j]->count];
     }
   }
