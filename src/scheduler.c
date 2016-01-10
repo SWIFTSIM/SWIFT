@@ -1261,15 +1261,14 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  *
  * @param s The #scheduler.
  * @param space The #space we are working with
+ * @param nr_tasks The number of tasks to allocate initially.
  * @param nr_queues The number of queues in this scheduler.
  * @param flags The #scheduler flags.
  * @param nodeID The MPI rank
  */
 
-void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
-                    unsigned int flags, int nodeID) {
-
-  int k;
+void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
+                    int nr_queues, unsigned int flags, int nodeID) {
 
   /* Init the lock. */
   lock_init(&s->lock);
@@ -1280,7 +1279,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
     error("Failed to allocate queues.");
 
   /* Initialize each queue. */
-  for (k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);
+  for (int k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);
 
   /* Init the sleep mutex and cond. */
   if (pthread_cond_init(&s->sleep_cond, NULL) != 0 ||
@@ -1302,11 +1301,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
   s->space = space;
   s->nodeID = nodeID;
 
-  /* Init other values. */
-  s->tasks = NULL;
-  s->tasks_ind = NULL;
-  s->waiting = 0;
+  /* Init the tasks array. */
   s->size = 0;
-  s->nr_tasks = 0;
-  s->tasks_next = 0;
+  scheduler_reset(s, nr_tasks);
 }
