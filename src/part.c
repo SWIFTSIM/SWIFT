@@ -36,12 +36,12 @@
  */
 void part_create_mpi_type(MPI_Datatype* part_type) {
 
-  /* This is not the recommended way of doing this. */
-  /* One should define the structure field by field */
-  /* But as long as we don't do serialization via MPI-IO */
-  /* we don't really care. */
-  /* Also we would have to modify this function everytime something */
-  /* is added to the part structure. */
+  /* This is not the recommended way of doing this.
+     One should define the structure field by field
+     But as long as we don't do serialization via MPI-IO
+     we don't really care.
+     Also we would have to modify this function everytime something
+     is added to the part structure. */
   MPI_Type_contiguous(sizeof(struct part) / sizeof(unsigned char), MPI_BYTE,
                       part_type);
   MPI_Type_commit(part_type);
@@ -54,12 +54,12 @@ void part_create_mpi_type(MPI_Datatype* part_type) {
  */
 void xpart_create_mpi_type(MPI_Datatype* xpart_type) {
 
-  /* This is not the recommended way of doing this. */
-  /* One should define the structure field by field */
-  /* But as long as we don't do serialization via MPI-IO */
-  /* we don't really care. */
-  /* Also we would have to modify this function everytime something */
-  /* is added to the part structure. */
+  /* This is not the recommended way of doing this.
+     One should define the structure field by field 
+     But as long as we don't do serialization via MPI-IO 
+     we don't really care. 
+     Also we would have to modify this function everytime something 
+     is added to the part structure. */
   MPI_Type_contiguous(sizeof(struct xpart) / sizeof(unsigned char), MPI_BYTE,
                       xpart_type);
   MPI_Type_commit(xpart_type);
