@@ -94,7 +94,6 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
 void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
 
-  int k;
   struct scheduler *s = &e->sched;
 
   /* Am I the super-cell? */
@@ -126,7 +125,7 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
 
   /* Recurse. */
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) engine_mkghosts(e, c->progeny[k], super);
 }
 
@@ -164,7 +163,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   struct part *parts = s->parts;
-  for (int k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < s->nr_parts; k++) {
     for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
         parts[k].x[j] += dim[j];
@@ -187,7 +186,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allreduce particle transfer counts.");
 
   /* Get the new number of parts for this node, be generous in allocating. */
-  int nr_parts = 0;
+  size_t nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL, *xparts = s->xparts;
@@ -203,7 +202,7 @@ void engine_redistribute(struct engine *e) {
       NULL)
     error("Failed to allocate MPI request list.");
   for (int k = 0; k < 4 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
-  for (int offset_send = 0, offset_recv = 0, k = 0; k < nr_nodes; k++) {
+  for (size_t offset_send = 0, offset_recv = 0, k = 0; k < nr_nodes; k++) {
     int ind_send = nodeID * nr_nodes + k;
     int ind_recv = k * nr_nodes + nodeID;
     if (counts[ind_send] > 0) {
@@ -219,12 +218,12 @@ void engine_redistribute(struct engine *e) {
                       sizeof(struct part) * counts[ind_send], MPI_BYTE, k,
                       2 * ind_send + 0, MPI_COMM_WORLD,
                       &reqs[4 * k]) != MPI_SUCCESS)
-          error("Failed to isend parts to node %i.", k);
+          error("Failed to isend parts to node %zi.", k);
         if (MPI_Isend(&s->xparts[offset_send],
                       sizeof(struct xpart) * counts[ind_send], MPI_BYTE, k,
                       2 * ind_send + 1, MPI_COMM_WORLD,
                       &reqs[4 * k + 1]) != MPI_SUCCESS)
-          error("Failed to isend xparts to node %i.", k);
+          error("Failed to isend xparts to node %zi.", k);
         offset_send += counts[ind_send];
       }
     }
@@ -233,12 +232,12 @@ void engine_redistribute(struct engine *e) {
                     sizeof(struct part) * counts[ind_recv], MPI_BYTE, k,
                     2 * ind_recv + 0, MPI_COMM_WORLD,
                     &reqs[4 * k + 2]) != MPI_SUCCESS)
-        error("Failed to emit irecv of parts from node %i.", k);
+        error("Failed to emit irecv of parts from node %zi.", k);
       if (MPI_Irecv(&xparts_new[offset_recv],
                     sizeof(struct xpart) * counts[ind_recv], MPI_BYTE, k,
                     2 * ind_recv + 1, MPI_COMM_WORLD,
                     &reqs[4 * k + 3]) != MPI_SUCCESS)
-        error("Failed to emit irecv of parts from node %i.", k);
+        error("Failed to emit irecv of parts from node %zi.", k);
       offset_recv += counts[ind_recv];
     }
   }
@@ -276,7 +275,7 @@ void engine_redistribute(struct engine *e) {
   /* Be verbose about what just happened. */
   for (int k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID) my_cells += 1;
-  message("node %i now has %i parts in %i cells.", nodeID, nr_parts, my_cells);
+  message("node %i now has %zi parts in %i cells.", nodeID, nr_parts, my_cells);
 
   /* Clean up other stuff. */
   free(reqs);
@@ -298,15 +297,14 @@ void engine_repartition(struct engine *e) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  int i, j, k, l, cid, cjd, ii, jj, kk, res;
+  int res;
   idx_t *inds, *nodeIDs;
   idx_t *weights_v = NULL, *weights_e = NULL;
   struct space *s = e->s;
   int nr_cells = s->nr_cells, my_cells = 0;
   struct cell *cells = s->cells;
   int ind[3], *cdim = s->cdim;
-  struct task *t, *tasks = e->sched.tasks;
-  struct cell *ci, *cj;
+  struct task *tasks = e->sched.tasks;
   int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
   float wscale = 1e-3, vscale = 1e-3, wscale_buff;
   idx_t wtot = 0;
@@ -328,25 +326,25 @@ void engine_repartition(struct engine *e) {
     error("Failed to allocate inds and weights arrays.");
 
   /* Fill the inds array. */
-  for (cid = 0; cid < nr_cells; cid++) {
+  for (int cid = 0; cid < nr_cells; cid++) {
     ind[0] = cells[cid].loc[0] / s->cells[cid].h[0] + 0.5;
     ind[1] = cells[cid].loc[1] / s->cells[cid].h[1] + 0.5;
     ind[2] = cells[cid].loc[2] / s->cells[cid].h[2] + 0.5;
-    l = 0;
-    for (i = -1; i <= 1; i++) {
-      ii = ind[0] + i;
+    int l = 0;
+    for (int i = -1; i <= 1; i++) {
+      int ii = ind[0] + i;
       if (ii < 0)
         ii += cdim[0];
       else if (ii >= cdim[0])
         ii -= cdim[0];
-      for (j = -1; j <= 1; j++) {
-        jj = ind[1] + j;
+      for (int j = -1; j <= 1; j++) {
+        int jj = ind[1] + j;
         if (jj < 0)
           jj += cdim[1];
         else if (jj >= cdim[1])
           jj -= cdim[1];
-        for (k = -1; k <= 1; k++) {
-          kk = ind[2] + k;
+        for (int k = -1; k <= 1; k++) {
+          int kk = ind[2] + k;
           if (kk < 0)
             kk += cdim[2];
           else if (kk >= cdim[2])
@@ -365,10 +363,10 @@ void engine_repartition(struct engine *e) {
   bzero(weights_v, sizeof(idx_t) * nr_cells);
 
   /* Loop over the tasks... */
-  for (j = 0; j < e->sched.nr_tasks; j++) {
+  for (int j = 0; j < e->sched.nr_tasks; j++) {
 
     /* Get a pointer to the kth task. */
-    t = &tasks[j];
+    const struct task* t = &tasks[j];
 
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
@@ -386,21 +384,20 @@ void engine_repartition(struct engine *e) {
       wscale /= 2;
       wtot /= 2;
       w /= 2;
-      for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
-      for (k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
+      for (int k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
     }
 
     /* Get the top-level cells involved. */
+    const struct cell *ci, *cj = NULL;
     for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
       ;
     if (t->cj != NULL)
       for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
         ;
-    else
-      cj = NULL;
 
     /* Get the cell IDs. */
-    cid = ci - cells;
+    const int cid = ci - cells;
 
     /* Different weights for different tasks. */
     if (t->type == task_type_ghost || t->type == task_type_kick1 ||
@@ -436,18 +433,18 @@ void engine_repartition(struct engine *e) {
       else if (ci->nodeID == nodeID) {
 
         /* Index of the jth cell. */
-        cjd = cj - cells;
+        const int cjd = cj - cells;
 
         /* Add half of weight to each cell. */
         if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
         if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
 
         /* Add Weight to edge. */
-        for (k = 26 * cid; inds[k] != cjd; k++)
-          ;
+        int k = 26 * cid; 
+        while (inds[k] != cjd) k++;
         weights_e[k] += w;
-        for (k = 26 * cjd; inds[k] != cid; k++)
-          ;
+        k = 26 * cjd;
+        while (inds[k] != cid) k++;
         weights_e[k] += w;
       }
     }
@@ -457,13 +454,14 @@ void engine_repartition(struct engine *e) {
   if ((res = MPI_Allreduce(&wscale, &wscale_buff, 1, MPI_FLOAT, MPI_MIN,
                            MPI_COMM_WORLD)) != MPI_SUCCESS) {
     char buff[MPI_MAX_ERROR_STRING];
-    MPI_Error_string(res, buff, &i);
-    error("Failed to allreduce the weight scales (%s).", buff);
+    int len;
+    MPI_Error_string(res, buff, &len);
+    error("Failed to allreduce the weight scale (%s).", buff);
   }
   if (wscale_buff != wscale) {
     float scale = wscale_buff / wscale;
-    for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
-    for (k = 0; k < nr_cells; k++) weights_v[k] *= scale;
+    for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
+    for (int k = 0; k < nr_cells; k++) weights_v[k] *= scale;
   }
 
 /* Merge the weights arrays across all nodes. */
@@ -477,7 +475,8 @@ void engine_repartition(struct engine *e) {
                         MPI_COMM_WORLD)) != MPI_SUCCESS) {
 #endif
     char buff[MPI_MAX_ERROR_STRING];
-    MPI_Error_string(res, buff, &i);
+    int len;
+    MPI_Error_string(res, buff, &len);
     error("Failed to allreduce vertex weights (%s).", buff);
   }
 #if IDXTYPEWIDTH == 32
@@ -498,16 +497,16 @@ void engine_repartition(struct engine *e) {
      * been seen to cause an incomplete graph. */
     wmin = wmax;
     wmax = 0.0;
-    for (k = 0; k < 26 * nr_cells; k++) {
+    for (int k = 0; k < 26 * nr_cells; k++) {
       wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
       wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
     }
     if ((wmax - wmin) > engine_maxmetisweight) {
       wscale = engine_maxmetisweight / (wmax - wmin);
-      for (k = 0; k < 26 * nr_cells; k++) {
+      for (int k = 0; k < 26 * nr_cells; k++) {
         weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
       }
-      for (k = 0; k < nr_cells; k++) {
+      for (int k = 0; k < nr_cells; k++) {
         weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
       }
     }
@@ -542,9 +541,9 @@ void engine_repartition(struct engine *e) {
     */
 
     /* Make sure there are no zero weights. */
-    for (k = 0; k < 26 * nr_cells; k++)
+    for (int k = 0; k < 26 * nr_cells; k++)
       if (weights_e[k] == 0) weights_e[k] = 1;
-    for (k = 0; k < nr_cells; k++)
+    for (int k = 0; k < nr_cells; k++)
       if ((weights_v[k] *= vscale) == 0) weights_v[k] = 1;
 
     /* Allocate and fill the connection array. */
@@ -552,7 +551,7 @@ void engine_repartition(struct engine *e) {
     if ((offsets = (idx_t *)malloc(sizeof(idx_t) * (nr_cells + 1))) == NULL)
       error("Failed to allocate offsets buffer.");
     offsets[0] = 0;
-    for (k = 0; k < nr_cells; k++) offsets[k + 1] = offsets[k] + 26;
+    for (int k = 0; k < nr_cells; k++) offsets[k + 1] = offsets[k] + 26;
 
     /* Set the METIS options. +1 to keep the GCC sanitizer happy. */
     idx_t options[METIS_NOPTIONS + 1];
@@ -565,7 +564,7 @@ void engine_repartition(struct engine *e) {
     // options[ METIS_OPTION_UFACTOR ] = 1;
 
     /* Set the initial partition, although this is probably ignored. */
-    for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
+    for (int k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
 
     /* Call METIS. */
     idx_t one = 1, idx_nr_cells = nr_cells, idx_nr_nodes = nr_nodes;
@@ -587,16 +586,17 @@ void engine_repartition(struct engine *e) {
     printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
 
     /* Check that the nodeIDs are ok. */
-    for (k = 0; k < nr_cells; k++)
+    for (int k = 0; k < nr_cells; k++) {
       if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
         error("Got bad nodeID %" PRIDX " for cell %i.", nodeIDs[k], k);
+    }
 
     /* Check that the partition is complete and all nodes have some work. */
     int present[nr_nodes];
     int failed = 0;
-    for (i = 0; i < nr_nodes; i++) present[i] = 0;
-    for (i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
-    for (i = 0; i < nr_nodes; i++) {
+    for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+    for (int i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
+    for (int i = 0; i < nr_nodes; i++) {
       if (!present[i]) {
         failed = 1;
         message("Node %d is not present after repartition", i);
@@ -609,7 +609,7 @@ void engine_repartition(struct engine *e) {
       message(
           "WARNING: METIS repartition has failed, continuing with "
           "the current partition, load balance will not be optimal");
-      for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
+      for (int k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
     }
   }
 
@@ -624,7 +624,7 @@ void engine_repartition(struct engine *e) {
 #endif
 
   /* Set the cell nodeIDs and clear any non-local parts. */
-  for (k = 0; k < nr_cells; k++) {
+  for (int k = 0; k < nr_cells; k++) {
     cells[k].nodeID = nodeIDs[k];
     if (nodeIDs[k] == nodeID) my_cells += 1;
   }
