@@ -40,13 +40,13 @@
 
 void printParticle(struct part *parts, long long int id, int N) {
 
-  int i, found = 0;
+  int found = 0;
 
   /* Look for the particle. */
-  for (i = 0; i < N; i++)
+  for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
       printf(
-          "## Particle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
+          "## Particle[%zd]: id=%lld, x=[%.16e,%.16e,%.16e], "
           "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, "
           "wcount=%.3e, m=%.3e, rho=%.3e, rho_dh=%.3e, div_v=%.3e, u=%.3e, "
           "dudt=%.3e, bals=%.3e, POrho2=%.3e, v_sig=%.3e, dt=%.3e\n",
@@ -58,6 +58,7 @@ void printParticle(struct part *parts, long long int id, int N) {
           parts[i].force.balsara, parts[i].force.POrho2, parts[i].force.v_sig,
           parts[i].dt);
       found = 1;
+      break;
     }
 
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
@@ -65,19 +66,20 @@ void printParticle(struct part *parts, long long int id, int N) {
 
 void printgParticle(struct gpart *parts, long long int id, int N) {
 
-  int i, found = 0;
+  int found = 0;
 
   /* Look for the particle. */
-  for (i = 0; i < N; i++)
+  for (size_t i = 0; i < N; i++)
     if (parts[i].id == -id || (parts[i].id > 0 && parts[i].part->id == id)) {
       printf(
-          "## gParticle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
+          "## gParticle[%zd]: id=%lld, x=[%.16e,%.16e,%.16e], "
           "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, dt=%.3e\n",
           i, (parts[i].id < 0) ? -parts[i].id : parts[i].part->id,
           parts[i].x[0], parts[i].x[1], parts[i].x[2], parts[i].v[0],
           parts[i].v[1], parts[i].v[2], parts[i].a[0], parts[i].a[1],
           parts[i].a[2], parts[i].mass, parts[i].dt);
       found = 1;
+      break;
     }
 
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
@@ -134,8 +136,6 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   FILE *simplefile = NULL;
   FILE *weightfile = NULL;
   char fname[200];
-  idx_t i;
-  idx_t j;
   int haveedgeweight = 0;
   int havevertexsize = 0;
   int havevertexweight = 0;
@@ -143,7 +143,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   nseq++;
 
   if (vertexweights != NULL) {
-    for (i = 0; i < nvertices * nvertexweights; i++) {
+    for (idx_t i = 0; i < nvertices * nvertexweights; i++) {
       if (vertexweights[i] != 1) {
         havevertexweight = 1;
         break;
@@ -152,7 +152,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 
   if (vertexsizes != NULL) {
-    for (i = 0; i < nvertices; i++) {
+    for (idx_t i = 0; i < nvertices; i++) {
       if (vertexsizes[i] != 1) {
         havevertexsize = 1;
         break;
@@ -161,7 +161,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 
   if (edgeweights != NULL) {
-    for (i = 0; i < cellconruns[nvertices]; i++) {
+    for (idx_t i = 0; i < cellconruns[nvertices]; i++) {
       if (edgeweights[i] != 1) {
         haveedgeweight = 1;
         break;
@@ -197,7 +197,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 
   /*  Write the rest of the graph. */
-  for (i = 0; i < nvertices; i++) {
+  for (idx_t i = 0; i < nvertices; i++) {
     fprintf(stdfile, "\n");
     fprintf(simplefile, "\n");
     if (weightfile != NULL) {
@@ -210,13 +210,13 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
     }
 
     if (havevertexweight) {
-      for (j = 0; j < nvertexweights; j++) {
+      for (idx_t j = 0; j < nvertexweights; j++) {
         fprintf(stdfile, " %" PRIDX, vertexweights[i * nvertexweights + j]);
         fprintf(weightfile, " %" PRIDX, vertexweights[i * nvertexweights + j]);
       }
     }
 
-    for (j = cellconruns[i]; j < cellconruns[i + 1]; j++) {
+    for (idx_t j = cellconruns[i]; j < cellconruns[i + 1]; j++) {
       fprintf(stdfile, " %" PRIDX, cellcon[j] + 1);
       fprintf(simplefile, " %" PRIDX, cellcon[j] + 1);
       if (haveedgeweight) {
