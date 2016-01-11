@@ -50,7 +50,7 @@ const char *taskID_names[task_type_count] = {
 /**
  * @brief Computes the overlap between the parts array of two given cells.
  */
- 
+
 size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
   if (ci == NULL || cj == NULL) return 0;
   if (ci->parts <= cj->parts &&
@@ -74,10 +74,11 @@ size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
 float task_overlap(const struct task *ta, const struct task *tb) {
   /* First check if any of the two tasks are of a type that don't
      use cells. */
-  if (ta->type == task_type_none || ta->type == task_type_psort ||
-      ta->type == task_type_split_cell || ta->type == task_type_rewait ||
-      tb->type == task_type_none || tb->type == task_type_psort ||
-      tb->type == task_type_split_cell || tb->type == task_type_rewait)
+  if (ta == NULL || tb == NULL || ta->type == task_type_none ||
+      ta->type == task_type_psort || ta->type == task_type_split_cell ||
+      ta->type == task_type_rewait || tb->type == task_type_none ||
+      tb->type == task_type_psort || tb->type == task_type_split_cell ||
+      tb->type == task_type_rewait)
     return 0.0f;
 
   /* Compute the union of the cell data. */
