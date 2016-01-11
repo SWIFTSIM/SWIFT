@@ -43,8 +43,10 @@
 /**
  * @brief Return the source code git revision
  *
- * @details The SHA of the code checked out when the library was last built.
+ * The SHA of the code checked out when the library was last built.
  * Will include -dirty if they are local modifications.
+ *
+ * @result the git version.
  */
 const char *git_revision(void) {
   static char buf[256];
@@ -63,7 +65,9 @@ const char *git_revision(void) {
 /**
  * @brief Return the source code git branch
  *
- * @details The name of the current branch when the code was last built.
+ * The name of the current branch when the code was last built.
+ *
+ * @result git branch
  */
 const char *git_branch(void) {
   static char buf[256];
@@ -81,6 +85,8 @@ const char *git_branch(void) {
 
 /**
  * @brief The version of SWIFT
+ *
+ * @result the package version
  */
 const char *package_version(void) {
   static const char *version = PACKAGE_VERSION;
@@ -89,6 +95,8 @@ const char *package_version(void) {
 
 /**
  * @brief A description of the package version and code status.
+ *
+ * @result description of the package version
  */
 const char *package_description(void) {
   static char buf[256];
@@ -101,6 +109,11 @@ const char *package_description(void) {
   return buf;
 }
 
+/**
+ * @brief return the name of the compiler used to build SWIFT.
+ *
+ * @result description of the compiler.
+ */
 const char *compiler_name(void) {
   static char compiler[256] = {0};
 #if defined(__INTEL_COMPILER)
@@ -116,6 +129,11 @@ const char *compiler_name(void) {
   return compiler;
 }
 
+/**
+ * @brief return compiler version used to build SWIFT.
+ *
+ * @result description of the compiler.
+ */
 const char *compiler_version(void) {
   static char version[256] = {0};
 #if defined(__INTEL_COMPILER)
@@ -137,8 +155,16 @@ const char *compiler_version(void) {
   return version;
 }
 
+
+/**
+ * @brief return the MPI version, runtime if possible otherwise that used when
+ *        built.
+ *
+ * @result description of the MPI version.
+ */
 const char *mpi_version(void) {
-  static char version[256] = {0};
+  static char version[80] = {0};
+
 #ifdef WITH_MPI
   int std_version, std_subversion;
 
@@ -153,15 +179,21 @@ const char *mpi_version(void) {
   char *ptr = strchr(lib_version, '\n');
   if (ptr != NULL) *ptr = '\0';
 
+  /* Also arbitrarily truncate to keep down to one line, Open MPI,
+   * check for last comma and keep to ~60 chars max. */
+  strcpy(lib_version+60, "...");
+  ptr = strrchr(lib_version, ',');
+  if (ptr != NULL) *ptr = '\0';
+
 #else
   /* Use autoconf guessed value. */
-  static char lib_version[256] = {0};
-  sprintf(lib_version, SWIFT_MPI_LIBRARY);
+  static char lib_version[60] = {0};
+  snprintf(lib_version, 60, "%s", SWIFT_MPI_LIBRARY);
 #endif
 
   /* Numeric version. */
   MPI_Get_version(&std_version, &std_subversion);
-  snprintf(version, 256, "%s (implementing MPI standard v %i.%i)", lib_version,
+  snprintf(version, 80, "%s (MPI std v%i.%i)", lib_version,
            std_version, std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
@@ -169,6 +201,11 @@ const char *mpi_version(void) {
   return version;
 }
 
+/**
+ * @brief return the HDF5 version in use at runtime.
+ *
+ * @result description of the current HDF5 version.
+ */
 const char *hdf5_version(void) {
 
   static char version[256] = {0};
@@ -182,6 +219,11 @@ const char *hdf5_version(void) {
   return version;
 }
 
+/**
+ * @brief return the METIS version used when SWIFT was built.
+ *
+ * @result description of the METIS version.
+ */
 const char *metis_version(void) {
 
   static char version[256] = {0};
