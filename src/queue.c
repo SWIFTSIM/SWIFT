@@ -212,6 +212,9 @@ struct task *queue_gettask(struct queue *q, const struct task *prev, int blockin
 
     /* Another one bites the dust. */
     const int qcount = q->count -= 1;
+    
+    /* Get a pointer on the task that we want to return. */
+    res = &qtasks[tid];
 
     /* Swap this task with the last task and re-heap. */
     int k = ind;
