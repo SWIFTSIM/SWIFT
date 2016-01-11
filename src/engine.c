@@ -366,7 +366,7 @@ void engine_repartition(struct engine *e) {
   for (int j = 0; j < e->sched.nr_tasks; j++) {
 
     /* Get a pointer to the kth task. */
-    const struct task* t = &tasks[j];
+    const struct task *t = &tasks[j];
 
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
@@ -440,7 +440,7 @@ void engine_repartition(struct engine *e) {
         if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
 
         /* Add Weight to edge. */
-        int k = 26 * cid; 
+        int k = 26 * cid;
         while (inds[k] != cjd) k++;
         weights_e[k] += w;
         k = 26 * cjd;
@@ -797,7 +797,8 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Allocate the pcells. */
   struct pcell *pcells;
-  if ((pcells = (struct pcell *)malloc(sizeof(struct pcell) * count_out)) == NULL)
+  if ((pcells = (struct pcell *)malloc(sizeof(struct pcell) * count_out)) ==
+      NULL)
     error("Failed to allocate pcell buffer.");
 
   /* Pack the cells. */
@@ -903,22 +904,17 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
 
 #ifdef WITH_MPI
 
-  int k, pid, count = 0, nr_in = 0, nr_out = 0;
-  MPI_Request reqs_in[2 * engine_maxproxies];
-  MPI_Request reqs_out[2 * engine_maxproxies];
-  MPI_Status status;
-  struct proxy *p;
   struct space *s = e->s;
 
   /* Re-set the proxies. */
-  for (k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
+  for (int k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
 
   /* Put the parts into the corresponding proxies. */
-  for (k = 0; k < N; k++) {
-    int node_id = e->s->cells[ind[k]].nodeID;
+  for (size_t k = 0; k < N; k++) {
+    const int node_id = e->s->cells[ind[k]].nodeID;
     if (node_id < 0 || node_id >= e->nr_nodes)
       error("Bad node ID %i.", node_id);
-    pid = e->proxy_ind[node_id];
+    const int pid = e->proxy_ind[node_id];
     if (pid < 0)
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
@@ -930,15 +926,19 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   }
 
   /* Launch the proxies. */
-  for (k = 0; k < e->nr_proxies; k++) {
+  MPI_Request reqs_in[2 * engine_maxproxies];
+  MPI_Request reqs_out[2 * engine_maxproxies];
+  for (int k = 0; k < e->nr_proxies; k++) {
     proxy_parts_exch1(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_parts_count_in;
     reqs_out[k] = e->proxies[k].req_parts_count_out;
   }
 
   /* Wait for each count to come in and start the recv. */
-  for (k = 0; k < e->nr_proxies; k++) {
-    if (MPI_Waitany(e->nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
+  for (int k = 0; k < e->nr_proxies; k++) {
+    int pid;
+    if (MPI_Waitany(e->nr_proxies, reqs_in, &pid, MPI_STATUS_IGNORE) !=
+            MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "request from proxy %i has arrived." , pid );
@@ -952,7 +952,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   /* Count the total number of incoming particles and make sure we have
      enough space to accommodate them. */
   int count_in = 0;
-  for (k = 0; k < e->nr_proxies; k++) count_in += e->proxies[k].nr_parts_in;
+  for (int k = 0; k < e->nr_proxies; k++) count_in += e->proxies[k].nr_parts_in;
   message("sent out %i particles, got %i back.", N, count_in);
   if (offset + count_in > s->size_parts) {
     s->size_parts = (offset + count_in) * 1.05;
@@ -972,7 +972,8 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   }
 
   /* Collect the requests for the particle data from the proxies. */
-  for (k = 0; k < e->nr_proxies; k++) {
+  int nr_in = 0, nr_out = 0;
+  for (int k = 0; k < e->nr_proxies; k++) {
     if (e->proxies[k].nr_parts_in > 0) {
       reqs_in[2 * k] = e->proxies[k].req_parts_in;
       reqs_in[2 * k + 1] = e->proxies[k].req_xparts_in;
@@ -989,10 +990,11 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
 
   /* Wait for each part array to come in and collect the new
      parts from the proxies. */
-  for (k = 0; k < 2 * (nr_in + nr_out); k++) {
-    int err;
-    if ((err = MPI_Waitany(2 * e->nr_proxies, reqs_in, &pid, &status)) !=
-        MPI_SUCCESS) {
+  size_t count = 0;
+  for (int k = 0; k < 2 * (nr_in + nr_out); k++) {
+    int err, pid;
+    if ((err = MPI_Waitany(2 * e->nr_proxies, reqs_in, &pid,
+                           MPI_STATUS_IGNORE)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];
       int res;
       MPI_Error_string(err, buff, &res);
@@ -1002,7 +1004,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     // message( "request from proxy %i has arrived." , pid );
     if (reqs_in[pid & ~1] == MPI_REQUEST_NULL &&
         reqs_in[pid | 1] == MPI_REQUEST_NULL) {
-      p = &e->proxies[pid >> 1];
+      struct proxy* p = &e->proxies[pid >> 1];
       memcpy(&s->parts[offset + count], p->parts_in,
              sizeof(struct part) * p->nr_parts_in);
       memcpy(&s->xparts[offset + count], p->xparts_in,
