@@ -140,21 +140,26 @@ const char *compiler_version(void) {
 const char *mpi_version(void) {
   static char version[256] = {0};
 #ifdef WITH_MPI
-  int len, std_version, std_subversion;
-/* Check that the library implements the version string routine */
+  int std_version, std_subversion;
+
+  /* Check that the library implements the version string routine */
 #ifdef MPI_MAX_LIBRARY_VERSION_STRING
   static char lib_version[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
+  int len;
   MPI_Get_library_version(lib_version, &len);
 
-  /* Find first \n and truncate string to this length, get many lines from 
+  /* Find first \n and truncate string to this length, can get many lines from
    * some MPIs (MPICH). */
   char *ptr = strchr(lib_version, '\n');
   if (ptr != NULL) *ptr = '\0';
 
 #else
+  /* Use autoconf guessed value. */
   static char lib_version[256] = {0};
-  sprintf(lib_version, "Unknown library");
+  sprintf(lib_version, SWIFT_MPI_LIBRARY);
 #endif
+
+  /* Numeric version. */
   MPI_Get_version(&std_version, &std_subversion);
   snprintf(version, 256, "%s (implementing MPI standard v %i.%i)", lib_version,
            std_version, std_subversion);
