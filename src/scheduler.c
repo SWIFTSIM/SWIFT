@@ -963,7 +963,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
-  store = NULL;
+  //store = NULL;
 
   /* Store the mask */
   s->mask = mask | (1 << task_type_rewait);
@@ -1017,7 +1017,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   /* message("waiting tasks took %.3f ms.",
           (double)(getticks() - tic) / CPU_TPS * 1000); */
 
-  scheduler_print_tasks(s, "tasks_start.dat");
+  //scheduler_print_tasks(s, "tasks_start.dat");
 
   s->mask = mask;
 
@@ -1029,11 +1029,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
       scheduler_enqueue(s, t);
       pthread_cond_broadcast(&s->sleep_cond);
     }
-    /* else if(! (((1 << t->type) & s->mask) && !t->skip)) { */
-    /*   error("error"); */
-    /* } */
-      
   }
+
   // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) /
   // CPU_TPS * 1000 );
 }
@@ -1057,8 +1054,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Ignore skipped tasks and tasks not in the mask. */
   if (t->skip || (1 << t->type) & ~(s->mask)) {
-    if(t->type==task_type_pair && t->subtype == task_subtype_density)
-      error("Found a pair");
     return;
   }
 
@@ -1067,10 +1062,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
 
-      if (t2 == store) {
-        message("Unlocked by task %s-%s address: %p", taskID_names[t->type],
-                subtaskID_names[t->subtype], t);
-      }
+      /* if (t2 == store) { */
+      /*   message("Unlocked by task %s-%s address: %p", taskID_names[t->type], */
+      /*           subtaskID_names[t->subtype], t); */
+      /* } */
 
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
@@ -1166,19 +1161,19 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
-  if (t == store)
-    message("\nChecking task %s-%s address: %p", taskID_names[t->type],
-            subtaskID_names[t->subtype], t);
+  /* if (t == store) */
+  /*   message("\nChecking task %s-%s address: %p", taskID_names[t->type], */
+  /*           subtaskID_names[t->subtype], t); */
 
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
 
-    if (t2 == store) {
-      message("Unlocked by task %s-%s address: %p", taskID_names[t->type],
-              subtaskID_names[t->subtype], t);
-    }
+    /* if (t2 == store) { */
+    /*   message("Unlocked by task %s-%s address: %p", taskID_names[t->type], */
+    /*           subtaskID_names[t->subtype], t); */
+    /* } */
 
     int res = atomic_dec(&t2->wait);
     if (res < 1) {

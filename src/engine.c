@@ -1479,9 +1479,6 @@ void engine_print(struct engine *e) {
  */
 
 void engine_rebuild(struct engine *e) {
-
-  message("REBUILD !!!");
-
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
@@ -1790,12 +1787,12 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
     error("Failed to broadcast barrier open condition.");
 
   /* Print out what we do */
-  printf("\n");
-  task_print_mask(mask);
-  printf("\n");
-  fflush(stdout);
+  /* printf("\n"); */
+  /* task_print_mask(mask); */
+  /* printf("\n"); */
+  /* fflush(stdout); */
 
-  engine_print(e);
+  /* engine_print(e); */
 
   /* Load the tasks. */
   pthread_mutex_unlock(&e->barrier_mutex);
@@ -1844,8 +1841,8 @@ void engine_init_particles(struct engine *e) {
 
   //engine_print(e);
 
-  fflush(stdout);
-  message("Engine prepared");
+  //fflush(stdout);
+  //message("Engine prepared");
 
   /* Make sure all particles are ready to go */
   void initParts(struct part * p, struct xpart * xp, struct cell * c) {
@@ -1973,7 +1970,7 @@ if ( e->nodeID == 0 )
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift);
 
-  scheduler_print_tasks(&e->sched, "tasks_after_drift.dat");
+  //scheduler_print_tasks(&e->sched, "tasks_after_drift.dat");
 
   // error("Done drift");
 
@@ -1987,9 +1984,9 @@ if ( e->nodeID == 0 )
 
   // engine_marktasks(e);
 
-  engine_print(e);
-  message("Go !");
-  fflush(stdout);
+  //engine_print(e);
+  //message("Go !");
+  //fflush(stdout);
 
   /* Send off the runners. */
   TIMER_TIC;
@@ -2000,7 +1997,7 @@ if ( e->nodeID == 0 )
 		(1 << task_type_kick) | (1 << task_type_send) |
 		(1 << task_type_recv));
 
-  scheduler_print_tasks(&e->sched, "tasks_after.dat");
+  //scheduler_print_tasks(&e->sched, "tasks_after.dat");
 
   TIMER_TOC(timer_runners);
 
