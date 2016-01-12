@@ -2009,8 +2009,6 @@ if ( e->nodeID == 0 )
 
   scheduler_print_tasks(&e->sched, "tasks_after.dat");
 
-  error("done step");
-
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);

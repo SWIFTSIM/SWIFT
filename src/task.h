@@ -95,5 +95,6 @@ void task_addunlock(struct task *ta, struct task *tb);
 void task_unlock(struct task *t);
 int task_lock(struct task *t);
 void task_print_mask(unsigned int mask);
+void task_do_rewait(struct task *t);
 
 #endif /* SWIFT_TASK_H */

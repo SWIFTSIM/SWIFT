@@ -397,7 +397,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-    if (j == 5)  break;
+    if (j == 1)  break;
     
     if (with_outputs && j % 100 == 0) {
 

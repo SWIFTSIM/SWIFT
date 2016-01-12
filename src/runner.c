@@ -1193,30 +1193,7 @@ void *runner_main(void *data) {
           space_split(e->s, t->ci);
           break;
         case task_type_rewait:
-
-
-	  
-	  for (struct task *t2 = (struct task *)t->ci;
-	       t2 != (struct task *)t->cj; t2++) {
-	    if(store == NULL && t2->type==task_type_pair && t2->subtype==task_subtype_density) {
-	      message("\n");
-	      message("Checking task %s-%s address: %p", taskID_names[t2->type], subtaskID_names[t2->subtype], t2);
-	      store = t2;
-	    }
-	    for (int k = 0; k < t2->nr_unlock_tasks; k++) {
-	      if(t2->type == task_type_sort && t2->flags == 0) continue;
-	      atomic_inc(&t2->unlock_tasks[k]->wait);
-
-	      struct task *t3=t2->unlock_tasks[k];
-	      if (t3 == store) {
-		message("Unlocked by task %s-%s address: %p" , taskID_names[t2->type], subtaskID_names[t2->subtype], t2);
-	      }
-	      
-	    }
-	  }
-
-
-	  
+	  task_do_rewait(t);
           break;
         default:
           error("Unknown task type.");

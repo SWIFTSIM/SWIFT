@@ -983,13 +983,21 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
                                    ? s->size - s->nr_tasks
                                    : s->nr_queues;
 
-  const int waiting_old =
-      s->waiting;  // Remember that engine_launch may fiddle with this value.
+  /* Remember that engine_launch may fiddle with this value. */
+  const int waiting_old = s->waiting;  
+
+  /* We are going to use the task structure in a modified way to pass information
+     to the task. Don't do this at home !
+     - ci and cj will give the range of tasks to which the waits will be applied
+     - the flags will be used to transfer the mask
+     - the rest is unused.
+  */
   for (int k = 0; k < num_rewait_tasks; k++) {
     rewait_tasks[k].type = task_type_rewait;
     rewait_tasks[k].ci = (struct cell *)&s->tasks[k * nr_tasks / s->nr_queues];
     rewait_tasks[k].cj =
         (struct cell *)&s->tasks[(k + 1) * nr_tasks / s->nr_queues];
+    rewait_tasks[k].flags = s->mask;
     rewait_tasks[k].skip = 0;
     rewait_tasks[k].wait = 0;
     rewait_tasks[k].rid = -1;
