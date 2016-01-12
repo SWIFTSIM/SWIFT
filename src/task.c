@@ -41,7 +41,7 @@
 #include "error.h"
 #include "lock.h"
 
-struct task *store;
+//struct task *store;
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {

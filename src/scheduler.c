@@ -46,7 +46,7 @@
 #include "kernel.h"
 #include "timers.h"
 
-extern struct task *store;
+//extern struct task *store;
 
 /**
  * @brief Add an unlock_task to the given task.

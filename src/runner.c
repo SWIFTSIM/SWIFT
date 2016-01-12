@@ -44,7 +44,7 @@
 #include "timers.h"
 #include "timestep.h"
 
-struct task *store = NULL;
+//struct task *store = NULL;
 
 
 /* Include the right variant of the SPH interactions */
