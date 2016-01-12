@@ -984,6 +984,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       if (p->t_end < t_end_min) t_end_min = p->t_end;
 
       if (p->t_end > t_end_max) t_end_max = p->t_end;
+
+      if (p->h > h_max) h_max = p->h;
     }
 
   }

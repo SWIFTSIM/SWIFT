@@ -1019,6 +1019,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
 
   scheduler_print_tasks(s, "tasks_start.dat");
 
+  s->mask = mask;
+
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
@@ -1027,6 +1029,10 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
       scheduler_enqueue(s, t);
       pthread_cond_broadcast(&s->sleep_cond);
     }
+    /* else if(! (((1 << t->type) & s->mask) && !t->skip)) { */
+    /*   error("error"); */
+    /* } */
+      
   }
   // message( "enqueueing tasks took %.3f ms." , (double)( getticks() - tic ) /
   // CPU_TPS * 1000 );
@@ -1051,6 +1057,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Ignore skipped tasks and tasks not in the mask. */
   if (t->skip || (1 << t->type) & ~(s->mask)) {
+    if(t->type==task_type_pair && t->subtype == task_subtype_density)
+      error("Found a pair");
     return;
   }
 

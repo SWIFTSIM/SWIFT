@@ -780,8 +780,22 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 #endif
   TIMER_TIC
 
+ for (int p=0; p<ci->count; ++p)
+   if(ci->parts[p].id == 1000 && t_current > 0)
+     message("Particle is here -- i t_current=%f ci->t_end_min=%f cj->t_end_min=%f, ci->count=%d", t_current, ci->t_end_min, cj->t_end_min, ci->count);
+
+ for (int p=0; p<cj->count; ++p)
+   if(cj->parts[p].id == 1000 && t_current > 0)
+     message("Particle is here -- j t_current=%f ci->t_end_min=%f cj->t_end_min=%f cj->count=%d", t_current, ci->t_end_min, cj->t_end_min, cj->count);
+
+
+
+
   /* Anything to do here? */
-  if (ci->t_end_min > t_current && cj->t_end_min > t_current) return;
+ if (ci->t_end_min > t_current && cj->t_end_min > t_current) {
+   message("No active particles, skipping....");
+    return;
+ }
 
   /* Get the sort ID. */
   sid = space_getsid(e->s, &ci, &cj, shift);
@@ -1378,6 +1392,12 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
   TIMER_TIC
 
+ for (int p=0; p<c->count; ++p)
+   if(c->parts[p].id == 1000)
+     message("Particle is here -- i");
+
+
+
   /* Set up indt if needed. */
   if (c->t_end_min > t_current)
     return;
@@ -1600,6 +1620,11 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   struct part *piq2[VEC_SIZE], *pjq2[VEC_SIZE];
 #endif
   TIMER_TIC
+
+ for (int p=0; p<c->count; ++p)
+   if(c->parts[p].id == 1000)
+     message("Particle is here -- i");
+
 
   /* Set up indt if needed. */
   if (c->t_end_min > t_current)

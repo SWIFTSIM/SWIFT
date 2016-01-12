@@ -282,7 +282,7 @@ void task_do_rewait(struct task *t) {
 	    /* Skip tasks not in the mask */
 	    if( !((1<<t2->type) & mask) ) continue;
 
-	    /* Skip sort tasks that have already been performed */
+	    /* Skip sort tasks that have already been */
 	    if(t2->type == task_type_sort && t2->flags == 0) continue;
 
 	    if(store == NULL && t2->type==task_type_pair && t2->subtype==task_subtype_density) {
