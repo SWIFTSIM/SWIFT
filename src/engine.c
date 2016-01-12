@@ -1427,7 +1427,6 @@ int engine_marktasks(struct engine *e) {
 
 void engine_rebuild(struct engine *e) {
 
-  int k;
   struct scheduler *sched = &e->sched;
 
   /* Clear the forcerebuild flag, whatever it was. */
@@ -1462,19 +1461,20 @@ void engine_rebuild(struct engine *e) {
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
-  for (k = 0; k <= task_type_count; k++) counts[k] = 0;
-  for (k = 0; k < sched->nr_tasks; k++)
+  for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
+  for (int k = 0; k < sched->nr_tasks; k++) {
     if (!sched->tasks[k].skip)
       counts[(int)sched->tasks[k].type] += 1;
     else
       counts[task_type_count] += 1;
+  }
 #ifdef WITH_MPI
   printf("[%03i] engine_rebuild: task counts are [ %s=%i", e->nodeID,
          taskID_names[0], counts[0]);
 #else
   printf("engine_rebuild: task counts are [ %s=%i", taskID_names[0], counts[0]);
 #endif
-  for (k = 1; k < task_type_count; k++)
+  for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
