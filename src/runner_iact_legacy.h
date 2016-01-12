@@ -26,18 +26,18 @@
 #include "part.h"
 #include "vector.h"
 
-#define PRINT_PARTS						\
-if (pi->id == 1000) {							\
-    message(                                                                \
-        "pi->id=%lld pi->h=%f pi->N_ngb=%f pi->rho=%f pi->t_beg=%f pi->t_end=%f pos=[%f %f %f]", \
-        pi->id, pi->h, pi->density.wcount, pi->rho, pi->t_begin, pi->t_end, pi->x[0], pi->x[1], pi->x[2]); \
-  } \
-  if (pj->id == 1000) {                                                      \
-    message(                                                                \
-        "pj->id=%lld pj->h=%f pj->N_ngb=%f pj->rho=%f pj->t_beg=%f pj->t_end=%f pos=[%f %f %f]", \
-        pj->id, pj->h, pj->density.wcount, pj->rho, pj->t_begin, pj->t_end, pj->x[0], pj->x[1], pj->x[2]); \
-  }\
-  fflush(stdout);
+/* #define PRINT_PARTS						\ */
+/* if (pi->id == 1000) {							\ */
+/*     message(                                                                \ */
+/*         "pi->id=%lld pi->h=%f pi->N_ngb=%f pi->rho=%f pi->t_beg=%f pi->t_end=%f pos=[%f %f %f]", \ */
+/*         pi->id, pi->h, pi->density.wcount, pi->rho, pi->t_begin, pi->t_end, pi->x[0], pi->x[1], pi->x[2]); \ */
+/*   } \ */
+/*   if (pj->id == 1000) {                                                      \ */
+/*     message(                                                                \ */
+/*         "pj->id=%lld pj->h=%f pj->N_ngb=%f pj->rho=%f pj->t_beg=%f pj->t_end=%f pos=[%f %f %f]", \ */
+/*         pj->id, pj->h, pj->density.wcount, pj->rho, pj->t_begin, pj->t_end, pj->x[0], pj->x[1], pj->x[2]); \ */
+/*   }\ */
+/*   fflush(stdout); */
 
 
 /**
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   float dv[3], curlvr[3];
   int k;
 
-  PRINT_PARTS;
+  //PRINT_PARTS;
   
   /* Get the masses. */
   mi = pi->mass;
@@ -248,7 +248,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   float dv[3], curlvr[3];
   int k;
 
-  PRINT_PARTS;
+  //PRINT_PARTS;
   
   /* Get the masses. */
   mj = pj->mass;

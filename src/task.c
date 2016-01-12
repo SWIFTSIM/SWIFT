@@ -273,37 +273,33 @@ void task_print_mask(unsigned int mask) {
 
 void task_do_rewait(struct task *t) {
 
-	  const unsigned int mask = t->flags;
-	  
-	  for (struct task *t2 = (struct task *)t->ci; t2 != (struct task *)t->cj; t2++) {
-
-	    if( t2->skip ) continue;
-	    
-	    /* Skip tasks not in the mask */
-	    if( !((1<<t2->type) & mask) ) continue;
-
-	    /* Skip sort tasks that have already been */
-	    if(t2->type == task_type_sort && t2->flags == 0) continue;
-
-	    if(store == NULL && t2->type==task_type_pair && t2->subtype==task_subtype_density) {
-	      message("\n");
-	      message("Checking task %s-%s address: %p", taskID_names[t2->type], subtaskID_names[t2->subtype], t2);
-	      store = t2;
-	    }
-
-	    for (int k = 0; k < t2->nr_unlock_tasks; k++) {
-
-	      struct task *t3=t2->unlock_tasks[k];
-	      
-	      atomic_inc(&t3->wait);
-
-	      if (t3 == store) {
-		message("Unlocked by task %s-%s address: %p" , taskID_names[t2->type], subtaskID_names[t2->subtype], t2);
-	      }
-	      
-	    }
-	  }
-
-
+  const unsigned int mask = t->flags;
   
+  for (struct task *t2 = (struct task *)t->ci; t2 != (struct task *)t->cj; t2++) {
+    
+    if( t2->skip ) continue;
+    
+    /* Skip tasks not in the mask */
+    if( !((1<<t2->type) & mask) ) continue;
+    
+    /* Skip sort tasks that have already been */
+    if(t2->type == task_type_sort && t2->flags == 0) continue;
+
+	    /* if(store == NULL && t2->type==task_type_pair && t2->subtype==task_subtype_density) { */
+	    /*   message("\n"); */
+	    /*   message("Checking task %s-%s address: %p", taskID_names[t2->type], subtaskID_names[t2->subtype], t2); */
+	    /*   store = t2; */
+	    /* } */
+
+    for (int k = 0; k < t2->nr_unlock_tasks; k++) {
+      
+      struct task *t3=t2->unlock_tasks[k];
+      
+      atomic_inc(&t3->wait);
+
+	      /* if (t3 == store) { */
+	      /* 	message("Unlocked by task %s-%s address: %p" , taskID_names[t2->type], subtaskID_names[t2->subtype], t2); */
+	      /* } */	      
+    }
+  }
 }

@@ -1828,13 +1828,6 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
  */
 void engine_init_particles(struct engine *e) {
 
-  int k;
-  float dt_max = 0.0f, dt_min = FLT_MAX;
-  double epot = 0.0, ekin = 0.0;
-  float mom[3] = {0.0, 0.0, 0.0};
-  float ang[3] = {0.0, 0.0, 0.0};
-  int count = 0;
-  struct cell *c;
   struct space *s = e->s;
 
   // engine_repartition(e);

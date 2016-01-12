@@ -883,7 +883,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         current_dt = 0.0f;
   float t_start, t_end, t_end_min = FLT_MAX, t_end_max = 0., dt;
   float dt_timeline;
-  float h_max, dx_max, dt_min, dt_max;
+  float h_max, dx_max;//, dt_min, dt_max;
   double ekin = 0.0, epot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   float m, x[3], v_full[3];
@@ -896,8 +896,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   if (!c->split) {
 
     /* Init the min/max counters. */
-    dt_min = FLT_MAX;
-    dt_max = 0.0f;
+    //dt_min = FLT_MAX;
+    //dt_max = 0.0f;
     h_max = 0.0f;
     dx_max = 0.0f;
 
@@ -993,9 +993,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   /* Otherwise, agregate data from children. */
   else {
 
-    /* Init with the first non-null child. */
-    dt_min = FLT_MAX;
-    dt_max = 0.0f;
+    /* Init everything. */
+    //dt_min = FLT_MAX;
+    //dt_max = 0.0f;
     h_max = 0.0f;
     dx_max = 0.0f;
     updated = 0;
