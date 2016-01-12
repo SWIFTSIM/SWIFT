@@ -1191,7 +1191,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  */
 
 struct task *scheduler_gettask(struct scheduler *s, int qid,
-                               struct cell *super) {
+                               const struct task *prev) {
 
   struct task *res = NULL;
   int k, nr_queues = s->nr_queues;
@@ -1210,7 +1210,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       /* Try to get a task from the suggested queue. */
       if (s->queues[qid].count > 0) {
         TIMER_TIC
-        res = queue_gettask(&s->queues[qid], super, 0);
+        res = queue_gettask(&s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
         if (res != NULL) break;
       }
@@ -1223,7 +1223,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         for (k = 0; k < scheduler_maxsteal && count > 0; k++) {
           int ind = rand_r(&seed) % count;
           TIMER_TIC
-          res = queue_gettask(&s->queues[qids[ind]], super, 0);
+          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
