@@ -91,6 +91,7 @@ void task_rmunlock_blind(struct task *ta, struct task *tb);
 void task_cleanunlock(struct task *t, int type);
 void task_addunlock(struct task *ta, struct task *tb);
 void task_unlock(struct task *t);
+float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);
 
 #endif /* SWIFT_TASK_H */

@@ -47,6 +47,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "part.h"
 #include "timers.h"
 
 #ifdef LEGACY_GADGET2_SPH
@@ -214,28 +215,24 @@ void engine_redistribute(struct engine *e) {
         offset_send += counts[ind_send];
         offset_recv += counts[ind_recv];
       } else {
-        if (MPI_Isend(&s->parts[offset_send],
-                      sizeof(struct part) * counts[ind_send], MPI_BYTE, k,
-                      2 * ind_send + 0, MPI_COMM_WORLD,
+        if (MPI_Isend(&s->parts[offset_send], counts[ind_send],
+                      e->part_mpi_type, k, 2 * ind_send + 0, MPI_COMM_WORLD,
                       &reqs[4 * k]) != MPI_SUCCESS)
           error("Failed to isend parts to node %zi.", k);
-        if (MPI_Isend(&s->xparts[offset_send],
-                      sizeof(struct xpart) * counts[ind_send], MPI_BYTE, k,
-                      2 * ind_send + 1, MPI_COMM_WORLD,
+        if (MPI_Isend(&s->xparts[offset_send], counts[ind_send],
+                      e->xpart_mpi_type, k, 2 * ind_send + 1, MPI_COMM_WORLD,
                       &reqs[4 * k + 1]) != MPI_SUCCESS)
           error("Failed to isend xparts to node %zi.", k);
         offset_send += counts[ind_send];
       }
     }
     if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv],
-                    sizeof(struct part) * counts[ind_recv], MPI_BYTE, k,
-                    2 * ind_recv + 0, MPI_COMM_WORLD,
+      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv], e->part_mpi_type,
+                    k, 2 * ind_recv + 0, MPI_COMM_WORLD,
                     &reqs[4 * k + 2]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %zi.", k);
-      if (MPI_Irecv(&xparts_new[offset_recv],
-                    sizeof(struct xpart) * counts[ind_recv], MPI_BYTE, k,
-                    2 * ind_recv + 1, MPI_COMM_WORLD,
+      if (MPI_Irecv(&xparts_new[offset_recv], counts[ind_recv],
+                    e->xpart_mpi_type, k, 2 * ind_recv + 1, MPI_COMM_WORLD,
                     &reqs[4 * k + 3]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %zi.", k);
       offset_recv += counts[ind_recv];
@@ -1309,28 +1306,26 @@ void engine_maketasks(struct engine *e) {
 int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
-  int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
-  struct task *t, *tasks = s->tasks;
-  float dt_step = e->dt_step;
-  struct cell *ci, *cj;
-  // ticks tic = getticks();
+  const int nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
+  struct task *tasks = s->tasks;
+  const float dt_step = e->dt_step;
 
   /* Much less to do here if we're on a fixed time-step. */
   if (!(e->policy & engine_policy_multistep)) {
 
     /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+    for (int k = 0; k < nr_tasks; k++) {
 
       /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
+      struct task* t = &tasks[ind[k]];
 
       /* Pair? */
       if (t->type == task_type_pair ||
           (t->type == task_type_sub && t->cj != NULL)) {
 
         /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
+        const struct cell* ci = t->ci;
+        const struct cell* cj = t->cj;
 
         /* Too much particle movement? */
         if (t->tight &&
@@ -1352,10 +1347,10 @@ int engine_marktasks(struct engine *e) {
   } else {
 
     /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+    for (int k = 0; k < nr_tasks; k++) {
 
       /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
+      struct task* t = &tasks[ind[k]];
 
       /* Sort-task? Note that due to the task ranking, the sorts
          will all come before the pairs. */
@@ -1381,8 +1376,8 @@ int engine_marktasks(struct engine *e) {
                (t->type == task_type_sub && t->cj != NULL)) {
 
         /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
+        const struct cell* ci = t->ci;
+        const struct cell* cj = t->cj;
 
         /* Set this task's skip. */
         t->skip = (ci->dt_min > dt_step && cj->dt_min > dt_step);
@@ -2190,7 +2185,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
-#ifndef HAVE_MPI
+#ifndef WITH_MPI
     error("SWIFT was not compiled with MPI support.");
 #else
     e->policy |= engine_policy_mpi;
@@ -2201,6 +2196,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     e->nr_proxies = 0;
 #endif
   }
+
+/* Construct types for MPI communications */
+#ifdef WITH_MPI
+  part_create_mpi_type(&e->part_mpi_type);
+  xpart_create_mpi_type(&e->xpart_mpi_type);
+#endif
 
   /* First of all, init the barrier and lock it. */
   if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)

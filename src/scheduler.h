@@ -20,6 +20,14 @@
 #ifndef SWIFT_SCHEDULER_H
 #define SWIFT_SCHEDULER_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* Some standard headers. */
 #include <pthread.h>
 
@@ -89,13 +97,19 @@ struct scheduler {
 
   /* The node we are working on. */
   int nodeID;
+
+#ifdef WITH_MPI
+  /* MPI data type for the particle transfers */
+  MPI_Datatype part_mpi_type;
+  MPI_Datatype xpart_mpi_type;
+#endif
 };
 
 /* Function prototypes. */
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID);
 struct task *scheduler_gettask(struct scheduler *s, int qid,
-                               struct cell *super);
+                               const struct task* prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
 void scheduler_start(struct scheduler *s, unsigned int mask);
 void scheduler_reset(struct scheduler *s, int nr_tasks);
