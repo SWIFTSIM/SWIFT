@@ -1,19 +1,19 @@
-#!/bin/bash -xv
+#!/bin/bash
 #
 # Usage:
 #  process_plot_tasks_MPI nprocess time-range-ms
 #
 # Description:
 #  Process all the thread info files in the current directory
-#  creating task graphs for all MPI ranks and all rank threads.
-#  
+#  creating task graphs for all MPI ranks and all threads.
+#
 #  The input files are created by a run using the "-y interval" flag and
 #  should be named "thread_info_MPI-step<n>.dat" in the current directory.
 #  All located files will be processed using "nprocess" concurrent
 #  processes and all plots will have the given time range. An output
 #  HTML file "index.html" will be created to view all the plots.
 #
-# 
+#
 # This file is part of SWIFT:
 #
 #  Copyright (C) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
@@ -40,8 +40,8 @@ fi
 NPROCS=$1
 TIMERANGE=$2
 
-#  Find all thread info files.
-files=$(ls thread_info_MPI-step*.dat)
+#  Find all thread info files. Use version sort to get into correct order.
+files=$(ls -v thread_info_MPI-step*.dat)
 if test $? != 0; then
     echo "Failed to find any thread info files"
     exit 1
@@ -51,14 +51,19 @@ fi
 list=""
 for f in $files; do
     s=$(echo $f| sed 's,thread_info_MPI-step\(.*\).dat,\1,')
-    list="$f $s step${s}r $list"
+    list="$list $f $s step${s}r"
 done
 
 #  Need number of ranks used.
-    
+basefile=$(echo $list | awk '{print $1}')
+nrank=$(cat $basefile | awk '{print $1}' | uniq | wc -l)
+nrank=$(($nrank-1))
+
 #  And process them,
+echo "Processing thread info files..."
 echo $list | xargs -P $NPROCS -n 3 /bin/bash -c "./plot_tasks_MPI.py \$0 \$2 $TIMERANGE"
 
+echo "Writing output index.html file"
 #  Construct document - serial.
 cat <<EOF > index.html
  <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
@@ -70,11 +75,11 @@ cat <<EOF > index.html
   <h1>SWIFT task graphs</h1>
 EOF
 
-cat $list | while read f s g; do
+echo $list | xargs -n 3 | while read f s g; do
     cat <<EOF >> index.html
 <h2>Step $s</h2>
 EOF
-    for i in $(seq 0 3); do
+    for i in $(seq 0 $nrank); do
         cat <<EOF >> index.html
 <a href="step${s}r${i}.png"><img src="step${s}r${i}.png" width=400px/></a>
 EOF
@@ -85,5 +90,7 @@ cat <<EOF >> index.html
   </body>
 </html>
 EOF
+
+echo "Finished"
 
 exit

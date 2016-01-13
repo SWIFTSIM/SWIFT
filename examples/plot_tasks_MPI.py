@@ -1,26 +1,38 @@
 #!/usr/bin/env python
-###############################################################################
- # This file is part of SWIFT.
- # Copyright (c) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- #                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
- #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- #                    Peter W. Draper (p.w.draper@durham.ac.uk)
- #
- # This program is free software: you can redistribute it and/or modify
- # it under the terms of the GNU Lesser General Public License as published
- # by the Free Software Foundation, either version 3 of the License, or
- # (at your option) any later version.
- #
- # This program is distributed in the hope that it will be useful,
- # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- # GNU General Public License for more details.
- #
- # You should have received a copy of the GNU Lesser General Public License
- # along with this program.  If not, see <http://www.gnu.org/licenses/>.
- #
- ##############################################################################
+"""
+Usage:
+    plot_tasks_MPI.py input.dat png-output-prefix [time-range-ms]
+   
+where input.dat is a thread info file for a step of an MPI run.  Use the '-y
+interval' flag of the swift MPI commands to create these. The output plots
+will be called 'png-output-prefix<mpi-rank>.png', i.e. one each for all the
+threads in each MPI rank. Use the time-range-ms in millisecs to produce
+plots with the same time span.
 
+See the command 'process_plot_tasks_MPI' to efficiently wrap this command to
+process a number of thread info files and create an HTML file to view them.
+
+This file is part of SWIFT.
+
+Copyright (C) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
+                   Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+                   Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+                   Peter W. Draper (p.w.draper@durham.ac.uk)
+All Rights Reserved.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published
+by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 import matplotlib
 import matplotlib.collections as collections
@@ -32,41 +44,31 @@ import sys
 #  CPU ticks per second.
 CPU_CLOCK = 2.7e9
 
-#  Handle command-line.
-if len( sys.argv ) != 3 and len( sys.argv ) != 4:
-    print "Usage: ", sys.argv[0], "input.dat png-output-prefix [time-range-ms]"
-    sys.exit(1)
-
-infile = sys.argv[1]
-outbase = sys.argv[2]
-delta_t = 0
-if len( sys.argv ) == 4:
-    delta_t = int(sys.argv[3]) * CPU_CLOCK / 1000
-
-params = {"axes.labelsize": 10,
-          "axes.titlesize": 10,
-          "font.size": 12,
-          "legend.fontsize": 12,
-          "xtick.labelsize": 10,
-          "ytick.labelsize": 10,
-          "figure.figsize" : (12., 4.),
-          "figure.subplot.left" : 0.03,
-          "figure.subplot.right" : 0.995,
-          "figure.subplot.bottom" : 0.1,
-          "figure.subplot.top" : 0.99,
-          "figure.subplot.wspace" : 0.,
-          "figure.subplot.hspace" : 0.,
-          "lines.markersize" : 6,
-          "lines.linewidth" : 3.
-}
-pl.rcParams.update(params)
+#  Basic plot configuration.
+PLOT_PARAMS = {"axes.labelsize": 10,
+               "axes.titlesize": 10,
+               "font.size": 12,
+               "legend.fontsize": 12,
+               "xtick.labelsize": 10,
+               "ytick.labelsize": 10,
+               "figure.figsize" : (16., 4.),
+               "figure.subplot.left" : 0.03,
+               "figure.subplot.right" : 0.995,
+               "figure.subplot.bottom" : 0.1,
+               "figure.subplot.top" : 0.99,
+               "figure.subplot.wspace" : 0.,
+               "figure.subplot.hspace" : 0.,
+               "lines.markersize" : 6,
+               "lines.linewidth" : 3.
+               }
+pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
-tasktypes = ["none", "sort", "self", "pair", "sub", "ghost", "kick1", "kick2",
+TASKTYPES = ["none", "sort", "self", "pair", "sub", "ghost", "kick1", "kick2",
              "send", "recv", "grav_pp", "grav_mm", "grav_up", "grav_down",
              "psort", "split_cell", "rewait", "count"]
 
-taskcolours = {"none": "black",
+TASKCOLOURS = {"none": "black",
                "sort": "lightblue",
                "self": "greenyellow",
                "pair": "navy",
@@ -85,13 +87,31 @@ taskcolours = {"none": "black",
                "rewait": "olive",
                "count": "powerblue"}
 
-subtypes = ["none", "density", "force", "grav", "count"]
+SUBTYPES = ["none", "density", "force", "grav", "count"]
 
-subcolours = {"none": "black",
+SUBCOLOURS = {"none": "black",
               "density": "red",
               "force": "blue",
               "grav": "indigo",
               "count": "purple"}
+
+#  Show docs if help is requested.
+if len( sys.argv ) == 2 and ( sys.argv[1][0:2] == "-h" or sys.argv[1][0:3] == "--h" ):
+    from pydoc import help
+    help( "__main__" )
+    sys.exit( 0 )
+
+#  Handle command-line.
+if len( sys.argv ) != 3 and len( sys.argv ) != 4:
+    print "Usage: ", sys.argv[0], "input.dat png-output-prefix [time-range-ms]"
+    sys.exit(1)
+
+
+infile = sys.argv[1]
+outbase = sys.argv[2]
+delta_t = 0
+if len( sys.argv ) == 4:
+    delta_t = int(sys.argv[3]) * CPU_CLOCK / 1000
 
 #  Read input.
 data = pl.loadtxt( infile )
@@ -132,15 +152,13 @@ for rank in range(nranks):
     for line in range(num_lines):
         thread = int(data[line,1])
         tasks[thread].append({})
-        tasks[thread][-1]["type"] = tasktypes[int(data[line,2])]
-        tasks[thread][-1]["subtype"] = subtypes[int(data[line,3])]
+        tasks[thread][-1]["type"] = TASKTYPES[int(data[line,2])]
+        tasks[thread][-1]["subtype"] = SUBTYPES[int(data[line,3])]
         tic = int(data[line,5]) / CPU_CLOCK * 1000
         toc = int(data[line,6]) / CPU_CLOCK * 1000
         tasks[thread][-1]["tic"] = tic
         tasks[thread][-1]["toc"] = toc
         tasks[thread][-1]["t"] = (toc + tic)/ 2
-
-    print "Collection done..."
 
     combtasks = {}
     combtasks[-1] = []
@@ -161,14 +179,12 @@ for rank in range(nranks):
                 combtasks[thread][-1]["tic"] = task["tic"]
                 combtasks[thread][-1]["toc"] = task["toc"]
                 if task["type"] == "self" or task["type"] == "pair" or task["type"] == "sub":
-                    combtasks[thread][-1]["colour"] = subcolours[task["subtype"]]
+                    combtasks[thread][-1]["colour"] = SUBCOLOURS[task["subtype"]]
                 else:
-                    combtasks[thread][-1]["colour"] = taskcolours[task["type"]]
+                    combtasks[thread][-1]["colour"] = TASKCOLOURS[task["type"]]
                 lasttype = task["type"]
             else:
                 combtasks[thread][-1]["toc"] = task["toc"]
-
-    print "Combination done..."
 
     typesseen = []
     fig = pl.figure()
