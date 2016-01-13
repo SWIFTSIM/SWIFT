@@ -412,10 +412,13 @@ int main(int argc, char *argv[]) {
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef WITH_MPI
 
-      /* Make sure output file is empty. */
+      /* Make sure output file is empty, only on one rank. */
       sprintf(dumpfile, "thread_info_MPI-step%d.dat", j);
-      file_thread = fopen(dumpfile, "w");
-      fclose(file_thread);
+      if (myrank == 0) {
+          file_thread = fopen(dumpfile, "w");
+          fclose(file_thread);
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
 
       for (int i = 0; i < nr_nodes; i++) {
 
