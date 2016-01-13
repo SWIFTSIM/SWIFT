@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
   struct engine e;
   struct UnitSystem us;
   char ICfileName[200] = "";
+  char dumpfile[30];
   float dt_max = 0.0f;
   ticks tic;
   int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
@@ -119,7 +120,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:yz:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -178,7 +179,8 @@ int main(int argc, char *argv[]) {
         if (myrank == 0) message("sub size set to %i.", space_subsize);
         break;
       case 'y':
-        dump_tasks = 1;
+        if(sscanf(optarg, "%d", &dump_tasks) != 1)
+          error("Error parsing dump_tasks (-y)");
         break;
       case 'z':
         if (sscanf(optarg, "%d", &space_splitsize) != 1)
@@ -406,6 +408,69 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
+  /* Dump the task data using the given frequency. */
+    if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
+#ifdef WITH_MPI
+
+      /* Make sure output file is empty, only on one rank. */
+      sprintf(dumpfile, "thread_info_MPI-step%d.dat", j);
+      if (myrank == 0) {
+          file_thread = fopen(dumpfile, "w");
+          fclose(file_thread);
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+
+      for (int i = 0; i < nr_nodes; i++) {
+
+        /* Rank 0 decides the index of writing node, this happens one-by-one. */
+        int kk = i;
+        MPI_Bcast(&kk, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        if (i == myrank) {
+
+          /* Open file and position at end. */
+          file_thread = fopen(dumpfile, "a");
+
+          fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
+                  e.tic_step);
+          int count = 0;
+          for (int l = 0; l < e.sched.nr_tasks; l++)
+            if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
+              fprintf(
+                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
+                  e.sched.tasks[l].rid, e.sched.tasks[l].type,
+                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count : 0,
+                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count : 0,
+                  e.sched.tasks[l].flags);
+              fflush(stdout);
+              count++;
+            }
+          message("rank %d counted %d tasks", myrank, count);
+
+          fclose(file_thread);
+        }
+
+        /* And we wait for all to synchronize. */
+        MPI_Barrier(MPI_COMM_WORLD);
+      }
+
+#else
+      sprintf(dumpfile, "thread_info-step%d.dat", j);
+      file_thread = fopen(dumpfile, "w");
+      for (int l = 0; l < e.sched.nr_tasks; l++)
+        if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
+          fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n",
+                  e.sched.tasks[l].rid, e.sched.tasks[l].type,
+                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+                  (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
+                  (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count);
+      fclose(file_thread);
+#endif
+    }
+
     /* Dump a line of aggregate output. */
     /*     if (myrank == 0) { */
     /*       printf("%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e", j, e.time,
@@ -437,43 +502,6 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-  /* Dump the task data. */
-  if (dump_tasks) {
-#ifdef WITH_MPI
-    file_thread = fopen("thread_info_MPI.dat", "w");
-    for (j = 0; j < nr_nodes; j++) {
-      MPI_Barrier(MPI_COMM_WORLD);
-      if (j == myrank) {
-        fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
-                e.tic_step);
-        for (k = 0; k < e.sched.nr_tasks; k++)
-          if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
-            fprintf(
-                file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
-                e.sched.tasks[k].rid, e.sched.tasks[k].type,
-                e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
-                e.sched.tasks[k].tic, e.sched.tasks[k].toc,
-                e.sched.tasks[k].ci->count,
-                (e.sched.tasks[k].cj != NULL) ? e.sched.tasks[k].cj->count : 0,
-                e.sched.tasks[k].flags);
-        fflush(stdout);
-        sleep(1);
-      }
-    }
-    fclose(file_thread);
-#else
-    file_thread = fopen("thread_info.dat", "w");
-    for (k = 0; k < e.sched.nr_tasks; k++)
-      if (!e.sched.tasks[k].skip && !e.sched.tasks[k].implicit)
-        fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n",
-                e.sched.tasks[k].rid, e.sched.tasks[k].type,
-                e.sched.tasks[k].subtype, (e.sched.tasks[k].cj == NULL),
-                e.sched.tasks[k].tic, e.sched.tasks[k].toc,
-                e.sched.tasks[k].ci->count,
-                (e.sched.tasks[k].cj == NULL) ? 0 : e.sched.tasks[k].cj->count);
-    fclose(file_thread);
-#endif
-  }
 
   if (with_outputs) {
 /* Write final output. */
