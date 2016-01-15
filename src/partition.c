@@ -22,7 +22,7 @@
  *  @brief file of various techniques for partitioning a grid of cells
  *         into geometrically connected regions.
  *
- *  Currently supported types, grid, vectorise and metis.
+ *  Currently supported types, grid, vectorise and METIS.
  */
 
 /* Config parameters. */

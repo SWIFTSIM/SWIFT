@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
         break;
       case 'p':
-        /* Parition type is one of "g", "m", "w", or "v"; "g" can be
+        /* Partition type is one of "g", "m", "w", or "v"; "g" can be
          * followed by three numbers defining the grid. */
         switch (optarg[0]) {
           case 'g':
