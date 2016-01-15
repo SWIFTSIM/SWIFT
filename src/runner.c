@@ -1177,7 +1177,7 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
   struct task *t = NULL;
-  struct cell *ci, *cj, *super;
+  struct cell *ci, *cj;
   struct part *parts;
   int k, nr_parts;
 
@@ -1187,8 +1187,8 @@ void *runner_main(void *data) {
     /* Wait at the barrier. */
     engine_barrier(e, r->id);
 
-    /* Re-set the pointer to the previous super cell. */
-    super = NULL;
+    /* Re-set the pointer to the previous task, as there is none. */
+    struct task* prev = NULL;
 
     /* Loop while there are tasks... */
     while (1) {
@@ -1198,7 +1198,7 @@ void *runner_main(void *data) {
 
         /* Get the task. */
         TIMER_TIC
-        t = scheduler_gettask(sched, r->qid, super);
+        t = scheduler_gettask(sched, r->qid, prev);
         TIMER_TOC(timer_gettask);
 
         /* Did I get anything? */
@@ -1209,14 +1209,6 @@ void *runner_main(void *data) {
       ci = t->ci;
       cj = t->cj;
       t->rid = r->cpuid;
-
-      /* Set super to the first cell that I own. */
-      if (t->type != task_type_rewait && t->type != task_type_psort) {
-        if (ci->super != NULL && ci->super->owner == r->qid)
-          super = ci->super;
-        else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
-          super = cj->super;
-      }
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1302,6 +1294,7 @@ void *runner_main(void *data) {
       }
 
       /* We're done with this task, see if we get a next one. */
+      prev = t;
       t = scheduler_done(sched, t);
 
     } /* main loop. */

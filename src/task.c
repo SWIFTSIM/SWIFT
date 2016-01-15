@@ -43,10 +43,58 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",  "sort",    "self",    "pair",    "sub",
-    "ghost", "kick1",   "kick2",   "send",    "recv",
-    "grav_pp", "grav_mm", "grav_up", "grav_down",
-    "psort", "split_cell", "rewait"};
+    "none",    "sort",      "self",  "pair",       "sub",     "ghost",
+    "kick1",   "kick2",     "send",  "recv",       "grav_pp", "grav_mm",
+    "grav_up", "grav_down", "psort", "split_cell", "rewait"};
+
+/**
+ * @brief Computes the overlap between the parts array of two given cells.
+ */
+
+size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
+  if (ci == NULL || cj == NULL) return 0;
+  if (ci->parts <= cj->parts &&
+      ci->parts + ci->count >= cj->parts + cj->count) {
+    return cj->count;
+  } else if (cj->parts <= ci->parts &&
+             cj->parts + cj->count >= ci->parts + ci->count) {
+    return ci->count;
+  }
+  return 0;
+}
+
+/**
+ * @brief Compute the Jaccard similarity of the data used by two
+ *        different tasks.
+ *
+ * @param ta The first #task.
+ * @param tb The second #task.
+ */
+
+float task_overlap(const struct task *ta, const struct task *tb) {
+  /* First check if any of the two tasks are of a type that don't
+     use cells. */
+  if (ta == NULL || tb == NULL || ta->type == task_type_none ||
+      ta->type == task_type_psort || ta->type == task_type_split_cell ||
+      ta->type == task_type_rewait || tb->type == task_type_none ||
+      tb->type == task_type_psort || tb->type == task_type_split_cell ||
+      tb->type == task_type_rewait)
+    return 0.0f;
+
+  /* Compute the union of the cell data. */
+  size_t size_union = 0;
+  if (ta->ci != NULL) size_union += ta->ci->count;
+  if (ta->cj != NULL) size_union += ta->cj->count;
+  if (tb->ci != NULL) size_union += tb->ci->count;
+  if (tb->cj != NULL) size_union += tb->cj->count;
+
+  /* Compute the intersection of the cell data. */
+  const size_t size_intersect =
+      task_cell_overlap(ta->ci, tb->ci) + task_cell_overlap(ta->ci, tb->cj) +
+      task_cell_overlap(ta->cj, tb->ci) + task_cell_overlap(ta->cj, tb->cj);
+
+  return ((float)size_intersect) / (size_union - size_intersect);
+}
 
 /**
  * @brief Unlock the cell held by this task.

@@ -126,15 +126,14 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @brief Get a task free of dependencies and conflicts.
  *
  * @param q The task #queue.
- * @param super The super-cell tat might conflict with the #queue
+ * @param prev The previous #task extracted from this #queue.
  * @param blocking Block until access to the queue is granted.
  */
 
-struct task *queue_gettask(struct queue *q, struct cell *super, int blocking) {
+struct task *queue_gettask(struct queue *q, const struct task *prev, int blocking) {
 
-  int k, qcount, *qtid, gotcha;
   lock_type *qlock = &q->lock;
-  struct task *qtasks, *res = NULL;
+  struct task *res = NULL;
 
   /* If there are no tasks, leave immediately. */
   if (q->count == 0) return NULL;
@@ -147,49 +146,78 @@ struct task *queue_gettask(struct queue *q, struct cell *super, int blocking) {
   }
 
   /* Set some pointers we will use often. */
-  qtid = q->tid;
-  qtasks = q->tasks;
-  qcount = q->count;
-  gotcha = 0;
+  int *qtid = q->tid;
+  struct task *qtasks = q->tasks;
+  const int qcount = q->count;
 
-  /* Loop over the task IDs looking for tasks with the same super-cell. */
-  if (super != NULL) {
-    for (k = 0; k < qcount && k < queue_maxsuper; k++) {
+  /* Data for the sliding window in which to try the task with the
+     best overlap with the previous task. */
+  struct {
+    int ind, tid;
+    float score;
+  } window[queue_search_window];
+  int window_count = 0;
+  int tid = -1;
+  int ind = -1;
 
-      /* Put a finger on the task. */
-      res = &qtasks[qtid[k]];
+  /* Loop over the queue entries. */
+  for (int k = 0; k < qcount; k++) {
+    if (k < queue_search_window) {
+      window[window_count].ind = k;
+      window[window_count].tid = qtid[k];
+      window[window_count].score = task_overlap(prev, &qtasks[qtid[k]]);
+      window_count += 1;
+    } else {
+      /* Find the task with the largest overlap. */
+      int ind_max = 0;
+      for (int i = 1; i < window_count; i++)
+        if (window[i].score > window[ind_max].score) ind_max = i;
 
-      /* Try to lock the task and exit if successful. */
-      if ((res->ci->super == super ||
-           (res->cj != NULL && res->cj->super == super)) &&
-          task_lock(res)) {
-        gotcha = 1;
+      /* Try to lock that task. */
+      if (task_lock(&qtasks[window[ind_max].tid])) {
+        tid = window[ind_max].tid;
+        ind = window[ind_max].ind;
+        // message("best task has overlap %f.", window[ind_max].score);
         break;
-      }
 
-    } /* loop over the task IDs. */
+        /* Otherwise, replace it with a new one from the queue. */
+      } else {
+        window[ind_max].ind = k;
+        window[ind_max].tid = qtid[k];
+        window[ind_max].score = task_overlap(prev, &qtasks[qtid[k]]);
+      }
+    }
   }
 
-  /* Loop over the task IDs again if nothing was found, take anything. */
-  if (!gotcha) {
-    for (k = 0; k < qcount; k++) {
-
-      /* Put a finger on the task. */
-      res = &qtasks[qtid[k]];
-
-      /* Try to lock the task and exit if successful. */
-      if (task_lock(res)) break;
-
-    } /* loop over the task IDs. */
+  /* If we didn't get a task, loop through whatever is left in the window. */
+  if (tid < 0) {
+    while (window_count > 0) {
+      int ind_max = 0;
+      for (int i = 1; i < window_count; i++)
+        if (window[i].score > window[ind_max].score) ind_max = i;
+      if (task_lock(&qtasks[window[ind_max].tid])) {
+        tid = window[ind_max].tid;
+        ind = window[ind_max].ind;
+        // message("best task has overlap %f.", window[ind_max].score);
+        break;
+      } else {
+        window_count -= 1;
+        window[ind_max] = window[window_count];
+      }
+    }
   }
 
   /* Did we get a task? */
-  if (k < qcount) {
+  if (ind >= 0) {
 
     /* Another one bites the dust. */
-    qcount = q->count -= 1;
+    const int qcount = q->count -= 1;
+    
+    /* Get a pointer on the task that we want to return. */
+    res = &qtasks[tid];
 
     /* Swap this task with the last task and re-heap. */
+    int k = ind;
     if (k < qcount) {
       qtid[k] = qtid[qcount];
       int w = qtasks[qtid[k]].weight;

@@ -1048,8 +1048,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if ((err = MPI_Irecv(t->ci->parts, sizeof(struct part) * t->ci->count,
-                             MPI_BYTE, t->ci->nodeID, t->flags, MPI_COMM_WORLD,
+        if ((err = MPI_Irecv(t->ci->parts, t->ci->count, s->part_mpi_type,
+                             t->ci->nodeID, t->flags, MPI_COMM_WORLD,
                              &t->req)) != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
@@ -1066,9 +1066,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        if ((err = MPI_Isend(t->ci->parts, sizeof(struct part) * t->ci->count,
-                             MPI_BYTE, t->cj->nodeID, t->flags, MPI_COMM_WORLD,
-                             &t->req)) != MPI_SUCCESS) {
+        if ((err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type, 
+			     t->cj->nodeID, t->flags, MPI_COMM_WORLD, 
+			     &t->req)) != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
           MPI_Error_string(err, buff, &len);
@@ -1191,7 +1191,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  */
 
 struct task *scheduler_gettask(struct scheduler *s, int qid,
-                               struct cell *super) {
+                               const struct task *prev) {
 
   struct task *res = NULL;
   int k, nr_queues = s->nr_queues;
@@ -1210,7 +1210,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       /* Try to get a task from the suggested queue. */
       if (s->queues[qid].count > 0) {
         TIMER_TIC
-        res = queue_gettask(&s->queues[qid], super, 0);
+        res = queue_gettask(&s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
         if (res != NULL) break;
       }
@@ -1223,7 +1223,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         for (k = 0; k < scheduler_maxsteal && count > 0; k++) {
           int ind = rand_r(&seed) % count;
           TIMER_TIC
-          res = queue_gettask(&s->queues[qids[ind]], super, 0);
+          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
@@ -1261,15 +1261,14 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  *
  * @param s The #scheduler.
  * @param space The #space we are working with
+ * @param nr_tasks The number of tasks to allocate initially.
  * @param nr_queues The number of queues in this scheduler.
  * @param flags The #scheduler flags.
  * @param nodeID The MPI rank
  */
 
-void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
-                    unsigned int flags, int nodeID) {
-
-  int k;
+void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
+                    int nr_queues, unsigned int flags, int nodeID) {
 
   /* Init the lock. */
   lock_init(&s->lock);
@@ -1280,7 +1279,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
     error("Failed to allocate queues.");
 
   /* Initialize each queue. */
-  for (k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);
+  for (int k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);
 
   /* Init the sleep mutex and cond. */
   if (pthread_cond_init(&s->sleep_cond, NULL) != 0 ||
@@ -1302,11 +1301,15 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_queues,
   s->space = space;
   s->nodeID = nodeID;
 
-  /* Init other values. */
+  /* Init the tasks array. */
+  s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
-  s->waiting = 0;
-  s->size = 0;
-  s->nr_tasks = 0;
-  s->tasks_next = 0;
+  scheduler_reset(s, nr_tasks);
+
+/* Construct types for MPI communications */
+#ifdef WITH_MPI
+  part_create_mpi_type(&s->part_mpi_type);
+  xpart_create_mpi_type(&s->xpart_mpi_type);
+#endif
 }
