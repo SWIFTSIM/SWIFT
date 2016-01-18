@@ -109,14 +109,14 @@ void printParticle_single(struct part *p) {
  * @brief Dump the METIS graph in standard format, simple format and weights
  * only, to a file.
  *
- * @description The standard format output can be read into the METIS
+ * The standard format output can be read into the METIS
  * command-line tools. The simple format is just the cell connectivity (this
  * should not change between calls).  The weights format is the standard one,
  * minus the cell connectivity.
  *
  * The output filenames are generated from the prefix and the sequence number
- * of calls. So the first is called <prefix>_std_001.dat, <prefix>_simple_001.dat,
- * <prefix>_weights_001.dat, etc.
+ * of calls. So the first is called {prefix}_std_001.dat, {prefix}_simple_001.dat,
+ * {prefix}_weights_001.dat, etc.
  *
  * @param prefix base output filename
  * @param nvertices the number of vertices
