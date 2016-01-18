@@ -1,0 +1,465 @@
+\documentclass{sig-alternate-05-2015}
+\usepackage{times,amsmath,amsfonts,amssymb,epstopdf,xspace}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage[usenames]{color}
+
+
+\newcommand{\red}[1]{{\textcolor{red}{#1}}}
+
+\pdfminorversion=7
+
+
+%Journals
+\newcommand{\mnras}{MNRAS}
+\newcommand{\jcap}{JCAP}
+\newcommand{\physrep}{Phys.~Rep.}   % Physics Reports
+\newcommand{\apjs}{ApJS}
+
+% Latex tricks
+\newcommand{\oh}[1]{\mbox{$ {\mathcal O}( #1 ) $}}
+\newcommand{\eqn}[1] {(\ref{eqn:#1})}
+
+
+% Some acronyms
+\newcommand{\swift}{{\sc swift}\xspace}
+\newcommand{\qs}{{\sc QuickShed}\xspace}
+
+% Webpage
+\newcommand{\web}{\url{www.swiftsim.com}}
+
+
+%#####################################################################################################
+
+\begin{document}
+
+%Conference
+\conferenceinfo{PASC '16}{June 8--10, 2016, Lausanne, Switzerland}
+
+\title{{\ttlit SWIFT}: A task-based hybrid-parallel strongly scalable code for
+  particle-based cosmological simulations}
+
+\numberofauthors{6}
+  
+\author{
+\alignauthor
+       Matthieu~Schaller\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+       \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
+\alignauthor
+       Pedro~Gonnet\\
+       \affaddr{School of Engineering and Computing Sciences}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+\alignauthor
+       Aidan~B.~G.~Chalk\\
+       \affaddr{School of Engineering and Computing Sciences}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+\and
+\alignauthor
+       Peter~W.~Draper\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+       %% \alignauthor
+       %% Tom Theuns\\
+       %% \affaddr{Institute for Computational Cosmology}\\
+       %% \affaddr{Department of Physics}\\
+       %% \affaddr{Durham University}\\
+       %% \affaddr{Durham DH1 3LE, UK}      
+}
+
+
+\date{\today}
+
+\maketitle
+
+%#####################################################################################################
+
+\begin{abstract}
+  We present a new open-source cosmological code, called \swift, designed to
+  solve the equations hydrodynamics using a particle-based approach (Smooth
+  Particle Hydrodynamics) on hybrid shared / distributed clusters and the
+  task-based library \qs, the parallelisation backbone of \swift. The code
+  relies on three main aspects to make efficient use of current and future
+  architectures:
+
+  \begin{itemize}
+    
+    \item \textbf{Task-based parallelism} to exploit shared-memory
+      parallelism. This provides fine-grained load balancing enabling
+      strong scaling, combined with mixing communication and
+      computation, both on each node with multiple cores.
+
+    \item \textbf{Asynchronous hybrid shared/distributed memory
+      parallelism}, using the task-based schemes. Parts of the
+      computation are scheduled only once the asynchronous transfers
+      of the required data have completed. Communication latencies are
+      thus hidden by computation, providing for strong scaling across
+      thousands of multi-core nodes.
+
+    \item \textbf{Graph-based domain decomposition}, which uses
+      information from the task graph to decompose the simulation
+      domain such that the work, as opposed to just the data, as in
+      other space-filling curve schemes, is equally distributed
+      amongst all nodes.
+
+  \end{itemize}
+
+  %% These three main aspects alongside improved cache-efficient
+  %% algorithms for neighbour finding allow the code to be 40x faster on
+  %% the same architecture than the standard code Gadget-2 widely used by
+  %% researchers.
+
+  These algorithms do not rely on a specific architecture nor on detailed
+  micro-level details.  As a result, our code present excellent \emph{strong}
+  scaling on a variety of architectures. It displays, for instance, a
+  \emph{strong} scaling parallel efficiency of more than 60\% when going from
+  512 to 131072 cores on a BlueGene architecture. Similar results are obtained
+  on standard clusters of x86 CPUs.
+  
+  %% The task-based library, \qs, used as the backbone of the code is
+  %% itself also freely available and can be used in a wide variety of
+  %% other numerical problems.
+  
+\end{abstract}
+
+
+\keywords{Physics; Cosmology; Fluid dynamics; Smooth Particle Hydrodynamics;
+  Task-based parallelism; Asynchronous data transfer; Extreme scaling}
+
+%#####################################################################################################
+
+
+\section{Introduction}
+
+%#####################################################################################################
+
+\section{Particle-based hydrodynamics}
+
+Smoothed Particle Hydrodynamics \cite{Gingold1977,Price2012} (SPH) uses
+particles to represent fluids.  Each particle $p_i$ has a position $\mathbf
+x_i$, velocity $\mathbf v_i$, internal energy $u_i$, mass $m_i$, and a smoothing
+length $h_i$.  The particles are used to interpolate any quantity $Q$ at any
+point in space as a weighted sum over the particles:
+%
+\begin{equation}
+    Q(\mathbf r) = \sum_i m_i \frac{Q_i}{\rho_i} W( \|\mathbf r - \mathbf r_i\| , h )
+    \label{eqn:interp}
+\end{equation}
+%
+where $Q_i$ is the quantity at the $i$th particle, $h$ is the {\em smoothing
+  length}, i.e.~the radius of the sphere within which data will be considered
+for the interpolation, and $W(r,h)$ is the {\em smoothing kernel} or {\em
+  smoothing function}.  Several different forms for $W(r,h)$ exist, each with
+their own specific benefits and drawbacks.  In the following, the most common
+form consisting of a piecewise cubic polynomial will be used:
+%
+\begin{equation*}
+    W(r,h) = \frac{8}{\pi h^3} \left\{
+        \begin{array}{ll}
+            1 - 6\left(\frac{r}{h}\right)^2 + 6\left(\frac{r}{h}\right)^3 & 0 \leq \frac{r}{h} \leq \frac{1}{2}, \\
+            2\left( 1 - \frac{r}{h} \right)^3 & \frac{1}{2} < \frac{r}{h} \leq 1 \\
+            0 & \frac{r}{h} > 1.
+        \end{array}\right.
+\end{equation*}
+
+The particle density $\rho_i$ used in \eqn{interp} is itself computed similarly:
+%
+\begin{equation}
+    \rho_i = \sum_{j,~r_{ij} < h_i} m_j W(r_{ij},h_i)
+    \label{eqn:rho}
+\end{equation}
+%
+where $r_{ij} = \|\mathbf{r_i}-\mathbf{r_j}\|$ is the Euclidean distance between
+particles $p_i$ and $p_j$.  In compressible simulations, the smoothing length
+$h_i$ of each particle is chosen such that the weighted number of neighbours
+%
+\begin{equation}
+    N_{ngb} = \frac{4}{3}\pi h_i^3 \sum_j W( r_{ij} , h_i )
+    \label{eqn:nneigh}
+\end{equation}
+%
+is kept constant to within a given range, e.g.~$\pm 1$.  This can be achieved by
+applying a Newton iteration to solve \eqn{nneigh} for $h_i$, where the required
+derivative $\partial N_{ngb}/\partial h_i$ is computed alongside \eqn{rho}.
+
+Once the densities $\rho_i$ have been computed, the time derivatives of the
+velocity, internal energy, and smoothing length, which require $\rho_i$, are
+computed as followed:
+%
+\begin{eqnarray}
+    \frac{dv_i}{dt} & = & -\sum_{j,~r_{ij} < \hat{h}_{ij}} m_j \left[
+        \frac{P_i}{\Omega_i\rho_i^2}\nabla_rW(r_{ij},h_i) +
+        \frac{P_j}{\Omega_j\rho_j^2}\nabla_rW(r_{ij},h_j) \right], \label{eqn:dvdt} \\ 
+    \frac{du_i}{dt} & = & \frac{P_i}{\Omega_i\rho_i^2} \sum_{j,~r_{ij} < h_i} m_j(\mathbf v_i - \mathbf v_j) \cdot \nabla_rW(r_{ij},h_i), \label{eqn:dudt}
+\end{eqnarray}
+%
+where $\hat{h}_{ij} = \max\{h_i,h_j\}$, and the particle pressure $P_i=\rho_i
+u_i (\gamma-1)$ and correction term $\Omega_i=1 +
+\frac{h_i}{3\rho_i}\frac{\partial \rho}{\partial h}$ are computed on the fly.
+The polytropic index $\gamma$ is usually set to $\frac{5}{3}$.
+
+The computations in \eqn{rho}, \eqn{dvdt}, and \eqn{dudt} involve finding all
+pairs of particles within range of each other.  Any particle $p_j$ is {\em
+  within range} of a particle $p_i$ if the distance between $p_i$ and $p_j$ is
+smaller or equal to the smoothing distance $h_i$ of $p_i$, e.g.~as is done in
+\eqn{rho}.  Note that since particle smoothing lengths may vary between
+particles, this association is not symmetric, i.e. $p_j$ may be in range of
+$p_i$, but $p_i$ not in range of $p_j$.  If $r_{ij} < \max\{h_i,h_j\}$, as is
+required in \eqn{dvdt}, then particles $p_i$ and $p_j$ are within range {\em of
+  each other}.
+
+The computation thus proceeds in two distinct stages that are evaluated
+separately:
+\begin{enumerate}
+    \item {\em Density} computation: For each particle $p_i$,
+        loop over all particles $p_j$ within range of $p_i$ and evaluate
+        \eqn{rho}.
+    \item {\em Force} computation: For each particle $p_i$,
+        loop over all particles $p_j$
+        within range of each other and evaluate \eqn{dvdt} and \eqn{dudt}.
+\end{enumerate}
+The identification of these interacting particle pairs,
+as will be shown in the following sections, incurs the main computational
+cost, and therefore also presents the main challenge in implementing efficient
+SPH simulations.
+
+
+\subsection{Tree-based approaches}
+
+In its simplest formulation, all particles in an SPH simulation have
+a constant smoothing length $h$.
+In such a setup, finding the particles in range of any other particle
+is similar to Molecular Dynamics simulations, in which all particles
+interact within a constant cutoff radius, and approaches which are used
+in the latter, e.g. cell-linked lists
+\cite{Allen1989} or Verlet lists \cite{Verlet1967}
+or more efficient variants thereof \cite{Gonnet2012,Gonnet2013}
+can be used.
+Both approaches are discussed in the context of SPH simulations
+in \cite{Dominguez2011} and \cite{Viccione2008}.
+
+The neighbour-finding problem becomes more interesting, or difficult,
+in SPH simulations with variable smoothing lengths, i.e.~in which
+each particle has its own smoothing length $h_i$, with ranges spawning
+up to several orders of magnitude.
+In such cases, e.g. in Astrophysics simulations \cite{Gingold1977},
+the above-mentioned approaches cease to work efficiently.
+Such codes therefore usually rely on spatial {\em trees}
+for neighbour finding \cite{Hernquist1989,Springel2005,Wadsley2004},
+i.e.~$k$-d trees \cite{Bentley1975} or octrees \cite{Meagher1982}
+are used to decompose the simulation space.
+In Astrophysics in particular, spatial trees are also a somewhat natural
+choice as they are used to compute long-range gravitational interactions
+via a Barnes-Hut \cite{Barnes1986} or Fast Multipole
+\cite{Carrier1988} method. 
+The particle interactions are then computed by traversing the list of
+particles and searching for their neighbours in the tree.
+
+Using such trees, it is in principle trivial to parallelize
+the neighbour finding and the actual computation on shared-memory
+computers,
+e.g.~each thread walks the tree for a different particle,
+identifies its neighbours and computes its densities and/or
+the second derivatives of the physical quantities of interest for 
+the time integration.
+
+Despite its simple and elegant formulation, the tree-based
+approach to neighbour-finding has three main problems:
+\begin{itemize}
+    \item Computational efficiency: The cost of finding all neighbours
+        of any given particle in the tree is, on average, in \oh{\log N},
+        and has worst-case behavior in \oh{N^{2/3}} \cite{Lee1977},
+        i.e.~in any case, the computational cost per particle grows with the
+        total number of particles $N$.
+    \item Cache efficiency: When searching for the neighbours of a
+        given particle, the data of all potential neighbours, which may
+        not be contiguous in memory, is traversed.
+        This leads to scattered memory access patterns that may be
+        cache-inefficient. Furthermore, this operation is performed for
+        each particle separately, further reducing the chances
+        of cache re-use.
+        On shared-memory parallel architectures, this problem is of
+        particular concern as parts of the cache hierarchy and the
+        memory bandwidth are shared between cores, effectively
+        reducing both in parallel computations.
+    \item Symmetry: The parallel tree search can not exploit symmetry,
+        i.e.~a pair $p_i$ and $p_j$ will always be found twice,
+        once when walking the tree for each particle. It would, however,
+        be sufficient to find it once and update both particles, as most
+        of the particle interactions are symmetric.
+        If this is done in a shared-memory parallel setup, special
+        care muss be taken to avoid concurrency problems when
+        two threads update the same particle's data.
+\end{itemize}
+    
+These problems are all inherently linked to the use of
+spatial trees, and more specifically their traversal,
+for neighbour-finding.
+
+
+%#####################################################################################################
+
+\section{Parallelisation strategy}
+
+\subsection{Task-based parallelism}
+
+\subsection{Asynchronous communications}
+
+\subsection{Task-graph domain decompositon}
+
+%#####################################################################################################
+
+\section{Scaling tests}
+
+In this section we present some strong scaling tests of the \swift code on different
+architectures for a representative cosmology problem.
+
+\subsection{Simulation setup}
+
+The initial distribution of particles used in our tests is extracted and
+resampled from low-redshift outputs of the EAGLE project \cite{Schaye2015}, a
+large suite of state-of-the-art cosmological simulations. By selecting outputs
+at late times, we constructed a simulation setup which is representative of the
+most expensive part of these simulations, i.e. when the particles are
+highly-clustered and not uniformly distributed anymore. In order to fit our
+simulation setup into the limited memory of the systems tested, we have randomly
+downsampled the particle count of the output to $800^3=5.12\times10^8$ and
+$600^3=2.16\times10^8$ particles respectively. We then run the \swift code for
+100 timesteps and average the wallclock time of these timesteps after having
+removed the first and last ones, where i/o occurs.
+
+
+\subsection{x86 architecture: SuperMUC}
+
+For our first test, we ran \swift on the SuperMUC x86 phase 1 thin
+nodes \footnote{\url{https://www.lrz.de/services/compute/supermuc/systemdescription/}}
+located at the Leibniz Supercomputing Centre in Garching near Munich. This
+system is made of 9,216 nodes with 2 Intel Sandy Bridge-EP Xeon E5-2680
+8C\footnote{\url{http://ark.intel.com/products/64583/Intel-Xeon-Processor-E5-2680-(20M-Cache-2_70-GHz-8_00-GTs-Intel-QPI)}}
+at $2.7~\rm{GHz}$ with each $32~\rm{GByte}$ of RAM. The nodes are split in 18
+``islands'' of 512 nodes within which communications are handled via an
+Infiniband FDR10 non-blocking Tree. Islands are then connected using a 4:1
+Pruned Tree.
+
+The code was compiled with the Intel compiler version \textsc{2015.5.223} and
+linked to the Intel MPI library version \textsc{5.1.2.150} and metis library
+version \textsc{5.0.2}.
+
+The simulation setup with $800^3$ particles was run on that system using 16 to
+2048 nodes (4 islands) and the results of this strong scaling test are shown on
+Fig.~\ref{fig:superMUC}. For this test, we used one MPI rank per node and 16
+threads per node (i.e. one thread per physical core).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{Figures/scalingSuperMUC}
+\caption{Strong scaling test on the SuperMUC phase 1 machine (see text
+  for hardware description). \textit{Left panel:} Code
+  Speed-up. \textit{Right panel:} Corresponding parallel efficiency.
+  Using 16 threads per node (no use of hyper-threading) with one MPI rank
+  per node, an almost perfect parallel efficiency is achieved when
+  increasing the node count from 16 (512 cores) to 2,048 (32,768
+  cores).
+  \label{fig:superMUC}}
+\end{figure*}
+
+
+\subsection{BlueGene architecture: JUQUEEN}
+
+For our second test, we ran \swift on the JUQUEEN IBM BlueGene/Q
+system\footnote{\url{http://www.fz-juelich.de/ias/jsc/EN/Expertise/Supercomputers/JUQUEEN/Configuration/Configuration_node.html}}
+located at the J\"ulich Supercomputing Centre. This system is made of 28,672
+nodes consiting of an IBM PowerPC A2 processor running at $1.6~\rm{GHz}$ with
+each $16~\rm{GByte}$ of RAM. Of notable interest is the presence of two floating
+units per compute core. The system is composed of 28 racks containing each 1,024
+nodes. The network uses a 5D torus to link all the racks.
+
+The code was compiled with the IBM XL compiler version \textsc{30.73.0.13} and
+linked to the corresponding MPI library and metis library
+version \textsc{4.0.2}.
+
+The simulation setup with $600^3$ particles was firstrun on that system using
+512 nodes with one MPI rank per node and variable number of threads per
+node. The results of this test are shown on Fig.~\ref{fig:JUQUEEN1}.
+
+We later repeated the test, this time varying the number of nodes from 32 to
+8192 (8 racks).  For this test, we used one MPI rank per node and 32 threads per
+node (i.e. two threads per physical core). The results of this strong scaling
+test are shown on Fig.~\ref{fig:JUQUEEN2}.
+
+
+\begin{figure}
+\centering
+\includegraphics[width=\columnwidth]{Figures/scalingInNode}
+\caption{Strong scaling test of the hybrid component of the code. The
+  same calculation is performed on 512 node of the JUQUEEN BlueGene
+  machine (see text for hardware description) with varying number of
+  threads per node. The number of MPI ranks per node is kept fixed to
+  one. The code displays excellent scaling even when all the cores and
+  hyperthreads are in use. \label{fig:JUQUEEN1}}
+\end{figure}  
+
+
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{Figures/scalingBlueGene}
+\caption{Strong scaling test on the JUQUEEN BlueGene machine (see text
+  for hardware description). \textit{Left panel:} Code
+  Speed-up. \textit{Right panel:} Corresponding parallel efficiency.
+  Using 32 threads per node (2 per physical core) with one MPI rank
+  per node, a parallel efficiency of more than $60\%$ is achieved when
+  increasing the node count from 32 (512 cores) to 8,192 (131,072
+  cores). On 8,192 nodes there are fewer than 27,000 particles per
+  node and only a few hundred tasks, making the whole problem
+  extremely hard to load-balance effectively.
+  \label{fig:JUQUEEN2}}
+\end{figure*}
+
+
+
+
+
+%#####################################################################################################
+
+\section{Conclusions}
+
+When running on the SuperMUC machine with 32 nodes (512 cores), each MPI rank
+contains approximatively $1.6\times10^7$ particles in $2.5\times10^5$
+cells. \swift will generate around $58,000$ point-to-point asynchronous MPI
+communications (a pair of \texttt{Isend} and \texttt{Irecv}) per node every
+timestep. 
+
+
+%#####################################################################################################
+
+\section{Acknowledgments}
+This work would not have been possible without Lydia Heck's help and
+expertise. We thank Heinrich Bockhorst and Stephen Blair-Chappell from
+{\sc intel} as well as Dirk Brommel from the J\"ulich Computing Centre
+for their help at various stages of this project.\\
+This work used the DiRAC Data Centric system at Durham University,
+operated by the Institute for Computational Cosmology on behalf of the
+STFC DiRAC HPC Facility (\url{www.dirac.ac.uk}). This equipment was
+funded by BIS National E-infrastructure capital grant ST/K00042X/1,
+STFC capital grant ST/H008519/1, and STFC DiRAC Operations grant
+ST/K003267/1 and Durham University. DiRAC is part of the National
+E-Infrastructure. This work was supported by the Science and
+Technology Facilities Council ST/F001166/1 and the European Research
+Council under the European Union's ERC Grant agreements 267291
+``Cosmiway'', and by {\sc intel} through establishment of the ICC as
+an {\sc intel} parallel computing centre (IPCC).
+
+\nocite{*}
+\bibliographystyle{abbrv}
+\bibliography{biblio}
+
+
+\end{document}
