@@ -375,8 +375,8 @@ partition of the cell graph such that:
 \end{itemize}
 \noindent where the first criteria provides good {\em load-balancing},
 i.e.~each partition/rank should involve the same amount of work, and
-the second criteria reduces the amount of duplicated work between
-partitions/ranks.
+the second criteria reduces the {\em partition cost}, i.e.~the amount
+of duplicated work between partitions/ranks.
 
 Computing such a partition is a standard graph problem and several
 software libraries which provide good solutions\footnote{Computing
