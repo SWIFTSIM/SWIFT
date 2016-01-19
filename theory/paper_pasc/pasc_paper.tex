@@ -38,7 +38,7 @@
 
 \title{{\ttlit SWIFT}: Using task-based parallelism, fully asynchronous
 communication, and graph partition-based domain decomposition for
-strong scaling on more than 100\,k cores.}
+strong scaling on more than 100\,000 cores.}
 % \title{{\ttlit SWIFT}: A task-based hybrid-parallel strongly scalable code for
 %   particle-based cosmological simulations}
 
@@ -141,6 +141,39 @@ strong scaling on more than 100\,k cores.}
 
 
 \section{Introduction}
+
+For the past decade, due to the physical limitations
+on the speed of individual processor cores, instead of
+getting {\em faster}, computers are getting {\em more parallel}.
+Systems containing up to 64 general-purpose cores are becoming
+commonplace, and the number of cores can be expected to continue
+growing exponentially, e.g.~following Moore's law, much in the
+same way processor speeds were up until a few years ago.
+
+As a consequence, in order to get any faster, computer programs
+need to rely on better exploiting this massive parallelism, i.e.~
+they need to exhibit {\em strong scaling}, the ability to run
+roughly $N$ times faster when executed on $N$ times as many processors.
+Without strong scaling, massive parallelism can still be used to
+tackle ever {\em larger} problems, but not fixed-size problems
+{\em faster}.
+
+Although this switch from growth in speed to growth in parallelism
+has been anticipated and observed for quite some time, very little
+has changed in terms of how we design and implement parallel
+computations, e.g.~branch-and-bound synchronous parallelism using
+OpenMP\cite{ref:Dagum1998} and MPI\cite{ref:Snir1998}, and domain
+decompositions based on space-filling curves \cite{warren1993parallel}.
+
+The design and implementation of \swift \cite{gonnet2013swift,%
+theuns2015swift,gonnet2015efficient}, a large-scale cosmological
+simulation code built from scratch, provided the perfect
+opportunity to test some newer approaches, i.e.~task-based parallelism,
+fully asynchronous communication, and graph partition-based
+domain decompositions.
+This paper describes the results obtained with these parallelisation
+techniques.
+
 
 %#####################################################################################################
 
