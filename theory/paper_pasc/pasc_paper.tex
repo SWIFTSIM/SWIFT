@@ -326,11 +326,82 @@ which is usually not an option for existing large and complex codebases.
 Since we were re-implementing \swift from scratch, this was not an issue.
 The tree-based neighbour-finding described above was replaced with a more
 task-friendly approach as described in \cite{gonnet2015efficient}.
+Particle interactions are computed within, and between pairs, of
+hierarchical {\em cells} containing one or more particles.
+The dependencies between the tasks are set following
+equations \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}, i.e. such that for any cell,
+all the tasks computing the particle densities therein must have
+completed before the particle forces can be computed, and all the
+force computations must have completed before the particle velocities
+may be updated.
+
+Due to the cache-friendly nature of the task-based computations, 
+and their ability to exploit symmetries in the particle interactions,
+the task-based approach is already more efficient than the tree-based
+neighbour search on a single core, and scales efficiently to all
+cores of a shared-memory machine \cite{gonnet2015efficient}.
+
+
+\subsection{Task-based domain decompositon}
+
+Given a task-based description of a computation, partitioning it over
+a fixed number of nodes is relatively straight-forward: we create
+a {\em cell hypergraph} in which:
+\begin{itemize}
+  \item Each {\em node} represents a single cell of particles, and
+  \item Each {\em edge} represents a single task, connecting the
+    cells used by that task.
+\end{itemize}
+Since in the particular case of \swift each task references at most
+two cells, the cell hypergraph is just a regular {\em cell graph}.
+
+Any partition of the cell graph represents a partition of the
+computation, i.e.~the nodes belonging to each partition each belong
+to a computational {\em rank} (to use the MPI terminology), and the
+data belonging to each cell resides on the partition/rank to which
+it has been assigned.
+Any task spanning cells that belong to the same partition needs only
+to be evaluated on that rank/partition, and tasks spanning more than
+one partition need to be evaluated on both ranks/partitions.
+
+If we then weight each edge with the computatoinal cost associated with
+each task, then finding a {\em good} partitioning reduces to finding a
+partition of the cell graph such that:
+\begin{itemize}
+  \item The weight of the edges within each partition is more or less
+    equal, and
+  \item The weight of the edges spanning two or more partitions is
+    minimal.
+\end{itemize}
+\noindent where the first criteria provides good {\em load-balancing},
+i.e.~each partition/rank should involve the same amount of work, and
+the second criteria reduces the amount of duplicated work between
+partitions/ranks.
+
+Computing such a partition is a standard graph problem and several
+software libraries which provide good solutions\footnote{Computing
+the optimal partition for more than two nodes is considered NP-hard.},
+e.g.~METIS \cite{ref:Karypis1998} and Zoltan \cite{devine2002zoltan},
+exist.
+
+Note that this approach does not explicitly consider any geomertic
+constraints, or strive to partition the {\em amount} of data equitably.
+The only criteria is the computational cost of each partition, for
+which the task decomposition provides a convenient model.
+We are therefore partitioning the {\em computation}, as opposed
+to just the {\em data}.
+
+Note also that the proposed partitioning scheme takes neither the
+task hierarchy, nor the size of the data that needs to be exchanged
+between partitions/ranks into account.
+This approach is therefore only reasonable in situations in which
+the task hierarchy is wider than flat, i.e.~the length of the critical
+path in the task graph is much smaller than the sum of all tasks,
+and in which communication latencies are negligible.
 
 
 \subsection{Asynchronous communications}
 
-\subsection{Task-graph domain decompositon}
 
 %#####################################################################################################
 
