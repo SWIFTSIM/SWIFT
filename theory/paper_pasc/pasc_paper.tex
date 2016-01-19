@@ -194,17 +194,7 @@ where $Q_i$ is the quantity at the $i$th particle, $h$ is the {\em smoothing
   length}, i.e.~the radius of the sphere within which data will be considered
 for the interpolation, and $W(r,h)$ is the {\em smoothing kernel} or {\em
   smoothing function}.  Several different forms for $W(r,h)$ exist, each with
-their own specific benefits and drawbacks.  In the following, the most common
-form consisting of a piecewise cubic polynomial will be used:
-%
-\begin{equation*}
-    W(r,h) = \frac{8}{\pi h^3} \left\{
-        \begin{array}{ll}
-            1 - 6\left(\frac{r}{h}\right)^2 + 6\left(\frac{r}{h}\right)^3 & 0 \leq \frac{r}{h} \leq \frac{1}{2}, \\
-            2\left( 1 - \frac{r}{h} \right)^3 & \frac{1}{2} < \frac{r}{h} \leq 1 \\
-            0 & \frac{r}{h} > 1.
-        \end{array}\right.
-\end{equation*}
+their own specific benefits and drawbacks.
 
 The particle density $\rho_i$ used in \eqn{interp} is itself computed similarly:
 %
@@ -215,19 +205,12 @@ The particle density $\rho_i$ used in \eqn{interp} is itself computed similarly:
 %
 where $r_{ij} = \|\mathbf{r_i}-\mathbf{r_j}\|$ is the Euclidean distance between
 particles $p_i$ and $p_j$.  In compressible simulations, the smoothing length
-$h_i$ of each particle is chosen such that the weighted number of neighbours
-%
-\begin{equation}
-    N_{ngb} = \frac{4}{3}\pi h_i^3 \sum_j W( r_{ij} , h_i )
-    \label{eqn:nneigh}
-\end{equation}
-%
-is kept constant to within a given range, e.g.~$\pm 1$.  This can be achieved by
-applying a Newton iteration to solve \eqn{nneigh} for $h_i$, where the required
-derivative $\partial N_{ngb}/\partial h_i$ is computed alongside \eqn{rho}.
+$h_i$ of each particle is chosen such that the number of neighbours with which
+it interacts is kept more or less constant, and can result in smoothing lenghts
+spanning several orders of magnitudes within the same simulation.
 
 Once the densities $\rho_i$ have been computed, the time derivatives of the
-velocity, internal energy, and smoothing length, which require $\rho_i$, are
+velocity and internal energy, which require $\rho_i$, are
 computed as followed:
 %
 \begin{eqnarray}
@@ -240,7 +223,6 @@ computed as followed:
 where $\hat{h}_{ij} = \max\{h_i,h_j\}$, and the particle pressure $P_i=\rho_i
 u_i (\gamma-1)$ and correction term $\Omega_i=1 +
 \frac{h_i}{3\rho_i}\frac{\partial \rho}{\partial h}$ are computed on the fly.
-The polytropic index $\gamma$ is usually set to $\frac{5}{3}$.
 
 The computations in \eqn{rho}, \eqn{dvdt}, and \eqn{dudt} involve finding all
 pairs of particles within range of each other.  Any particle $p_j$ is {\em
@@ -250,7 +232,7 @@ smaller or equal to the smoothing distance $h_i$ of $p_i$, e.g.~as is done in
 particles, this association is not symmetric, i.e. $p_j$ may be in range of
 $p_i$, but $p_i$ not in range of $p_j$.  If $r_{ij} < \max\{h_i,h_j\}$, as is
 required in \eqn{dvdt}, then particles $p_i$ and $p_j$ are within range {\em of
-  each other}.
+each other}.
 
 The computation thus proceeds in two distinct stages that are evaluated
 separately:
@@ -262,34 +244,13 @@ separately:
         loop over all particles $p_j$
         within range of each other and evaluate \eqn{dvdt} and \eqn{dudt}.
 \end{enumerate}
-The identification of these interacting particle pairs,
-as will be shown in the following sections, incurs the main computational
-cost, and therefore also presents the main challenge in implementing efficient
-SPH simulations.
 
-
-\subsection{Tree-based approaches}
-
-In its simplest formulation, all particles in an SPH simulation have
-a constant smoothing length $h$.
-In such a setup, finding the particles in range of any other particle
-is similar to Molecular Dynamics simulations, in which all particles
-interact within a constant cutoff radius, and approaches which are used
-in the latter, e.g. cell-linked lists
-\cite{Allen1989} or Verlet lists \cite{Verlet1967}
-or more efficient variants thereof \cite{Gonnet2012,Gonnet2013}
-can be used.
-Both approaches are discussed in the context of SPH simulations
-in \cite{Dominguez2011} and \cite{Viccione2008}.
-
-The neighbour-finding problem becomes more interesting, or difficult,
-in SPH simulations with variable smoothing lengths, i.e.~in which
-each particle has its own smoothing length $h_i$, with ranges spawning
-up to several orders of magnitude.
-In such cases, e.g. in Astrophysics simulations \cite{Gingold1977},
+Finding the interacting neighbours for each particle constitutes
+the bulk of the computation.
+Many codes, e.g. in Astrophysics simulations \cite{Gingold1977},
 the above-mentioned approaches cease to work efficiently.
-Such codes therefore usually rely on spatial {\em trees}
-for neighbour finding \cite{Hernquist1989,Springel2005,Wadsley2004},
+rely on spatial {\em trees}
+for neighbour finding \cite{Gingold1977,Hernquist1989,Springel2005,Wadsley2004},
 i.e.~$k$-d trees \cite{Bentley1975} or octrees \cite{Meagher1982}
 are used to decompose the simulation space.
 In Astrophysics in particular, spatial trees are also a somewhat natural
@@ -299,46 +260,11 @@ via a Barnes-Hut \cite{Barnes1986} or Fast Multipole
 The particle interactions are then computed by traversing the list of
 particles and searching for their neighbours in the tree.
 
-Using such trees, it is in principle trivial to parallelize
-the neighbour finding and the actual computation on shared-memory
-computers,
-e.g.~each thread walks the tree for a different particle,
-identifies its neighbours and computes its densities and/or
-the second derivatives of the physical quantities of interest for 
-the time integration.
-
-Despite its simple and elegant formulation, the tree-based
-approach to neighbour-finding has three main problems:
-\begin{itemize}
-    \item Computational efficiency: The cost of finding all neighbours
-        of any given particle in the tree is, on average, in \oh{\log N},
-        and has worst-case behavior in \oh{N^{2/3}} \cite{Lee1977},
-        i.e.~in any case, the computational cost per particle grows with the
-        total number of particles $N$.
-    \item Cache efficiency: When searching for the neighbours of a
-        given particle, the data of all potential neighbours, which may
-        not be contiguous in memory, is traversed.
-        This leads to scattered memory access patterns that may be
-        cache-inefficient. Furthermore, this operation is performed for
-        each particle separately, further reducing the chances
-        of cache re-use.
-        On shared-memory parallel architectures, this problem is of
-        particular concern as parts of the cache hierarchy and the
-        memory bandwidth are shared between cores, effectively
-        reducing both in parallel computations.
-    \item Symmetry: The parallel tree search can not exploit symmetry,
-        i.e.~a pair $p_i$ and $p_j$ will always be found twice,
-        once when walking the tree for each particle. It would, however,
-        be sufficient to find it once and update both particles, as most
-        of the particle interactions are symmetric.
-        If this is done in a shared-memory parallel setup, special
-        care muss be taken to avoid concurrency problems when
-        two threads update the same particle's data.
-\end{itemize}
-    
-These problems are all inherently linked to the use of
-spatial trees, and more specifically their traversal,
-for neighbour-finding.
+Although such tree traversals are trivial to parallelize, they
+have several disadvantages, e.g.~with regards to computational
+efficiency, cache efficiency, and exploiting symmetries in the
+computaiton (see \cite{gonnet2015efficient} for a more detailed
+analysis).
 
 
 %#####################################################################################################
