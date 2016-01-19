@@ -118,7 +118,8 @@
 
   These algorithms do not rely on a specific architecture nor on detailed
   micro-level details.  As a result, our code present excellent \emph{strong}
-  scaling on a variety of architectures. It displays, for instance, a
+  scaling on a variety of architectures, ranging from x86 Tier-2 systems to the
+  largest Tier-0 machines currently available. It displays, for instance, a
   \emph{strong} scaling parallel efficiency of more than 60\% when going from
   512 to 131072 cores on a BlueGene architecture. Similar results are obtained
   on standard clusters of x86 CPUs.
@@ -330,15 +331,29 @@ at late times, we constructed a simulation setup which is representative of the
 most expensive part of these simulations, i.e. when the particles are
 highly-clustered and not uniformly distributed anymore. In order to fit our
 simulation setup into the limited memory of the systems tested, we have randomly
-downsampled the particle count of the output to $800^3=5.12\times10^8$ and
-$600^3=2.16\times10^8$ particles respectively. We then run the \swift code for
-100 timesteps and average the wallclock time of these timesteps after having
-removed the first and last ones, where i/o occurs.
+downsampled the particle count of the output to $800^3=5.12\times10^8$,
+$600^3=2.16\times10^8$ and $300^3=2.7\times10^7$ particles respectively. We then
+run the \swift code for 100 timesteps and average the wallclock time of these
+timesteps after having removed the first and last ones, where i/o occurs.
+
+\subsection{x86 architecture: Cosma-5}
+
+For our first test, we ran \swift on the cosma-5 DiRAC2 Data Centric
+System\footnote{\url{icc.dur.ac.uk/index.php?content=Computing/Cosma}} located
+at the University of Durham. The system consists of 420 nodes with 2 Intel Sandy
+Bridge-EP Xeon
+E5-2670\footnote{\url{http://ark.intel.com/products/64595/Intel-Xeon-Processor-E5-2670-20M-Cache-2_60-GHz-8_00-GTs-Intel-QPI}}
+clocked at $2.6~\rm{GHz}$ with each $128~\rm{GByte}$ of RAM. The nodes are
+connected using a Mellanox FDR10 Infiniband 2:1 blocking configuration.
+
+The code was compiled with the Intel compiler version \textsc{2016.0.1} and
+linked to the Intel MPI library version \textsc{5.1.2.150} and metis library
+version \textsc{5.1.0}.
 
 
 \subsection{x86 architecture: SuperMUC}
 
-For our first test, we ran \swift on the SuperMUC x86 phase 1 thin
+For our next test, we ran \swift on the SuperMUC x86 phase 1 thin
 nodes \footnote{\url{https://www.lrz.de/services/compute/supermuc/systemdescription/}}
 located at the Leibniz Supercomputing Centre in Garching near Munich. This
 system is made of 9,216 nodes with 2 Intel Sandy Bridge-EP Xeon E5-2680
@@ -373,7 +388,7 @@ threads per node (i.e. one thread per physical core).
 
 \subsection{BlueGene architecture: JUQUEEN}
 
-For our second test, we ran \swift on the JUQUEEN IBM BlueGene/Q
+For our last set of tests, we ran \swift on the JUQUEEN IBM BlueGene/Q
 system\footnote{\url{http://www.fz-juelich.de/ias/jsc/EN/Expertise/Supercomputers/JUQUEEN/Configuration/Configuration_node.html}}
 located at the J\"ulich Supercomputing Centre. This system is made of 28,672
 nodes consiting of an IBM PowerPC A2 processor running at $1.6~\rm{GHz}$ with
