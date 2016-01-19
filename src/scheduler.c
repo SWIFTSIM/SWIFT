@@ -1185,7 +1185,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  *
  * @param s The #scheduler.
  * @param qid The ID of the preferred #queue.
- * @param super the super-cell
+ * @param prev the previous task that was run.
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
