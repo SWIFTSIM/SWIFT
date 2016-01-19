@@ -329,12 +329,24 @@ resampled from low-redshift outputs of the EAGLE project \cite{Schaye2015}, a
 large suite of state-of-the-art cosmological simulations. By selecting outputs
 at late times, we constructed a simulation setup which is representative of the
 most expensive part of these simulations, i.e. when the particles are
-highly-clustered and not uniformly distributed anymore. In order to fit our
-simulation setup into the limited memory of the systems tested, we have randomly
-downsampled the particle count of the output to $800^3=5.12\times10^8$,
-$600^3=2.16\times10^8$ and $300^3=2.7\times10^7$ particles respectively. We then
-run the \swift code for 100 timesteps and average the wallclock time of these
-timesteps after having removed the first and last ones, where i/o occurs.
+highly-clustered and not uniformly distributed anymore. This distribution of
+particles is shown on Fig.~\ref{fig:ICs} and preiodic boundary conditions are
+used. In order to fit our simulation setup into the limited memory of some of
+the systems tested, we have randomly downsampled the particle count of the
+output to $800^3=5.12\times10^8$, $600^3=2.16\times10^8$ and
+$300^3=2.7\times10^7$ particles respectively. We then run the \swift code for
+100 timesteps and average the wallclock time of these timesteps after having
+removed the first and last ones, where i/o occurs.
+
+\begin{figure}
+\centering
+\includegraphics[width=\columnwidth]{Figures/cosmoVolume}
+\caption{The initial density field computed from the initial particle
+  distribution used for our tests. The density $\rho_i$ of the particles spans 8
+  orders of magnitude, requiring smoothing lenghts $h_i$ changing by a factor of
+  almost $1000$ accross the simulation volume. \label{fig:ICs}}
+\end{figure}  
+
 
 \subsection{x86 architecture: Cosma-5}
 
