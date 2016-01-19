@@ -206,7 +206,7 @@ The particle density $\rho_i$ used in \eqn{interp} is itself computed similarly:
 where $r_{ij} = \|\mathbf{r_i}-\mathbf{r_j}\|$ is the Euclidean distance between
 particles $p_i$ and $p_j$.  In compressible simulations, the smoothing length
 $h_i$ of each particle is chosen such that the number of neighbours with which
-it interacts is kept more or less constant, and can result in smoothing lenghts
+it interacts is kept more or less constant, and can result in smoothing lengths
 spanning several orders of magnitudes within the same simulation.
 
 Once the densities $\rho_i$ have been computed, the time derivatives of the
@@ -263,7 +263,7 @@ particles and searching for their neighbours in the tree.
 Although such tree traversals are trivial to parallelize, they
 have several disadvantages, e.g.~with regards to computational
 efficiency, cache efficiency, and exploiting symmetries in the
-computaiton (see \cite{gonnet2015efficient} for a more detailed
+computation (see \cite{gonnet2015efficient} for a more detailed
 analysis).
 
 
@@ -291,7 +291,7 @@ The main advantages of using a task-based approach are
     \item The order in which the tasks are processed is completely
         dynamic and adapts automatically to load imbalances.
     \item If the dependencies and conflicts are specified correctly,
-        there is no need for expensive explicit locking, synchronization,
+        there is no need for expensive explicit locking, synchronisation,
         or atomic operations to deal with most concurrency problems.
     \item Each task has exclusive access to the data it is working on,
         thus improving cache locality and efficiency.
@@ -342,7 +342,7 @@ neighbour search on a single core, and scales efficiently to all
 cores of a shared-memory machine \cite{gonnet2015efficient}.
 
 
-\subsection{Task-based domain decompositon}
+\subsection{Task-based domain decomposition}
 
 Given a task-based description of a computation, partitioning it over
 a fixed number of nodes is relatively straight-forward: we create
@@ -364,7 +364,7 @@ Any task spanning cells that belong to the same partition needs only
 to be evaluated on that rank/partition, and tasks spanning more than
 one partition need to be evaluated on both ranks/partitions.
 
-If we then weight each edge with the computatoinal cost associated with
+If we then weight each edge with the computational cost associated with
 each task, then finding a {\em good} partitioning reduces to finding a
 partition of the cell graph such that:
 \begin{itemize}
@@ -384,7 +384,7 @@ the optimal partition for more than two nodes is considered NP-hard.},
 e.g.~METIS \cite{ref:Karypis1998} and Zoltan \cite{devine2002zoltan},
 exist.
 
-Note that this approach does not explicitly consider any geomertic
+Note that this approach does not explicitly consider any geometric
 constraints, or strive to partition the {\em amount} of data equitably.
 The only criteria is the computational cost of each partition, for
 which the task decomposition provides a convenient model.
@@ -418,12 +418,12 @@ large suite of state-of-the-art cosmological simulations. By selecting outputs
 at late times, we constructed a simulation setup which is representative of the
 most expensive part of these simulations, i.e. when the particles are
 highly-clustered and not uniformly distributed anymore. This distribution of
-particles is shown on Fig.~\ref{fig:ICs} and preiodic boundary conditions are
+particles is shown on Fig.~\ref{fig:ICs} and periodic boundary conditions are
 used. In order to fit our simulation setup into the limited memory of some of
-the systems tested, we have randomly downsampled the particle count of the
+the systems tested, we have randomly down-sampled the particle count of the
 output to $800^3=5.12\times10^8$, $600^3=2.16\times10^8$ and
 $300^3=2.7\times10^7$ particles respectively. We then run the \swift code for
-100 timesteps and average the wallclock time of these timesteps after having
+100 time-steps and average the wall clock time of these time-steps after having
 removed the first and last ones, where i/o occurs.
 
 \begin{figure}
@@ -431,8 +431,8 @@ removed the first and last ones, where i/o occurs.
 \includegraphics[width=\columnwidth]{Figures/cosmoVolume}
 \caption{The initial density field computed from the initial particle
   distribution used for our tests. The density $\rho_i$ of the particles spans 8
-  orders of magnitude, requiring smoothing lenghts $h_i$ changing by a factor of
-  almost $1000$ accross the simulation volume. \label{fig:ICs}}
+  orders of magnitude, requiring smoothing lengths $h_i$ changing by a factor of
+  almost $1000$ across the simulation volume. \label{fig:ICs}}
 \end{figure}  
 
 
@@ -491,7 +491,7 @@ threads per node (i.e. one thread per physical core).
 For our last set of tests, we ran \swift on the JUQUEEN IBM BlueGene/Q
 system\footnote{\url{http://www.fz-juelich.de/ias/jsc/EN/Expertise/Supercomputers/JUQUEEN/Configuration/Configuration_node.html}}
 located at the J\"ulich Supercomputing Centre. This system is made of 28,672
-nodes consiting of an IBM PowerPC A2 processor running at $1.6~\rm{GHz}$ with
+nodes consisting of an IBM PowerPC A2 processor running at $1.6~\rm{GHz}$ with
 each $16~\rm{GByte}$ of RAM. Of notable interest is the presence of two floating
 units per compute core. The system is composed of 28 racks containing each 1,024
 nodes. The network uses a 5D torus to link all the racks.
@@ -500,7 +500,7 @@ The code was compiled with the IBM XL compiler version \textsc{30.73.0.13} and
 linked to the corresponding MPI library and metis library
 version \textsc{4.0.2}.
 
-The simulation setup with $600^3$ particles was firstrun on that system using
+The simulation setup with $600^3$ particles was first run on that system using
 512 nodes with one MPI rank per node and variable number of threads per
 node. The results of this test are shown on Fig.~\ref{fig:JUQUEEN1}.
 
@@ -547,15 +547,15 @@ test are shown on Fig.~\ref{fig:JUQUEEN2}.
 \section{Conclusions}
 
 When running on the SuperMUC machine with 32 nodes (512 cores), each MPI rank
-contains approximatively $1.6\times10^7$ particles in $2.5\times10^5$
+contains approximately $1.6\times10^7$ particles in $2.5\times10^5$
 cells. \swift will generate around $58,000$ point-to-point asynchronous MPI
 communications (a pair of \texttt{Isend} and \texttt{Irecv}) per node every
-timestep. 
+time-step. 
 
 
 %#####################################################################################################
 
-\section{Acknowledgments}
+\section{Acknowledgements}
 This work would not have been possible without Lydia Heck's help and
 expertise. We thank Heinrich Bockhorst and Stephen Blair-Chappell from
 {\sc intel} as well as Dirk Brommel from the J\"ulich Computing Centre
