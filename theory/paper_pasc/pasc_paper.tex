@@ -273,6 +273,61 @@ analysis).
 
 \subsection{Task-based parallelism}
 
+Task-based parallelism is a shared-memory parallel programming
+paradigm in which a computation is broken-down in to a set of
+{\em tasks} which can be executed  concurrently.
+In order to ensure that the tasks are executed in the right
+order, e.g.~that data needed by one task is only used once it
+has been produced by another task, and that no two tasks
+update the same data at the same time, {\em dependencies} between
+tasks are specified and strictly enforced by a task scheduler.
+Computations described in this way then parallelize trivially:
+each processor repeatedly grabs a task for which all dependencies
+have been satisfied and executes it until there are no tasks left.
+
+The main advantages of using a task-based approach are
+%
+\begin{itemize}
+    \item The order in which the tasks are processed is completely
+        dynamic and adapts automatically to load imbalances.
+    \item If the dependencies and conflicts are specified correctly,
+        there is no need for expensive explicit locking, synchronization,
+        or atomic operations to deal with most concurrency problems.
+    \item Each task has exclusive access to the data it is working on,
+        thus improving cache locality and efficiency.
+        If each task operates exclusively on a restricted part of the
+        problem data, this can lead to high cache locality and efficiency.
+\end{itemize}
+%
+Task-based parallelism is not a particularly new concept and therefore
+several implementations thereof exist, e.g.~Cilk \cite{ref:Blumofe1995},
+QUARK \cite{ref:QUARK}, StarPU \cite{ref:Augonnet2011},
+SMP~Superscalar \cite{ref:SMPSuperscalar}, OpenMP~3.0 \cite{ref:Duran2009},
+and Intel's TBB \cite{ref:Reinders2007}.
+
+For convenience, and to make experimenting with different scheduling
+techniques easier, we chose to implement our own task scheduler
+in \swift, which has since been back-ported as the general-purpose
+\qs task scheduler \cite{gonnet2013quicksched}.
+This also allowed us to extend the scheduler with the concept of
+{\em conflicts}: two tasks conflict if they cannot be executed
+concurrently, e.g.~because the access some common resource or memory
+location, yet the order in which they are executed is irrelevant.
+
+Despite its advantages, and the variety of implementations,
+task-based parallelism is rarely used in
+practice (notable exceptions include the PLASMA project
+\cite{ref:Agullo2009} which uses QUARK/StarPU, and the {\tt deal.II} project
+\cite{ref:Bangerth2007} which uses Intel's TBB).
+The main problem is that to effectively use task-based parallelism,
+most computations need to be completely redesigned to fit the paradigm,
+which is usually not an option for existing large and complex codebases.
+
+Since we were re-implementing \swift from scratch, this was not an issue.
+The tree-based neighbour-finding described above was replaced with a more
+task-friendly approach as described in \cite{gonnet2015efficient}.
+
+
 \subsection{Asynchronous communications}
 
 \subsection{Task-graph domain decompositon}
