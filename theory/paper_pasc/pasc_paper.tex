@@ -334,6 +334,9 @@ all the tasks computing the particle densities therein must have
 completed before the particle forces can be computed, and all the
 force computations must have completed before the particle velocities
 may be updated.
+The task hierarchy is shown in \fig{tasks}, where the particles in each
+cell are first sorted (round tasks) before the particle densities
+are computed (first layer of square tasks).
 
 Due to the cache-friendly nature of the task-based computations, 
 and their ability to exploit symmetries in the particle interactions,
@@ -399,6 +402,21 @@ the task hierarchy is wider than flat, i.e.~the length of the critical
 path in the task graph is much smaller than the sum of all tasks,
 and in which communication latencies are negligible.
 
+
+\begin{figure}
+\centering
+\includegraphics[width=\columnwidth]{Figures/Hierarchy3}
+\caption{Task hierarchy for the SPH computations in \swift,
+  including communication tasks. Arrows indicate dependencies,
+  i.e.~an arrow from task $A$ to task $B$ indicates that $A$
+  depends on $B$. The task color corresponds to the cell or
+  cells it operates on, e.g.~the density and foce tasks work
+  on individual cells or pairs of cells.
+  The blue cell data is on a separate rank as the yellow and
+  purple cells, and thus its data must be sent accross during
+  the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
+\label{fig:tasks}
+\end{figure}  
 
 \subsection{Asynchronous communications}
 
