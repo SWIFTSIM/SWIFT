@@ -455,6 +455,17 @@ The simulation setup with $376^3$ particles was run on that system using 1 to
 Fig.~\ref{fig:cosma}. For this test, we used one MPI rank per node and 16
 threads per node (i.e. one thread per physical core).
 
+\begin{figure}
+\centering
+\includegraphics[width=\columnwidth]{Figures/domains}
+\caption{The particles for the initial conditions shown on Fig.~\ref{fig:ICs}
+  coloured according to the node they belong to after a load-balancing call on
+  32 nodes. As can be seen, the domain decomposition follows the cells in the mesh
+  but is not made of regular cuts. Domains have different shapes and
+  sizes. \label{fig:domains}}
+\end{figure}  
+
+
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingCosma}
