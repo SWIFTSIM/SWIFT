@@ -271,6 +271,8 @@ analysis).
 
 \section{Parallelisation strategy}
 
+One of the motivations 
+
 \subsection{Task-based parallelism}
 
 Task-based parallelism is a shared-memory parallel programming
@@ -334,7 +336,7 @@ all the tasks computing the particle densities therein must have
 completed before the particle forces can be computed, and all the
 force computations must have completed before the particle velocities
 may be updated.
-The task hierarchy is shown in \fig{tasks}, where the particles in each
+The task hierarchy is shown in Figure~\ref{tasks}, where the particles in each
 cell are first sorted (round tasks) before the particle densities
 are computed (first layer of square tasks).
 
@@ -402,7 +404,6 @@ the task hierarchy is wider than flat, i.e.~the length of the critical
 path in the task graph is much smaller than the sum of all tasks,
 and in which communication latencies are negligible.
 
-
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{Figures/Hierarchy3}
@@ -415,10 +416,83 @@ and in which communication latencies are negligible.
   The blue cell data is on a separate rank as the yellow and
   purple cells, and thus its data must be sent accross during
   the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
-\label{fig:tasks}
+\label{tasks}
 \end{figure}  
 
+
 \subsection{Asynchronous communications}
+
+Although each particle cell resides on a specific rank, the particle
+data still needs to be sent to neighbouring ranks which contain
+tasks that operate thereon.
+This communication must happen twice at each timestep: once to send
+the particle positions for the density computation, and again
+once the densities have been aggregated locally for the force
+computation.
+
+Most distributed-memory codes based on MPI \cite{ref:Snir1998}
+separate computation and communication into distinct steps, i.e.~all
+the ranks first exchange data, and only once the data exchange is
+complete, computaiton starts. Further data exchanges only happen
+once computation has finished, and so on.
+This approach, although conceptually simple and easy to implement,
+has three major drawbacks:
+\begin{itemize}
+  \item The frequent syncrhonization points between communication
+    and computation exacerbate load imbalances,
+  \item The communiation phase consists mainly of waiting on
+    latencies, during which the node's CPUs usually run idle, and
+  \item During the computation phase, the communication network
+    is left completely unused, whereas during the communication
+    pase, all ranks attempt to use it at the same time.
+\end{itemize}
+
+It is for these reasons that in \swift we opted for a fully
+{\em dynamic and asynchronous} communication model in which local
+data is sent whenever it is ready, data from other ranks is
+only acted on once it has arrived, and there is no separation into
+communication and computational phases.
+In practice this means that no rank will sit idle waiting on
+communication if there is any computation that can be done.
+
+Although this sounds somewhat chaotic and difficult to implement,
+it actually fits in quite naturally within the task-based framework
+by automatically adding tasks that send and receive particle data
+between ranks.
+For every task that uses data that resides on a different rank,
+{\tt send} and {\tt recv} tasks are generated on the source
+and destination ranks respectively.
+At the destination, the task is made dependent of the {\tt recv}
+task, i.e.~the task can only execute once the data has actually
+been received.
+This is illustrated in Figure~\ref{tasks}, where data is exchanged across
+two ranks for the denisty and force computations and the extra
+dependencies are shown in red.
+
+The communication itself is implemented using the non-blocking
+{\tt MPI\_Isend} and {\tt MPI\_Irecv} primitives to initiate
+communication, and {\tt MPI\_Test} to check if the communication
+was successful and resolve the communication task's dependencies.
+In the task-based scheme, strictly local tasks which do not rely
+on commuication tasks are executed first.
+As the data from other ranks arrive, the corresponding non-local
+tasks are unlocked and are executed whenever a thread picks them up.
+
+One direct consequence of this approach is that instead of a single
+{\tt send}/{\tt recv} call between each pair of neighboring ranks,
+one such pair is generated for each particle cell.
+This type of communication, i.e.~several small messages instead of
+one large message, is usually discouraged since the sum of the latencies
+for the small messages is usually much larger than the latency of
+the single large message.
+This, however, is not a concern since nobody is acutally waiting
+to receive the messages in order and the latencies are covered
+by local computations.
+A nice side-effect of this approach is that communication no longer
+happens in bursts involving all the ranks at the same time, but
+is more or less evenly spread over the entire computation, thus
+being less demanding of the communication infrastructure.
+
 
 
 %#####################################################################################################
