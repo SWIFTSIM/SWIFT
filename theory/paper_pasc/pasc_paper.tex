@@ -546,7 +546,9 @@ version \textsc{5.1.0}.
 The simulation setup with $376^3$ particles was run on that system using 1 to
 256 threads (16 nodes) and the results of this strong scaling test are shown on
 Fig.~\ref{fig:cosma}. For this test, we used one MPI rank per node and 16
-threads per node (i.e. one thread per physical core).
+threads per node (i.e. one thread per physical core). On Fig.~\ref{fig:domains}
+we show the domain decomposition obtained via the task-graph decomposition
+algorithm described above in the case of 32 MPI ranks.
 
 \begin{figure}
 \centering
