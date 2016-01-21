@@ -565,7 +565,7 @@ algorithm described above in the case of 32 MPI ranks.
 \end{figure}  
 
 
-\begin{figure*}[t]
+\begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingCosma}
 \caption{Strong scaling test on the Cosma-5 machine (see text for
@@ -602,7 +602,7 @@ The simulation setup with $800^3$ particles was run on that system using 16 to
 Fig.~\ref{fig:superMUC}. For this test, we used one MPI rank per node and 16
 threads per node (i.e. one thread per physical core).
 
-\begin{figure*}[t]
+\begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingSuperMUC}
 \caption{Strong scaling test on the SuperMUC phase 1 machine (see text
@@ -653,7 +653,7 @@ test are shown on Fig.~\ref{fig:JUQUEEN2}.
 
 
 
-\begin{figure*}[t]
+\begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingBlueGene}
 \caption{Strong scaling test on the JUQUEEN BlueGene machine (see text
@@ -675,6 +675,8 @@ test are shown on Fig.~\ref{fig:JUQUEEN2}.
 %#####################################################################################################
 
 \section{Discussion \& Conclusion}
+
+
 
 When running on the SuperMUC machine with 32 nodes (512 cores), each MPI rank
 contains approximately $1.6\times10^7$ particles in $2.5\times10^5$
