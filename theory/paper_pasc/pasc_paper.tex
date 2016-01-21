@@ -543,6 +543,11 @@ E5-2670\footnote{\url{http://ark.intel.com/products/64595/Intel-Xeon-Processor-E
 clocked at $2.6~\rm{GHz}$ with each $128~\rm{GByte}$ of RAM. The nodes are
 connected using a Mellanox FDR10 Infiniband 2:1 blocking configuration.
 
+This system is similar to many Tier-2 systems available in most universities or
+computing facilities. Demonstrating strong scaling on such a machine is
+essential to show that the code can be efficiently used even on commodity
+hardware available to most researchers in the field.
+
 The code was compiled with the Intel compiler version \textsc{2016.0.1} and
 linked to the Intel MPI library version \textsc{5.1.2.150} and metis library
 version \textsc{5.1.0}.
@@ -573,8 +578,8 @@ of 16 MPI ranks.
 \caption{Strong scaling test on the Cosma-5 machine (see text for hardware
   description). \textit{Left panel:} Code Speed-up. \textit{Right panel:}
   Corresponding parallel efficiency.  Using 16 threads per node (no use of
-  hyper-threading) with one MPI rank per node, a good parallel efficiency is
-  achieved when increasing the thread count from 1 (1 node) to 128 (8 nodes)
+  hyper-threading) with one MPI rank per node, a good parallel efficiency (60\%)
+  is achieved when increasing the thread count from 1 (1 node) to 128 (8 nodes)
   even on this relatively small test case. The dashed line indicates the
   efficiency when running on one single node but using all the physical and
   virtual cores (hyper-threading). As these CPUs only have one FPU per core, we
@@ -595,6 +600,10 @@ at $2.7~\rm{GHz}$ with each $32~\rm{GByte}$ of RAM. The nodes are split in 18
 ``islands'' of 512 nodes within which communications are handled via an
 Infiniband FDR10 non-blocking Tree. Islands are then connected using a 4:1
 Pruned Tree.
+
+This system is similar in nature to the cosma-5 system used in the previous set
+of tests but is much larger, allowing us to demonstrate the scalibility of our
+framework on the largest systems.
 
 The code was compiled with the Intel compiler version \textsc{2015.5.223} and
 linked to the Intel MPI library version \textsc{5.1.2.150} and metis library
@@ -628,6 +637,10 @@ nodes consisting of an IBM PowerPC A2 processor running at $1.6~\rm{GHz}$ with
 each $16~\rm{GByte}$ of RAM. Of notable interest is the presence of two floating
 units per compute core. The system is composed of 28 racks containing each 1,024
 nodes. The network uses a 5D torus to link all the racks.
+
+This system is larger than SuperMUC used above and uses a completely different
+architecture. We use it here to demonstrate that our results are not dependant
+on the hardware being used.
 
 The code was compiled with the IBM XL compiler version \textsc{30.73.0.13} and
 linked to the corresponding MPI library and metis library
