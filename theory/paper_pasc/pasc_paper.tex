@@ -19,7 +19,9 @@
 % Latex tricks
 \newcommand{\oh}[1]{\mbox{$ {\mathcal O}( #1 ) $}}
 \newcommand{\eqn}[1] {(\ref{eqn:#1})}
-
+\makeatletter
+\newcommand{\pushright}[1]{\ifmeasuring@#1\else\omit\hfill$\displaystyle#1$\fi\ignorespaces}
+\makeatother
 
 % Some acronyms
 \newcommand{\gadget}{{\sc Gadget-2}\xspace}
@@ -167,20 +169,27 @@ tackle ever {\em larger} problems, but not fixed-size problems
 Although this switch from growth in speed to growth in parallelism
 has been anticipated and observed for quite some time, very little
 has changed in terms of how we design and implement parallel
-computations, e.g.~branch-and-bound synchronous parallelism using
-OpenMP\cite{ref:Dagum1998} and MPI\cite{ref:Snir1998}, and domain
-decompositions based on space-filling curves \cite{warren1993parallel}.
+computations.
+Branch-and-bound synchronous parallelism using
+OpenMP\cite{ref:Dagum1998} and MPI\cite{ref:Snir1998}, as well as domain
+decompositions based on geometry or space-filling curves \cite{warren1993parallel}
+are still commonplace, despite both the
+architectures and problem scales having changed dramatically since
+their introduction.
 
-The design and implementation of \swift \cite{gonnet2013swift,%
-  theuns2015swift,gonnet2015efficient}, a large-scale cosmological simulation
-code built from scratch, provided the perfect opportunity to test some newer
+The design and implementation of \swift\footnote{
+\swift is an open-source software project and the latest version of
+the source code, along with all the data needed to run the test cased
+presented in this paper, can be downloaded at \web.}
+\cite{gonnet2013swift,theuns2015swift,gonnet2015efficient}, a large-scale
+cosmological simulation code built from scratch, provided the perfect
+opportunity to test some newer
 approaches, i.e.~task-based parallelism, fully asynchronous communication, and
-graph partition-based domain decompositions. The code is open-source and
-available at the address \web where all the test cases
-presented in this paper can also be found.
+graph partition-based domain decompositions.
 
-This paper describes these techniques, as well as the results
-obtained with them on different architectures.
+This paper describes these techniques, which are not exclusive to
+cosmological simulations or any specific architecture, as well as
+the results obtained with them.
 
 
 %#####################################################################################################
@@ -221,12 +230,12 @@ Once the densities $\rho_i$ have been computed, the time derivatives of the
 velocity and internal energy, which require $\rho_i$, are
 computed as followed:
 %
-\begin{eqnarray}
-    \frac{dv_i}{dt} & = & -\sum_{j,~r_{ij} < \hat{h}_{ij}} m_j \left[
-        \frac{P_i}{\Omega_i\rho_i^2}\nabla_rW(r_{ij},h_i) +
-        \frac{P_j}{\Omega_j\rho_j^2}\nabla_rW(r_{ij},h_j) \right], \label{eqn:dvdt} \\ 
-    \frac{du_i}{dt} & = & \frac{P_i}{\Omega_i\rho_i^2} \sum_{j,~r_{ij} < h_i} m_j(\mathbf v_i - \mathbf v_j) \cdot \nabla_rW(r_{ij},h_i), \label{eqn:dudt}
-\end{eqnarray}
+\begin{align}
+    \frac{dv_i}{dt} & = -\sum_{j,~r_{ij} < \hat{h}_{ij}} m_j \left[
+        \frac{P_i}{\Omega_i\rho_i^2}\nabla_rW(r_{ij},h_i)\right. + \label{eqn:dvdt}\\
+        & \pushright{\left.\frac{P_j}{\Omega_j\rho_j^2}\nabla_rW(r_{ij},h_j) \right], \nonumber} \\ 
+    \frac{du_i}{dt} & = \frac{P_i}{\Omega_i\rho_i^2} \sum_{j,~r_{ij} < h_i} m_j(\mathbf v_i - \mathbf v_j) \cdot \nabla_rW(r_{ij},h_i), \label{eqn:dudt}
+\end{align}
 %
 where $\hat{h}_{ij} = \max\{h_i,h_j\}$, and the particle pressure $P_i=\rho_i
 u_i (\gamma-1)$ and correction term $\Omega_i=1 +
@@ -256,7 +265,6 @@ separately:
 Finding the interacting neighbours for each particle constitutes
 the bulk of the computation.
 Many codes, e.g. in Astrophysics simulations \cite{Gingold1977},
-the above-mentioned approaches cease to work efficiently.
 rely on spatial {\em trees}
 for neighbour finding \cite{Gingold1977,Hernquist1989,Springel2005,Wadsley2004},
 i.e.~$k$-d trees \cite{Bentley1975} or octrees \cite{Meagher1982}
@@ -296,6 +304,7 @@ algorithms.
 Finally, the necessary communication between nodes can itself be
 modelled in a task-based way, interleaving communication seamlesly
 with the rest of the computation.
+
 
 \subsection{Task-based parallelism}
 
