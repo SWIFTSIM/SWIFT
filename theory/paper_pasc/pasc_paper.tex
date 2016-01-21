@@ -404,7 +404,8 @@ cores of a shared-memory machine \cite{gonnet2015efficient}.
 \subsection{Task-based domain decomposition}
 
 Given a task-based description of a computation, partitioning it over
-a fixed number of nodes is relatively straight-forward: we create
+a fixed number of {\em ranks} (using the MPI terminology)
+is relatively straight-forward: we create
 a {\em cell hypergraph} in which:
 \begin{itemize}
   \item Each {\em node} represents a single cell of particles, and
@@ -416,7 +417,7 @@ two cells, the cell hypergraph is just a regular {\em cell graph}.
 
 Any partition of the cell graph represents a partition of the
 computation, i.e.~the nodes belonging to each partition each belong
-to a computational {\em rank} (to use the MPI terminology), and the
+to a rank, and the
 data belonging to each cell resides on the partition/rank to which
 it has been assigned.
 Any task spanning cells that belong to the same partition needs only
@@ -425,19 +426,12 @@ one partition need to be evaluated on both ranks/partitions.
 
 If we then weight each edge with the computational cost associated with
 each task, then finding a {\em good} partitioning reduces to finding a
-partition of the cell graph such that:
-\begin{itemize}
-  \item The weight of the edges within each partition is more or less
-    equal, and
-  \item The weight of the edges spanning two or more partitions is
-    minimal.
-\end{itemize}
-\noindent where the first criteria provides good {\em load-balancing},
-i.e.~each partition/rank should involve the same amount of work, and
-the second criteria reduces the {\em partition cost}, i.e.~the amount
-of duplicated work between partitions/ranks
+partition of the cell graph such that the maximum sum of the weight
+of all edges within and spanning in a partition is minimal
 (see Figure~\ref{taskgraphcut}).
-
+Since the sum of the weights is directly proportional to the amount
+of computation per rank/partition, minimizing the maximum sum
+corresponds to minimizing the time spent on the slowest rank.
 Computing such a partition is a standard graph problem and several
 software libraries which provide good solutions\footnote{Computing
 the optimal partition for more than two nodes is considered NP-hard.},
