@@ -349,6 +349,21 @@ the task-based approach is already more efficient than the tree-based
 neighbour search on a single core, and scales efficiently to all
 cores of a shared-memory machine \cite{gonnet2015efficient}.
 
+\begin{figure}
+\centering
+\includegraphics[width=\columnwidth]{Figures/Hierarchy3}
+\caption{Task hierarchy for the SPH computations in \swift,
+  including communication tasks. Arrows indicate dependencies,
+  i.e.~an arrow from task $A$ to task $B$ indicates that $A$
+  depends on $B$. The task colour corresponds to the cell or
+  cells it operates on, e.g.~the density and force tasks work
+  on individual cells or pairs of cells.
+  The blue cell data is on a separate rank as the yellow and
+  purple cells, and thus its data must be sent across during
+  the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
+\label{tasks}
+\end{figure}  
+
 
 \subsection{Task-based domain decomposition}
 
@@ -384,7 +399,8 @@ partition of the cell graph such that:
 \noindent where the first criteria provides good {\em load-balancing},
 i.e.~each partition/rank should involve the same amount of work, and
 the second criteria reduces the {\em partition cost}, i.e.~the amount
-of duplicated work between partitions/ranks.
+of duplicated work between partitions/ranks
+(see Figure~\ref{taskgraphcut}).
 
 Computing such a partition is a standard graph problem and several
 software libraries which provide good solutions\footnote{Computing
@@ -409,17 +425,17 @@ and in which communication latencies are negligible.
 
 \begin{figure}
 \centering
-\includegraphics[width=\columnwidth]{Figures/Hierarchy3}
-\caption{Task hierarchy for the SPH computations in \swift,
-  including communication tasks. Arrows indicate dependencies,
-  i.e.~an arrow from task $A$ to task $B$ indicates that $A$
-  depends on $B$. The task colour corresponds to the cell or
-  cells it operates on, e.g.~the density and force tasks work
-  on individual cells or pairs of cells.
-  The blue cell data is on a separate rank as the yellow and
-  purple cells, and thus its data must be sent across during
-  the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
-\label{tasks}
+\includegraphics[width=0.85\columnwidth]{Figures/task_graph_cut}
+\caption{Illustration of the task-based domain decomposition
+  in which the tasks (circles) are edges that connect one or
+  more resources (rectangles). The resources are partitioned
+  along the thick dotted line. The blue and orange tasks are
+  executed on the respective partitions, whereas the green
+  tasks along the cut line are executed on both.
+  The cost of this partition is the sum of the green tasks,
+  which are computed twice, as well as the cost imbalance
+  of the tasks executed in each partition.}
+\label{taskgraphcut}
 \end{figure}  
 
 
