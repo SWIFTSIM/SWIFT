@@ -273,8 +273,23 @@ analysis).
 
 \section{Parallelisation strategy}
 
-{\em Some words on how we wanted to be fully hybrid, dynamic,
-and asynchronous.}
+One of the main concerns when developing \swift was to break
+with the branch-and-bound type parallelism inherent to parallel
+codes using OpenMP and MPI, and the constant synchronization
+between computational steps it results in.
+
+If {\em synchronisation} is the main problem, then {\em asynchronicity}
+is the obvious solution.
+We therefore opted for a {\em task-based} approach for maximum
+single-node, or shared-memory, performance.
+This approach not only provides excellent load-balancing on a single
+node, it also provides a powerful model of the computation that
+can be used to partition the work equitably over a set of
+distributed-memory nodes using general-purpose graph partitioning
+algorithms.
+Finally, the necessary communication between nodes can itself be
+modelled in a task-based way, interleaving communication seamlesly
+with the rest of the computation.
 
 \subsection{Task-based parallelism}
 
@@ -501,16 +516,16 @@ One direct consequence of this approach is that instead of a single
 {\tt send}/{\tt recv} call between each pair of neighbouring ranks,
 one such pair is generated for each particle cell.
 This type of communication, i.e.~several small messages instead of
-one large message, is usually discouraged since the sum of the latencies
-for the small messages is usually much larger than the latency of
-the single large message.
+one large message, is usually strongly discouraged since the sum of
+the latencies for the small messages is usually much larger than
+the latency of the single large message.
 This, however, is not a concern since nobody is actually waiting
 to receive the messages in order and the latencies are covered
 by local computations.
 A nice side-effect of this approach is that communication no longer
 happens in bursts involving all the ranks at the same time, but
-is more or less evenly spread over the entire computation, thus
-being less demanding of the communication infrastructure.
+is more or less evenly spread over the entire computation, and is
+therefore less demanding of the communication infrastructure.
 
 
 
@@ -547,8 +562,9 @@ removed the first and last ones, where i/o occurs.
   almost $1000$ across the simulation volume. \label{fig:ICs}}
 \end{figure}  
 
-On all the machines, the code was compiled without switching on explicit
-vectorization nor any architecture-specific flags. 
+On all the machines, the code was compiled out of the box,
+without any tuning, explicit vectorization, or exploiting any
+other specific features of the underlying hardware. 
 
 \subsection{x86 architecture: Cosma-5}
 
