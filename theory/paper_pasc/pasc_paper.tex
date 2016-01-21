@@ -88,45 +88,50 @@ strong scaling on more than 100\,000 cores.}
 \begin{abstract}
   We present a new open-source cosmological code, called \swift, designed to
   solve the equations hydrodynamics using a particle-based approach (Smooth
-  Particle Hydrodynamics) on hybrid shared / distributed clusters and the
-  task-based library \qs, the parallelisation backbone of \swift. The code
-  relies on three main aspects to make efficient use of current and future
-  architectures:
+  Particle Hydrodynamics) on hybrid shared/distributed-memory architectures.
+  \swift was designed from the bottom up to provide excellent {\em strong scaling}
+  on both commodity clusters (Tier-2 systems) and Top100-supercomputers
+  (Tier-0 systems), without relying on architecture-specific features
+  or specialized accellerator hardware.
+  This performance is due to three main computational approaches:
 
   \begin{itemize}
     
-    \item \textbf{Task-based parallelism} to exploit shared-memory
-      parallelism. This provides fine-grained load balancing enabling
-      strong scaling, combined with mixing communication and
-      computation, both on each node with multiple cores.
-
-    \item \textbf{Asynchronous hybrid shared/distributed memory
-      parallelism}, using the task-based schemes. Parts of the
-      computation are scheduled only once the asynchronous transfers
-      of the required data have completed. Communication latencies are
-      thus hidden by computation, providing for strong scaling across
-      thousands of multi-core nodes.
+    \item \textbf{Task-based parallelism} for shared-memory
+      parallelism, which provides fine-grained load balancing and
+      thus strong scaling on large numbers of cores.
 
     \item \textbf{Graph-based domain decomposition}, which uses
-      information from the task graph to decompose the simulation
-      domain such that the work, as opposed to just the data, as in
-      other space-filling curve schemes, is equally distributed
-      amongst all nodes.
+      the task graph to decompose the simulation
+      domain such that the {\em work}, as opposed to just the {\em data},
+      as is the case with most partitioning schemes, is equally distributed
+      accross all nodes.
+
+    \item \textbf{Fully dynamic and asynchronous communication},
+      in which communication is modelled as just another task in
+      the task-based scheme, sending data whenever it is ready and
+      procrastinating on tasks that rely on data from other nodes
+      until it arrives.
 
   \end{itemize}
-
+  
   %% These three main aspects alongside improved cache-efficient
   %% algorithms for neighbour finding allow the code to be 40x faster on
   %% the same architecture than the standard code Gadget-2 widely used by
   %% researchers.
 
-  These algorithms do not rely on a specific architecture nor on detailed
-  micro-level details.  As a result, our code present excellent \emph{strong}
-  scaling on a variety of architectures, ranging from x86 Tier-2 systems to the
-  largest Tier-0 machines currently available. It displays, for instance, a
-  \emph{strong} scaling parallel efficiency of more than 60\% when going from
-  512 to 131072 cores on a BlueGene architecture. Similar results are obtained
-  on standard clusters of x86 CPUs.
+  In order to use these approaches, the code had to be re-written from
+  scratch, and the algorithms therein adapted to the task-based paradigm.
+  As a result, we can show upwards of 60\% parallel efficiency for 
+  moderate-sized problems when increasing the number of cores 512-fold,
+  on both x86-based and Power8-based architectures.
+  
+  %% As a result, our code present excellent \emph{strong}
+  %% scaling on a variety of architectures, ranging from x86 Tier-2 systems to the
+  %% largest Tier-0 machines currently available. It displays, for instance, a
+  %% \emph{strong} scaling parallel efficiency of more than 60\% when going from
+  %% 512 to 131072 cores on a BlueGene architecture. Similar results are obtained
+  %% on standard clusters of x86 CPUs.
   
   %% The task-based library, \qs, used as the backbone of the code is
   %% itself also freely available and can be used in a wide variety of
@@ -174,7 +179,8 @@ graph partition-based domain decompositions. The code is open-source and
 available at the address \web where all the test cases
 presented in this paper can also be found.
 
-This paper describes the results obtained with these parallelisation techniques.
+This paper describes these techniques, as well as the results
+obtained with them on different architectures.
 
 
 %#####################################################################################################
