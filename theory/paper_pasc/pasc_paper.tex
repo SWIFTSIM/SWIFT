@@ -550,9 +550,11 @@ version \textsc{5.1.0}.
 The simulation setup with $376^3$ particles was run on that system using 1 to
 256 threads (16 nodes) and the results of this strong scaling test are shown on
 Fig.~\ref{fig:cosma}. For this test, we used one MPI rank per node and 16
-threads per node (i.e. one thread per physical core). On Fig.~\ref{fig:domains}
-we show the domain decomposition obtained via the task-graph decomposition
-algorithm described above in the case of 32 MPI ranks.
+threads per node (i.e. one thread per physical core). When running on one single
+node, we ran from one to 32 threads (i.e. up to one thread per physical and
+virtual core). On Fig.~\ref{fig:domains} we show the domain decomposition
+obtained via the task-graph decomposition algorithm described above in the case
+of 16 MPI ranks.
 
 \begin{figure}
 \centering
@@ -568,14 +570,15 @@ algorithm described above in the case of 32 MPI ranks.
 \begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingCosma}
-\caption{Strong scaling test on the Cosma-5 machine (see text for
-  hardware description). \textit{Left panel:} Code
-  Speed-up. \textit{Right panel:} Corresponding parallel efficiency.
-  Using 16 threads per node (no use of hyper-threading) with one MPI
-  rank per node, a reasonable parallel efficiency is achieved when
-  increasing the thread count from 1 (1 node) to 256 (16 nodes) even
-  on a relatively small test case. Wiggles are likely due to the way thread
-  affinity is set by the operating system at run time.
+\caption{Strong scaling test on the Cosma-5 machine (see text for hardware
+  description). \textit{Left panel:} Code Speed-up. \textit{Right panel:}
+  Corresponding parallel efficiency.  Using 16 threads per node (no use of
+  hyper-threading) with one MPI rank per node, a good parallel efficiency is
+  achieved when increasing the thread count from 1 (1 node) to 128 (8 nodes)
+  even on this relatively small test case. The dashed line indicates the
+  efficiency when running on one single node but using all the physical and
+  virtual cores (hyper-threading). As these CPUs only have one FPU per core, we
+  see no benefit from hyper-threading.
   \label{fig:cosma}}
 \end{figure*}
 
