@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -36,6 +37,10 @@
 #ifdef HAVE_METIS
 #include <metis.h>
 #endif
+#endif
+
+#ifdef HAVE_LIBNUMA
+#include <numa.h>
 #endif
 
 /* This object's header. */
@@ -2117,6 +2122,22 @@ void engine_split(struct engine *e, int *grid) {
   s->xparts = xparts_new;
 }
 
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+static bool hyperthreads_present(void) {
+#ifdef __linux__
+  FILE *f = fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
+
+  int c;
+  while ((c = fgetc(f)) != EOF && c != ',');
+  fclose(f);
+
+  return c == ',';
+#else
+  return true; // just guess
+#endif
+}
+#endif
+
 /**
  * @brief init an engine with the given number of threads, queues, and
  *      the given policy.
@@ -2152,6 +2173,42 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     for (i = 1; i < maxint; i *= 2)
       for (j = maxint / i / 2; j < maxint; j += maxint / i)
         if (j < nr_cores && j != 0) cpuid[k++] = j;
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+    /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
+    if (numa_available() >= 0) {
+      if (nodeID == 0) message("prefer NUMA-local CPUs");
+
+      int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
+      bool done = false, swap_hyperthreads = hyperthreads_present();
+      if (swap_hyperthreads) message("prefer physical cores to hyperthreads");
+
+      while (!done) {
+        done = true;
+        for (i = 1; i < nr_cores; i++) {
+          int node_a = numa_node_of_cpu(cpuid[i-1]);
+          int node_b = numa_node_of_cpu(cpuid[i]);
+
+          /* Avoid using local hyperthreads over unused remote physical cores.
+           * Assume two hyperthreads, and that cpuid >= half partitions them.
+           */
+          int thread_a = swap_hyperthreads && cpuid[i-1] >= half;
+          int thread_b = swap_hyperthreads && cpuid[i] >= half;
+
+          bool swap = thread_a > thread_b;
+          if (thread_a == thread_b)
+            swap = numa_distance(home, node_a) > numa_distance(home, node_b);
+
+          if (swap) {
+            int t = cpuid[i-1];
+            cpuid[i-1] = cpuid[i];
+            cpuid[i] = t;
+            done = false;
+          }
+        }
+      }
+    }
+#endif
 
     if (nodeID == 0) {
 #ifdef WITH_MPI
