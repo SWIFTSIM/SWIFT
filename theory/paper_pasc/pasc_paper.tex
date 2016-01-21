@@ -170,11 +170,10 @@ The design and implementation of \swift \cite{gonnet2013swift,%
 code built from scratch, provided the perfect opportunity to test some newer
 approaches, i.e.~task-based parallelism, fully asynchronous communication, and
 graph partition-based domain decompositions. The code is open-source and
-available at the address \url{www.swiftsim.com} where all the test cases
+available at the address \web where all the test cases
 presented in this paper can also be found.
 
-This paper describes the results
-obtained with these parallelisation techniques.
+This paper describes the results obtained with these parallelisation techniques.
 
 
 %#####################################################################################################
@@ -517,7 +516,8 @@ particles is shown on Fig.~\ref{fig:ICs} and periodic boundary conditions are
 used. In order to fit our simulation setup into the limited memory of some of
 the systems tested, we have randomly down-sampled the particle count of the
 output to $800^3=5.12\times10^8$, $600^3=2.16\times10^8$ and
-$376^3=5.1\times10^7$ particles respectively. We then run the \swift code for
+$376^3=5.1\times10^7$ particles respectively. Scripts to generate these initial
+conditions are provided with the source code. We then run the \swift code for
 100 time-steps and average the wall clock time of these time-steps after having
 removed the first and last ones, where i/o occurs.
 
@@ -530,6 +530,8 @@ removed the first and last ones, where i/o occurs.
   almost $1000$ across the simulation volume. \label{fig:ICs}}
 \end{figure}  
 
+On all the machines, the code was compiled without switching on explicit
+vectorization nor any architecture-specific flags. 
 
 \subsection{x86 architecture: Cosma-5}
 
