@@ -166,13 +166,15 @@ OpenMP\cite{ref:Dagum1998} and MPI\cite{ref:Snir1998}, and domain
 decompositions based on space-filling curves \cite{warren1993parallel}.
 
 The design and implementation of \swift \cite{gonnet2013swift,%
-theuns2015swift,gonnet2015efficient}, a large-scale cosmological
-simulation code built from scratch, provided the perfect
-opportunity to test some newer approaches, i.e.~task-based parallelism,
-fully asynchronous communication, and graph partition-based
-domain decompositions.
-This paper describes the results obtained with these parallelisation
-techniques.
+  theuns2015swift,gonnet2015efficient}, a large-scale cosmological simulation
+code built from scratch, provided the perfect opportunity to test some newer
+approaches, i.e.~task-based parallelism, fully asynchronous communication, and
+graph partition-based domain decompositions. The code is open-source and
+available at the address \url{www.swiftsim.com} where all the test cases
+presented in this paper can also be found.
+
+This paper describes the results
+obtained with these parallelisation techniques.
 
 
 %#####################################################################################################
@@ -570,7 +572,8 @@ algorithm described above in the case of 32 MPI ranks.
   Using 16 threads per node (no use of hyper-threading) with one MPI
   rank per node, a reasonable parallel efficiency is achieved when
   increasing the thread count from 1 (1 node) to 256 (16 nodes) even
-  on a relatively small test case.
+  on a relatively small test case. Wiggles are likely due to the way thread
+  affinity is set by the operating system at run time.
   \label{fig:cosma}}
 \end{figure*}
 
@@ -669,7 +672,7 @@ test are shown on Fig.~\ref{fig:JUQUEEN2}.
 
 %#####################################################################################################
 
-\section{Conclusions}
+\section{Discussion \& Conclusion}
 
 When running on the SuperMUC machine with 32 nodes (512 cores), each MPI rank
 contains approximately $1.6\times10^7$ particles in $2.5\times10^5$
