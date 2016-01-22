@@ -743,12 +743,14 @@ test are shown in Fig.~\ref{fig:JUQUEEN2}.
 
 \section{Discussion \& conclusions}
 
-The strong scaling results presented in the previous on three different machines
-demonstrate the ability of our framework to scale on both small commodity
-machines thanks to the use of task-based parallelism at the node level and on
-the largest machines (Tier-0 systems) currently available thanks to the
-asynchronous communications. We stress that these have been obtained for a
-realistic test case without any micro-level optimisation nor explicit
+The strong scaling results presented in the previous sections on
+three different machines demonstrate the ability of our framework
+to scale on both small commodity
+machines, thanks to the use of task-based parallelism at the node level, and on
+the largest machines (Tier-0 systems) currently available, thanks to the
+task-based domain distribution and asynchronous communication schemes.
+We would like to emphasize that these results were obtained for a
+realistic test case without any micro-level optimisation or explicit
 vectorisation.
 
 Excellent strong scaling is also achieved when increasing the number of threads
@@ -758,29 +760,30 @@ framework is not a bottleneck. One common conception in HPC is that the number
 of MPI communications between nodes should be kept to a minimum to optimise the
 efficiency of the calculation. Our approach does exactly the opposite with large
 number of point-to-point communications between pairs of nodes occurring over the
-course of a time-step. For instance, on the SuperMUC machine with 32 nodes (512
+course of a time-step. For example, on the SuperMUC machine with 32 nodes (512
 cores), each MPI rank contains approximately $1.6\times10^7$ particles in
-$2.5\times10^5$ cells. \swift will generate around $58,000$ point-to-point
-asynchronous MPI communications (a pair of \texttt{Isend} and \texttt{Irecv})
-per node, a number discouraged by many practitioners. Dispatching communications
-over the course of the calculation and not in short bursts as is commonly done
-may also help lower the load on the network and reduce the decrease in
-efficiency due to the finite bandwidth of the Infiniband network.
+$2.5\times10^5$ cells. \swift will generate around $58\,000$ point-to-point
+asynchronous MPI communications (a pair of \texttt{send} and \texttt{recv} tasks)
+{\em per node} and {\em per timestep}. Such an insane number of messages is
+discouraged by most practitioners.
+Dispatching communications
+over the course of the calculation and not in short bursts, as is commonly done,
+may also help lower the load on the network.
 
-One time-step on $8,192$ nodes of the JUQUEEN machine takes $63~\rm{ms}$ of
+One time-step on $8\,192$ nodes of the JUQUEEN machine takes $63~\rm{ms}$ of
 wall-clock time. All the loading of the tasks, communications and running of the
-tasks takes place in that short amount of time. Our framework can hence
-load-balance a calculation over $2.6\times10^5$ threads with a very good
+tasks takes place in that short amount of time. Our framework can therefore
+load-balance a calculation over $2.6\times10^5$ threads with remarkable
 efficiency.
 
-We stress, as was previously demonstrated by \cite{ref:Gonnet2015}, that \swift
+We emphasize, as was previously demonstrated in \cite{ref:Gonnet2015}, that \swift
 is also much faster than the \gadget code \cite{Springel2005}, the
 \emph{de-facto} standard in the field of particle-based cosmological
-simulations. For instance, the simulation setup that was run on the COSMA-5
+simulations. The simulation setup that was run on the COSMA-5
 system takes $2.9~\rm{s}$ of wall-clock time per time-step on $256$ cores using
 \swift whilst the default \gadget code on exactly the same setup with the same
-number of cores requires $32~\rm{s}$. Our code is hence displaying a factor
-$>10$ performance increase compared to \gadget. The excellent scaling
+number of cores requires $32~\rm{s}$.
+The excellent scaling
 performance of \swift allows us to push this number further by simply increasing
 the number of cores, whilst \gadget reaches its peak speed (for this problem) at
 around 300 cores and stops scaling beyond that. This unprecedented scaling
@@ -788,7 +791,7 @@ ability combined with future work on vectorisation of the calculations within
 each task will hopefully make \swift an important tool for future simulations in
 cosmology and help push the entire field to a new level.
 
-\swift, its documentation and the test cases presented in this paper are all
+\swift, its documentation, and the test cases presented in this paper are all
 available at the address \web.
 
 
