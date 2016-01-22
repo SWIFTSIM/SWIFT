@@ -112,7 +112,7 @@ strong scaling on more than 100\,000 cores.}
     \item \textbf{Fully dynamic and asynchronous communication},
       in which communication is modelled as just another task in
       the task-based scheme, sending data whenever it is ready and
-      deferrin on tasks that rely on data from other nodes
+      deferring on tasks that rely on data from other nodes
       until it arrives.
 
   \end{itemize}
@@ -132,7 +132,7 @@ strong scaling on more than 100\,000 cores.}
   %% scaling on a variety of architectures, ranging from x86 Tier-2 systems to the
   %% largest Tier-0 machines currently available. It displays, for instance, a
   %% \emph{strong} scaling parallel efficiency of more than 60\% when going from
-  %% 512 to 131072 cores on a BlueGene architecture. Similar results are obtained
+  %% 512 to 131072 cores on a Blue Gene architecture. Similar results are obtained
   %% on standard clusters of x86 CPUs.
   
   %% The task-based library, \qs, used as the backbone of the code is
@@ -284,14 +284,14 @@ analysis).
 
 %#####################################################################################################
 
-\section{Parallelisation strategy}
+\section{Parallelization strategy}
 
 One of the main concerns when developing \swift was to break
 with the branch-and-bound type parallelism inherent to parallel
-codes using OpenMP and MPI, and the constant synchronisation
+codes using OpenMP and MPI, and the constant synchronization
 between computational steps it results in.
 
-If {\em synchronisation} is the main problem, then {\em
+If {\em synchronization} is the main problem, then {\em
   asynchronicity} is the obvious solution.  We therefore opted for a
 {\em task-based} approach for maximum single-node, or shared-memory,
 performance.  This approach not only provides excellent load-balancing
@@ -327,7 +327,7 @@ The main advantages of using a task-based approach are
         are assigned to each processor is completely
         dynamic and adapts automatically to load imbalances.
     \item If the dependencies and conflicts are specified correctly,
-        there is no need for expensive explicit locking, synchronisation,
+        there is no need for expensive explicit locking, synchronization,
         or atomic operations to deal with most concurrency problems.
     \item Each task has exclusive access to the data it is working on,
         thus improving cache locality and efficiency.
@@ -388,7 +388,7 @@ cores of a shared-memory machine \cite{gonnet2015efficient}.
 \caption{Task hierarchy for the SPH computations in \swift,
   including communication tasks. Arrows indicate dependencies,
   i.e.~an arrow from task $A$ to task $B$ indicates that $A$
-  depends on $B$. The task colour corresponds to the cell or
+  depends on $B$. The task color corresponds to the cell or
   cells it operates on, e.g.~the density and force tasks work
   on individual cells or pairs of cells.
   The blue cell data is on a separate rank as the yellow and
@@ -485,7 +485,7 @@ once computation has finished, and so on.
 This approach, although conceptually simple and easy to implement,
 has three major drawbacks:
 \begin{itemize}
-  \item The frequent synchronisation points between communication
+  \item The frequent synchronization points between communication
     and computation exacerbate load imbalances,
   \item the communication phase consists mainly of waiting on
     latencies, during which the node's CPUs usually run idle, and
@@ -613,7 +613,7 @@ the 16 node run.
 \centering
 \includegraphics[width=\columnwidth]{Figures/domains}
 \caption{The particles for the initial conditions shown on Fig.~\ref{fig:ICs}
-  coloured according to the node they belong to after a load-balancing call on
+  colored according to the node they belong to after a load-balancing call on
   32 nodes. As can be seen, the domain decomposition follows the cells in the mesh
   but is not made of regular cuts. Domains have different shapes and
   sizes. \label{fig:domains}}
@@ -641,7 +641,7 @@ the 16 node run.
 
 For our next test, we ran \swift on the SuperMUC x86 phase~1 thin
 nodes \footnote{\url{https://www.lrz.de/services/compute/supermuc/systemdescription/}}
-located at the Leibniz Supercomputing Centre in Garching near Munich. This
+located at the Leibniz Supercomputing Center in Garching near Munich. This
 system consists of 9\,216 nodes with 2 Intel Sandy Bridge-EP Xeon E5-2680
 8C\footnote{\url{http://ark.intel.com/products/64583/Intel-Xeon-Processor-E5-2680-(20M-Cache-2_70-GHz-8_00-GTs-Intel-QPI)}}
 at $2.7~\rm{GHz}$ CPUS. Each 16-core node has $32~\rm{GByte}$ of RAM.
@@ -677,11 +677,11 @@ threads per node, i.e.~one thread per physical core.
 \end{figure*}
 
 
-\subsection{BlueGene architecture: JUQUEEN}
+\subsection{Blue Gene architecture: JUQUEEN}
 
-For our last set of tests, we ran \swift on the JUQUEEN IBM BlueGene/Q
+For our last set of tests, we ran \swift on the JUQUEEN IBM Blue Gene/Q
 system\footnote{\url{http://www.fz-juelich.de/ias/jsc/EN/Expertise/Supercomputers/JUQUEEN/Configuration/Configuration_node.html}}
-located at the J\"ulich Supercomputing Centre. This system consists of
+located at the J\"ulich Supercomputing Center. This system consists of
 28\,672 nodes with an IBM PowerPC A2 processor running at
 $1.6~\rm{GHz}$ and $16~\rm{GByte}$ of RAM each. Of notable interest
 is the presence of two floating units per compute core. The system is
@@ -711,7 +711,7 @@ test are shown in Fig.~\ref{fig:JUQUEEN2}.
 \centering
 \includegraphics[width=\columnwidth]{Figures/scalingInNode}
 \caption{Strong scaling test of the hybrid component of the code. The
-  same calculation is performed on 512 node of the JUQUEEN BlueGene
+  same calculation is performed on 512 node of the JUQUEEN Blue Gene
   supercomputer (see text for hardware description) using a single MPI
   rank per node and varying only the number of
   threads per node. The code displays excellent scaling even when all the cores and
@@ -723,7 +723,7 @@ test are shown in Fig.~\ref{fig:JUQUEEN2}.
 \begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingBlueGene}
-\caption{Strong scaling test on the JUQUEEN BlueGene machine (see text
+\caption{Strong scaling test on the JUQUEEN Blue Gene machine (see text
   for hardware description). \textit{Left panel:} Code
   Speed-up. \textit{Right panel:} Corresponding parallel efficiency.
   Using 32 threads per node (2 per physical core) with one MPI rank
@@ -750,14 +750,14 @@ machines, thanks to the use of task-based parallelism at the node level, and on
 the largest machines (Tier-0 systems) currently available, thanks to the
 task-based domain distribution and asynchronous communication schemes.
 We would like to emphasize that these results were obtained for a
-realistic test case without any micro-level optimisation or explicit
-vectorisation.
+realistic test case without any micro-level optimization or explicit
+vectorization.
 
 Excellent strong scaling is also achieved when increasing the number of threads
 per node (i.e.~per MPI rank, see fig.~\ref{fig:JUQUEEN1}), demonstrating that
 the description of MPI (asynchronous) communications as tasks within our
 framework is not a bottleneck. One common conception in HPC is that the number
-of MPI communications between nodes should be kept to a minimum to optimise the
+of MPI communications between nodes should be kept to a minimum to optimize the
 efficiency of the calculation. Our approach does exactly the opposite with large
 number of point-to-point communications between pairs of nodes occurring over the
 course of a time-step. For example, on the SuperMUC machine with 32 nodes (512
@@ -787,7 +787,7 @@ The excellent scaling
 performance of \swift allows us to push this number further by simply increasing
 the number of cores, whilst \gadget reaches its peak speed (for this problem) at
 around 300 cores and stops scaling beyond that. This unprecedented scaling
-ability combined with future work on vectorisation of the calculations within
+ability combined with future work on vectorization of the calculations within
 each task will hopefully make \swift an important tool for future simulations in
 cosmology and help push the entire field to a new level.
 
@@ -802,7 +802,7 @@ This work would not have been possible without Lydia Heck's help and
 expertise. We acknowledge the help of Tom Theuns, James Willis, Bert
 Vandenbroucke, Angus Lepper and other contributors to the \swift
 code. \\ We thank Heinrich Bockhorst and Stephen Blair-Chappell from {\sc
-  intel} as well as Dirk Brommel from the J\"ulich Computing Centre
+  intel} as well as Dirk Brommel from the J\"ulich Computing Center
 and Nikolay J. Hammer from the Leibniz Rechnenzentrum for their help
 at various stages of this project.\\ This work used the DiRAC Data
 Centric system at Durham University, operated by the Institute for
