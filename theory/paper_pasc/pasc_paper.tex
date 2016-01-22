@@ -553,13 +553,13 @@ architectures for a representative cosmology problem.
 The initial distribution of particles used in our tests is extracted and
 resampled from low-redshift outputs of the EAGLE project \cite{Schaye2015}, a
 large suite of state-of-the-art cosmological simulations. By selecting outputs
-at late times, we constructed a simulation setup which is representative of the
-most expensive part of these simulations, i.e. when the particles are
-highly-clustered and no longer uniformly distributed. This distribution of
-particles is shown on Fig.~\ref{fig:ICs} and periodic boundary conditions are
-used. In order to fit our simulation setup into the limited memory of some of
-the systems tested, we have randomly down-sampled the particle count of the
-output to $800^3=5.12\times10^8$, $600^3=2.16\times10^8$ and
+at late times (redshift $z=0.5$), we constructed a simulation setup which is
+representative of the most expensive part of these simulations, i.e. when the
+particles are highly-clustered and no longer uniformly distributed. This
+distribution of particles is shown on Fig.~\ref{fig:ICs} and periodic boundary
+conditions are used. In order to fit our simulation setup into the limited
+memory of some of the systems tested, we have randomly down-sampled the particle
+count of the output to $800^3=5.12\times10^8$, $600^3=2.16\times10^8$ and
 $376^3=5.1\times10^7$ particles respectively. Scripts to generate these initial
 conditions are provided with the source code. We then run the \swift code for
 100 time-steps and average the wall clock time of these time-steps after having
