@@ -94,7 +94,7 @@ strong scaling on more than 100\,000 cores.}
   \swift was designed from the bottom up to provide excellent {\em strong scaling}
   on both commodity clusters (Tier-2 systems) and Top100-supercomputers
   (Tier-0 systems), without relying on architecture-specific features
-  or specialized accellerator hardware.
+  or specialized accelerator hardware.
   This performance is due to three main computational approaches:
 
   \begin{itemize}
@@ -107,7 +107,7 @@ strong scaling on more than 100\,000 cores.}
       the task graph to decompose the simulation
       domain such that the {\em work}, as opposed to just the {\em data},
       as is the case with most partitioning schemes, is equally distributed
-      accross all nodes.
+      across all nodes.
 
     \item \textbf{Fully dynamic and asynchronous communication},
       in which communication is modelled as just another task in
@@ -289,7 +289,7 @@ analysis).
 
 One of the main concerns when developing \swift was to break
 with the branch-and-bound type parallelism inherent to parallel
-codes using OpenMP and MPI, and the constant synchronization
+codes using OpenMP and MPI, and the constant synchronisation
 between computational steps it results in.
 
 If {\em synchronisation} is the main problem, then {\em asynchronicity}
@@ -302,7 +302,7 @@ can be used to partition the work equitably over a set of
 distributed-memory nodes using general-purpose graph partitioning
 algorithms.
 Finally, the necessary communication between nodes can itself be
-modelled in a task-based way, interleaving communication seamlesly
+modelled in a task-based way, interleaving communication seamlessly
 with the rest of the computation.
 
 
@@ -372,7 +372,7 @@ may be updated.
 The task hierarchy is shown in Figure~\ref{tasks}, where the particles in each
 cell are first sorted (round tasks) before the particle densities
 are computed (first layer of square tasks).
-Ghost tasks (triangles) are used to ensure that all density coputations
+Ghost tasks (triangles) are used to ensure that all density computations
 on a cell of particles have completed before the force evaluation tasks
 (second layer of square tasks) can be executed.
 Once all the force tasks on a cell of particles have completed,
