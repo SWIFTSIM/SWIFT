@@ -26,7 +26,7 @@
 % Some acronyms
 \newcommand{\gadget}{{\sc Gadget-2}\xspace}
 \newcommand{\swift}{{\sc swift}\xspace}
-\newcommand{\qs}{{\sc QuickShed}\xspace}
+\newcommand{\qs}{{\sc QuickSched}\xspace}
 
 % Webpage
 \newcommand{\web}{\url{www.swiftsim.com}}
@@ -89,7 +89,7 @@ strong scaling on more than 100\,000 cores.}
 
 \begin{abstract}
   We present a new open-source cosmological code, called \swift, designed to
-  solve the equations hydrodynamics using a particle-based approach (Smooth
+  solve the equations of hydrodynamics using a particle-based approach (Smooth
   Particle Hydrodynamics) on hybrid shared / distributed-memory architectures.
   \swift was designed from the bottom up to provide excellent {\em strong scaling}
   on both commodity clusters (Tier-2 systems) and Top100-supercomputers
@@ -112,7 +112,7 @@ strong scaling on more than 100\,000 cores.}
     \item \textbf{Fully dynamic and asynchronous communication},
       in which communication is modelled as just another task in
       the task-based scheme, sending data whenever it is ready and
-      procrastinating on tasks that rely on data from other nodes
+      deferrin on tasks that rely on data from other nodes
       until it arrives.
 
   \end{itemize}
@@ -150,21 +150,20 @@ strong scaling on more than 100\,000 cores.}
 
 \section{Introduction}
 
-For the past decade, due to the physical limitations
-on the speed of individual processor cores, instead of
-getting {\em faster}, computers are getting {\em more parallel}.
-Systems containing up to 64 general-purpose cores are becoming
-commonplace, and the number of cores can be expected to continue
-growing exponentially, e.g.~following Moore's law, much in the
-same way processor speeds were up until a few years ago.
+For the past decade physical limitations have kept the speed of
+individual processor cores constrained, so instead of getting {\em
+  faster}, computers are getting {\em more parallel}.  Systems
+containing up to 64 general-purpose cores are becoming commonplace,
+and the number of cores can be expected to continue growing
+exponentially, e.g.~following Moore's law, much in the same way
+processor speeds were up until a few years ago.
 
-As a consequence, in order to get any faster, computer programs
-need to rely on better exploiting this massive parallelism, i.e.~
-they need to exhibit {\em strong scaling}, the ability to run
-roughly $N$ times faster when executed on $N$ times as many processors.
-Without strong scaling, massive parallelism can still be used to
-tackle ever {\em larger} problems, but not fixed-size problems
-{\em faster}.
+As a consequence, in order to get faster, computer programs need to
+rely on better exploitation of this massive parallelism, i.e.~ they
+need to exhibit {\em strong scaling}, the ability to run roughly $N$
+times faster when executed on $N$ times as many processors.  Without
+strong scaling, massive parallelism can still be used to tackle ever
+{\em larger} problems, but not make fixed-size problems {\em faster}.
 
 Although this switch from growth in speed to growth in parallelism
 has been anticipated and observed for quite some time, very little
@@ -228,7 +227,7 @@ spanning several orders of magnitudes within the same simulation.
 
 Once the densities $\rho_i$ have been computed, the time derivatives of the
 velocity and internal energy, which require $\rho_i$, are
-computed as followed:
+computed as follows:
 %
 \begin{align}
     \frac{dv_i}{dt} & = -\sum_{j,~r_{ij} < \hat{h}_{ij}} m_j \left[
@@ -292,18 +291,16 @@ with the branch-and-bound type parallelism inherent to parallel
 codes using OpenMP and MPI, and the constant synchronisation
 between computational steps it results in.
 
-If {\em synchronisation} is the main problem, then {\em asynchronicity}
-is the obvious solution.
-We therefore opted for a {\em task-based} approach for maximum
-single-node, or shared-memory, performance.
-This approach not only provides excellent load-balancing on a single
-node, it also provides a powerful model of the computation that
-can be used to partition the work equitably over a set of
+If {\em synchronisation} is the main problem, then {\em
+  asynchronicity} is the obvious solution.  We therefore opted for a
+{\em task-based} approach for maximum single-node, or shared-memory,
+performance.  This approach not only provides excellent load-balancing
+on a single node, it also provides a powerful model of the computation
+that can be used to distribute the work equitably over a set of
 distributed-memory nodes using general-purpose graph partitioning
-algorithms.
-Finally, the necessary communication between nodes can itself be
-modelled in a task-based way, interleaving communication seamlessly
-with the rest of the computation.
+algorithms.  Finally, the necessary communication between nodes can
+itself be modelled in a task-based way, interleaving communication
+seamlessly with the rest of the computation.
 
 
 \subsection{Task-based parallelism}
@@ -374,7 +371,7 @@ cell are first sorted (round tasks) before the particle densities
 are computed (first layer of square tasks).
 Ghost tasks (triangles) are used to ensure that all density computations
 on a cell of particles have completed before the force evaluation tasks
-(second layer of square tasks) can be executed.
+(second layer of square tasks) execute.
 Once all the force tasks on a cell of particles have completed,
 the integrator tasks (inverted triangles) update the particle positions 
 and velocities.
@@ -408,9 +405,9 @@ a fixed number of {\em ranks} (using the MPI terminology)
 is relatively straight-forward: we create
 a {\em cell hypergraph} in which:
 \begin{itemize}
-  \item Each {\em node} represents a single cell of particles, and
-  \item Each {\em edge} represents a single task, connecting the
-    cells used by that task.
+  \item Each {\em node} represents a single cell of particles, and,
+  \item each {\em edge} represents the tasks, connecting the
+    cells.
 \end{itemize}
 Since in the particular case of \swift each task references at most
 two cells, the cell hypergraph is just a regular {\em cell graph}.
@@ -425,7 +422,7 @@ to be evaluated on that rank/partition, and tasks spanning more than
 one partition need to be evaluated on both ranks/partitions.
 
 If we then weight each edge with the computational cost associated with
-each task, then finding a {\em good} partitioning reduces to finding a
+the tasks, then finding a {\em good} cell distribution reduces to finding a
 partition of the cell graph such that the maximum sum of the weight
 of all edges within and spanning in a partition is minimal
 (see Figure~\ref{taskgraphcut}).
@@ -472,16 +469,16 @@ and in which communication latencies are negligible.
 \subsection{Asynchronous communications}
 
 Although each particle cell resides on a specific rank, the particle
-data still needs to be sent to neighbouring ranks which contain
-tasks that operate thereon.
+data will still need to be sent to any neighbouring ranks that have
+tasks that depend on this data.
 This communication must happen twice at each time-step: once to send
-the particle positions for the density computation, and again
+the particle positions for the density computation, and then again
 once the densities have been aggregated locally for the force
 computation.
 
 Most distributed-memory codes based on MPI \cite{ref:Snir1998}
 separate computation and communication into distinct steps, i.e.~all
-the ranks first exchange data, and only once the data exchange is
+the ranks first exchange data, and only when the data exchange is
 complete, computation starts. Further data exchanges only happen
 once computation has finished, and so on.
 This approach, although conceptually simple and easy to implement,
@@ -489,9 +486,9 @@ has three major drawbacks:
 \begin{itemize}
   \item The frequent synchronisation points between communication
     and computation exacerbate load imbalances,
-  \item The communication phase consists mainly of waiting on
+  \item the communication phase consists mainly of waiting on
     latencies, during which the node's CPUs usually run idle, and
-  \item During the computation phase, the communication network
+  \item during the computation phase, the communication network
     is left completely unused, whereas during the communication
     phase, all ranks attempt to use it at the same time.
 \end{itemize}
@@ -558,7 +555,7 @@ resampled from low-redshift outputs of the EAGLE project \cite{Schaye2015}, a
 large suite of state-of-the-art cosmological simulations. By selecting outputs
 at late times, we constructed a simulation setup which is representative of the
 most expensive part of these simulations, i.e. when the particles are
-highly-clustered and not uniformly distributed anymore. This distribution of
+highly-clustered and no longer uniformly distributed. This distribution of
 particles is shown on Fig.~\ref{fig:ICs} and periodic boundary conditions are
 used. In order to fit our simulation setup into the limited memory of some of
 the systems tested, we have randomly down-sampled the particle count of the
@@ -566,7 +563,7 @@ output to $800^3=5.12\times10^8$, $600^3=2.16\times10^8$ and
 $376^3=5.1\times10^7$ particles respectively. Scripts to generate these initial
 conditions are provided with the source code. We then run the \swift code for
 100 time-steps and average the wall clock time of these time-steps after having
-removed the first and last ones, where i/o occurs.
+removed the first and last ones, where disk i/o occurs.
 
 \begin{figure}
 \centering
@@ -581,15 +578,16 @@ On all the machines, the code was compiled out of the box,
 without any tuning, explicit vectorization, or exploiting any
 other specific features of the underlying hardware. 
 
-\subsection{x86 architecture: Cosma-5}
+\subsection{x86 architecture: COSMA-5}
 
-For our first test, we ran \swift on the cosma-5 DiRAC2 Data Centric
-System\footnote{\url{icc.dur.ac.uk/index.php?content=Computing/Cosma}} located
-at the University of Durham. The system consists of 420 nodes with 2 Intel Sandy
-Bridge-EP Xeon
+For our first test, we ran \swift on the COSMA-5 DiRAC2 Data Centric
+System\footnote{\url{icc.dur.ac.uk/index.php?content=Computing/Cosma}}
+located at the University of Durham. The system consists of 420 nodes
+with 2 Intel Sandy Bridge-EP Xeon
 E5-2670\footnote{\url{http://ark.intel.com/products/64595/Intel-Xeon-Processor-E5-2670-20M-Cache-2_60-GHz-8_00-GTs-Intel-QPI}}
-clocked at $2.6~\rm{GHz}$ with each $128~\rm{GByte}$ of RAM. The nodes are
-connected using a Mellanox FDR10 Infiniband 2:1 blocking configuration.
+CPUs clocked at $2.6~\rm{GHz}$ with each $128~\rm{GByte}$ of RAM. The
+nodes are connected using a Mellanox FDR10 Infiniband 2:1 blocking
+configuration.
 
 This system is similar to many Tier-2 systems available in most universities or
 computing facilities. Demonstrating strong scaling on such a machine is
@@ -597,7 +595,7 @@ essential to show that the code can be efficiently used even on commodity
 hardware available to most researchers in the field.
 
 The code was compiled with the Intel compiler version \textsc{2016.0.1} and
-linked to the Intel MPI library version \textsc{5.1.2.150} and metis library
+linked to the Intel MPI library version \textsc{5.1.2.150} and METIS library
 version \textsc{5.1.0}.
 
 The simulation setup with $376^3$ particles was run on that system using 1 to
@@ -623,7 +621,7 @@ of 16 MPI ranks.
 \begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingCosma}
-\caption{Strong scaling test on the Cosma-5 machine (see text for hardware
+\caption{Strong scaling test on the COSMA-5 machine (see text for hardware
   description). \textit{Left panel:} Code Speed-up. \textit{Right panel:}
   Corresponding parallel efficiency.  Using 16 threads per node (no use of
   hyper-threading) with one MPI rank per node, a good parallel efficiency (60\%)
@@ -644,17 +642,17 @@ nodes \footnote{\url{https://www.lrz.de/services/compute/supermuc/systemdescript
 located at the Leibniz Supercomputing Centre in Garching near Munich. This
 system is made of 9,216 nodes with 2 Intel Sandy Bridge-EP Xeon E5-2680
 8C\footnote{\url{http://ark.intel.com/products/64583/Intel-Xeon-Processor-E5-2680-(20M-Cache-2_70-GHz-8_00-GTs-Intel-QPI)}}
-at $2.7~\rm{GHz}$ with each $32~\rm{GByte}$ of RAM. The nodes are split in 18
+at $2.7~\rm{GHz}$ CPUS. Each node having $32~\rm{GByte}$ of RAM. The nodes are split in 18
 ``islands'' of 512 nodes within which communications are handled via an
 Infiniband FDR10 non-blocking Tree. Islands are then connected using a 4:1
 Pruned Tree.
 
-This system is similar in nature to the cosma-5 system used in the previous set
+This system is similar in nature to the COSMA-5 system used in the previous set
 of tests but is much larger, allowing us to demonstrate the scalability of our
 framework on the largest systems.
 
 The code was compiled with the Intel compiler version \textsc{2015.5.223} and
-linked to the Intel MPI library version \textsc{5.1.2.150} and metis library
+linked to the Intel MPI library version \textsc{5.1.2.150} and METIS library
 version \textsc{5.0.2}.
 
 The simulation setup with $800^3$ particles was run on that system using 16 to
@@ -680,18 +678,19 @@ threads per node (i.e. one thread per physical core).
 
 For our last set of tests, we ran \swift on the JUQUEEN IBM BlueGene/Q
 system\footnote{\url{http://www.fz-juelich.de/ias/jsc/EN/Expertise/Supercomputers/JUQUEEN/Configuration/Configuration_node.html}}
-located at the J\"ulich Supercomputing Centre. This system is made of 28,672
-nodes consisting of an IBM PowerPC A2 processor running at $1.6~\rm{GHz}$ with
-each $16~\rm{GByte}$ of RAM. Of notable interest is the presence of two floating
-units per compute core. The system is composed of 28 racks containing each 1,024
-nodes. The network uses a 5D torus to link all the racks.
+located at the J\"ulich Supercomputing Centre. This system is made of
+28,672 nodes consisting of an IBM PowerPC A2 processor running at
+$1.6~\rm{GHz}$ each with $16~\rm{GByte}$ of RAM. Of notable interest
+is the presence of two floating units per compute core. The system is
+composed of 28 racks containing each 1,024 nodes. The network uses a
+5D torus to link all the racks.
 
 This system is larger than SuperMUC used above and uses a completely different
 architecture. We use it here to demonstrate that our results are not dependant
 on the hardware being used.
 
 The code was compiled with the IBM XL compiler version \textsc{30.73.0.13} and
-linked to the corresponding MPI library and metis library
+linked to the corresponding MPI library and METIS library
 version \textsc{4.0.2}.
 
 The simulation setup with $600^3$ particles was first run on that system using
@@ -755,7 +754,7 @@ framework is not a bottleneck. One common conception in HPC is that the number
 of MPI communications between nodes should be kept to a minimum to optimise the
 efficiency of the calculation. Our approach does exactly the opposite with large
 number of point-to-point communications between pairs of nodes occurring over the
-course of one time-step. For instance, on the SuperMUC machine with 32 nodes (512
+course of a time-step. For instance, on the SuperMUC machine with 32 nodes (512
 cores), each MPI rank contains approximately $1.6\times10^7$ particles in
 $2.5\times10^5$ cells. \swift will generate around $58,000$ point-to-point
 asynchronous MPI communications (a pair of \texttt{Isend} and \texttt{Irecv})
@@ -773,7 +772,7 @@ efficiency.
 We stress, as was previously demonstrated by \cite{ref:Gonnet2015}, that \swift
 is also much faster than the \gadget code \cite{Springel2005}, the
 \emph{de-facto} standard in the field of particle-based cosmological
-simulations. For instance, the simulation setup that was run on the cosma-5
+simulations. For instance, the simulation setup that was run on the COSMA-5
 system takes $2.9~\rm{s}$ of wall-clock time per time-step on $256$ cores using
 \swift whilst the default \gadget code on exactly the same setup with the same
 number of cores requires $32~\rm{s}$. Our code is hence displaying a factor
