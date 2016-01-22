@@ -44,9 +44,6 @@
 #include "timers.h"
 #include "timestep.h"
 
-//struct task *store = NULL;
-
-
 /* Include the right variant of the SPH interactions */
 #ifdef LEGACY_GADGET2_SPH
 #include "runner_iact_legacy.h"
@@ -55,25 +52,7 @@
 #endif
 #include "runner_iact_grav.h"
 
-#define PRINT_PART                                                          \
-  if (p->id == 1000) {                                                      \
-    message(                                                                \
-        "p->id=%lld p->h=%3.2f p->N_ngb=%3.2f p->rho=%3.2f p->t_beg=%3.2f p->t_end=%3.2f pos=[%3.2f %3.2f %3.2f] a=[%3.2f %3.2f %3.2f]", \
-        p->id, p->h, p->density.wcount, p->rho, p->t_begin, p->t_end, p->x[0], p->x[1], p->x[2], p->a[0], p->a[1], p->a[2]); \
-  }
-
-
-
-/* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k) \
-  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
-
-/* Histograms bins. */
-long long int runner_hist_bins[runner_hist_N];
-
-/* The counters. */
-int runner_counter[runner_counter_count];
-
+/* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
     5.773502691896258e-01, 5.773502691896258e-01,  5.773502691896258e-01,
     7.071067811865475e-01, 7.071067811865475e-01,  0.0,
@@ -88,6 +67,8 @@ const float runner_shift[13 * 3] = {
     0.0,                   1.0,                    0.0,
     0.0,                   7.071067811865475e-01,  -7.071067811865475e-01,
     0.0,                   0.0,                    1.0, };
+
+/* Does the axis need flipping ? */
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -204,8 +185,6 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
   float buff[8], px[3];
 
   TIMER_TIC
-
-  //    message("sort!");
 
   /* Clean-up the flags, i.e. filter out what's already been sorted. */
   flags &= ~c->sorted;
@@ -547,7 +526,7 @@ void runner_doinit(struct runner *r, struct cell *c) {
       for (k = 0; k < 3; k++) p->density.curl_v[k] = 0.0;
     }
 
-    PRINT_PART;
+    ;
   }
 }
 
@@ -621,7 +600,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
         wcount_dh =
             p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
 
-        PRINT_PART;
+        ;
         // if(p->id==1000)
         //  message("wcount_dh=%f", wcount_dh);
 
@@ -723,16 +702,12 @@ void runner_doghost(struct runner *r, struct cell *c) {
         /* Run through this cell's density interactions. */
         for (struct link *l = finger->density; l != NULL; l = l->next) {
 
-          // message("link: %p next: %p", l, l->next); fflush(stdout);
-
           /* Self-interaction? */
           if (l->t->type == task_type_self)
             runner_doself_subset_density(r, finger, parts, pid, count);
 
           /* Otherwise, pair interaction? */
           else if (l->t->type == task_type_pair) {
-
-            // message("pair");
 
             /* Left or right? */
             if (l->t->ci == finger)
@@ -747,8 +722,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
           /* Otherwise, sub interaction? */
           else if (l->t->type == task_type_sub) {
 
-            // message("sub");
-
             /* Left or right? */
             if (l->t->ci == finger)
               runner_dosub_subset_density(r, finger, parts, pid, count,
@@ -758,7 +731,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
                                           l->t->ci, -1, 1);
           }
         }
-        // error("done");
       }
     }
   }
@@ -791,6 +763,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xp, *restrict xparts = c->xparts;
 
   TIMER_TIC
+
   /* No children? */
   if (!c->split) {
 
@@ -805,7 +778,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       h = p->h;
       ih = 1.0f / h;
 
-      PRINT_PART;
+      ;
 
       /* Drift... */
       p->x[0] += xp->v_full[0] * dt;
@@ -907,6 +880,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       p = &parts[k];
       xp = &xparts[k];
+
       m = p->mass;
       x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
@@ -948,7 +922,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->t_begin = p->t_end;
         p->t_end = p->t_begin + dt;
 
-        PRINT_PART
 
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;
@@ -990,7 +963,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   }
 
-  /* Otherwise, agregate data from children. */
+  /* Otherwise, aggregate data from children. */
   else {
 
     /* Init everything. */
@@ -1074,7 +1047,7 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
   struct task *t = NULL;
-  struct cell *ci, *cj, *super;
+  struct cell *ci, *cj;
   struct part *parts;
   int k, nr_parts;
 
@@ -1084,8 +1057,8 @@ void *runner_main(void *data) {
     /* Wait at the barrier. */
     engine_barrier(e, r->id);
 
-    /* Re-set the pointer to the previous super cell. */
-    super = NULL;
+    /* Re-set the pointer to the previous task, as there is none. */
+    struct task* prev = NULL;
 
     /* Loop while there are tasks... */
     while (1) {
@@ -1095,10 +1068,8 @@ void *runner_main(void *data) {
 
         /* Get the task. */
         TIMER_TIC
-        t = scheduler_gettask(sched, r->qid, super);
+        t = scheduler_gettask(sched, r->qid, prev);
         TIMER_TOC(timer_gettask);
-
-        // message("Got task %p", t->type); fflush(stdout);
 
         /* Did I get anything? */
         if (t == NULL) break;
@@ -1109,18 +1080,9 @@ void *runner_main(void *data) {
       cj = t->cj;
       t->rid = r->cpuid;
 
-      /* Set super to the first cell that I own. */
-      if (t->type != task_type_rewait && t->type != task_type_psort) {
-        if (ci->super != NULL && ci->super->owner == r->qid)
-          super = ci->super;
-        else if (cj != NULL && cj->super != NULL && cj->super->owner == r->qid)
-          super = cj->super;
-      }
-
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-	  //message("self");
           if (t->subtype == task_subtype_density)
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
@@ -1129,7 +1091,6 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_pair:
-	  //message("pair unlocking %d tasks", t->nr_unlock_tasks);
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
@@ -1155,11 +1116,9 @@ void *runner_main(void *data) {
           runner_doinit(r, ci);
           break;
         case task_type_ghost:
-	  //message("ghost");
           runner_doghost(r, ci);
           break;
         case task_type_drift:
-	  
           runner_dodrift(r, ci, 1);
           break;
         case task_type_kick:
@@ -1195,13 +1154,14 @@ void *runner_main(void *data) {
           space_split(e->s, t->ci);
           break;
         case task_type_rewait:
-	  task_do_rewait(t);
+	  scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj, t->flags);
           break;
         default:
           error("Unknown task type.");
       }
 
       /* We're done with this task, see if we get a next one. */
+      prev = t;
       t = scheduler_done(sched, t);
 
     } /* main loop. */

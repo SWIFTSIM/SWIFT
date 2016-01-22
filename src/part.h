@@ -19,6 +19,18 @@
 #ifndef SWIFT_PART_H
 #define SWIFT_PART_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
+#include <stdlib.h>
+
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
+/* Local headers. */
 #include "const.h"
 
 /* Some constants. */
@@ -72,7 +84,7 @@ struct gpart {
     size_t id;
 
     /* Pointer to corresponding SPH part. */
-    struct part *part;
+    struct part* part;
   };
 
 } __attribute__((aligned(part_align)));
@@ -165,8 +177,13 @@ struct part {
   unsigned long long id;
 
   /* Associated gravitas. */
-  struct gpart *gpart;
+  struct gpart* gpart;
 
 } __attribute__((aligned(part_align)));
+
+#ifdef WITH_MPI
+void part_create_mpi_type(MPI_Datatype* part_type);
+void xpart_create_mpi_type(MPI_Datatype* xpart_type);
+#endif
 
 #endif /* SWIFT_PART_H */

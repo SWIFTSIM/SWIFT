@@ -41,8 +41,6 @@
 #include "error.h"
 #include "lock.h"
 
-//struct task *store;
-
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
     "none",    "sort",    "self",    "pair",     "sub",  "init",
@@ -52,6 +50,56 @@ const char *taskID_names[task_type_count] = {
 
 const char *subtaskID_names[task_type_count] = {"none",  "density",
                                                 "force", "grav"};
+
+
+/**
+ * @brief Computes the overlap between the parts array of two given cells.
+ */
+
+size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
+  if (ci == NULL || cj == NULL) return 0;
+  if (ci->parts <= cj->parts &&
+      ci->parts + ci->count >= cj->parts + cj->count) {
+    return cj->count;
+  } else if (cj->parts <= ci->parts &&
+             cj->parts + cj->count >= ci->parts + ci->count) {
+    return ci->count;
+  }
+  return 0;
+}
+
+/**
+ * @brief Compute the Jaccard similarity of the data used by two
+ *        different tasks.
+ *
+ * @param ta The first #task.
+ * @param tb The second #task.
+ */
+
+float task_overlap(const struct task *ta, const struct task *tb) {
+  /* First check if any of the two tasks are of a type that don't
+     use cells. */
+  if (ta == NULL || tb == NULL || ta->type == task_type_none ||
+      ta->type == task_type_psort || ta->type == task_type_split_cell ||
+      ta->type == task_type_rewait || tb->type == task_type_none ||
+      tb->type == task_type_psort || tb->type == task_type_split_cell ||
+      tb->type == task_type_rewait)
+    return 0.0f;
+
+  /* Compute the union of the cell data. */
+  size_t size_union = 0;
+  if (ta->ci != NULL) size_union += ta->ci->count;
+  if (ta->cj != NULL) size_union += ta->cj->count;
+  if (tb->ci != NULL) size_union += tb->ci->count;
+  if (tb->cj != NULL) size_union += tb->cj->count;
+
+  /* Compute the intersection of the cell data. */
+  const size_t size_intersect =
+      task_cell_overlap(ta->ci, tb->ci) + task_cell_overlap(ta->ci, tb->cj) +
+      task_cell_overlap(ta->cj, tb->ci) + task_cell_overlap(ta->cj, tb->cj);
+
+  return ((float)size_intersect) / (size_union - size_intersect);
+}
 
 /**
  * @brief Unlock the cell held by this task.
@@ -257,49 +305,4 @@ void task_addunlock_old(struct task *ta, struct task *tb) {
   ta->nr_unlock_tasks += 1;
 
   lock_unlock_blind(&ta->lock);
-}
-
-
-void task_print_mask(unsigned int mask) {
-
-  int k;
-
-  printf("task_print_mask: The tasks to run are [");
-  for (k = 1; k < task_type_count; k++)
-    printf(" %s=%s", taskID_names[k], (mask & (1 << k)) ? "yes" : "no");
-  printf(" ]\n");
-}
-
-
-void task_do_rewait(struct task *t) {
-
-  const unsigned int mask = t->flags;
-  
-  for (struct task *t2 = (struct task *)t->ci; t2 != (struct task *)t->cj; t2++) {
-    
-    if( t2->skip ) continue;
-    
-    /* Skip tasks not in the mask */
-    if( !((1<<t2->type) & mask) ) continue;
-    
-    /* Skip sort tasks that have already been */
-    if(t2->type == task_type_sort && t2->flags == 0) continue;
-
-	    /* if(store == NULL && t2->type==task_type_pair && t2->subtype==task_subtype_density) { */
-	    /*   message("\n"); */
-	    /*   message("Checking task %s-%s address: %p", taskID_names[t2->type], subtaskID_names[t2->subtype], t2); */
-	    /*   store = t2; */
-	    /* } */
-
-    for (int k = 0; k < t2->nr_unlock_tasks; k++) {
-      
-      struct task *t3=t2->unlock_tasks[k];
-      
-      atomic_inc(&t3->wait);
-
-	      /* if (t3 == store) { */
-	      /* 	message("Unlocked by task %s-%s address: %p" , taskID_names[t2->type], subtaskID_names[t2->subtype], t2); */
-	      /* } */	      
-    }
-  }
 }

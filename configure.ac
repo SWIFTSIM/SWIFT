@@ -60,6 +60,7 @@ AC_ARG_ENABLE([mpi],
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
     AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+    MPI_LIBRARY="Unknown MPI"
 
     # Various MPI implementations require additional libraries when also using
     # threads. Use mpirun (on PATH) as that seems to be only command with
@@ -83,14 +84,17 @@ if test "$enable_mpi" = "yes"; then
        case "$version" in
          *Intel*MPI*)
             MPI_THREAD_LIBS="-mt_mpi"
+            MPI_LIBRARY="Intel MPI"
             AC_MSG_RESULT([Intel MPI])
          ;;
          *Platform*)
             MPI_THREAD_LIBS="-lmtmpi"
+            MPI_LIBRARY="PLATFORM MPI"
             AC_MSG_RESULT([PLATFORM MPI])
          ;;
          *"Open MPI"*)
             MPI_THREAD_LIBS=""
+            MPI_LIBRARY="Open MPI"
             AC_MSG_RESULT([Open MPI])
             #  OpenMPI should be 1.8.6 or later, if not complain.
             #  Version is last word on first line of -version output.
@@ -109,6 +113,7 @@ if test "$enable_mpi" = "yes"; then
        esac
        AC_SUBST([MPI_THREAD_LIBS])
     fi
+    AC_DEFINE_UNQUOTED([SWIFT_MPI_LIBRARY], ["$MPI_LIBRARY"], [The MPI library name, if known.])
 fi
 AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
@@ -264,6 +269,9 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[true],
     [Defined if pthread_setaffinity_np exists.]) )
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
+
+# Check for libnuma.
+AC_CHECK_LIB([numa], [numa_available])
 
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME

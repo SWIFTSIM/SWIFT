@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -36,6 +37,10 @@
 #ifdef HAVE_METIS
 #include <metis.h>
 #endif
+#endif
+
+#ifdef HAVE_LIBNUMA
+#include <numa.h>
 #endif
 
 /* This object's header. */
@@ -47,7 +52,14 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "part.h"
 #include "timers.h"
+
+#ifdef LEGACY_GADGET2_SPH
+#include "runner_iact_legacy.h"
+#else
+#include "runner_iact.h"
+#endif
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
@@ -209,28 +221,24 @@ void engine_redistribute(struct engine *e) {
         offset_send += counts[ind_send];
         offset_recv += counts[ind_recv];
       } else {
-        if (MPI_Isend(&s->parts[offset_send],
-                      sizeof(struct part) * counts[ind_send], MPI_BYTE, k,
-                      2 * ind_send + 0, MPI_COMM_WORLD,
+        if (MPI_Isend(&s->parts[offset_send], counts[ind_send],
+                      e->part_mpi_type, k, 2 * ind_send + 0, MPI_COMM_WORLD,
                       &reqs[4 * k]) != MPI_SUCCESS)
           error("Failed to isend parts to node %i.", k);
-        if (MPI_Isend(&s->xparts[offset_send],
-                      sizeof(struct xpart) * counts[ind_send], MPI_BYTE, k,
-                      2 * ind_send + 1, MPI_COMM_WORLD,
+        if (MPI_Isend(&s->xparts[offset_send], counts[ind_send],
+                      e->xpart_mpi_type, k, 2 * ind_send + 1, MPI_COMM_WORLD,
                       &reqs[4 * k + 1]) != MPI_SUCCESS)
           error("Failed to isend xparts to node %i.", k);
         offset_send += counts[ind_send];
       }
     }
     if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv],
-                    sizeof(struct part) * counts[ind_recv], MPI_BYTE, k,
-                    2 * ind_recv + 0, MPI_COMM_WORLD,
+      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv], e->part_mpi_type,
+                    k, 2 * ind_recv + 0, MPI_COMM_WORLD,
                     &reqs[4 * k + 2]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
-      if (MPI_Irecv(&xparts_new[offset_recv],
-                    sizeof(struct xpart) * counts[ind_recv], MPI_BYTE, k,
-                    2 * ind_recv + 1, MPI_COMM_WORLD,
+      if (MPI_Irecv(&xparts_new[offset_recv], counts[ind_recv],
+                    e->xpart_mpi_type, k, 2 * ind_recv + 1, MPI_COMM_WORLD,
                     &reqs[4 * k + 3]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %i.", k);
       offset_recv += counts[ind_recv];
@@ -1114,7 +1122,7 @@ void engine_maketasks(struct engine *e) {
   /* Allocate the list of cell-task links. The maximum number of links
      is the number of cells (s->tot_cells) times the number of neighbours (27)
      times the number of interaction types (2, density and force). */
-  free(e->links);
+  if (e->links != NULL) free(e->links);
   e->size_links = s->tot_cells * 27 * 2;
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
@@ -1825,6 +1833,13 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
  */
 void engine_init_particles(struct engine *e) {
 
+  int k;
+  float dt_max = 0.0f, dt_min = FLT_MAX;
+  double epot = 0.0, ekin = 0.0;
+  float mom[3] = {0.0, 0.0, 0.0};
+  float ang[3] = {0.0, 0.0, 0.0};
+  int count = 0;
+  struct cell *c;
   struct space *s = e->s;
 
   // engine_repartition(e);
@@ -2151,6 +2166,26 @@ void engine_split(struct engine *e, int *grid) {
   s->xparts = xparts_new;
 }
 
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+ static bool hyperthreads_present(void) {
+   #ifdef __linux__
+   FILE *f = fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
+
+   int c;
+   while ((c = fgetc(f)) != EOF && c != ',');
+   fclose(f);
+
+   return c == ',';
+   #else
+   return true; // just guess
+   #endif
+ }
+#endif
+ 
+
+
+ 
 /**
  * @brief init an engine with the given number of threads, queues, and
  *      the given policy.
@@ -2171,10 +2206,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
                  float timeBegin, float timeEnd, float dt_min, float dt_max) {
 
-  int k;
+  int i, k;
 #if defined(HAVE_SETAFFINITY)
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int i, j, cpuid[nr_cores];
+  int j, cpuid[nr_cores];
   cpu_set_t cpuset;
   if (policy & engine_policy_cputight) {
     for (k = 0; k < nr_cores; k++) cpuid[k] = k;
@@ -2188,6 +2223,42 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     for (i = 1; i < maxint; i *= 2)
       for (j = maxint / i / 2; j < maxint; j += maxint / i)
         if (j < nr_cores && j != 0) cpuid[k++] = j;
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+    /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
+    if (numa_available() >= 0) {
+      if (nodeID == 0) message("prefer NUMA-local CPUs");
+
+      int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
+      bool done = false, swap_hyperthreads = hyperthreads_present();
+      if (swap_hyperthreads) message("prefer physical cores to hyperthreads");
+
+      while (!done) {
+        done = true;
+        for (i = 1; i < nr_cores; i++) {
+          int node_a = numa_node_of_cpu(cpuid[i-1]);
+          int node_b = numa_node_of_cpu(cpuid[i]);
+
+          /* Avoid using local hyperthreads over unused remote physical cores.
+           * Assume two hyperthreads, and that cpuid >= half partitions them.
+           */
+          int thread_a = swap_hyperthreads && cpuid[i-1] >= half;
+          int thread_b = swap_hyperthreads && cpuid[i] >= half;
+
+          bool swap = thread_a > thread_b;
+          if (thread_a == thread_b)
+            swap = numa_distance(home, node_a) > numa_distance(home, node_b);
+
+          if (swap) {
+            int t = cpuid[i-1];
+            cpuid[i-1] = cpuid[i];
+            cpuid[i] = t;
+            done = false;
+          }
+        }
+      }
+    }
+#endif
 
     if (nodeID == 0) {
 #ifdef WITH_MPI
@@ -2250,11 +2321,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->barrier_launch = 0;
   e->barrier_launchcount = 0;
 
-  /* Init the scheduler. */
-  scheduler_init(&e->sched, e->s, nr_queues, scheduler_flag_steal, e->nodeID);
-  s->nr_queues = nr_queues;
 
-  scheduler_reset(&e->sched, 2 * s->tot_cells + e->nr_threads);
+  /* Init the scheduler with sufficient tasks for the initial kick1 and sorting
+     tasks. */
+  int nr_tasks = 2 * s->tot_cells + e->nr_threads;
+  scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
+                 e->nodeID);
+  s->nr_queues = nr_queues;
 
   /* Create the sorting tasks. */
   for (i = 0; i < e->nr_threads; i++)
