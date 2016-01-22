@@ -245,7 +245,7 @@ pairs of particles within range of each other.  Any particle $p_j$ is {\em
   within range} of a particle $p_i$ if the distance between $p_i$ and $p_j$ is
 smaller or equal to the smoothing distance $h_i$ of $p_i$, e.g.~as is done in
 \eqn{rho}.  Note that since particle smoothing lengths may vary between
-particles, this association is not symmetric, i.e. $p_j$ may be in range of
+particles, this association is not symmetric, i.e.~$p_j$ may be in range of
 $p_i$, but $p_i$ not in range of $p_j$.  If $r_{ij} < \max\{h_i,h_j\}$, as is
 required in \eqn{dvdt}, then particles $p_i$ and $p_j$ are within range {\em of
 each other}.
@@ -361,12 +361,12 @@ task-friendly approach as described in \cite{gonnet2015efficient}.
 Particle interactions are computed within, and between pairs, of
 hierarchical {\em cells} containing one or more particles.
 The dependencies between the tasks are set following
-equations \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}, i.e. such that for any cell,
+equations \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}, i.e.~such that for any cell,
 all the tasks computing the particle densities therein must have
 completed before the particle forces can be computed, and all the
 force computations must have completed before the particle velocities
 may be updated.
-The task hierarchy is shown in Figure~\ref{tasks}, where the particles in each
+The task hierarchy is shown in Fig.~\ref{tasks}, where the particles in each
 cell are first sorted (round tasks) before the particle densities
 are computed (first layer of square tasks).
 Ghost tasks (triangles) are used to ensure that all density computations
@@ -425,7 +425,7 @@ If we then weight each edge with the computational cost associated with
 the tasks, then finding a {\em good} cell distribution reduces to finding a
 partition of the cell graph such that the maximum sum of the weight
 of all edges within and spanning in a partition is minimal
-(see Figure~\ref{taskgraphcut}).
+(see Fig.~\ref{taskgraphcut}).
 Since the sum of the weights is directly proportional to the amount
 of computation per rank/partition, minimizing the maximum sum
 corresponds to minimizing the time spent on the slowest rank.
@@ -471,7 +471,7 @@ and in which communication latencies are negligible.
 Although each particle cell resides on a specific rank, the particle
 data will still need to be sent to any neighbouring ranks that have
 tasks that depend on this data, e.g.~the the green tasks in
-Figure~\ref{taskgraphcut}.
+Fig.~\ref{taskgraphcut}.
 This communication must happen twice at each time-step: once to send
 the particle positions for the density computation, and then again
 once the densities have been aggregated locally for the force
@@ -511,7 +511,7 @@ and destination ranks respectively.
 At the destination, the task is made dependent of the {\tt recv}
 task, i.e.~the task can only execute once the data has actually
 been received.
-This is illustrated in Figure~\ref{tasks}, where data is exchanged across
+This is illustrated in Fig.~\ref{tasks}, where data is exchanged across
 two ranks for the density and force computations and the extra
 dependencies are shown in red.
 
@@ -550,17 +550,19 @@ architectures for a representative cosmology problem.
 
 \subsection{Simulation setup}
 
-The initial distribution of particles used in our tests is extracted and
-resampled from low-redshift outputs of the EAGLE project \cite{Schaye2015}, a
+In order to provide a realistic setup, 
+the initial particle distributions used in our tests were extracted by
+resampling low-redshift outputs of the EAGLE project \cite{Schaye2015}, a
 large suite of state-of-the-art cosmological simulations. By selecting outputs
 at late times (redshift $z=0.5$), we constructed a simulation setup which is
-representative of the most expensive part of these simulations, i.e. when the
+representative of the most expensive part of these simulations, i.e.~when the
 particles are highly-clustered and no longer uniformly distributed. This
-distribution of particles is shown on Fig.~\ref{fig:ICs} and periodic boundary
-conditions are used. In order to fit our simulation setup into the limited
+distribution of particles is shown on Fig.~\ref{fig:ICs}.
+In order to fit our simulation setup into the limited
 memory of some of the systems tested, we have randomly down-sampled the particle
 count of the output to $800^3=5.12\times10^8$, $600^3=2.16\times10^8$ and
-$376^3=5.1\times10^7$ particles respectively. Scripts to generate these initial
+$376^3=5.1\times10^7$ particles with periodic boundary conditions 
+respectively. Scripts to generate these initial
 conditions are provided with the source code. We then run the \swift code for
 100 time-steps and average the wall clock time of these time-steps after having
 removed the first and last ones, where disk I/O occurs.
@@ -586,26 +588,26 @@ located at the University of Durham. The system consists of 420 nodes
 with 2 Intel Sandy Bridge-EP Xeon
 E5-2670\footnote{\url{http://ark.intel.com/products/64595/Intel-Xeon-Processor-E5-2670-20M-Cache-2_60-GHz-8_00-GTs-Intel-QPI}}
 CPUs clocked at $2.6~\rm{GHz}$ with each $128~\rm{GByte}$ of RAM. The
-nodes are connected using a Mellanox FDR10 Infiniband 2:1 blocking
+16-core nodes are connected using a Mellanox FDR10 Infiniband 2:1 blocking
 configuration.
 
 This system is similar to many Tier-2 systems available in most universities or
 computing facilities. Demonstrating strong scaling on such a machine is
-essential to show that the code can be efficiently used even on commodity
-hardware available to most researchers in the field.
+essential to show that the code can be efficiently used even on the type of
+commodity hardware available to most researchers.
 
 The code was compiled with the Intel compiler version \textsc{2016.0.1} and
 linked to the Intel MPI library version \textsc{5.1.2.150} and METIS library
 version \textsc{5.1.0}.
 
 The simulation setup with $376^3$ particles was run on that system using 1 to
-256 threads (16 nodes) and the results of this strong scaling test are shown on
-Fig.~\ref{fig:cosma}. For this test, we used one MPI rank per node and 16
-threads per node (i.e. one thread per physical core). When running on one single
-node, we ran from one to 32 threads (i.e. up to one thread per physical and
-virtual core). On Fig.~\ref{fig:domains} we show the domain decomposition
-obtained via the task-graph decomposition algorithm described above in the case
-of 16 MPI ranks.
+256 threads on 1 to 16 nodes, the results of which are shown on
+Fig.~\ref{fig:cosma}. For this strong scaling test, we used one MPI rank per node and 16
+threads per node (i.e.~one thread per physical core). We also ran on one single
+node using up to 32 threads, i.e.~up to one thread per physical and
+virtual core. Fig.~\ref{fig:domains} shows the domain decomposition
+obtained via the task-graph decomposition algorithm described above for
+the 16 node run.
 
 \begin{figure}
 \centering
@@ -637,38 +639,39 @@ of 16 MPI ranks.
 
 \subsection{x86 architecture: SuperMUC}
 
-For our next test, we ran \swift on the SuperMUC x86 phase 1 thin
+For our next test, we ran \swift on the SuperMUC x86 phase~1 thin
 nodes \footnote{\url{https://www.lrz.de/services/compute/supermuc/systemdescription/}}
 located at the Leibniz Supercomputing Centre in Garching near Munich. This
-system is made of 9,216 nodes with 2 Intel Sandy Bridge-EP Xeon E5-2680
+system consists of 9\,216 nodes with 2 Intel Sandy Bridge-EP Xeon E5-2680
 8C\footnote{\url{http://ark.intel.com/products/64583/Intel-Xeon-Processor-E5-2680-(20M-Cache-2_70-GHz-8_00-GTs-Intel-QPI)}}
-at $2.7~\rm{GHz}$ CPUS. Each node having $32~\rm{GByte}$ of RAM. The nodes are split in 18
+at $2.7~\rm{GHz}$ CPUS. Each 16-core node has $32~\rm{GByte}$ of RAM.
+The nodes are split in 18
 ``islands'' of 512 nodes within which communications are handled via an
-Infiniband FDR10 non-blocking Tree. Islands are then connected using a 4:1
+Infiniband FDR10 non-blocking Tree. These islands are then connected using a 4:1
 Pruned Tree.
 
 This system is similar in nature to the COSMA-5 system used in the previous set
-of tests but is much larger, allowing us to demonstrate the scalability of our
-framework on the largest systems.
+of tests but is much larger, allowing us to test scalability at a much larger
+scale.
 
 The code was compiled with the Intel compiler version \textsc{2015.5.223} and
 linked to the Intel MPI library version \textsc{5.1.2.150} and METIS library
 version \textsc{5.0.2}.
 
-The simulation setup with $800^3$ particles was run on that system using 16 to
-2048 nodes (4 islands) and the results of this strong scaling test are shown on
+The simulation setup with $800^3$ particles was run using 16 to
+2048 nodes (4 islands) and the results of this strong scaling test are shown in
 Fig.~\ref{fig:superMUC}. For this test, we used one MPI rank per node and 16
-threads per node (i.e. one thread per physical core).
+threads per node, i.e.~one thread per physical core.
 
 \begin{figure*}
 \centering
 \includegraphics[width=\textwidth]{Figures/scalingSuperMUC}
-\caption{Strong scaling test on the SuperMUC phase 1 machine (see text
+\caption{Strong scaling test on the SuperMUC phase~1 machine (see text
   for hardware description). \textit{Left panel:} Code
   Speed-up. \textit{Right panel:} Corresponding parallel efficiency.
   Using 16 threads per node (no use of hyper-threading) with one MPI rank
   per node, an almost perfect parallel efficiency is achieved when
-  increasing the node count from 16 (256 cores) to 2,048 (32,768
+  increasing the node count from 16 (256 cores) to 2\,048 (32\,768
   cores).
   \label{fig:superMUC}}
 \end{figure*}
@@ -678,29 +681,30 @@ threads per node (i.e. one thread per physical core).
 
 For our last set of tests, we ran \swift on the JUQUEEN IBM BlueGene/Q
 system\footnote{\url{http://www.fz-juelich.de/ias/jsc/EN/Expertise/Supercomputers/JUQUEEN/Configuration/Configuration_node.html}}
-located at the J\"ulich Supercomputing Centre. This system is made of
-28,672 nodes consisting of an IBM PowerPC A2 processor running at
-$1.6~\rm{GHz}$ each with $16~\rm{GByte}$ of RAM. Of notable interest
+located at the J\"ulich Supercomputing Centre. This system consists of
+28\,672 nodes with an IBM PowerPC A2 processor running at
+$1.6~\rm{GHz}$ and $16~\rm{GByte}$ of RAM each. Of notable interest
 is the presence of two floating units per compute core. The system is
-composed of 28 racks containing each 1,024 nodes. The network uses a
+composed of 28 racks containing each 1\,024 nodes. The network uses a
 5D torus to link all the racks.
 
-This system is larger than SuperMUC used above and uses a completely different
-architecture. We use it here to demonstrate that our results are not dependant
+This system is larger than the SuperMUC supercomputer described above and
+uses a completely different processor and instruction set.
+We use it here to demonstrate that our results are not dependant
 on the hardware being used.
 
 The code was compiled with the IBM XL compiler version \textsc{30.73.0.13} and
-linked to the corresponding MPI library and METIS library
-version \textsc{4.0.2}.
+linked to the corresponding MPI and METIS library
+versions \textsc{4.0.2}.
 
-The simulation setup with $600^3$ particles was first run on that system using
-512 nodes with one MPI rank per node and variable number of threads per
-node. The results of this test are shown on Fig.~\ref{fig:JUQUEEN1}.
+The simulation setup with $600^3$ particles was first run using
+512 nodes with one MPI rank per node and varying only the number of threads per
+node. The results of this test are shown in Fig.~\ref{fig:JUQUEEN1}.
 
 We later repeated the test, this time varying the number of nodes from 32 to
 8192 (8 racks).  For this test, we used one MPI rank per node and 32 threads per
-node (i.e. two threads per physical core). The results of this strong scaling
-test are shown on Fig.~\ref{fig:JUQUEEN2}.
+node, i.e.~two threads per physical core. The results of this strong scaling
+test are shown in Fig.~\ref{fig:JUQUEEN2}.
 
 
 \begin{figure}
@@ -708,9 +712,9 @@ test are shown on Fig.~\ref{fig:JUQUEEN2}.
 \includegraphics[width=\columnwidth]{Figures/scalingInNode}
 \caption{Strong scaling test of the hybrid component of the code. The
   same calculation is performed on 512 node of the JUQUEEN BlueGene
-  machine (see text for hardware description) with varying number of
-  threads per node. The number of MPI ranks per node is kept fixed to
-  one. The code displays excellent scaling even when all the cores and
+  supercomputer (see text for hardware description) using a single MPI
+  rank per node and varying only the number of
+  threads per node. The code displays excellent scaling even when all the cores and
   hardware multi-threads are in use. \label{fig:JUQUEEN1}}
 \end{figure}  
 
@@ -724,8 +728,8 @@ test are shown on Fig.~\ref{fig:JUQUEEN2}.
   Speed-up. \textit{Right panel:} Corresponding parallel efficiency.
   Using 32 threads per node (2 per physical core) with one MPI rank
   per node, a parallel efficiency of more than $60\%$ is achieved when
-  increasing the node count from 32 (512 cores) to 8,192 (131,072
-  cores). On 8,192 nodes there are fewer than 27,000 particles per
+  increasing the node count from 32 (512 cores) to 8\,192 (131\,072
+  cores). On 8\,192 nodes there are fewer than 27\,000 particles per
   node and only a few hundred tasks, making the whole problem
   extremely hard to load-balance effectively.
   \label{fig:JUQUEEN2}}
@@ -737,7 +741,7 @@ test are shown on Fig.~\ref{fig:JUQUEEN2}.
 
 %#####################################################################################################
 
-\section{Discussion \& Conclusion}
+\section{Discussion \& conclusions}
 
 The strong scaling results presented in the previous on three different machines
 demonstrate the ability of our framework to scale on both small commodity
@@ -748,7 +752,7 @@ realistic test case without any micro-level optimisation nor explicit
 vectorisation.
 
 Excellent strong scaling is also achieved when increasing the number of threads
-per node (i.e. per MPI rank, see fig.~\ref{fig:JUQUEEN1}), demonstrating that
+per node (i.e.~per MPI rank, see fig.~\ref{fig:JUQUEEN1}), demonstrating that
 the description of MPI (asynchronous) communications as tasks within our
 framework is not a bottleneck. One common conception in HPC is that the number
 of MPI communications between nodes should be kept to a minimum to optimise the
