@@ -452,13 +452,13 @@ and in which communication latencies are negligible.
 
 \begin{figure}
 \centering
-\includegraphics[width=0.85\columnwidth]{Figures/task_graph_cut}
+\includegraphics[width=0.8\columnwidth]{Figures/task_graph_cut}
 \caption{Illustration of the task-based domain decomposition
-  in which the tasks (circles) are edges that connect one or
+  in which the tasks (circles) are {\em hyperedges} that connect one or
   more resources (rectangles). The resources are partitioned
   along the thick dotted line. The blue and orange tasks are
   executed on the respective partitions, whereas the green
-  tasks along the cut line are executed on both.
+  tasks/hyperedges along the cut line are executed on both.
   The cost of this partition is the sum of the green tasks,
   which are computed twice, as well as the cost imbalance
   of the tasks executed in each partition.}
@@ -470,7 +470,8 @@ and in which communication latencies are negligible.
 
 Although each particle cell resides on a specific rank, the particle
 data will still need to be sent to any neighbouring ranks that have
-tasks that depend on this data.
+tasks that depend on this data, e.g.~the the green tasks in
+Figure~\ref{taskgraphcut}.
 This communication must happen twice at each time-step: once to send
 the particle positions for the density computation, and then again
 once the densities have been aggregated locally for the force
@@ -479,7 +480,7 @@ computation.
 Most distributed-memory codes based on MPI \cite{ref:Snir1998}
 separate computation and communication into distinct steps, i.e.~all
 the ranks first exchange data, and only when the data exchange is
-complete, computation starts. Further data exchanges only happen
+complete does computation start. Further data exchanges only happen
 once computation has finished, and so on.
 This approach, although conceptually simple and easy to implement,
 has three major drawbacks:
@@ -501,12 +502,11 @@ communication and computational phases.
 In practice this means that no rank will sit idle waiting on
 communication if there is any computation that can be done.
 
-Although this sounds somewhat chaotic and difficult to implement,
-it actually fits in quite naturally within the task-based framework
-by automatically adding tasks that send and receive particle data
-between ranks.
+This fits in quite naturally within the task-based framework
+by modelling communication as just another task type, i.e.~adding
+tasks that send and receive particle data between ranks.
 For every task that uses data that resides on a different rank,
-{\tt send} and {\tt recv} tasks are generated on the source
+{\tt send} and {\tt recv} tasks are generated automatically on the source
 and destination ranks respectively.
 At the destination, the task is made dependent of the {\tt recv}
 task, i.e.~the task can only execute once the data has actually
@@ -515,8 +515,8 @@ This is illustrated in Figure~\ref{tasks}, where data is exchanged across
 two ranks for the density and force computations and the extra
 dependencies are shown in red.
 
-The communication itself is implemented using the non-blocking {\tt
-  MPI\_Isend} and {\tt MPI\_Irecv} primitives to initiate
+The communication itself is implemented using the non-blocking
+{\tt MPI\_Isend} and {\tt MPI\_Irecv} primitives to initiate
 communication, and {\tt MPI\_Test} to check if the communication was
 successful and resolve the communication task's dependencies.  In the
 task-based scheme, strictly local tasks which do not rely on
@@ -531,9 +531,9 @@ This type of communication, i.e.~several small messages instead of
 one large message, is usually strongly discouraged since the sum of
 the latencies for the small messages is usually much larger than
 the latency of the single large message.
-This, however, is not a concern since nobody is actually waiting
-to receive the messages in order and the latencies are covered
-by local computations.
+This, however, is of no concern in \swift since nobody is actively
+waiting to receive the messages in order, and the communication
+latencies are covered by local computations.
 A nice side-effect of this approach is that communication no longer
 happens in bursts involving all the ranks at the same time, but
 is more or less evenly spread over the entire computation, and is
