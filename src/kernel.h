@@ -516,16 +516,17 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float x,
 #define kernel_name "Wendland C2"
 #define kernel_degree 5
 #define kernel_ivals 1
-#define kernel_gamma 1.f
-#define kernel_gamma2 1.f
-#define kernel_gamma3 1.f
-#define kernel_igamma 1.f
+#define kernel_gamma 2.f
+#define kernel_gamma2 4.f
+#define kernel_gamma3 8.f
+#define kernel_igamma 0.5f
 #define kernel_nwneigh                                                      \
   (4.0 / 3.0 * M_PI *const_eta_kernel *const_eta_kernel *const_eta_kernel * \
    7.261825f)
 static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {4.0f, -15.0f, 20.0f, -10.0f, 0.0f, 1.0f,
-                                    0.0f, 0.0f,   0.0f,  0.0f,   0.0f, 0.0f};
+    __attribute__((aligned(16))) = {
+        0.05222272f, -0.39167037f, 1.04445431f, -1.04445431f, 0.f,  0.41778173f,
+        0.0f,        0.0f,         0.0f,        0.0f,         0.0f, 0.0f};
 #define kernel_root (kernel_coeffs[kernel_degree])
 #define kernel_wroot (4.0 / 3.0 * M_PI *kernel_coeffs[kernel_degree])
 
@@ -537,7 +538,7 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 __attribute__((always_inline)) INLINE static void kernel_deval(float x,
                                                                float *W,
                                                                float *dW_dx) {
-  int ind = fminf(x, kernel_ivals);
+  int ind = fminf(0.5f * x, kernel_ivals);
   float *coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
   float w = coeffs[0] * x + coeffs[1];
   float dw_dx = coeffs[0];
@@ -563,7 +564,7 @@ __attribute__((always_inline))
   int j, k;
 
   /* Load x and get the interval id. */
-  ind.m = vec_ftoi(vec_fmin(x->v, vec_set1((float)kernel_ivals)));
+  ind.m = vec_ftoi(vec_fmin(0.5f * x->v, vec_set1((float)kernel_ivals)));
 
   /* load the coefficients. */
   for (k = 0; k < VEC_SIZE; k++)
@@ -590,7 +591,7 @@ __attribute__((always_inline))
 
 __attribute__((always_inline)) INLINE static void kernel_eval(float x,
                                                               float *W) {
-  int ind = fmin(x, kernel_ivals);
+  int ind = fmin(0.5f * x, kernel_ivals);
   float *coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
   float w = coeffs[0] * x + coeffs[1];
   for (int k = 2; k <= kernel_degree; k++) w = x * w + coeffs[k];
