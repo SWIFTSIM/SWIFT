@@ -518,14 +518,14 @@ This is illustrated in Figure~\ref{tasks}, where data is exchanged across
 two ranks for the density and force computations and the extra
 dependencies are shown in red.
 
-The communication itself is implemented using the non-blocking
-{\tt MPI\_Isend} and {\tt MPI\_Irecv} primitives to initiate
-communication, and {\tt MPI\_Test} to check if the communication
-was successful and resolve the communication task's dependencies.
-In the task-based scheme, strictly local tasks which do not rely
-on communication tasks are executed first.
-As the data from other ranks arrive, the corresponding non-local
-tasks are unlocked and are executed whenever a thread picks them up.
+The communication itself is implemented using the non-blocking {\tt
+  MPI\_Isend} and {\tt MPI\_Irecv} primitives to initiate
+communication, and {\tt MPI\_Test} to check if the communication was
+successful and resolve the communication task's dependencies.  In the
+task-based scheme, strictly local tasks which do not rely on
+communication tasks are executed first.  As data from other ranks
+arrive, the corresponding non-local tasks are unlocked and are
+executed whenever a thread picks them up.
 
 One direct consequence of this approach is that instead of a single
 {\tt send}/{\tt recv} call between each pair of neighbouring ranks,
@@ -670,7 +670,7 @@ threads per node (i.e. one thread per physical core).
   Speed-up. \textit{Right panel:} Corresponding parallel efficiency.
   Using 16 threads per node (no use of hyper-threading) with one MPI rank
   per node, an almost perfect parallel efficiency is achieved when
-  increasing the node count from 16 (512 cores) to 2,048 (32,768
+  increasing the node count from 16 (256 cores) to 2,048 (32,768
   cores).
   \label{fig:superMUC}}
 \end{figure*}
