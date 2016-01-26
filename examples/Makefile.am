@@ -45,10 +45,10 @@ endif
 
 # Sources for swift
 swift_SOURCES = main.c
-swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep | engine_policy_setaffinity"
+swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
 swift_LDADD =  ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
-# Sources for swift_mpi
+# Sources for swift_mpi, do we need an affinity policy for MPI?
 swift_mpi_SOURCES = main.c
 swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_multistep | engine_policy_keep"
 swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
