@@ -791,10 +791,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
 
   /* Anything to do here? */
- if (ci->t_end_min > t_current && cj->t_end_min > t_current) {
-   message("No active particles, skipping....");
+  if (ci->t_end_min > t_current && cj->t_end_min > t_current)
     return;
- }
 
   /* Get the sort ID. */
   sid = space_getsid(e->s, &ci, &cj, shift);
