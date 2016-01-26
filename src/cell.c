@@ -545,3 +545,26 @@ void cell_split(struct cell *c) {
   for (k = 0; k < gcount; k++)
     if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
 }
+
+/**
+ * @brief Initialises all particles to a valid state even if the ICs were stupid
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_init_parts(struct cell *c, void *data) {
+
+  struct part *p = c->parts;
+  struct xpart *xp = c->xparts;
+  
+  for(int i=0; i<c->count; ++i) {
+    p[i].t_begin = 0.;
+    p[i].t_end = 0.;
+    p[i].rho = -1.;
+    xp[i].v_full[0] = p[i].v[0];
+    xp[i].v_full[1] = p[i].v[1];
+    xp[i].v_full[2] = p[i].v[2];
+  }
+  c->t_end_min = 0.;
+}
+

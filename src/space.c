@@ -849,7 +849,6 @@ void space_map_parts(struct space *s,
  *
  * @param c The #cell we are working in.
  * @param fun Function pointer to apply on the cells.
- * @param data Data passed to the function fun.
  */
 
 static void rec_map_parts_xparts(struct cell *c,

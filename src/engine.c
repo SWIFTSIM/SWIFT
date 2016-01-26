@@ -1849,41 +1849,10 @@ void engine_init_particles(struct engine *e) {
 
   //engine_print(e);
 
-  //fflush(stdout);
-  //message("Engine prepared");
-
-  /* Nested functions are not standard C. Please extract. */
-
   /* Make sure all particles are ready to go */
-  void initParts(struct part * p, struct xpart * xp, struct cell * c) {
-    p->t_begin = 0.;
-    p->t_end = 0.;
-    p->rho = -1.;
-    xp->v_full[0] = p->v[0];
-    xp->v_full[1] = p->v[1];
-    xp->v_full[2] = p->v[2];
-    c->t_end_min = 0.;
-  }
-
+  /* i.e. clean-up any stupid state in the ICs */
   message("Initialising particles");
-  space_map_parts_xparts(s, initParts);
-
-  /* Now everybody should have sensible smoothing length */
-  void printParts(struct part * p, struct xpart * xp, struct cell * c) {
-    if (p->id == 1000)
-      message("id=%lld h=%f rho=%f t_begin=%f t_end=%f", p->id, p->h, p->rho,
-              p->t_begin, p->t_end);
-  }
-  // space_map_parts_xparts(s, printParts);
-
-  void printCells(struct part * p, struct xpart * xp, struct cell * c) {
-    if (c->super != NULL && 0)
-      message(
-          "c->t_end_min=%f c->t_end_max=%f c->super=%p sort=%p ghost=%p "
-          "kick=%p",
-          c->t_end_min, c->t_end_max, c->super, c->sorts, c->ghost, c->kick);
-  }
-  // space_map_parts_xparts(s, printCells);
+  space_map_cells_pre(s, 1, cell_init_parts, NULL);
 
   /* Now do a density calculation */
   TIMER_TIC;
@@ -1894,10 +1863,6 @@ void engine_init_particles(struct engine *e) {
                     (1 << task_type_send) | (1 << task_type_recv));
 
   TIMER_TOC(timer_runners);
-
-  // space_map_parts_xparts(s, printParts);
-
-  printf("\n\n");
 
   /* Ready to go */
   e->step = -1;
