@@ -407,7 +407,7 @@ void engine_repartition(struct engine *e) {
 
     /* Different weights for different tasks. */
     if (t->type == task_type_ghost || t->type == task_type_drift ||
-        t->type == task_type_kick || t->type == task_type_drift) {
+        t->type == task_type_kick) {
 
       /* Particle updates add only to vertex weight. */
       weights_v[cid] += w;
@@ -1833,13 +1833,6 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
  */
 void engine_init_particles(struct engine *e) {
 
-  int k;
-  float dt_max = 0.0f, dt_min = FLT_MAX;
-  double epot = 0.0, ekin = 0.0;
-  float mom[3] = {0.0, 0.0, 0.0};
-  float ang[3] = {0.0, 0.0, 0.0};
-  int count = 0;
-  struct cell *c;
   struct space *s = e->s;
 
   // engine_repartition(e);
@@ -1858,6 +1851,8 @@ void engine_init_particles(struct engine *e) {
 
   //fflush(stdout);
   //message("Engine prepared");
+
+  /* Nested functions are not standard C. Please extract. */
 
   /* Make sure all particles are ready to go */
   void initParts(struct part * p, struct xpart * xp, struct cell * c) {
@@ -2298,7 +2293,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
-#ifndef HAVE_MPI
+#ifndef WITH_MPI
     error("SWIFT was not compiled with MPI support.");
 #else
     e->policy |= engine_policy_mpi;
@@ -2309,6 +2304,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     e->nr_proxies = 0;
 #endif
   }
+
+  /* Construct types for MPI communications */
+#ifdef WITH_MPI
+  part_create_mpi_type(&e->part_mpi_type);
+  xpart_create_mpi_type(&e->xpart_mpi_type);
+#endif
 
   /* First of all, init the barrier and lock it. */
   if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)
