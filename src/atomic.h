@@ -26,5 +26,6 @@
 #define atomic_inc(v) atomic_add(v, 1)
 #define atomic_dec(v) atomic_add(v, -1)
 #define atomic_cas(v, o, n) __sync_val_compare_and_swap(v, o, n)
+#define atomic_load(v) atomic_add(v, 0)
 
 #endif /* SWIFT_ATOMIC_H */

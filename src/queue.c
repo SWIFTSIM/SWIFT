@@ -34,6 +34,7 @@
 #include "queue.h"
 
 /* Local headers. */
+#include "atomic.h"
 #include "const.h"
 #include "error.h"
 
@@ -78,7 +79,7 @@ void queue_insert(struct queue *q, struct task *t) {
 
   /* Drop the task at the end of the queue. */
   tid[q->count] = (t - tasks);
-  q->count += 1;
+  atomic_inc(&q->count);
 
   /* Shuffle up. */
   for (k = q->count - 1; k > 0; k = (k - 1) / 2)
@@ -127,22 +128,18 @@ void queue_init(struct queue *q, struct task *tasks) {
  *
  * @param q The task #queue.
  * @param prev The previous #task extracted from this #queue.
- * @param blocking Block until access to the queue is granted.
  */
 
-struct task *queue_gettask(struct queue *q, const struct task *prev, int blocking) {
+struct task *queue_gettask(struct queue *q, const struct task *prev) {
 
   lock_type *qlock = &q->lock;
   struct task *res = NULL;
 
   /* If there are no tasks, leave immediately. */
-  if (q->count == 0) return NULL;
-
-  /* Grab the task lock. */
-  if (blocking) {
-    if (lock_lock(qlock) != 0) error("Locking the qlock failed.\n");
-  } else {
-    if (lock_trylock(qlock) != 0) return NULL;
+  if (lock_trylock(qlock) != 0) return NULL;
+  if (q->count == 0) {
+    if (lock_unlock(qlock) != 0) error("Unlocking the qlock failed.\n");
+    return NULL;
   }
 
   /* Set some pointers we will use often. */
@@ -211,7 +208,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev, int blockin
   if (ind >= 0) {
 
     /* Another one bites the dust. */
-    const int qcount = q->count -= 1;
+    const int qcount = atomic_dec(&q->count) - 1; // returns value pre-decrement
     
     /* Get a pointer on the task that we want to return. */
     res = &qtasks[tid];
