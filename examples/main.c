@@ -68,19 +68,19 @@ int main(int argc, char *argv[]) {
 
   int c, icount, j, k, N, periodic = 1;
   long long N_total = -1;
-  int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
+  int nr_threads = 1, nr_queues = -1;
   int dump_tasks = 0;
   int data[2];
   double dim[3] = {1.0, 1.0, 1.0}, shift[3] = {0.0, 0.0, 0.0};
   double h_max = -1.0, scaling = 1.0;
-  double clock = DBL_MAX;
+  double time_end = DBL_MAX;
   struct part *parts = NULL;
   struct space s;
   struct engine e;
   struct UnitSystem us;
   char ICfileName[200] = "";
   char dumpfile[30];
-  float dt_max = 0.0f;
+  float dt_max = 0.0f, dt_min = 0.0f;
   ticks tic;
   int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
   FILE *file_thread;
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:g:m:q:s:t:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -146,14 +146,20 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
         break;
       case 'c':
-        if (sscanf(optarg, "%lf", &clock) != 1) error("Error parsing clock.");
-        if (myrank == 0) message("clock set to %.3e.", clock);
+        if (sscanf(optarg, "%lf", &time_end) != 1) error("Error parsing final time.");
+        if (myrank == 0) message("time_end set to %.3e.", time_end);
         fflush(stdout);
         break;
       case 'd':
+        if (sscanf(optarg, "%f", &dt_min) != 1)
+          error("Error parsing minimal timestep.");
+        if (myrank == 0) message("dt_min set to %e.", dt_max);
+        fflush(stdout);
+        break;
+      case 'e':
         if (sscanf(optarg, "%f", &dt_max) != 1)
-          error("Error parsing timestep.");
-        if (myrank == 0) message("dt set to %e.", dt_max);
+          error("Error parsing maximal timestep.");
+        if (myrank == 0) message("dt_max set to %e.", dt_max);
         fflush(stdout);
         break;
       case 'f':
@@ -174,10 +180,6 @@ int main(int argc, char *argv[]) {
       case 'q':
         if (sscanf(optarg, "%d", &nr_queues) != 1)
           error("Error parsing number of queues.");
-        break;
-      case 'r':
-        if (sscanf(optarg, "%d", &runs) != 1)
-          error("Error parsing number of runs.");
         break;
       case 's':
         if (sscanf(optarg, "%lf %lf %lf", &shift[0], &shift[1], &shift[2]) != 3)
@@ -248,6 +250,10 @@ int main(int argc, char *argv[]) {
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
 
+  /* Check we have sensible time step bounds */
+  if ( dt_min > dt_max )
+    error("Minimal time step size must be large than maximal time step size ");
+  
   /* Check whether an IC file has been provided */
   if (strcmp(ICfileName, "") == 0)
     error("An IC file name must be provided via the option -f");
@@ -302,9 +308,6 @@ int main(int argc, char *argv[]) {
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
   fflush(stdout);
 
-  /* Set the default time step to 1.0f. */
-  if (myrank == 0) message("dt_max is %e.", dt_max);
-
   /* Say a few nice things about the space we just created. */
   if (myrank == 0) {
     message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
@@ -338,7 +341,7 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal, 0, 1., 1e-7, 0.01);
+              ENGINE_POLICY | engine_policy_steal, 0, time_end, dt_min, dt_max);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
@@ -377,17 +380,10 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (myrank == 0) {
-    /* Inauguration speech. */
-    if (runs < INT_MAX)
-      message(
-          "Running on %lld particles for %i steps with %i threads and %i "
-          "queues...",
-          N_total, runs, e.nr_threads, e.sched.nr_queues);
-    else
-      message(
-          "Running on %lld particles until t=%.3e with %i threads and %i "
-          "queues...",
-          N_total, clock, e.nr_threads, e.sched.nr_queues);
+    message(
+	    "Running on %lld particles until t=%.3e with %i threads and %i "
+	    "queues (dt_min=%.3e, dt_max=%.3e)...",
+	    N_total, time_end, e.nr_threads, e.sched.nr_queues, e.dt_min, e.dt_max);
     fflush(stdout);
   }
 
@@ -397,10 +393,9 @@ int main(int argc, char *argv[]) {
   /* Legend */
   if (myrank == 0)
     printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
-
   
   /* Let loose a runner on the space. */
-  for (j = 0; j < runs && e.time < clock; j++) {
+  for (j = 0; e.time < time_end; j++) {
 
 /* Repartition the space amongst the nodes? */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
@@ -412,12 +407,9 @@ int main(int argc, char *argv[]) {
     for (k = 0; k < runner_counter_count; k++) runner_counter[k] = 0;
 #endif
 
-    printf("-----------------------------\n");
     /* Take a step. */
     engine_step(&e);
 
-    //if (j == 1)  break;
-    
     if (with_outputs && j % 100 == 0) {
 
 #if defined(WITH_MPI)
