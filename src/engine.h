@@ -50,6 +50,8 @@
 #define engine_policy_mpi 128
 #define engine_policy_setaffinity 256
 
+extern const char *engine_policy_names[];
+
 #define engine_queue_scale 1.2
 #define engine_maxtaskspercell 96
 #define engine_maxproxies 64
@@ -165,5 +167,6 @@ void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
+void engine_policy(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

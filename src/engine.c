@@ -61,6 +61,10 @@
 #include "runner_iact.h"
 #endif
 
+const char *engine_policy_names[10] = {
+    "none",   "rand",     "steal",     "keep", "block",
+    "fix_dt", "multi_dt", "cpu_tight", "mpi",  "numa_affinity"};
+
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
@@ -1350,7 +1354,8 @@ int engine_marktasks(struct engine *e) {
 
   /*       /\* Too much particle movement? *\/ */
   /*       if (t->tight && */
-  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin || */
+  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin
+   * || */
   /*            ci->dx_max > space_maxreldx * ci->h_max || */
   /*            cj->dx_max > space_maxreldx * cj->h_max)) */
   /*         return 1; */
@@ -1367,80 +1372,80 @@ int engine_marktasks(struct engine *e) {
 
   /* } else { */
 
-    /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+  /* Run through the tasks and mark as skip or not. */
+  for (k = 0; k < nr_tasks; k++) {
 
-      /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
+    /* Get a handle on the kth task. */
+    t = &tasks[ind[k]];
 
-      /* Sort-task? Note that due to the task ranking, the sorts
-         will all come before the pairs. */
-      if (t->type == task_type_sort) {
+    /* Sort-task? Note that due to the task ranking, the sorts
+       will all come before the pairs. */
+    if (t->type == task_type_sort) {
 
-        /* Re-set the flags. */
-        t->flags = 0;
-        t->skip = 1;
+      /* Re-set the flags. */
+      t->flags = 0;
+      t->skip = 1;
 
-      }
-
-      /* Single-cell task? */
-      else if (t->type == task_type_self || t->type == task_type_ghost ||
-               (t->type == task_type_sub && t->cj == NULL)) {
-
-        /* Set this task's skip. */
-        // t->skip = (t->ci->t_end_min >= t_end);
-
-      }
-
-      /* Pair? */
-      else if (t->type == task_type_pair ||
-               (t->type == task_type_sub && t->cj != NULL)) {
-
-        /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
-
-        /* Set this task's skip. */
-        // t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
-
-        /* Too much particle movement? */
-        if (t->tight &&
-            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-             ci->dx_max > space_maxreldx * ci->h_max ||
-             cj->dx_max > space_maxreldx * cj->h_max))
-          return 1;
-
-        /* Set the sort flags. */
-        if (!t->skip && t->type == task_type_pair) {
-          if (!(ci->sorted & (1 << t->flags))) {
-            ci->sorts->flags |= (1 << t->flags);
-            ci->sorts->skip = 0;
-          }
-          if (!(cj->sorted & (1 << t->flags))) {
-            cj->sorts->flags |= (1 << t->flags);
-            cj->sorts->skip = 0;
-          }
-        }
-
-      }
-
-      /* Kick? */
-      else if (t->type == task_type_kick)
-        t->skip = 0;
-
-      /* Drift? */
-      else if (t->type == task_type_drift)
-        t->skip = 0;
-
-      /* Init? */
-      else if (t->type == task_type_init)
-        t->skip = 0;
-
-      /* None? */
-      else if (t->type == task_type_none)
-        t->skip = 1;
     }
-    //}
+
+    /* Single-cell task? */
+    else if (t->type == task_type_self || t->type == task_type_ghost ||
+             (t->type == task_type_sub && t->cj == NULL)) {
+
+      /* Set this task's skip. */
+      // t->skip = (t->ci->t_end_min >= t_end);
+
+    }
+
+    /* Pair? */
+    else if (t->type == task_type_pair ||
+             (t->type == task_type_sub && t->cj != NULL)) {
+
+      /* Local pointers. */
+      ci = t->ci;
+      cj = t->cj;
+
+      /* Set this task's skip. */
+      // t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
+
+      /* Too much particle movement? */
+      if (t->tight &&
+          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+           ci->dx_max > space_maxreldx * ci->h_max ||
+           cj->dx_max > space_maxreldx * cj->h_max))
+        return 1;
+
+      /* Set the sort flags. */
+      if (!t->skip && t->type == task_type_pair) {
+        if (!(ci->sorted & (1 << t->flags))) {
+          ci->sorts->flags |= (1 << t->flags);
+          ci->sorts->skip = 0;
+        }
+        if (!(cj->sorted & (1 << t->flags))) {
+          cj->sorts->flags |= (1 << t->flags);
+          cj->sorts->skip = 0;
+        }
+      }
+
+    }
+
+    /* Kick? */
+    else if (t->type == task_type_kick)
+      t->skip = 0;
+
+    /* Drift? */
+    else if (t->type == task_type_drift)
+      t->skip = 0;
+
+    /* Init? */
+    else if (t->type == task_type_init)
+      t->skip = 0;
+
+    /* None? */
+    else if (t->type == task_type_none)
+      t->skip = 1;
+  }
+  //}
 
   // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
 
@@ -1839,15 +1844,15 @@ void engine_init_particles(struct engine *e) {
 
   engine_prepare(e);
 
-  //engine_print(e);
+  // engine_print(e);
 
   // engine_maketasks(e);
 
-  //engine_print(e);
+  // engine_print(e);
 
   engine_marktasks(e);
 
-  //engine_print(e);
+  // engine_print(e);
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
@@ -1945,7 +1950,7 @@ if ( e->nodeID == 0 )
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift);
 
-  //scheduler_print_tasks(&e->sched, "tasks_after_drift.dat");
+  // scheduler_print_tasks(&e->sched, "tasks_after_drift.dat");
 
   // error("Done drift");
 
@@ -1955,24 +1960,24 @@ if ( e->nodeID == 0 )
   /* Prepare the space. */
   engine_prepare(e);
 
-  //engine_maketasks(e);
+  // engine_maketasks(e);
 
   // engine_marktasks(e);
 
-  //engine_print(e);
-  //message("Go !");
-  //fflush(stdout);
+  // engine_print(e);
+  // message("Go !");
+  // fflush(stdout);
 
   /* Send off the runners. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-		(1 << task_type_pair) | (1 << task_type_sub) |
-		(1 << task_type_init) | (1 << task_type_ghost) |
-		(1 << task_type_kick) | (1 << task_type_send) |
-		(1 << task_type_recv));
+                    (1 << task_type_pair) | (1 << task_type_sub) |
+                    (1 << task_type_init) | (1 << task_type_ghost) |
+                    (1 << task_type_kick) | (1 << task_type_send) |
+                    (1 << task_type_recv));
 
-  //scheduler_print_tasks(&e->sched, "tasks_after.dat");
+  // scheduler_print_tasks(&e->sched, "tasks_after.dat");
 
   TIMER_TOC(timer_runners);
 
@@ -2126,26 +2131,24 @@ void engine_split(struct engine *e, int *grid) {
   s->xparts = xparts_new;
 }
 
-
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
- static bool hyperthreads_present(void) {
-   #ifdef __linux__
-   FILE *f = fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
+static bool hyperthreads_present(void) {
+#ifdef __linux__
+  FILE *f =
+      fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
 
-   int c;
-   while ((c = fgetc(f)) != EOF && c != ',');
-   fclose(f);
+  int c;
+  while ((c = fgetc(f)) != EOF && c != ',')
+    ;
+  fclose(f);
 
-   return c == ',';
-   #else
-   return true; // just guess
-   #endif
- }
+  return c == ',';
+#else
+  return true;  // just guess
 #endif
- 
+}
+#endif
 
-
- 
 /**
  * @brief init an engine with the given number of threads, queues, and
  *      the given policy.
@@ -2160,6 +2163,8 @@ void engine_split(struct engine *e, int *grid) {
  * @param policy The queuing policy to use.
  * @param timeBegin Time at the begininning of the simulation.
  * @param timeEnd Time at the end of the simulation.
+ * @param dt_min Minimal allowed timestep (unsed with fixdt policy)
+ * @param dt_max Maximal allowed timestep
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
@@ -2196,13 +2201,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
       while (!done) {
         done = true;
         for (i = 1; i < nr_cores; i++) {
-          int node_a = numa_node_of_cpu(cpuid[i-1]);
+          int node_a = numa_node_of_cpu(cpuid[i - 1]);
           int node_b = numa_node_of_cpu(cpuid[i]);
 
           /* Avoid using local hyperthreads over unused remote physical cores.
            * Assume two hyperthreads, and that cpuid >= half partitions them.
            */
-          int thread_a = swap_hyperthreads && cpuid[i-1] >= half;
+          int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
           int thread_b = swap_hyperthreads && cpuid[i] >= half;
 
           bool swap = thread_a > thread_b;
@@ -2210,8 +2215,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
             swap = numa_distance(home, node_a) > numa_distance(home, node_b);
 
           if (swap) {
-            int t = cpuid[i-1];
-            cpuid[i-1] = cpuid[i];
+            int t = cpuid[i - 1];
+            cpuid[i - 1] = cpuid[i];
             cpuid[i] = t;
             done = false;
           }
@@ -2222,16 +2227,16 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
     if (nodeID == 0) {
 #ifdef WITH_MPI
-      message("engine_init: cpu map is [ ");
-#else
       printf("[%03i] engine_init: cpu map is [ ", nodeID);
+#else
+      printf("engine_init: cpu map is [ ");
 #endif
       for (i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
       printf("].\n");
     }
   }
 #endif
-
+  
   /* Store the values. */
   e->s = s;
   e->nr_threads = nr_threads;
@@ -2270,6 +2275,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 #endif
   }
 
+  /* Print policy */
+  engine_policy(e);
+
   /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_type(&e->part_mpi_type);
@@ -2287,9 +2295,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->barrier_launch = 0;
   e->barrier_launchcount = 0;
 
-
-  /* Init the scheduler with sufficient tasks for the initial kick1 and sorting
-     tasks. */
+  /* Init the scheduler with enough tasks for the initial sorting tasks. */
   int nr_tasks = 2 * s->tot_cells + e->nr_threads;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
                  e->nodeID);
@@ -2347,4 +2353,18 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   while (e->barrier_running || e->barrier_launch)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for runner threads to get in place.");
+}
+
+/**
+ * @brief Prints the current policy of an engine
+ *
+ * @param e The engine to print information about
+ */
+void engine_policy(struct engine *e) {
+
+  printf("engine_policy: Engine policies are [ ");
+  for (int k = 1; k < 32; k++)
+    if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);
+  printf(" ]\n");
+  fflush(stdout);
 }
