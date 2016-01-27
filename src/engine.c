@@ -1331,121 +1331,123 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
-  // float t_end = e->time;
+  float t_end = e->time;
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
-  /* /\* Much less to do here if we're on a fixed time-step. *\/ */
-  /* if (!(e->policy & engine_policy_multistep)) { */
+  /* Much less to do here if we're on a fixed time-step. */
+  if (e->policy & engine_policy_fixdt) {
 
-  /*   /\* Run through the tasks and mark as skip or not. *\/ */
-  /*   for (k = 0; k < nr_tasks; k++) { */
+    /* Run through the tasks and mark as skip or not. */
+    for (k = 0; k < nr_tasks; k++) {
 
-  /*     /\* Get a handle on the kth task. *\/ */
-  /*     t = &tasks[ind[k]]; */
+      /* Get a handle on the kth task. */
+      t = &tasks[ind[k]];
 
-  /*     /\* Pair? *\/ */
-  /*     if (t->type == task_type_pair || */
-  /*         (t->type == task_type_sub && t->cj != NULL)) { */
+      /* Pair? */
+      if (t->type == task_type_pair ||
+          (t->type == task_type_sub && t->cj != NULL)) {
 
-  /*       /\* Local pointers. *\/ */
-  /*       ci = t->ci; */
-  /*       cj = t->cj; */
+        /* Local pointers. */
+        ci = t->ci;
+        cj = t->cj;
 
-  /*       /\* Too much particle movement? *\/ */
-  /*       if (t->tight && */
-  /*           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin
-   * || */
-  /*            ci->dx_max > space_maxreldx * ci->h_max || */
-  /*            cj->dx_max > space_maxreldx * cj->h_max)) */
-  /*         return 1; */
+        /* Too much particle movement? */
+        if (t->tight &&
+            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+             ci->dx_max > space_maxreldx * ci->h_max ||
+             cj->dx_max > space_maxreldx * cj->h_max))
+          return 1;
 
-  /*     } */
-
-  /*     /\* Sort? *\/ */
-  /*     else if (t->type == task_type_sort) { */
-
-  /*       /\* If all the sorts have been done, make this task implicit. *\/ */
-  /*       if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1; */
-  /*     } */
-  /*   } */
-
-  /* } else { */
-
-  /* Run through the tasks and mark as skip or not. */
-  for (k = 0; k < nr_tasks; k++) {
-
-    /* Get a handle on the kth task. */
-    t = &tasks[ind[k]];
-
-    /* Sort-task? Note that due to the task ranking, the sorts
-       will all come before the pairs. */
-    if (t->type == task_type_sort) {
-
-      /* Re-set the flags. */
-      t->flags = 0;
-      t->skip = 1;
-
-    }
-
-    /* Single-cell task? */
-    else if (t->type == task_type_self || t->type == task_type_ghost ||
-             (t->type == task_type_sub && t->cj == NULL)) {
-
-      /* Set this task's skip. */
-      // t->skip = (t->ci->t_end_min >= t_end);
-
-    }
-
-    /* Pair? */
-    else if (t->type == task_type_pair ||
-             (t->type == task_type_sub && t->cj != NULL)) {
-
-      /* Local pointers. */
-      ci = t->ci;
-      cj = t->cj;
-
-      /* Set this task's skip. */
-      // t->skip = (ci->t_end_min >= t_end && cj->t_end_min >= t_end);
-
-      /* Too much particle movement? */
-      if (t->tight &&
-          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
-        return 1;
-
-      /* Set the sort flags. */
-      if (!t->skip && t->type == task_type_pair) {
-        if (!(ci->sorted & (1 << t->flags))) {
-          ci->sorts->flags |= (1 << t->flags);
-          ci->sorts->skip = 0;
-        }
-        if (!(cj->sorted & (1 << t->flags))) {
-          cj->sorts->flags |= (1 << t->flags);
-          cj->sorts->skip = 0;
-        }
       }
 
+      /* Sort? */
+      else if (t->type == task_type_sort) {
+
+        /* If all the sorts have been done, make this task implicit. */
+        if (!(t->flags & (t->flags ^ t->ci->sorted))) t->implicit = 1;
+      }
     }
 
-    /* Kick? */
-    else if (t->type == task_type_kick)
-      t->skip = 0;
+    /* Multiple-timestep case */
+  } else {
 
-    /* Drift? */
-    else if (t->type == task_type_drift)
-      t->skip = 0;
+    /* Run through the tasks and mark as skip or not. */
+    for (k = 0; k < nr_tasks; k++) {
 
-    /* Init? */
-    else if (t->type == task_type_init)
-      t->skip = 0;
+      /* Get a handle on the kth task. */
+      t = &tasks[ind[k]];
 
-    /* None? */
-    else if (t->type == task_type_none)
-      t->skip = 1;
+      /* Sort-task? Note that due to the task ranking, the sorts
+         will all come before the pairs. */
+      if (t->type == task_type_sort) {
+
+        /* Re-set the flags. */
+        t->flags = 0;
+        t->skip = 1;
+
+      }
+
+      /* Single-cell task? */
+      else if (t->type == task_type_self || t->type == task_type_ghost ||
+               (t->type == task_type_sub && t->cj == NULL)) {
+
+        /* Set this task's skip. */
+        t->skip = (t->ci->t_end_min > t_end);
+      }
+
+      /* Pair? */
+      else if (t->type == task_type_pair ||
+               (t->type == task_type_sub && t->cj != NULL)) {
+
+        /* Local pointers. */
+        ci = t->ci;
+        cj = t->cj;
+
+        /* Set this task's skip. */
+        t->skip = (ci->t_end_min > t_end && cj->t_end_min > t_end);
+
+        /* Too much particle movement? */
+        if (t->tight &&
+            (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+             ci->dx_max > space_maxreldx * ci->h_max ||
+             cj->dx_max > space_maxreldx * cj->h_max))
+          return 1;
+
+        /* Set the sort flags. */
+        if (!t->skip && t->type == task_type_pair) {
+          if (!(ci->sorted & (1 << t->flags))) {
+            ci->sorts->flags |= (1 << t->flags);
+            ci->sorts->skip = 0;
+          }
+          if (!(cj->sorted & (1 << t->flags))) {
+            cj->sorts->flags |= (1 << t->flags);
+            cj->sorts->skip = 0;
+          }
+        }
+
+      }
+
+      /* Kick? */
+      else if (t->type == task_type_kick) {
+        t->skip = (t->ci->t_end_min > t_end);
+      }
+
+      /* Drift? */
+      else if (t->type == task_type_drift)
+        t->skip = 0;
+
+      /* Init? */
+      else if (t->type == task_type_init) {
+	/* Set this task's skip. */
+	t->skip = (t->ci->t_end_min > t_end);
+      }
+
+      /* None? */
+      else if (t->type == task_type_none)
+        t->skip = 1;
+    }
   }
-  //}
 
   // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
 
@@ -1666,9 +1668,6 @@ void engine_collect_kick(struct cell *c) {
   c->ang[2] = ang[2];
 }
 
-
-
- 
 /**
  * @brief Launch the runners.
  *
@@ -2125,7 +2124,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     }
   }
 #endif
-  
+
   /* Store the values. */
   e->s = s;
   e->nr_threads = nr_threads;
@@ -2167,7 +2166,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   /* Print policy */
   engine_policy(e);
 
-  /* Construct types for MPI communications */
+/* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_type(&e->part_mpi_type);
   xpart_create_mpi_type(&e->xpart_mpi_type);
