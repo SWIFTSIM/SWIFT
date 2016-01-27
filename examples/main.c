@@ -334,8 +334,6 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
-  /* Dump the particle positions. */
-  // space_map_parts( &s , &map_dump , shift );
 
   /* Initialize the engine with this space. */
   tic = getticks();
