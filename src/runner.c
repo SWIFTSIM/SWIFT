@@ -856,7 +856,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         current_dt = 0.0f;
   float t_start, t_end, t_end_min = FLT_MAX, t_end_max = 0., dt;
   float dt_timeline;
-  float h_max, dx_max;//, dt_min, dt_max;
+  float h_max, dx_max;
   double ekin = 0.0, epot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   float m, x[3], v_full[3];
@@ -869,8 +869,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   if (!c->split) {
 
     /* Init the min/max counters. */
-    //dt_min = FLT_MAX;
-    //dt_max = 0.0f;
     h_max = 0.0f;
     dx_max = 0.0f;
 
@@ -901,18 +899,18 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
         /* Limit timestep increase */
         if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
-
+	
         /* Limit timestep within the allowed range */
         new_dt = fminf(new_dt, global_dt_max);
         new_dt = fmaxf(new_dt, global_dt_min);
-
+	
         /* Put this timestep on the time line */
         dt_timeline = dt_max_timeline;
         while (new_dt < dt_timeline) dt_timeline /= 2.;
 
         /* Now we have a time step, proceed with the kick */
         new_dt = dt_timeline;
-
+	
         /* Compute the time step for this kick */
         t_start = 0.5f * (p->t_begin + p->t_end);
         t_end = p->t_end + 0.5f * new_dt;
@@ -967,8 +965,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   else {
 
     /* Init everything. */
-    //dt_min = FLT_MAX;
-    //dt_max = 0.0f;
     h_max = 0.0f;
     dx_max = 0.0f;
     updated = 0;
@@ -1016,13 +1012,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   c->ang[2] = ang[2];
   c->t_end_min = t_end_min;
   c->t_end_max = t_end_max;
-
-  // assert(t_end_min > 0.);
-
-  if (t_end_min == 0.) {
-    message("oO");
-    abort();
-  }
 
   if (timer) {
 #ifdef TIMER_VERBOSE
@@ -1112,7 +1101,6 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_init:
-	  //message("init");
           runner_doinit(r, ci);
           break;
         case task_type_ghost:

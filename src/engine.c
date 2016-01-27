@@ -2166,6 +2166,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   /* Print policy */
   engine_policy(e);
 
+  /* Deal with timestep */
+  if(e->policy & engine_policy_fixdt)
+    e->dt_min = e->dt_max;
+  
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_type(&e->part_mpi_type);
