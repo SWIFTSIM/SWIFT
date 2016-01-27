@@ -29,7 +29,12 @@ struct space;
 
 /* Some constants. */
 #define cell_sid_dt 13
-#define cell_max_tag (1 << 16)
+
+/* Max tag size set to 2^29 to take into account some MPI implementations 
+ * that use 2^31 as the upper bound on MPI tags and the fact that 
+ * cell_next_tag is multiplied by 2 when passed to an MPI function. 
+ * The maximum was lowered by a further factor of 2 to be on the safe side.*/
+#define cell_max_tag (1 << 29)
 
 /* Global variables. */
 extern int cell_next_tag;
