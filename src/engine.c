@@ -2250,9 +2250,19 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
  */
 void engine_policy(struct engine *e) {
 
-  printf("engine_policy: Engine policies are [ ");
+#ifdef WITH_MPI
+  if(e->nodeID == 0) {
+    printf("[000] engine_policy: engine policies are [ ");
+    for (int k = 1; k < 32; k++)
+      if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);
+    printf(" ]\n");
+    fflush(stdout);
+  }
+#else
+  printf("engine_policy: engine policies are [ ");
   for (int k = 1; k < 32; k++)
     if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
+#endif
 }
