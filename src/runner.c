@@ -42,7 +42,8 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
-#include "timestep.h"
+#include "hydro.h"
+#include "gravity.h"
 
 /* Include the right variant of the SPH interactions */
 #ifdef LEGACY_GADGET2_SPH
@@ -518,14 +519,7 @@ void runner_doinit(struct runner *r, struct cell *c) {
     if (p->t_end <= t_end) {
 
       /* Get ready for a density calculation */
-      p->density.wcount = 0.f;
-      p->density.wcount_dh = 0.f;
-      p->rho = 0.f;
-      p->rho_dh = 0.f;
-      p->density.div_v = 0.f;
-      p->density.curl_v[0] = 0.f;
-      p->density.curl_v[1] = 0.f;
-      p->density.curl_v[2] = 0.f;
+      hydro_init_part(p);
     }
   }
 }
@@ -544,11 +538,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   struct cell *finger;
   int redo, count = c->count;
   int *pid;
-  float h_corr, rho, wcount, rho_dh, wcount_dh, u, fc;
-  float normDiv_v, normCurl_v;
-#ifndef LEGACY_GADGET2_SPH
-  float alpha_dot, tau, S;
-#endif
+  float h_corr;
   float t_end = r->e->time;
 
   TIMER_TIC;
@@ -582,102 +572,50 @@ void runner_doghost(struct runner *r, struct cell *c) {
       /* Is this part within the timestep? */
       if (p->t_end <= t_end) {
 
-        /* Some smoothing length multiples. */
-        const float h = p->h;
-        const float ih = 1.0f / h;
-	const float ih2 = ih * ih;
-	const float ih4 = ih2 * ih2;
-
-        /* Final operation on the density. */
-        p->rho = rho = ih * ih2 * (p->rho + p->mass * kernel_root);
-        p->rho_dh = rho_dh = (p->rho_dh - 3.0f * p->mass * kernel_root) * ih4;
-        p->density.wcount = wcount = (p->density.wcount + kernel_root) *
-                                     (4.0f / 3.0 * M_PI * kernel_gamma3);
-        wcount_dh =
-            p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
+	/* Finish the density calculation */
+	hydro_end_density(p);
 
         /* If no derivative, double the smoothing length. */
-        if (wcount_dh == 0.0f) h_corr = p->h;
+        if (p->density.wcount_dh == 0.0f) h_corr = p->h;
 
         /* Otherwise, compute the smoothing length update (Newton step). */
         else {
-          h_corr = (kernel_nwneigh - wcount) / wcount_dh;
+          h_corr = (kernel_nwneigh - p->density.wcount) / p->density.wcount_dh;
 
           /* Truncate to the range [ -p->h/2 , p->h ]. */
-          h_corr = fminf(h_corr, h);
-          h_corr = fmaxf(h_corr, -h / 2.f);
+          h_corr = fminf(h_corr, p->h);
+          h_corr = fmaxf(h_corr, -p->h * 0.5f);
         }
 
         /* Did we get the right number density? */
-        if (wcount > kernel_nwneigh + const_delta_nwneigh ||
-            wcount < kernel_nwneigh - const_delta_nwneigh) {
+        if (p->density.wcount > kernel_nwneigh + const_delta_nwneigh ||
+           p->density. wcount < kernel_nwneigh - const_delta_nwneigh) {
 
           /* Ok, correct then */
           p->h += h_corr;
 
-          /* And flag for another round of fun */
+          /* Flag for another round of fun */
           pid[redo] = pid[i];
           redo += 1;
-          p->density.wcount = 0.f;
-          p->density.wcount_dh = 0.f;
-          p->rho = 0.f;
-          p->rho_dh = 0.f;
-          p->density.div_v = 0.f;
-          p->density.curl_v[0] = 0.f;
-	  p->density.curl_v[1] = 0.f;
-	  p->density.curl_v[2] = 0.f;
+
+	  /* Re-initialise everything */
+	  hydro_init_part(p);
+
+	  /* Off we go ! */
           continue;
         }
 
         /* We now have a particle whose smoothing length has converged */
 
-        /* Pre-compute some stuff for the balsara switch. */
-        normDiv_v = fabs(p->density.div_v / rho * ih4);
-        normCurl_v = sqrtf(p->density.curl_v[0] * p->density.curl_v[0] +
-                           p->density.curl_v[1] * p->density.curl_v[1] +
-                           p->density.curl_v[2] * p->density.curl_v[2]) /
-                     rho * ih4;
-
         /* As of here, particle force variables will be set. Do _NOT_
            try to read any particle density variables! */
 
-        /* Compute this particle's sound speed. */
-        u = p->u;
-        p->force.c = fc =
-            sqrtf(const_hydro_gamma * (const_hydro_gamma - 1.0f) * u);
-
-        /* Compute the P/Omega/rho2. */
-        xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho;
-        p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (rho * xp->omega);
-
-        /* Balsara switch */
-        p->force.balsara =
-            normDiv_v / (normDiv_v + normCurl_v + 0.0001f * fc * ih);
-
-#ifndef LEGACY_GADGET2_SPH
-        /* Viscosity parameter decay time */
-        tau = h / (2.f * const_viscosity_length * p->force.c);
-
-        /* Viscosity source term */
-        S = fmaxf(-normDiv_v, 0.f);
-
-        /* Compute the particle's viscosity parameter time derivative */
-        alpha_dot = (const_viscosity_alpha_min - p->alpha) / tau +
-                    (const_viscosity_alpha_max - p->alpha) * S;
-
-        /* Update particle's viscosity paramter */
-        p->alpha += alpha_dot * (p->t_end - p->t_begin);
-#endif
-
-        /* Reset the acceleration. */
-	p->a[0] = 0.0f;
-	p->a[1] = 0.0f;
-	p->a[2] = 0.0f;
+	/* Compute variables required for the force loop */
+	hydro_prepare_force(p, xp);
 	
-        /* Reset the time derivatives. */
-        p->force.u_dt = 0.0f;
-        p->force.h_dt = 0.0f;
-        p->force.v_sig = 0.0f;
+	/* Prepare the particle for the force loop over neighbours */
+	hydro_reset_acceleration(p);
+
       }
     }
 
@@ -750,10 +688,10 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
   const int nr_parts = c->count;
   const float dt = r->e->time - r->e->timeOld;
-  float u, w, rho;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
-
+  float w;
+  
   TIMER_TIC
 
   /* No children? */
@@ -780,38 +718,27 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->v[1] += p->a[1] * dt;
       p->v[2] += p->a[2] * dt;
 
-      /* Predict internal energy */
-      w = p->force.u_dt / p->u * dt;
-      if (fabsf(w) < 0.01f)
-	u = p->u *=
-            1.0f +
-            w * (1.0f + w * (0.5f + w * (1.0f / 6.0f +
-                                         1.0f / 24.0f * w))); /* 1st order
-                                                                 expansion of
-                                                                 exp(w) */
-      else
-        u = p->u *= expf(w);
-
       /* Predict smoothing length */
       w = p->force.h_dt * ih * dt;
-      if (fabsf(w) < 0.01f)
-      	p->h *=
-      	  1.0f +
-      	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
+      if (fabsf(w) < 0.01f) /* 1st order expansion of exp(w) */
+	p->h *=
+	  1.0f +
+	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
       else
-      	p->h *= expf(w);
+	p->h *= expf(w);
       
       /* Predict density */
       w = -3.0f * p->force.h_dt * ih * dt;
       if (fabsf(w) < 0.1f)
-        rho = p->rho *=
-            1.0f +
-            w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
+	p->rho *=
+	  1.0f +
+	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
       else
-        rho = p->rho *= expf(w);
+	p->rho *= expf(w);
+      
+      /* Predict the values of the extra fields */
+      hydro_predict_extra(p, xp, dt);
 
-      /* Predict gradient term */
-      p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (rho * xp->omega);
     }
   }
 
@@ -877,8 +804,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       if ( is_fixdt || p->t_end <= t_current ) {
 
         /* First, finish the force loop */
-        p->force.h_dt *= p->h * 0.333333333f;
-
+	hydro_end_force(p);
+	  
         /* Recover the current timestep */
         current_dt = p->t_end - p->t_begin;
 
@@ -890,8 +817,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 	} else {
 	
 	  /* Compute the next timestep */
-	  new_dt_hydro = compute_timestep_hydro(p, xp);
-	  new_dt_grav = compute_timestep_grav(p, xp);
+	  new_dt_hydro = hydro_compute_timestep(p, xp);
+	  new_dt_grav = gravity_compute_timestep(p, xp);
 	  
 	  new_dt = fminf(new_dt_hydro, new_dt_grav);
 	  
@@ -931,7 +858,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
       /* Now collect quantities for statistics */
 
-      v_full[0] = xp->v_full[0], v_full[1] = xp->v_full[1],
+      v_full[0] = xp->v_full[0];
+      v_full[1] = xp->v_full[1];
       v_full[2] = xp->v_full[2];
 
       /* Collect momentum */

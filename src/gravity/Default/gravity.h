@@ -16,33 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
-/**
- * @brief Computes the hydro time-step of a given particle
- *
- * @param p Pointer to the particle data
- * @param xp Pointer to the extended particle data
- *
- */
-__attribute__((always_inline)) INLINE static float compute_timestep_hydro(
-    struct part* p, struct xpart* xp) {
-
-  /* CFL condition */
-  float dt_cfl = const_cfl * p->h / p->force.v_sig;
-
-  /* Limit change in h */
-  float dt_h_change = (p->force.h_dt != 0.0f)
-                          ? fabsf(const_ln_max_h_change * p->h / p->force.h_dt)
-                          : FLT_MAX;
-
-  /* Limit change in u */
-  float dt_u_change = (p->force.u_dt != 0.0f)
-                          ? fabsf(const_max_u_change * p->u / p->force.u_dt)
-                          : FLT_MAX;
-
-  return fminf(dt_cfl, fminf(dt_h_change, dt_u_change));
-}
-
 /**
  * @brief Computes the gravity time-step of a given particle
  *
@@ -51,9 +24,10 @@ __attribute__((always_inline)) INLINE static float compute_timestep_hydro(
  *
  */
 
-__attribute__((always_inline)) INLINE static float compute_timestep_grav(
+__attribute__((always_inline)) INLINE static float gravity_compute_timestep(
     struct part* p, struct xpart* xp) {
 
   /* Currently no limit is imposed */
   return FLT_MAX;
 }
+
