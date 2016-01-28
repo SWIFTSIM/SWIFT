@@ -840,7 +840,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const float global_dt_min = r->e->dt_min, global_dt_max = r->e->dt_max;
   const float t_current = r->e->time;
   const int nr_parts = c->count;
-  const int fixdt = r->e->policy & engine_policy_fixdt;
+  const int is_fixdt = (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
   
   int count = 0, updated;
   float new_dt = 0.0f, new_dt_hydro = 0.0f, new_dt_grav = 0.0f,
@@ -874,7 +874,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
       /* If particle needs to be kicked */
-      if (p->t_end <= t_current || fixdt) {
+      if ( is_fixdt || p->t_end <= t_current ) {
 
         /* First, finish the force loop */
         p->force.h_dt *= p->h * 0.333333333f;
@@ -882,7 +882,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         /* Recover the current timestep */
         current_dt = p->t_end - p->t_begin;
 
-	if( fixdt ) {
+	if( is_fixdt ) {
 
 	  /* Now we have a time step, proceed with the kick */
 	  new_dt = global_dt_max;
