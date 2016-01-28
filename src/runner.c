@@ -499,18 +499,18 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
 void runner_doinit(struct runner *r, struct cell *c) {
 
   struct part *p, *parts = c->parts;
-  int i, k, count = c->count;
-  float t_end = r->e->time;
-
+  const int count = c->count;
+  const float t_end = r->e->time;
+  
   /* Recurse? */
   if (c->split) {
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_doinit(r, c->progeny[k]);
     return;
   }
-
+  
   /* Loop over the parts in this cell. */
-  for (i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++) {
 
     /* Get a direct pointer on the part. */
     p = &parts[i];
@@ -518,15 +518,15 @@ void runner_doinit(struct runner *r, struct cell *c) {
     if (p->t_end <= t_end) {
 
       /* Get ready for a density calculation */
-      p->density.wcount = 0.0;
-      p->density.wcount_dh = 0.0;
-      p->rho = 0.0;
-      p->rho_dh = 0.0;
-      p->density.div_v = 0.0;
-      for (k = 0; k < 3; k++) p->density.curl_v[k] = 0.0;
+      p->density.wcount = 0.f;
+      p->density.wcount_dh = 0.f;
+      p->rho = 0.f;
+      p->rho_dh = 0.f;
+      p->density.div_v = 0.f;
+      p->density.curl_v[0] = 0.f;
+      p->density.curl_v[1] = 0.f;
+      p->density.curl_v[2] = 0.f;
     }
-
-    ;
   }
 }
 
