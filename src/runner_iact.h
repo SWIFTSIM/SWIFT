@@ -374,7 +374,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
   float mi, mj, POrho2i, POrho2j, rhoi, rhoj;
   float v_sig, omega_ij, Pi_ij, alpha_ij, tc, v_sig_u;
-  // float dt_max;
   float f;
   int k;
 
@@ -690,7 +689,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr;
   float /*mi,*/ mj, POrho2i, POrho2j, rhoi, rhoj;
   float v_sig, omega_ij, Pi_ij, alpha_ij, tc, v_sig_u;
-  // float dt_max;
   float f;
   int k;
 
