@@ -756,9 +756,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
  */
 void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
-  int k, nr_parts = c->count;
-  float ih, rho, u, w, h = 5.;
-  float dt = r->e->time - r->e->timeOld;
+  const int nr_parts = c->count;
+  const float dt = r->e->time - r->e->timeOld;
+  float u, w, rho;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
 
@@ -768,17 +768,15 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   if (!c->split) {
 
     /* Loop over all the particles in the cell */
-    for (k = 0; k < nr_parts; k++) {
+    for (int k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
       p = &parts[k];
       xp = &xparts[k];
 
       /* Get local copies of particle data. */
-      h = p->h;
-      ih = 1.0f / h;
-
-      ;
+      const float h = p->h;
+      const float ih = 1.0f / h;
 
       /* Drift... */
       p->x[0] += xp->v_full[0] * dt;
@@ -793,7 +791,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict internal energy */
       w = p->force.u_dt / p->u * dt;
       if (fabsf(w) < 0.01f)
-        u = p->u *=
+	u = p->u *=
             1.0f +
             w * (1.0f + w * (0.5f + w * (1.0f / 6.0f +
                                          1.0f / 24.0f * w))); /* 1st order
@@ -805,11 +803,11 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict smoothing length */
       w = p->force.h_dt * ih * dt;
       if (fabsf(w) < 0.01f)
-      	h = p->h *=
+      	p->h *=
       	  1.0f +
       	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
       else
-      	h = p->h *= expf(w);
+      	p->h *= expf(w);
       
       /* Predict density */
       w = -3.0f * p->force.h_dt * ih * dt;
