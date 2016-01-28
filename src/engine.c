@@ -1686,15 +1686,7 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   e->barrier_launchcount = nr_runners;
   if (pthread_cond_broadcast(&e->barrier_cond) != 0)
     error("Failed to broadcast barrier open condition.");
-
-  /* Print out what we do */
-  /* printf("\n"); */
-  /* task_print_mask(mask); */
-  /* printf("\n"); */
-  /* fflush(stdout); */
-
-  /* engine_print(e); */
-
+  
   /* Load the tasks. */
   pthread_mutex_unlock(&e->barrier_mutex);
   scheduler_start(&e->sched, mask);
@@ -1706,16 +1698,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   pthread_cond_broadcast(&e->sched.sleep_cond);
   pthread_mutex_unlock(&e->sched.sleep_mutex);
 
-  // message("Before barrier");
-  // fflush(stdout);
-
   /* Sit back and wait for the runners to come home. */
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
-
-  // message("After barrier");
-  // fflush(stdout);
 }
 
 /**
@@ -1728,19 +1714,9 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
-  // engine_repartition(e);
-
   engine_prepare(e);
 
-  // engine_print(e);
-
-  // engine_maketasks(e);
-
-  // engine_print(e);
-
   engine_marktasks(e);
-
-  // engine_print(e);
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
@@ -1838,23 +1814,11 @@ if ( e->nodeID == 0 )
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift);
 
-  // scheduler_print_tasks(&e->sched, "tasks_after_drift.dat");
-
-  // error("Done drift");
-
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
 
   /* Prepare the space. */
   engine_prepare(e);
-
-  // engine_maketasks(e);
-
-  // engine_marktasks(e);
-
-  // engine_print(e);
-  // message("Go !");
-  // fflush(stdout);
 
   /* Send off the runners. */
   TIMER_TIC;
@@ -1864,8 +1828,6 @@ if ( e->nodeID == 0 )
                     (1 << task_type_init) | (1 << task_type_ghost) |
                     (1 << task_type_kick) | (1 << task_type_send) |
                     (1 << task_type_recv));
-
-  // scheduler_print_tasks(&e->sched, "tasks_after.dat");
 
   TIMER_TOC(timer_runners);
 
@@ -1977,6 +1939,8 @@ void engine_makeproxies(struct engine *e) {
 
 void engine_split(struct engine *e, int *grid) {
 
+#ifdef WITH_MPI
+  
   int j, k;
   int ind[3];
   struct space *s = e->s;
@@ -2017,6 +1981,11 @@ void engine_split(struct engine *e, int *grid) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+
 }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
