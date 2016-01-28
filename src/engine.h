@@ -39,16 +39,18 @@
 #include "task.h"
 
 /* Some constants. */
-#define engine_policy_none 0
-#define engine_policy_rand 1
-#define engine_policy_steal 2
-#define engine_policy_keep 4
-#define engine_policy_block 8
-#define engine_policy_fixdt 16
-#define engine_policy_multistep 32
-#define engine_policy_cputight 64
-#define engine_policy_mpi 128
-#define engine_policy_setaffinity 256
+enum engine_policy {
+  engine_policy_none = 0,
+  engine_policy_rand = 1,
+  engine_policy_steal = 2,
+  engine_policy_keep = 4,
+  engine_policy_block = 8,
+  engine_policy_fixdt = 16,
+  engine_policy_multistep = 32,
+  engine_policy_cputight = 64,
+  engine_policy_mpi = 128,
+  engine_policy_setaffinity = 256
+};
 
 extern const char *engine_policy_names[];
 
