@@ -2169,11 +2169,6 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   /* Deal with timestep */
   if(e->policy & engine_policy_fixdt) {
     e->dt_min = e->dt_max;
-
-    /* Put this timestep on the time line */
-    float dt_timeline = e->timeEnd - e->timeBegin;
-    while (e->dt_min < dt_timeline) dt_timeline /= 2.;
-    e->dt_min = e->dt_max = dt_timeline;
   }
   
 /* Construct types for MPI communications */

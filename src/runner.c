@@ -850,6 +850,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const float global_dt_min = r->e->dt_min, global_dt_max = r->e->dt_max;
   const float t_current = r->e->time;
   const int nr_parts = c->count;
+  const int fixdt = r->e->policy & engine_policy_fixdt;
   
   int count = 0, updated;
   float new_dt = 0.0f, new_dt_hydro = 0.0f, new_dt_grav = 0.0f,
@@ -883,7 +884,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
 
       /* If particle needs to be kicked */
-      if (p->t_end <= t_current) {
+      if (p->t_end <= t_current || fixdt) {
 
         /* First, finish the force loop */
         p->force.h_dt *= p->h * 0.333333333f;
@@ -891,26 +892,34 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         /* Recover the current timestep */
         current_dt = p->t_end - p->t_begin;
 
-        /* Compute the next timestep */
-        new_dt_hydro = compute_timestep_hydro(p, xp);
-        new_dt_grav = compute_timestep_grav(p, xp);
+	if( fixdt ) {
 
-        new_dt = fminf(new_dt_hydro, new_dt_grav);
+	  /* Now we have a time step, proceed with the kick */
+	  new_dt = global_dt_max;
+	  
+	} else {
+	
+	  /* Compute the next timestep */
+	  new_dt_hydro = compute_timestep_hydro(p, xp);
+	  new_dt_grav = compute_timestep_grav(p, xp);
+	  
+	  new_dt = fminf(new_dt_hydro, new_dt_grav);
+	  
+	  /* Limit timestep increase */
+	  if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
+	
+	  /* Limit timestep within the allowed range */
+	  new_dt = fminf(new_dt, global_dt_max);
+	  new_dt = fmaxf(new_dt, global_dt_min);
+	
+	  /* Put this timestep on the time line */
+	  dt_timeline = dt_max_timeline;
+	  while (new_dt < dt_timeline) dt_timeline /= 2.;
+	  
+	  /* Now we have a time step, proceed with the kick */
+	  new_dt = dt_timeline;
+	}
 
-        /* Limit timestep increase */
-        if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
-	
-        /* Limit timestep within the allowed range */
-        new_dt = fminf(new_dt, global_dt_max);
-        new_dt = fmaxf(new_dt, global_dt_min);
-	
-        /* Put this timestep on the time line */
-        dt_timeline = dt_max_timeline;
-        while (new_dt < dt_timeline) dt_timeline /= 2.;
-
-        /* Now we have a time step, proceed with the kick */
-        new_dt = dt_timeline;
-	
         /* Compute the time step for this kick */
         t_start = 0.5f * (p->t_begin + p->t_end);
         t_end = p->t_end + 0.5f * new_dt;
@@ -918,8 +927,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
         /* Move particle forward in time */
         p->t_begin = p->t_end;
-        p->t_end = p->t_begin + dt;
-
+        p->t_end = p->t_begin + new_dt;
 
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;
