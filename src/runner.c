@@ -542,9 +542,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
   struct part *p, *parts = c->parts;
   struct xpart *xp, *xparts = c->xparts;
   struct cell *finger;
-  int i, k, redo, count = c->count, num_reruns;
+  int redo, count = c->count;
   int *pid;
-  float h, ih, ih2, ih4, h_corr, rho, wcount, rho_dh, wcount_dh, u, fc;
+  float h_corr, rho, wcount, rho_dh, wcount_dh, u, fc;
   float normDiv_v, normCurl_v;
 #ifndef LEGACY_GADGET2_SPH
   float alpha_dot, tau, S;
@@ -553,11 +553,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
   TIMER_TIC;
 
-  // message("start");
-
   /* Recurse? */
   if (c->split) {
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_doghost(r, c->progeny[k]);
     return;
   }
@@ -565,19 +563,17 @@ void runner_doghost(struct runner *r, struct cell *c) {
   /* Init the IDs that have to be updated. */
   if ((pid = (int *)alloca(sizeof(int) * count)) == NULL)
     error("Call to alloca failed.");
-  for (k = 0; k < count; k++) pid[k] = k;
+  for (int k = 0; k < count; k++) pid[k] = k;
 
   /* While there are particles that need to be updated... */
-  for (num_reruns = 0; count > 0 && num_reruns < const_smoothing_max_iter;
+  for (int num_reruns = 0; count > 0 && num_reruns < const_smoothing_max_iter;
        num_reruns++) {
-
-    // message("count=%d redo=%d", count, redo);
 
     /* Reset the redo-count. */
     redo = 0;
 
     /* Loop over the parts in this cell. */
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
       p = &parts[pid[i]];
@@ -587,10 +583,10 @@ void runner_doghost(struct runner *r, struct cell *c) {
       if (p->t_end <= t_end) {
 
         /* Some smoothing length multiples. */
-        h = p->h;
-        ih = 1.0f / h;
-        ih2 = ih * ih;
-        ih4 = ih2 * ih2;
+        const float h = p->h;
+        const float ih = 1.0f / h;
+	const float ih2 = ih * ih;
+	const float ih4 = ih2 * ih2;
 
         /* Final operation on the density. */
         p->rho = rho = ih * ih2 * (p->rho + p->mass * kernel_root);
@@ -599,10 +595,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
                                      (4.0f / 3.0 * M_PI * kernel_gamma3);
         wcount_dh =
             p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
-
-        ;
-        // if(p->id==1000)
-        //  message("wcount_dh=%f", wcount_dh);
 
         /* If no derivative, double the smoothing length. */
         if (wcount_dh == 0.0f) h_corr = p->h;
@@ -623,17 +615,17 @@ void runner_doghost(struct runner *r, struct cell *c) {
           /* Ok, correct then */
           p->h += h_corr;
 
-          // message("Not converged: wcount=%f", p->density.wcount);
-
           /* And flag for another round of fun */
           pid[redo] = pid[i];
           redo += 1;
-          p->density.wcount = 0.0;
-          p->density.wcount_dh = 0.0;
-          p->rho = 0.0;
-          p->rho_dh = 0.0;
-          p->density.div_v = 0.0;
-          for (k = 0; k < 3; k++) p->density.curl_v[k] = 0.0;
+          p->density.wcount = 0.f;
+          p->density.wcount_dh = 0.f;
+          p->rho = 0.f;
+          p->rho_dh = 0.f;
+          p->density.div_v = 0.f;
+          p->density.curl_v[0] = 0.f;
+	  p->density.curl_v[1] = 0.f;
+	  p->density.curl_v[2] = 0.f;
           continue;
         }
 
@@ -678,8 +670,10 @@ void runner_doghost(struct runner *r, struct cell *c) {
 #endif
 
         /* Reset the acceleration. */
-        for (k = 0; k < 3; k++) p->a[k] = 0.0f;
-
+	p->a[0] = 0.0f;
+	p->a[1] = 0.0f;
+	p->a[2] = 0.0f;
+	
         /* Reset the time derivatives. */
         p->force.u_dt = 0.0f;
         p->force.h_dt = 0.0f;
@@ -693,8 +687,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
     /* Re-set the counter for the next loop (potentially). */
     count = redo;
     if (count > 0) {
-
-      // message("count=%d", count);fflush(stdout);
 
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
