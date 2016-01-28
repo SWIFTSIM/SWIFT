@@ -770,8 +770,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const int is_fixdt = (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
   
   int count = 0, updated;
-  float new_dt = 0.0f, new_dt_hydro = 0.0f, new_dt_grav = 0.0f,
-        current_dt = 0.0f;
+  float new_dt = 0.0f;
   float t_start, t_end, t_end_min = FLT_MAX, t_end_max = 0., dt;
   float dt_timeline;
   float h_max, dx_max;
@@ -806,9 +805,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         /* First, finish the force loop */
 	hydro_end_force(p);
 	  
-        /* Recover the current timestep */
-        current_dt = p->t_end - p->t_begin;
-
 	if( is_fixdt ) {
 
 	  /* Now we have a time step, proceed with the kick */
@@ -817,10 +813,13 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 	} else {
 	
 	  /* Compute the next timestep */
-	  new_dt_hydro = hydro_compute_timestep(p, xp);
-	  new_dt_grav = gravity_compute_timestep(p, xp);
+	  const float new_dt_hydro = hydro_compute_timestep(p, xp);
+	  const float new_dt_grav = gravity_compute_timestep(p, xp);
 	  
 	  new_dt = fminf(new_dt_hydro, new_dt_grav);
+
+	  /* Recover the current timestep */
+	  const float current_dt = p->t_end - p->t_begin;
 	  
 	  /* Limit timestep increase */
 	  if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
