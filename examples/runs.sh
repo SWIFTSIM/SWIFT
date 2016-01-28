@@ -34,19 +34,19 @@ do
     # Sod-Shock runs
     if [ ! -e SodShock_${cpu}.dump ]
     then
-        ./swift -r 1000 -t $cpu -f SodShock/sodShock.hdf5 -m 0.01 -w 5000 -d 1e-4 > SodShock_fixed_${cpu}.dump
+        ./swift -t $cpu -f SodShock/sodShock.hdf5 -m 0.01 -w 5000 -c 1. -d 1e-7 -e 0.01 > SodShock_fixed_${cpu}.dump
     fi
     
     # Sedov blast
     if [ ! -e SedovBlast_${cpu}.dump ]
     then
-        ./swift -r 4096 -t $cpu -f SedovBlast/sedov.hdf5 -m 0.02 -w 5000 -d 5e-5 > SedovBlast_fixed_${cpu}.dump
+        ./swift -t $cpu -f SedovBlast/sedov.hdf5 -m 0.02 -w 5000 -c 1. -d 1e-7 -e 0.01 > SedovBlast_fixed_${cpu}.dump
     fi
     
     # Cosmological volume
     if [ ! -e CosmoVolume_${cpu}.dump ]
     then
-        ./swift -r 256 -t $cpu -f CosmoVolume/cosmoVolume.hdf5 -m 0.6 -w 5000 -d 1e-8 > CosmoVolume_fixed_${cpu}.dump
+        ./swift -t $cpu -f CosmoVolume/cosmoVolume.hdf5 -m 0.6 -w 5000 -c 1. -d 1e-7 -e 0.01 > CosmoVolume_fixed_${cpu}.dump
     fi
 
 done
