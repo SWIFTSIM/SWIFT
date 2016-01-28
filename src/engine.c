@@ -1842,6 +1842,7 @@ if ( e->nodeID == 0 )
 
 void engine_makeproxies(struct engine *e) {
 
+#ifdef WITH_MPI
   int i, j, k, ii, jj, kk;
   int cid, cjd, pid, ind[3], *cdim = e->s->cdim;
   struct space *s = e->s;
@@ -1928,6 +1929,12 @@ void engine_makeproxies(struct engine *e) {
           }
         }
       }
+
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+
 }
 
 /**
@@ -2133,7 +2140,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   }
 
   /* Print policy */
-  engine_policy(e);
+  engine_print_policy(e);
 
   /* Deal with timestep */
   if(e->policy & engine_policy_fixdt) {
@@ -2222,7 +2229,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
  *
  * @param e The engine to print information about
  */
-void engine_policy(struct engine *e) {
+void engine_print_policy(struct engine *e) {
 
 #ifdef WITH_MPI
   if(e->nodeID == 0) {
