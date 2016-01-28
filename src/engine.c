@@ -65,10 +65,6 @@ const char *engine_policy_names[10] = {
     "none",   "rand",     "steal",     "keep", "block",
     "fix_dt", "multi_dt", "cpu_tight", "mpi",  "numa_affinity"};
 
-/* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k) \
-  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
-
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 

@@ -37,10 +37,6 @@ struct engine;
 #define space_maxreldx 0.25f
 #define space_qstack 2048
 
-/* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k) \
-  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
-
 /* Split size. */
 extern int space_splitsize;
 extern int space_maxsize;

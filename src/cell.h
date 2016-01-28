@@ -164,6 +164,12 @@ struct cell {
 
 } __attribute__((aligned(64)));
 
+
+/* Convert cell location to ID. */
+#define cell_getid(cdim, i, j, k) \
+  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
+
+
 /* Function prototypes. */
 void cell_split(struct cell *c);
 int cell_locktree(struct cell *c);
