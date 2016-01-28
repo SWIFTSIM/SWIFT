@@ -169,6 +169,6 @@ void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
-void engine_policy(struct engine *e);
+void engine_print_policy(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */
