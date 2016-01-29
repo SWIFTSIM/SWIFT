@@ -178,5 +178,6 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
 int cell_getsize(struct cell *c);
 int cell_link(struct cell *c, struct part *parts);
 void cell_init_parts(struct cell *c, void *data);
+void cell_clean_links(struct cell * c, void * data);
 
 #endif /* SWIFT_CELL_H */

@@ -568,3 +568,18 @@ void cell_init_parts(struct cell *c, void *data) {
   c->t_end_min = 0.;
 }
 
+
+/**
+ * @brief Cleans the links in a given cell.
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_clean_links(struct cell * c, void * data) {
+  c->density = NULL;
+  c->nr_density = 0;
+  
+  c->force = NULL;
+  c->nr_force = 0;
+}
+

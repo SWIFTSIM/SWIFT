@@ -1237,13 +1237,7 @@ void space_init(struct space *s, double dim[3], struct part *parts, int N,
  */
 void space_link_cleanup(struct space *s) {
 
-  void cell_clean_links(struct cell * c, void * data) {
-    c->density = NULL;
-    c->nr_density = 0;
-
-    c->force = NULL;
-    c->nr_force = 0;
-  }
-
+  /* Recursively apply the cell link cleaning routine */
   space_map_cells_pre(s, 1, cell_clean_links, NULL);
+  
 }
