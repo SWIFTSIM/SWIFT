@@ -27,9 +27,6 @@
 /* Forward declaration of space, needed for cell_unpack. */
 struct space;
 
-/* Some constants. */
-#define cell_sid_dt 13
-
 /* Max tag size set to 2^29 to take into account some MPI implementations 
  * that use 2^31 as the upper bound on MPI tags and the fact that 
  * cell_next_tag is multiplied by 2 when passed to an MPI function. 

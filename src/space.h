@@ -29,13 +29,11 @@ struct engine;
 /* Some constants. */
 #define space_maxdepth 10
 #define space_cellallocchunk 1000
-#define space_splitratio 0.875f
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
 #define space_subsize_default 8000000
 #define space_stretch 1.10f
 #define space_maxreldx 0.25f
-#define space_qstack 2048
 
 /* Split size. */
 extern int space_splitsize;
