@@ -27,6 +27,7 @@
 enum {
   timer_none = 0,
   timer_prepare,
+  timer_init,
   timer_drift,
   timer_kick,
   timer_dosort,

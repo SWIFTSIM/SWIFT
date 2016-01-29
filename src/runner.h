@@ -52,7 +52,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flag, int clock);
 void runner_dogsort(struct runner *r, struct cell *c, int flag, int clock);
 void runner_dokick(struct runner *r, struct cell *c, int timer);
 void runner_dodrift(struct runner *r, struct cell *c, int timer);
-void runner_doinit(struct runner *r, struct cell *c);
+void runner_doinit(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
 
 #endif /* SWIFT_RUNNER_H */

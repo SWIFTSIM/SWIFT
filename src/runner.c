@@ -489,31 +489,47 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
  * @param c The cell.
  */
 
-void runner_doinit(struct runner *r, struct cell *c) {
+void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
   struct part *p, *parts = c->parts;
   const int count = c->count;
   const float t_end = r->e->time;
+
+  TIMER_TIC;
   
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_doinit(r, c->progeny[k]);
+      if (c->progeny[k] != NULL) runner_doinit(r, c->progeny[k], 0);
     return;
   }
+  else {
   
-  /* Loop over the parts in this cell. */
-  for (int i = 0; i < count; i++) {
-
-    /* Get a direct pointer on the part. */
-    p = &parts[i];
-
-    if (p->t_end <= t_end) {
-
-      /* Get ready for a density calculation */
-      hydro_init_part(p);
+    /* Loop over the parts in this cell. */
+    for (int i = 0; i < count; i++) {
+      
+      /* Get a direct pointer on the part. */
+      p = &parts[i];
+      
+      if (p->t_end <= t_end) {
+	
+	/* Get ready for a density calculation */
+	hydro_init_part(p);
+      }
     }
   }
+
+  if (timer) {
+#ifdef TIMER_VERBOSE
+    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
+            c->depth, ((double)TIMER_TOC(timer_init)) / CPU_TPS * 1000);
+    fflush(stdout);
+#else
+    TIMER_TOC(timer_init);
+#endif
+  }
+
+  
 }
 
 /**
@@ -1026,7 +1042,7 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_init:
-          runner_doinit(r, ci);
+          runner_doinit(r, ci, 1);
           break;
         case task_type_ghost:
           runner_doghost(r, ci);
