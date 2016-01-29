@@ -691,6 +691,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
   float w;
+  float dx_max = 0.f, h_max = 0.f;
   
   TIMER_TIC
 
@@ -739,9 +740,35 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, dt);
 
+      /* Compute motion since last cell construction */
+      const float dx = sqrtf((p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
+			     (p->x[1] - xp->x_old[1]) * (p->x[1] - xp->x_old[1]) +
+			     (p->x[2] - xp->x_old[2]) * (p->x[2] - xp->x_old[2]));
+      dx_max = fmaxf(dx_max, dx);
+
+      /* Maximal smoothing length */
+      h_max = fmaxf(p->h, h_max);
     }
   }
 
+  /* Otherwise, aggregate data from children. */
+  else {
+
+    /* Loop over the progeny. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        runner_dodrift(r, cp, 0);
+
+	dx_max = fmaxf(dx_max, cp->dx_max);
+	h_max = fmaxf(h_max, cp->h_max);
+      }
+  }
+
+  /* Store the values */
+  c->h_max = h_max;
+  c->dx_max = dx_max;
+  
   if (timer) {
 #ifdef TIMER_VERBOSE
     message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
@@ -766,14 +793,15 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const float dt_max_timeline = r->e->timeEnd - r->e->timeBegin;
   const float global_dt_min = r->e->dt_min, global_dt_max = r->e->dt_max;
   const float t_current = r->e->time;
-  const int nr_parts = c->count;
+  const int count = c->count;
   const int is_fixdt = (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
-  
-  int count = 0, updated;
-  float new_dt = 0.0f;
-  float t_start, t_end, t_end_min = FLT_MAX, t_end_max = 0., dt;
+
+  float new_dt;
+  float t_start, t_end, dt;
   float dt_timeline;
-  float h_max, dx_max;
+
+  int updated = 0;
+  float t_end_min = FLT_MAX, t_end_max = 0.f;
   double ekin = 0.0, epot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   float m, x[3], v_full[3];
@@ -785,19 +813,17 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   /* No children? */
   if (!c->split) {
 
-    /* Init the min/max counters. */
-    h_max = 0.0f;
-    dx_max = 0.0f;
-
     /* Loop over the particles and kick the active ones. */
-    for (int k = 0; k < nr_parts; k++) {
+    for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
       p = &parts[k];
       xp = &xparts[k];
 
       m = p->mass;
-      x[0] = p->x[0], x[1] = p->x[1], x[2] = p->x[2];
+      x[0] = p->x[0];
+      x[1] = p->x[1];
+      x[2] = p->x[2];
 
       /* If particle needs to be kicked */
       if ( is_fixdt || p->t_end <= t_current ) {
@@ -877,11 +903,11 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       epot += m * xp->u_hdt;
 
       /* Minimal time for next end of time-step */
-      if (p->t_end < t_end_min) t_end_min = p->t_end;
+      t_end_min = fminf(p->t_end, t_end_min);
+      t_end_max = fmaxf(p->t_end, t_end_max);
 
-      if (p->t_end > t_end_max) t_end_max = p->t_end;
-
-      if (p->h > h_max) h_max = p->h;
+      /* Number of updated particles */
+      updated++;
     }
 
   }
@@ -889,27 +915,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   /* Otherwise, aggregate data from children. */
   else {
 
-    /* Init everything. */
-    h_max = 0.0f;
-    dx_max = 0.0f;
-    updated = 0;
-    ekin = 0.0;
-    epot = 0.0;
-    mom[0] = 0.0f;
-    mom[1] = 0.0f;
-    mom[2] = 0.0f;
-    ang[0] = 0.0f;
-    ang[1] = 0.0f;
-    ang[2] = 0.0f;
-
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
         runner_dokick(r, cp, 0);
-        h_max = fmaxf(h_max, cp->h_max);
-        dx_max = fmaxf(dx_max, cp->dx_max);
-        updated += cp->count;
+
         ekin += cp->ekin;
         epot += cp->epot;
         mom[0] += cp->mom[0];
@@ -918,15 +929,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         ang[0] += cp->ang[0];
         ang[1] += cp->ang[1];
         ang[2] += cp->ang[2];
-        if (cp->t_end_min < t_end_min) t_end_min = cp->t_end_min;
-        if (cp->t_end_max > t_end_max) t_end_max = cp->t_end_max;
+        t_end_min = fminf(cp->t_end_min, t_end_min);
+        t_end_max = fmaxf(cp->t_end_max, t_end_max);
       }
   }
 
   /* Store the values. */
-  c->h_max = h_max;
-  c->dx_max = dx_max;
-  c->updated = count;
   c->ekin = ekin;
   c->epot = epot;
   c->mom[0] = mom[0];
