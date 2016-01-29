@@ -54,6 +54,7 @@
 #define engine_maxtaskspercell 128
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
+#define engine_queue_search_window 8
 
 #define engine_maxmetisweight 10000.0f
 
@@ -134,6 +135,9 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
+  /* Search window for overlapping tasks. */
+  int queue_search_window;
+
 #ifdef WITH_MPI
   /* MPI data type for the particle transfers */
   MPI_Datatype part_mpi_type;
@@ -144,7 +148,8 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy);
+                 int nr_queues, int nr_nodes, int nodeID, int policy,
+                 int queue_search_window);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask);
 void engine_prepare(struct engine *e);
 void engine_step(struct engine *e);

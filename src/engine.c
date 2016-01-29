@@ -2150,10 +2150,13 @@ static bool hyperthreads_present(void) {
  * @param nr_nodes The number of MPI ranks
  * @param nodeID The MPI rank of this node
  * @param policy The queuing policy to use.
+ * @param queue_search_window the search window for overlapping tasks.
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy) {
+                 int nr_queues, int nr_nodes, int nodeID, int policy,
+                 int queue_search_window) {
+
 
   int i, k;
   float dt_min = dt;
@@ -2237,6 +2240,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->forcerepart = 0;
   e->links = NULL;
   e->nr_links = 0;
+  e->queue_search_window = queue_search_window;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */

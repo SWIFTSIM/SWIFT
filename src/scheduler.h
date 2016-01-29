@@ -109,7 +109,8 @@ struct scheduler {
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID);
 struct task *scheduler_gettask(struct scheduler *s, int qid,
-                               const struct task* prev);
+                               const struct task* prev, 
+                               int queue_search_window);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
 void scheduler_start(struct scheduler *s, unsigned int mask);
 void scheduler_reset(struct scheduler *s, int nr_tasks);

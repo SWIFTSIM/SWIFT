@@ -28,7 +28,6 @@
 #define queue_maxsuper 50
 #define queue_sizeinit 100
 #define queue_sizegrow 2
-#define queue_search_window 8
 
 /* Counters. */
 enum {
@@ -55,7 +54,8 @@ struct queue {
 } __attribute__((aligned(64)));
 
 /* Function prototypes. */
-struct task *queue_gettask(struct queue *q, const struct task *prev, int blocking);
+struct task *queue_gettask(struct queue *q, const struct task *prev, 
+                           int blocking, int queue_search_window);
 void queue_init(struct queue *q, struct task *tasks);
 void queue_insert(struct queue *q, struct task *t);
 

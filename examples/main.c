@@ -85,6 +85,7 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
   FILE *file_thread;
   int with_outputs = 1;
+  int queue_search_window = 8;
 
 /* Choke on FP-exceptions. */
 // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
@@ -135,7 +136,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:f:g:m:q:r:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:f:g:m:o:q:r:s:t:v:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -192,6 +193,12 @@ int main(int argc, char *argv[]) {
         if (sscanf(optarg, "%d", &space_subsize) != 1)
           error("Error parsing sub size.");
         if (myrank == 0) message("sub size set to %i.", space_subsize);
+        break;
+      case 'v':
+        if (sscanf(optarg, "%d", &queue_search_window) != 1)
+          error("Error parsing sub size.");
+        if (myrank == 0) message("task overlap search window set to %i.", 
+                                 queue_search_window);
         break;
       case 'y':
         if(sscanf(optarg, "%d", &dump_tasks) != 1)
@@ -335,7 +342,7 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal);
+              ENGINE_POLICY | engine_policy_steal, queue_search_window);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);

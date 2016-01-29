@@ -130,7 +130,8 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param blocking Block until access to the queue is granted.
  */
 
-struct task *queue_gettask(struct queue *q, const struct task *prev, int blocking) {
+struct task *queue_gettask(struct queue *q, const struct task *prev, 
+                           int blocking, int queue_search_window) {
 
   lock_type *qlock = &q->lock;
   struct task *res = NULL;

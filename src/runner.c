@@ -1198,7 +1198,7 @@ void *runner_main(void *data) {
 
         /* Get the task. */
         TIMER_TIC
-        t = scheduler_gettask(sched, r->qid, prev);
+            t = scheduler_gettask(sched, r->qid, prev, e->queue_search_window);
         TIMER_TOC(timer_gettask);
 
         /* Did I get anything? */
