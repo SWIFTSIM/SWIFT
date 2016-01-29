@@ -27,7 +27,6 @@
 #include "vector.h"
 
 /**
- * @file  runner_iact.h
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
  * The interactions computed here are the ones presented in the Gadget-2 paper
