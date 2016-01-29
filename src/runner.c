@@ -45,14 +45,6 @@
 #include "hydro.h"
 #include "gravity.h"
 
-/* Include the right variant of the SPH interactions */
-#ifdef LEGACY_GADGET2_SPH
-#include "runner_iact_legacy.h"
-#else
-#include "runner_iact.h"
-#endif
-#include "runner_iact_grav.h"
-
 /* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
     5.773502691896258e-01, 5.773502691896258e-01,  5.773502691896258e-01,

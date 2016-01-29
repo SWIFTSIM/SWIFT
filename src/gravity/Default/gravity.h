@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+
+#include <float.h>
+
 /**
  * @brief Computes the gravity time-step of a given particle
  *

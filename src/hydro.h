@@ -24,8 +24,10 @@
 /* Import the right functions */
 #ifdef LEGACY_GADGET2_SPH
 #include "./hydro/Gadget2/hydro.h"
+#include "./hydro/Gadget2/hydro_iact.h"
 #else
 #include "./hydro/Default/hydro.h"
+#include "./hydro/Default/hydro_iact.h"
 #endif
 
 #endif
