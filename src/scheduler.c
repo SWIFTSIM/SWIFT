@@ -598,7 +598,7 @@ void scheduler_splittasks(struct scheduler *s) {
           /* Get the opening angle theta. */
           float dx[3], theta;
           for (k = 0; k < 3; k++) {
-            dx[k] = fabsf(ci->loc[k] - cj->loc[k]);
+            dx[k] = fabs(ci->loc[k] - cj->loc[k]);
             if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k])
               dx[k] = -dx[k] + s->space->dim[k];
             if (dx[k] > 0.0f) dx[k] -= ci->h[k];
