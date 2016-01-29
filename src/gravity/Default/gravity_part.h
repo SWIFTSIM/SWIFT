@@ -16,40 +16,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PART_H
-#define SWIFT_PART_H
-
-/* Config parameters. */
-#include "../config.h"
-
 /* Some standard headers. */
 #include <stdlib.h>
 
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
 
-/* Local headers. */
-#include "const.h"
+/* Gravity particle. */
+struct gpart {
 
-/* Some constants. */
-#define part_align 64
-#define xpart_align 32
+  /* Particle position. */
+  double x[3];
 
-/* Import the right particle definition */
-#ifdef LEGACY_GADGET2_SPH
-#include "./hydro/Gadget2/hydro_part.h"
-#else
-#include "./hydro/Default/hydro_part.h"
-#endif
+  /* Particle velocity. */
+  float v[3];
 
-#include "./gravity/Default/gravity_part.h"
+  /* Particle acceleration. */
+  float a[3];
 
+  /* Particle mass. */
+  float mass;
 
-#ifdef WITH_MPI
-void part_create_mpi_type(MPI_Datatype* part_type);
-void xpart_create_mpi_type(MPI_Datatype* xpart_type);
-#endif
+  /* Particle time of beginning of time-step. */
+  float t_begin;
 
-#endif /* SWIFT_PART_H */
+  /* Particle time of end of time-step. */
+  float t_end;
+
+  /* Anonymous union for id/part. */
+  union {
+
+    /* Particle ID. */
+    size_t id;
+
+    /* Pointer to corresponding SPH part. */
+    struct part* part;
+  };
+
+} __attribute__((aligned(part_align)));
