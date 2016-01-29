@@ -57,7 +57,7 @@
 
 const char *engine_policy_names[10] = {
     "none",   "rand",     "steal",     "keep", "block",
-    "fix_dt", "multi_dt", "cpu_tight", "mpi",  "numa_affinity"};
+    "fix_dt", "cpu_tight", "mpi",  "numa_affinity"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;

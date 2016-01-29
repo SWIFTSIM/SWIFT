@@ -46,10 +46,9 @@ enum engine_policy {
   engine_policy_keep = 4,
   engine_policy_block = 8,
   engine_policy_fixdt = 16,
-  engine_policy_multistep = 32,
-  engine_policy_cputight = 64,
-  engine_policy_mpi = 128,
-  engine_policy_setaffinity = 256
+  engine_policy_cputight = 32,
+  engine_policy_mpi = 64,
+  engine_policy_setaffinity = 128
 };
 
 extern const char *engine_policy_names[];
