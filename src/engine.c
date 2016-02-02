@@ -1735,11 +1735,11 @@ void engine_init_particles(struct engine *e) {
 void engine_step(struct engine *e) {
 
   int k;
+  int updates = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.f;
   double epot = 0.0, ekin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
-  int count = 0;
   struct cell *c;
   struct space *s = e->s;
 
@@ -1754,7 +1754,7 @@ void engine_step(struct engine *e) {
       t_end_max = fmaxf(t_end_max, c->t_end_max);
       ekin += c->ekin;
       epot += c->epot;
-      count += c->updated;
+      updates += c->updated;
       mom[0] += c->mom[0];
       mom[1] += c->mom[1];
       mom[2] += c->mom[2];
@@ -1793,14 +1793,13 @@ if ( e->nodeID == 0 )
     message( "nr_parts=%i." , nr_parts ); */
 #endif
 
-  message("t_end_min=%f t_end_max=%f", t_end_min, t_end_max);
-
   /* Move forward in time */
   e->timeOld = e->time;
   e->time = t_end_min;
   e->step += 1;
-  message("Step: %d e->time=%f", e->step, e->time);
 
+  printf("%d %f %f %d", e->step, e->time, t_end_max - t_end_min, updates);
+  
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift);
 
