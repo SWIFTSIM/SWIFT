@@ -929,6 +929,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         struct cell *cp = c->progeny[k];
         runner_dokick(r, cp, 0);
 
+	updated += cp->updated;
         ekin += cp->ekin;
         epot += cp->epot;
         mom[0] += cp->mom[0];
@@ -943,6 +944,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   }
 
   /* Store the values. */
+  c->updated = updated;
   c->ekin = ekin;
   c->epot = epot;
   c->mom[0] = mom[0];
