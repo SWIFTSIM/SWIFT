@@ -472,7 +472,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   for (k = 0; k < s->nr_cells; k++)
     scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none,
                       k, 0, &cells[k], NULL, 0);
-  engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell);
+  engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell, 0);
 
   // message( "space_split took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
@@ -512,7 +512,7 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   space_sort_struct.waiting = 1;
 
   // Launch the sorting tasks.
-  engine_launch(s->e, s->e->nr_threads, (1 << task_type_psort));
+  engine_launch(s->e, s->e->nr_threads, (1 << task_type_psort), 0);
 
   /* Verify space_sort_struct. */
   /* for (int i = 1; i < N; i++)

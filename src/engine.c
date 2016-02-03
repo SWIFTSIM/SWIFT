@@ -1664,9 +1664,10 @@ void engine_collect_kick(struct cell *c) {
  * @param e The #engine.
  * @param nr_runners The number of #runner to let loose.
  * @param mask The task mask to launch.
+ * @param submask The sub-task mask to launch.
  */
 
-void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
+ void engine_launch(struct engine *e, int nr_runners, unsigned int mask, unsigned int submask) {
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
@@ -1679,7 +1680,7 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask) {
   
   /* Load the tasks. */
   pthread_mutex_unlock(&e->barrier_mutex);
-  scheduler_start(&e->sched, mask);
+  scheduler_start(&e->sched, mask, submask);
   pthread_mutex_lock(&e->barrier_mutex);
 
   /* Remove the safeguard. */
@@ -1713,16 +1714,27 @@ void engine_init_particles(struct engine *e) {
   message("Initialising particles");
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
 
+  printParticle(e->s->parts, 1000, e->s->nr_parts);
+  printParticle(e->s->parts, 515050, e->s->nr_parts);
+
+  message("\n0th DENSITY CALC\n");
+    
   /* Now do a density calculation */
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
                     (1 << task_type_pair) | (1 << task_type_sub) |
                     (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_send) | (1 << task_type_recv));
+		(1 << task_type_send) | (1 << task_type_recv),
+		1 << task_subtype_density);
 
   TIMER_TOC(timer_runners);
+  
+  printParticle(e->s->parts, 1000, e->s->nr_parts);
+  printParticle(e->s->parts, 515050, e->s->nr_parts);
 
+  abort();
+  
   /* Ready to go */
   e->step = -1;
 }
@@ -1793,16 +1805,32 @@ if ( e->nodeID == 0 )
     message( "nr_parts=%i." , nr_parts ); */
 #endif
 
+  printf("%d %f %f %d\n", e->step, e->time, e->timeStep, updates);
+  fflush(stdout);
+
+  printParticle(e->s->parts, 1000, e->s->nr_parts);
+  printParticle(e->s->parts, 515050, e->s->nr_parts);
+
+  message("\nDRIFT\n");
+  
+  /* Drift everybody */
+  engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
+
+  printParticle(e->s->parts, 1000, e->s->nr_parts);
+  printParticle(e->s->parts, 515050, e->s->nr_parts);
+
+  abort();
+  
   /* Move forward in time */
   e->timeOld = e->time;
   e->time = t_end_min;
   e->step += 1;
-
-  printf("%d %f %f %d", e->step, e->time, t_end_max - t_end_min, updates);
+  e->timeStep = e->time - e->timeOld;
   
-  /* Drift everybody */
-  engine_launch(e, e->nr_threads, 1 << task_type_drift);
+  printf("%d %f %f %d\n", e->step, e->time, e->timeStep, updates);
+  fflush(stdout);
 
+  
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
 
@@ -1813,10 +1841,11 @@ if ( e->nodeID == 0 )
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_kick) | (1 << task_type_send) |
-                    (1 << task_type_recv));
+		(1 << task_type_pair) | (1 << task_type_sub) |
+		(1 << task_type_init) | (1 << task_type_ghost) |
+		(1 << task_type_kick) | (1 << task_type_send) |
+		(1 << task_type_recv),
+		0);
 
   TIMER_TOC(timer_runners);
 
@@ -2107,6 +2136,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->nr_links = 0;
   e->timeBegin = timeBegin;
   e->timeEnd = timeEnd;
+  e->timeStep = 0.;
   e->dt_min = dt_min;
   e->dt_max = dt_max;
   engine_rank = nodeID;

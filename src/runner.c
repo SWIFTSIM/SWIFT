@@ -510,6 +510,9 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
       
       /* Get a direct pointer on the part. */
       p = &parts[i];
+
+      if(p->id == 1000) message("init 1000!");
+      if(p->id == 515050) message("init 515050!");
       
       if (p->t_end <= t_end) {
 	
@@ -577,6 +580,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
       p = &parts[pid[i]];
       xp = &xparts[pid[i]];
 
+      if(p->id == 1000) message("ghost 1000");
+      if(p->id == 515050) message("ghost 515050");
+      
       /* Is this part within the timestep? */
       if (p->t_end <= t_end) {
 
@@ -1018,7 +1024,7 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_density)
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
-            runner_doself2_force(r, ci);
+	    runner_doself2_force(r, ci);
           else
             error("Unknown task subtype.");
           break;
@@ -1026,7 +1032,7 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
-            runner_dopair2_force(r, ci, cj);
+	    runner_dopair2_force(r, ci, cj);
           else
             error("Unknown task subtype.");
           break;
@@ -1085,7 +1091,7 @@ void *runner_main(void *data) {
           space_split(e->s, t->ci);
           break;
         case task_type_rewait:
-	  scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj, t->flags);
+	  scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj, t->flags, t->rank);
           break;
         default:
           error("Unknown task type.");

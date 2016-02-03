@@ -46,8 +46,6 @@
 #include "kernel.h"
 #include "timers.h"
 
-//extern struct task *store;
-
 /**
  * @brief Add an unlock_task to the given task.
  *
@@ -852,6 +850,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->tasks_next = 0;
   s->waiting = 0;
   s->mask = 0;
+  s->submask = 0;
   s->nr_unlocks = 0;
 
   /* Set the task pointers in the queues. */
@@ -955,18 +954,18 @@ void scheduler_reweight(struct scheduler *s) {
  *
  * @param s The #scheduler.
  * @param mask The task types to enqueue.
+ * @param submask The sub-task types to enqueue.
  */
 
-void scheduler_start(struct scheduler *s, unsigned int mask) {
+void scheduler_start(struct scheduler *s, unsigned int mask, unsigned int submask) {
 
   int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
   // ticks tic;
 
-  //store = NULL;
-
-  /* Store the mask */
+  /* Store the masks */
   s->mask = mask | (1 << task_type_rewait);
+  s->submask = submask | (1 << task_subtype_none);
 
   /* Clear all the waits and rids. */
   // ticks tic = getticks();
@@ -990,6 +989,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
      to the task. Don't do this at home !
      - ci and cj will give the range of tasks to which the waits will be applied
      - the flags will be used to transfer the mask
+     - the rank will be used to transfer the submask
      - the rest is unused.
   */
   for (int k = 0; k < num_rewait_tasks; k++) {
@@ -998,6 +998,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
     rewait_tasks[k].cj =
         (struct cell *)&s->tasks[(k + 1) * nr_tasks / s->nr_queues];
     rewait_tasks[k].flags = s->mask;
+    rewait_tasks[k].rank = s->submask;
     rewait_tasks[k].skip = 0;
     rewait_tasks[k].wait = 0;
     rewait_tasks[k].rid = -1;
@@ -1017,15 +1018,20 @@ void scheduler_start(struct scheduler *s, unsigned int mask) {
   /* message("waiting tasks took %.3f ms.",
           (double)(getticks() - tic) / CPU_TPS * 1000); */
 
-  //scheduler_print_tasks(s, "tasks_start.dat");
-
   s->mask = mask;
+  s->submask = submask | (1 << task_subtype_none);
 
+  message("mask: %d", s->mask);
+  message("submask: %d", s->submask);
+  
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
     t = &tasks[tid[k]];
-    if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) && !t->skip) {
+    if (atomic_dec(&t->wait) == 1 &&
+	((1 << t->type) & s->mask) &&
+	((1 << t->subtype) & s->submask) &&
+	!t->skip) {
       scheduler_enqueue(s, t);
       pthread_cond_broadcast(&s->sleep_cond);
     }
@@ -1052,8 +1058,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Fail if this task has already been enqueued before. */
   if (t->rid >= 0) error("Task has already been enqueued.");
 
-  /* Ignore skipped tasks and tasks not in the mask. */
-  if (t->skip || (1 << t->type) & ~(s->mask)) {
+  /* Ignore skipped tasks and tasks not in the masks. */
+  if (t->skip || (1 << t->type) & ~(s->mask) || (1 << t->subtype) & ~(s->submask)) {
     return;
   }
 
@@ -1061,11 +1067,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->implicit) {
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
-
-      /* if (t2 == store) { */
-      /*   message("Unlocked by task %s-%s address: %p", taskID_names[t->type], */
-      /*           subtaskID_names[t->subtype], t); */
-      /* } */
 
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
@@ -1161,19 +1162,10 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Release whatever locks this task held. */
   if (!t->implicit) task_unlock(t);
 
-  /* if (t == store) */
-  /*   message("\nChecking task %s-%s address: %p", taskID_names[t->type], */
-  /*           subtaskID_names[t->subtype], t); */
-
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
-
-    /* if (t2 == store) { */
-    /*   message("Unlocked by task %s-%s address: %p", taskID_names[t->type], */
-    /*           subtaskID_names[t->subtype], t); */
-    /* } */
 
     int res = atomic_dec(&t2->wait);
     if (res < 1) {
@@ -1401,16 +1393,17 @@ void scheduler_print_tasks(struct scheduler *s, char *fileName) {
  *
  * @param t_begin Beginning of the #task range
  * @param t_end End of the #task range
- * @param mask The scheduler mask
+ * @param mask The scheduler task mask
+ * @param submask The scheduler subtask mask
  */
 void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
-			  unsigned int mask) {
+			 unsigned int mask, unsigned int submask) {
   for (struct task *t2 = t_begin; t2 != t_end; t2++) {
     
     if (t2->skip) continue;
     
     /* Skip tasks not in the mask */
-    if (!((1 << t2->type) & mask)) continue;
+    if (!((1 << t2->type) & mask) || !((1 << t2->subtype) & submask)) continue;
     
     /* Skip sort tasks that have already been performed */
     if (t2->type == task_type_sort && t2->flags == 0) continue;
