@@ -1020,9 +1020,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask, unsigned int submas
 
   s->mask = mask;
   s->submask = submask | (1 << task_subtype_none);
-
-  message("mask: %d", s->mask);
-  message("submask: %d", s->submask);
   
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
