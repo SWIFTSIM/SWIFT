@@ -48,8 +48,8 @@ void printParticle(struct part *parts, long long int id, int N) {
       printf(
           "## Particle[%d]:\n id=%lld, x=[%.3e,%.3e,%.3e], "
           "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e],\n h=%.3e, "
-          "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, P=%3.e, S=%.3e,\n divV=%.3e, "
-	  " curlV=%.3e rotV=[%.3e,%.3e,%.3e]  \n "
+          "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, P=%.3e, S=%.3e, dS/dt=%.3e,\n"
+	  "divV=%.3e, curlV=%.3e, rotV=[%.3e,%.3e,%.3e]  \n "
 	  "t_begin=%.3e, t_end=%.3e\n",
           i, parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
           parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
@@ -59,6 +59,7 @@ void printParticle(struct part *parts, long long int id, int N) {
 	  parts[i].rho,
 	  parts[i].pressure,
 	  parts[i].entropy,
+	  parts[i].entropy_dt,
 	  parts[i].div_v,
 	  parts[i].curl_v,
 	  parts[i].rot_v[0],

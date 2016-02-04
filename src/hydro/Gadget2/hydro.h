@@ -98,16 +98,21 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(struct part*
   p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh / p->rho);
 
   /* Finish calculation of the velocity curl */
+  p->rot_v[0] *= ih4;
+  p->rot_v[1] *= ih4;
+  p->rot_v[2] *= ih4;
+
+  /* And compute the norm of the curl */
   p->curl_v = sqrtf(p->rot_v[0] * p->rot_v[0] +
 		    p->rot_v[1] * p->rot_v[1] +
 		    p->rot_v[2] * p->rot_v[2]) / p->rho;
   
   /* Finish calculation of the velocity divergence */
-  p->div_v /= p->rho;
+  p->div_v *= ih4 / p->rho;
   
   /* Compute the pressure */
   const float dt = time - 0.5f*(p->t_begin + p->t_end);
-  p->pressure = (p->entropy + p->entropy_dt * dt) * pow(p->rho, const_hydro_gamma);
+  p->pressure = (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
 
 }
 

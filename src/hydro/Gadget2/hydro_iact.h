@@ -98,8 +98,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   dv[2] = pi->v[2] - pj->v[2];
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
-  pi->div_v -= faci * dvdr;
-  pj->div_v -= facj * dvdr;
+  pi->div_v += faci * dvdr;
+  pj->div_v += facj * dvdr;
 
   /* Compute dv cross r */
   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
@@ -168,7 +168,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->div_v -= fac * dvdr;
 
   if(pi->id == 1000 && pj->id == 1103)
-    message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e %e\n fac=%e dvdr=%e",
+    message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e\n fac=%e dvdr=%e",
 	    pj->id,
 	    r,
 	    hi,
@@ -177,7 +177,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 	    wi_dx * ih4,
 	    -mj * (3.f * kernel_igamma * wi) * ih4,
 	    -mj * u * wi_dx * kernel_igamma * ih4,
-	    fac,
+	    fac * ih4,
 	    dvdr
 	    );
 
