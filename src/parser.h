@@ -20,21 +20,30 @@
 #ifndef SWIFT_PARSER_H
 #define SWIFT_PARSER_H
 
+/* Needs to be included so that strtok returns char * instead of a int *. */
+#include <string.h>
+
 #define MAX_LINE_SIZE 128
+#define MAX_NO_OF_PARAMS 4
 
-struct model_params {
-    //char *names[] = {"no_of_threads", "no_of_time_steps", "max_h", "ic_file"};
-
-    int no_of_threads;
-    int no_of_time_steps;
-    float max_h;
-    char *ic_file;
+struct parameter {
+    char name [MAX_LINE_SIZE];
+    char value [MAX_LINE_SIZE];
 };
 
-void parseFile(struct model_params *params, const char * file_name) {
+struct swift_params {
+    struct parameter data [MAX_NO_OF_PARAMS];
+};
+
+void printParameters(struct swift_params *params);
+
+void getParam(struct swift_params *params, char * name, int * retParam);
+
+void parseFile(struct swift_params *params, const char *file_name) {
  
     FILE *fp;
     char line[MAX_LINE_SIZE];
+    int param_count = 0;
 
     /* Open file for reading */
     fp = fopen(file_name, "r");
@@ -47,82 +56,55 @@ void parseFile(struct model_params *params, const char * file_name) {
     while(!feof(fp)) {
       
       /* Read a line of the file */
-      if(fgets(line,MAX_LINE_SIZE,fp)!=NULL) 
-      {
+      if(fgets(line,MAX_LINE_SIZE,fp)!=NULL) {
+        
         /* Check if the line contains a value */
         if(strchr(line,':')) {
-         
-          //int size = atoi(line);
-          //int i;
-          //char *p;
-          //char *elements[size];
-          //for(i=0; i<8; i++) elements[i] = (char *)malloc(MAX_LINE_SIZE);
-          //
-
-          ////for(i=0; i<size; i++) {
-          //  fgets(line,MAX_LINE_SIZE,fp);
-          //  strtok(line,":");
-          //  strcpy(elements[0],line);
-
-          //  p = (char *)strtok(NULL,":");
-          //  strcpy(elements[1],p);
-          ////}
-
-          int i;
           char * token;
-          char *elements[8];
-          for(i=0; i<8; i++) elements[i] = (char *)malloc(MAX_LINE_SIZE);
-          int element_count = 0;
-
-
-          printf ("Splitting string: '%s' into tokens:\n",line);
           
-          token = (char *)strtok(line,":");
-         
-          printf("Token:%s\n",token); 
+          token = strtok(&(line[0]),":");
           
-          while (token != NULL) {
-            strcpy(elements[element_count],token);  
-            printf ("Element:%s\n",elements[element_count]);
-            token = (char *)strtok (NULL, ":");
-            element_count++;
-          }
+          //while (token != NULL) {
+            strcpy(params->data[param_count].name,token);
+            token = strtok (NULL, ":");
+            strcpy(params->data[param_count++].value,token);
+          //}
           
-         //if(strcmp("no_of_threads",elements[0])) {
-         //   params->no_of_threads = atoi(elements[1]);
-         //} 
-         //else if(strcmp("no_of_time_steps",elements[0])) {
-         //   params->no_of_time_steps = atoi(elements[1]);
-         //}
-         //else if(strcmp("max_h",elements[0])) {
-         //   params->max_h = atof(elements[1]);
-         //}
-         //else if(strcmp("ic_file",elements[0])) {
-         //   params->ic_file = elements[1];
-         //}
- 
-         //for(i=0; i<element_count; i++)
-         //   printf("Element[%d]: %s\n",i,elements[i]);  
-          
-         //float fp_number;
-          //char * str;
-          //fscanf(fp, "%f %s", &fp_number,str);
-          //
-          ///* writing content to stdout */
-          //printf("%s",line);
-          ////printf("Float: %f, comment: %s\n",fp_number,str);
-        }
+         }
       }
     
     }
 
-    printf("no_of_threads:%d, no_of_time_steps:%d, max_h:%f, ic_file:%s\n",params->no_of_threads,params->no_of_time_steps,params->max_h,params->ic_file);
+    
 
     fclose(fp);
 }
 
-void storeParam() {
+void getParam(struct swift_params *params, char * name, int * retParam) {
+  
+   int i; 
+   
+   for(i=0; i<MAX_NO_OF_PARAMS; i++) {
+     if(strcmp(name,params->data[i].name)) {
+       *retParam = atoi(params->data[i].value);       
+       return;
+     }
+   }
+}
+
+void printParameters(struct swift_params *params) {
+
+    int i;
+
+    printf("\n--------------------\n");
+    printf("SWIFT Parameter File\n");
+    printf("--------------------\n");
+    
+    for(i=0; i<MAX_NO_OF_PARAMS; i++) {
+        printf("Name: %s\n",params->data[i].name);
+        printf("Value: %s\n",params->data[i].value);
+    }
 
 }
 
-#endif /* SWIFT_VECTOR_H */
+#endif /* SWIFT_PARSER_H */
