@@ -22,9 +22,10 @@
 
 /* Needs to be included so that strtok returns char * instead of a int *. */
 #include <string.h>
+#include <stdlib.h>
 
 #define MAX_LINE_SIZE 128
-#define MAX_NO_OF_PARAMS 4
+#define MAX_NO_OF_PARAMS 512 
 
 struct parameter {
     char name [MAX_LINE_SIZE];
@@ -33,17 +34,24 @@ struct parameter {
 
 struct swift_params {
     struct parameter data [MAX_NO_OF_PARAMS];
+    int count;
 };
 
+/* Public API. */
+void parseFile(const char *file_name, struct swift_params *params);
 void printParameters(struct swift_params *params);
+void getParamInt(struct swift_params *params, char *name, int *retParam);
+void getParamFloat(struct swift_params *params, char *name, float *retParam);
+void getParamString(struct swift_params *params, char *name, char *retParam);
 
-void getParam(struct swift_params *params, char * name, int * retParam);
+/* Private functions. */
+static void readParameter(FILE *fp, struct swift_params *params);
 
-void parseFile(struct swift_params *params, const char *file_name) {
+void parseFile(const char *file_name, struct swift_params *params) {
  
     FILE *fp;
-    char line[MAX_LINE_SIZE];
-    int param_count = 0;
+    
+    params->count = 0;
 
     /* Open file for reading */
     fp = fopen(file_name, "r");
@@ -54,39 +62,49 @@ void parseFile(struct swift_params *params, const char *file_name) {
   
     /* Read until the end of the file is reached.*/
     while(!feof(fp)) {
-      
-      /* Read a line of the file */
-      if(fgets(line,MAX_LINE_SIZE,fp)!=NULL) {
-        
-        /* Check if the line contains a value */
-        if(strchr(line,':')) {
-          char * token;
-          
-          token = strtok(&(line[0]),":");
-          
-          //while (token != NULL) {
-            strcpy(params->data[param_count].name,token);
-            token = strtok (NULL, ":");
-            strcpy(params->data[param_count++].value,token);
-          //}
-          
-         }
-      }
-    
+      readParameter(fp,params); 
     }
-
-    
 
     fclose(fp);
 }
 
-void getParam(struct swift_params *params, char * name, int * retParam) {
+void getParamInt(struct swift_params *params, char * name, int * retParam) {
   
    int i; 
    
    for(i=0; i<MAX_NO_OF_PARAMS; i++) {
-     if(strcmp(name,params->data[i].name)) {
+
+     /*strcmp returns 0 if both strings are the same.*/
+     if(!strcmp(name,params->data[i].name)) {
        *retParam = atoi(params->data[i].value);       
+       return;
+     }
+   }
+}
+
+void getParamFloat(struct swift_params *params, char * name, float * retParam) {
+  
+   int i; 
+   
+   for(i=0; i<MAX_NO_OF_PARAMS; i++) {
+
+     /*strcmp returns 0 if both strings are the same.*/
+     if(!strcmp(name,params->data[i].name)) {
+       *retParam = atof(params->data[i].value);       
+       return;
+     }
+   }
+}
+
+void getParamString(struct swift_params *params, char * name, char * retParam) {
+  
+   int i; 
+   
+   for(i=0; i<MAX_NO_OF_PARAMS; i++) {
+
+     /*strcmp returns 0 if both strings are the same.*/
+     if(!strcmp(name,params->data[i].name)) {
+       strcpy(retParam, params->data[i].value);       
        return;
      }
    }
@@ -100,11 +118,34 @@ void printParameters(struct swift_params *params) {
     printf("SWIFT Parameter File\n");
     printf("--------------------\n");
     
-    for(i=0; i<MAX_NO_OF_PARAMS; i++) {
+    for(i=0; i<params->count; i++) {
         printf("Name: %s\n",params->data[i].name);
         printf("Value: %s\n",params->data[i].value);
     }
 
+}
+
+static void readParameter(FILE *fp, struct swift_params *params) {
+
+    char line [MAX_LINE_SIZE];
+
+    /* Read a line of the file */
+    if(fgets(line,MAX_LINE_SIZE,fp) != "...") {
+        
+        /* Check if the line contains a value */
+        if(strchr(line,':')) {
+      
+          char * token;
+          
+          /*Take first token as the parameter name. */
+          token = strtok(line,":");
+          strcpy(params->data[params->count].name,token);
+          
+          /*Take second token as the parameter value. */
+          token = strtok (NULL, ":");
+          strcpy(params->data[params->count++].value,token);
+        }
+    }
 }
 
 #endif /* SWIFT_PARSER_H */
