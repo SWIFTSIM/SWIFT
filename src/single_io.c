@@ -227,7 +227,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
   readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, v, COMPULSORY);
   readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, mass, COMPULSORY);
   readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, entropy, COMPULSORY); //MATTHIEU
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
   // readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
   readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL);
@@ -469,8 +469,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
              UNIT_CONV_MASS);
   writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, h,
              us, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, u,
-             us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, entropy,
+             us, UNIT_CONV_ENERGY_PER_UNIT_MASS); //MATTHIEU
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              id, us, UNIT_CONV_NO_UNITS);
   /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, dt,

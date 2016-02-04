@@ -1198,7 +1198,7 @@ void space_init(struct space *s, double dim[3], struct part *parts, int N,
     xp->v_full[0] = p->v[0];
     xp->v_full[1] = p->v[1];
     xp->v_full[2] = p->v[2];
-    xp->u_hdt = p->u;
+    //xp->u_hdt = p->u;        // MATTHIEU
   }
 
   /* For now, clone the parts to make gparts. */

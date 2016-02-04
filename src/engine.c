@@ -1714,8 +1714,8 @@ void engine_init_particles(struct engine *e) {
   message("Initialising particles");
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
 
-  printParticle(e->s->parts, 1000, e->s->nr_parts);
-  printParticle(e->s->parts, 515050, e->s->nr_parts);
+  //printParticle(e->s->parts, 1000, e->s->nr_parts);
+  //printParticle(e->s->parts, 515050, e->s->nr_parts);
 
   message("\n0th DENSITY CALC\n");
     
@@ -1729,11 +1729,15 @@ void engine_init_particles(struct engine *e) {
 		1 << task_subtype_density);
 
   TIMER_TOC(timer_runners);
-  
+    
+  message("\n0th ENTROPY CONVERSION\n");
+
+  space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
+
   printParticle(e->s->parts, 1000, e->s->nr_parts);
   printParticle(e->s->parts, 515050, e->s->nr_parts);
-
-  abort();
+  
+  exit(0);
   
   /* Ready to go */
   e->step = -1;
@@ -1788,13 +1792,13 @@ void engine_step(struct engine *e) {
       MPI_SUCCESS)
     error("Failed to aggregate t_end_max.");
   t_end_max = in[0];
-  out[0] = count;
+  out[0] = updates;
   out[1] = ekin;
   out[2] = epot;
   if (MPI_Allreduce(out, in, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate energies.");
-  count = in[0];
+  updates = in[0];
   ekin = in[1];
   epot = in[2];
 /* int nr_parts;
@@ -1819,8 +1823,6 @@ if ( e->nodeID == 0 )
   printParticle(e->s->parts, 1000, e->s->nr_parts);
   printParticle(e->s->parts, 515050, e->s->nr_parts);
 
-  abort();
-  
   /* Move forward in time */
   e->timeOld = e->time;
   e->time = t_end_min;
@@ -1830,6 +1832,7 @@ if ( e->nodeID == 0 )
   printf("%d %f %f %d\n", e->step, e->time, e->timeStep, updates);
   fflush(stdout);
 
+  message("\nACCELERATION AND KICK\n");
   
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
@@ -1845,11 +1848,17 @@ if ( e->nodeID == 0 )
 		(1 << task_type_init) | (1 << task_type_ghost) |
 		(1 << task_type_kick) | (1 << task_type_send) |
 		(1 << task_type_recv),
-		0);
+		(1 << task_subtype_density) | (1 << task_subtype_force));
 
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);
+
+
+  printParticle(e->s->parts, 1000, e->s->nr_parts);
+  printParticle(e->s->parts, 515050, e->s->nr_parts);
+  exit(0);
+
 }
 
 /**

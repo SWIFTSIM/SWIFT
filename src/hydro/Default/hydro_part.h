@@ -73,7 +73,7 @@ struct part {
   float alpha;
 
   /* Store density/force specific stuff. */
-  union {
+  //union {
 
     struct {
       
@@ -112,7 +112,7 @@ struct part {
       float c;
       
     } force;
-  };
+  //};
 
   /* Particle mass. */
   float mass;

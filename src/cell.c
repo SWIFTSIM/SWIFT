@@ -564,10 +564,25 @@ void cell_init_parts(struct cell *c, void *data) {
     xp[i].v_full[0] = p[i].v[0];
     xp[i].v_full[1] = p[i].v[1];
     xp[i].v_full[2] = p[i].v[2];
-    hydro_init_part(p);
-    hydro_reset_acceleration(p);
+    hydro_init_part(&p[i]);
+    hydro_reset_acceleration(&p[i]);
   }
   c->t_end_min = 0.;
+}
+
+/**
+ * @brief Converts hydro quantities to a valid state after the initial density calculation
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_convert_hydro(struct cell *c, void *data) {
+
+  struct part *p = c->parts;
+  
+  for(int i=0; i<c->count; ++i) {
+    hydro_convert_quantities(&p[i]);
+  }
 }
 
 

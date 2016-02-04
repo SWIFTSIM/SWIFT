@@ -36,6 +36,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "const.h"
+#include "debug.h"
 #include "engine.h"
 #include "error.h"
 #include "scheduler.h"
@@ -587,7 +588,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
       if (p->t_end <= t_end) {
 
 	/* Finish the density calculation */
-	hydro_end_density(p);
+	hydro_end_density(p, t_end);
 
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
@@ -620,7 +621,9 @@ void runner_doghost(struct runner *r, struct cell *c) {
         }
 
         /* We now have a particle whose smoothing length has converged */
-
+	//if(p->id == 1000)
+	//  printParticle(parts, 1000, count);
+	
         /* As of here, particle force variables will be set. Do _NOT_
            try to read any particle density variables! */
 

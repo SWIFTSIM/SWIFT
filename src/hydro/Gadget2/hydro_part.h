@@ -59,8 +59,18 @@ struct part {
   /* Particle time of end of time-step. */
   float t_end;
 
-  /* Particle internal energy. */
-  float u;
+  struct {
+  
+    /* Number of neighbours */
+    float wcount;
+    
+    /* Number of neighbours spatial derivative */
+    float wcount_dh;
+
+  } density;
+    
+  /* Particle entropy. */
+  float entropy;
 
   /* Particle density. */
   float rho;
@@ -69,52 +79,30 @@ struct part {
    */
   float rho_dh;
 
-  /* Store density/force specific stuff. */
-  union {
-
-    struct {
-
-      /* Particle velocity divergence. */
-      float div_v;
-      
-      /* Derivative of particle number density. */
-      float wcount_dh;
-
-      /* Particle velocity curl. */
-      float curl_v[3];
-      
-      /* Particle number density. */
-      float wcount;
-      
-    } density;
-
-    struct {
-
-      /* Balsara switch */
-      float balsara;
-      
-    /* Aggregate quantities. */
-      float POrho2;
-      
-      /* Change in particle energy over time. */
-      float u_dt;
-      
-      /* Change in smoothing length over time. */
-      float h_dt;
-      
-      /* Signal velocity */
-      float v_sig;
-      
-      /* Sound speed */
-      float c;
-      
-    } force;
-  };
-
-  
   /* Particle mass. */
   float mass;
 
+  /* Particle pressure */
+  float pressure;
+
+  /* Entropy time derivative */
+  float entropy_dt;
+  
+  /* Velocity divergence */
+  float div_v;
+
+  /* Velocity curl */
+  float curl_v;
+  float rot_v[3];
+
+  /* Signal velocity */
+  float v_sig;
+
+  /* temp */
+  struct {
+  float h_dt;  //MATTHIEU
+  } force;
+  
   /* Particle ID. */
   unsigned long long id;
 

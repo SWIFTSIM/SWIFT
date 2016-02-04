@@ -1400,6 +1400,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     pi = &parts[pid];
 
+    if(pi->id == 1000) message("oO 1000");
+    if(pi->id == 515050) message("oO 515050");
+    
     /* Get the particle position and radius. */
     for (k = 0; k < 3; k++) pix[k] = pi->x[k];
     hi = pi->h;
@@ -1624,6 +1627,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     /* Get a pointer to the ith particle. */
     pi = &parts[pid];
 
+    if(pi->id == 1000) message("oO 1000");
+    if(pi->id == 515050) message("oO 515050");
+
+    
     /* Get the particle position and radius. */
     for (k = 0; k < 3; k++) pix[k] = pi->x[k];
     hi = pi->h;

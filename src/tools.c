@@ -300,20 +300,22 @@ void density_dump(int N) {
 
   int k;
   float r2[4] = {0.0f, 0.0f, 0.0f, 0.0f}, hi[4], hj[4];
-  struct part *pi[4], *pj[4], Pi[4], Pj[4];
+  struct part /**pi[4],  *pj[4],*/ Pi[4], Pj[4];
 
   /* Init the interaction parameters. */
   for (k = 0; k < 4; k++) {
     Pi[k].mass = 1.0f;
     Pi[k].rho = 0.0f;
     Pi[k].density.wcount = 0.0f;
+    Pi[k].id = k;
     Pj[k].mass = 1.0f;
     Pj[k].rho = 0.0f;
     Pj[k].density.wcount = 0.0f;
+    Pj[k].id = k+4;
     hi[k] = 1.0;
     hj[k] = 1.0;
-    pi[k] = &Pi[k];
-    pj[k] = &Pj[k];
+    //pi[k] = &Pi[k];
+    //pj[k] = &Pj[k];
   }
 
   for (k = 0; k <= N; k++) {
@@ -325,17 +327,19 @@ void density_dump(int N) {
     Pj[0].density.wcount = 0;
     runner_iact_density(r2[0], NULL, hi[0], hj[0], &Pi[0], &Pj[0]);
     printf(" %e %e %e", r2[0], Pi[0].density.wcount, Pj[0].density.wcount);
-    Pi[0].density.wcount = 0;
-    Pj[0].density.wcount = 0;
-    Pi[1].density.wcount = 0;
-    Pj[1].density.wcount = 0;
-    Pi[2].density.wcount = 0;
-    Pj[2].density.wcount = 0;
-    Pi[3].density.wcount = 0;
-    Pj[3].density.wcount = 0;
-    runner_iact_vec_density(r2, NULL, hi, hj, pi, pj);
-    printf(" %e %e %e %e\n", Pi[0].density.wcount, Pi[1].density.wcount,
-           Pi[2].density.wcount, Pi[3].density.wcount);
+    /* Pi[0].density.wcount = 0; */
+    /* Pj[0].density.wcount = 0; */
+    /* Pi[1].density.wcount = 0; */
+    /* Pj[1].density.wcount = 0; */
+    /* Pi[2].density.wcount = 0; */
+    /* Pj[2].density.wcount = 0; */
+    /* Pi[3].density.wcount = 0; */
+    /* Pj[3].density.wcount = 0; */
+    /* runner_iact_vec_density(r2, NULL, hi, hj, pi, pj); */
+    /* printf(" %e %e %e %e\n", Pi[0].density.wcount, Pi[1].density.wcount, */
+    /*        Pi[2].density.wcount, Pi[3].density.wcount); */
+
+    // MATTHIEU
   }
 }
 
@@ -360,13 +364,8 @@ void engine_single_density(double *dim, long long int pid,
 
   /* Clear accumulators. */
   ih = 1.0f / p.h;
-  p.rho = 0.0f;
-  p.rho_dh = 0.0f;
-  p.density.wcount = 0.0f;
-  p.density.wcount_dh = 0.0f;
-  p.density.div_v = 0.0;
-  for (k = 0; k < 3; k++) p.density.curl_v[k] = 0.0;
-
+  hydro_init_part(&p);
+  
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
@@ -411,13 +410,8 @@ void engine_single_force(double *dim, long long int pid,
   p = parts[k];
 
   /* Clear accumulators. */
-  p.a[0] = 0.0f;
-  p.a[1] = 0.0f;
-  p.a[2] = 0.0f;
-  p.force.u_dt = 0.0f;
-  p.force.h_dt = 0.0f;
-  p.force.v_sig = 0.0f;
-
+  hydro_reset_acceleration(&p);
+  
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
     // for ( k = N-1 ; k >= 0 ; k-- ) {
@@ -435,18 +429,13 @@ void engine_single_force(double *dim, long long int pid,
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     if (r2 < p.h * p.h * kernel_gamma2 ||
         r2 < parts[k].h * parts[k].h * kernel_gamma2) {
-      p.a[0] = 0.0f;
-      p.a[1] = 0.0f;
-      p.a[2] = 0.0f;
-      p.force.u_dt = 0.0f;
-      p.force.h_dt = 0.0f;
-      p.force.v_sig = 0.0f;
+      hydro_reset_acceleration(&p);
       runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k]);
     }
   }
 
   /* Dump the result. */
-  message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e], udt=%e.", p.id, p.h, p.a[0],
-          p.a[1], p.a[2], p.force.u_dt);
+  message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e]", p.id, p.h, p.a[0],
+          p.a[1], p.a[2]);
   fflush(stdout);
 }
