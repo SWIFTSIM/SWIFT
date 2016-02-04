@@ -158,19 +158,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float ih3 = h_inv * h_inv * h_inv;
   const float ih4 = h_inv * h_inv * h_inv * h_inv;
   
-  if(pi->id == 1000 && pj->id == 1103)
-    message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e %e\n",
-	    pj->id,
-	    r,
-	    hi,
-	    u,
-	    wi * ih3,
-	    wi_dx * ih4,
-	    -mj * (3.f * kernel_igamma * wi) * ih4,
-	    -mj * u * wi_dx * kernel_igamma * ih4,
-	    kernel_igamma
-	    );
-
   const float fac = mj * wi_dx * ri;
   
   /* Compute dv dot r */
@@ -180,6 +167,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
   pi->div_v -= fac * dvdr;
 
+  if(pi->id == 1000 && pj->id == 1103)
+    message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e %e\n fac=%e dvdr=%e",
+	    pj->id,
+	    r,
+	    hi,
+	    u,
+	    wi * ih3,
+	    wi_dx * ih4,
+	    -mj * (3.f * kernel_igamma * wi) * ih4,
+	    -mj * u * wi_dx * kernel_igamma * ih4,
+	    fac,
+	    dvdr
+	    );
+
+  
   /* Compute dv cross r */
   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
   curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
