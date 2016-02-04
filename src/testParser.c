@@ -4,10 +4,10 @@
 
 int main(int argc, char *argv[]) {
 
-  struct model_params params;
   const char * input_file = argv[1];
+  struct swift_params param_file;
+ 
+  parseFile(&param_file,input_file);
 
-  //parseFile(&params,"testInput.dat");
-  parseFile(&params,input_file);
-
+  printParameters(&param_file);
 }
