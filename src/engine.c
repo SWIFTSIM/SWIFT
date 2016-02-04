@@ -2141,6 +2141,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->nr_links = 0;
   e->timeBegin = timeBegin;
   e->timeEnd = timeEnd;
+  e->timeOld = timeBegin;
+  e->time = timeBegin;
   e->timeStep = 0.;
   e->dt_min = dt_min;
   e->dt_max = dt_max;
