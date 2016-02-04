@@ -38,7 +38,7 @@
   1.f /* Value taken from (Price,2008), not used in legacy gadget mode */
 
 /* Time integration constants. */
-#define const_cfl 0.3f
+#define const_cfl 0.2f
 #define const_ln_max_h_change                                           \
   0.231111721f /* Particle can't change volume by more than a factor of \
                   2=1.26^3 over one time step */
@@ -47,7 +47,7 @@
 /* Neighbour search constants. */
 #define const_eta_kernel \
   1.2349f /* Corresponds to 48 ngbs with the cubic spline kernel */
-#define const_delta_nwneigh 1.f
+#define const_delta_nwneigh 0.1f
 #define const_smoothing_max_iter 30
 #define CUBIC_SPLINE_KERNEL
 

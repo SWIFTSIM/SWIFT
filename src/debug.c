@@ -50,7 +50,7 @@ void printParticle(struct part *parts, long long int id, int N) {
           "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e],\n h=%.3e, "
           "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, P=%.3e, S=%.3e, dS/dt=%.3e,\n"
 	  "divV=%.3e, curlV=%.3e, rotV=[%.3e,%.3e,%.3e]  \n "
-	  "t_begin=%.3e, t_end=%.3e\n",
+	  "v_sig=%e t_begin=%.3e, t_end=%.3e\n",
           i, parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
           parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
           parts[i].a[1], parts[i].a[2], 2.*parts[i].h,
@@ -65,6 +65,7 @@ void printParticle(struct part *parts, long long int id, int N) {
 	  parts[i].rot_v[0],
 	  parts[i].rot_v[1],
 	  parts[i].rot_v[2],
+	  parts[i].v_sig,
           parts[i].t_begin, parts[i].t_end);
       found = 1;
     }

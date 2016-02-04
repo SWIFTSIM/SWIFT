@@ -725,7 +725,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->x[0] += xp->v_full[0] * dt;
       p->x[1] += xp->v_full[1] * dt;
       p->x[2] += xp->v_full[2] * dt;
-
+      
       /* Predict velocities */
       p->v[0] += p->a[0] * dt;
       p->v[1] += p->a[1] * dt;
@@ -860,6 +860,13 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 	  
 	  new_dt = fminf(new_dt_hydro, new_dt_grav);
 
+	  if(p->id == 1000)
+	    message("1000   dt_hydro=%e", new_dt_hydro);
+
+	  if(p->id == 515050)
+	    message("515050 dt_hydro=%e", new_dt_hydro);
+
+	  
 	  /* Recover the current timestep */
 	  const float current_dt = p->t_end - p->t_begin;
 	  

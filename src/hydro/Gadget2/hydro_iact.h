@@ -113,13 +113,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->rot_v[0] += facj * curlvr[0];
   pj->rot_v[1] += facj * curlvr[1];
   pj->rot_v[2] += facj * curlvr[2];
-
-  /* if(pi->id == 1000) */
-  /*   message("Interacting with %lld. r=%f\n", pj->id, r); */
-
-  /* if(pj->id == 1000) */
-  /*   message("Interacting with %lld. r=%f\n", pi->id, r); */
-
 }
 
 
@@ -139,8 +132,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get r and r inverse. */
   const float r = sqrtf(r2);
   const float ri = 1.0f / r;
-
-  if(pi->id == 1000 && pj->id == 1103) hi = 0.2234976 / 2.f;
   
   /* Compute the kernel function */
   const float h_inv = 1.0f / hi;
@@ -167,7 +158,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
   pi->div_v -= fac * dvdr;
 
-  if(pi->id == 1000 && pj->id == 1103)
+  if(pi->id == 1000 && pj->id == 1203)
     message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e\n fac=%e dvdr=%e",
 	    pj->id,
 	    r,
@@ -260,6 +251,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
 
+
+  if(pi->id == 1000 && pj->id == 1203)
+    message("Interacting with %lld. r=%e hi=%e hj=%e dWi/dx=%e dWj/dx=%3e dvdr=%e visc=%e sph=%e",
+	    pj->id,
+	    r,
+	    2*hi,
+	    2*hj,
+	    wi_dr,
+	    wj_dr,
+	    dvdr,
+	    visc_term,
+	    sph_term
+	    );
+  if(pi->id == 1203 && pj->id == 1000)
+    message("oO");
+
+  
   /* Use the force Luke ! */
   pi->a[0] -= acc * dx[0];
   pi->a[1] -= acc * dx[1];
@@ -274,8 +282,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->v_sig = fmaxf(pj->v_sig, v_sig) ;
   
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * visc_term * dvdr;
-  pj->entropy_dt -= 0.5f * visc_term * dvdr;
+  pi->entropy_dt -= 0.5f * visc_term * dvdr;
+  pj->entropy_dt += 0.5f * visc_term * dvdr;
 }
 
 
@@ -345,7 +353,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
-
+  
   /* Use the force Luke ! */
   pi->a[0] -= acc * dx[0];
   pi->a[1] -= acc * dx[1];
@@ -355,7 +363,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->v_sig = fmaxf(pi->v_sig, v_sig) ;
   
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * visc_term * dvdr;
+  pi->entropy_dt -= 0.5f * visc_term * dvdr;
 }
 
 

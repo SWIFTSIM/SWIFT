@@ -27,21 +27,16 @@
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     struct part* p, struct xpart* xp) {
 
+  /* Acceleration */
+  float ac = sqrtf(p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2]);
+  ac = fmaxf(ac, 1e-30);
+
+  const float dt_accel = sqrtf(2.f);
+  
   /* CFL condition */
-  const float dt_cfl = const_cfl * p->h / p->v_sig;
+  const float dt_cfl = 2.f * const_cfl * p->h / p->v_sig;
 
-  /* /\* Limit change in h *\/ */
-  /* float dt_h_change = (p->h_dt != 0.0f) */
-  /*                         ? fabsf(const_ln_max_h_change * p->h / p->h_dt) */
-  /*                         : FLT_MAX; */
-
-  /* /\* Limit change in u *\/ */
-  /* float dt_u_change = (p->force.u_dt != 0.0f) */
-  /*                         ? fabsf(const_max_u_change * p->u / p->force.u_dt) */
-  /*                         : FLT_MAX; */
-
-  //  return fminf(dt_cfl, fminf(dt_h_change, dt_u_change));
-  return dt_cfl; 
+  return fminf(dt_cfl, dt_accel); 
 }
 
 
@@ -176,8 +171,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(struc
   /* Reset the time derivatives. */
   p->entropy_dt = 0.0f;
   
-  /* Reset minimal signal velocity */
-  p->v_sig = FLT_MAX;
+  /* Reset maximal signal velocity */
+  p->v_sig = 0.0f;
 }
 
 
@@ -228,6 +223,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(struct part* p
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(struct part* p) {
 
-  p->entropy = (const_hydro_gamma - 1.f) * p->entropy * pow(p->rho, -(const_hydro_gamma - 1.f));
+  p->entropy = (const_hydro_gamma - 1.f) * p->entropy * powf(p->rho, -(const_hydro_gamma - 1.f));
 
 }
