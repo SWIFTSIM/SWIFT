@@ -174,7 +174,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(struc
   p->a[2] = 0.0f;
   
   /* Reset the time derivatives. */
-  p->v_sig = 0.0f;
+  p->entropy_dt = 0.0f;
+  
+  /* Reset minimal signal velocity */
+  p->v_sig = FLT_MAX;
 }
 
 
@@ -212,6 +215,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(struct par
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(struct part* p) {
 
+  p->entropy_dt *= (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
+  
 }
 
 /**

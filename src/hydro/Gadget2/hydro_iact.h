@@ -200,80 +200,82 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  /* float r = sqrtf(r2), ri = 1.0f / r; */
-  /* float xi, xj; */
-  /* float hi_inv, hi2_inv; */
-  /* float hj_inv, hj2_inv; */
-  /* float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr; */
-  /* float mi, mj, POrho2i, POrho2j, rhoi, rhoj; */
-  /* float v_sig, omega_ij, Pi_ij; */
-  /* float f; */
-  /* int k; */
+  float wi, wj, wi_dx, wj_dx;
 
-  /* /\* Get some values in local variables. *\/ */
-  /* mi = pi->mass; */
-  /* mj = pj->mass; */
-  /* rhoi = pi->rho; */
-  /* rhoj = pj->rho; */
-  /* //POrho2i = pi->force.POrho2; */
-  /* //POrho2j = pj->force.POrho2; */
+  const float fac_mu = 1.f; /* Will change with cosmological integration */
+  
+  const float r = sqrtf(r2);
+  const float r_inv = 1.0f / r;
 
-  /* /\* Get the kernel for hi. *\/ */
-  /* hi_inv = 1.0f / hi; */
-  /* hi2_inv = hi_inv * hi_inv; */
-  /* xi = r * hi_inv; */
-  /* kernel_deval(xi, &wi, &wi_dx); */
-  /* wi_dr = hi2_inv * hi2_inv * wi_dx; */
+  /* Get some values in local variables. */
+  //const float mi = pi->mass;
+  const float mj = pj->mass;
+  const float rhoi = pi->rho;
+  const float rhoj = pj->rho;
+  const float pressurei = pi->pressure;
+  const float pressurej = pj->pressure;
 
-  /* /\* Get the kernel for hj. *\/ */
-  /* hj_inv = 1.0f / hj; */
-  /* hj2_inv = hj_inv * hj_inv; */
-  /* xj = r * hj_inv; */
-  /* kernel_deval(xj, &wj, &wj_dx); */
-  /* wj_dr = hj2_inv * hj2_inv * wj_dx; */
+  /* Get the kernel for hi. */
+  const float hi_inv = 1.0f / hi;
+  const float hi2_inv = hi_inv * hi_inv;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+  const float wi_dr = hi2_inv * hi2_inv * wi_dx;
 
-  /* /\* Compute dv dot r. *\/ */
-  /* dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] + */
-  /*        (pi->v[2] - pj->v[2]) * dx[2]; */
-  /* dvdr *= ri; */
+  /* Get the kernel for hj. */
+  const float hj_inv = 1.0f / hj;
+  const float hj2_inv = hj_inv * hj_inv;
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+  const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
-  /* /\* Compute the relative velocity. (This is 0 if the particles move away from */
-  /*  * each other and negative otherwise) *\/ */
-  /* omega_ij = fminf(dvdr, 0.f); */
+  /* Compute gradient terms */
+  const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
+  const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
 
-  /* /\* Compute signal velocity *\/ */
-  /* v_sig = pi->force.c + pj->force.c - 3.0f * omega_ij; */
+  /* Compute sound speeds */
+  const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
+  const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
+  float v_sig = ci + cj;
+  
+  /* Compute dv dot r. */
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
+    (pi->v[2] - pj->v[2]) * dx[2];
 
-  /* /\* Compute viscosity tensor *\/ */
-  /* Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (rhoi + rhoj); */
+  /* Artificial viscosity term */
+  float visc = 0.f;
+  if (dvdr < 0.f) {
+    const float mu_ij = fac_mu * dvdr * r_inv;
+    v_sig -= 3.f * mu_ij;
+    const float rho_ij = 0.5f * (rhoi + rhoj);
+    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v + 0.0001 * ci / fac_mu / hi);
+    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v + 0.0001 * cj / fac_mu / hj);
+    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij * (balsara_i + balsara_j);
+  }
 
-  /* /\* Apply balsara switch *\/ */
-  /* Pi_ij *= (pi->force.balsara + pj->force.balsara); */
+  /* Now, convolve with the kernel */
+  const float visc_term = 0.5f * mj * visc * (wi_dr + wj_dr) * r_inv;
+  const float sph_term = mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
-  /* /\* Get the common factor out. *\/ */
-  /* w = ri * */
-  /*     ((POrho2i * wi_dr + POrho2j * wj_dr) + 0.25f * Pi_ij * (wi_dr + wj_dr)); */
+  /* Eventually got the acceleration */
+  const float acc = visc_term + sph_term;
 
-  /* /\* Use the force, Luke! *\/ */
-  /* for (k = 0; k < 3; k++) { */
-  /*   f = dx[k] * w; */
-  /*   pi->a[k] -= mj * f; */
-  /*   pj->a[k] += mi * f; */
-  /* } */
+  /* Use the force Luke ! */
+  pi->a[0] -= acc * dx[0];
+  pi->a[1] -= acc * dx[1];
+  pi->a[2] -= acc * dx[2];
 
-  /* /\* Get the time derivative for u. *\/ */
-  /* pi->force.u_dt += */
-  /*     mj * dvdr * (POrho2i * wi_dr + 0.125f * Pi_ij * (wi_dr + wj_dr)); */
-  /* pj->force.u_dt += */
-  /*     mi * dvdr * (POrho2j * wj_dr + 0.125f * Pi_ij * (wi_dr + wj_dr)); */
+  pj->a[0] += acc * dx[0];
+  pj->a[1] += acc * dx[1];
+  pj->a[2] += acc * dx[2];
 
-  /* /\* Get the time derivative for h. *\/ */
-  /* pi->force.h_dt -= mj * dvdr / rhoj * wi_dr; */
-  /* pj->force.h_dt -= mi * dvdr / rhoi * wj_dr; */
-
-  /* /\* Update the signal velocity. *\/ */
-  /* pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig); */
-  /* pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig); */
+  /* Update the signal velocity. */
+  pi->v_sig = fmaxf(pi->v_sig, v_sig) ;
+  pj->v_sig = fmaxf(pj->v_sig, v_sig) ;
+  
+  /* Change in entropy */
+  pi->entropy_dt += 0.5f * visc_term * dvdr;
+  pj->entropy_dt -= 0.5f * visc_term * dvdr;
 }
 
 
@@ -284,76 +286,76 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  /* float r = sqrtf(r2), ri = 1.0f / r; */
-  /* float xi, xj; */
-  /* float hi_inv, hi2_inv; */
-  /* float hj_inv, hj2_inv; */
-  /* float wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, w, dvdr; */
-  /* float /\*mi,*\/ mj, POrho2i, POrho2j, rhoi, rhoj; */
-  /* float v_sig, omega_ij, Pi_ij; */
-  /* float f; */
-  /* int k; */
+  float wi, wj, wi_dx, wj_dx;
 
-  /* /\* Get some values in local variables. *\/ */
-  /* // mi = pi->mass; */
-  /* mj = pj->mass; */
-  /* rhoi = pi->rho; */
-  /* rhoj = pj->rho; */
-  /* POrho2i = pi->force.POrho2; */
-  /* POrho2j = pj->force.POrho2; */
+  const float fac_mu = 1.f; /* Will change with cosmological integration */
+  
+  const float r = sqrtf(r2);
+  const float r_inv = 1.0f / r;
 
-  /* /\* Get the kernel for hi. *\/ */
-  /* hi_inv = 1.0f / hi; */
-  /* hi2_inv = hi_inv * hi_inv; */
-  /* xi = r * hi_inv; */
-  /* kernel_deval(xi, &wi, &wi_dx); */
-  /* wi_dr = hi2_inv * hi2_inv * wi_dx; */
+  /* Get some values in local variables. */
+  //const float mi = pi->mass;
+  const float mj = pj->mass;
+  const float rhoi = pi->rho;
+  const float rhoj = pj->rho;
+  const float pressurei = pi->pressure;
+  const float pressurej = pj->pressure;
 
-  /* /\* Get the kernel for hj. *\/ */
-  /* hj_inv = 1.0f / hj; */
-  /* hj2_inv = hj_inv * hj_inv; */
-  /* xj = r * hj_inv; */
-  /* kernel_deval(xj, &wj, &wj_dx); */
-  /* wj_dr = hj2_inv * hj2_inv * wj_dx; */
+  /* Get the kernel for hi. */
+  const float hi_inv = 1.0f / hi;
+  const float hi2_inv = hi_inv * hi_inv;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
+  const float wi_dr = hi2_inv * hi2_inv * wi_dx;
 
-  /* /\* Compute dv dot r. *\/ */
-  /* dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] + */
-  /*        (pi->v[2] - pj->v[2]) * dx[2]; */
-  /* dvdr *= ri; */
+  /* Get the kernel for hj. */
+  const float hj_inv = 1.0f / hj;
+  const float hj2_inv = hj_inv * hj_inv;
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+  const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
-  /* /\* Compute the relative velocity. (This is 0 if the particles move away from */
-  /*  * each other and negative otherwise) *\/ */
-  /* omega_ij = fminf(dvdr, 0.f); */
+  /* Compute gradient terms */
+  const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
+  const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
 
-  /* /\* Compute signal velocity *\/ */
-  /* v_sig = pi->force.c + pj->force.c - 3.0f * omega_ij; */
+  /* Compute sound speeds */
+  const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
+  const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
+  float v_sig = ci + cj;
+  
+  /* Compute dv dot r. */
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
+    (pi->v[2] - pj->v[2]) * dx[2];
 
-  /* /\* Compute viscosity tensor *\/ */
-  /* Pi_ij = -const_viscosity_alpha * v_sig * omega_ij / (rhoi + rhoj); */
+  /* Artificial viscosity term */
+  float visc = 0.f;
+  if (dvdr < 0.f) {
+    const float mu_ij = fac_mu * dvdr * r_inv;
+    v_sig -= 3.f * mu_ij;
+    const float rho_ij = 0.5f * (rhoi + rhoj);
+    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v + 0.0001 * ci / fac_mu / hi);
+    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v + 0.0001 * cj / fac_mu / hj);
+    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij * (balsara_i + balsara_j);
+  }
 
-  /* /\* Apply balsara switch *\/ */
-  /* Pi_ij *= (pi->force.balsara + pj->force.balsara); */
+  /* Now, convolve with the kernel */
+  const float visc_term = 0.5f * mj * visc * (wi_dr + wj_dr) * r_inv;
+  const float sph_term = mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
-  /* /\* Get the common factor out. *\/ */
-  /* w = ri * */
-  /*     ((POrho2i * wi_dr + POrho2j * wj_dr) + 0.25f * Pi_ij * (wi_dr + wj_dr)); */
+  /* Eventually got the acceleration */
+  const float acc = visc_term + sph_term;
 
-  /* /\* Use the force, Luke! *\/ */
-  /* for (k = 0; k < 3; k++) { */
-  /*   f = dx[k] * w; */
-  /*   pi->a[k] -= mj * f; */
-  /* } */
+  /* Use the force Luke ! */
+  pi->a[0] -= acc * dx[0];
+  pi->a[1] -= acc * dx[1];
+  pi->a[2] -= acc * dx[2];
 
-  /* /\* Get the time derivative for u. *\/ */
-  /* pi->force.u_dt += */
-  /*     mj * dvdr * (POrho2i * wi_dr + 0.125f * Pi_ij * (wi_dr + wj_dr)); */
-
-  /* /\* Get the time derivative for h. *\/ */
-  /* pi->force.h_dt -= mj * dvdr / rhoj * wi_dr; */
-
-  /* /\* Update the signal velocity. *\/ */
-  /* pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig); */
-  /* pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig); */
+  /* Update the signal velocity. */
+  pi->v_sig = fmaxf(pi->v_sig, v_sig) ;
+  
+  /* Change in entropy */
+  pi->entropy_dt += 0.5f * visc_term * dvdr;
 }
 
 

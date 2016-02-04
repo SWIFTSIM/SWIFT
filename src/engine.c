@@ -1818,7 +1818,6 @@ if ( e->nodeID == 0 )
   printParticle(e->s->parts, 1000, e->s->nr_parts);
   printParticle(e->s->parts, 515050, e->s->nr_parts);
 
-  exit(0);
   
   /* Move forward in time */
   e->timeOld = e->time;
