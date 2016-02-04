@@ -183,12 +183,22 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(struc
  *
  * @param p The particle
  * @param xp The extended data of the particle
- * @param dt The time-step over which to drift
+ * @param t0 The time at the start of the drift
+ * @param t1 The time at the end of the drift
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(struct part* p,
 								      struct xpart* xp,
-								      float dt) {
- 
+								      float t0,
+								      float t1) {
+
+  const float dt = t1 - t0;
+  
+  p->rho *= expf(-p->div_v * dt);
+  p->h *= expf( 0.33333333f * p->div_v * dt);
+
+  const float dt_entr = t1 - 0.5f*(p->t_begin + p->t_end);
+  p->pressure = (p->entropy + p->entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
+  
 }
 
 

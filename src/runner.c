@@ -707,7 +707,6 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   const float dt = r->e->time - r->e->timeOld;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
-  float w;
   float dx_max = 0.f, h_max = 0.f;
   
   TIMER_TIC
@@ -722,10 +721,6 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p = &parts[k];
       xp = &xparts[k];
 
-      /* Get local copies of particle data. */
-      const float h = p->h;
-      const float ih = 1.0f / h;
-
       /* Drift... */
       p->x[0] += xp->v_full[0] * dt;
       p->x[1] += xp->v_full[1] * dt;
@@ -736,26 +731,30 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->v[1] += p->a[1] * dt;
       p->v[2] += p->a[2] * dt;
 
-      /* Predict smoothing length */
-      w = p->force.h_dt * ih * dt;
-      if (fabsf(w) < 0.01f) /* 1st order expansion of exp(w) */
-	p->h *=
-	  1.0f +
-	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
-      else
-	p->h *= expf(w);
+      /* /\* Predict smoothing length *\/ */
+      /* w = p->force.h_dt * ih * dt; */
+      /* if (fabsf(w) < 0.01f) /\* 1st order expansion of exp(w) *\/ */
+      /* 	p->h *= */
+      /* 	  1.0f + */
+      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w))); */
+      /* else */
+      /* 	p->h *= expf(w); */
+
+      //MATTHIEU
       
-      /* Predict density */
-      w = -3.0f * p->force.h_dt * ih * dt;
-      if (fabsf(w) < 0.1f)
-	p->rho *=
-	  1.0f +
-	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
-      else
-	p->rho *= expf(w);
+      /* /\* Predict density *\/ */
+      /* w = -3.0f * p->force.h_dt * ih * dt; */
+      /* if (fabsf(w) < 0.1f) */
+      /* 	p->rho *= */
+      /* 	  1.0f + */
+      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w))); */
+      /* else */
+      /* 	p->rho *= expf(w); */
+
+
       
       /* Predict the values of the extra fields */
-      hydro_predict_extra(p, xp, dt);
+      hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
 
       /* Compute motion since last cell construction */
       const float dx = sqrtf((p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
