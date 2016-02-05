@@ -1734,8 +1734,8 @@ void engine_init_particles(struct engine *e) {
 
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
 
-  printParticle(e->s->parts, 1000, e->s->nr_parts);
-  printParticle(e->s->parts, 515050, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
   
   /* Ready to go */
   e->step = 0;
@@ -1815,8 +1815,8 @@ if ( e->nodeID == 0 )
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
 
-  printParticle(e->s->parts, 1000, e->s->nr_parts);
-  printParticle(e->s->parts, 515050, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts);
 
 
   if(e->step == 2)   exit(0);
@@ -1854,8 +1854,8 @@ if ( e->nodeID == 0 )
   TIMER_TOC2(timer_step);
 
 
-  printParticle(e->s->parts, 1000, e->s->nr_parts);
-  printParticle(e->s->parts, 515050, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
+  printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 
 }
 

@@ -38,7 +38,7 @@
  * (Should be used for debugging only as it runs in O(N).)
  */
 
-void printParticle(struct part *parts, long long int id, int N) {
+void printParticle(struct part *parts, struct xpart *xparts, long long int id, int N) {
 
   int i, found = 0;
 
@@ -47,12 +47,14 @@ void printParticle(struct part *parts, long long int id, int N) {
     if (parts[i].id == id) {
       printf(
           "## Particle[%d]:\n id=%lld, x=[%.3e,%.3e,%.3e], "
-          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e],\n h=%.3e, "
+          "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n h=%.3e, "
           "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, P=%.3e, S=%.3e, dS/dt=%.3e,\n"
 	  "divV=%.3e, curlV=%.3e, rotV=[%.3e,%.3e,%.3e]  \n "
 	  "v_sig=%e t_begin=%.3e, t_end=%.3e\n",
           i, parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
-          parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
+          parts[i].v[0], parts[i].v[1], parts[i].v[2],
+	  xparts[i].v_full[0], xparts[i].v_full[1], xparts[i].v_full[2],
+	  parts[i].a[0],
           parts[i].a[1], parts[i].a[2], 2.*parts[i].h,
           (int)parts[i].density.wcount, parts[i].mass,
 	  parts[i].rho_dh,

@@ -23,7 +23,7 @@
 #include "cell.h"
 #include "part.h"
 
-void printParticle(struct part *parts, long long int i, int N);
+void printParticle(struct part *parts, struct xpart *xparts, long long int i, int N);
 void printgParticle(struct gpart *parts, long long int i, int N);
 void printParticle_single(struct part *p);
 
