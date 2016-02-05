@@ -514,8 +514,8 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
       if (p->t_end <= t_end) {
 
-      if(p->id == 1000) message("init 1000!");
-      if(p->id == 515050) message("init 515050!");
+      /* if(p->id == 1000) message("init 1000!"); */
+      /* if(p->id == 515050) message("init 515050!"); */
       
 
 	
@@ -583,8 +583,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
       p = &parts[pid[i]];
       xp = &xparts[pid[i]];
 
-      if(p->id == 1000) message("ghost 1000");
-      if(p->id == 515050) message("ghost 515050");
+      /* if(p->id == 1000) message("ghost 1000"); */
+      /* if(p->id == 515050) message("ghost 515050"); */
       
       /* Is this part within the timestep? */
       if (p->t_end <= t_end) {
@@ -758,15 +758,15 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
 
-      if(p->id == 1000 || p->id == 515050 || p->id == 504849)
-	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]\n",
-		p->id,
-		r->e->time,
-		r->e->timeOld,
-		r->e->time,
-		p->v[0],
-		p->v[1],
-		p->v[2]);
+      /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
+      /* 	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]\n", */
+      /* 		p->id, */
+      /* 		r->e->time, */
+      /* 		r->e->timeOld, */
+      /* 		r->e->time, */
+      /* 		p->v[0], */
+      /* 		p->v[1], */
+      /* 		p->v[2]); */
 
       
       /* Compute motion since last cell construction */
@@ -909,16 +909,16 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->v[1] = xp->v_full[1] - half_dt * p->a[1];
         p->v[2] = xp->v_full[2] - half_dt * p->a[2];
 
-	if(p->id == 1000 || p->id == 515050 || p->id == 504849)
-	  message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e %.3e %.3e]\n",
-		  p->id,
-		  t_current,
-		  p->t_begin,
-		  p->t_end,
-		  half_dt,
-		  p->v[0],
-		  p->v[1],
-		  p->v[2]);
+	/* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
+	/*   message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e %.3e %.3e]\n", */
+	/* 	  p->id, */
+	/* 	  t_current, */
+	/* 	  p->t_begin, */
+	/* 	  p->t_end, */
+	/* 	  half_dt, */
+	/* 	  p->v[0], */
+	/* 	  p->v[1], */
+	/* 	  p->v[2]); */
 
 	
 	/* Extra kick work */

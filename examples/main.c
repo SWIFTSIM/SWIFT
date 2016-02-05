@@ -390,7 +390,7 @@ int main(int argc, char *argv[]) {
   
   /* Legend */
   if (myrank == 0)
-    printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
+    printf("# Step  Time  time-step  Number of updates    CPU Wall-clock time [ms]\n");
   
   /* Let loose a runner on the space. */
   for (j = 0; e.time < time_end; j++) {
