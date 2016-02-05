@@ -26,7 +26,7 @@
 #define MAX_NO_OF_PARAMS 512 
 
 #define COMMENT "#"
-#define VALUE char ":"
+#define VALUE ':'
 #define END_OF_FILE "..."
 
 struct parameter {
@@ -40,13 +40,14 @@ struct swift_params {
 };
 
 /* Public API. */
-void parseFile(const char *file_name, struct swift_params *params);
-void printParameters(struct swift_params *params);
-void getParamInt(struct swift_params *params, char *name, int *retParam);
-void getParamFloat(struct swift_params *params, char *name, float *retParam);
-void getParamString(struct swift_params *params, char *name, char *retParam);
+void parser_read_file(const char *file_name, struct swift_params *params);
+void parser_print_params(struct swift_params *params);
+void parser_get_param_int(struct swift_params *params, char *name, int *retParam);
+void parser_get_param_float(struct swift_params *params, char *name, float *retParam);
+void parser_get_param_string(struct swift_params *params, char *name, char *retParam);
 
 /* Private functions. */
-static void readParameter(FILE *fp, struct swift_params *params);
+static void read_param(FILE *fp, struct swift_params *params);
+static int count_char(char *str, char val); 
 
 #endif /* SWIFT_PARSER_H */
