@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include "error.h"
 
-void parseFile(const char *file_name, struct swift_params *params) {
+void parser_read_file(const char *file_name, struct swift_params *params) {
  
     FILE *fp;
     
@@ -39,13 +39,13 @@ void parseFile(const char *file_name, struct swift_params *params) {
   
     /* Read until the end of the file is reached.*/
     while(!feof(fp)) {
-      readParameter(fp,params); 
+      read_param(fp,params); 
     }
 
     fclose(fp);
 }
 
-static int countChar(char *str, char val) {
+static int count_char(char *str, char val) {
 
     int i, count = 0;
 
@@ -59,7 +59,7 @@ static int countChar(char *str, char val) {
     return count;
 }
 
-static void readParameter(FILE *fp, struct swift_params *params) {
+static void read_param(FILE *fp, struct swift_params *params) {
 
     char line [MAX_LINE_SIZE];
     char trim_line [MAX_LINE_SIZE];
@@ -73,14 +73,14 @@ static void readParameter(FILE *fp, struct swift_params *params) {
         strcpy(trim_line,token);
         
         /* Check if the line contains a value */
-        if(strchr(trim_line,VALUE)) {
+        if(strchr(trim_line,':')) {
           /* Check for more than one parameter on the same line. */
-          if(countChar(trim_line,VALUE) > 1) { 
+          if(count_char(trim_line,':') > 1) { 
             error("Found more than one parameter in '%s', only one allowed.",line);
           }
           else { 
             /*Take first token as the parameter name. */
-            token = strtok(trim_line,VALUE);
+            token = strtok(trim_line,":");
             strcpy(params->data[params->count].name,token);
             
             /*Take second token as the parameter value. */
@@ -91,7 +91,7 @@ static void readParameter(FILE *fp, struct swift_params *params) {
     }
 }
 
-void getParamInt(struct swift_params *params, char * name, int * retParam) {
+void parser_get_param_int(struct swift_params *params, char * name, int * retParam) {
   
    int i; 
    
@@ -122,7 +122,7 @@ void getParamInt(struct swift_params *params, char * name, int * retParam) {
    }
 }
 
-void getParamFloat(struct swift_params *params, char * name, float * retParam) {
+void parser_get_param_float(struct swift_params *params, char * name, float * retParam) {
   
    int i; 
    
@@ -136,7 +136,7 @@ void getParamFloat(struct swift_params *params, char * name, float * retParam) {
    }
 }
 
-void getParamString(struct swift_params *params, char * name, char * retParam) {
+void parser_get_param_string(struct swift_params *params, char * name, char * retParam) {
   
    int i; 
    
@@ -150,7 +150,7 @@ void getParamString(struct swift_params *params, char * name, char * retParam) {
    }
 }
 
-void printParameters(struct swift_params *params) {
+void parser_print_params(struct swift_params *params) {
 
     int i;
 
