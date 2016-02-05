@@ -512,10 +512,12 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       p = &parts[i];
 
+      if (p->t_end <= t_end) {
+
       if(p->id == 1000) message("init 1000!");
       if(p->id == 515050) message("init 515050!");
       
-      if (p->t_end <= t_end) {
+
 	
 	/* Get ready for a density calculation */
 	hydro_init_part(p);
@@ -813,7 +815,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const int is_fixdt = (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   float new_dt;
-  float t_start, t_end, dt;
   float dt_timeline;
 
   int updated = 0;
@@ -879,29 +880,38 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 	}
 
         /* Compute the time step for this kick */
-        t_start = 0.5f * (p->t_begin + p->t_end);
-        t_end = p->t_end + 0.5f * new_dt;
-        dt = t_end - t_start;
+        const float t_start = 0.5f * (p->t_begin + p->t_end);
+        const float t_end = p->t_end + 0.5f * new_dt;
+        const float dt = t_end - t_start;
+	const float half_dt = t_end - p->t_end;
 
         /* Move particle forward in time */
         p->t_begin = p->t_end;
         p->t_end = p->t_begin + new_dt;
-
-	if(p->id == 1000 || p->id == 515050)
-	  message("%lld: current_t=%f t_beg=%f t_end=%f\n",
-		  p->id,
-		  t_current,
-		  p->t_begin,
-		  p->t_end);
 	
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;
         xp->v_full[1] += p->a[1] * dt;
         xp->v_full[2] += p->a[2] * dt;
 
-        p->v[0] = xp->v_full[0] - 0.5f * new_dt * p->a[0];
-        p->v[1] = xp->v_full[1] - 0.5f * new_dt * p->a[1];
-        p->v[2] = xp->v_full[2] - 0.5f * new_dt * p->a[2];
+        p->v[0] = xp->v_full[0] - half_dt * p->a[0];
+        p->v[1] = xp->v_full[1] - half_dt * p->a[1];
+        p->v[2] = xp->v_full[2] - half_dt * p->a[2];
+
+	if(p->id == 1000 || p->id == 515050 || p->id == 504849)
+	  message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e %.3e %.3e]\n",
+		  p->id,
+		  t_current,
+		  p->t_begin,
+		  p->t_end,
+		  half_dt,
+		  p->v[0],
+		  p->v[1],
+		  p->v[2]);
+
+	
+	/* Extra kick work */
+	hydro_kick_extra(p, dt);
       }
 
       /* Now collect quantities for statistics */
