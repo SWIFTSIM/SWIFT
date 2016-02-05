@@ -859,13 +859,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 	  const float new_dt_grav = gravity_compute_timestep(p, xp);
 	  
 	  new_dt = fminf(new_dt_hydro, new_dt_grav);
-
-	  if(p->id == 1000)
-	    message("1000   dt_hydro=%e", new_dt_hydro);
-
-	  if(p->id == 515050)
-	    message("515050 dt_hydro=%e", new_dt_hydro);
-
 	  
 	  /* Recover the current timestep */
 	  const float current_dt = p->t_end - p->t_begin;
@@ -894,6 +887,13 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->t_begin = p->t_end;
         p->t_end = p->t_begin + new_dt;
 
+	if(p->id == 1000 || p->id == 515050)
+	  message("%lld: current_t=%f t_beg=%f t_end=%f\n",
+		  p->id,
+		  t_current,
+		  p->t_begin,
+		  p->t_end);
+	
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;
         xp->v_full[1] += p->a[1] * dt;

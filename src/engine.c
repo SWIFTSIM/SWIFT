@@ -1723,8 +1723,8 @@ void engine_init_particles(struct engine *e) {
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
+		(1 << task_type_pair) | (1 << task_type_sub) |
+		(1 << task_type_init) | (1 << task_type_ghost) |
 		(1 << task_type_send) | (1 << task_type_recv),
 		1 << task_subtype_density);
 
@@ -1738,7 +1738,7 @@ void engine_init_particles(struct engine *e) {
   printParticle(e->s->parts, 515050, e->s->nr_parts);
   
   /* Ready to go */
-  e->step = -1;
+  e->step = 0;
 }
 
 /**
@@ -1818,6 +1818,9 @@ if ( e->nodeID == 0 )
   printParticle(e->s->parts, 1000, e->s->nr_parts);
   printParticle(e->s->parts, 515050, e->s->nr_parts);
 
+
+  if(e->step == 2)   exit(0);
+
   
   /* Move forward in time */
   e->timeOld = e->time;
@@ -1853,7 +1856,6 @@ if ( e->nodeID == 0 )
 
   printParticle(e->s->parts, 1000, e->s->nr_parts);
   printParticle(e->s->parts, 515050, e->s->nr_parts);
-  exit(0);
 
 }
 
