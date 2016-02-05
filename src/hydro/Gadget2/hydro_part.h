@@ -97,11 +97,6 @@ struct part {
 
   /* Signal velocity */
   float v_sig;
-
-  /* temp */
-  struct {
-  float h_dt;  //MATTHIEU
-  } force;
   
   /* Particle ID. */
   unsigned long long id;
