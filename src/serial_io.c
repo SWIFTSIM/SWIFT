@@ -311,7 +311,7 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
       readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset,
                 h, COMPULSORY);
       readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset,
-                u, COMPULSORY);
+                entropy, COMPULSORY);
       readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset,
                 id, COMPULSORY);
       /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
@@ -670,7 +670,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
       writeArray(h_grp, "SmoothingLength", FLOAT, N, 1, N_total, offset, parts,
                  h);
       writeArray(h_grp, "InternalEnergy", FLOAT, N, 1, N_total, offset, parts,
-                 u);
+                 entropy);
       writeArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, N_total, offset, parts,
                  id);
       //writeArray(h_grp, "TimeStep", FLOAT, N, 1, N_total, offset, parts, dt);
