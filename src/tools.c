@@ -314,8 +314,6 @@ void density_dump(int N) {
     Pj[k].id = k+4;
     hi[k] = 1.0;
     hj[k] = 1.0;
-    //pi[k] = &Pi[k];
-    //pj[k] = &Pj[k];
   }
 
   for (k = 0; k <= N; k++) {
@@ -327,19 +325,6 @@ void density_dump(int N) {
     Pj[0].density.wcount = 0;
     runner_iact_density(r2[0], NULL, hi[0], hj[0], &Pi[0], &Pj[0]);
     printf(" %e %e %e", r2[0], Pi[0].density.wcount, Pj[0].density.wcount);
-    /* Pi[0].density.wcount = 0; */
-    /* Pj[0].density.wcount = 0; */
-    /* Pi[1].density.wcount = 0; */
-    /* Pj[1].density.wcount = 0; */
-    /* Pi[2].density.wcount = 0; */
-    /* Pj[2].density.wcount = 0; */
-    /* Pi[3].density.wcount = 0; */
-    /* Pj[3].density.wcount = 0; */
-    /* runner_iact_vec_density(r2, NULL, hi, hj, pi, pj); */
-    /* printf(" %e %e %e %e\n", Pi[0].density.wcount, Pi[1].density.wcount, */
-    /*        Pi[2].density.wcount, Pi[3].density.wcount); */
-
-    // MATTHIEU
   }
 }
 
