@@ -1738,7 +1738,7 @@ void engine_init_particles(struct engine *e) {
   printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
   
   /* Ready to go */
-  e->step = 0;
+  e->step = -1;
 }
 
 /**
@@ -1807,10 +1807,13 @@ if ( e->nodeID == 0 )
     message( "nr_parts=%i." , nr_parts ); */
 #endif
 
-  printf("%d %f %f %d\n", e->step, e->time, e->timeStep, updates);
-  fflush(stdout);
-
   message("\nDRIFT\n");
+
+  /* Move forward in time */
+  e->timeOld = e->time;
+  e->time = t_end_min;
+  e->step += 1;
+  e->timeStep = e->time - e->timeOld;
   
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -1820,13 +1823,6 @@ if ( e->nodeID == 0 )
 
 
   if(e->step == 2)   exit(0);
-
-  
-  /* Move forward in time */
-  e->timeOld = e->time;
-  e->time = t_end_min;
-  e->step += 1;
-  e->timeStep = e->time - e->timeOld;
   
   printf("%d %f %f %d\n", e->step, e->time, e->timeStep, updates);
   fflush(stdout);
