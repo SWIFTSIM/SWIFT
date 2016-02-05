@@ -31,7 +31,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float ac = sqrtf(p->a[0]*p->a[0] + p->a[1]*p->a[1] + p->a[2]*p->a[2]);
   ac = fmaxf(ac, 1e-30);
 
-  const float dt_accel = sqrtf(2.f);
+  const float dt_accel = sqrtf(2.f); //MATTHIEU
   
   /* CFL condition */
   const float dt_cfl = 2.f * const_cfl * p->h / p->v_sig;
@@ -213,6 +213,27 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(struct part* p
   p->entropy_dt *= (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
   
 }
+
+/**
+ * @brief Kick the additional variables
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_kick_extra(struct part* p, float dt) {
+
+  /* Do not decrease the entropy (temperature) by more than a factor of 2*/
+  const float entropy_change = p->entropy_dt * dt;
+  if( entropy_change > -0.5f * p->entropy)
+    p->entropy += entropy_change;
+  else
+    p->entropy *= 0.5f;
+
+  /* Do not 'overcool' when timestep increases */
+  if(p->entropy + 0.5f * p->entropy_dt * dt < 0.5f * p->entropy)
+    p->entropy_dt = -0.5f * p->entropy / dt;
+  
+}
+
 
 /**
  * @brief Converts hydro quantity of a particle 

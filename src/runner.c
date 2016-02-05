@@ -758,6 +758,17 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
 
+      if(p->id == 1000 || p->id == 515050 || p->id == 504849)
+	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]\n",
+		p->id,
+		r->e->time,
+		r->e->timeOld,
+		r->e->time,
+		p->v[0],
+		p->v[1],
+		p->v[2]);
+
+      
       /* Compute motion since last cell construction */
       const float dx = sqrtf((p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
 			     (p->x[1] - xp->x_old[1]) * (p->x[1] - xp->x_old[1]) +

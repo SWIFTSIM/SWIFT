@@ -158,8 +158,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
   pi->div_v -= fac * dvdr;
 
-  if(pi->id == 1000 && pj->id == 1203)
-    message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e\n fac=%e dvdr=%e",
+  if(pi->id == 515050 && pj->id == 504849)
+    message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e\n fac=%e dvdr=%e pj->v=[%.3e,%.3e,%.3e]",
 	    pj->id,
 	    r,
 	    hi,
@@ -169,7 +169,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 	    -mj * (3.f * kernel_igamma * wi) * ih4,
 	    -mj * u * wi_dx * kernel_igamma * ih4,
 	    fac * ih4,
-	    dvdr
+	    dvdr,
+	    pj->v[0],
+	    pj->v[1],
+	    pj->v[2]
 	    );
 
   
@@ -252,7 +255,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float acc = visc_term + sph_term;
 
 
-  if(pi->id == 1000 && pj->id == 1203)
+  //if(pi->id == 1000 && pj->id == 1100)
+  if(pi->id == 515050 && pj->id == 504849)
     message("Interacting with %lld. r=%e hi=%e hj=%e dWi/dx=%e dWj/dx=%3e dvdr=%e visc=%e sph=%e",
 	    pj->id,
 	    r,
@@ -264,7 +268,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 	    visc_term,
 	    sph_term
 	    );
-  if(pi->id == 1203 && pj->id == 1000)
+  if(pi->id == 1100 && pj->id == 1000)
     message("oO");
 
   
@@ -282,8 +286,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->v_sig = fmaxf(pj->v_sig, v_sig) ;
   
   /* Change in entropy */
-  pi->entropy_dt -= 0.5f * visc_term * dvdr;
-  pj->entropy_dt += 0.5f * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * visc_term * dvdr;
+  pj->entropy_dt -= 0.5f * visc_term * dvdr;
 }
 
 
@@ -363,7 +367,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->v_sig = fmaxf(pi->v_sig, v_sig) ;
   
   /* Change in entropy */
-  pi->entropy_dt -= 0.5f * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * visc_term * dvdr;
 }
 
 
