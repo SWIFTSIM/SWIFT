@@ -488,6 +488,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
  *
  * @param r The runner thread.
  * @param c The cell.
+ * @param timer 1 if the time is to be recorded.
  */
 
 void runner_doinit(struct runner *r, struct cell *c, int timer) {

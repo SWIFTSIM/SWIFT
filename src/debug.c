@@ -32,6 +32,7 @@
  *the standard output.
  *
  * @param parts The array of particles.
+ * @param xparts The array of particle extended data.
  * @param id The id too look for.
  * @param N The size of the array of particles.
  *
