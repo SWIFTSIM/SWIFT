@@ -55,9 +55,9 @@
 #include "part.h"
 #include "timers.h"
 
-const char *engine_policy_names[10] = {
-    "none",   "rand",     "steal",     "keep", "block",
-    "fix_dt", "cpu_tight", "mpi",  "numa_affinity"};
+const char *engine_policy_names[10] = {"none",      "rand",  "steal",
+                                       "keep",      "block", "fix_dt",
+                                       "cpu_tight", "mpi",   "numa_affinity"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1429,8 +1429,8 @@ int engine_marktasks(struct engine *e) {
 
       /* Init? */
       else if (t->type == task_type_init) {
-	/* Set this task's skip. */
-	t->skip = (t->ci->t_end_min > t_end);
+        /* Set this task's skip. */
+        t->skip = (t->ci->t_end_min > t_end);
       }
 
       /* None? */
@@ -1667,7 +1667,8 @@ void engine_collect_kick(struct cell *c) {
  * @param submask The sub-task mask to launch.
  */
 
- void engine_launch(struct engine *e, int nr_runners, unsigned int mask, unsigned int submask) {
+void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
+                   unsigned int submask) {
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
@@ -1677,7 +1678,7 @@ void engine_collect_kick(struct cell *c) {
   e->barrier_launchcount = nr_runners;
   if (pthread_cond_broadcast(&e->barrier_cond) != 0)
     error("Failed to broadcast barrier open condition.");
-  
+
   /* Load the tasks. */
   pthread_mutex_unlock(&e->barrier_mutex);
   scheduler_start(&e->sched, mask, submask);
@@ -1714,29 +1715,29 @@ void engine_init_particles(struct engine *e) {
   message("Initialising particles");
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
 
-  //printParticle(e->s->parts, 1000, e->s->nr_parts);
-  //printParticle(e->s->parts, 515050, e->s->nr_parts);
+  // printParticle(e->s->parts, 1000, e->s->nr_parts);
+  // printParticle(e->s->parts, 515050, e->s->nr_parts);
 
-  //message("\n0th DENSITY CALC\n");
-    
+  // message("\n0th DENSITY CALC\n");
+
   /* Now do a density calculation */
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-		(1 << task_type_pair) | (1 << task_type_sub) |
-		(1 << task_type_init) | (1 << task_type_ghost) |
-		(1 << task_type_send) | (1 << task_type_recv),
-		1 << task_subtype_density);
+                    (1 << task_type_pair) | (1 << task_type_sub) |
+                    (1 << task_type_init) | (1 << task_type_ghost) |
+                    (1 << task_type_send) | (1 << task_type_recv),
+                1 << task_subtype_density);
 
   TIMER_TOC(timer_runners);
-    
-  //message("\n0th ENTROPY CONVERSION\n");
+
+  // message("\n0th ENTROPY CONVERSION\n");
 
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
 
-  //printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
-  //printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
-  
+  // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
+  // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
+
   /* Ready to go */
   e->step = -1;
 }
@@ -1807,25 +1808,24 @@ if ( e->nodeID == 0 )
     message( "nr_parts=%i." , nr_parts ); */
 #endif
 
-  //message("\nDRIFT\n");
+  // message("\nDRIFT\n");
 
   /* Move forward in time */
   e->timeOld = e->time;
   e->time = t_end_min;
   e->step += 1;
   e->timeStep = e->time - e->timeOld;
-  
+
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
 
-  //printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts);
-  //printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts);
+  // printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts);
+  // printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts);
 
+  // if(e->step == 2)   exit(0);
 
-  //if(e->step == 2)   exit(0);
-  
-  //message("\nACCELERATION AND KICK\n");
-  
+  // message("\nACCELERATION AND KICK\n");
+
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
 
@@ -1836,23 +1836,22 @@ if ( e->nodeID == 0 )
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
                 (1 << task_type_sort) | (1 << task_type_self) |
-		(1 << task_type_pair) | (1 << task_type_sub) |
-		(1 << task_type_init) | (1 << task_type_ghost) |
-		(1 << task_type_kick) | (1 << task_type_send) |
-		(1 << task_type_recv),
-		(1 << task_subtype_density) | (1 << task_subtype_force));
+                    (1 << task_type_pair) | (1 << task_type_sub) |
+                    (1 << task_type_init) | (1 << task_type_ghost) |
+                    (1 << task_type_kick) | (1 << task_type_send) |
+                    (1 << task_type_recv),
+                (1 << task_subtype_density) | (1 << task_subtype_force));
 
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);
 
-  printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates, ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
+  printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
+         ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
   fflush(stdout);
 
-
-  //printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
-  //printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
-
+  // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
+  // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 }
 
 /**
@@ -1951,11 +1950,9 @@ void engine_makeproxies(struct engine *e) {
         }
       }
 
-
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
-
 }
 
 /**
@@ -1968,7 +1965,7 @@ void engine_makeproxies(struct engine *e) {
 void engine_split(struct engine *e, int *grid) {
 
 #ifdef WITH_MPI
-  
+
   int j, k;
   int ind[3];
   struct space *s = e->s;
@@ -2013,7 +2010,6 @@ void engine_split(struct engine *e, int *grid) {
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
-
 }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
@@ -2167,10 +2163,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   engine_print_policy(e);
 
   /* Deal with timestep */
-  if(e->policy & engine_policy_fixdt) {
+  if (e->policy & engine_policy_fixdt) {
     e->dt_min = e->dt_max;
   }
-  
+
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_type(&e->part_mpi_type);
@@ -2256,7 +2252,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 void engine_print_policy(struct engine *e) {
 
 #ifdef WITH_MPI
-  if(e->nodeID == 0) {
+  if (e->nodeID == 0) {
     printf("[000] engine_policy: engine policies are [ ");
     for (int k = 1; k < 32; k++)
       if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);

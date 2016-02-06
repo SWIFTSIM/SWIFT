@@ -311,7 +311,7 @@ void density_dump(int N) {
     Pj[k].mass = 1.0f;
     Pj[k].rho = 0.0f;
     Pj[k].density.wcount = 0.0f;
-    Pj[k].id = k+4;
+    Pj[k].id = k + 4;
     hi[k] = 1.0;
     hj[k] = 1.0;
   }
@@ -350,7 +350,7 @@ void engine_single_density(double *dim, long long int pid,
   /* Clear accumulators. */
   ih = 1.0f / p.h;
   hydro_init_part(&p);
-  
+
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
@@ -396,7 +396,7 @@ void engine_single_force(double *dim, long long int pid,
 
   /* Clear accumulators. */
   hydro_reset_acceleration(&p);
-  
+
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
     // for ( k = N-1 ; k >= 0 ; k-- ) {
@@ -420,7 +420,7 @@ void engine_single_force(double *dim, long long int pid,
   }
 
   /* Dump the result. */
-  message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e]", p.id, p.h, p.a[0],
-          p.a[1], p.a[2]);
+  message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e]", p.id, p.h, p.a[0], p.a[1],
+          p.a[2]);
   fflush(stdout);
 }

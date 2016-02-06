@@ -19,7 +19,6 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
-
 /* Gravity particle. */
 struct gpart {
 

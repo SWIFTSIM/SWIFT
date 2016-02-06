@@ -782,8 +782,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->t_end_min > t_current && cj->t_end_min > t_current)
-    return;
+  if (ci->t_end_min > t_current && cj->t_end_min > t_current) return;
 
   /* Get the sort ID. */
   sid = space_getsid(e->s, &ci, &cj, shift);
@@ -1380,7 +1379,6 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
   TIMER_TIC
 
-
   /* Set up indt if needed. */
   if (c->t_end_min > t_current)
     return;
@@ -1402,7 +1400,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
     /* if(pi->id == 1000) message("oO 1000"); */
     /* if(pi->id == 515050) message("oO 515050"); */
-    
+
     /* Get the particle position and radius. */
     for (k = 0; k < 3; k++) pix[k] = pi->x[k];
     hi = pi->h;
@@ -1607,7 +1605,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #endif
   TIMER_TIC
 
-
   /* Set up indt if needed. */
   if (c->t_end_min > t_current)
     return;
@@ -1630,7 +1627,6 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     /* if(pi->id == 1000) message("oO 1000"); */
     /* if(pi->id == 515050) message("oO 515050"); */
 
-    
     /* Get the particle position and radius. */
     for (k = 0; k < 3; k++) pix[k] = pi->x[k];
     hi = pi->h;

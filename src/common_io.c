@@ -364,8 +364,8 @@ void writeCodeDescription(hid_t h_file) {
 #ifdef WITH_MPI
   writeAttribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
-  writeAttribute_s(h_grpcode,"METIS library version", metis_version());
-#endif  
+  writeAttribute_s(h_grpcode, "METIS library version", metis_version());
+#endif
 #else
   writeAttribute_s(h_grpcode, "MPI library", "Non-MPI version of SWIFT");
 #endif

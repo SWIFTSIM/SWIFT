@@ -33,4 +33,3 @@ __attribute__((always_inline)) INLINE static float gravity_compute_timestep(
   /* Currently no limit is imposed */
   return FLT_MAX;
 }
-

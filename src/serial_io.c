@@ -673,7 +673,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
                  entropy);
       writeArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, N_total, offset, parts,
                  id);
-      //writeArray(h_grp, "TimeStep", FLOAT, N, 1, N_total, offset, parts, dt);
+      // writeArray(h_grp, "TimeStep", FLOAT, N, 1, N_total, offset, parts, dt);
       writeArray(h_grp, "Acceleration", FLOAT, N, 3, N_total, offset, parts, a);
       writeArray(h_grp, "Density", FLOAT, N, 1, N_total, offset, parts, rho);
 

@@ -26,7 +26,6 @@
 #include "part.h"
 #include "vector.h"
 
-
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
@@ -69,11 +68,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   /* Compute contribution to the density */
   pi->rho += mj * wi;
   pi->rho_dh -= mj * kernel_igamma * (3.f * wi + ui * wi_dx);
-  
+
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
   pi->density.wcount_dh -= ui * wi_dx;
-
 
   /* Compute the kernel function for pj */
   const float hj_inv = 1.f / hj;
@@ -83,15 +81,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   /* Compute contribution to the density */
   pj->rho += mi * wj;
   pj->rho_dh -= mi * kernel_igamma * (3.f * wj + uj * wj_dx);
-  
+
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
   pj->density.wcount_dh -= uj * wj_dx;
 
-  
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
-  
+
   /* Compute dv dot r */
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
@@ -115,7 +112,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->rot_v[2] += facj * curlvr[2];
 }
 
-
 /**
  * @brief Density loop (non-symmetric version)
  */
@@ -132,7 +128,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get r and r inverse. */
   const float r = sqrtf(r2);
   const float ri = 1.0f / r;
-  
+
   /* Compute the kernel function */
   const float h_inv = 1.0f / hi;
   const float u = r * h_inv;
@@ -148,9 +144,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* const float ih3 = h_inv * h_inv * h_inv; */
   /* const float ih4 = h_inv * h_inv * h_inv * h_inv; */
-  
+
   const float fac = mj * wi_dx * ri;
-  
+
   /* Compute dv dot r */
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
@@ -159,7 +155,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->div_v -= fac * dvdr;
 
   /* if(pi->id == 515050 && pj->id == 504849) */
-  /*   message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e dh_drho2=%e\n fac=%e dvdr=%e pj->v=[%.3e,%.3e,%.3e]", */
+  /*   message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e
+   * dh_drho2=%e\n fac=%e dvdr=%e pj->v=[%.3e,%.3e,%.3e]", */
   /* 	    pj->id, */
   /* 	    r, */
   /* 	    hi, */
@@ -175,7 +172,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* 	    pj->v[2] */
   /* 	    ); */
 
-  
   /* Compute dv cross r */
   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
   curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
@@ -183,9 +179,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->rot_v[0] += fac * curlvr[0];
   pi->rot_v[1] += fac * curlvr[1];
-  pi->rot_v[2] += fac * curlvr[2];  
+  pi->rot_v[2] += fac * curlvr[2];
 }
-
 
 /**
  * @brief Force loop
@@ -197,12 +192,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float wi, wj, wi_dx, wj_dx;
 
   const float fac_mu = 1.f; /* Will change with cosmological integration */
-  
+
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
 
   /* Get some values in local variables. */
-  //const float mi = pi->mass;
+  // const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -231,10 +226,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
   float v_sig = ci + cj;
-  
+
   /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-    (pi->v[2] - pj->v[2]) * dx[2];
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Artificial viscosity term */
   float visc = 0.f;
@@ -242,22 +238,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float mu_ij = fac_mu * dvdr * r_inv;
     v_sig -= 3.f * mu_ij;
     const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v + 0.0001 * ci / fac_mu / hi);
-    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v + 0.0001 * cj / fac_mu / hj);
-    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij * (balsara_i + balsara_j);
+    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v +
+                                                0.0001 * ci / fac_mu / hi);
+    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v +
+                                                0.0001 * cj / fac_mu / hj);
+    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
+           (balsara_i + balsara_j);
   }
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * mj * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term =
+      mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
 
-
   /* //if(pi->id == 1000 && pj->id == 1100) */
   /* if(pi->id == 515050 && pj->id == 504849) */
-  /*   message("Interacting with %lld. r=%e hi=%e hj=%e dWi/dx=%e dWj/dx=%3e dvdr=%e visc=%e sph=%e", */
+  /*   message("Interacting with %lld. r=%e hi=%e hj=%e dWi/dx=%e dWj/dx=%3e
+   * dvdr=%e visc=%e sph=%e", */
   /* 	    pj->id, */
   /* 	    r, */
   /* 	    2*hi, */
@@ -271,7 +271,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* if(pi->id == 1100 && pj->id == 1000) */
   /*   message("oO"); */
 
-  
   /* Use the force Luke ! */
   pi->a[0] -= acc * dx[0];
   pi->a[1] -= acc * dx[1];
@@ -282,14 +281,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a[2] += acc * dx[2];
 
   /* Update the signal velocity. */
-  pi->v_sig = fmaxf(pi->v_sig, v_sig) ;
-  pj->v_sig = fmaxf(pj->v_sig, v_sig) ;
-  
+  pi->v_sig = fmaxf(pi->v_sig, v_sig);
+  pj->v_sig = fmaxf(pj->v_sig, v_sig);
+
   /* Change in entropy */
   pi->entropy_dt += 0.5f * visc_term * dvdr;
   pj->entropy_dt -= 0.5f * visc_term * dvdr;
 }
-
 
 /**
  * @brief Force loop (non-symmetric version)
@@ -301,12 +299,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wi, wj, wi_dx, wj_dx;
 
   const float fac_mu = 1.f; /* Will change with cosmological integration */
-  
+
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
 
   /* Get some values in local variables. */
-  //const float mi = pi->mass;
+  // const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -335,10 +333,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
   float v_sig = ci + cj;
-  
+
   /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-    (pi->v[2] - pj->v[2]) * dx[2];
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Artificial viscosity term */
   float visc = 0.f;
@@ -346,29 +345,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float mu_ij = fac_mu * dvdr * r_inv;
     v_sig -= 3.f * mu_ij;
     const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v + 0.0001 * ci / fac_mu / hi);
-    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v + 0.0001 * cj / fac_mu / hj);
-    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij * (balsara_i + balsara_j);
+    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v +
+                                                0.0001 * ci / fac_mu / hi);
+    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v +
+                                                0.0001 * cj / fac_mu / hj);
+    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
+           (balsara_i + balsara_j);
   }
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * mj * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term =
+      mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
-  
+
   /* Use the force Luke ! */
   pi->a[0] -= acc * dx[0];
   pi->a[1] -= acc * dx[1];
   pi->a[2] -= acc * dx[2];
 
   /* Update the signal velocity. */
-  pi->v_sig = fmaxf(pi->v_sig, v_sig) ;
-  
+  pi->v_sig = fmaxf(pi->v_sig, v_sig);
+
   /* Change in entropy */
   pi->entropy_dt += 0.5f * visc_term * dvdr;
 }
-
 
 #endif /* SWIFT_RUNNER_IACT_LEGACY_H */

@@ -957,7 +957,8 @@ void scheduler_reweight(struct scheduler *s) {
  * @param submask The sub-task types to enqueue.
  */
 
-void scheduler_start(struct scheduler *s, unsigned int mask, unsigned int submask) {
+void scheduler_start(struct scheduler *s, unsigned int mask,
+                     unsigned int submask) {
 
   int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
@@ -983,9 +984,10 @@ void scheduler_start(struct scheduler *s, unsigned int mask, unsigned int submas
                                    : s->nr_queues;
 
   /* Remember that engine_launch may fiddle with this value. */
-  const int waiting_old = s->waiting;  
+  const int waiting_old = s->waiting;
 
-  /* We are going to use the task structure in a modified way to pass information
+  /* We are going to use the task structure in a modified way to pass
+     information
      to the task. Don't do this at home !
      - ci and cj will give the range of tasks to which the waits will be applied
      - the flags will be used to transfer the mask
@@ -1020,15 +1022,13 @@ void scheduler_start(struct scheduler *s, unsigned int mask, unsigned int submas
 
   s->mask = mask;
   s->submask = submask | (1 << task_subtype_none);
-  
+
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
     t = &tasks[tid[k]];
-    if (atomic_dec(&t->wait) == 1 &&
-	((1 << t->type) & s->mask) &&
-	((1 << t->subtype) & s->submask) &&
-	!t->skip) {
+    if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) &&
+        ((1 << t->subtype) & s->submask) && !t->skip) {
       scheduler_enqueue(s, t);
       pthread_cond_broadcast(&s->sleep_cond);
     }
@@ -1056,7 +1056,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->rid >= 0) error("Task has already been enqueued.");
 
   /* Ignore skipped tasks and tasks not in the masks. */
-  if (t->skip || (1 << t->type) & ~(s->mask) || (1 << t->subtype) & ~(s->submask)) {
+  if (t->skip || (1 << t->type) & ~(s->mask) ||
+      (1 << t->subtype) & ~(s->submask)) {
     return;
   }
 
@@ -1111,9 +1112,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        if ((err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type, 
-			     t->cj->nodeID, t->flags, MPI_COMM_WORLD, 
-			     &t->req)) != MPI_SUCCESS) {
+        if ((err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type,
+                             t->cj->nodeID, t->flags, MPI_COMM_WORLD,
+                             &t->req)) != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
           MPI_Error_string(err, buff, &len);
@@ -1394,17 +1395,17 @@ void scheduler_print_tasks(struct scheduler *s, char *fileName) {
  * @param submask The scheduler subtask mask
  */
 void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
-			 unsigned int mask, unsigned int submask) {
+                         unsigned int mask, unsigned int submask) {
   for (struct task *t2 = t_begin; t2 != t_end; t2++) {
-    
+
     if (t2->skip) continue;
-    
+
     /* Skip tasks not in the mask */
     if (!((1 << t2->type) & mask) || !((1 << t2->subtype) & submask)) continue;
-    
+
     /* Skip sort tasks that have already been performed */
     if (t2->type == task_type_sort && t2->flags == 0) continue;
-    
+
     /* Sets the waits of the dependances */
     for (int k = 0; k < t2->nr_unlock_tasks; k++) {
       struct task *t3 = t2->unlock_tasks[k];
@@ -1412,4 +1413,3 @@ void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
     }
   }
 }
- 

@@ -557,8 +557,8 @@ void cell_init_parts(struct cell *c, void *data) {
 
   struct part *p = c->parts;
   struct xpart *xp = c->xparts;
-  
-  for(int i=0; i<c->count; ++i) {
+
+  for (int i = 0; i < c->count; ++i) {
     p[i].t_begin = 0.;
     p[i].t_end = 0.;
     xp[i].v_full[0] = p[i].v[0];
@@ -571,7 +571,8 @@ void cell_init_parts(struct cell *c, void *data) {
 }
 
 /**
- * @brief Converts hydro quantities to a valid state after the initial density calculation
+ * @brief Converts hydro quantities to a valid state after the initial density
+ *calculation
  *
  * @param c Cell to act upon
  * @param data Unused parameter
@@ -579,12 +580,11 @@ void cell_init_parts(struct cell *c, void *data) {
 void cell_convert_hydro(struct cell *c, void *data) {
 
   struct part *p = c->parts;
-  
-  for(int i=0; i<c->count; ++i) {
+
+  for (int i = 0; i < c->count; ++i) {
     hydro_convert_quantities(&p[i]);
   }
 }
-
 
 /**
  * @brief Cleans the links in a given cell.
@@ -592,11 +592,10 @@ void cell_convert_hydro(struct cell *c, void *data) {
  * @param c Cell to act upon
  * @param data Unused parameter
  */
-void cell_clean_links(struct cell * c, void * data) {
+void cell_clean_links(struct cell *c, void *data) {
   c->density = NULL;
   c->nr_density = 0;
-  
+
   c->force = NULL;
   c->nr_force = 0;
 }
-

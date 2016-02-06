@@ -64,7 +64,7 @@ struct scheduler {
 
   /* Scheduler sub-task mask */
   unsigned int submask;
-  
+
   /* Number of queues in this scheduler. */
   int nr_queues;
 
@@ -112,9 +112,10 @@ struct scheduler {
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID);
 struct task *scheduler_gettask(struct scheduler *s, int qid,
-                               const struct task* prev);
+                               const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
-void scheduler_start(struct scheduler *s, unsigned int mask, unsigned int submask);
+void scheduler_start(struct scheduler *s, unsigned int mask,
+                     unsigned int submask);
 void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s);
@@ -129,6 +130,6 @@ void scheduler_set_unlocks(struct scheduler *s);
 void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(struct scheduler *s, char *fileName);
 void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
-			 unsigned int mask, unsigned int submask);
+                         unsigned int mask, unsigned int submask);
 
 #endif /* SWIFT_SCHEDULER_H */

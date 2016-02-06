@@ -497,30 +497,27 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
   const float t_end = r->e->time;
 
   TIMER_TIC;
-  
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_doinit(r, c->progeny[k], 0);
     return;
-  }
-  else {
-  
+  } else {
+
     /* Loop over the parts in this cell. */
     for (int i = 0; i < count; i++) {
-      
+
       /* Get a direct pointer on the part. */
       p = &parts[i];
 
       if (p->t_end <= t_end) {
 
-      /* if(p->id == 1000) message("init 1000!"); */
-      /* if(p->id == 515050) message("init 515050!"); */
-      
+        /* if(p->id == 1000) message("init 1000!"); */
+        /* if(p->id == 515050) message("init 515050!"); */
 
-	
-	/* Get ready for a density calculation */
-	hydro_init_part(p);
+        /* Get ready for a density calculation */
+        hydro_init_part(p);
       }
     }
   }
@@ -534,8 +531,6 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
     TIMER_TOC(timer_init);
 #endif
   }
-
-  
 }
 
 /**
@@ -585,12 +580,12 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
       /* if(p->id == 1000) message("ghost 1000"); */
       /* if(p->id == 515050) message("ghost 515050"); */
-      
+
       /* Is this part within the timestep? */
       if (p->t_end <= t_end) {
 
-	/* Finish the density calculation */
-	hydro_end_density(p, t_end);
+        /* Finish the density calculation */
+        hydro_end_density(p, t_end);
 
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
@@ -606,7 +601,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
         /* Did we get the right number density? */
         if (p->density.wcount > kernel_nwneigh + const_delta_nwneigh ||
-           p->density. wcount < kernel_nwneigh - const_delta_nwneigh) {
+            p->density.wcount < kernel_nwneigh - const_delta_nwneigh) {
 
           /* Ok, correct then */
           p->h += h_corr;
@@ -615,26 +610,25 @@ void runner_doghost(struct runner *r, struct cell *c) {
           pid[redo] = pid[i];
           redo += 1;
 
-	  /* Re-initialise everything */
-	  hydro_init_part(p);
+          /* Re-initialise everything */
+          hydro_init_part(p);
 
-	  /* Off we go ! */
+          /* Off we go ! */
           continue;
         }
 
         /* We now have a particle whose smoothing length has converged */
-	//if(p->id == 1000)
-	//  printParticle(parts, 1000, count);
-	
+        // if(p->id == 1000)
+        //  printParticle(parts, 1000, count);
+
         /* As of here, particle force variables will be set. Do _NOT_
            try to read any particle density variables! */
 
-	/* Compute variables required for the force loop */
-	hydro_prepare_force(p, xp);
-	
-	/* Prepare the particle for the force loop over neighbours */
-	hydro_reset_acceleration(p);
+        /* Compute variables required for the force loop */
+        hydro_prepare_force(p, xp);
 
+        /* Prepare the particle for the force loop over neighbours */
+        hydro_reset_acceleration(p);
       }
     }
 
@@ -710,7 +704,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
   float dx_max = 0.f, h_max = 0.f;
-  
+
   TIMER_TIC
 
   /* No children? */
@@ -727,7 +721,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->x[0] += xp->v_full[0] * dt;
       p->x[1] += xp->v_full[1] * dt;
       p->x[2] += xp->v_full[2] * dt;
-      
+
       /* Predict velocities */
       p->v[0] += p->a[0] * dt;
       p->v[1] += p->a[1] * dt;
@@ -738,28 +732,29 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* if (fabsf(w) < 0.01f) /\* 1st order expansion of exp(w) *\/ */
       /* 	p->h *= */
       /* 	  1.0f + */
-      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w))); */
+      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f *
+       * w))); */
       /* else */
       /* 	p->h *= expf(w); */
 
-      //MATTHIEU
-      
+      // MATTHIEU
+
       /* /\* Predict density *\/ */
       /* w = -3.0f * p->force.h_dt * ih * dt; */
       /* if (fabsf(w) < 0.1f) */
       /* 	p->rho *= */
       /* 	  1.0f + */
-      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w))); */
+      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f *
+       * w))); */
       /* else */
       /* 	p->rho *= expf(w); */
 
-
-      
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
 
       /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
-      /* 	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]\n", */
+      /* 	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]\n",
+       */
       /* 		p->id, */
       /* 		r->e->time, */
       /* 		r->e->timeOld, */
@@ -768,11 +763,11 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* 		p->v[1], */
       /* 		p->v[2]); */
 
-      
       /* Compute motion since last cell construction */
-      const float dx = sqrtf((p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
-			     (p->x[1] - xp->x_old[1]) * (p->x[1] - xp->x_old[1]) +
-			     (p->x[2] - xp->x_old[2]) * (p->x[2] - xp->x_old[2]));
+      const float dx =
+          sqrtf((p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
+                (p->x[1] - xp->x_old[1]) * (p->x[1] - xp->x_old[1]) +
+                (p->x[2] - xp->x_old[2]) * (p->x[2] - xp->x_old[2]));
       dx_max = fmaxf(dx_max, dx);
 
       /* Maximal smoothing length */
@@ -789,15 +784,15 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
         struct cell *cp = c->progeny[k];
         runner_dodrift(r, cp, 0);
 
-	dx_max = fmaxf(dx_max, cp->dx_max);
-	h_max = fmaxf(h_max, cp->h_max);
+        dx_max = fmaxf(dx_max, cp->dx_max);
+        h_max = fmaxf(h_max, cp->h_max);
       }
   }
 
   /* Store the values */
   c->h_max = h_max;
   c->dx_max = dx_max;
-  
+
   if (timer) {
 #ifdef TIMER_VERBOSE
     message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
@@ -823,7 +818,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const float global_dt_min = r->e->dt_min, global_dt_max = r->e->dt_max;
   const float t_current = r->e->time;
   const int count = c->count;
-  const int is_fixdt = (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+  const int is_fixdt =
+      (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   float new_dt;
   float dt_timeline;
@@ -854,52 +850,52 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       x[2] = p->x[2];
 
       /* If particle needs to be kicked */
-      if ( is_fixdt || p->t_end <= t_current ) {
+      if (is_fixdt || p->t_end <= t_current) {
 
         /* First, finish the force loop */
-	hydro_end_force(p);
-	  
-	if( is_fixdt ) {
+        hydro_end_force(p);
 
-	  /* Now we have a time step, proceed with the kick */
-	  new_dt = global_dt_max;
-	  
-	} else {
-	
-	  /* Compute the next timestep */
-	  const float new_dt_hydro = hydro_compute_timestep(p, xp);
-	  const float new_dt_grav = gravity_compute_timestep(p, xp);
-	  
-	  new_dt = fminf(new_dt_hydro, new_dt_grav);
-	  
-	  /* Recover the current timestep */
-	  const float current_dt = p->t_end - p->t_begin;
-	  
-	  /* Limit timestep increase */
-	  if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
-	
-	  /* Limit timestep within the allowed range */
-	  new_dt = fminf(new_dt, global_dt_max);
-	  new_dt = fmaxf(new_dt, global_dt_min);
-	
-	  /* Put this timestep on the time line */
-	  dt_timeline = dt_max_timeline;
-	  while (new_dt < dt_timeline) dt_timeline /= 2.;
-	  
-	  /* Now we have a time step, proceed with the kick */
-	  new_dt = dt_timeline;
-	}
+        if (is_fixdt) {
+
+          /* Now we have a time step, proceed with the kick */
+          new_dt = global_dt_max;
+
+        } else {
+
+          /* Compute the next timestep */
+          const float new_dt_hydro = hydro_compute_timestep(p, xp);
+          const float new_dt_grav = gravity_compute_timestep(p, xp);
+
+          new_dt = fminf(new_dt_hydro, new_dt_grav);
+
+          /* Recover the current timestep */
+          const float current_dt = p->t_end - p->t_begin;
+
+          /* Limit timestep increase */
+          if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
+
+          /* Limit timestep within the allowed range */
+          new_dt = fminf(new_dt, global_dt_max);
+          new_dt = fmaxf(new_dt, global_dt_min);
+
+          /* Put this timestep on the time line */
+          dt_timeline = dt_max_timeline;
+          while (new_dt < dt_timeline) dt_timeline /= 2.;
+
+          /* Now we have a time step, proceed with the kick */
+          new_dt = dt_timeline;
+        }
 
         /* Compute the time step for this kick */
         const float t_start = 0.5f * (p->t_begin + p->t_end);
         const float t_end = p->t_end + 0.5f * new_dt;
         const float dt = t_end - t_start;
-	const float half_dt = t_end - p->t_end;
+        const float half_dt = t_end - p->t_end;
 
         /* Move particle forward in time */
         p->t_begin = p->t_end;
         p->t_end = p->t_begin + new_dt;
-	
+
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a[0] * dt;
         xp->v_full[1] += p->a[1] * dt;
@@ -909,20 +905,20 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->v[1] = xp->v_full[1] - half_dt * p->a[1];
         p->v[2] = xp->v_full[2] - half_dt * p->a[2];
 
-	/* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
-	/*   message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e %.3e %.3e]\n", */
-	/* 	  p->id, */
-	/* 	  t_current, */
-	/* 	  p->t_begin, */
-	/* 	  p->t_end, */
-	/* 	  half_dt, */
-	/* 	  p->v[0], */
-	/* 	  p->v[1], */
-	/* 	  p->v[2]); */
+        /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
+        /*   message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e
+         * %.3e %.3e]\n", */
+        /* 	  p->id, */
+        /* 	  t_current, */
+        /* 	  p->t_begin, */
+        /* 	  p->t_end, */
+        /* 	  half_dt, */
+        /* 	  p->v[0], */
+        /* 	  p->v[1], */
+        /* 	  p->v[2]); */
 
-	
-	/* Extra kick work */
-	hydro_kick_extra(p, dt);
+        /* Extra kick work */
+        hydro_kick_extra(p, dt);
       }
 
       /* Now collect quantities for statistics */
@@ -965,7 +961,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         struct cell *cp = c->progeny[k];
         runner_dokick(r, cp, 0);
 
-	updated += cp->updated;
+        updated += cp->updated;
         ekin += cp->ekin;
         epot += cp->epot;
         mom[0] += cp->mom[0];
@@ -1026,7 +1022,7 @@ void *runner_main(void *data) {
     engine_barrier(e, r->id);
 
     /* Re-set the pointer to the previous task, as there is none. */
-    struct task* prev = NULL;
+    struct task *prev = NULL;
 
     /* Loop while there are tasks... */
     while (1) {
@@ -1054,7 +1050,7 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_density)
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
-	    runner_doself2_force(r, ci);
+            runner_doself2_force(r, ci);
           else
             error("Unknown task subtype.");
           break;
@@ -1062,7 +1058,7 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
-	    runner_dopair2_force(r, ci, cj);
+            runner_dopair2_force(r, ci, cj);
           else
             error("Unknown task subtype.");
           break;
@@ -1121,7 +1117,8 @@ void *runner_main(void *data) {
           space_split(e->s, t->ci);
           break;
         case task_type_rewait:
-	  scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj, t->flags, t->rank);
+          scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj,
+                              t->flags, t->rank);
           break;
         default:
           error("Unknown task type.");

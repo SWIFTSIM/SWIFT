@@ -27,9 +27,9 @@
 /* Forward declaration of space, needed for cell_unpack. */
 struct space;
 
-/* Max tag size set to 2^29 to take into account some MPI implementations 
- * that use 2^31 as the upper bound on MPI tags and the fact that 
- * cell_next_tag is multiplied by 2 when passed to an MPI function. 
+/* Max tag size set to 2^29 to take into account some MPI implementations
+ * that use 2^31 as the upper bound on MPI tags and the fact that
+ * cell_next_tag is multiplied by 2 when passed to an MPI function.
  * The maximum was lowered by a further factor of 2 to be on the safe side.*/
 #define cell_max_tag (1 << 29)
 
@@ -161,11 +161,9 @@ struct cell {
 
 } __attribute__((aligned(64)));
 
-
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
-
 
 /* Function prototypes. */
 void cell_split(struct cell *c);
@@ -179,6 +177,6 @@ int cell_getsize(struct cell *c);
 int cell_link(struct cell *c, struct part *parts);
 void cell_init_parts(struct cell *c, void *data);
 void cell_convert_hydro(struct cell *c, void *data);
-void cell_clean_links(struct cell * c, void * data);
+void cell_clean_links(struct cell *c, void *data);
 
 #endif /* SWIFT_CELL_H */

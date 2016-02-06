@@ -37,7 +37,6 @@ struct xpart {
 
 } __attribute__((aligned(xpart_align)));
 
-
 /* Data of a single particle. */
 struct part {
 
@@ -73,45 +72,45 @@ struct part {
   float alpha;
 
   /* Store density/force specific stuff. */
-  //union {
+  // union {
 
-    struct {
-      
-      /* Particle velocity divergence. */
-      float div_v;
-      
-      /* Derivative of particle number density. */
-      float wcount_dh;
-      
-      /* Particle velocity curl. */
-      float curl_v[3];
-      
-      /* Particle number density. */
-      float wcount;
-      
-    } density;
-    
-    struct {
-      
-      /* Balsara switch */
-      float balsara;
-      
-      /* Aggregate quantities. */
-      float POrho2;
-      
-      /* Change in particle energy over time. */
-      float u_dt;
-      
-      /* Change in smoothing length over time. */
-      float h_dt;
-      
-      /* Signal velocity */
-      float v_sig;
-      
-      /* Sound speed */
-      float c;
-      
-    } force;
+  struct {
+
+    /* Particle velocity divergence. */
+    float div_v;
+
+    /* Derivative of particle number density. */
+    float wcount_dh;
+
+    /* Particle velocity curl. */
+    float curl_v[3];
+
+    /* Particle number density. */
+    float wcount;
+
+  } density;
+
+  struct {
+
+    /* Balsara switch */
+    float balsara;
+
+    /* Aggregate quantities. */
+    float POrho2;
+
+    /* Change in particle energy over time. */
+    float u_dt;
+
+    /* Change in smoothing length over time. */
+    float h_dt;
+
+    /* Signal velocity */
+    float v_sig;
+
+    /* Sound speed */
+    float c;
+
+  } force;
   //};
 
   /* Particle mass. */
@@ -122,5 +121,5 @@ struct part {
 
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
-  
+
 } __attribute__((aligned(part_align)));

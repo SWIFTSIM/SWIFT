@@ -1,21 +1,21 @@
- /*******************************************************************************
- * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published
- * by the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- ******************************************************************************/
+/*******************************************************************************
+* This file is part of SWIFT.
+* Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published
+* by the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+******************************************************************************/
 
 /* Config parameters. */
 #include "../config.h"
@@ -470,8 +470,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   // tic = getticks();
   // for (k = 0; k < s->nr_cells; k++) space_split(s, &cells[k]);
   for (k = 0; k < s->nr_cells; k++)
-    scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none,
-                      k, 0, &cells[k], NULL, 0);
+    scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none, k,
+                      0, &cells[k], NULL, 0);
   engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell, 0);
 
   // message( "space_split took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
@@ -517,7 +517,8 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   /* Verify space_sort_struct. */
   /* for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
-      error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1, ind[i - 1], i,
+      error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1,
+  ind[i - 1], i,
             ind[i], min, max);
   message("Sorting succeeded."); */
 
@@ -542,7 +543,7 @@ void space_do_parts_sort() {
     /* Wait for the entry to be ready, or for the sorting do be done. */
     while (!space_sort_struct.stack[qid].ready)
       if (!space_sort_struct.waiting) return;
-      
+
     /* Get the stack entry. */
     int i = space_sort_struct.stack[qid].i;
     int j = space_sort_struct.stack[qid].j;
@@ -598,7 +599,8 @@ void space_do_parts_sort() {
         if (jj > i && pivot > min) {
           qid = atomic_inc(&space_sort_struct.last) %
                 space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready);
+          while (space_sort_struct.stack[qid].ready)
+            ;
           space_sort_struct.stack[qid].i = i;
           space_sort_struct.stack[qid].j = jj;
           space_sort_struct.stack[qid].min = min;
@@ -622,7 +624,8 @@ void space_do_parts_sort() {
         if (pivot + 1 < max) {
           qid = atomic_inc(&space_sort_struct.last) %
                 space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready);
+          while (space_sort_struct.stack[qid].ready)
+            ;
           space_sort_struct.stack[qid].i = jj + 1;
           space_sort_struct.stack[qid].j = j;
           space_sort_struct.stack[qid].min = pivot + 1;
@@ -1229,5 +1232,4 @@ void space_link_cleanup(struct space *s) {
 
   /* Recursively apply the cell link cleaning routine */
   space_map_cells_pre(s, 1, cell_clean_links, NULL);
-  
 }

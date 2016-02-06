@@ -37,7 +37,6 @@ struct xpart {
 
 } __attribute__((aligned(xpart_align)));
 
-
 /* Data of a single particle. */
 struct part {
 
@@ -60,15 +59,15 @@ struct part {
   float t_end;
 
   struct {
-  
+
     /* Number of neighbours */
     float wcount;
-    
+
     /* Number of neighbours spatial derivative */
     float wcount_dh;
 
   } density;
-    
+
   /* Particle entropy. */
   float entropy;
 
@@ -87,7 +86,7 @@ struct part {
 
   /* Entropy time derivative */
   float entropy_dt;
-  
+
   /* Velocity divergence */
   float div_v;
 
@@ -97,7 +96,7 @@ struct part {
 
   /* Signal velocity */
   float v_sig;
-  
+
   /* Particle ID. */
   unsigned long long id;
 
@@ -105,5 +104,3 @@ struct part {
   struct gpart* gpart;
 
 } __attribute__((aligned(part_align)));
-
-

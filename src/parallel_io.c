@@ -270,8 +270,8 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
             COMPULSORY);
   readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset, h,
             COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset, entropy,
-            COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset,
+            entropy, COMPULSORY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset, id,
             COMPULSORY);
   /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, */
@@ -580,7 +580,8 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts,
              N_total, mpi_rank, offset, h, us, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts,
-             N_total, mpi_rank, offset, entropy, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+             N_total, mpi_rank, offset, entropy, us,
+             UNIT_CONV_ENERGY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
   /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts,

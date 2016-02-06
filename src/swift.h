@@ -50,5 +50,4 @@
 #include "tools.h"
 #include "version.h"
 
-
 #endif /* SWIFT_SWIFT_H */
