@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,23 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEBUG_H
-#define SWIFT_DEBUG_H
-
-/* Includes. */
-#include "cell.h"
-#include "part.h"
 
 
-void printParticle(struct part *parts, struct xpart *xparts, long long int i,
-                   int N);
-void printgParticle(struct gpart *parts, long long int i, int N);
-void printParticle_single(struct part *p, struct xpart *xp);
-
-#ifdef HAVE_METIS
-#include "metis.h"
-void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
-                    idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
-
-#endif
-#endif /* SWIFT_DEBUG_H */
+__attribute__((always_inline))
+INLINE static void hydro_debug_particle(struct part* p, struct xpart* xp) {
+       printf(
+          "x=[%.3e,%.3e,%.3e], "
+          "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
+          "h=%.3e, "
+          "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, t_begin=%.3e, t_end=%.3e\n",
+          p->x[0], p->x[1], p->x[2],
+          p->v[0], p->v[1], p->v[2], xp->v_full[0],
+          xp->v_full[1], xp->v_full[2], p->a[0],
+          p->a[1], p->a[2], 2. * p->h,
+          (int)p->density.wcount, p->mass, p->rho_dh,
+          p->rho, p->t_begin, p->t_end); 
+}
