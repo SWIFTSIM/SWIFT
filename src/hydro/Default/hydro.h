@@ -70,6 +70,7 @@ __attribute__((always_inline))
  * and add the self-contribution term.
  *
  * @param p The particle to act upon
+ * @param time The current time
  */
 __attribute__((always_inline))
 INLINE static void hydro_end_density(struct part* p, float time) {
@@ -166,7 +167,8 @@ __attribute__((always_inline))
  *
  * @param p The particle
  * @param xp The extended data of the particle
- * @param dt The time-step over which to drift
+ * @param t0 The time at the start of the drift
+ * @param t1 The time at the end of the drift
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float t0, float t1) {
@@ -205,6 +207,7 @@ __attribute__((always_inline))
  * @brief Kick the additional variables
  *
  * @param p The particle to act upon
+ * @param dt The time-step for this kick
  */
 __attribute__((always_inline))
     INLINE static void hydro_kick_extra(struct part* p, float dt) {
