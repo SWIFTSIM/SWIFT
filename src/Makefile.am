@@ -46,7 +46,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 # Include files for distribution, not installation.
 noinst_HEADERS = atomic.h cycle.h error.h inline.h kernel.h vector.h \
 		 runner_doiact.h runner_doiact_grav.h units.h intrinsics.h \
-		 hydro.h gravity.h
+		 hydro.h gravity.h hydro/*/*.h gravity/*/*.h
 
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)
