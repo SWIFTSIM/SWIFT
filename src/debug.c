@@ -34,8 +34,6 @@
 #include "./hydro/Default/hydro_debug.h"
 #endif
 
-extern int engine_rank;
-
 /**
  * @brief Looks for the particle with the given id and prints its information to
  *the standard output.
@@ -56,11 +54,7 @@ void printParticle(struct part *parts, struct xpart *xparts, long long int id,
   /* Look for the particle. */
   for (i = 0; i < N; i++)
     if (parts[i].id == id) {
-#ifdef WITH_MPI
-      printf("## [%d] Particle[%d]:\n id=%lld", engine_rank, i, parts[i].id);
-#else
       printf("## Particle[%d]:\n id=%lld", i, parts[i].id);
-#endif
       hydro_debug_particle(&parts[i], &xparts[i]);
       found = 1;
     }
