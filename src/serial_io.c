@@ -168,6 +168,150 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   H5Dclose(h_data);
 }
 
+
+/*-----------------------------------------------------------------------------
+ * Routines writing an output file
+ *-----------------------------------------------------------------------------*/
+
+void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
+                  enum DATA_TYPE type, long long N_total, int dim,
+                  struct UnitSystem* us, enum UnitConversionFactor convFactor) {
+  hid_t h_data = 0, h_err = 0, h_space = 0;
+  int rank = 0;
+  hsize_t shape[2];
+  char buffer[150];
+
+  /* Create data space */
+  h_space = H5Screate(H5S_SIMPLE);
+  if (h_space < 0) {
+    error("Error while creating data space for field '%s'.", name);
+  }
+
+  if (dim > 1) {
+    rank = 2;
+    shape[0] = N_total;
+    shape[1] = dim;
+  } else {
+    rank = 1;
+    shape[0] = N_total;
+    shape[1] = 0;
+  }
+
+  /* Change shape of data space */
+  h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
+  if (h_err < 0) {
+    error("Error while changing data space shape for field '%s'.", name);
+  }
+
+  /* Create dataset */
+  h_data = H5Dcreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
+  if (h_data < 0) {
+    error("Error while creating dataspace '%s'.", name);
+  }
+
+  /* Write XMF description for this data set */
+  writeXMFline(xmfFile, fileName, name, N_total, dim, type);
+
+  /* Write unit conversion factors for this data set */
+  conversionString(buffer, us, convFactor);
+  writeAttribute_d(h_data, "CGS conversion factor",
+                   conversionFactor(us, convFactor));
+  writeAttribute_f(h_data, "h-scale exponent", hFactor(us, convFactor));
+  writeAttribute_f(h_data, "a-scale exponent", aFactor(us, convFactor));
+  writeAttribute_s(h_data, "Conversion factor", buffer);
+
+  H5Dclose(h_data);
+  H5Sclose(h_space);
+}
+
+/**
+ * @brief Writes a data array in given HDF5 group.
+ *
+ * @param grp The group in which to write.
+ * @param fileName The name of the file in which the data is written
+ * @param xmfFile The FILE used to write the XMF description
+ * @param name The name of the array to write.
+ * @param type The #DATA_TYPE of the array.
+ * @param N The number of particles to write.
+ * @param dim The dimension of the data (1 for scalar, 3 for vector)
+ * @param part_c A (char*) pointer on the first occurrence of the field of
+ *interest in the parts array
+ * @param us The UnitSystem currently in use
+ * @param convFactor The UnitConversionFactor for this array
+ *
+ *
+ * Calls #error() if an error occurs.
+ */
+void writeArrayBackEnd(hid_t grp, char* name, 
+		       enum DATA_TYPE type, int N, int dim, long long N_total, 
+		       long long offset, char* part_c) {
+  hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0;
+  hsize_t shape[2], offsets[2];
+  void* temp = 0;
+  int i = 0, rank = 0;
+  const size_t typeSize = sizeOfType(type);
+  const size_t copySize = typeSize * dim;
+  const size_t partSize = sizeof(struct part);
+  char* temp_c = 0;
+
+  /* message("Writing '%s' array...", name); */
+
+  /* Allocate temporary buffer */
+  temp = malloc(N * dim * sizeOfType(type));
+  if (temp == NULL) error("Unable to allocate memory for temporary buffer");
+
+  /* Copy particle data to temporary buffer */
+  temp_c = temp;
+  for (i = 0; i < N; ++i)
+    memcpy(&temp_c[i * copySize], part_c + i * partSize, copySize);
+
+  /* Construct information for the hyper-slab */
+  if (dim > 1) {
+    rank = 2;
+    shape[0] = N;
+    shape[1] = dim;
+    offsets[0] = offset;
+    offsets[1] = 0;
+  } else {
+    rank = 1;
+    shape[0] = N;
+    shape[1] = 0;
+    offsets[0] = offset;
+    offsets[1] = 0;
+  }
+
+  /* Create data space in memory */
+  h_memspace = H5Screate(H5S_SIMPLE);
+  if (h_memspace < 0)
+    error("Error while creating data space (memory) for field '%s'.", name);
+
+  /* Change shape of memory data space */
+  h_err = H5Sset_extent_simple(h_memspace, rank, shape, NULL);
+  if (h_err < 0)
+    error("Error while changing data space (memory) shape for field '%s'.",
+          name);
+
+  /* Open pre-existing data set */
+  h_data = H5Dopen(grp, name, H5P_DEFAULT);
+  if (h_data < 0) error("Error while opening dataset '%s'.", name);
+
+  /* Select data space in that data set */
+  h_filespace = H5Dget_space(h_data);
+  H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
+
+  /* Write temporary buffer to HDF5 dataspace */
+  h_err = H5Dwrite(h_data, hdf5Type(type), h_memspace, h_filespace, H5P_DEFAULT,
+                   temp);
+  if (h_err < 0) error("Error while writing data array '%s'.", name);
+
+  /* Free and close everything */
+  free(temp);
+  H5Dclose(h_data);
+  H5Sclose(h_memspace);
+  H5Sclose(h_filespace);
+}
+
+
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
  *
@@ -183,10 +327,43 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * @param importance Is the data compulsory or not
  *
  */
-#define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
-                  importance)                                            \
-  readArrayBackEnd(grp, name, type, N, dim, N_total, offset,             \
+#define readArray(grp, name, type, N, dim, part, N_total, offset,      \
+		  field, importance)				       \
+  readArrayBackEnd(grp, name, type, N, dim, N_total, offset,	       \
                    (char*)(&(part[0]).field), importance)
+
+
+/**
+ * @brief A helper macro to call the readArrayBackEnd function more easily.
+ *
+ * @param grp The group in which to write.
+ * @param fileName Unused parameter in non-MPI mode
+ * @param xmfFile Unused parameter in non-MPI mode
+ * @param name The name of the array to write.
+ * @param type The #DATA_TYPE of the array.
+ * @param N The number of particles to write.
+ * @param dim The dimension of the data (1 for scalar, 3 for vector)
+ * @param part A (char*) pointer on the first occurrence of the field of
+ *interest
+ *in the parts array
+ * @param field The name (code name) of the field to read from.
+ * @param us The UnitSystem currently in use
+ * @param convFactor The UnitConversionFactor for this array
+ *
+ */
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total,\
+                   mpi_rank, offset, field, us, convFactor)		\
+  writeArrayBackEnd(grp, name, type, N, dim,				\
+		    N_total, offset, (char*)(&(part[0]).field))
+
+
+/* Import the right hydro definition */
+#ifdef LEGACY_GADGET2_SPH
+#include "./hydro/Gadget2/hydro_io.h"
+#else
+#include "./hydro/Default/hydro_io.h"
+#endif
+
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
@@ -300,27 +477,9 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
       h_grp = H5Gopen1(h_file, "/PartType0");
       if (h_grp < 0)
         error("Error while opening particle group on rank %d.\n", mpi_rank);
-
-      /* Read arrays */
-      readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, N_total, offset, x,
-                COMPULSORY);
-      readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, N_total, offset, v,
-                COMPULSORY);
-      readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, N_total, offset, mass,
-                COMPULSORY);
-      readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset,
-                h, COMPULSORY);
-      readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset,
-                entropy, COMPULSORY);
-      readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset,
-                id, COMPULSORY);
-      /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
-       */
-      /*           OPTIONAL); */
-      readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a,
-                OPTIONAL);
-      readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho,
-                OPTIONAL);
+      
+      /* Read particle fields into the particle structure */
+      hydro_read_particles(h_grp, *N, N_total, offset, *parts);
 
       /* Close particle group */
       H5Gclose(h_grp);
@@ -336,169 +495,8 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
   /* message("Done Reading particles..."); */
 }
 
-/*-----------------------------------------------------------------------------
- * Routines writing an output file
- *-----------------------------------------------------------------------------*/
 
-void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
-                  enum DATA_TYPE type, long long N_total, int dim,
-                  struct UnitSystem* us, enum UnitConversionFactor convFactor) {
-  hid_t h_data = 0, h_err = 0, h_space = 0;
-  int rank = 0;
-  hsize_t shape[2];
-  char buffer[150];
 
-  /* Create data space */
-  h_space = H5Screate(H5S_SIMPLE);
-  if (h_space < 0) {
-    error("Error while creating data space for field '%s'.", name);
-  }
-
-  if (dim > 1) {
-    rank = 2;
-    shape[0] = N_total;
-    shape[1] = dim;
-  } else {
-    rank = 1;
-    shape[0] = N_total;
-    shape[1] = 0;
-  }
-
-  /* Change shape of data space */
-  h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
-  if (h_err < 0) {
-    error("Error while changing data space shape for field '%s'.", name);
-  }
-
-  /* Create dataset */
-  h_data = H5Dcreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
-  if (h_data < 0) {
-    error("Error while creating dataspace '%s'.", name);
-  }
-
-  /* Write XMF description for this data set */
-  writeXMFline(xmfFile, fileName, name, N_total, dim, type);
-
-  /* Write unit conversion factors for this data set */
-  conversionString(buffer, us, convFactor);
-  writeAttribute_d(h_data, "CGS conversion factor",
-                   conversionFactor(us, convFactor));
-  writeAttribute_f(h_data, "h-scale exponent", hFactor(us, convFactor));
-  writeAttribute_f(h_data, "a-scale exponent", aFactor(us, convFactor));
-  writeAttribute_s(h_data, "Conversion factor", buffer);
-
-  H5Dclose(h_data);
-  H5Sclose(h_space);
-}
-
-/**
- * @brief Writes a data array in given HDF5 group.
- *
- * @param grp The group in which to write.
- * @param fileName The name of the file in which the data is written
- * @param xmfFile The FILE used to write the XMF description
- * @param name The name of the array to write.
- * @param type The #DATA_TYPE of the array.
- * @param N The number of particles to write.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurrence of the field of
- *interest in the parts array
- * @param us The UnitSystem currently in use
- * @param convFactor The UnitConversionFactor for this array
- *
- *
- * Calls #error() if an error occurs.
- */
-void writeArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
-                       int dim, long long N_total, long long offset,
-                       char* part_c) {
-  hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0;
-  hsize_t shape[2], offsets[2];
-  void* temp = 0;
-  int i = 0, rank = 0;
-  const size_t typeSize = sizeOfType(type);
-  const size_t copySize = typeSize * dim;
-  const size_t partSize = sizeof(struct part);
-  char* temp_c = 0;
-
-  /* message("Writing '%s' array...", name); */
-
-  /* Allocate temporary buffer */
-  temp = malloc(N * dim * sizeOfType(type));
-  if (temp == NULL) error("Unable to allocate memory for temporary buffer");
-
-  /* Copy particle data to temporary buffer */
-  temp_c = temp;
-  for (i = 0; i < N; ++i)
-    memcpy(&temp_c[i * copySize], part_c + i * partSize, copySize);
-
-  /* Construct information for the hyper-slab */
-  if (dim > 1) {
-    rank = 2;
-    shape[0] = N;
-    shape[1] = dim;
-    offsets[0] = offset;
-    offsets[1] = 0;
-  } else {
-    rank = 1;
-    shape[0] = N;
-    shape[1] = 0;
-    offsets[0] = offset;
-    offsets[1] = 0;
-  }
-
-  /* Create data space in memory */
-  h_memspace = H5Screate(H5S_SIMPLE);
-  if (h_memspace < 0)
-    error("Error while creating data space (memory) for field '%s'.", name);
-
-  /* Change shape of memory data space */
-  h_err = H5Sset_extent_simple(h_memspace, rank, shape, NULL);
-  if (h_err < 0)
-    error("Error while changing data space (memory) shape for field '%s'.",
-          name);
-
-  /* Open pre-existing data set */
-  h_data = H5Dopen(grp, name, H5P_DEFAULT);
-  if (h_data < 0) error("Error while opening dataset '%s'.", name);
-
-  /* Select data space in that data set */
-  h_filespace = H5Dget_space(h_data);
-  H5Sselect_hyperslab(h_filespace, H5S_SELECT_SET, offsets, NULL, shape, NULL);
-
-  /* Write temporary buffer to HDF5 dataspace */
-  h_err = H5Dwrite(h_data, hdf5Type(type), h_memspace, h_filespace, H5P_DEFAULT,
-                   temp);
-  if (h_err < 0) error("Error while writing data array '%s'.", name);
-
-  /* Free and close everything */
-  free(temp);
-  H5Dclose(h_data);
-  H5Sclose(h_memspace);
-  H5Sclose(h_filespace);
-}
-
-/**
- * @brief A helper macro to call the readArrayBackEnd function more easily.
- *
- * @param grp The group in which to write.
- * @param fileName The name of the file in which the data is written
- * @param xmfFile The FILE used to write the XMF description
- * @param name The name of the array to write.
- * @param type The #DATA_TYPE of the array.
- * @param N The number of particles to write.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part A (char*) pointer on the first occurrence of the field of
- *interest
- *in the parts array
- * @param field The name (code name) of the field to read from.
- * @param us The UnitSystem currently in use
- * @param convFactor The UnitConversionFactor for this array
- *
- */
-#define writeArray(grp, name, type, N, dim, N_total, offset, part, field) \
-  writeArrayBackEnd(grp, name, type, N, dim, N_total, offset,             \
-                    (char*)(&(part[0]).field))
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -663,19 +661,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
       if (h_grp < 0)
         error("Error while opening particle group on rank %d.\n", mpi_rank);
 
-      /* Write arrays */
-      writeArray(h_grp, "Coordinates", DOUBLE, N, 3, N_total, offset, parts, x);
-      writeArray(h_grp, "Velocities", FLOAT, N, 3, N_total, offset, parts, v);
-      writeArray(h_grp, "Masses", FLOAT, N, 1, N_total, offset, parts, mass);
-      writeArray(h_grp, "SmoothingLength", FLOAT, N, 1, N_total, offset, parts,
-                 h);
-      writeArray(h_grp, "InternalEnergy", FLOAT, N, 1, N_total, offset, parts,
-                 entropy);
-      writeArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, N_total, offset, parts,
-                 id);
-      // writeArray(h_grp, "TimeStep", FLOAT, N, 1, N_total, offset, parts, dt);
-      writeArray(h_grp, "Acceleration", FLOAT, N, 3, N_total, offset, parts, a);
-      writeArray(h_grp, "Density", FLOAT, N, 1, N_total, offset, parts, rho);
+      /* Write particle fields from the particle structure */ 
+      hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, 0, offset, parts, us);
 
       /* Close particle group */
       H5Gclose(h_grp);
@@ -692,4 +679,4 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   ++outputCount;
 }
 
-#endif /* HAVE_HDF5 */
+#endif /* HAVE_HDF5 && HAVE_MPI */

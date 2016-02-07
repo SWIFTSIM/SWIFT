@@ -241,13 +241,16 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param N The number of particles.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part The array of particles to fill
+ * @param N_total Unused parameter in non-MPI mode
+ * @param offset Unused parameter in non-MPI mode
  * @param field The name of the field (C code name as defined in part.h) to fill
  * @param importance Is the data compulsory or not
  *
  */
-#define readArray(grp, name, type, N, dim, part, field, importance)    \
-  readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field), \
-                   importance)
+#define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
+		  importance)						 \
+  readArrayBackEnd(grp, name, type, N, dim,				\
+		   (char*)(&(part[0]).field), importance)
 
 
 /**
@@ -261,16 +264,18 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part A (char*) pointer on the first occurrence of the field of
- *interest
- *in the parts array
+ * interest in the parts array
+ * @param N_total Unused parameter in non-MPI mode
+ * @param mpi_rank Unused parameter in non-MPI mode
+ * @param offset Unused parameter in non-MPI mode
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, field, \
-                   us, convFactor)                                          \
-  writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim,             \
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
+                   mpi_rank, offset, field, us, convFactor)		      \
+  writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim,               \
                     (char*)(&(part[0]).field), us, convFactor)
 
 
@@ -362,7 +367,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
   if (h_grp < 0) error("Error while opening particle group.\n");
 
   /* Read particle fields into the particle structure */
-  hydro_read_particles(h_grp, *N, *parts);
+  hydro_read_particles(h_grp, *N, *N, 0, *parts);
   
   /* Close particle group */
   H5Gclose(h_grp);
@@ -470,7 +475,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   if (h_grp < 0) error("Error while creating particle group.\n");
 
   /* Write particle fields from the particle structure */ 
-  hydro_write_particles(h_grp, fileName, xmfFile, N, parts, us);
+  hydro_write_particles(h_grp, fileName, xmfFile, N, N, 0, 0, parts, us);
   
   /* Close particle group */
   H5Gclose(h_grp);
