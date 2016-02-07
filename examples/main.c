@@ -56,6 +56,9 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+
+
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -115,7 +118,6 @@ int main(int argc, char *argv[]) {
   /* Greeting message */
   if (myrank == 0) greetings();
 
-#ifndef WITH_MPI
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   /* Ensure the NUMA node on which we initialise (first touch) everything
    * doesn't change before engine_init allocates NUMA-local workers. Otherwise,
@@ -129,7 +131,6 @@ int main(int argc, char *argv[]) {
   } else {
     message("set entry thread's affinity");
   }
-#endif
 #endif
 
   /* Init the space. */
