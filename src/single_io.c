@@ -35,8 +35,10 @@
 #include "single_io.h"
 
 /* Local includes. */
+#include "const.h"
 #include "common_io.h"
 #include "error.h"
+
 
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
@@ -127,121 +129,6 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   H5Dclose(h_data);
 }
 
-/**
- * @brief A helper macro to call the readArrayBackEnd function more easily.
- *
- * @param grp The group from which to read.
- * @param name The name of the array to read.
- * @param type The #DATA_TYPE of the attribute.
- * @param N The number of particles.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part The array of particles to fill
- * @param field The name of the field (C code name as defined in part.h) to fill
- * @param importance Is the data compulsory or not
- *
- */
-#define readArray(grp, name, type, N, dim, part, field, importance)    \
-  readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field), \
-                   importance)
-
-/**
- * @brief Reads an HDF5 initial condition file (GADGET-3 type)
- *
- * @param fileName The file to read.
- * @param dim (output) The dimension of the volume read from the file.
- * @param parts (output) The array of #part read from the file.
- * @param N (output) The number of particles read from the file.
- * @param periodic (output) 1 if the volume is periodic, 0 if not.
- *
- * Opens the HDF5 file fileName and reads the particles contained
- * in the parts array. N is the returned number of particles found
- * in the file.
- *
- * @warning Can not read snapshot distributed over more than 1 file !!!
- * @todo Read snapshots distributed in more than one file.
- *
- * Calls #error() if an error occurs.
- *
- */
-void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
-                    int* periodic) {
-  hid_t h_file = 0, h_grp = 0;
-  double boxSize[3] = {0.0, -1.0, -1.0};
-  /* GADGET has only cubic boxes (in cosmological mode) */
-  int numParticles[6] = {0};
-  /* GADGET has 6 particle types. We only keep the type 0*/
-
-  /* Open file */
-  /* message("Opening file '%s' as IC.", fileName); */
-  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
-  if (h_file < 0) {
-    error("Error while opening file '%s'.", fileName);
-  }
-
-  /* Open header to read simulation properties */
-  /* message("Reading runtime parameters..."); */
-  h_grp = H5Gopen1(h_file, "/RuntimePars");
-  if (h_grp < 0) error("Error while opening runtime parameters\n");
-
-  /* Read the relevant information */
-  readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
-
-  /* Close runtime parameters */
-  H5Gclose(h_grp);
-
-  /* Open header to read simulation properties */
-  /* message("Reading file header..."); */
-  h_grp = H5Gopen1(h_file, "/Header");
-  if (h_grp < 0) error("Error while opening file header\n");
-
-  /* Read the relevant information and print status */
-  readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
-  readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
-
-  *N = numParticles[0];
-  dim[0] = boxSize[0];
-  dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
-  dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
-
-  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
-  /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
-
-  /* Close header */
-  H5Gclose(h_grp);
-
-  /* Allocate memory to store particles */
-  if (posix_memalign((void*)parts, part_align, *N * sizeof(struct part)) != 0)
-    error("Error while allocating memory for particles");
-  bzero(*parts, *N * sizeof(struct part));
-
-  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
-   * (1024.*1024.)); */
-
-  /* Open SPH particles group */
-  /* message("Reading particle arrays..."); */
-  h_grp = H5Gopen1(h_file, "/PartType0");
-  if (h_grp < 0) error("Error while opening particle group.\n");
-
-  /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, *N, 3, *parts, x, COMPULSORY);
-  readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, v, COMPULSORY);
-  readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, mass, COMPULSORY);
-  readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, entropy,
-            COMPULSORY);  // MATTHIEU
-  readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
-  // readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
-  readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL);
-  readArray(h_grp, "Density", FLOAT, *N, 1, *parts, rho, OPTIONAL);
-
-  /* Close particle group */
-  H5Gclose(h_grp);
-
-  /* message("Done Reading particles..."); */
-
-  /* Close file */
-  H5Fclose(h_file);
-}
 
 /*-----------------------------------------------------------------------------
  * Routines writing an output file
@@ -344,6 +231,25 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   H5Sclose(h_space);
 }
 
+
+/**
+ * @brief A helper macro to call the readArrayBackEnd function more easily.
+ *
+ * @param grp The group from which to read.
+ * @param name The name of the array to read.
+ * @param type The #DATA_TYPE of the attribute.
+ * @param N The number of particles.
+ * @param dim The dimension of the data (1 for scalar, 3 for vector)
+ * @param part The array of particles to fill
+ * @param field The name of the field (C code name as defined in part.h) to fill
+ * @param importance Is the data compulsory or not
+ *
+ */
+#define readArray(grp, name, type, N, dim, part, field, importance)    \
+  readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field), \
+                   importance)
+
+
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
  *
@@ -366,6 +272,108 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                    us, convFactor)                                          \
   writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim,             \
                     (char*)(&(part[0]).field), us, convFactor)
+
+
+/* Import the right hydro definition */
+#ifdef LEGACY_GADGET2_SPH
+#include "./hydro/Gadget2/hydro_io.h"
+#else
+#include "./hydro/Default/hydro_io.h"
+#endif
+
+
+
+/**
+ * @brief Reads an HDF5 initial condition file (GADGET-3 type)
+ *
+ * @param fileName The file to read.
+ * @param dim (output) The dimension of the volume read from the file.
+ * @param parts (output) The array of #part read from the file.
+ * @param N (output) The number of particles read from the file.
+ * @param periodic (output) 1 if the volume is periodic, 0 if not.
+ *
+ * Opens the HDF5 file fileName and reads the particles contained
+ * in the parts array. N is the returned number of particles found
+ * in the file.
+ *
+ * @warning Can not read snapshot distributed over more than 1 file !!!
+ * @todo Read snapshots distributed in more than one file.
+ *
+ * Calls #error() if an error occurs.
+ *
+ */
+void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
+                    int* periodic) {
+  hid_t h_file = 0, h_grp = 0;
+  double boxSize[3] = {0.0, -1.0, -1.0};
+  /* GADGET has only cubic boxes (in cosmological mode) */
+  int numParticles[6] = {0};
+  /* GADGET has 6 particle types. We only keep the type 0*/
+
+  /* Open file */
+  /* message("Opening file '%s' as IC.", fileName); */
+  h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (h_file < 0) {
+    error("Error while opening file '%s'.", fileName);
+  }
+
+  /* Open header to read simulation properties */
+  /* message("Reading runtime parameters..."); */
+  h_grp = H5Gopen1(h_file, "/RuntimePars");
+  if (h_grp < 0) error("Error while opening runtime parameters\n");
+
+  /* Read the relevant information */
+  readAttribute(h_grp, "PeriodicBoundariesOn", INT, periodic);
+
+  /* Close runtime parameters */
+  H5Gclose(h_grp);
+
+  /* Open header to read simulation properties */
+  /* message("Reading file header..."); */
+  h_grp = H5Gopen1(h_file, "/Header");
+  if (h_grp < 0) error("Error while opening file header\n");
+
+  /* Read the relevant information and print status */
+  readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
+  readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
+
+  *N = numParticles[0];
+  dim[0] = boxSize[0];
+  dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
+  dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
+
+  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
+  /* 	 *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]); */
+
+  /* Close header */
+  H5Gclose(h_grp);
+
+  /* Allocate memory to store particles */
+  if (posix_memalign((void*)parts, part_align, *N * sizeof(struct part)) != 0)
+    error("Error while allocating memory for particles");
+  bzero(*parts, *N * sizeof(struct part));
+
+  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
+   * (1024.*1024.)); */
+
+  /* Open SPH particles group */
+  /* message("Reading particle arrays..."); */
+  h_grp = H5Gopen1(h_file, "/PartType0");
+  if (h_grp < 0) error("Error while opening particle group.\n");
+
+  /* Read particle fields into the particle structure */
+  hydro_read_particles(h_grp, *N, *parts);
+  
+  /* Close particle group */
+  H5Gclose(h_grp);
+
+  /* message("Done Reading particles..."); */
+
+  /* Close file */
+  H5Fclose(h_file);
+}
+
+
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -461,27 +469,9 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   h_grp = H5Gcreate1(h_file, "/PartType0", 0);
   if (h_grp < 0) error("Error while creating particle group.\n");
 
-  /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts, x,
-             us, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts, v, us,
-             UNIT_CONV_SPEED);
-  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, mass, us,
-             UNIT_CONV_MASS);
-  writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, h,
-             us, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts,
-             entropy, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);  // MATTHIEU
-  writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
-             id, us, UNIT_CONV_NO_UNITS);
-  /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, dt,
-   * us, */
-  /*            UNIT_CONV_TIME); */
-  writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, a,
-             us, UNIT_CONV_ACCELERATION);
-  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, rho, us,
-             UNIT_CONV_DENSITY);
-
+  /* Write particle fields from the particle structure */ 
+  hydro_write_particles(h_grp, fileName, xmfFile, N, parts, us);
+  
   /* Close particle group */
   H5Gclose(h_grp);
 
