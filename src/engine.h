@@ -39,19 +39,22 @@
 #include "task.h"
 
 /* Some constants. */
-#define engine_policy_none 0
-#define engine_policy_rand 1
-#define engine_policy_steal 2
-#define engine_policy_keep 4
-#define engine_policy_block 8
-#define engine_policy_fixdt 16
-#define engine_policy_multistep 32
-#define engine_policy_cputight 64
-#define engine_policy_mpi 128
-#define engine_policy_setaffinity 256
+enum engine_policy {
+  engine_policy_none = 0,
+  engine_policy_rand = 1,
+  engine_policy_steal = 2,
+  engine_policy_keep = 4,
+  engine_policy_block = 8,
+  engine_policy_fixdt = 16,
+  engine_policy_cputight = 32,
+  engine_policy_mpi = 64,
+  engine_policy_setaffinity = 128
+};
+
+extern const char *engine_policy_names[];
 
 #define engine_queue_scale 1.2
-#define engine_maxtaskspercell 128
+#define engine_maxtaskspercell 96
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
 
@@ -88,14 +91,23 @@ struct engine {
   /* The task scheduler. */
   struct scheduler sched;
 
-  /* The maximum dt to step (current). */
-  float dt_step;
-
-  /* The minimum dt over all particles in the system. */
+  /* The minimum and maximum allowed dt */
   float dt_min, dt_max;
 
-  /* The system time step. */
-  float dt, dt_orig;
+  /* Time of the simulation beginning */
+  float timeBegin;
+
+  /* Time of the simulation end */
+  float timeEnd;
+
+  /* The previous system time. */
+  float timeOld;
+
+  /* The current system time. */
+  float time;
+
+  /* Time step */
+  float timeStep;
 
   /* The system energies from the previous step. */
   double ekin, epot;
@@ -105,9 +117,6 @@ struct engine {
 
   /* The number of particles updated in the previous step. */
   int count_step;
-
-  /* The current system time. */
-  float time;
 
   /* Data for the threads' barrier. */
   pthread_mutex_t barrier_mutex;
@@ -144,9 +153,13 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy);
-void engine_launch(struct engine *e, int nr_runners, unsigned int mask);
+                 int nr_queues, int nr_nodes, int nodeID, int policy,
+                 float timeBegin, float timeEnd, float dt_min, float dt_max);
+void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
+                   unsigned int submask);
 void engine_prepare(struct engine *e);
+void engine_print(struct engine *e);
+void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, int *grid);
@@ -156,5 +169,6 @@ void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
+void engine_print_policy(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

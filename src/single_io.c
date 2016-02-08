@@ -83,8 +83,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
       /* message("Optional data set '%s' not present. Zeroing this particle
        * field...", name);	   */
 
-      for (i = 0; i < N; ++i)
-        memset(part_c + i * partSize, 0, copySize);
+      for (i = 0; i < N; ++i) memset(part_c + i * partSize, 0, copySize);
 
       return;
     }
@@ -167,10 +166,10 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
 void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
                     int* periodic) {
   hid_t h_file = 0, h_grp = 0;
-  double boxSize[3] = { 0.0, -1.0, -1.0 };
-      /* GADGET has only cubic boxes (in cosmological mode) */
-  int numParticles[6] = { 0 };
-      /* GADGET has 6 particle types. We only keep the type 0*/
+  double boxSize[3] = {0.0, -1.0, -1.0};
+  /* GADGET has only cubic boxes (in cosmological mode) */
+  int numParticles[6] = {0};
+  /* GADGET has 6 particle types. We only keep the type 0*/
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -228,9 +227,10 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
   readArray(h_grp, "Velocities", FLOAT, *N, 3, *parts, v, COMPULSORY);
   readArray(h_grp, "Masses", FLOAT, *N, 1, *parts, mass, COMPULSORY);
   readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, h, COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, u, COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, entropy,
+            COMPULSORY);  // MATTHIEU
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, id, COMPULSORY);
-  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
+  // readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, dt, OPTIONAL);
   readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, a, OPTIONAL);
   readArray(h_grp, "Density", FLOAT, *N, 1, *parts, rho, OPTIONAL);
 
@@ -354,7 +354,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part A (char*) pointer on the first occurrence of the field of interest
+ * @param part A (char*) pointer on the first occurrence of the field of
+ *interest
  *in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
@@ -385,8 +386,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   hid_t h_file = 0, h_grp = 0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
-  int numParticles[6] = { N, 0 };
-  int numParticlesHighWord[6] = { 0 };
+  int numParticles[6] = {N, 0};
+  int numParticlesHighWord[6] = {0};
   int numFiles = 1;
   struct part* parts = e->s->parts;
   FILE* xmfFile = 0;
@@ -438,7 +439,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
   writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord,
                  6);
-  double MassTable[6] = { 0., 0., 0., 0., 0., 0. };
+  double MassTable[6] = {0., 0., 0., 0., 0., 0.};
   writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
   writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
@@ -469,12 +470,13 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
              UNIT_CONV_MASS);
   writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts, h,
              us, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts, u,
-             us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts,
+             entropy, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);  // MATTHIEU
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              id, us, UNIT_CONV_NO_UNITS);
-  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, dt, us,
-             UNIT_CONV_TIME);
+  /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, dt,
+   * us, */
+  /*            UNIT_CONV_TIME); */
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts, a,
              us, UNIT_CONV_ACCELERATION);
   writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, rho, us,

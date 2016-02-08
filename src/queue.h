@@ -55,7 +55,8 @@ struct queue {
 } __attribute__((aligned(64)));
 
 /* Function prototypes. */
-struct task *queue_gettask(struct queue *q, const struct task *prev, int blocking);
+struct task *queue_gettask(struct queue *q, const struct task *prev,
+                           int blocking);
 void queue_init(struct queue *q, struct task *tasks);
 void queue_insert(struct queue *q, struct task *t);
 

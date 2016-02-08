@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,22 +16,38 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEBUG_H
-#define SWIFT_DEBUG_H
+/* Some standard headers. */
+#include <stdlib.h>
 
-/* Includes. */
-#include "cell.h"
-#include "part.h"
+/* Gravity particle. */
+struct gpart {
 
-void printParticle(struct part *parts, struct xpart *xparts, long long int i,
-                   int N);
-void printgParticle(struct gpart *parts, long long int i, int N);
-void printParticle_single(struct part *p);
+  /* Particle position. */
+  double x[3];
 
-#ifdef HAVE_METIS
-#include "metis.h"
-void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
-                    idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
+  /* Particle velocity. */
+  float v[3];
 
-#endif
-#endif /* SWIFT_DEBUG_H */
+  /* Particle acceleration. */
+  float a[3];
+
+  /* Particle mass. */
+  float mass;
+
+  /* Particle time of beginning of time-step. */
+  float t_begin;
+
+  /* Particle time of end of time-step. */
+  float t_end;
+
+  /* Anonymous union for id/part. */
+  union {
+
+    /* Particle ID. */
+    size_t id;
+
+    /* Pointer to corresponding SPH part. */
+    struct part* part;
+  };
+
+} __attribute__((aligned(part_align)));

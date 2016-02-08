@@ -45,6 +45,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+#include "hydro.h"
 #include "space.h"
 #include "timers.h"
 
@@ -87,8 +88,8 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
 
   /* Unpack the current pcell. */
   c->h_max = pc->h_max;
-  c->dt_min = FLT_MAX;  // pc->dt_min;
-  c->dt_max = FLT_MAX;  // pc->dt_max;
+  c->t_end_min = pc->t_end_min;
+  c->t_end_max = pc->t_end_max;
   c->count = pc->count;
   c->tag = pc->tag;
 
@@ -161,8 +162,8 @@ int cell_pack(struct cell *c, struct pcell *pc) {
 
   /* Start by packing the data of the current cell. */
   pc->h_max = c->h_max;
-  pc->dt_min = c->dt_min;
-  pc->dt_max = c->dt_max;
+  c->t_end_min = pc->t_end_min;
+  c->t_end_max = pc->t_end_max;
   pc->count = c->count;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
@@ -544,4 +545,57 @@ void cell_split(struct cell *c) {
   /* Re-link the parts. */
   for (k = 0; k < gcount; k++)
     if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
+}
+
+/**
+ * @brief Initialises all particles to a valid state even if the ICs were stupid
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_init_parts(struct cell *c, void *data) {
+
+  struct part *p = c->parts;
+  struct xpart *xp = c->xparts;
+
+  for (int i = 0; i < c->count; ++i) {
+    p[i].t_begin = 0.;
+    p[i].t_end = 0.;
+    xp[i].v_full[0] = p[i].v[0];
+    xp[i].v_full[1] = p[i].v[1];
+    xp[i].v_full[2] = p[i].v[2];
+    hydro_init_part(&p[i]);
+    hydro_reset_acceleration(&p[i]);
+  }
+  c->t_end_min = 0.;
+}
+
+/**
+ * @brief Converts hydro quantities to a valid state after the initial density
+ *calculation
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_convert_hydro(struct cell *c, void *data) {
+
+  struct part *p = c->parts;
+
+  for (int i = 0; i < c->count; ++i) {
+    hydro_convert_quantities(&p[i]);
+  }
+}
+
+/**
+ * @brief Cleans the links in a given cell.
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_clean_links(struct cell *c, void *data) {
+  c->density = NULL;
+  c->nr_density = 0;
+
+  c->force = NULL;
+  c->nr_force = 0;
 }

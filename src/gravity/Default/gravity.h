@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,22 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEBUG_H
-#define SWIFT_DEBUG_H
 
-/* Includes. */
-#include "cell.h"
-#include "part.h"
+#include <float.h>
 
-void printParticle(struct part *parts, struct xpart *xparts, long long int i,
-                   int N);
-void printgParticle(struct gpart *parts, long long int i, int N);
-void printParticle_single(struct part *p);
+/**
+ * @brief Computes the gravity time-step of a given particle
+ *
+ * @param p Pointer to the particle data
+ * @param xp Pointer to the extended particle data
+ *
+ */
 
-#ifdef HAVE_METIS
-#include "metis.h"
-void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
-                    idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
+__attribute__((always_inline)) INLINE static float gravity_compute_timestep(
+    struct part* p, struct xpart* xp) {
 
-#endif
-#endif /* SWIFT_DEBUG_H */
+  /* Currently no limit is imposed */
+  return FLT_MAX;
+}

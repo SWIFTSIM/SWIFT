@@ -68,19 +68,19 @@ int main(int argc, char *argv[]) {
 
   int c, icount, j, k, N, periodic = 1;
   long long N_total = -1;
-  int nr_threads = 1, nr_queues = -1, runs = INT_MAX;
+  int nr_threads = 1, nr_queues = -1;
   int dump_tasks = 0;
   int data[2];
   double dim[3] = {1.0, 1.0, 1.0}, shift[3] = {0.0, 0.0, 0.0};
   double h_max = -1.0, scaling = 1.0;
-  double clock = DBL_MAX;
+  double time_end = DBL_MAX;
   struct part *parts = NULL;
   struct space s;
   struct engine e;
   struct UnitSystem us;
   char ICfileName[200] = "";
   char dumpfile[30];
-  float dt_max = 0.0f;
+  float dt_max = 0.0f, dt_min = 0.0f;
   ticks tic;
   int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
   FILE *file_thread;
@@ -92,11 +92,13 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res, prov;
-  if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) != MPI_SUCCESS)
+  if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) !=
+      MPI_SUCCESS)
     error("Call to MPI_Init failed with error %i.", res);
   if (prov != MPI_THREAD_MULTIPLE)
-    error("MPI does not provide the level of threading required "
-          "(MPI_THREAD_MULTIPLE).");
+    error(
+        "MPI does not provide the level of threading required "
+        "(MPI_THREAD_MULTIPLE).");
   if ((res = MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes)) != MPI_SUCCESS)
     error("MPI_Comm_size failed with error %i.", res);
   if ((res = MPI_Comm_rank(MPI_COMM_WORLD, &myrank)) != MPI_SUCCESS)
@@ -135,7 +137,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:f:g:m:oq:r:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:g:m:q:s:t:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -144,14 +146,21 @@ int main(int argc, char *argv[]) {
         fflush(stdout);
         break;
       case 'c':
-        if (sscanf(optarg, "%lf", &clock) != 1) error("Error parsing clock.");
-        if (myrank == 0) message("clock set to %.3e.", clock);
+        if (sscanf(optarg, "%lf", &time_end) != 1)
+          error("Error parsing final time.");
+        if (myrank == 0) message("time_end set to %.3e.", time_end);
         fflush(stdout);
         break;
       case 'd':
+        if (sscanf(optarg, "%f", &dt_min) != 1)
+          error("Error parsing minimal timestep.");
+        if (myrank == 0) message("dt_min set to %e.", dt_max);
+        fflush(stdout);
+        break;
+      case 'e':
         if (sscanf(optarg, "%f", &dt_max) != 1)
-          error("Error parsing timestep.");
-        if (myrank == 0) message("dt set to %e.", dt_max);
+          error("Error parsing maximal timestep.");
+        if (myrank == 0) message("dt_max set to %e.", dt_max);
         fflush(stdout);
         break;
       case 'f':
@@ -173,10 +182,6 @@ int main(int argc, char *argv[]) {
         if (sscanf(optarg, "%d", &nr_queues) != 1)
           error("Error parsing number of queues.");
         break;
-      case 'r':
-        if (sscanf(optarg, "%d", &runs) != 1)
-          error("Error parsing number of runs.");
-        break;
       case 's':
         if (sscanf(optarg, "%lf %lf %lf", &shift[0], &shift[1], &shift[2]) != 3)
           error("Error parsing shift.");
@@ -194,7 +199,7 @@ int main(int argc, char *argv[]) {
         if (myrank == 0) message("sub size set to %i.", space_subsize);
         break;
       case 'y':
-        if(sscanf(optarg, "%d", &dump_tasks) != 1)
+        if (sscanf(optarg, "%d", &dump_tasks) != 1)
           error("Error parsing dump_tasks (-y)");
         break;
       case 'z':
@@ -214,7 +219,7 @@ int main(int argc, char *argv[]) {
 
     if (nr_nodes == 1) {
       message("WARNING: you are running with one MPI rank.");
-      message("WARNING: you should use the non-MPI version of this program." );
+      message("WARNING: you should use the non-MPI version of this program.");
     }
     fflush(stdout);
   }
@@ -225,6 +230,8 @@ int main(int argc, char *argv[]) {
   /* How large are the parts? */
   if (myrank == 0) {
     message("sizeof(struct part) is %li bytes.", (long int)sizeof(struct part));
+    message("sizeof(struct xpart) is %li bytes.",
+            (long int)sizeof(struct xpart));
     message("sizeof(struct gpart) is %li bytes.",
             (long int)sizeof(struct gpart));
   }
@@ -244,6 +251,10 @@ int main(int argc, char *argv[]) {
             conversionFactor(&us, UNIT_CONV_ENTROPY),
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
+
+  /* Check we have sensible time step bounds */
+  if (dt_min > dt_max)
+    error("Minimal time step size must be large than maximal time step size ");
 
   /* Check whether an IC file has been provided */
   if (strcmp(ICfileName, "") == 0)
@@ -299,9 +310,6 @@ int main(int argc, char *argv[]) {
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
   fflush(stdout);
 
-  /* Set the default time step to 1.0f. */
-  if (myrank == 0) message("dt_max is %e.", dt_max);
-
   /* Say a few nice things about the space we just created. */
   if (myrank == 0) {
     message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
@@ -328,14 +336,11 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
-  /* Dump the particle positions. */
-  // space_map_parts( &s , &map_dump , shift );
-
   /* Initialize the engine with this space. */
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal);
+              ENGINE_POLICY | engine_policy_steal, 0, time_end, dt_min, dt_max);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);
@@ -374,26 +379,24 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (myrank == 0) {
-    /* Inauguration speech. */
-    if (runs < INT_MAX)
-      message(
-          "Running on %lld particles for %i steps with %i threads and %i "
-          "queues...",
-          N_total, runs, e.nr_threads, e.sched.nr_queues);
-    else
-      message(
-          "Running on %lld particles until t=%.3e with %i threads and %i "
-          "queues...",
-          N_total, clock, e.nr_threads, e.sched.nr_queues);
+    message(
+        "Running on %lld particles until t=%.3e with %i threads and %i "
+        "queues (dt_min=%.3e, dt_max=%.3e)...",
+        N_total, time_end, e.nr_threads, e.sched.nr_queues, e.dt_min, e.dt_max);
     fflush(stdout);
   }
 
+  /* Initialise the particles */
+  engine_init_particles(&e);
+
   /* Legend */
   if (myrank == 0)
-    printf("# Step  Time  time-step  CPU Wall-clock time [ms]\n");
+    printf(
+        "# Step  Time  time-step  Number of updates    CPU Wall-clock time "
+        "[ms]\n");
 
   /* Let loose a runner on the space. */
-  for (j = 0; j < runs && e.time < clock; j++) {
+  for (j = 0; e.time < time_end; j++) {
 
 /* Repartition the space amongst the nodes? */
 #if defined(WITH_MPI) && defined(HAVE_METIS)
@@ -423,15 +426,15 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-  /* Dump the task data using the given frequency. */
+    /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
 #ifdef WITH_MPI
 
       /* Make sure output file is empty, only on one rank. */
       sprintf(dumpfile, "thread_info_MPI-step%d.dat", j);
       if (myrank == 0) {
-          file_thread = fopen(dumpfile, "w");
-          fclose(file_thread);
+        file_thread = fopen(dumpfile, "w");
+        fclose(file_thread);
       }
       MPI_Barrier(MPI_COMM_WORLD);
 
@@ -451,14 +454,15 @@ int main(int argc, char *argv[]) {
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++)
             if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
-              fprintf(
-                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n", myrank,
-                  e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count : 0,
-                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count : 0,
-                  e.sched.tasks[l].flags);
+              fprintf(file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n",
+                      myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
+                      e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+                      e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+                      (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
+                                                    : 0,
+                      (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count
+                                                    : 0,
+                      e.sched.tasks[l].flags);
               fflush(stdout);
               count++;
             }
@@ -476,12 +480,13 @@ int main(int argc, char *argv[]) {
       file_thread = fopen(dumpfile, "w");
       for (int l = 0; l < e.sched.nr_tasks; l++)
         if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
-          fprintf(file_thread, " %i %i %i %i %lli %lli %i %i\n",
-                  e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                  (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
-                  (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count);
+          fprintf(
+              file_thread, " %i %i %i %i %lli %lli %i %i\n",
+              e.sched.tasks[l].rid, e.sched.tasks[l].type,
+              e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+              e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+              (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count);
       fclose(file_thread);
 #endif
     }
@@ -498,12 +503,13 @@ int main(int argc, char *argv[]) {
     /*       printf("\n"); */
     /*       fflush(stdout); */
     /*     } */
-    if (myrank == 0) {
-      printf("%i %e %.3e", j, e.time, e.dt);
-      printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
-      printf("\n");
-      fflush(stdout);
-    }
+
+    /* if (myrank == 0) { */
+    /*   printf("%i %e", j, e.time); */
+    /*   printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000); */
+    /*   printf("\n"); */
+    /*   fflush(stdout); */
+    /* } */
   }
 
 /* Print the values of the runner histogram. */
@@ -516,7 +522,6 @@ int main(int argc, char *argv[]) {
                (k + 1) * (runner_hist_b - runner_hist_a) / runner_hist_N,
            (double)runner_hist_bins[k]);
 #endif
-
 
   if (with_outputs) {
 /* Write final output. */
@@ -539,7 +544,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Say goodbye. */
-  if (myrank == 0) message("done.");
+  if (myrank == 0) message("done. Bye.");
 
   /* All is calm, all is bright. */
   return 0;

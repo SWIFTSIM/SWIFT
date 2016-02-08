@@ -130,7 +130,8 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param blocking Block until access to the queue is granted.
  */
 
-struct task *queue_gettask(struct queue *q, const struct task *prev, int blocking) {
+struct task *queue_gettask(struct queue *q, const struct task *prev,
+                           int blocking) {
 
   lock_type *qlock = &q->lock;
   struct task *res = NULL;
@@ -212,7 +213,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev, int blockin
 
     /* Another one bites the dust. */
     const int qcount = q->count -= 1;
-    
+
     /* Get a pointer on the task that we want to return. */
     res = &qtasks[tid];
 
