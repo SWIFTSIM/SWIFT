@@ -73,7 +73,7 @@ __attribute__((always_inline))
  * @param time The current time
  */
 __attribute__((always_inline))
-INLINE static void hydro_end_density(struct part* p, float time) {
+    INLINE static void hydro_end_density(struct part* p, float time) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -175,7 +175,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float u, w;
 
   const float dt = t1 - t0;
-  
+
   /* Predict internal energy */
   w = p->force.u_dt / p->u * dt;
   if (fabsf(w) < 0.01f) /* 1st order expansion of exp(w) */
@@ -201,8 +201,6 @@ __attribute__((always_inline))
   p->force.h_dt *= p->h * 0.333333333f;
 }
 
-
-
 /**
  * @brief Kick the additional variables
  *
@@ -210,11 +208,7 @@ __attribute__((always_inline))
  * @param dt The time-step for this kick
  */
 __attribute__((always_inline))
-    INLINE static void hydro_kick_extra(struct part* p, float dt) {
-
-}
-
-
+    INLINE static void hydro_kick_extra(struct part* p, float dt) {}
 
 /**
  * @brief Converts hydro quantity of a particle
@@ -224,5 +218,4 @@ __attribute__((always_inline))
  * @param p The particle to act upon
  */
 __attribute__((always_inline))
-    INLINE static void hydro_convert_quantities(struct part* p) {
-}
+    INLINE static void hydro_convert_quantities(struct part* p) {}

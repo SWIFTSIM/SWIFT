@@ -39,7 +39,6 @@
 #include "common_io.h"
 #include "error.h"
 
-
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
  *-----------------------------------------------------------------------------*/
@@ -128,7 +127,6 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   H5Tclose(h_type);
   H5Dclose(h_data);
 }
-
 
 /*-----------------------------------------------------------------------------
  * Routines writing an output file
@@ -231,7 +229,6 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   H5Sclose(h_space);
 }
 
-
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
  *
@@ -248,10 +245,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  */
 #define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
-		  importance)						 \
-  readArrayBackEnd(grp, name, type, N, dim,				\
-		   (char*)(&(part[0]).field), importance)
-
+                  importance)                                            \
+  readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),   \
+                   importance)
 
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
@@ -274,15 +270,12 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  */
 #define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
-                   mpi_rank, offset, field, us, convFactor)		      \
+                   mpi_rank, offset, field, us, convFactor)                   \
   writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim,               \
                     (char*)(&(part[0]).field), us, convFactor)
 
-
 /* Import the right hydro definition */
 #include "hydro_io.h"
-
-
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
@@ -364,7 +357,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
 
   /* Read particle fields into the particle structure */
   hydro_read_particles(h_grp, *N, *N, 0, *parts);
-  
+
   /* Close particle group */
   H5Gclose(h_grp);
 
@@ -373,8 +366,6 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
   /* Close file */
   H5Fclose(h_file);
 }
-
-
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -470,9 +461,9 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   h_grp = H5Gcreate1(h_file, "/PartType0", 0);
   if (h_grp < 0) error("Error while creating particle group.\n");
 
-  /* Write particle fields from the particle structure */ 
+  /* Write particle fields from the particle structure */
   hydro_write_particles(h_grp, fileName, xmfFile, N, N, 0, 0, parts, us);
-  
+
   /* Close particle group */
   H5Gclose(h_grp);
 

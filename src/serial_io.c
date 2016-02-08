@@ -168,7 +168,6 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   H5Dclose(h_data);
 }
 
-
 /*-----------------------------------------------------------------------------
  * Routines writing an output file
  *-----------------------------------------------------------------------------*/
@@ -242,9 +241,9 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* name, 
-		       enum DATA_TYPE type, int N, int dim, long long N_total, 
-		       long long offset, char* part_c) {
+void writeArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
+                       int dim, long long N_total, long long offset,
+                       char* part_c) {
   hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0;
   hsize_t shape[2], offsets[2];
   void* temp = 0;
@@ -311,7 +310,6 @@ void writeArrayBackEnd(hid_t grp, char* name,
   H5Sclose(h_filespace);
 }
 
-
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
  *
@@ -327,11 +325,10 @@ void writeArrayBackEnd(hid_t grp, char* name,
  * @param importance Is the data compulsory or not
  *
  */
-#define readArray(grp, name, type, N, dim, part, N_total, offset,      \
-		  field, importance)				       \
-  readArrayBackEnd(grp, name, type, N, dim, N_total, offset,	       \
+#define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
+                  importance)                                            \
+  readArrayBackEnd(grp, name, type, N, dim, N_total, offset,             \
                    (char*)(&(part[0]).field), importance)
-
 
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
@@ -351,16 +348,13 @@ void writeArrayBackEnd(hid_t grp, char* name,
  * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total,\
-                   mpi_rank, offset, field, us, convFactor)		\
-  writeArrayBackEnd(grp, name, type, N, dim,				\
-		    N_total, offset, (char*)(&(part[0]).field))
-
+#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
+                   mpi_rank, offset, field, us, convFactor)                   \
+  writeArrayBackEnd(grp, name, type, N, dim, N_total, offset,                 \
+                    (char*)(&(part[0]).field))
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
-
-
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
@@ -474,7 +468,7 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
       h_grp = H5Gopen1(h_file, "/PartType0");
       if (h_grp < 0)
         error("Error while opening particle group on rank %d.\n", mpi_rank);
-      
+
       /* Read particle fields into the particle structure */
       hydro_read_particles(h_grp, *N, N_total, offset, *parts);
 
@@ -491,9 +485,6 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
 
   /* message("Done Reading particles..."); */
 }
-
-
-
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -658,8 +649,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
       if (h_grp < 0)
         error("Error while opening particle group on rank %d.\n", mpi_rank);
 
-      /* Write particle fields from the particle structure */ 
-      hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, 0, offset, parts, us);
+      /* Write particle fields from the particle structure */
+      hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, 0, offset,
+                            parts, us);
 
       /* Close particle group */
       H5Gclose(h_grp);

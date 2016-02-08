@@ -151,7 +151,6 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   H5Dclose(h_data);
 }
 
-
 /*-----------------------------------------------------------------------------
  * Routines writing an output file
  *-----------------------------------------------------------------------------*/
@@ -287,7 +286,6 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   H5Sclose(h_filespace);
 }
 
-
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
  *
@@ -307,8 +305,6 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                   importance)                                            \
   readArrayBackEnd(grp, name, type, N, dim, N_total, offset,             \
                    (char*)(&(part[0]).field), importance)
-
-
 
 /**
  * @brief A helper macro to call the writeArrayBackEnd function more easily.
@@ -337,12 +333,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                     mpi_rank, offset, (char*)(&(part[0]).field), us,          \
                     convFactor)
 
-
 /* Import the right hydro definition */
 #include "hydro_io.h"
-
-
-
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type) in parallel
@@ -448,8 +440,6 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
 
   /* message("Done Reading particles..."); */
 }
-
-
 
 /**
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
@@ -566,8 +556,9 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   h_grp = H5Gcreate1(h_file, "/PartType0", 0);
   if (h_grp < 0) error("Error while creating particle group.\n");
 
-  /* Write particle fields from the particle structure */ 
-  hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, mpi_rank, offset, parts, us);
+  /* Write particle fields from the particle structure */
+  hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, mpi_rank, offset,
+                        parts, us);
 
   /* Close particle group */
   H5Gclose(h_grp);

@@ -23,34 +23,33 @@
  * @param h_grp The HDF5 group in which to read the arrays.
  * @param N The number of particles on that MPI rank.
  * @param N_total The total number of particles (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI mode)
+ * @param offset The offset of the particles for this MPI rank (only used in MPI
+ *mode)
  * @param parts The particle array
  *
  */
-__attribute__((always_inline))
-INLINE static void hydro_read_particles(hid_t h_grp, int N, long long N_total, 
-					long long offset, struct part* parts) {
+__attribute__((always_inline)) INLINE static void hydro_read_particles(
+    hid_t h_grp, int N, long long N_total, long long offset,
+    struct part* parts) {
 
   /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, N, 3, parts, N_total, 
-	    offset, x, COMPULSORY);
-  readArray(h_grp, "Velocities", FLOAT, N, 3, parts, N_total, 
-	    offset, v, COMPULSORY);
-  readArray(h_grp, "Masses", FLOAT, N, 1, parts, N_total, 
-	    offset, mass, COMPULSORY);
-  readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, 
-	    offset, h, COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, 
-	    offset, entropy, COMPULSORY); 
-  readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, 
-	    offset, id, COMPULSORY);
-  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, 
-	    offset, a, OPTIONAL);
-  readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, 
-	    offset, rho, OPTIONAL);  
+  readArray(h_grp, "Coordinates", DOUBLE, N, 3, parts, N_total, offset, x,
+            COMPULSORY);
+  readArray(h_grp, "Velocities", FLOAT, N, 3, parts, N_total, offset, v,
+            COMPULSORY);
+  readArray(h_grp, "Masses", FLOAT, N, 1, parts, N_total, offset, mass,
+            COMPULSORY);
+  readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h,
+            COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset,
+            entropy, COMPULSORY);
+  readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id,
+            COMPULSORY);
+  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a,
+            OPTIONAL);
+  readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho,
+            OPTIONAL);
 }
-
-
 
 /**
  * @brief Writes the different particles to the HDF5 file
@@ -61,34 +60,32 @@ INLINE static void hydro_read_particles(hid_t h_grp, int N, long long N_total,
  * @param N The number of particles on that MPI rank.
  * @param N_total The total number of particles (only used in MPI mode)
  * @param mpi_rank The MPI rank of this node (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI mode)
+ * @param offset The offset of the particles for this MPI rank (only used in MPI
+ *mode)
  * @param parts The particle array
  * @param us The unit system to use
  *
  */
-__attribute__((always_inline))
-INLINE static void hydro_write_particles(hid_t h_grp, char* fileName, FILE* xmfFile,
-					 int N, long long N_total, int mpi_rank, 
-					 long long offset, struct part* parts, 
-					 struct UnitSystem* us) {
+__attribute__((always_inline)) INLINE static void hydro_write_particles(
+    hid_t h_grp, char* fileName, FILE* xmfFile, int N, long long N_total,
+    int mpi_rank, long long offset, struct part* parts, struct UnitSystem* us) {
 
   /* Write arrays */
   writeArray(h_grp, fileName, xmfFile, "Coordinates", DOUBLE, N, 3, parts,
              N_total, mpi_rank, offset, x, us, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, "Velocities", FLOAT, N, 3, parts,
-	     N_total, mpi_rank, offset, v, us, UNIT_CONV_SPEED);
-  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, 
-	     N_total, mpi_rank, offset, mass,  us,  UNIT_CONV_MASS);
+             N_total, mpi_rank, offset, v, us, UNIT_CONV_SPEED);
+  writeArray(h_grp, fileName, xmfFile, "Masses", FLOAT, N, 1, parts, N_total,
+             mpi_rank, offset, mass, us, UNIT_CONV_MASS);
   writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts,
              N_total, mpi_rank, offset, h, us, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts,
-             N_total, mpi_rank, offset, entropy, us, UNIT_CONV_ENTROPY_PER_UNIT_MASS);
+             N_total, mpi_rank, offset, entropy, us,
+             UNIT_CONV_ENTROPY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts,
              N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);
-  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, 
-	     N_total, mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
-
-  
+  writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total,
+             mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
 }
