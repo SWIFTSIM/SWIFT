@@ -337,12 +337,11 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                     mpi_rank, offset, (char*)(&(part[0]).field), us,          \
                     convFactor)
 
+
 /* Import the right hydro definition */
-#ifdef LEGACY_GADGET2_SPH
-#include "./hydro/Gadget2/hydro_io.h"
-#else
-#include "./hydro/Default/hydro_io.h"
-#endif
+#include "hydro_io.h"
+
+
 
 
 /**
