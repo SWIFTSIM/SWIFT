@@ -372,7 +372,8 @@ void engine_repartition(struct engine *e) {
       /* Skip un-interesting tasks. */
       if (t->type != task_type_self && t->type != task_type_pair &&
           t->type != task_type_sub && t->type != task_type_ghost &&
-          t->type != task_type_kick1 && t->type != task_type_kick2)
+          t->type != task_type_drift && t->type != task_type_kick &&
+          t->type != task_type_init)
         continue;
 
       /* Get the task weight. */
@@ -403,8 +404,8 @@ void engine_repartition(struct engine *e) {
       int cid = ci - cells;
 
       /* Different weights for different tasks. */
-      if (t->type == task_type_ghost || t->type == task_type_kick1 ||
-          t->type == task_type_kick2) {
+      if (t->type == task_type_ghost || t->type == task_type_drift ||
+          t->type == task_type_kick) {
         /* Particle updates add only to vertex weight. */
         weights_v[cid] += w;
 
@@ -1971,7 +1972,7 @@ void engine_makeproxies(struct engine *e) {
  * @param grid The grid.
  */
 
-void engine_split(struct engine *e, int *grid) {
+void engine_split(struct engine *e, struct initpart *ipart) {
 
 #ifdef WITH_MPI
 
@@ -2115,6 +2116,7 @@ void engine_split(struct engine *e, int *grid) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+#endif
 }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
