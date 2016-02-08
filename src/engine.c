@@ -1969,7 +1969,8 @@ void engine_makeproxies(struct engine *e) {
  * @brief Split the underlying space according to the given grid.
  *
  * @param e The #engine.
- * @param grid The grid.
+ * @param ipart initpart structure define the partition technique and any
+ *              additional metadata.
  */
 
 void engine_split(struct engine *e, struct initpart *ipart) {
