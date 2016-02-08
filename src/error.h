@@ -90,8 +90,6 @@ extern int engine_rank;
 #define message(s, ...) printf("%s: " s "\n", __FUNCTION__, ##__VA_ARGS__)
 #endif
 
-
-
 /**
  * @brief Assertion macro compatible with MPI
  *

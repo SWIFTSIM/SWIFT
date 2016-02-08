@@ -23,11 +23,12 @@
 /* Have I already read this file? */
 #ifndef VEC_MACRO
 
+#include "../config.h"
+
 /* Need to check whether compiler supports this (IBM does not)
    This will prevent the macros to be defined and switch off
    explicit vectorization if the compiled does not support it */
-#if defined(__GNUC__) && defined(__i386__)
-
+#ifdef HAVE_IMMINTRIN_H
 /* Include the header file with the intrinsics for Intel architecture. */
 #include <immintrin.h>
 #endif

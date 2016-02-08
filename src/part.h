@@ -34,149 +34,17 @@
 #include "const.h"
 
 /* Some constants. */
-#define part_maxwait 3
-#define part_maxunlock 39
-#define part_dtmax 10
 #define part_align 64
+#define xpart_align 32
 
-/* Extra particle data not needed during the computation. */
-struct xpart {
-
-  /* Old position, at last tree rebuild. */
-  double x_old[3];
-
-  /* Velocity at the half-step. */
-  float v_hdt[3];
-
-  /* Entropy at the half-step. */
-  float u_hdt;
-
-  /* Old density. */
-  float omega;
-
-  /* particle's current time-step. */
-  float dt_curr;
-
-} __attribute__((aligned(32)));
-
-/* Gravity particle. */
-struct gpart {
-
-  /* Particle position. */
-  double x[3];
-
-  /* Particle velocity. */
-  float v[3];
-
-  /* Particle acceleration. */
-  float a[3];
-
-  /* Particle mass. */
-  float mass;
-
-  /* Particle time step. */
-  float dt;
-
-  /* Anonymous union for id/part. */
-  union {
-
-    /* Particle ID. */
-    size_t id;
-
-    /* Pointer to corresponding SPH part. */
-    struct part* part;
-  };
-
-} __attribute__((aligned(part_align)));
-
-/* Data of a single particle. */
-struct part {
-
-  /* Particle position. */
-  double x[3];
-
-  /* Particle velocity. */
-  float v[3];
-
-  /* Particle acceleration. */
-  float a[3];
-
-  /* Particle cutoff radius. */
-  float h;
-
-  /* Particle time-step. */
-  float dt;
-
-  /* Particle internal energy. */
-  float u;
-
-  /* Particle density. */
-  float rho;
-
-  /* Derivative of the density with respect to this particle's smoothing length.
-   */
-  float rho_dh;
-
-#ifndef LEGACY_GADGET2_SPH
-  /* Particle viscosity parameter */
-  float alpha;
+/* Import the right particle definition */
+#ifdef LEGACY_GADGET2_SPH
+#include "./hydro/Gadget2/hydro_part.h"
+#else
+#include "./hydro/Default/hydro_part.h"
 #endif
 
-  /* Store density/force specific stuff. */
-  union {
-
-    struct {
-
-      /* Particle velocity divergence. */
-      float div_v;
-
-      /* Derivative of particle number density. */
-      float wcount_dh;
-
-      /* Particle velocity curl. */
-      float curl_v[3];
-
-      /* Particle number density. */
-      float wcount;
-
-    } density;
-
-    struct {
-
-      /* Balsara switch */
-      float balsara;
-
-      /* Aggregate quantities. */
-      float POrho2;
-
-      /* Change in particle energy over time. */
-      float u_dt;
-
-      /* Change in smoothing length over time. */
-      float h_dt;
-
-      /* Signal velocity */
-      float v_sig;
-
-      /* Sound speed */
-      float c;
-
-    } force;
-  };
-
-  /* Particle pressure. */
-  // float P;
-
-  /* Particle mass. */
-  float mass;
-
-  /* Particle ID. */
-  unsigned long long id;
-
-  /* Associated gravitas. */
-  struct gpart* gpart;
-
-} __attribute__((aligned(part_align)));
+#include "./gravity/Default/gravity_part.h"
 
 #ifdef WITH_MPI
 void part_create_mpi_type(MPI_Datatype* part_type);

@@ -34,7 +34,6 @@ P = 1.                # Pressure
 gamma = 5./3.         # Gas adiabatic index
 fileName = "uniformBox.hdf5" 
 
-
 #---------------------------------------------------
 numPart = L**3
 mass = boxSize**3 * rho / numPart
@@ -54,7 +53,7 @@ grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
+grp.attrs["Flag_Entropy_ICs"] = 0
 
 
 #Runtime parameters
@@ -85,7 +84,7 @@ ds[()] = u
 u = zeros(1)
 
 
-ids = linspace(0, numPart, numPart, endpoint=False, dtype='L').reshape((numPart,1))
+ids = linspace(0, numPart, numPart, endpoint=False).reshape((numPart,1))
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
 ds[()] = ids
 x      = ids % L;

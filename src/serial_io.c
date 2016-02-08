@@ -87,8 +87,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
     if (importance == COMPULSORY) {
       error("Compulsory data set '%s' not present in the file.", name);
     } else {
-      for (i = 0; i < N; ++i)
-        memset(part_c + i * partSize, 0, copySize);
+      for (i = 0; i < N; ++i) memset(part_c + i * partSize, 0, copySize);
       return;
     }
   }
@@ -212,11 +211,11 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
                     int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info) {
   hid_t h_file = 0, h_grp = 0;
-  double boxSize[3] = { 0.0, -1.0, -1.0 };
-      /* GADGET has only cubic boxes (in cosmological mode) */
-  int numParticles[6] = { 0 };
-      /* GADGET has 6 particle types. We only keep the type 0*/
-  int numParticles_highWord[6] = { 0 };
+  double boxSize[3] = {0.0, -1.0, -1.0};
+  /* GADGET has only cubic boxes (in cosmological mode) */
+  int numParticles[6] = {0};
+  /* GADGET has 6 particle types. We only keep the type 0*/
+  int numParticles_highWord[6] = {0};
   long long offset = 0;
   long long N_total = 0;
   int rank;
@@ -251,8 +250,8 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
     readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
     readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-    N_total = ((long long) numParticles[0]) +
-              ((long long) numParticles_highWord[0] << 32);
+    N_total = ((long long)numParticles[0]) +
+              ((long long)numParticles_highWord[0] << 32);
     dim[0] = boxSize[0];
     dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
     dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
@@ -312,11 +311,12 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
       readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset,
                 h, COMPULSORY);
       readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset,
-                u, COMPULSORY);
+                entropy, COMPULSORY);
       readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset,
                 id, COMPULSORY);
-      readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
-                OPTIONAL);
+      /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
+       */
+      /*           OPTIONAL); */
       readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a,
                 OPTIONAL);
       readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho,
@@ -488,7 +488,8 @@ void writeArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part A (char*) pointer on the first occurrence of the field of interest
+ * @param part A (char*) pointer on the first occurrence of the field of
+ *interest
  *in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
@@ -518,9 +519,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   hid_t h_file = 0, h_grp = 0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
-  int numParticles[6] = { N, 0 };
-  int numParticlesHighWord[6] = { 0 };
-  unsigned int flagEntropy[6] = { 0 };
+  int numParticles[6] = {N, 0};
+  int numParticlesHighWord[6] = {0};
+  unsigned int flagEntropy[6] = {0};
   long long N_total = 0, offset = 0;
   double offset_d = 0., N_d = 0., N_total_d = 0.;
   int numFiles = 1;
@@ -535,7 +536,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
   /* Compute offset in the file and total number of particles */
   /* Done using double to allow for up to 2^50=10^15 particles */
-  N_d = (double) N;
+  N_d = (double)N;
   MPI_Exscan(&N_d, &offset_d, 1, MPI_DOUBLE, MPI_SUM, comm);
   N_total_d = offset_d + N_d;
   MPI_Bcast(&N_total_d, 1, MPI_DOUBLE, mpi_size - 1, comm);
@@ -543,8 +544,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     error(
         "Error while computing the offset for parallel output: Simulation has "
         "more than 10^15 particles.\n");
-  N_total = (long long) N_total_d;
-  offset = (long long) offset_d;
+  N_total = (long long)N_total_d;
+  offset = (long long)offset_d;
 
   /* Do common stuff first */
   if (mpi_rank == 0) {
@@ -587,13 +588,13 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
 
     /* GADGET-2 legacy values */
-    numParticles[0] = (unsigned int) N_total;
+    numParticles[0] = (unsigned int)N_total;
     writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
     writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
     numParticlesHighWord[0] = (unsigned int)(N_total >> 32);
     writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord,
                    6);
-    double MassTable[6] = { 0., 0., 0., 0., 0., 0. };
+    double MassTable[6] = {0., 0., 0., 0., 0., 0.};
     writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
     writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy, 6);
     writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
@@ -628,8 +629,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
                  us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
     prepareArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N_total, 1,
                  us, UNIT_CONV_NO_UNITS);
-    prepareArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N_total, 1, us,
-                 UNIT_CONV_TIME);
+    /* prepareArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N_total, 1, us,
+     */
+    /*              UNIT_CONV_TIME); */
     prepareArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N_total, 3,
                  us, UNIT_CONV_ACCELERATION);
     prepareArray(h_grp, fileName, xmfFile, "Density", FLOAT, N_total, 1, us,
@@ -668,10 +670,10 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
       writeArray(h_grp, "SmoothingLength", FLOAT, N, 1, N_total, offset, parts,
                  h);
       writeArray(h_grp, "InternalEnergy", FLOAT, N, 1, N_total, offset, parts,
-                 u);
+                 entropy);
       writeArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, N_total, offset, parts,
                  id);
-      writeArray(h_grp, "TimeStep", FLOAT, N, 1, N_total, offset, parts, dt);
+      // writeArray(h_grp, "TimeStep", FLOAT, N, 1, N_total, offset, parts, dt);
       writeArray(h_grp, "Acceleration", FLOAT, N, 3, N_total, offset, parts, a);
       writeArray(h_grp, "Density", FLOAT, N, 1, N_total, offset, parts, rho);
 

@@ -32,13 +32,15 @@
  *the standard output.
  *
  * @param parts The array of particles.
+ * @param xparts The array of particle extended data.
  * @param id The id too look for.
  * @param N The size of the array of particles.
  *
  * (Should be used for debugging only as it runs in O(N).)
  */
 
-void printParticle(struct part *parts, long long int id, int N) {
+void printParticle(struct part *parts, struct xpart *xparts, long long int id,
+                   int N) {
 
   int i, found = 0;
 
@@ -46,17 +48,22 @@ void printParticle(struct part *parts, long long int id, int N) {
   for (i = 0; i < N; i++)
     if (parts[i].id == id) {
       printf(
-          "## Particle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
-          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, "
-          "wcount=%.3e, m=%.3e, rho=%.3e, rho_dh=%.3e, div_v=%.3e, u=%.3e, "
-          "dudt=%.3e, bals=%.3e, POrho2=%.3e, v_sig=%.3e, dt=%.3e\n",
+          "## Particle[%d]:\n id=%lld, x=[%.3e,%.3e,%.3e], "
+          "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
+          "h=%.3e, "
+          "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, P=%.3e, S=%.3e, "
+          "dS/dt=%.3e,\n"
+          "divV=%.3e, curlV=%.3e, rotV=[%.3e,%.3e,%.3e]  \n "
+          "v_sig=%e t_begin=%.3e, t_end=%.3e\n",
           i, parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
-          parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
-          parts[i].a[1], parts[i].a[2], parts[i].h, parts[i].force.h_dt,
-          parts[i].density.wcount, parts[i].mass, parts[i].rho, parts[i].rho_dh,
-          parts[i].density.div_v, parts[i].u, parts[i].force.u_dt,
-          parts[i].force.balsara, parts[i].force.POrho2, parts[i].force.v_sig,
-          parts[i].dt);
+          parts[i].v[0], parts[i].v[1], parts[i].v[2], xparts[i].v_full[0],
+          xparts[i].v_full[1], xparts[i].v_full[2], parts[i].a[0],
+          parts[i].a[1], parts[i].a[2], 2. * parts[i].h,
+          (int)parts[i].density.wcount, parts[i].mass, parts[i].rho_dh,
+          parts[i].rho, parts[i].pressure, parts[i].entropy,
+          parts[i].entropy_dt, parts[i].div_v, parts[i].curl_v,
+          parts[i].rot_v[0], parts[i].rot_v[1], parts[i].rot_v[2],
+          parts[i].v_sig, parts[i].t_begin, parts[i].t_end);
       found = 1;
     }
 
@@ -72,11 +79,12 @@ void printgParticle(struct gpart *parts, long long int id, int N) {
     if (parts[i].id == -id || (parts[i].id > 0 && parts[i].part->id == id)) {
       printf(
           "## gParticle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
-          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, dt=%.3e\n",
-          i, (parts[i].id < 0) ? -parts[i].id : parts[i].part->id,
-          parts[i].x[0], parts[i].x[1], parts[i].x[2], parts[i].v[0],
-          parts[i].v[1], parts[i].v[2], parts[i].a[0], parts[i].a[1],
-          parts[i].a[2], parts[i].mass, parts[i].dt);
+          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%.3e, "
+          "t_end=%.3e\n",
+          i, parts[i].part->id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
+          parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
+          parts[i].a[1], parts[i].a[2], parts[i].mass, parts[i].t_begin,
+          parts[i].t_end);
       found = 1;
     }
 
@@ -92,15 +100,21 @@ void printgParticle(struct gpart *parts, long long int id, int N) {
 
 void printParticle_single(struct part *p) {
 
-  printf(
-      "## Particle: id=%lld, x=[%e,%e,%e], v=[%.3e,%.3e,%.3e], "
-      "a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e, "
-      "rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, "
-      "v_sig=%.3e, dt=%.3e\n",
-      p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a[0],
-      p->a[1], p->a[2], p->h, p->force.h_dt, p->density.wcount, p->mass, p->rho,
-      p->rho_dh, p->density.div_v, p->u, p->force.u_dt, p->force.balsara,
-      p->force.POrho2, p->force.v_sig, p->dt);
+  /* printf( */
+  /*     "## Particle: id=%lld, x=[%e,%e,%e], v=[%.3e,%.3e,%.3e], " */
+  /*     "a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e,
+   * " */
+  /*     "rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, "
+   */
+  /*     "v_sig=%.3e, t_begin=%.3e, t_end=%.3e\n", */
+  /*     p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a[0],
+   */
+  /*     p->a[1], p->a[2], p->h, p->force.h_dt, p->density.wcount, p->mass,
+   * p->rho, */
+  /*     p->rho_dh, p->density.div_v, p->u, p->force.u_dt, p->force.balsara, */
+  /*     p->force.POrho2, p->force.v_sig, p->t_begin, p->t_end); */
+
+  // MATTHIEU
 }
 
 #ifdef HAVE_METIS
@@ -109,14 +123,15 @@ void printParticle_single(struct part *p) {
  * @brief Dump the METIS graph in standard format, simple format and weights
  * only, to a file.
  *
- * @description The standard format output can be read into the METIS
+ * The standard format output can be read into the METIS
  * command-line tools. The simple format is just the cell connectivity (this
  * should not change between calls).  The weights format is the standard one,
  * minus the cell connectivity.
  *
  * The output filenames are generated from the prefix and the sequence number
- * of calls. So the first is called <prefix>_std_001.dat, <prefix>_simple_001.dat,
- * <prefix>_weights_001.dat, etc.
+ * of calls. So the first is called {prefix}_std_001.dat,
+ *{prefix}_simple_001.dat,
+ * {prefix}_weights_001.dat, etc.
  *
  * @param prefix base output filename
  * @param nvertices the number of vertices
@@ -128,7 +143,7 @@ void printParticle_single(struct part *p) {
  * @param edgeweights weights of edges
  */
 void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
-                    idx_t *cellconruns, idx_t *cellcon, idx_t *vertexweights, 
+                    idx_t *cellconruns, idx_t *cellcon, idx_t *vertexweights,
                     idx_t *vertexsizes, idx_t *edgeweights) {
   FILE *stdfile = NULL;
   FILE *simplefile = NULL;
@@ -171,24 +186,28 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
 
   /*  Open output files. */
   sprintf(fname, "%s_std_%03d.dat", prefix, nseq);
-  stdfile = fopen( fname, "w" );
+  stdfile = fopen(fname, "w");
 
   sprintf(fname, "%s_simple_%03d.dat", prefix, nseq);
-  simplefile = fopen( fname, "w" );
+  simplefile = fopen(fname, "w");
 
   if (havevertexweight || havevertexsize || haveedgeweight) {
     sprintf(fname, "%s_weights_%03d.dat", prefix, nseq);
-    weightfile = fopen( fname, "w" );
+    weightfile = fopen(fname, "w");
   }
 
   /*  Write the header lines. */
   fprintf(stdfile, "%" PRIDX " %" PRIDX, nvertices, cellconruns[nvertices] / 2);
-  fprintf(simplefile, "%" PRIDX " %" PRIDX, nvertices, cellconruns[nvertices] / 2);
+  fprintf(simplefile, "%" PRIDX " %" PRIDX, nvertices,
+          cellconruns[nvertices] / 2);
   if (havevertexweight || havevertexsize || haveedgeweight) {
-    fprintf(weightfile, "%" PRIDX " %" PRIDX, nvertices, cellconruns[nvertices] / 2);
+    fprintf(weightfile, "%" PRIDX " %" PRIDX, nvertices,
+            cellconruns[nvertices] / 2);
 
-    fprintf(stdfile, " %d%d%d", havevertexsize, havevertexweight, haveedgeweight);
-    fprintf(weightfile, " %d%d%d", havevertexsize, havevertexweight, haveedgeweight);
+    fprintf(stdfile, " %d%d%d", havevertexsize, havevertexweight,
+            haveedgeweight);
+    fprintf(weightfile, " %d%d%d", havevertexsize, havevertexweight,
+            haveedgeweight);
 
     if (havevertexweight) {
       fprintf(stdfile, " %d", (int)nvertexweights);
@@ -201,7 +220,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
     fprintf(stdfile, "\n");
     fprintf(simplefile, "\n");
     if (weightfile != NULL) {
-        fprintf(weightfile, "\n");
+      fprintf(weightfile, "\n");
     }
 
     if (havevertexsize) {
@@ -228,7 +247,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   fprintf(stdfile, "\n");
   fprintf(simplefile, "\n");
   if (weightfile != NULL) {
-      fprintf(weightfile, "\n");
+    fprintf(weightfile, "\n");
   }
 
   fclose(stdfile);

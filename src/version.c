@@ -155,7 +155,6 @@ const char *compiler_version(void) {
   return version;
 }
 
-
 /**
  * @brief return the MPI version, runtime if possible otherwise that used when
  *        built.
@@ -168,7 +167,7 @@ const char *mpi_version(void) {
 #ifdef WITH_MPI
   int std_version, std_subversion;
 
-  /* Check that the library implements the version string routine */
+/* Check that the library implements the version string routine */
 #ifdef MPI_MAX_LIBRARY_VERSION_STRING
   static char lib_version[MPI_MAX_LIBRARY_VERSION_STRING] = {0};
   int len;
@@ -181,7 +180,7 @@ const char *mpi_version(void) {
 
   /* Also arbitrarily truncate to keep down to one line, Open MPI,
    * check for last comma and keep to ~60 chars max. */
-  strcpy(lib_version+60, "...");
+  strcpy(lib_version + 60, "...");
   ptr = strrchr(lib_version, ',');
   if (ptr != NULL) *ptr = '\0';
 
@@ -193,8 +192,8 @@ const char *mpi_version(void) {
 
   /* Numeric version. */
   MPI_Get_version(&std_version, &std_subversion);
-  snprintf(version, 80, "%s (MPI std v%i.%i)", lib_version,
-           std_version, std_subversion);
+  snprintf(version, 80, "%s (MPI std v%i.%i)", lib_version, std_version,
+           std_subversion);
 #else
   sprintf(version, "Code was not compiled with MPI support");
 #endif

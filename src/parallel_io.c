@@ -270,12 +270,12 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
             COMPULSORY);
   readArray(h_grp, "SmoothingLength", FLOAT, *N, 1, *parts, N_total, offset, h,
             COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset, u,
-            COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, *N, 1, *parts, N_total, offset,
+            entropy, COMPULSORY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, *N, 1, *parts, N_total, offset, id,
             COMPULSORY);
-  readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt,
-            OPTIONAL);
+  /* readArray(h_grp, "TimeStep", FLOAT, *N, 1, *parts, N_total, offset, dt, */
+  /*           OPTIONAL); */
   readArray(h_grp, "Acceleration", FLOAT, *N, 3, *parts, N_total, offset, a,
             OPTIONAL);
   readArray(h_grp, "Density", FLOAT, *N, 1, *parts, N_total, offset, rho,
@@ -441,7 +441,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param N_total Total number of particles across all cores
  * @param mpi_rank The MPI task rank calling the function
  * @param offset Offset in the array where this mpi task starts writing
- * @param part A (char*) pointer on the first occurrence of the field of interest
+ * @param part A (char*) pointer on the first occurrence of the field of
+ *interest
  *in the parts array
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
@@ -579,11 +580,13 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts,
              N_total, mpi_rank, offset, h, us, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts,
-             N_total, mpi_rank, offset, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+             N_total, mpi_rank, offset, entropy, us,
+             UNIT_CONV_ENERGY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
-  writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts, N_total,
-             mpi_rank, offset, dt, us, UNIT_CONV_TIME);
+  /* writeArray(h_grp, fileName, xmfFile, "TimeStep", FLOAT, N, 1, parts,
+   * N_total, */
+  /*            mpi_rank, offset, dt, us, UNIT_CONV_TIME); */
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts,
              N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);
   writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total,
