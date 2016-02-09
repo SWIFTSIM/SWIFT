@@ -851,7 +851,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       if (is_fixdt || p->t_end <= t_current) {
 
         /* First, finish the force loop */
+        p->force.h_dt *= p->h * 0.333333333f;
+
+        /* And do the same of the extra variable */
         hydro_end_force(p);
+
+        /* Now we are ready to compute the next time-step size */
 
         if (is_fixdt) {
 

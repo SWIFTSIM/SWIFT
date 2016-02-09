@@ -203,7 +203,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline))
     INLINE static void hydro_end_force(struct part* p) {
-
+  
   p->entropy_dt *=
       (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
 }

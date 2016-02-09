@@ -197,7 +197,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float r_inv = 1.0f / r;
 
   /* Get some values in local variables. */
-  // const float mi = pi->mass;
+  const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -280,6 +280,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a[1] += acc * dx[1];
   pj->a[2] += acc * dx[2];
 
+  /* Get the time derivative for h. */
+  pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr / rhoi * wj_dr;
+  
   /* Update the signal velocity. */
   pi->v_sig = fmaxf(pi->v_sig, v_sig);
   pj->v_sig = fmaxf(pj->v_sig, v_sig);
@@ -366,6 +370,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a[1] -= acc * dx[1];
   pi->a[2] -= acc * dx[2];
 
+  /* Get the time derivative for h. */
+  pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
+  
   /* Update the signal velocity. */
   pi->v_sig = fmaxf(pi->v_sig, v_sig);
 
