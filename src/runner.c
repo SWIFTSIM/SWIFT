@@ -34,6 +34,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "approx_math.h"
 #include "atomic.h"
 #include "const.h"
 #include "debug.h"
@@ -705,6 +706,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
   float dx_max = 0.f, h_max = 0.f;
+  float w;
 
   TIMER_TIC
 
@@ -718,37 +720,32 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p = &parts[k];
       xp = &xparts[k];
 
+      /* Useful quantity */
+      const float h_inv = 1.0f / p->h;
+
       /* Drift... */
       p->x[0] += xp->v_full[0] * dt;
       p->x[1] += xp->v_full[1] * dt;
       p->x[2] += xp->v_full[2] * dt;
 
-      /* Predict velocities */
+      /* Predict velocities (for hydro terms) */
       p->v[0] += p->a[0] * dt;
       p->v[1] += p->a[1] * dt;
       p->v[2] += p->a[2] * dt;
 
-      /* /\* Predict smoothing length *\/ */
-      /* w = p->force.h_dt * ih * dt; */
-      /* if (fabsf(w) < 0.01f) /\* 1st order expansion of exp(w) *\/ */
-      /* 	p->h *= */
-      /* 	  1.0f + */
-      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f *
-       * w))); */
-      /* else */
-      /* 	p->h *= expf(w); */
+      /* Predict smoothing length */
+      w = p->force.h_dt * h_inv * dt;
+      if (fabsf(w) < 0.2f)
+        p->h *= approx_expf(w); /* 4th order expansion of exp(w) */
+      else
+        p->h *= expf(w);
 
-      // MATTHIEU
-
-      /* /\* Predict density *\/ */
-      /* w = -3.0f * p->force.h_dt * ih * dt; */
-      /* if (fabsf(w) < 0.1f) */
-      /* 	p->rho *= */
-      /* 	  1.0f + */
-      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f *
-       * w))); */
-      /* else */
-      /* 	p->rho *= expf(w); */
+      /* Predict density */
+      w = -3.0f * p->force.h_dt * h_inv * dt;
+      if (fabsf(w) < 0.2f)
+        p->rho *= approx_expf(w); /* 4th order expansion of exp(w) */
+      else
+        p->rho *= expf(w);
 
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
