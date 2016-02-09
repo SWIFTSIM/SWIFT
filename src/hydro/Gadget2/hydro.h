@@ -186,10 +186,8 @@ __attribute__((always_inline))
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float t0, float t1) {
 
-  const float dt = t1 - t0;
-
-  p->rho *= expf(-p->div_v * dt);
-  p->h *= expf(0.33333333f * p->div_v * dt);
+  // p->rho *= expf(-p->div_v * dt);
+  // p->h *= expf(0.33333333f * p->div_v * dt)
 
   const float dt_entr = t1 - 0.5f * (p->t_begin + p->t_end);
   p->pressure =

@@ -68,6 +68,13 @@ struct part {
 
   } density;
 
+  struct {
+
+    /* Time derivative of the smoothing length */
+    float h_dt;
+
+  } force;
+
   /* Particle entropy. */
   float entropy;
 
