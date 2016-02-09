@@ -1706,14 +1706,15 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
-  engine_prepare(e);
-
-  engine_marktasks(e);
+  message("Initialising particles");
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
-  message("Initialising particles");
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
+
+  engine_prepare(e);
+
+  engine_marktasks(e);
 
   // printParticle(e->s->parts, 1000, e->s->nr_parts);
   // printParticle(e->s->parts, 515050, e->s->nr_parts);
@@ -1846,9 +1847,11 @@ if ( e->nodeID == 0 )
 
   TIMER_TOC2(timer_step);
 
-  printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
-         ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
-  fflush(stdout);
+  if (e->nodeID == 0) {
+    printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
+           ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
+    fflush(stdout);
+  }
 
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
