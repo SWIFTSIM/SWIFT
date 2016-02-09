@@ -21,6 +21,9 @@
 
 #include "space.h"
 #include "cell.h"
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
 
 /* Initial partitioning types. */
 enum initpart_type {
@@ -57,6 +60,10 @@ void part_split_vector(struct space *s, int nregions, int *samplecells);
 void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
                      int *celllist);
 void part_split_metis(struct space *s, int nregions, int *celllist);
+
+#ifdef HAVE_METIS
+void part_graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj);
+#endif
 
 int part_check_complete(struct space *s, int verbose, int nregions);
 

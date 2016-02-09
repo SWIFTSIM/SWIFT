@@ -34,6 +34,10 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
+/* METIS headers only used when MPI is also available. */
+#ifdef HAVE_METIS
+#include <metis.h>
+#endif
 #endif
 
 #ifdef HAVE_LIBNUMA
@@ -311,49 +315,18 @@ void engine_repartition(struct engine *e) {
      * drop the vertices for _EDGE and _VERTEX_EDGE. */
     int nr_cells = s->nr_cells;
     struct cell *cells = s->cells;
-    int ind[3], *cdim = s->cdim;
     struct task *t, *tasks = e->sched.tasks;
     float wscale = 1e-3, vscale = 1e-3, wscale_buff;
     int wtot = 0;
     int wmax = 1e9 / e->nr_nodes;
     int wmin;
 
-    /* Allocate and fill the adjcny indexing array. */
+    /* Allocate and fill the adjncy indexing array defining the graph of
+     * cells.*/
     int *inds;
-    if ((inds = (int *)malloc(sizeof(int) * 26 * nr_cells)) == NULL)
+    if ((inds = (int *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
       error("Failed to allocate the inds array");
-
-    for (int cid = 0; cid < nr_cells; cid++) {
-      ind[0] = cells[cid].loc[0] / cells[cid].h[0] + 0.5;
-      ind[1] = cells[cid].loc[1] / cells[cid].h[1] + 0.5;
-      ind[2] = cells[cid].loc[2] / cells[cid].h[2] + 0.5;
-      int l = 0;
-      for (int i = -1; i <= 1; i++) {
-        int ii = ind[0] + i;
-        if (ii < 0)
-          ii += cdim[0];
-        else if (ii >= cdim[0])
-          ii -= cdim[0];
-        for (int j = -1; j <= 1; j++) {
-          int jj = ind[1] + j;
-          if (jj < 0)
-            jj += cdim[1];
-          else if (jj >= cdim[1])
-            jj -= cdim[1];
-          for (int k = -1; k <= 1; k++) {
-            int kk = ind[2] + k;
-            if (kk < 0)
-              kk += cdim[2];
-            else if (kk >= cdim[2])
-              kk -= cdim[2];
-            if (i || j || k) {
-              inds[cid * 26 + l] = cell_getid(cdim, ii, jj, kk);
-              l += 1;
-            }
-          }
-        }
-      }
-    }
+    part_graph_init_metis(s, inds, NULL);
 
     /* Allocate and init weights. */
     int *weights_v = NULL;

@@ -154,61 +154,29 @@ void part_split_vector(struct space *s, int nregions, int *samplecells) {
  * weighted by the number of particles scheme. Note METIS is optional.
  */
 
-/**
- * @brief Partition the given space into a number of connected regions.
+/** 
+ * @brief Fill the METIS xadj and adjncy arrays defining the graph of cells
+ *        in a space.
  *
- * Split the space using METIS to derive a partitions using the
- * cell particle counts as weights.
+ * See the METIS manual if you want to understand this format. The cell graph
+ * consists of all nodes as vertices with edges as the connections to all
+ * neighbours, so we have 26 per vertex.
  *
- * @param s the space of cells to partition.
- * @param nregions the number of regions required in the partition.
- * @param vertexw weights for the cells, sizeof number of cells if used,
- *        NULL for unit weights.
- * @param edgew weights for the graph edges between all cells, sizeof number
- *        of cells * 26 if used, NULL for unit weights. Need to be packed
- *        in CSR format, so same as adjcny array.
- * @param celllist on exit this contains the ids of the selected regions,
- *        sizeof number of cells.
+ * @param s the space of cells.
+ * @param adjncy the METIS adjncy array to fill, must be of size
+ *               26 * the number of cells in the space.
+ * @param xadj the METIS xadj array to fill, must be of size
+ *             number of cells in space + 1. NULL for not used.
  */
-void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
-                     int *celllist) {
-#if defined(HAVE_METIS)
+#ifdef HAVE_METIS
+void part_graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj) {
 
-  /* Total number of cells. */
-  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
-
-  /* Nothing much to do if only using a single partition. Also avoids METIS
-   * bug that doesn't handle this case well. */
-  if (nregions == 1) {
-    for (int i = 0; i < ncells; i++) celllist[i] = 0;
-    return;
-  }
-
-  /* Allocate weights and adjacency arrays . */
-  idx_t *xadj;
-  if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
-    error("Failed to allocate xadj buffer.");
-  idx_t *adjncy;
-  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
-    error("Failed to allocate adjncy array.");
-  idx_t *weights_v = NULL;
-  if (vertexw != NULL)
-    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate vertex weights array");
-  idx_t *weights_e = NULL;
-  if (edgew != NULL)
-    if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate edge weights array");
-  idx_t *regionid;
-  if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-    error("Failed to allocate regionid array");
-
-  /* Fill the xadj and adjncy array to define the graph of cells. */
-  /* Loop over all cells. */
+  /* Loop over all cells in the space. */
   int cid = 0;
   for (int l = 0; l < s->cdim[0]; l++) {
     for (int m = 0; m < s->cdim[1]; m++) {
       for (int n = 0; n < s->cdim[2]; n++) {
+
         /* Visit all neighbours of this cell, wrapping space at edges. */
         int p = 0;
         for (int i = -1; i <= 1; i++) {
@@ -244,8 +212,67 @@ void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
       }
     }
   }
-  xadj[0] = 0;
-  for (int k = 0; k < ncells; k++) xadj[k + 1] = xadj[k] + 26;
+
+  /* If given set xadj. */
+  if (xadj != NULL) {
+    xadj[0] = 0;
+    for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+
+  }
+}
+#endif
+
+/**
+ * @brief Partition the given space into a number of connected regions.
+ *
+ * Split the space using METIS to derive a partitions using the
+ * cell particle counts as weights.
+ *
+ * @param s the space of cells to partition.
+ * @param nregions the number of regions required in the partition.
+ * @param vertexw weights for the cells, sizeof number of cells if used,
+ *        NULL for unit weights.
+ * @param edgew weights for the graph edges between all cells, sizeof number
+ *        of cells * 26 if used, NULL for unit weights. Need to be packed
+ *        in CSR format, so same as adjncy array.
+ * @param celllist on exit this contains the ids of the selected regions,
+ *        sizeof number of cells.
+ */
+void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
+                     int *celllist) {
+#ifdef HAVE_METIS
+
+  /* Total number of cells. */
+  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+
+  /* Nothing much to do if only using a single partition. Also avoids METIS
+   * bug that doesn't handle this case well. */
+  if (nregions == 1) {
+    for (int i = 0; i < ncells; i++) celllist[i] = 0;
+    return;
+  }
+
+  /* Allocate weights and adjacency arrays . */
+  idx_t *xadj;
+  if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+    error("Failed to allocate xadj buffer.");
+  idx_t *adjncy;
+  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+    error("Failed to allocate adjncy array.");
+  idx_t *weights_v = NULL;
+  if (vertexw != NULL)
+    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate vertex weights array");
+  idx_t *weights_e = NULL;
+  if (edgew != NULL)
+    if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate edge weights array");
+  idx_t *regionid;
+  if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    error("Failed to allocate regionid array");
+
+  /* Define the cell graph. */
+  part_graph_init_metis(s, adjncy, xadj);
 
   /* Init the vertex weights array. */
   if (vertexw != NULL) {
