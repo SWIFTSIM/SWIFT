@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:g:m:q:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:g:m:oq:s:t:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
