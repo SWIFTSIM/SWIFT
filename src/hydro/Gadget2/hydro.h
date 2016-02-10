@@ -34,7 +34,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_accel = sqrtf(2.f);  // MATTHIEU
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * p->h / p->v_sig;
+  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->v_sig;
 
   return fminf(dt_cfl, dt_accel);
 }

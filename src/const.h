@@ -38,7 +38,7 @@
   1.f /* Value taken from (Price,2008), not used in legacy gadget mode */
 
 /* Time integration constants. */
-#define const_cfl 0.2f
+#define const_cfl 0.1f
 #define const_ln_max_h_change                                           \
   0.231111721f /* Particle can't change volume by more than a factor of \
                   2=1.26^3 over one time step */
