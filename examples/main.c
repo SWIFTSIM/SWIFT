@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) greetings();
 
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if (ENGINE_POLICY & engine_policy_setaffinity) {
+  if ((ENGINE_POLICY) & engine_policy_setaffinity) {
     /* Ensure the NUMA node on which we initialise (first touch) everything
      * doesn't change before engine_init allocates NUMA-local workers. Otherwise,
      * we may be scheduled elsewhere between the two times.
