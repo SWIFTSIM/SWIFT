@@ -27,6 +27,13 @@
 #include "part.h"
 #include "debug.h"
 
+/* Import the right hydro definition */
+#ifdef LEGACY_GADGET2_SPH
+#include "./hydro/Gadget2/hydro_debug.h"
+#else
+#include "./hydro/Default/hydro_debug.h"
+#endif
+
 /**
  * @brief Looks for the particle with the given id and prints its information to
  *the standard output.
@@ -47,23 +54,8 @@ void printParticle(struct part *parts, struct xpart *xparts, long long int id,
   /* Look for the particle. */
   for (i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf(
-          "## Particle[%d]:\n id=%lld, x=[%.3e,%.3e,%.3e], "
-          "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
-          "h=%.3e, "
-          "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, P=%.3e, S=%.3e, "
-          "dS/dt=%.3e,\n"
-          "divV=%.3e, curlV=%.3e, rotV=[%.3e,%.3e,%.3e]  \n "
-          "v_sig=%e t_begin=%.3e, t_end=%.3e\n",
-          i, parts[i].id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
-          parts[i].v[0], parts[i].v[1], parts[i].v[2], xparts[i].v_full[0],
-          xparts[i].v_full[1], xparts[i].v_full[2], parts[i].a[0],
-          parts[i].a[1], parts[i].a[2], 2. * parts[i].h,
-          (int)parts[i].density.wcount, parts[i].mass, parts[i].rho_dh,
-          parts[i].rho, parts[i].pressure, parts[i].entropy,
-          parts[i].entropy_dt, parts[i].div_v, parts[i].curl_v,
-          parts[i].rot_v[0], parts[i].rot_v[1], parts[i].rot_v[2],
-          parts[i].v_sig, parts[i].t_begin, parts[i].t_end);
+      printf("## Particle[%d]:\n id=%lld", i, parts[i].id);
+      hydro_debug_particle(&parts[i], &xparts[i]);
       found = 1;
     }
 
@@ -95,26 +87,14 @@ void printgParticle(struct gpart *parts, long long int id, int N) {
  * @brief Prints the details of a given particle to stdout
  *
  * @param p The particle to print
+ * @param xp The extended data ot the particle to print
  *
  */
 
-void printParticle_single(struct part *p) {
+void printParticle_single(struct part *p, struct xpart *xp) {
 
-  /* printf( */
-  /*     "## Particle: id=%lld, x=[%e,%e,%e], v=[%.3e,%.3e,%.3e], " */
-  /*     "a=[%.3e,%.3e,%.3e], h=%.3e, h_dt=%.3e, wcount=%.3e, m=%.3e, rho=%.3e,
-   * " */
-  /*     "rho_dh=%.3e, div_v=%.3e, u=%.3e, dudt=%.3e, bals=%.3e, POrho2=%.3e, "
-   */
-  /*     "v_sig=%.3e, t_begin=%.3e, t_end=%.3e\n", */
-  /*     p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a[0],
-   */
-  /*     p->a[1], p->a[2], p->h, p->force.h_dt, p->density.wcount, p->mass,
-   * p->rho, */
-  /*     p->rho_dh, p->density.div_v, p->u, p->force.u_dt, p->force.balsara, */
-  /*     p->force.POrho2, p->force.v_sig, p->t_begin, p->t_end); */
-
-  // MATTHIEU
+  printf("## Particle: id=%lld", p->id);
+  hydro_debug_particle(p, xp);
 }
 
 #ifdef HAVE_METIS
