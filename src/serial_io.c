@@ -260,7 +260,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,  char* name,
 
   /* Prepare the arrays in the file */
   if(mpi_rank == 0)
-    prepareArray(h_grp, fileName, xmfFile, name, type, N_total, dim,
+    prepareArray(grp, fileName, xmfFile, name, type, N_total, dim,
 		 us, convFactor);
 
   
