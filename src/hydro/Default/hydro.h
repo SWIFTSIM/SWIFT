@@ -152,9 +152,9 @@ __attribute__((always_inline))
     INLINE static void hydro_reset_acceleration(struct part* p) {
 
   /* Reset the acceleration. */
-  p->a[0] = 0.0f;
-  p->a[1] = 0.0f;
-  p->a[2] = 0.0f;
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
 
   /* Reset the time derivatives. */
   p->force.u_dt = 0.0f;
