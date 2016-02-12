@@ -944,7 +944,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       /* Collect total energy. */
       ekin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
                          v_full[2] * v_full[2]);
-      epot += m * xp->u_hdt;
+      epot += 0.f; //MATTHIEU
 
       /* Minimal time for next end of time-step */
       t_end_min = fminf(p->t_end, t_end_min);

@@ -29,9 +29,6 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-  /* Entropy at the half-step. */
-  float u_hdt;
-
   /* Old density. */
   float omega;
 
