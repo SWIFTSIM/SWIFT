@@ -124,36 +124,6 @@ INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float t
   const float dt = time - 0.5f * (p->t_begin + p->t_end);
   p->force.pressure =
       (p->entropy + p->force.entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
-
-  
-  /* Some smoothing length multiples. */
-  /* const float h = p->h; */
-  /* const float ih = 1.0f / h; */
-  /* const float ih2 = ih * ih; */
-  /* const float ih4 = ih2 * ih2; */
-
-  /* /\* Pre-compute some stuff for the balsara switch. *\/ */
-  /* const float normDiv_v = fabs(p->density.div_v / p->rho * ih4); */
-  /* const float normCurl_v = sqrtf(p->density.curl_v[0] * p->density.curl_v[0]
-   * + */
-  /* 				 p->density.curl_v[1] * p->density.curl_v[1] +
-   */
-  /* 				 p->density.curl_v[2] * p->density.curl_v[2]) /
-   */
-  /*   p->rho * ih4; */
-
-  /* /\* Compute this particle's sound speed. *\/ */
-  /* const float u = p->u; */
-  /* const float fc = p->force.c =  */
-  /*   sqrtf(const_hydro_gamma * (const_hydro_gamma - 1.0f) * u); */
-
-  /* /\* Compute the P/Omega/rho2. *\/ */
-  /* xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho; */
-  /* p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (p->rho * xp->omega); */
-
-  /* /\* Balsara switch *\/ */
-  /* p->force.balsara = */
-  /*   normDiv_v / (normDiv_v + normCurl_v + 0.0001f * fc * ih); */
 }
 
 /**

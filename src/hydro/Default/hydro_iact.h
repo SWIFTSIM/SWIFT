@@ -432,8 +432,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Use the force, Luke! */
   for (k = 0; k < 3; k++) {
     f = dx[k] * w;
-    pi->a[k] -= mj * f;
-    pj->a[k] += mi * f;
+    pi->a_hydro[k] -= mj * f;
+    pj->a_hydro[k] += mi * f;
   }
 
   /* Get the time derivative for u. */
@@ -747,7 +747,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Use the force, Luke! */
   for (k = 0; k < 3; k++) {
     f = dx[k] * w;
-    pi->a[k] -= mj * f;
+    pi->a_hydro[k] -= mj * f;
   }
 
   /* Get the time derivative for u. */

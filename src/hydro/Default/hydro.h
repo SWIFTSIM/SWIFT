@@ -97,9 +97,10 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
+ * @param time The current time
  */
 __attribute__((always_inline))
-    INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp) {
+INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float time) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
