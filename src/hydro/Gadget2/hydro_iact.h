@@ -272,13 +272,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /*   message("oO"); */
 
   /* Use the force Luke ! */
-  pi->a[0] -= acc * dx[0];
-  pi->a[1] -= acc * dx[1];
-  pi->a[2] -= acc * dx[2];
+  pi->a_hydro[0] -= acc * dx[0];
+  pi->a_hydro[1] -= acc * dx[1];
+  pi->a_hydro[2] -= acc * dx[2];
 
-  pj->a[0] += acc * dx[0];
-  pj->a[1] += acc * dx[1];
-  pj->a[2] += acc * dx[2];
+  pj->a_hydro[0] += acc * dx[0];
+  pj->a_hydro[1] += acc * dx[1];
+  pj->a_hydro[2] += acc * dx[2];
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
@@ -366,9 +366,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float acc = visc_term + sph_term;
 
   /* Use the force Luke ! */
-  pi->a[0] -= acc * dx[0];
-  pi->a[1] -= acc * dx[1];
-  pi->a[2] -= acc * dx[2];
+  pi->a_hydro[0] -= acc * dx[0];
+  pi->a_hydro[1] -= acc * dx[1];
+  pi->a_hydro[2] -= acc * dx[2];
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;

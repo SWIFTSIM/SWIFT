@@ -28,7 +28,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     struct part* p, struct xpart* xp) {
 
   /* Acceleration */
-  float ac = sqrtf(p->a[0] * p->a[0] + p->a[1] * p->a[1] + p->a[2] * p->a[2]);
+  float ac = sqrtf(p->a_hydro[0] * p->a_hydro[0] +
+		   p->a_hydro[1] * p->a_hydro[1] +
+		   p->a_hydro[2] * p->a_hydro[2]);
   ac = fmaxf(ac, 1e-30);
 
   const float dt_accel = sqrtf(2.f);  // MATTHIEU
@@ -164,9 +166,9 @@ __attribute__((always_inline))
     INLINE static void hydro_reset_acceleration(struct part* p) {
 
   /* Reset the acceleration. */
-  p->a[0] = 0.0f;
-  p->a[1] = 0.0f;
-  p->a[2] = 0.0f;
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
 
   p->force.h_dt = 0.0f;
 

@@ -28,8 +28,8 @@ __attribute__((always_inline))
       "divV=%.3e, curlV=%.3e, rotV=[%.3e,%.3e,%.3e]  \n "
       "v_sig=%e t_begin=%.3e, t_end=%.3e\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
-      xp->v_full[1], xp->v_full[2], p->a[0], p->a[1], p->a[2], 2. * p->h,
-      (int)p->density.wcount, p->mass, p->rho_dh, p->rho, p->pressure,
+      xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
+      p->h, (int)p->density.wcount, p->mass, p->rho_dh, p->rho, p->pressure,
       p->entropy, p->entropy_dt, p->div_v, p->curl_v, p->rot_v[0], p->rot_v[1],
       p->rot_v[2], p->v_sig, p->t_begin, p->t_end);
 }

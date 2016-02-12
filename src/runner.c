@@ -729,9 +729,9 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->x[2] += xp->v_full[2] * dt;
 
       /* Predict velocities (for hydro terms) */
-      p->v[0] += p->a[0] * dt;
-      p->v[1] += p->a[1] * dt;
-      p->v[2] += p->a[2] * dt;
+      p->v[0] += p->a_hydro[0] * dt;
+      p->v[1] += p->a_hydro[1] * dt;
+      p->v[2] += p->a_hydro[2] * dt;
 
       /* Predict smoothing length */
       w = p->force.h_dt * h_inv * dt;
@@ -901,13 +901,13 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->t_end = p->t_begin + new_dt;
 
         /* Kick particles in momentum space */
-        xp->v_full[0] += p->a[0] * dt;
-        xp->v_full[1] += p->a[1] * dt;
-        xp->v_full[2] += p->a[2] * dt;
+        xp->v_full[0] += p->a_hydro[0] * dt;
+        xp->v_full[1] += p->a_hydro[1] * dt;
+        xp->v_full[2] += p->a_hydro[2] * dt;
 
-        p->v[0] = xp->v_full[0] - half_dt * p->a[0];
-        p->v[1] = xp->v_full[1] - half_dt * p->a[1];
-        p->v[2] = xp->v_full[2] - half_dt * p->a[2];
+        p->v[0] = xp->v_full[0] - half_dt * p->a_hydro[0];
+        p->v[1] = xp->v_full[1] - half_dt * p->a_hydro[1];
+        p->v[2] = xp->v_full[2] - half_dt * p->a_hydro[2];
 
         /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
         /*   message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e

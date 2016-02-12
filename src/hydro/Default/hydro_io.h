@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
             COMPULSORY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id,
             COMPULSORY);
-  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a,
+  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a_hydro,
             OPTIONAL);
   readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho,
             OPTIONAL);
@@ -84,7 +84,7 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts,
-             N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);
+             N_total, mpi_rank, offset, a_hydro, us, UNIT_CONV_ACCELERATION);
   writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total,
              mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
 }
