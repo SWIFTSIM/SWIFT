@@ -17,10 +17,8 @@
  *
  ******************************************************************************/
 
-/* Some standard headers. */
-#include <stdlib.h>
 
-/* Extra particle data not needed during the computation. */
+/* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
   /* Old position, at last tree rebuild. */
@@ -28,7 +26,7 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
-
+  
 } __attribute__((aligned(xpart_align)));
 
 /* Data of a single particle. */
@@ -52,26 +50,6 @@ struct part {
   /* Particle time of end of time-step. */
   float t_end;
 
-  struct {
-
-    /* Number of neighbours */
-    float wcount;
-
-    /* Number of neighbours spatial derivative */
-    float wcount_dh;
-
-  } density;
-
-  struct {
-
-    /* Time derivative of the smoothing length */
-    float h_dt;
-
-  } force;
-
-  /* Particle entropy. */
-  float entropy;
-
   /* Particle density. */
   float rho;
 
@@ -79,24 +57,50 @@ struct part {
    */
   float rho_dh;
 
+  /* Particle entropy. */
+  float entropy;
+  
   /* Particle mass. */
   float mass;
+  
+  union{
+  
+    struct {
 
-  /* Particle pressure */
-  float pressure;
+      /* Number of neighbours */
+      float wcount;
+      
+      /* Number of neighbours spatial derivative */
+      float wcount_dh;
+      
+      /* Velocity curl components */
+      float rot_v[3];
+      
+    } density;
 
-  /* Entropy time derivative */
-  float entropy_dt;
+    struct {
+      
+      /* Time derivative of the smoothing length */
+      float h_dt;
+      
+      /* Velocity curl norm*/
+      float curl_v;
 
+      /* Signal velocity */
+      float v_sig;
+
+      /* Entropy time derivative */
+      float entropy_dt;
+
+      /* Particle pressure */
+      float pressure;
+
+    } force;
+    
+  };
+  
   /* Velocity divergence */
   float div_v;
-
-  /* Velocity curl */
-  float curl_v;
-  float rot_v[3];
-
-  /* Signal velocity */
-  float v_sig;
 
   /* Particle ID. */
   unsigned long long id;

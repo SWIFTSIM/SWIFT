@@ -36,7 +36,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_accel = sqrtf(2.f);  // MATTHIEU
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->v_sig;
+  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
 
   return fminf(dt_cfl, dt_accel);
 }
@@ -56,10 +56,9 @@ __attribute__((always_inline))
   p->rho = 0.f;
   p->rho_dh = 0.f;
   p->div_v = 0.f;
-  p->curl_v = 0.f;
-  p->rot_v[0] = 0.f;
-  p->rot_v[1] = 0.f;
-  p->rot_v[2] = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -94,23 +93,13 @@ __attribute__((always_inline))
   /* Compute the derivative term */
   p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh / p->rho);
 
-  /* Finish calculation of the velocity curl */
-  p->rot_v[0] *= ih4;
-  p->rot_v[1] *= ih4;
-  p->rot_v[2] *= ih4;
-
-  /* And compute the norm of the curl */
-  p->curl_v = sqrtf(p->rot_v[0] * p->rot_v[0] + p->rot_v[1] * p->rot_v[1] +
-                    p->rot_v[2] * p->rot_v[2]) /
-              p->rho;
+  /* Finish calculation of the velocity curl components */
+  p->density.rot_v[0] *= ih4 / p->rho;
+  p->density.rot_v[1] *= ih4 / p->rho;
+  p->density.rot_v[2] *= ih4 / p->rho;
 
   /* Finish calculation of the velocity divergence */
   p->div_v *= ih4 / p->rho;
-
-  /* Compute the pressure */
-  const float dt = time - 0.5f * (p->t_begin + p->t_end);
-  p->pressure =
-      (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
 }
 
 /**
@@ -120,10 +109,23 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
+ * @param time The current time
  */
 __attribute__((always_inline))
-    INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp) {
+INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float time) {
 
+  /* Compute the norm of the curl */
+  p->force.curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+			  p->density.rot_v[1] * p->density.rot_v[1] +
+			  p->density.rot_v[2] * p->density.rot_v[2]);
+
+
+  /* Compute the pressure */
+  const float dt = time - 0.5f * (p->t_begin + p->t_end);
+  p->force.pressure =
+      (p->entropy + p->force.entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
+
+  
   /* Some smoothing length multiples. */
   /* const float h = p->h; */
   /* const float ih = 1.0f / h; */
@@ -173,10 +175,10 @@ __attribute__((always_inline))
   p->force.h_dt = 0.0f;
 
   /* Reset the time derivatives. */
-  p->entropy_dt = 0.0f;
+  p->force.entropy_dt = 0.0f;
 
   /* Reset maximal signal velocity */
-  p->v_sig = 0.0f;
+  p->force.v_sig = 0.0f;
 }
 
 /**
@@ -194,8 +196,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   // p->h *= expf(0.33333333f * p->div_v * dt)
 
   const float dt_entr = t1 - 0.5f * (p->t_begin + p->t_end);
-  p->pressure =
-      (p->entropy + p->entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
+  p->force.pressure =
+      (p->entropy + p->force.entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
 }
 
 /**
@@ -208,7 +210,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline))
     INLINE static void hydro_end_force(struct part* p) {
 
-  p->entropy_dt *=
+  p->force.entropy_dt *=
       (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
 }
 
@@ -221,15 +223,15 @@ __attribute__((always_inline))
     INLINE static void hydro_kick_extra(struct part* p, float dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
-  const float entropy_change = p->entropy_dt * dt;
+  const float entropy_change = p->force.entropy_dt * dt;
   if (entropy_change > -0.5f * p->entropy)
     p->entropy += entropy_change;
   else
-    p->entropy *= 0.5f;
+   p->entropy *= 0.5f;
 
   /* Do not 'overcool' when timestep increases */
-  if (p->entropy + 0.5f * p->entropy_dt * dt < 0.5f * p->entropy)
-    p->entropy_dt = -0.5f * p->entropy / dt;
+  if (p->entropy + 0.5f * p->force.entropy_dt * dt < 0.5f * p->entropy)
+    p->force.entropy_dt = -0.5f * p->entropy / dt;
 }
 
 /**
@@ -243,5 +245,5 @@ __attribute__((always_inline))
     INLINE static void hydro_convert_quantities(struct part* p) {
 
   p->entropy = (const_hydro_gamma - 1.f) * p->entropy *
-               powf(p->rho, -(const_hydro_gamma - 1.f));
+    powf(p->rho, -(const_hydro_gamma - 1.f));
 }

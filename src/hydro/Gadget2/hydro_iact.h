@@ -103,13 +103,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
   curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  pi->rot_v[0] += faci * curlvr[0];
-  pi->rot_v[1] += faci * curlvr[1];
-  pi->rot_v[2] += faci * curlvr[2];
+  pi->density.rot_v[0] += faci * curlvr[0];
+  pi->density.rot_v[1] += faci * curlvr[1];
+  pi->density.rot_v[2] += faci * curlvr[2];
 
-  pj->rot_v[0] += facj * curlvr[0];
-  pj->rot_v[1] += facj * curlvr[1];
-  pj->rot_v[2] += facj * curlvr[2];
+  pj->density.rot_v[0] += facj * curlvr[0];
+  pj->density.rot_v[1] += facj * curlvr[1];
+  pj->density.rot_v[2] += facj * curlvr[2];
 }
 
 /**
@@ -177,9 +177,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
   curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  pi->rot_v[0] += fac * curlvr[0];
-  pi->rot_v[1] += fac * curlvr[1];
-  pi->rot_v[2] += fac * curlvr[2];
+  pi->density.rot_v[0] += fac * curlvr[0];
+  pi->density.rot_v[1] += fac * curlvr[1];
+  pi->density.rot_v[2] += fac * curlvr[2];
 }
 
 /**
@@ -201,8 +201,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float pressurei = pi->pressure;
-  const float pressurej = pj->pressure;
+  const float pressurei = pi->force.pressure;
+  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -238,9 +238,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float mu_ij = fac_mu * dvdr * r_inv;
     v_sig -= 3.f * mu_ij;
     const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v +
+    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->force.curl_v +
                                                 0.0001 * ci / fac_mu / hi);
-    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v +
+    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->force.curl_v +
                                                 0.0001 * cj / fac_mu / hj);
     visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
            (balsara_i + balsara_j);
@@ -285,12 +285,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
   
   /* Update the signal velocity. */
-  pi->v_sig = fmaxf(pi->v_sig, v_sig);
-  pj->v_sig = fmaxf(pj->v_sig, v_sig);
+  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
+  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * visc_term * dvdr;
-  pj->entropy_dt -= 0.5f * visc_term * dvdr;
+  pi->force.entropy_dt += 0.5f * visc_term * dvdr;
+  pj->force.entropy_dt -= 0.5f * visc_term * dvdr;
 }
 
 /**
@@ -312,8 +312,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float pressurei = pi->pressure;
-  const float pressurej = pj->pressure;
+  const float pressurei = pi->force.pressure;
+  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -349,9 +349,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float mu_ij = fac_mu * dvdr * r_inv;
     v_sig -= 3.f * mu_ij;
     const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->curl_v +
+    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->force.curl_v +
                                                 0.0001 * ci / fac_mu / hi);
-    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->curl_v +
+    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->force.curl_v +
                                                 0.0001 * cj / fac_mu / hj);
     visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
            (balsara_i + balsara_j);
@@ -374,10 +374,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   
   /* Update the signal velocity. */
-  pi->v_sig = fmaxf(pi->v_sig, v_sig);
+  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * visc_term * dvdr;
+  pi->force.entropy_dt += 0.5f * visc_term * dvdr;
 }
 
 #endif /* SWIFT_RUNNER_IACT_LEGACY_H */

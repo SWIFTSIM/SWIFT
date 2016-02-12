@@ -620,15 +620,15 @@ void runner_doghost(struct runner *r, struct cell *c) {
         }
 
         /* We now have a particle whose smoothing length has converged */
-        // if(p->id == 1000)
-        //  printParticle(parts, 1000, count);
-
-        /* As of here, particle force variables will be set. Do _NOT_
-           try to read any particle density variables! */
+	
+        /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp);
+        hydro_prepare_force(p, xp, t_end);
 
+	/* The particle force values are now set.  Do _NOT_
+           try to read any particle density variables! */
+	
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
       }
