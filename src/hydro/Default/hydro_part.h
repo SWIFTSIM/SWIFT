@@ -17,10 +17,7 @@
  *
  ******************************************************************************/
 
-/* Some standard headers. */
-#include <stdlib.h>
-
-/* Extra particle data not needed during the computation. */
+/* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
   /* Old position, at last tree rebuild. */
