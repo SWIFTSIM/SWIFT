@@ -28,12 +28,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     struct part* p, struct xpart* xp) {
 
   /* CFL condition */
-  float dt_cfl = const_cfl * p->h / p->force.v_sig;
-
-  /* Limit change in h */
-  float dt_h_change = (p->h_dt != 0.0f)
-                          ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
-                          : FLT_MAX;
+  float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
 
   /* Limit change in u */
   float dt_u_change = (p->force.u_dt != 0.0f)

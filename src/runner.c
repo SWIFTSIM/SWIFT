@@ -871,7 +871,14 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           const float new_dt_grav = gravity_compute_timestep(p, xp);
 
           new_dt = fminf(new_dt_hydro, new_dt_grav);
+	  
+	  /* Limit change in h */
+	  const float dt_h_change = (p->h_dt != 0.0f)
+	    ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
+	    : FLT_MAX;
 
+	  new_dt = fminf(new_dt, dt_h_change);
+	  
           /* Recover the current timestep */
           const float current_dt = p->t_end - p->t_begin;
 
