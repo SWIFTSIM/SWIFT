@@ -30,7 +30,7 @@ __attribute__((always_inline))
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
       p->h, (int)p->density.wcount, p->mass, p->rho_dh, p->rho, p->force.pressure,
-      p->entropy, p->force.entropy_dt, p->div_v, p->force.curl_v, p->density.rot_v[0],
+      p->entropy, p->entropy_dt, p->div_v, p->force.curl_v, p->density.rot_v[0],
       p->density.rot_v[1], p->density.rot_v[2], p->force.v_sig, p->force.h_dt,
       p->t_begin, p->t_end);
 }

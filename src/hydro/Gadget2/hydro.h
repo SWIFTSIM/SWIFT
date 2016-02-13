@@ -125,7 +125,7 @@ INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float t
   /* Compute the pressure */
   const float dt = time - 0.5f * (p->t_begin + p->t_end);
   p->force.pressure =
-      (p->entropy + p->force.entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
+      (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
 }
 
 /**
@@ -147,7 +147,7 @@ __attribute__((always_inline))
   p->force.h_dt = 0.0f;
 
   /* Reset the time derivatives. */
-  p->force.entropy_dt = 0.0f;
+  p->entropy_dt = 0.0f;
 
   /* Reset maximal signal velocity */
   p->force.v_sig = 0.0f;
@@ -169,7 +169,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   const float dt_entr = t1 - 0.5f * (p->t_begin + p->t_end);
   p->force.pressure =
-      (p->entropy + p->force.entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
+      (p->entropy + p->entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
 }
 
 /**
@@ -182,7 +182,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline))
     INLINE static void hydro_end_force(struct part* p) {
 
-  p->force.entropy_dt *=
+  p->entropy_dt *=
       (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
 }
 
@@ -195,15 +195,15 @@ __attribute__((always_inline))
     INLINE static void hydro_kick_extra(struct part* p, float dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
-  const float entropy_change = p->force.entropy_dt * dt;
+  const float entropy_change = p->entropy_dt * dt;
   if (entropy_change > -0.5f * p->entropy)
     p->entropy += entropy_change;
   else
    p->entropy *= 0.5f;
 
   /* Do not 'overcool' when timestep increases */
-  if (p->entropy + 0.5f * p->force.entropy_dt * dt < 0.5f * p->entropy)
-    p->force.entropy_dt = -0.5f * p->entropy / dt;
+  if (p->entropy + 0.5f * p->entropy_dt * dt < 0.5f * p->entropy)
+    p->entropy_dt = -0.5f * p->entropy / dt;
 }
 
 /**

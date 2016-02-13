@@ -59,6 +59,9 @@ struct part {
 
   /* Particle entropy. */
   float entropy;
+
+  /* Entropy time derivative */
+  float entropy_dt;
   
   /* Particle mass. */
   float mass;
@@ -88,10 +91,7 @@ struct part {
 
       /* Signal velocity */
       float v_sig;
-
-      /* Entropy time derivative */
-      float entropy_dt;
-
+      
       /* Particle pressure */
       float pressure;
 
