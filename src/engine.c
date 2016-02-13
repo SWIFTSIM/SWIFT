@@ -1731,7 +1731,7 @@ void engine_init_particles(struct engine *e) {
 
   TIMER_TOC(timer_runners);
 
-   /* message("\n0th ENTROPY CONVERSION\n"); */
+  /* message("\n0th ENTROPY CONVERSION\n"); */
 
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
 
@@ -1739,7 +1739,7 @@ void engine_init_particles(struct engine *e) {
   /* printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts); */
 
   //  exit(0);
-  
+
   /* Ready to go */
   e->step = -1;
 }

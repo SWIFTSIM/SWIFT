@@ -620,15 +620,15 @@ void runner_doghost(struct runner *r, struct cell *c) {
         }
 
         /* We now have a particle whose smoothing length has converged */
-	
+
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, t_end);
 
-	/* The particle force values are now set.  Do _NOT_
+        /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
-	
+
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
       }
@@ -751,7 +751,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
 
       /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
-      /* 	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e] dh/dt=%.3e div_v=%.3e\n", */
+      /* 	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]
+       * dh/dt=%.3e div_v=%.3e\n", */
       /* 		p->id, */
       /* 		r->e->time, */
       /* 		r->e->timeOld, */
@@ -871,14 +872,14 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           const float new_dt_grav = gravity_compute_timestep(p, xp);
 
           new_dt = fminf(new_dt_hydro, new_dt_grav);
-	  
-	  /* Limit change in h */
-	  const float dt_h_change = (p->h_dt != 0.0f)
-	    ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
-	    : FLT_MAX;
 
-	  new_dt = fminf(new_dt, dt_h_change);
-	  
+          /* Limit change in h */
+          const float dt_h_change =
+              (p->h_dt != 0.0f) ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
+                                : FLT_MAX;
+
+          new_dt = fminf(new_dt, dt_h_change);
+
           /* Recover the current timestep */
           const float current_dt = p->t_end - p->t_begin;
 
@@ -951,7 +952,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       /* Collect total energy. */
       ekin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
                          v_full[2] * v_full[2]);
-      epot += 0.f; //MATTHIEU
+      epot += 0.f;  // MATTHIEU
 
       /* Minimal time for next end of time-step */
       t_end_min = fminf(p->t_end, t_end_min);

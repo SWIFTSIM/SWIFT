@@ -420,7 +420,7 @@ void engine_single_force(double *dim, long long int pid,
   }
 
   /* Dump the result. */
-  message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e]", p.id, p.h, p.a_hydro[0], p.a_hydro[1],
-          p.a_hydro[2]);
+  message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e]", p.id, p.h, p.a_hydro[0],
+          p.a_hydro[1], p.a_hydro[2]);
   fflush(stdout);
 }
