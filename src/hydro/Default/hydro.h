@@ -31,8 +31,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float dt_cfl = const_cfl * p->h / p->force.v_sig;
 
   /* Limit change in h */
-  float dt_h_change = (p->force.h_dt != 0.0f)
-                          ? fabsf(const_ln_max_h_change * p->h / p->force.h_dt)
+  float dt_h_change = (p->h_dt != 0.0f)
+                          ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
                           : FLT_MAX;
 
   /* Limit change in u */
@@ -159,7 +159,7 @@ __attribute__((always_inline))
 
   /* Reset the time derivatives. */
   p->force.u_dt = 0.0f;
-  p->force.h_dt = 0.0f;
+  p->h_dt = 0.0f;
   p->force.v_sig = 0.0f;
 }
 
@@ -197,10 +197,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline))
-    INLINE static void hydro_end_force(struct part* p) {
-
-  p->force.h_dt *= p->h * 0.333333333f;
-}
+    INLINE static void hydro_end_force(struct part* p) {}
 
 /**
  * @brief Kick the additional variables

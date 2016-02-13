@@ -147,7 +147,7 @@ __attribute__((always_inline))
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
 
-  p->force.h_dt = 0.0f;
+  p->h_dt = 0.0f;
 
   /* Reset the time derivatives. */
   p->entropy_dt = 0.0f;

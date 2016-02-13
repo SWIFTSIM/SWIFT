@@ -44,6 +44,9 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
+  /* Time derivative of the smoothing length */
+  float h_dt;
+
   /* Particle time of beginning of time-step. */
   float t_begin;
 
@@ -82,10 +85,7 @@ struct part {
     } density;
 
     struct {
-      
-      /* Time derivative of the smoothing length */
-      float h_dt;
-      
+           
       /* Velocity curl norm*/
       float curl_v;
 

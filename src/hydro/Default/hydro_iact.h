@@ -447,8 +447,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.u_dt += mi * tc * (pj->u - pi->u);
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr / rhoi * wj_dr;
+  pi->h_dt -= mj * dvdr / rhoj * wi_dr;
+  pj->h_dt -= mi * dvdr / rhoi * wj_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
@@ -656,8 +656,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->force.u_dt += piu_dt.f[k];
     pj[k]->force.u_dt += pju_dt.f[k];
-    pi[k]->force.h_dt -= pih_dt.f[k];
-    pj[k]->force.h_dt -= pjh_dt.f[k];
+    pi[k]->h_dt -= pih_dt.f[k];
+    pj[k]->h_dt -= pjh_dt.f[k];
     pi[k]->force.v_sig = vi_sig.f[k];
     pj[k]->force.v_sig = vj_sig.f[k];
     for (j = 0; j < 3; j++) {
@@ -758,7 +758,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.u_dt += mj * tc * (pi->u - pj->u);
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
+  pi->h_dt -= mj * dvdr / rhoj * wi_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
@@ -957,7 +957,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->force.u_dt += piu_dt.f[k];
-    pi[k]->force.h_dt -= pih_dt.f[k];
+    pi[k]->h_dt -= pih_dt.f[k];
     pi[k]->force.v_sig = vi_sig.f[k];
     pj[k]->force.v_sig = vj_sig.f[k];
     for (j = 0; j < 3; j++) pi[k]->a[j] -= pia[j].f[k];

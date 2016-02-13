@@ -32,6 +32,6 @@ __attribute__((always_inline))
       p->h, (int)p->density.wcount, p->mass, p->rho_dh, p->rho, p->force.pressure,
       p->entropy, p->entropy_dt, p->force.soundspeed,
       p->div_v, p->force.curl_v, p->density.rot_v[0],
-      p->density.rot_v[1], p->density.rot_v[2], p->force.v_sig, p->force.h_dt,
+      p->density.rot_v[1], p->density.rot_v[2], p->force.v_sig, p->h_dt,
       p->t_begin, p->t_end);
 }

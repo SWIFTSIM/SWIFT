@@ -734,14 +734,14 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->v[2] += p->a_hydro[2] * dt;
 
       /* Predict smoothing length */
-      w = p->force.h_dt * h_inv * dt;
+      w = p->h_dt * h_inv * dt;
       if (fabsf(w) < 0.2f)
         p->h *= approx_expf(w); /* 4th order expansion of exp(w) */
       else
         p->h *= expf(w);
 
       /* Predict density */
-      w = -3.0f * p->force.h_dt * h_inv * dt;
+      w = -3.0f * p->h_dt * h_inv * dt;
       if (fabsf(w) < 0.2f)
         p->rho *= approx_expf(w); /* 4th order expansion of exp(w) */
       else
@@ -759,7 +759,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* 		p->v[0], */
       /* 		p->v[1], */
       /* 		p->v[2], */
-      /* 		p->force.h_dt * h_inv * dt, */
+      /* 		p->h_dt * h_inv * dt, */
       /* 		0.333333f * p->div_v * dt); */
 
       /* Compute motion since last cell construction */
@@ -852,7 +852,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       if (is_fixdt || p->t_end <= t_current) {
 
         /* First, finish the force loop */
-        p->force.h_dt *= p->h * 0.333333333f;
+        p->h_dt *= p->h * 0.333333333f;
 
         /* And do the same of the extra variable */
         hydro_end_force(p);

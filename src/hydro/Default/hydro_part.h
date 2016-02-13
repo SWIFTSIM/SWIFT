@@ -46,6 +46,9 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
+  /* Change in smoothing length over time. */
+  float h_dt;
+
   /* Particle time of beginning of time-step. */
   float t_begin;
 
@@ -94,9 +97,6 @@ struct part {
 
     /* Change in particle energy over time. */
     float u_dt;
-
-    /* Change in smoothing length over time. */
-    float h_dt;
 
     /* Signal velocity */
     float v_sig;
