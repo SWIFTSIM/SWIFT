@@ -22,7 +22,7 @@
 
 #include <stdio.h>
 
-#include "../config.h"
+#include "config.h"
 #include "const.h"
 #include "part.h"
 #include "debug.h"
