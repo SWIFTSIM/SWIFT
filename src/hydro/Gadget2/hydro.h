@@ -126,6 +126,9 @@ INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float t
   const float dt = time - 0.5f * (p->t_begin + p->t_end);
   p->force.pressure =
       (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
+
+  /* Compute the sound speed */
+  p->force.soundspeed = sqrtf(const_hydro_gamma * p->force.pressure / p->rho);
 }
 
 /**
@@ -164,12 +167,13 @@ __attribute__((always_inline))
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float t0, float t1) {
 
-  // p->rho *= expf(-p->div_v * dt);
-  // p->h *= expf(0.33333333f * p->div_v * dt)
-
+  /* Drift the pressure */
   const float dt_entr = t1 - 0.5f * (p->t_begin + p->t_end);
   p->force.pressure =
       (p->entropy + p->entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
+
+  /* Compute the new sound speed */
+  p->force.soundspeed = sqrtf(const_hydro_gamma * p->force.pressure / p->rho);
 }
 
 /**

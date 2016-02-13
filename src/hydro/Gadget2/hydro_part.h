@@ -95,6 +95,9 @@ struct part {
       /* Particle pressure */
       float pressure;
 
+      /* Particle sound speed */
+      float soundspeed;
+      
     } force;
     
   };
