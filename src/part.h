@@ -38,10 +38,14 @@
 #define xpart_align 32
 
 /* Import the right particle definition */
-#ifdef GADGET2_SPH
+#if defined(MINIMAL_SPH)
+#include "./hydro/Minimal/hydro_part.h"
+#elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_part.h"
-#else
+#elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_part.h"
+#else
+#error "Invalid choice of SPH variant"
 #endif
 
 #include "./gravity/Default/gravity_part.h"

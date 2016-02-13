@@ -22,10 +22,14 @@
 #include "./const.h"
 
 /* Import the right functions */
-#ifdef GADGET2_SPH
+#if defined(MINIMAL_SPH)
+#include "./hydro/Minimal/hydro_io.h"
+#elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_io.h"
-#else
+#elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_io.h"
+#else
+#error "Invalid choice of SPH variant"
 #endif
 
-#endif
+#endif /* SWIFT_HYDRO_IO_H */

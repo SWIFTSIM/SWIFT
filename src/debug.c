@@ -28,11 +28,16 @@
 #include "debug.h"
 
 /* Import the right hydro definition */
-#ifdef GADGET2_SPH
+#if defined(MINIMAL_SPH)
+#include "./hydro/Minimal/hydro_debug.h"
+#elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_debug.h"
-#else
+#elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
+#else
+#error "Invalid choice of SPH variant"
 #endif
+
 
 /**
  * @brief Looks for the particle with the given id and prints its information to
