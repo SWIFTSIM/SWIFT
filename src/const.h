@@ -55,7 +55,7 @@
 #define const_theta_max                                   \
   0.57735f /* Opening criteria, which is the ratio of the \
               cell distance over the cell width. */
-// #define const_G                 6.67384e-8f     /* Gravitational constant. */
+
 #define const_G 6.672e-8f             /* Gravitational constant. */
 #define const_epsilon 0.0014f         /* Gravity blending distance. */
 #define const_iepsilon 714.285714286f /* Inverse gravity blending distance. */
