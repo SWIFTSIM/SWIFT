@@ -35,7 +35,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
                           ? fabsf(const_max_u_change * p->u / p->force.u_dt)
                           : FLT_MAX;
 
-  return fminf(dt_cfl, fminf(dt_h_change, dt_u_change));
+  return fminf(dt_cfl, dt_u_change);
 }
 
 /**
