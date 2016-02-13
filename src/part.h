@@ -38,7 +38,7 @@
 #define xpart_align 32
 
 /* Import the right particle definition */
-#ifdef LEGACY_GADGET2_SPH
+#ifdef GADGET2_SPH
 #include "./hydro/Gadget2/hydro_part.h"
 #else
 #include "./hydro/Default/hydro_part.h"

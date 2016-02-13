@@ -28,7 +28,7 @@
 #include "debug.h"
 
 /* Import the right hydro definition */
-#ifdef LEGACY_GADGET2_SPH
+#ifdef GADGET2_SPH
 #include "./hydro/Gadget2/hydro_debug.h"
 #else
 #include "./hydro/Default/hydro_debug.h"

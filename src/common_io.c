@@ -287,7 +287,7 @@ void writeSPHflavour(hid_t h_file) {
   writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
   writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
 
-#ifdef LEGACY_GADGET2_SPH
+#ifdef GADGET2_SPH
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
                    "(No treatment) Legacy Gadget-2 as in Springel (2005)");
   writeAttribute_s(h_grpsph, "Viscosity Model",

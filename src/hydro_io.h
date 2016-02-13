@@ -22,7 +22,7 @@
 #include "./const.h"
 
 /* Import the right functions */
-#ifdef LEGACY_GADGET2_SPH
+#ifdef GADGET2_SPH
 #include "./hydro/Gadget2/hydro_io.h"
 #else
 #include "./hydro/Default/hydro_io.h"
