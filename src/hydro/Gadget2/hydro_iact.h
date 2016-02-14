@@ -37,8 +37,6 @@
  *errors and interactions
  * missed by the Gadget-2 tree-code neighbours search.
  *
- * The code uses internal energy instead of entropy as a thermodynamical
- *variable.
  */
 
 /**
@@ -142,9 +140,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= u * wi_dx;
 
-  /* const float ih3 = h_inv * h_inv * h_inv; */
-  /* const float ih4 = h_inv * h_inv * h_inv * h_inv; */
-
   const float fac = mj * wi_dx * ri;
 
   /* Compute dv dot r */
@@ -153,24 +148,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   dv[2] = pi->v[2] - pj->v[2];
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
   pi->div_v -= fac * dvdr;
-
-  /* if(pi->id == 515050 && pj->id == 504849) */
-  /*   message("Interacting with %lld. r=%e hi=%e u=%e W=%e dW/dx=%e dh_drho1=%e
-   * dh_drho2=%e\n fac=%e dvdr=%e pj->v=[%.3e,%.3e,%.3e]", */
-  /* 	    pj->id, */
-  /* 	    r, */
-  /* 	    hi, */
-  /* 	    u, */
-  /* 	    wi * ih3, */
-  /* 	    wi_dx * ih4, */
-  /* 	    -mj * (3.f * kernel_igamma * wi) * ih4, */
-  /* 	    -mj * u * wi_dx * kernel_igamma * ih4, */
-  /* 	    fac * ih4, */
-  /* 	    dvdr, */
-  /* 	    pj->v[0], */
-  /* 	    pj->v[1], */
-  /* 	    pj->v[2] */
-  /* 	    ); */
 
   /* Compute dv cross r */
   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
@@ -225,28 +202,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  float v_sig = ci + cj;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
 
-  /* Artificial viscosity term */
-  float visc = 0.f;
-  if (dvdr < 0.f) {
-    const float mu_ij = fac_mu * dvdr * r_inv;
-    v_sig -= 3.f * mu_ij;
-    const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i =
-        fabsf(pi->div_v) /
-        (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
-    const float balsara_j =
-        fabsf(pj->div_v) /
-        (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
-    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
-           (balsara_i + balsara_j);
-  }
+  /* Balsara term */
+  const float balsara_i =
+      fabsf(pi->div_v) /
+      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
+  const float balsara_j =
+      fabsf(pj->div_v) /
+      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
+
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = fminf(dvdr, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+  /* Signal velocity */
+  const float v_sig = ci + cj - 3.f * mu_ij;
+
+  /* Now construct the full viscosity term */
+  const float rho_ij = 0.5f * (rhoi + rhoj);
+  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+                     (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -254,23 +234,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
-
-  /* //if(pi->id == 1000 && pj->id == 1100) */
-  /* if(pi->id == 515050 && pj->id == 504849) */
-  /*   message("Interacting with %lld. r=%e hi=%e hj=%e dWi/dx=%e dWj/dx=%3e
-   * dvdr=%e visc=%e sph=%e", */
-  /* 	    pj->id, */
-  /* 	    r, */
-  /* 	    2*hi, */
-  /* 	    2*hj, */
-  /* 	    wi_dr, */
-  /* 	    wj_dr, */
-  /* 	    dvdr, */
-  /* 	    visc_term, */
-  /* 	    sph_term */
-  /* 	    ); */
-  /* if(pi->id == 1100 && pj->id == 1000) */
-  /*   message("oO"); */
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
@@ -337,28 +300,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  float v_sig = ci + cj;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
 
-  /* Artificial viscosity term */
-  float visc = 0.f;
-  if (dvdr < 0.f) {
-    const float mu_ij = fac_mu * dvdr * r_inv;
-    v_sig -= 3.f * mu_ij;
-    const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i =
-        fabsf(pi->div_v) /
-        (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
-    const float balsara_j =
-        fabsf(pj->div_v) /
-        (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
-    visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
-           (balsara_i + balsara_j);
-  }
+  /* Balsara term */
+  const float balsara_i =
+      fabsf(pi->div_v) /
+      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
+  const float balsara_j =
+      fabsf(pj->div_v) /
+      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
+
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = fminf(dvdr, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+  /* Signal velocity */
+  const float v_sig = ci + cj - 3.f * mu_ij;
+
+  /* Now construct the full viscosity term */
+  const float rho_ij = 0.5f * (rhoi + rhoj);
+  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+                     (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
