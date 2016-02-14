@@ -66,8 +66,8 @@
 #define const_iepsilon6 (const_iepsilon3* const_iepsilon3)
 
 /* SPH variant to use */
-#define MINIMAL_SPH
-//#define GADGET2_SPH
+//#define MINIMAL_SPH
+#define GADGET2_SPH
 //#define DEFAULT_SPH
 
 /* System of units */
