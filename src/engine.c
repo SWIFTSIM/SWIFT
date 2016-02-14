@@ -1615,34 +1615,42 @@ void engine_barrier(struct engine *e, int tid) {
 
 void engine_collect_kick(struct cell *c) {
 
-  int k, updated = 0;
+  int updated = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.0f;
   double ekin = 0.0, epot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   struct cell *cp;
 
-  /* If I am a super-cell, return immediately. */
-  if (c->kick != NULL || c->count == 0) return;
+  /* Skip super-cells (There values are already set) */
+  if (c->kick != NULL) return;
 
-  /* If this cell is not split, I'm in trouble. */
-  if (!c->split) error("Cell has no super-cell.");
+  /* Only do something is the cell is non-empty */
+  if (c->count != 0) {
 
-  /* Collect the values from the progeny. */
-  for (k = 0; k < 8; k++)
-    if ((cp = c->progeny[k]) != NULL) {
-      engine_collect_kick(cp);
-      t_end_min = fminf(t_end_min, cp->t_end_min);
-      t_end_max = fmaxf(t_end_max, cp->t_end_max);
-      updated += cp->updated;
-      ekin += cp->ekin;
-      epot += cp->epot;
-      mom[0] += cp->mom[0];
-      mom[1] += cp->mom[1];
-      mom[2] += cp->mom[2];
-      ang[0] += cp->ang[0];
-      ang[1] += cp->ang[1];
-      ang[2] += cp->ang[2];
-    }
+    /* If this cell is not split, I'm in trouble. */
+    if (!c->split) error("Cell has no super-cell.");
+
+    /* Collect the values from the progeny. */
+    for (int k = 0; k < 8; k++)
+      if ((cp = c->progeny[k]) != NULL) {
+
+        /* Recurse */
+        engine_collect_kick(cp);
+
+        /* And update */
+        t_end_min = fminf(t_end_min, cp->t_end_min);
+        t_end_max = fmaxf(t_end_max, cp->t_end_max);
+        updated += cp->updated;
+        ekin += cp->ekin;
+        epot += cp->epot;
+        mom[0] += cp->mom[0];
+        mom[1] += cp->mom[1];
+        mom[2] += cp->mom[2];
+        ang[0] += cp->ang[0];
+        ang[1] += cp->ang[1];
+        ang[2] += cp->ang[2];
+      }
+  }
 
   /* Store the collected values in the cell. */
   c->t_end_min = t_end_min;
@@ -1727,7 +1735,7 @@ void engine_init_particles(struct engine *e) {
 
   TIMER_TOC(timer_runners);
 
-  /* Apply some conversions (e.g. internal energy -> entropy)
+  /* Apply some conversions (e.g. internal energy -> entropy) */
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
 
   /* Ready to go */
