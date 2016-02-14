@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,88 +17,92 @@
  *
  ******************************************************************************/
 
-/* Extra particle data not needed during the SPH loops over neighbours. */
+/**
+ * @brief Particle fields not needed during the SPH loops over neighbours.
+ *
+ * This structure contains the particle fields that are not used in the
+ * density or force loops. Quantities should be used in the kick, drift and
+ * potentially ghost tasks only.
+ */
 struct xpart {
 
-  /* Old position, at last tree rebuild. */
-  double x_old[3];
+  double x_old[3]; /*!< Old position, at last tree rebuild. */
 
-  /* Velocity at the last full step. */
-  float v_full[3];
+  float v_full[3]; /*!< Velocity at the last full step. */
 
-  /* Thermal energy at the last full step. */
-  float u_full;
+  float u_full; /*!< Thermal energy at the last full step. */
 
 } __attribute__((aligned(xpart_align)));
 
-/* Data of a single particle. */
+/**
+ * @brief Particle fields for the SPH particles
+ *
+ * The density and force substructures are used to contain variables only used
+ * within the density and force loops over neighbours. All more permanent
+ * variables should be declared in the main part of the part structure,
+ */
 struct part {
 
-  /* Particle position. */
-  double x[3];
+  double x[3]; /*!< Particle position. */
 
-  /* Particle predicted velocity. */
-  float v[3];
+  float v[3]; /*!< Particle predicted velocity. */
 
-  /* Particle acceleration. */
-  float a_hydro[3];
+  float a_hydro[3]; /*!< Particle acceleration. */
 
-  /* Particle mass. */
-  float mass;
+  float mass; /*!< Particle mass. */
 
-  /* Particle cutoff radius. */
-  float h;
+  float h; /*!< Particle smoothing length. */
 
-  /* Change in smoothing length over time. */
-  float h_dt;
+  float h_dt; /*!< Time derivative of smoothing length  */
 
-  /* Particle time of beginning of time-step. */
-  float t_begin;
+  float t_begin; /*!< Time at the beginning of time-step. */
 
-  /* Particle time of end of time-step. */
-  float t_end;
+  float t_end; /*!< Time at the end of time-step. */
 
-  /* Particle internal energy. */
-  float u;
+  float u; /*!< Particle internal energy. */
 
-  /* Thermal energy time derivative */
-  float u_dt;
+  float u_dt; /*!< Time derivative of the internal energy. */
 
-  /* Particle density. */
-  float rho;
+  float rho; /*!< Particle density. */
 
-  /* Derivative of the density with respect to this particle's smoothing length.
-   */
-  float rho_dh;
+  float rho_dh; /*!< Derivative of density with respect to h */
 
   /* Store density/force specific stuff. */
   union {
 
+    /**
+     * @brief Structure for the variables only used in the density loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the density
+     * loop over neighbours and the ghost task.
+     */
     struct {
 
-      /* Particle number density. */
-      float wcount;
+      float wcount; /*!< Neighbour number count. */
 
-      /* Derivative of particle number density. */
-      float wcount_dh;
-
+      float wcount_dh; /*!< Derivative of the neighbour number with respect to
+                          h. */
     } density;
 
+    /**
+     * @brief Structure for the variables only used in the force loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the force
+     * loop over neighbours and the ghost and kick tasks.
+     */
     struct {
 
-      /* Pressure */
-      float pressure;
+      float pressure; /*!< Particle pressure. */
 
-      /* Signal velocity */
-      float v_sig;
+      float v_sig; /*!< Particle signal velocity */
 
     } force;
   };
 
-  /* Particle ID. */
-  unsigned long long id;
+  unsigned long long id; /*!< Particle unique ID. */
 
-  /* Pointer to corresponding gravity part. */
-  struct gpart* gpart;
+  struct gpart* gpart; /*!< Pointer to corresponding gravity part. */
 
 } __attribute__((aligned(part_align)));

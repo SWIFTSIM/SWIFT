@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -27,24 +26,15 @@
 #include "vector.h"
 
 /**
- * @brief SPH interaction functions following the Gadget-2 version of SPH.
+ * @brief Minimal conservative implementation of SPH
  *
- * The interactions computed here are the ones presented in the Gadget-2 paper
- *and use the same
- * numerical coefficients as the Gadget-2 code. When used with the Spline-3
- *kernel, the results
- * should be equivalent to the ones obtained with Gadget-2 up to the rounding
- *errors and interactions
- * missed by the Gadget-2 tree-code neighbours search.
- *
- * The code uses internal energy instead of entropy as a thermodynamical
- *variable.
+ * The thermal variable is the internal energy (u). No viscosity nor 
+ * thermal conduction terms are implemented. 
  */
 
 /**
  * @brief Density loop
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 

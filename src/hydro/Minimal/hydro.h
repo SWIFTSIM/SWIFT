@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -22,6 +22,9 @@
 /**
  * @brief Computes the hydro time-step of a given particle
  *
+ * This function returns the time-step of a particle given its hydro-dynamical
+ * state. A typical time-step calculation would be the use of the CFL condition.
+ *
  * @param p Pointer to the particle data
  * @param xp Pointer to the extended particle data
  *
@@ -39,7 +42,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @brief Initialises the particles for the first time
  *
  * This function is called only once just after the ICs have been
- * read in to do some conversions.
+ * read in to do some conversions or assignments between the particle
+ * and extended particle fields.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -54,7 +58,8 @@ __attribute__((always_inline))
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the variaous density tasks
+ * the various density loop over neighbours. Typically, all fields of the
+ * density sub-structure of a particle get zeroed in here.
  *
  * @param p The particle to act upon
  */
@@ -71,6 +76,9 @@ __attribute__((always_inline))
  *
  * Multiplies the density and number of neighbours by the appropiate constants
  * and add the self-contribution term.
+ * Additional quantities such as velocity gradients will also get the final
+ *terms
+ * added to them here.
  *
  * @param p The particle to act upon
  * @param time The current time
@@ -99,7 +107,12 @@ __attribute__((always_inline))
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * Computes viscosity term, conduction term and smoothing length gradient terms.
+ * This function is called in the ghost task to convert some quantities coming
+ * from the density loop over neighbours into quantities ready to be used in the
+ * force loop over neighbours. Quantities are typically read from the density
+ * sub-structure and written to the force sub-structure.
+ * Examples of calculations done here include the calculation of viscosity term
+ * constants, thermal conduction terms, hydro conversions, etc.
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
@@ -115,7 +128,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  * @brief Reset acceleration fields of a particle
  *
  * Resets all hydro acceleration and time derivative fields in preparation
- * for the sums taking place in the variaous force tasks
+ * for the sums taking  place in the various force tasks.
  *
  * @param p The particle to act upon
  */
@@ -135,6 +148,9 @@ __attribute__((always_inline))
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
+ *
+ * Additional hydrodynamic quantites are drifted forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
  * @param p The particle
  * @param xp The extended data of the particle
@@ -160,7 +176,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 /**
  * @brief Finishes the force calculation.
  *
- * Multiplies the forces and accelerationsby the appropiate constants
+ * Multiplies the force and accelerations by the appropiate constants
+ * and add the self-contribution term. In most cases, there is nothing
+ * to do here.
  *
  * @param p The particle to act upon
  */
@@ -169,6 +187,9 @@ __attribute__((always_inline))
 
 /**
  * @brief Kick the additional variables
+ *
+ * Additional hydrodynamic quantites are kicked forward in time here. These
+ * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
  * @param p The particle to act upon
  * @param xp The particle extended data to act upon
@@ -186,9 +207,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 }
 
 /**
- * @brief Converts hydro quantity of a particle
+ * @brief Converts hydro quantity of a particle at the start of a run
  *
- * Requires the density to be known
+ * This function is called once at the end of the engine_init_particle()
+ * routine (at the start of a calculation) after the densities of
+ * particles have been computed.
+ * This can be used to convert internal energy into entropy for instance.
  *
  * @param p The particle to act upon
  */
