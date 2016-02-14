@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline))
-INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
+    INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
 
   xp->u_full = p->u;
 }
@@ -175,9 +175,8 @@ __attribute__((always_inline))
  * @param dt The time-step for this kick
  * @param half_dt The half time-step for this kick
  */
-__attribute__((always_inline))
-    INLINE static void hydro_kick_extra(struct part* p, struct xpart* xp,
-					float dt, float half_dt) {
+__attribute__((always_inline)) INLINE static void hydro_kick_extra(
+    struct part* p, struct xpart* xp, float dt, float half_dt) {
 
   /* Kick in momentum space */
   xp->u_full += p->u_dt * dt;

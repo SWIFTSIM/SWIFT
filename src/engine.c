@@ -1708,18 +1708,18 @@ void engine_init_particles(struct engine *e) {
 
   message("Initialising particles");
 
+  engine_prepare(e);
+
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
 
-  engine_prepare(e);
-
   engine_marktasks(e);
 
-  // printParticle(e->s->parts, 1000, e->s->nr_parts);
-  // printParticle(e->s->parts, 515050, e->s->nr_parts);
+  /* printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts); */
+  /* printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts); */
 
-  // message("\n0th DENSITY CALC\n");
+  /* message("\n0th DENSITY CALC\n"); */
 
   /* Now do a density calculation */
   TIMER_TIC;
@@ -1824,8 +1824,6 @@ if ( e->nodeID == 0 )
 
   /* printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts); */
   /* printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts); */
-
-  // if(e->step == 2)   exit(0);
 
   /* message("\nACCELERATION AND KICK\n"); */
 
