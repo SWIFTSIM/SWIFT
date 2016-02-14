@@ -26,9 +26,6 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-  /* Old density. */
-  float omega;
-
 } __attribute__((aligned(xpart_align)));
 
 /* Data of a single particle. */
@@ -42,6 +39,9 @@ struct part {
 
   /* Particle acceleration. */
   float a_hydro[3];
+
+  /* Particle mass. */
+  float mass;
 
   /* Particle cutoff radius. */
   float h;
@@ -58,6 +58,9 @@ struct part {
   /* Particle internal energy. */
   float u;
 
+  /* Thermal energy time derivative */
+  float u_dt;
+
   /* Particle density. */
   float rho;
 
@@ -65,50 +68,29 @@ struct part {
    */
   float rho_dh;
 
-  /* Particle viscosity parameter */
-  float alpha;
-
   /* Store density/force specific stuff. */
-  // union {
+  union {
 
-  struct {
+    struct {
 
-    /* Particle velocity divergence. */
-    float div_v;
+      /* Particle number density. */
+      float wcount;
 
-    /* Derivative of particle number density. */
-    float wcount_dh;
+      /* Derivative of particle number density. */
+      float wcount_dh;
 
-    /* Particle velocity curl. */
-    float curl_v[3];
+    } density;
 
-    /* Particle number density. */
-    float wcount;
+    struct {
 
-  } density;
+      /* Pressure */
+      float pressure;
 
-  struct {
+      /* Signal velocity */
+      float v_sig;
 
-    /* Balsara switch */
-    float balsara;
-
-    /* Aggregate quantities. */
-    float POrho2;
-
-    /* Change in particle energy over time. */
-    float u_dt;
-
-    /* Signal velocity */
-    float v_sig;
-
-    /* Sound speed */
-    float c;
-
-  } force;
-  //};
-
-  /* Particle mass. */
-  float mass;
+    } force;
+  };
 
   /* Particle ID. */
   unsigned long long id;

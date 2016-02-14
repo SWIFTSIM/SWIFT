@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+#include "approx_math.h"
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -28,14 +30,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     struct part* p, struct xpart* xp) {
 
   /* CFL condition */
-  float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
+  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
 
-  /* Limit change in u */
-  float dt_u_change = (p->force.u_dt != 0.0f)
-                          ? fabsf(const_max_u_change * p->u / p->force.u_dt)
-                          : FLT_MAX;
-
-  return fminf(dt_cfl, fminf(dt_h_change, dt_u_change));
+  return dt_cfl;
 }
 
 /**
@@ -52,10 +49,6 @@ __attribute__((always_inline))
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->rho_dh = 0.f;
-  p->density.div_v = 0.f;
-  p->density.curl_v[0] = 0.f;
-  p->density.curl_v[1] = 0.f;
-  p->density.curl_v[2] = 0.f;
 }
 
 /**
@@ -76,13 +69,16 @@ __attribute__((always_inline))
   const float ih2 = ih * ih;
   const float ih4 = ih2 * ih2;
 
-  /* Final operation on the density. */
-  p->rho = ih * ih2 * (p->rho + p->mass * kernel_root);
-  p->rho_dh = (p->rho_dh - 3.0f * p->mass * kernel_root) * ih4;
-  p->density.wcount =
-      (p->density.wcount + kernel_root) * (4.0f / 3.0 * M_PI * kernel_gamma3);
-  p->density.wcount_dh =
-      p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
+  /* Final operation on the density (add self-contribution). */
+  p->rho += p->mass * kernel_root;
+  p->rho_dh -= 3.0f * p->mass * kernel_root * kernel_igamma;
+  p->density.wcount += kernel_root;
+
+  /* Finish the calculation by inserting the missing h-factors */
+  p->rho *= ih * ih2;
+  p->rho_dh *= ih4;
+  p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
+  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma3);
 }
 
 /**
@@ -94,46 +90,10 @@ __attribute__((always_inline))
  * @param xp The extended particle data to act upon
  * @param time The current time
  */
-__attribute__((always_inline))
-INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float time) {
+__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+    struct part* p, struct xpart* xp, float time) {
 
-  /* Some smoothing length multiples. */
-  const float h = p->h;
-  const float ih = 1.0f / h;
-  const float ih2 = ih * ih;
-  const float ih4 = ih2 * ih2;
-
-  /* Pre-compute some stuff for the balsara switch. */
-  const float normDiv_v = fabs(p->density.div_v / p->rho * ih4);
-  const float normCurl_v = sqrtf(p->density.curl_v[0] * p->density.curl_v[0] +
-                                 p->density.curl_v[1] * p->density.curl_v[1] +
-                                 p->density.curl_v[2] * p->density.curl_v[2]) /
-                           p->rho * ih4;
-
-  /* Compute this particle's sound speed. */
-  const float u = p->u;
-  const float fc = p->force.c =
-      sqrtf(const_hydro_gamma * (const_hydro_gamma - 1.0f) * u);
-
-  /* Compute the P/Omega/rho2. */
-  xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho;
-  p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (p->rho * xp->omega);
-
-  /* Balsara switch */
-  p->force.balsara = normDiv_v / (normDiv_v + normCurl_v + 0.0001f * fc * ih);
-
-  /* Viscosity parameter decay time */
-  const float tau = h / (2.f * const_viscosity_length * p->force.c);
-
-  /* Viscosity source term */
-  const float S = fmaxf(-normDiv_v, 0.f);
-
-  /* Compute the particle's viscosity parameter time derivative */
-  const float alpha_dot = (const_viscosity_alpha_min - p->alpha) / tau +
-                          (const_viscosity_alpha_max - p->alpha) * S;
-
-  /* Update particle's viscosity paramter */
-  p->alpha += alpha_dot * (p->t_end - p->t_begin);
+  p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);
 }
 
 /**
@@ -153,7 +113,7 @@ __attribute__((always_inline))
   p->a_hydro[2] = 0.0f;
 
   /* Reset the time derivatives. */
-  p->force.u_dt = 0.0f;
+  p->u_dt = 0.0f;
   p->h_dt = 0.0f;
   p->force.v_sig = 0.0f;
 }
@@ -168,20 +128,18 @@ __attribute__((always_inline))
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float t0, float t1) {
-  float u, w;
 
   const float dt = t1 - t0;
 
   /* Predict internal energy */
-  w = p->force.u_dt / p->u * dt;
-  if (fabsf(w) < 0.01f) /* 1st order expansion of exp(w) */
-    u = p->u *=
-        1.0f + w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
+  const float w = p->u_dt / p->u * dt;
+  if (fabsf(w) < 0.2f)
+    p->u *= approx_expf(w); /* 4th order expansion of exp(w) */
   else
-    u = p->u *= expf(w);
+    p->u *= expf(w);
 
-  /* Predict gradient term */
-  p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (p->rho * xp->omega);
+  /* Need to recompute the pressure as well */
+  p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);
 }
 
 /**
