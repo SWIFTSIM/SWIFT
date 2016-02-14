@@ -161,17 +161,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float v_sig = ci + cj + 3.f * omega_ij;
 
   /* SPH acceleration term */
-  const float sph_term =
-      mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= sph_term * dx[0];
-  pi->a_hydro[1] -= sph_term * dx[1];
-  pi->a_hydro[2] -= sph_term * dx[2];
+  pi->a_hydro[0] -= mj * sph_term * dx[0];
+  pi->a_hydro[1] -= mj * sph_term * dx[1];
+  pi->a_hydro[2] -= mj * sph_term * dx[2];
 
-  pj->a_hydro[0] += sph_term * dx[0];
-  pj->a_hydro[1] += sph_term * dx[1];
-  pj->a_hydro[2] += sph_term * dx[2];
+  pj->a_hydro[0] += mi * sph_term * dx[0];
+  pj->a_hydro[1] += mi * sph_term * dx[1];
+  pj->a_hydro[2] += mi * sph_term * dx[2];
 
   /* Get the time derivative for u. */
   pi->u_dt += P_over_rho_i * mj * dvdr * wi_dr;
@@ -239,13 +238,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float v_sig = ci + cj + 3.f * omega_ij;
 
   /* SPH acceleration term */
-  const float sph_term =
-      mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= sph_term * dx[0];
-  pi->a_hydro[1] -= sph_term * dx[1];
-  pi->a_hydro[2] -= sph_term * dx[2];
+  pi->a_hydro[0] -= mj * sph_term * dx[0];
+  pi->a_hydro[1] -= mj * sph_term * dx[1];
+  pi->a_hydro[2] -= mj * sph_term * dx[2];
 
   /* Get the time derivative for u. */
   pi->u_dt += P_over_rho_i * mj * dvdr * wi_dr;
