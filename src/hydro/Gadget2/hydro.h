@@ -28,9 +28,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     struct part* p, struct xpart* xp) {
 
   /* Acceleration */
-  float ac = sqrtf(p->a_hydro[0] * p->a_hydro[0] +
-		   p->a_hydro[1] * p->a_hydro[1] +
-		   p->a_hydro[2] * p->a_hydro[2]);
+  float ac =
+      sqrtf(p->a_hydro[0] * p->a_hydro[0] + p->a_hydro[1] * p->a_hydro[1] +
+            p->a_hydro[2] * p->a_hydro[2]);
   ac = fmaxf(ac, 1e-30);
 
   const float dt_accel = sqrtf(2.f);  // MATTHIEU
@@ -51,7 +51,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline))
-INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {}
+    INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
+}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -103,7 +104,7 @@ __attribute__((always_inline))
   p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma3);
 
   const float irho = 1.f / p->rho;
-  
+
   /* Compute the derivative term */
   p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh * irho);
 
@@ -125,14 +126,13 @@ __attribute__((always_inline))
  * @param xp The extended particle data to act upon
  * @param time The current time
  */
-__attribute__((always_inline))
-INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float time) {
+__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+    struct part* p, struct xpart* xp, float time) {
 
   /* Compute the norm of the curl */
   p->force.curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-			  p->density.rot_v[1] * p->density.rot_v[1] +
-			  p->density.rot_v[2] * p->density.rot_v[2]);
-
+                          p->density.rot_v[1] * p->density.rot_v[1] +
+                          p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the pressure */
   const float dt = time - 0.5f * (p->t_begin + p->t_end);
@@ -202,7 +202,6 @@ __attribute__((always_inline))
       (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
 }
 
-
 /**
  * @brief Kick the additional variables
  *
@@ -211,16 +210,15 @@ __attribute__((always_inline))
  * @param dt The time-step for this kick
  * @param half_dt The half time-step for this kick
  */
-__attribute__((always_inline))
-    INLINE static void hydro_kick_extra(struct part* p, struct xpart* xp,
-					float dt, float half_dt) {
+__attribute__((always_inline)) INLINE static void hydro_kick_extra(
+    struct part* p, struct xpart* xp, float dt, float half_dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
   const float entropy_change = p->entropy_dt * dt;
   if (entropy_change > -0.5f * p->entropy)
     p->entropy += entropy_change;
   else
-   p->entropy *= 0.5f;
+    p->entropy *= 0.5f;
 
   /* Do not 'overcool' when timestep increases */
   if (p->entropy + 0.5f * p->entropy_dt * dt < 0.5f * p->entropy)
@@ -238,5 +236,5 @@ __attribute__((always_inline))
     INLINE static void hydro_convert_quantities(struct part* p) {
 
   p->entropy = (const_hydro_gamma - 1.f) * p->entropy *
-    powf(p->rho, -(const_hydro_gamma - 1.f));
+               powf(p->rho, -(const_hydro_gamma - 1.f));
 }

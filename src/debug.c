@@ -38,7 +38,6 @@
 #error "Invalid choice of SPH variant"
 #endif
 
-
 /**
  * @brief Looks for the particle with the given id and prints its information to
  *the standard output.

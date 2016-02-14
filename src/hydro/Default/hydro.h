@@ -31,9 +31,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
 
   /* Limit change in u */
-  const float dt_u_change = (p->force.u_dt != 0.0f)
-                          ? fabsf(const_max_u_change * p->u / p->force.u_dt)
-                          : FLT_MAX;
+  const float dt_u_change =
+      (p->force.u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->force.u_dt)
+                              : FLT_MAX;
 
   return fminf(dt_cfl, dt_u_change);
 }
@@ -48,7 +48,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline))
-INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {}
+    INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
+}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -106,8 +107,8 @@ __attribute__((always_inline))
  * @param xp The extended particle data to act upon
  * @param time The current time
  */
-__attribute__((always_inline))
-INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp, float time) {
+__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+    struct part* p, struct xpart* xp, float time) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -206,15 +207,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline))
     INLINE static void hydro_end_force(struct part* p) {}
 
-
-
 /**
  * @brief Kick the additional variables
  *
  * @param p The particle to act upon
  */
 __attribute__((always_inline))
-   INLINE static void hydro_kick_extra(struct part* p, float dt) {}
+    INLINE static void hydro_kick_extra(struct part* p, float dt) {}
 
 /**
  * @brief Converts hydro quantity of a particle

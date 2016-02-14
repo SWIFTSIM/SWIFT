@@ -17,7 +17,6 @@
  *
  ******************************************************************************/
 
-
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
@@ -26,7 +25,7 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
-  
+
 } __attribute__((aligned(xpart_align)));
 
 /* Data of a single particle. */
@@ -65,43 +64,42 @@ struct part {
 
   /* Entropy time derivative */
   float entropy_dt;
-  
+
   /* Particle mass. */
   float mass;
-  
-  union{
-  
+
+  union {
+
     struct {
 
       /* Number of neighbours */
       float wcount;
-      
+
       /* Number of neighbours spatial derivative */
       float wcount_dh;
-      
+
       /* Velocity curl components */
       float rot_v[3];
-      
+
     } density;
 
     struct {
-           
+
       /* Velocity curl norm*/
       float curl_v;
 
       /* Signal velocity */
       float v_sig;
-      
+
       /* Particle pressure */
       float pressure;
 
       /* Particle sound speed */
       float soundspeed;
-      
+
     } force;
-    
   };
-  
+
   /* Velocity divergence */
   float div_v;
 
