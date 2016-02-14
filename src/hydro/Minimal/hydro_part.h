@@ -26,6 +26,9 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  /* Thermal energy at the last full step. */
+  float u_full;
+
 } __attribute__((aligned(xpart_align)));
 
 /* Data of a single particle. */

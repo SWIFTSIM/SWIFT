@@ -564,6 +564,7 @@ void cell_init_parts(struct cell *c, void *data) {
     xp[i].v_full[0] = p[i].v[0];
     xp[i].v_full[1] = p[i].v[1];
     xp[i].v_full[2] = p[i].v[2];
+    hydro_first_init_part(&p[i], &xp[i]);
     hydro_init_part(&p[i]);
     hydro_reset_acceleration(&p[i]);
   }
