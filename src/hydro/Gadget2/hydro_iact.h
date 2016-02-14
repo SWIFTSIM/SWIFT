@@ -238,18 +238,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float mu_ij = fac_mu * dvdr * r_inv;
     v_sig -= 3.f * mu_ij;
     const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->force.curl_v +
-                                                0.0001 * ci / fac_mu / hi);
-    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->force.curl_v +
-                                                0.0001 * cj / fac_mu / hj);
+    const float balsara_i =
+        fabsf(pi->div_v) /
+        (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
+    const float balsara_j =
+        fabsf(pj->div_v) /
+        (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
     visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
            (balsara_i + balsara_j);
   }
 
   /* Now, convolve with the kernel */
-  const float visc_term = 0.5f * mj * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term =
-      mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -272,25 +273,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /*   message("oO"); */
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= acc * dx[0];
-  pi->a_hydro[1] -= acc * dx[1];
-  pi->a_hydro[2] -= acc * dx[2];
+  pi->a_hydro[0] -= mj * acc * dx[0];
+  pi->a_hydro[1] -= mj * acc * dx[1];
+  pi->a_hydro[2] -= mj * acc * dx[2];
 
-  pj->a_hydro[0] += acc * dx[0];
-  pj->a_hydro[1] += acc * dx[1];
-  pj->a_hydro[2] += acc * dx[2];
+  pj->a_hydro[0] += mi * acc * dx[0];
+  pj->a_hydro[1] += mi * acc * dx[1];
+  pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for h. */
   pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   pj->h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
-  
+
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
   pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * visc_term * dvdr;
-  pj->entropy_dt -= 0.5f * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pj->entropy_dt -= 0.5f * mi * visc_term * dvdr;
 }
 
 /**
@@ -349,35 +350,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float mu_ij = fac_mu * dvdr * r_inv;
     v_sig -= 3.f * mu_ij;
     const float rho_ij = 0.5f * (rhoi + rhoj);
-    const float balsara_i = fabsf(pi->div_v) / (fabsf(pi->div_v) + pi->force.curl_v +
-                                                0.0001 * ci / fac_mu / hi);
-    const float balsara_j = fabsf(pj->div_v) / (fabsf(pj->div_v) + pj->force.curl_v +
-                                                0.0001 * cj / fac_mu / hj);
+    const float balsara_i =
+        fabsf(pi->div_v) /
+        (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
+    const float balsara_j =
+        fabsf(pj->div_v) /
+        (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
     visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij / rho_ij *
            (balsara_i + balsara_j);
   }
 
   /* Now, convolve with the kernel */
-  const float visc_term = 0.5f * mj * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term =
-      mj * (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= acc * dx[0];
-  pi->a_hydro[1] -= acc * dx[1];
-  pi->a_hydro[2] -= acc * dx[2];
+  pi->a_hydro[0] -= mj * acc * dx[0];
+  pi->a_hydro[1] -= mj * acc * dx[1];
+  pi->a_hydro[2] -= mj * acc * dx[2];
 
   /* Get the time derivative for h. */
   pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  
+
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
 }
 
 #endif /* SWIFT_RUNNER_IACT_LEGACY_H */
