@@ -194,14 +194,15 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline))
     INLINE static void hydro_end_force(struct part* p) {}
 
+
+
 /**
  * @brief Kick the additional variables
  *
  * @param p The particle to act upon
- * @param dt The time-step for this kick
  */
 __attribute__((always_inline))
-    INLINE static void hydro_kick_extra(struct part* p, float dt) {}
+   INLINE static void hydro_kick_extra(struct part* p, float dt) {}
 
 /**
  * @brief Converts hydro quantity of a particle

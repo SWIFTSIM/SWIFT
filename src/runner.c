@@ -930,7 +930,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         /* 	  p->v[2]); */
 
         /* Extra kick work */
-        hydro_kick_extra(p, dt);
+        hydro_kick_extra(p, xp, dt, half_dt);
       }
 
       /* Now collect quantities for statistics */
