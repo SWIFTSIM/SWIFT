@@ -515,9 +515,6 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
       if (p->t_end <= t_end) {
 
-        /* if(p->id == 1000) message("init 1000!"); */
-        /* if(p->id == 515050) message("init 515050!"); */
-
         /* Get ready for a density calculation */
         hydro_init_part(p);
       }
@@ -579,9 +576,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
       /* Get a direct pointer on the part. */
       p = &parts[pid[i]];
       xp = &xparts[pid[i]];
-
-      /* if(p->id == 1000) message("ghost 1000"); */
-      /* if(p->id == 515050) message("ghost 515050"); */
 
       /* Is this part within the timestep? */
       if (p->t_end <= t_end) {
@@ -750,19 +744,6 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
 
-      /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
-      /* 	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]
-       * dh/dt=%.3e div_v=%.3e\n", */
-      /* 		p->id, */
-      /* 		r->e->time, */
-      /* 		r->e->timeOld, */
-      /* 		r->e->time, */
-      /* 		p->v[0], */
-      /* 		p->v[1], */
-      /* 		p->v[2], */
-      /* 		p->h_dt * h_inv * dt, */
-      /* 		0.333333f * p->div_v * dt); */
-
       /* Compute motion since last cell construction */
       const float dx =
           sqrtf((p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
@@ -916,18 +897,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->v[0] = xp->v_full[0] - half_dt * p->a_hydro[0];
         p->v[1] = xp->v_full[1] - half_dt * p->a_hydro[1];
         p->v[2] = xp->v_full[2] - half_dt * p->a_hydro[2];
-
-        /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
-        /*   message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e
-         * %.3e %.3e]\n", */
-        /* 	  p->id, */
-        /* 	  t_current, */
-        /* 	  p->t_begin, */
-        /* 	  p->t_end, */
-        /* 	  half_dt, */
-        /* 	  p->v[0], */
-        /* 	  p->v[1], */
-        /* 	  p->v[2]); */
 
         /* Extra kick work */
         hydro_kick_extra(p, xp, dt, half_dt);

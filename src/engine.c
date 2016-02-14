@@ -1716,11 +1716,6 @@ void engine_init_particles(struct engine *e) {
 
   engine_marktasks(e);
 
-  /* printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts); */
-  /* printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts); */
-
-  /* message("\n0th DENSITY CALC\n"); */
-
   /* Now do a density calculation */
   TIMER_TIC;
   engine_launch(e, e->nr_threads,
@@ -1732,14 +1727,8 @@ void engine_init_particles(struct engine *e) {
 
   TIMER_TOC(timer_runners);
 
-  /* message("\n0th ENTROPY CONVERSION\n"); */
-
+  /* Apply some conversions (e.g. internal energy -> entropy)
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
-
-  /* printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts); */
-  /* printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts); */
-
-  //  exit(0);
 
   /* Ready to go */
   e->step = -1;
@@ -1811,8 +1800,6 @@ if ( e->nodeID == 0 )
     message( "nr_parts=%i." , nr_parts ); */
 #endif
 
-  /* message("\nDRIFT\n"); */
-
   /* Move forward in time */
   e->timeOld = e->time;
   e->time = t_end_min;
@@ -1821,11 +1808,6 @@ if ( e->nodeID == 0 )
 
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
-
-  /* printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts); */
-  /* printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts); */
-
-  /* message("\nACCELERATION AND KICK\n"); */
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart) engine_repartition(e);
@@ -1847,17 +1829,12 @@ if ( e->nodeID == 0 )
 
   TIMER_TOC2(timer_step);
 
+  /* Print some information to the screen */
   if (e->nodeID == 0) {
     printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
            ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
     fflush(stdout);
   }
-
-  /* printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts); */
-  /* printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts); */
-
-  /* if(e->step == 2) */
-  /* exit(0); */
 }
 
 /**
