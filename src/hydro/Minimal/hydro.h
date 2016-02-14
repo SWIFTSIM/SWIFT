@@ -218,3 +218,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline))
     INLINE static void hydro_convert_quantities(struct part* p) {}
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * For implementations where the main thermodynamic variable
+ * is not internal energy, this function computes the internal
+ * energy from the thermodynamic variable.
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline))
+    INLINE static float hydro_get_internal_energy(struct part* p) {
+
+  return p->u;
+}

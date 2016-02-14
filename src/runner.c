@@ -807,9 +807,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   int updated = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.f;
-  double ekin = 0.0, epot = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  float m, x[3], v_full[3];
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  float mom[3] = {0.0f, 0.0f, 0.0f};
+  float ang[3] = {0.0f, 0.0f, 0.0f};
+  float x[3], v_full[3];
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
 
@@ -825,7 +826,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       p = &parts[k];
       xp = &xparts[k];
 
-      m = p->mass;
+      const float m = p->mass;
       x[0] = p->x[0];
       x[1] = p->x[1];
       x[2] = p->x[2];
@@ -908,6 +909,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       v_full[1] = xp->v_full[1];
       v_full[2] = xp->v_full[2];
 
+      /* Collect mass */
+      mass += m;
+
       /* Collect momentum */
       mom[0] += m * v_full[0];
       mom[1] += m * v_full[1];
@@ -919,9 +923,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       ang[2] += m * (x[0] * v_full[1] - x[1] * v_full[0]);
 
       /* Collect total energy. */
-      ekin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
-                         v_full[2] * v_full[2]);
-      epot += 0.f;  // MATTHIEU
+      e_kin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
+                          v_full[2] * v_full[2]);
+      e_pot += 0.f; /* No gravitational potential thus far */
+      e_int += hydro_get_internal_energy(p);
 
       /* Minimal time for next end of time-step */
       t_end_min = fminf(p->t_end, t_end_min);
@@ -940,11 +945,16 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
+
+        /* Recurse */
         runner_dokick(r, cp, 0);
 
+        /* And aggregate */
         updated += cp->updated;
-        ekin += cp->ekin;
-        epot += cp->epot;
+        e_kin += cp->e_kin;
+        e_int += cp->e_int;
+        e_pot += cp->e_pot;
+        mass += cp->mass;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
         mom[2] += cp->mom[2];
@@ -958,8 +968,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   /* Store the values. */
   c->updated = updated;
-  c->ekin = ekin;
-  c->epot = epot;
+  c->e_kin = e_kin;
+  c->e_int = e_int;
+  c->e_pot = e_pot;
+  c->mass = mass;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];

@@ -224,3 +224,14 @@ __attribute__((always_inline))
  */
 __attribute__((always_inline))
     INLINE static void hydro_convert_quantities(struct part* p) {}
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline))
+    INLINE static float hydro_get_internal_energy(struct part* p) {
+
+  return p->u;
+}

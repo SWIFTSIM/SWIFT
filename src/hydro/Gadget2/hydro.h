@@ -238,3 +238,15 @@ __attribute__((always_inline))
   p->entropy = (const_hydro_gamma - 1.f) * p->entropy *
                powf(p->rho, -(const_hydro_gamma - 1.f));
 }
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline))
+    INLINE static float hydro_get_internal_energy(struct part* p) {
+
+  return p->entropy * powf(p->rho, const_hydro_gamma - 1.f) *
+         (1.f / (const_hydro_gamma - 1.f));
+}
