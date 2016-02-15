@@ -1848,9 +1848,9 @@ void engine_step(struct engine *e) {
     fflush(stdout);
 
     /* Write some energy statistics */
-    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f\n", e->step, e_kin,
-            e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1], mom[2], ang[0],
-            ang[1], ang[2]);
+    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f %f\n", e->step,
+            e->time, e_kin, e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1],
+            mom[2], ang[0], ang[1], ang[2]);
     fflush(e->file_stats);
   }
 }
@@ -2165,7 +2165,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   if (e->nodeID == 0) {
     e->file_stats = fopen("energy.txt", "w");
     fprintf(e->file_stats,
-            "# Step E_kin E_int E_pot E_tot "
+            "# Step Time E_kin E_int E_pot E_tot "
             "p_x p_y p_z ang_x ang_y ang_z\n");
   }
 
