@@ -267,59 +267,6 @@ void writeAttribute_s(hid_t grp, char* name, const char* str) {
   writeStringAttribute(grp, name, str, strlen(str));
 }
 
-/* ------------------------------------------------------------------------------------------------
- * This part writes the XMF file descriptor enabling a visualisation through
- * ParaView
- * ------------------------------------------------------------------------------------------------
- */
-/**
- * @brief Writes the current model of SPH to the file
- * @param h_file The (opened) HDF5 file in which to write
- */
-void writeSPHflavour(hid_t h_file) {
-  hid_t h_grpsph = 0;
-
-  h_grpsph = H5Gcreate1(h_file, "/SPH", 0);
-  if (h_grpsph < 0) error("Error while creating SPH group");
-
-  writeAttribute_f(h_grpsph, "Kernel eta", const_eta_kernel);
-  writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
-  writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
-  writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
-
-#ifdef GADGET2_SPH
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "(No treatment) Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
-  writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
-#else
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "Price (2008) without switch");
-  writeAttribute_f(h_grpsph, "Thermal Conductivity alpha",
-                   const_conductivity_alpha);
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
-                   "Piran (2000) with additional Balsara (1995) switch");
-  writeAttribute_f(h_grpsph, "Viscosity alpha_min", const_viscosity_alpha_min);
-  writeAttribute_f(h_grpsph, "Viscosity alpha_max", const_viscosity_alpha_max);
-  writeAttribute_f(h_grpsph, "Viscosity beta", 2.f);
-  writeAttribute_f(h_grpsph, "Viscosity decay length", const_viscosity_length);
-#endif
-
-  writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);
-  writeAttribute_f(h_grpsph, "Maximal ln(Delta h) change over dt",
-                   const_ln_max_h_change);
-  writeAttribute_f(h_grpsph, "Maximal Delta h change over dt",
-                   exp(const_ln_max_h_change));
-  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
-                   const_max_u_change);
-  writeAttribute_s(h_grpsph, "Kernel", kernel_name);
-
-  H5Gclose(h_grpsph);
-}
-
 /**
  * @brief Writes the current Unit System
  * @param h_file The (opened) HDF5 file in which to write
@@ -371,6 +318,12 @@ void writeCodeDescription(hid_t h_file) {
 #endif
   H5Gclose(h_grpcode);
 }
+
+/* ------------------------------------------------------------------------------------------------
+ * This part writes the XMF file descriptor enabling a visualisation through
+ * ParaView
+ * ------------------------------------------------------------------------------------------------
+ */
 
 /**
  * @brief Prepares the XMF file for the new entry
