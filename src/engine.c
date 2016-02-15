@@ -55,9 +55,10 @@
 #include "part.h"
 #include "timers.h"
 
-const char *engine_policy_names[10] = {"none",      "rand",  "steal",
-                                       "keep",      "block", "fix_dt",
-                                       "cpu_tight", "mpi",   "numa_affinity"};
+const char *engine_policy_names[12] = {
+    "none",          "rand",   "steal",        "keep",
+    "block",         "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity", "hydro",  "self_gravity", "external_gravity"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1326,7 +1327,7 @@ int engine_marktasks(struct engine *e) {
   // ticks tic = getticks();
 
   /* Much less to do here if we're on a fixed time-step. */
-  if (e->policy & engine_policy_fixdt) {
+  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
     for (k = 0; k < nr_tasks; k++) {
@@ -2060,7 +2061,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   int j, cpuid[nr_cores];
   cpu_set_t cpuset;
-  if (policy & engine_policy_cputight) {
+  if ((policy & engine_policy_cputight) == engine_policy_cputight) {
     for (k = 0; k < nr_cores; k++) cpuid[k] = k;
   } else {
     /*  Get next highest power of 2. */
@@ -2166,7 +2167,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   engine_print_policy(e);
 
   /* Deal with timestep */
-  if (e->policy & engine_policy_fixdt) {
+  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
   }
 
@@ -2211,7 +2212,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
-    if (e->policy & engine_policy_setaffinity) {
+    if ((e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
