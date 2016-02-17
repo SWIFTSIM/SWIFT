@@ -44,11 +44,13 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     kernel.c tools.c part.c
 
 # Include files for distribution, not installation.
-noinst_HEADERS = atomic.h cycle.h error.h inline.h kernel.h vector.h \
+noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel.h vector.h \
 		 runner_doiact.h runner_doiact_grav.h units.h intrinsics.h \
 		 hydro.h hydro_io.h gravity.h \
 		 gravity/Default/gravity.h gravity/Default/runner_iact_grav.h \
 		 gravity/Default/gravity_part.h
+		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
+                 hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h
 		 hydro/Default/hydro.h hydro/Default/hydro_iact.h hydro/Default/hydro_io.h \
                  hydro/Default/hydro_debug.h hydro/Default/hydro_part.h \
 		 hydro/Gadget2/hydro.h hydro/Gadget2/hydro_iact.h hydro/Gadget2/hydro_io.h \

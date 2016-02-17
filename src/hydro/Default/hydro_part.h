@@ -17,10 +17,7 @@
  *
  ******************************************************************************/
 
-/* Some standard headers. */
-#include <stdlib.h>
-
-/* Extra particle data not needed during the computation. */
+/* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
   /* Old position, at last tree rebuild. */
@@ -28,9 +25,6 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
-
-  /* Entropy at the half-step. */
-  float u_hdt;
 
   /* Old density. */
   float omega;
@@ -47,10 +41,13 @@ struct part {
   float v[3];
 
   /* Particle acceleration. */
-  float a[3];
+  float a_hydro[3];
 
   /* Particle cutoff radius. */
   float h;
+
+  /* Change in smoothing length over time. */
+  float h_dt;
 
   /* Particle time of beginning of time-step. */
   float t_begin;
@@ -100,9 +97,6 @@ struct part {
 
     /* Change in particle energy over time. */
     float u_dt;
-
-    /* Change in smoothing length over time. */
-    float h_dt;
 
     /* Signal velocity */
     float v_sig;

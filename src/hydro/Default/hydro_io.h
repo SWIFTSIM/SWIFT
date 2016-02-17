@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
             COMPULSORY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id,
             COMPULSORY);
-  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a,
+  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a_hydro,
             OPTIONAL);
   readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho,
             OPTIONAL);
@@ -84,7 +84,43 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts,
-             N_total, mpi_rank, offset, a, us, UNIT_CONV_ACCELERATION);
+             N_total, mpi_rank, offset, a_hydro, us, UNIT_CONV_ACCELERATION);
   writeArray(h_grp, fileName, xmfFile, "Density", FLOAT, N, 1, parts, N_total,
              mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
+}
+
+/**
+ * @brief Writes the current model of SPH to the file
+ * @param h_grpsph The HDF5 group in which to write
+ */
+void writeSPHflavour(hid_t h_grpsph) {
+
+  /* Kernel function description */
+  writeAttribute_s(h_grpsph, "Kernel", kernel_name);
+  writeAttribute_f(h_grpsph, "Kernel eta", const_eta_kernel);
+  writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
+  writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
+  writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
+
+  /* Viscosity and thermal conduction */
+  writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
+                   "Price (2008) without switch");
+  writeAttribute_f(h_grpsph, "Thermal Conductivity alpha",
+                   const_conductivity_alpha);
+  writeAttribute_s(h_grpsph, "Viscosity Model",
+                   "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
+                   "Piran (2000) with additional Balsara (1995) switch");
+  writeAttribute_f(h_grpsph, "Viscosity alpha_min", const_viscosity_alpha_min);
+  writeAttribute_f(h_grpsph, "Viscosity alpha_max", const_viscosity_alpha_max);
+  writeAttribute_f(h_grpsph, "Viscosity beta", 2.f);
+  writeAttribute_f(h_grpsph, "Viscosity decay length", const_viscosity_length);
+
+  /* Time integration properties */
+  writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);
+  writeAttribute_f(h_grpsph, "Maximal ln(Delta h) change over dt",
+                   const_ln_max_h_change);
+  writeAttribute_f(h_grpsph, "Maximal Delta h change over dt",
+                   exp(const_ln_max_h_change));
+  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
+                   const_max_u_change);
 }

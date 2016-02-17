@@ -41,8 +41,8 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
             COMPULSORY);
   readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h,
             COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset,
-            entropy, COMPULSORY);
+  readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset, u,
+            COMPULSORY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id,
             COMPULSORY);
   readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a_hydro,
@@ -80,8 +80,7 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
   writeArray(h_grp, fileName, xmfFile, "SmoothingLength", FLOAT, N, 1, parts,
              N_total, mpi_rank, offset, h, us, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, "InternalEnergy", FLOAT, N, 1, parts,
-             N_total, mpi_rank, offset, entropy, us,
-             UNIT_CONV_ENTROPY_PER_UNIT_MASS);
+             N_total, mpi_rank, offset, u, us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, "ParticleIDs", ULONGLONG, N, 1, parts,
              N_total, mpi_rank, offset, id, us, UNIT_CONV_NO_UNITS);
   writeArray(h_grp, fileName, xmfFile, "Acceleration", FLOAT, N, 3, parts,
@@ -104,12 +103,9 @@ void writeSPHflavour(hid_t h_grpsph) {
   writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
 
   /* Viscosity and thermal conduction */
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "(No treatment) Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
-  writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
+  /* Nothing in this minimal model... */
+  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No model");
+  writeAttribute_s(h_grpsph, "Viscosity Model", "No model");
 
   /* Time integration properties */
   writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);
@@ -117,4 +113,6 @@ void writeSPHflavour(hid_t h_grpsph) {
                    const_ln_max_h_change);
   writeAttribute_f(h_grpsph, "Maximal Delta h change over dt",
                    exp(const_ln_max_h_change));
+  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
+                   const_max_u_change);
 }

@@ -16,20 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_IO_H
-#define SWIFT_HYDRO_IO_H
 
-#include "./const.h"
-
-/* Import the right functions */
-#if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_io.h"
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_io.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_io.h"
-#else
-#error "Invalid choice of SPH variant"
-#endif
-
-#endif /* SWIFT_HYDRO_IO_H */
+__attribute__((always_inline))
+    INLINE static void hydro_debug_particle(struct part* p, struct xpart* xp) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e], "
+      "u_full=%.3e, u=%.3e, du/dt=%.3e v_sig=%.3e, P=%.3e\n"
+      "h=%.3e, dh/dt=%.3e "
+      "wcount=%d, m=%.3e, dh_drho=%.3e, rho=%.3e, t_begin=%.3e, t_end=%.3e\n",
+      p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
+      xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
+      xp->u_full, p->u, p->u_dt, p->force.v_sig, p->force.pressure, p->h,
+      p->h_dt, (int)p->density.wcount, p->mass, p->rho_dh, p->rho, p->t_begin,
+      p->t_end);
+}

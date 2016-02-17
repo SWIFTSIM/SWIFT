@@ -459,7 +459,7 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
                            int mpi_rank, int mpi_size, MPI_Comm comm,
                            MPI_Info info) {
 
-  hid_t h_file = 0, h_grp = 0;
+  hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
   unsigned int numParticles[6] = {N, 0};
@@ -546,7 +546,10 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
-  writeSPHflavour(h_file);
+  h_grpsph = H5Gcreate1(h_file, "/SPH", 0);
+  if (h_grpsph < 0) error("Error while creating SPH group");
+  writeSPHflavour(h_grpsph);
+  H5Gclose(h_grpsph);
 
   /* Print the system of Units */
   writeUnitSystem(h_file, us);

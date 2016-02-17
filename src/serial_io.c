@@ -241,10 +241,10 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  * Calls #error() if an error occurs.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,  char* name,
-		       enum DATA_TYPE type, int N, int dim, long long N_total,
-		       int mpi_rank, long long offset, char* part_c,
-		       struct UnitSystem* us,
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
+                       enum DATA_TYPE type, int N, int dim, long long N_total,
+                       int mpi_rank, long long offset, char* part_c,
+                       struct UnitSystem* us,
                        enum UnitConversionFactor convFactor) {
 
   hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0;
@@ -259,11 +259,10 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,  char* name,
   /* message("Writing '%s' array...", name); */
 
   /* Prepare the arrays in the file */
-  if(mpi_rank == 0)
-    prepareArray(grp, fileName, xmfFile, name, type, N_total, dim,
-		 us, convFactor);
+  if (mpi_rank == 0)
+    prepareArray(grp, fileName, xmfFile, name, type, N_total, dim, us,
+                 convFactor);
 
-  
   /* Allocate temporary buffer */
   temp = malloc(N * dim * sizeOfType(type));
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
@@ -359,9 +358,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,  char* name,
  */
 #define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
                    mpi_rank, offset, field, us, convFactor)                   \
-  writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total, \
-		    mpi_rank, offset, (char*)(&(part[0]).field),	 \
-		    us, convFactor)
+  writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total,      \
+                    mpi_rank, offset, (char*)(&(part[0]).field), us,          \
+                    convFactor)
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
@@ -512,7 +511,7 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
  */
 void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
                          int mpi_size, MPI_Comm comm, MPI_Info info) {
-  hid_t h_file = 0, h_grp = 0;
+  hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
   int N = e->s->nr_parts;
   int periodic = e->s->periodic;
   int numParticles[6] = {N, 0};
@@ -602,7 +601,10 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     writeCodeDescription(h_file);
 
     /* Print the SPH parameters */
-    writeSPHflavour(h_file);
+    h_grpsph = H5Gcreate1(h_file, "/SPH", 0);
+    if (h_grpsph < 0) error("Error while creating SPH group");
+    writeSPHflavour(h_grpsph);
+    H5Gclose(h_grpsph);
 
     /* Print the system of Units */
     writeUnitSystem(h_file, us);
@@ -639,8 +641,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
         error("Error while opening particle group on rank %d.\n", mpi_rank);
 
       /* Write particle fields from the particle structure */
-      hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, mpi_rank, offset,
-                            parts, us);
+      hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, mpi_rank,
+                            offset, parts, us);
 
       /* Close particle group */
       H5Gclose(h_grp);

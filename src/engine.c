@@ -1616,41 +1616,51 @@ void engine_barrier(struct engine *e, int tid) {
 
 void engine_collect_kick(struct cell *c) {
 
-  int k, updated = 0;
+  int updated = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.0f;
-  double ekin = 0.0, epot = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   struct cell *cp;
 
-  /* If I am a super-cell, return immediately. */
-  if (c->kick != NULL || c->count == 0) return;
+  /* Skip super-cells (Their values are already set) */
+  if (c->kick != NULL) return;
 
-  /* If this cell is not split, I'm in trouble. */
-  if (!c->split) error("Cell has no super-cell.");
+  /* Only do something is the cell is non-empty */
+  if (c->count != 0) {
 
-  /* Collect the values from the progeny. */
-  for (k = 0; k < 8; k++)
-    if ((cp = c->progeny[k]) != NULL) {
-      engine_collect_kick(cp);
-      t_end_min = fminf(t_end_min, cp->t_end_min);
-      t_end_max = fmaxf(t_end_max, cp->t_end_max);
-      updated += cp->updated;
-      ekin += cp->ekin;
-      epot += cp->epot;
-      mom[0] += cp->mom[0];
-      mom[1] += cp->mom[1];
-      mom[2] += cp->mom[2];
-      ang[0] += cp->ang[0];
-      ang[1] += cp->ang[1];
-      ang[2] += cp->ang[2];
-    }
+    /* If this cell is not split, I'm in trouble. */
+    if (!c->split) error("Cell has no super-cell.");
+
+    /* Collect the values from the progeny. */
+    for (int k = 0; k < 8; k++)
+      if ((cp = c->progeny[k]) != NULL) {
+
+        /* Recurse */
+        engine_collect_kick(cp);
+
+        /* And update */
+        t_end_min = fminf(t_end_min, cp->t_end_min);
+        t_end_max = fmaxf(t_end_max, cp->t_end_max);
+        updated += cp->updated;
+        e_kin += cp->e_kin;
+        e_int += cp->e_int;
+        e_pot += cp->e_pot;
+        mom[0] += cp->mom[0];
+        mom[1] += cp->mom[1];
+        mom[2] += cp->mom[2];
+        ang[0] += cp->ang[0];
+        ang[1] += cp->ang[1];
+        ang[2] += cp->ang[2];
+      }
+  }
 
   /* Store the collected values in the cell. */
   c->t_end_min = t_end_min;
   c->t_end_max = t_end_max;
   c->updated = updated;
-  c->ekin = ekin;
-  c->epot = epot;
+  c->e_kin = e_kin;
+  c->e_int = e_int;
+  c->e_pot = e_pot;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];
@@ -1709,11 +1719,11 @@ void engine_init_particles(struct engine *e) {
 
   message("Initialising particles");
 
+  engine_prepare(e);
+
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
-
-  engine_prepare(e);
 
   engine_marktasks(e);
 
@@ -1766,8 +1776,9 @@ void engine_init_particles(struct engine *e) {
   engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
-  // message("\n0th ENTROPY CONVERSION\n");
+// message("\n0th ENTROPY CONVERSION\n")
 
+  /* Apply some conversions (e.g. internal energy -> entropy) */
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
 
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
@@ -1787,7 +1798,7 @@ void engine_step(struct engine *e) {
   int k;
   int updates = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.f;
-  double epot = 0.0, ekin = 0.0;
+  double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
   struct cell *c;
@@ -1799,11 +1810,16 @@ void engine_step(struct engine *e) {
   for (k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
       c = &s->cells[k];
+
+      /* Recurse */
       engine_collect_kick(c);
+
+      /* And aggregate */
       t_end_min = fminf(t_end_min, c->t_end_min);
       t_end_max = fmaxf(t_end_max, c->t_end_max);
-      ekin += c->ekin;
-      epot += c->epot;
+      e_kin += c->e_kin;
+      e_int += c->e_int;
+      e_pot += c->e_pot;
       updates += c->updated;
       mom[0] += c->mom[0];
       mom[1] += c->mom[1];
@@ -1815,7 +1831,7 @@ void engine_step(struct engine *e) {
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-  double in[3], out[3];
+  double in[4], out[4];
   out[0] = t_end_min;
   if (MPI_Allreduce(out, in, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
@@ -1827,20 +1843,16 @@ void engine_step(struct engine *e) {
     error("Failed to aggregate t_end_max.");
   t_end_max = in[0];
   out[0] = updates;
-  out[1] = ekin;
-  out[2] = epot;
+  out[1] = e_kin;
+  out[2] = e_int;
+  out[3] = e_pot;
   if (MPI_Allreduce(out, in, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate energies.");
   updates = in[0];
-  ekin = in[1];
-  epot = in[2];
-/* int nr_parts;
-if ( MPI_Allreduce( &s->nr_parts , &nr_parts , 1 , MPI_INT , MPI_SUM ,
-MPI_COMM_WORLD ) != MPI_SUCCESS )
-    error( "Failed to aggregate particle count." );
-if ( e->nodeID == 0 )
-    message( "nr_parts=%i." , nr_parts ); */
+  e_kin = in[1];
+  e_int = in[2];
+  e_pot = in[3];
 #endif
 
   // message("\nDRIFT\n");
@@ -1916,9 +1928,17 @@ if ( e->nodeID == 0 )
   TIMER_TOC2(timer_step);
 
   if (e->nodeID == 0) {
+
+    /* Print some information to the screen */
     printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
            ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
     fflush(stdout);
+
+    /* Write some energy statistics */
+    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f %f\n", e->step,
+            e->time, e_kin, e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1],
+            mom[2], ang[0], ang[1], ang[2]);
+    fflush(e->file_stats);
   }
 
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
@@ -2211,6 +2231,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->timeStep = 0.;
   e->dt_min = dt_min;
   e->dt_max = dt_max;
+  e->file_stats = NULL;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
@@ -2228,6 +2249,14 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     bzero(e->proxies, sizeof(struct proxy) * engine_maxproxies);
     e->nr_proxies = 0;
 #endif
+  }
+
+  /* Open some files */
+  if (e->nodeID == 0) {
+    e->file_stats = fopen("energy.txt", "w");
+    fprintf(e->file_stats,
+            "# Step Time E_kin E_int E_pot E_tot "
+            "p_x p_y p_z ang_x ang_y ang_z\n");
   }
 
   /* Print policy */

@@ -29,6 +29,7 @@
 
 /* Some standard headers. */
 #include <pthread.h>
+#include <stdio.h>
 
 /* Includes. */
 #include "lock.h"
@@ -112,8 +113,8 @@ struct engine {
   /* Time step */
   float timeStep;
 
-  /* The system energies from the previous step. */
-  double ekin, epot;
+  /* File for statistics */
+  FILE *file_stats;
 
   /* The current step number. */
   int step, nullstep;
