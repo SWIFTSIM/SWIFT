@@ -211,9 +211,12 @@ __attribute__((always_inline))
  * @brief Kick the additional variables
  *
  * @param p The particle to act upon
+ * @param xp The particle extended data to act upon
+ * @param dt The time-step for this kick
+ * @param half_dt The half time-step for this kick
  */
-__attribute__((always_inline))
-    INLINE static void hydro_kick_extra(struct part* p, float dt) {}
+__attribute__((always_inline)) INLINE static void hydro_kick_extra(
+    struct part* p, struct xpart* xp, float dt, float half_dt) { }
 
 /**
  * @brief Converts hydro quantity of a particle
