@@ -304,3 +304,29 @@ void task_addunlock_old(struct task *ta, struct task *tb) {
 
   lock_unlock_blind(&ta->lock);
 }
+
+/**
+ * @brief Prints the list of tasks contained in a given mask
+ *
+ * @param mask The mask to analyse
+ */
+void task_print_mask(unsigned int mask) {
+
+  printf("task_print_mask: The tasks to run are [");
+  for (int k = 1; k < task_type_count; k++)
+    printf(" %s=%s", taskID_names[k], (mask & (1 << k)) ? "yes" : "no");
+  printf(" ]\n");
+}
+
+/**
+ * @brief Prints the list of subtasks contained in a given submask
+ *
+ * @param submask The submask to analyse
+ */
+void task_print_submask(unsigned int submask) {
+
+  printf("task_print_submask: The subtasks to run are [");
+  for (int k = 1; k < task_subtype_count; k++)
+    printf(" %s=%s", subtaskID_names[k], (submask & (1 << k)) ? "yes" : "no");
+  printf(" ]\n");
+}

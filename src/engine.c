@@ -55,9 +55,10 @@
 #include "part.h"
 #include "timers.h"
 
-const char *engine_policy_names[10] = {"none",      "rand",  "steal",
-                                       "keep",      "block", "fix_dt",
-                                       "cpu_tight", "mpi",   "numa_affinity"};
+const char *engine_policy_names[12] = {
+    "none",          "rand",   "steal",        "keep",
+    "block",         "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity", "hydro",  "self_gravity", "external_gravity"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1326,7 +1327,7 @@ int engine_marktasks(struct engine *e) {
   // ticks tic = getticks();
 
   /* Much less to do here if we're on a fixed time-step. */
-  if (e->policy & engine_policy_fixdt) {
+  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
     for (k = 0; k < nr_tasks; k++) {
@@ -1721,15 +1722,48 @@ void engine_init_particles(struct engine *e) {
 
   // message("\n0th DENSITY CALC\n");
 
-  /* Now do a density calculation */
-  TIMER_TIC;
-  engine_launch(e, e->nr_threads,
-                (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_send) | (1 << task_type_recv),
-                1 << task_subtype_density);
+  /* Build the masks corresponding to the policy */
+  unsigned int mask = 0;
+  unsigned int submask = 0;
 
+  /* We always have sort tasks */
+  mask |= 1 << task_type_sort;
+
+  /* Add the tasks corresponding to hydro operations to the masks */
+  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+
+    mask |= 1 << task_type_init;
+    mask |= 1 << task_type_self;
+    mask |= 1 << task_type_pair;
+    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_ghost;
+
+    submask |= 1 << task_subtype_density;
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_external_gravity) ==
+      engine_policy_external_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add MPI tasks if need be */
+  if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+
+    mask |= 1 << task_type_send;
+    mask |= 1 << task_type_recv;
+  }
+
+  /* Now, launch the calculation */
+  TIMER_TIC;
+  engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
   // message("\n0th ENTROPY CONVERSION\n");
@@ -1833,16 +1867,50 @@ if ( e->nodeID == 0 )
   /* Prepare the space. */
   engine_prepare(e);
 
+  /* Build the masks corresponding to the policy */
+  unsigned int mask = 0;
+  unsigned int submask = 0;
+
+  /* We always have sort tasks and kick tasks */
+  mask |= 1 << task_type_sort;
+  mask |= 1 << task_type_kick;
+
+  /* Add the tasks corresponding to hydro operations to the masks */
+  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+
+    mask |= 1 << task_type_init;
+    mask |= 1 << task_type_self;
+    mask |= 1 << task_type_pair;
+    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_ghost;
+
+    submask |= 1 << task_subtype_density;
+    submask |= 1 << task_subtype_force;
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_external_gravity) ==
+      engine_policy_external_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add MPI tasks if need be */
+  if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+
+    mask |= 1 << task_type_send;
+    mask |= 1 << task_type_recv;
+  }
+
   /* Send off the runners. */
   TIMER_TIC;
-  engine_launch(e, e->nr_threads,
-                (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_kick) | (1 << task_type_send) |
-                    (1 << task_type_recv),
-                (1 << task_subtype_density) | (1 << task_subtype_force));
-
+  engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);
@@ -2060,7 +2128,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   int j, cpuid[nr_cores];
   cpu_set_t cpuset;
-  if (policy & engine_policy_cputight) {
+  if ((policy & engine_policy_cputight) == engine_policy_cputight) {
     for (k = 0; k < nr_cores; k++) cpuid[k] = k;
   } else {
     /*  Get next highest power of 2. */
@@ -2166,7 +2234,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   engine_print_policy(e);
 
   /* Deal with timestep */
-  if (e->policy & engine_policy_fixdt) {
+  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
   }
 
@@ -2211,7 +2279,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
-    if (e->policy & engine_policy_setaffinity) {
+    if ((e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
@@ -2258,14 +2326,14 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[000] engine_policy: engine policies are [ ");
     for (int k = 1; k < 32; k++)
-      if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
 #else
   printf("engine_policy: engine policies are [ ");
   for (int k = 1; k < 32; k++)
-    if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif
