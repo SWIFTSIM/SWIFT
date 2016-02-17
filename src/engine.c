@@ -1616,7 +1616,7 @@ void engine_barrier(struct engine *e, int tid) {
 
 void engine_collect_kick(struct cell *c) {
 
-  int k, updated = 0;
+  int updated = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.0f;
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
