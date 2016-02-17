@@ -308,7 +308,7 @@ void task_addunlock_old(struct task *ta, struct task *tb) {
 /**
  * @brief Prints the list of tasks contained in a given mask
  *
- * @param The mask to analyse
+ * @param mask The mask to analyse
  */
 void task_print_mask(unsigned int mask) {
 
@@ -321,7 +321,7 @@ void task_print_mask(unsigned int mask) {
 /**
  * @brief Prints the list of subtasks contained in a given submask
  *
- * @param The submask to analyse
+ * @param submask The submask to analyse
  */
 void task_print_submask(unsigned int submask) {
 
