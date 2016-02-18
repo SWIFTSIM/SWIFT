@@ -38,3 +38,6 @@ testSPHStep_SOURCES = testSPHStep.c
 testSingle_SOURCES = testSingle.c
 
 testVectorize_SOURCES = testVectorize.c
+
+# Files necessary for distribution
+EXTRA_DIST = testReading.sh makeInput.py
