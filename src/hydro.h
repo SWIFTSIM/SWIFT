@@ -22,12 +22,17 @@
 #include "./const.h"
 
 /* Import the right functions */
-#ifdef LEGACY_GADGET2_SPH
-#include "./hydro/Gadget2/hydro.h"
+#if defined(MINIMAL_SPH)
+#include "./hydro/Minimal/hydro_iact.h"
+#include "./hydro/Minimal/hydro.h"
+#elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_iact.h"
-#else
-#include "./hydro/Default/hydro.h"
+#include "./hydro/Gadget2/hydro.h"
+#elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_iact.h"
+#include "./hydro/Default/hydro.h"
+#else
+#error "Invalid choice of SPH variant"
 #endif
 
-#endif
+#endif /* SWIFT_HYDRO_H */

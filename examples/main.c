@@ -56,9 +56,6 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
-
-
-
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -133,17 +130,20 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) greetings();
 
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  /* Ensure the NUMA node on which we initialise (first touch) everything
-   * doesn't change before engine_init allocates NUMA-local workers. Otherwise,
-   * we may be scheduled elsewhere between the two times.
-   */
-  cpu_set_t affinity;
-  CPU_ZERO(&affinity);
-  CPU_SET(sched_getcpu(), &affinity);
-  if (sched_setaffinity(0, sizeof(cpu_set_t), &affinity) != 0) {
-    message("failed to set entry thread's affinity");
-  } else {
-    message("set entry thread's affinity");
+  if ((ENGINE_POLICY) & engine_policy_setaffinity) {
+    /* Ensure the NUMA node on which we initialise (first touch) everything
+     * doesn't change before engine_init allocates NUMA-local workers.
+     * Otherwise,
+     * we may be scheduled elsewhere between the two times.
+     */
+    cpu_set_t affinity;
+    CPU_ZERO(&affinity);
+    CPU_SET(sched_getcpu(), &affinity);
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &affinity) != 0) {
+      message("failed to set entry thread's affinity");
+    } else {
+      message("set entry thread's affinity");
+    }
   }
 #endif
 
@@ -152,7 +152,6 @@ int main(int argc, char *argv[]) {
 
   /* Parse the options */
   while ((c = getopt(argc, argv, "a:c:d:e:f:m:oP:q:R:s:t:w:y:z:")) != -1)
-
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -399,7 +398,8 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal, 0, time_end, dt_min, dt_max);
+              ENGINE_POLICY | engine_policy_steal | engine_policy_hydro, 0,
+              time_end, dt_min, dt_max);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
             ((double)(getticks() - tic)) / CPU_TPS * 1000);

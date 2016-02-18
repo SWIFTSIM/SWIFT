@@ -136,8 +136,8 @@ struct cell {
   /* Momentum of particles in cell. */
   float mom[3], ang[3];
 
-  /* Potential and kinetic energy of particles in this cell. */
-  double epot, ekin;
+  /* Mass, potential, internal  and kinetic energy of particles in this cell. */
+  double mass, e_pot, e_int, e_kin;
 
   /* Number of particles updated in this cell. */
   int updated;

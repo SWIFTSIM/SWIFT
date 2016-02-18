@@ -57,9 +57,10 @@
 #include "timers.h"
 #include "partition.h"
 
-const char *engine_policy_names[10] = {"none",      "rand",  "steal",
-                                       "keep",      "block", "fix_dt",
-                                       "cpu_tight", "mpi",   "numa_affinity"};
+const char *engine_policy_names[12] = {
+    "none",          "rand",   "steal",        "keep",
+    "block",         "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity", "hydro",  "self_gravity", "external_gravity"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1309,7 +1310,7 @@ int engine_marktasks(struct engine *e) {
   // ticks tic = getticks();
 
   /* Much less to do here if we're on a fixed time-step. */
-  if (e->policy & engine_policy_fixdt) {
+  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
     for (k = 0; k < nr_tasks; k++) {
@@ -1598,41 +1599,51 @@ void engine_barrier(struct engine *e, int tid) {
 
 void engine_collect_kick(struct cell *c) {
 
-  int k, updated = 0;
+  int updated = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.0f;
-  double ekin = 0.0, epot = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   struct cell *cp;
 
-  /* If I am a super-cell, return immediately. */
-  if (c->kick != NULL || c->count == 0) return;
+  /* Skip super-cells (Their values are already set) */
+  if (c->kick != NULL) return;
 
-  /* If this cell is not split, I'm in trouble. */
-  if (!c->split) error("Cell has no super-cell.");
+  /* Only do something is the cell is non-empty */
+  if (c->count != 0) {
 
-  /* Collect the values from the progeny. */
-  for (k = 0; k < 8; k++)
-    if ((cp = c->progeny[k]) != NULL) {
-      engine_collect_kick(cp);
-      t_end_min = fminf(t_end_min, cp->t_end_min);
-      t_end_max = fmaxf(t_end_max, cp->t_end_max);
-      updated += cp->updated;
-      ekin += cp->ekin;
-      epot += cp->epot;
-      mom[0] += cp->mom[0];
-      mom[1] += cp->mom[1];
-      mom[2] += cp->mom[2];
-      ang[0] += cp->ang[0];
-      ang[1] += cp->ang[1];
-      ang[2] += cp->ang[2];
-    }
+    /* If this cell is not split, I'm in trouble. */
+    if (!c->split) error("Cell has no super-cell.");
+
+    /* Collect the values from the progeny. */
+    for (int k = 0; k < 8; k++)
+      if ((cp = c->progeny[k]) != NULL) {
+
+        /* Recurse */
+        engine_collect_kick(cp);
+
+        /* And update */
+        t_end_min = fminf(t_end_min, cp->t_end_min);
+        t_end_max = fmaxf(t_end_max, cp->t_end_max);
+        updated += cp->updated;
+        e_kin += cp->e_kin;
+        e_int += cp->e_int;
+        e_pot += cp->e_pot;
+        mom[0] += cp->mom[0];
+        mom[1] += cp->mom[1];
+        mom[2] += cp->mom[2];
+        ang[0] += cp->ang[0];
+        ang[1] += cp->ang[1];
+        ang[2] += cp->ang[2];
+      }
+  }
 
   /* Store the collected values in the cell. */
   c->t_end_min = t_end_min;
   c->t_end_max = t_end_max;
   c->updated = updated;
-  c->ekin = ekin;
-  c->epot = epot;
+  c->e_kin = e_kin;
+  c->e_int = e_int;
+  c->e_pot = e_pot;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];
@@ -1689,33 +1700,68 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
-  engine_prepare(e);
+  message("Initialising particles");
 
-  engine_marktasks(e);
+  engine_prepare(e);
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
-  message("Initialising particles");
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
+
+  engine_marktasks(e);
 
   // printParticle(e->s->parts, 1000, e->s->nr_parts);
   // printParticle(e->s->parts, 515050, e->s->nr_parts);
 
   // message("\n0th DENSITY CALC\n");
 
-  /* Now do a density calculation */
-  TIMER_TIC;
-  engine_launch(e, e->nr_threads,
-                (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_send) | (1 << task_type_recv),
-                1 << task_subtype_density);
+  /* Build the masks corresponding to the policy */
+  unsigned int mask = 0;
+  unsigned int submask = 0;
 
+  /* We always have sort tasks */
+  mask |= 1 << task_type_sort;
+
+  /* Add the tasks corresponding to hydro operations to the masks */
+  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+
+    mask |= 1 << task_type_init;
+    mask |= 1 << task_type_self;
+    mask |= 1 << task_type_pair;
+    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_ghost;
+
+    submask |= 1 << task_subtype_density;
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_external_gravity) ==
+      engine_policy_external_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add MPI tasks if need be */
+  if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+
+    mask |= 1 << task_type_send;
+    mask |= 1 << task_type_recv;
+  }
+
+  /* Now, launch the calculation */
+  TIMER_TIC;
+  engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
-  // message("\n0th ENTROPY CONVERSION\n");
+// message("\n0th ENTROPY CONVERSION\n")
 
+  /* Apply some conversions (e.g. internal energy -> entropy) */
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
 
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
@@ -1735,7 +1781,7 @@ void engine_step(struct engine *e) {
   int k;
   int updates = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.f;
-  double epot = 0.0, ekin = 0.0;
+  double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
   struct cell *c;
@@ -1747,11 +1793,16 @@ void engine_step(struct engine *e) {
   for (k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
       c = &s->cells[k];
+
+      /* Recurse */
       engine_collect_kick(c);
+
+      /* And aggregate */
       t_end_min = fminf(t_end_min, c->t_end_min);
       t_end_max = fmaxf(t_end_max, c->t_end_max);
-      ekin += c->ekin;
-      epot += c->epot;
+      e_kin += c->e_kin;
+      e_int += c->e_int;
+      e_pot += c->e_pot;
       updates += c->updated;
       mom[0] += c->mom[0];
       mom[1] += c->mom[1];
@@ -1763,7 +1814,7 @@ void engine_step(struct engine *e) {
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-  double in[3], out[3];
+  double in[4], out[4];
   out[0] = t_end_min;
   if (MPI_Allreduce(out, in, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
@@ -1775,20 +1826,16 @@ void engine_step(struct engine *e) {
     error("Failed to aggregate t_end_max.");
   t_end_max = in[0];
   out[0] = updates;
-  out[1] = ekin;
-  out[2] = epot;
+  out[1] = e_kin;
+  out[2] = e_int;
+  out[3] = e_pot;
   if (MPI_Allreduce(out, in, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate energies.");
   updates = in[0];
-  ekin = in[1];
-  epot = in[2];
-/* int nr_parts;
-if ( MPI_Allreduce( &s->nr_parts , &nr_parts , 1 , MPI_INT , MPI_SUM ,
-MPI_COMM_WORLD ) != MPI_SUCCESS )
-    error( "Failed to aggregate particle count." );
-if ( e->nodeID == 0 )
-    message( "nr_parts=%i." , nr_parts ); */
+  e_kin = in[1];
+  e_int = in[2];
+  e_pot = in[3];
 #endif
 
   // message("\nDRIFT\n");
@@ -1815,23 +1862,67 @@ if ( e->nodeID == 0 )
   /* Prepare the space. */
   engine_prepare(e);
 
+  /* Build the masks corresponding to the policy */
+  unsigned int mask = 0;
+  unsigned int submask = 0;
+
+  /* We always have sort tasks and kick tasks */
+  mask |= 1 << task_type_sort;
+  mask |= 1 << task_type_kick;
+
+  /* Add the tasks corresponding to hydro operations to the masks */
+  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+
+    mask |= 1 << task_type_init;
+    mask |= 1 << task_type_self;
+    mask |= 1 << task_type_pair;
+    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_ghost;
+
+    submask |= 1 << task_subtype_density;
+    submask |= 1 << task_subtype_force;
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add the tasks corresponding to self-gravity to the masks */
+  if ((e->policy & engine_policy_external_gravity) ==
+      engine_policy_external_gravity) {
+
+    /* Nothing here for now */
+  }
+
+  /* Add MPI tasks if need be */
+  if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+
+    mask |= 1 << task_type_send;
+    mask |= 1 << task_type_recv;
+  }
+
   /* Send off the runners. */
   TIMER_TIC;
-  engine_launch(e, e->nr_threads,
-                (1 << task_type_sort) | (1 << task_type_self) |
-                    (1 << task_type_pair) | (1 << task_type_sub) |
-                    (1 << task_type_init) | (1 << task_type_ghost) |
-                    (1 << task_type_kick) | (1 << task_type_send) |
-                    (1 << task_type_recv),
-                (1 << task_subtype_density) | (1 << task_subtype_force));
-
+  engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);
 
-  printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
-         ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
-  fflush(stdout);
+  if (e->nodeID == 0) {
+
+    /* Print some information to the screen */
+    printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
+           ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
+    fflush(stdout);
+
+    /* Write some energy statistics */
+    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f %f\n", e->step,
+            e->time, e_kin, e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1],
+            mom[2], ang[0], ang[1], ang[2]);
+    fflush(e->file_stats);
+  }
 
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
@@ -2138,7 +2229,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   int j, cpuid[nr_cores];
   cpu_set_t cpuset;
-  if (policy & engine_policy_cputight) {
+  if ((policy & engine_policy_cputight) == engine_policy_cputight) {
     for (k = 0; k < nr_cores; k++) cpuid[k] = k;
   } else {
     /*  Get next highest power of 2. */
@@ -2221,6 +2312,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->timeStep = 0.;
   e->dt_min = dt_min;
   e->dt_max = dt_max;
+  e->file_stats = NULL;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
@@ -2240,11 +2332,19 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 #endif
   }
 
+  /* Open some files */
+  if (e->nodeID == 0) {
+    e->file_stats = fopen("energy.txt", "w");
+    fprintf(e->file_stats,
+            "# Step Time E_kin E_int E_pot E_tot "
+            "p_x p_y p_z ang_x ang_y ang_z\n");
+  }
+
   /* Print policy */
   engine_print_policy(e);
 
   /* Deal with timestep */
-  if (e->policy & engine_policy_fixdt) {
+  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
   }
 
@@ -2289,7 +2389,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
-    if (e->policy & engine_policy_setaffinity) {
+    if ((e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
@@ -2336,14 +2436,14 @@ void engine_print_policy(struct engine *e) {
   if (e->nodeID == 0) {
     printf("[000] engine_policy: engine policies are [ ");
     for (int k = 1; k < 32; k++)
-      if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
 #else
   printf("engine_policy: engine policies are [ ");
   for (int k = 1; k < 32; k++)
-    if (e->policy & 1 << k) printf(" %s,", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif

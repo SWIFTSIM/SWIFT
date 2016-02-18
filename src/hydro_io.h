@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,43 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PART_H
-#define SWIFT_PART_H
+#ifndef SWIFT_HYDRO_IO_H
+#define SWIFT_HYDRO_IO_H
 
-/* Config parameters. */
-#include "../config.h"
+#include "./const.h"
 
-/* Some standard headers. */
-#include <stdlib.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
-
-/* Local headers. */
-#include "const.h"
-
-/* Some constants. */
-#define part_align 64
-#define xpart_align 32
-
-/* Import the right particle definition */
+/* Import the right functions */
 #if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_part.h"
+#include "./hydro/Minimal/hydro_io.h"
 #elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_part.h"
+#include "./hydro/Gadget2/hydro_io.h"
 #elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_part.h"
+#include "./hydro/Default/hydro_io.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
 
-#include "./gravity/Default/gravity_part.h"
-
-#ifdef WITH_MPI
-void part_create_mpi_type(MPI_Datatype* part_type);
-void xpart_create_mpi_type(MPI_Datatype* xpart_type);
-#endif
-
-#endif /* SWIFT_PART_H */
+#endif /* SWIFT_HYDRO_IO_H */

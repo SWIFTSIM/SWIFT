@@ -162,8 +162,8 @@ int cell_pack(struct cell *c, struct pcell *pc) {
 
   /* Start by packing the data of the current cell. */
   pc->h_max = c->h_max;
-  c->t_end_min = pc->t_end_min;
-  c->t_end_max = pc->t_end_max;
+  pc->t_end_min = c->t_end_min;
+  pc->t_end_max = c->t_end_max;
   pc->count = c->count;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
@@ -564,6 +564,7 @@ void cell_init_parts(struct cell *c, void *data) {
     xp[i].v_full[0] = p[i].v[0];
     xp[i].v_full[1] = p[i].v[1];
     xp[i].v_full[2] = p[i].v[2];
+    hydro_first_init_part(&p[i], &xp[i]);
     hydro_init_part(&p[i]);
     hydro_reset_acceleration(&p[i]);
   }

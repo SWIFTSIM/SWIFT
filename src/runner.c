@@ -34,6 +34,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "approx_math.h"
 #include "atomic.h"
 #include "const.h"
 #include "debug.h"
@@ -514,9 +515,6 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
       if (p->t_end <= t_end) {
 
-        /* if(p->id == 1000) message("init 1000!"); */
-        /* if(p->id == 515050) message("init 515050!"); */
-
         /* Get ready for a density calculation */
         hydro_init_part(p);
       }
@@ -579,9 +577,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
       p = &parts[pid[i]];
       xp = &xparts[pid[i]];
 
-      /* if(p->id == 1000) message("ghost 1000"); */
-      /* if(p->id == 515050) message("ghost 515050"); */
-
       /* Is this part within the timestep? */
       if (p->t_end <= t_end) {
 
@@ -619,14 +614,14 @@ void runner_doghost(struct runner *r, struct cell *c) {
         }
 
         /* We now have a particle whose smoothing length has converged */
-        // if(p->id == 1000)
-        //  printParticle(parts, 1000, count);
 
-        /* As of here, particle force variables will be set. Do _NOT_
-           try to read any particle density variables! */
+        /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp);
+        hydro_prepare_force(p, xp, t_end);
+
+        /* The particle force values are now set.  Do _NOT_
+           try to read any particle density variables! */
 
         /* Prepare the particle for the force loop over neighbours */
         hydro_reset_acceleration(p);
@@ -705,6 +700,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
   float dx_max = 0.f, h_max = 0.f;
+  float w;
 
   TIMER_TIC
 
@@ -718,51 +714,35 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p = &parts[k];
       xp = &xparts[k];
 
+      /* Useful quantity */
+      const float h_inv = 1.0f / p->h;
+
       /* Drift... */
       p->x[0] += xp->v_full[0] * dt;
       p->x[1] += xp->v_full[1] * dt;
       p->x[2] += xp->v_full[2] * dt;
 
-      /* Predict velocities */
-      p->v[0] += p->a[0] * dt;
-      p->v[1] += p->a[1] * dt;
-      p->v[2] += p->a[2] * dt;
+      /* Predict velocities (for hydro terms) */
+      p->v[0] += p->a_hydro[0] * dt;
+      p->v[1] += p->a_hydro[1] * dt;
+      p->v[2] += p->a_hydro[2] * dt;
 
-      /* /\* Predict smoothing length *\/ */
-      /* w = p->force.h_dt * ih * dt; */
-      /* if (fabsf(w) < 0.01f) /\* 1st order expansion of exp(w) *\/ */
-      /* 	p->h *= */
-      /* 	  1.0f + */
-      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f *
-       * w))); */
-      /* else */
-      /* 	p->h *= expf(w); */
+      /* Predict smoothing length */
+      w = p->h_dt * h_inv * dt;
+      if (fabsf(w) < 0.2f)
+        p->h *= approx_expf(w); /* 4th order expansion of exp(w) */
+      else
+        p->h *= expf(w);
 
-      // MATTHIEU
-
-      /* /\* Predict density *\/ */
-      /* w = -3.0f * p->force.h_dt * ih * dt; */
-      /* if (fabsf(w) < 0.1f) */
-      /* 	p->rho *= */
-      /* 	  1.0f + */
-      /* 	  w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f *
-       * w))); */
-      /* else */
-      /* 	p->rho *= expf(w); */
+      /* Predict density */
+      w = -3.0f * p->h_dt * h_inv * dt;
+      if (fabsf(w) < 0.2f)
+        p->rho *= approx_expf(w); /* 4th order expansion of exp(w) */
+      else
+        p->rho *= expf(w);
 
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
-
-      /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
-      /* 	message("%lld: current_t=%f t0=%f t1=%f  v=[%.3e %.3e %.3e]\n",
-       */
-      /* 		p->id, */
-      /* 		r->e->time, */
-      /* 		r->e->timeOld, */
-      /* 		r->e->time, */
-      /* 		p->v[0], */
-      /* 		p->v[1], */
-      /* 		p->v[2]); */
 
       /* Compute motion since last cell construction */
       const float dx =
@@ -827,9 +807,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   int updated = 0;
   float t_end_min = FLT_MAX, t_end_max = 0.f;
-  double ekin = 0.0, epot = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  float m, x[3], v_full[3];
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  float mom[3] = {0.0f, 0.0f, 0.0f};
+  float ang[3] = {0.0f, 0.0f, 0.0f};
+  float x[3], v_full[3];
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
 
@@ -845,7 +826,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       p = &parts[k];
       xp = &xparts[k];
 
-      m = p->mass;
+      const float m = p->mass;
       x[0] = p->x[0];
       x[1] = p->x[1];
       x[2] = p->x[2];
@@ -854,7 +835,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       if (is_fixdt || p->t_end <= t_current) {
 
         /* First, finish the force loop */
+        p->h_dt *= p->h * 0.333333333f;
+
+        /* And do the same of the extra variable */
         hydro_end_force(p);
+
+        /* Now we are ready to compute the next time-step size */
 
         if (is_fixdt) {
 
@@ -868,6 +854,13 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           const float new_dt_grav = gravity_compute_timestep(p, xp);
 
           new_dt = fminf(new_dt_hydro, new_dt_grav);
+
+          /* Limit change in h */
+          const float dt_h_change =
+              (p->h_dt != 0.0f) ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
+                                : FLT_MAX;
+
+          new_dt = fminf(new_dt, dt_h_change);
 
           /* Recover the current timestep */
           const float current_dt = p->t_end - p->t_begin;
@@ -898,28 +891,16 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->t_end = p->t_begin + new_dt;
 
         /* Kick particles in momentum space */
-        xp->v_full[0] += p->a[0] * dt;
-        xp->v_full[1] += p->a[1] * dt;
-        xp->v_full[2] += p->a[2] * dt;
+        xp->v_full[0] += p->a_hydro[0] * dt;
+        xp->v_full[1] += p->a_hydro[1] * dt;
+        xp->v_full[2] += p->a_hydro[2] * dt;
 
-        p->v[0] = xp->v_full[0] - half_dt * p->a[0];
-        p->v[1] = xp->v_full[1] - half_dt * p->a[1];
-        p->v[2] = xp->v_full[2] - half_dt * p->a[2];
-
-        /* if(p->id == 1000 || p->id == 515050 || p->id == 504849) */
-        /*   message("%lld: current_t=%f t_beg=%f t_end=%f half_dt=%f v=[%.3e
-         * %.3e %.3e]\n", */
-        /* 	  p->id, */
-        /* 	  t_current, */
-        /* 	  p->t_begin, */
-        /* 	  p->t_end, */
-        /* 	  half_dt, */
-        /* 	  p->v[0], */
-        /* 	  p->v[1], */
-        /* 	  p->v[2]); */
+        p->v[0] = xp->v_full[0] - half_dt * p->a_hydro[0];
+        p->v[1] = xp->v_full[1] - half_dt * p->a_hydro[1];
+        p->v[2] = xp->v_full[2] - half_dt * p->a_hydro[2];
 
         /* Extra kick work */
-        hydro_kick_extra(p, dt);
+        hydro_kick_extra(p, xp, dt, half_dt);
       }
 
       /* Now collect quantities for statistics */
@@ -927,6 +908,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       v_full[0] = xp->v_full[0];
       v_full[1] = xp->v_full[1];
       v_full[2] = xp->v_full[2];
+
+      /* Collect mass */
+      mass += m;
 
       /* Collect momentum */
       mom[0] += m * v_full[0];
@@ -939,9 +923,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       ang[2] += m * (x[0] * v_full[1] - x[1] * v_full[0]);
 
       /* Collect total energy. */
-      ekin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
-                         v_full[2] * v_full[2]);
-      epot += m * xp->u_hdt;
+      e_kin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
+                          v_full[2] * v_full[2]);
+      e_pot += 0.f; /* No gravitational potential thus far */
+      e_int += hydro_get_internal_energy(p);
 
       /* Minimal time for next end of time-step */
       t_end_min = fminf(p->t_end, t_end_min);
@@ -960,11 +945,16 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
+
+        /* Recurse */
         runner_dokick(r, cp, 0);
 
+        /* And aggregate */
         updated += cp->updated;
-        ekin += cp->ekin;
-        epot += cp->epot;
+        e_kin += cp->e_kin;
+        e_int += cp->e_int;
+        e_pot += cp->e_pot;
+        mass += cp->mass;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
         mom[2] += cp->mom[2];
@@ -978,8 +968,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   /* Store the values. */
   c->updated = updated;
-  c->ekin = ekin;
-  c->epot = epot;
+  c->e_kin = e_kin;
+  c->e_int = e_int;
+  c->e_pot = e_pot;
+  c->mass = mass;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];

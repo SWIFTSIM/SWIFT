@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2016 Matthieu Schaller matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,22 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DEBUG_H
-#define SWIFT_DEBUG_H
+#ifndef SWIFT_APPROX_MATH_H
+#define SWIFT_APPROX_MATH_H
 
-/* Includes. */
-#include "cell.h"
-#include "part.h"
+/**
+ * @brief Approximate version of expf(x) using a 4th order Taylor expansion
+ *
+ * The absolute error is of order 10^-6 for -0.2 < x < 0.2.
+ *
+ * @param x The number to take the exponential of.
+ */
+__attribute__((always_inline)) INLINE static float approx_expf(float x) {
+  return 1.f + x * (1.f + x * (0.5f + x * (1.f / 6.0f + 1.f / 24.0f * x)));
+}
 
-void printParticle(struct part *parts, struct xpart *xparts, long long int i,
-                   int N);
-void printgParticle(struct gpart *parts, long long int i, int N);
-void printParticle_single(struct part *p, struct xpart *xp);
-
-#ifdef HAVE_METIS
-#include "metis.h"
-void dumpMETISGraph(const char *prefix, idx_t nvtxs, idx_t ncon, idx_t *xadj,
-                    idx_t *adjncy, idx_t *vwgt, idx_t *vsize, idx_t *adjwgt);
-
-#endif
-#endif /* SWIFT_DEBUG_H */
+#endif /* SWIFT_APPROX_MATH_H */

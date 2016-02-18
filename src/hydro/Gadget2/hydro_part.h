@@ -17,10 +17,7 @@
  *
  ******************************************************************************/
 
-/* Some standard headers. */
-#include <stdlib.h>
-
-/* Extra particle data not needed during the computation. */
+/* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
   /* Old position, at last tree rebuild. */
@@ -28,12 +25,6 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
-
-  /* Entropy at the half-step. */
-  float u_hdt;
-
-  /* Old density. */
-  float omega;
 
 } __attribute__((aligned(xpart_align)));
 
@@ -47,29 +38,19 @@ struct part {
   float v[3];
 
   /* Particle acceleration. */
-  float a[3];
+  float a_hydro[3];
 
   /* Particle cutoff radius. */
   float h;
+
+  /* Time derivative of the smoothing length */
+  float h_dt;
 
   /* Particle time of beginning of time-step. */
   float t_begin;
 
   /* Particle time of end of time-step. */
   float t_end;
-
-  struct {
-
-    /* Number of neighbours */
-    float wcount;
-
-    /* Number of neighbours spatial derivative */
-    float wcount_dh;
-
-  } density;
-
-  /* Particle entropy. */
-  float entropy;
 
   /* Particle density. */
   float rho;
@@ -78,24 +59,49 @@ struct part {
    */
   float rho_dh;
 
-  /* Particle mass. */
-  float mass;
-
-  /* Particle pressure */
-  float pressure;
+  /* Particle entropy. */
+  float entropy;
 
   /* Entropy time derivative */
   float entropy_dt;
 
+  /* Particle mass. */
+  float mass;
+
+  union {
+
+    struct {
+
+      /* Number of neighbours */
+      float wcount;
+
+      /* Number of neighbours spatial derivative */
+      float wcount_dh;
+
+      /* Velocity curl components */
+      float rot_v[3];
+
+    } density;
+
+    struct {
+
+      /* Velocity curl norm*/
+      float curl_v;
+
+      /* Signal velocity */
+      float v_sig;
+
+      /* Particle pressure */
+      float pressure;
+
+      /* Particle sound speed */
+      float soundspeed;
+
+    } force;
+  };
+
   /* Velocity divergence */
   float div_v;
-
-  /* Velocity curl */
-  float curl_v;
-  float rot_v[3];
-
-  /* Signal velocity */
-  float v_sig;
 
   /* Particle ID. */
   unsigned long long id;

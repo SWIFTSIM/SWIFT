@@ -29,6 +29,7 @@
 
 /* Some standard headers. */
 #include <pthread.h>
+#include <stdio.h>
 
 /* Includes. */
 #include "lock.h"
@@ -42,14 +43,17 @@
 /* Some constants. */
 enum engine_policy {
   engine_policy_none = 0,
-  engine_policy_rand = 1,
-  engine_policy_steal = 2,
-  engine_policy_keep = 4,
-  engine_policy_block = 8,
-  engine_policy_fixdt = 16,
-  engine_policy_cputight = 32,
-  engine_policy_mpi = 64,
-  engine_policy_setaffinity = 128
+  engine_policy_rand = (1 << 0),
+  engine_policy_steal = (1 << 1),
+  engine_policy_keep = (1 << 2),
+  engine_policy_block = (1 << 3),
+  engine_policy_fixdt = (1 << 4),
+  engine_policy_cputight = (1 << 5),
+  engine_policy_mpi = (1 << 6),
+  engine_policy_setaffinity = (1 << 7),
+  engine_policy_hydro = (1 << 8),
+  engine_policy_self_gravity = (1 << 9),
+  engine_policy_external_gravity = (1 << 10)
 };
 
 extern const char *engine_policy_names[];
@@ -110,8 +114,8 @@ struct engine {
   /* Time step */
   float timeStep;
 
-  /* The system energies from the previous step. */
-  double ekin, epot;
+  /* File for statistics */
+  FILE *file_stats;
 
   /* The current step number. */
   int step, nullstep;

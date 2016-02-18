@@ -28,15 +28,30 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     struct part* p, struct xpart* xp) {
 
   /* Acceleration */
-  float ac = sqrtf(p->a[0] * p->a[0] + p->a[1] * p->a[1] + p->a[2] * p->a[2]);
+  float ac =
+      sqrtf(p->a_hydro[0] * p->a_hydro[0] + p->a_hydro[1] * p->a_hydro[1] +
+            p->a_hydro[2] * p->a_hydro[2]);
   ac = fmaxf(ac, 1e-30);
 
   const float dt_accel = sqrtf(2.f);  // MATTHIEU
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * p->h / p->v_sig;
+  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
 
   return fminf(dt_cfl, dt_accel);
+}
+
+/**
+ * @brief Initialises the particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline))
+    INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
 }
 
 /**
@@ -54,10 +69,9 @@ __attribute__((always_inline))
   p->rho = 0.f;
   p->rho_dh = 0.f;
   p->div_v = 0.f;
-  p->curl_v = 0.f;
-  p->rot_v[0] = 0.f;
-  p->rot_v[1] = 0.f;
-  p->rot_v[2] = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -86,29 +100,21 @@ __attribute__((always_inline))
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= ih * ih2;
   p->rho_dh *= ih4;
-  p->density.wcount *= (4.0f / 3.0 * M_PI * kernel_gamma3);
-  p->density.wcount_dh *= ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
+  p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
+  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma3);
+
+  const float irho = 1.f / p->rho;
 
   /* Compute the derivative term */
-  p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh / p->rho);
+  p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh * irho);
 
-  /* Finish calculation of the velocity curl */
-  p->rot_v[0] *= ih4;
-  p->rot_v[1] *= ih4;
-  p->rot_v[2] *= ih4;
-
-  /* And compute the norm of the curl */
-  p->curl_v = sqrtf(p->rot_v[0] * p->rot_v[0] + p->rot_v[1] * p->rot_v[1] +
-                    p->rot_v[2] * p->rot_v[2]) /
-              p->rho;
+  /* Finish calculation of the velocity curl components */
+  p->density.rot_v[0] *= ih4 * irho;
+  p->density.rot_v[1] *= ih4 * irho;
+  p->density.rot_v[2] *= ih4 * irho;
 
   /* Finish calculation of the velocity divergence */
-  p->div_v *= ih4 / p->rho;
-
-  /* Compute the pressure */
-  const float dt = time - 0.5f * (p->t_begin + p->t_end);
-  p->pressure =
-      (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
+  p->div_v *= ih4 * irho;
 }
 
 /**
@@ -118,38 +124,23 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
+ * @param time The current time
  */
-__attribute__((always_inline))
-    INLINE static void hydro_prepare_force(struct part* p, struct xpart* xp) {
+__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+    struct part* p, struct xpart* xp, float time) {
 
-  /* Some smoothing length multiples. */
-  /* const float h = p->h; */
-  /* const float ih = 1.0f / h; */
-  /* const float ih2 = ih * ih; */
-  /* const float ih4 = ih2 * ih2; */
+  /* Compute the norm of the curl */
+  p->force.curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                          p->density.rot_v[1] * p->density.rot_v[1] +
+                          p->density.rot_v[2] * p->density.rot_v[2]);
 
-  /* /\* Pre-compute some stuff for the balsara switch. *\/ */
-  /* const float normDiv_v = fabs(p->density.div_v / p->rho * ih4); */
-  /* const float normCurl_v = sqrtf(p->density.curl_v[0] * p->density.curl_v[0]
-   * + */
-  /* 				 p->density.curl_v[1] * p->density.curl_v[1] +
-   */
-  /* 				 p->density.curl_v[2] * p->density.curl_v[2]) /
-   */
-  /*   p->rho * ih4; */
+  /* Compute the pressure */
+  const float dt = time - 0.5f * (p->t_begin + p->t_end);
+  p->force.pressure =
+      (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
 
-  /* /\* Compute this particle's sound speed. *\/ */
-  /* const float u = p->u; */
-  /* const float fc = p->force.c =  */
-  /*   sqrtf(const_hydro_gamma * (const_hydro_gamma - 1.0f) * u); */
-
-  /* /\* Compute the P/Omega/rho2. *\/ */
-  /* xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho; */
-  /* p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (p->rho * xp->omega); */
-
-  /* /\* Balsara switch *\/ */
-  /* p->force.balsara = */
-  /*   normDiv_v / (normDiv_v + normCurl_v + 0.0001f * fc * ih); */
+  /* Compute the sound speed */
+  p->force.soundspeed = sqrtf(const_hydro_gamma * p->force.pressure / p->rho);
 }
 
 /**
@@ -164,15 +155,17 @@ __attribute__((always_inline))
     INLINE static void hydro_reset_acceleration(struct part* p) {
 
   /* Reset the acceleration. */
-  p->a[0] = 0.0f;
-  p->a[1] = 0.0f;
-  p->a[2] = 0.0f;
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
+
+  p->h_dt = 0.0f;
 
   /* Reset the time derivatives. */
   p->entropy_dt = 0.0f;
 
   /* Reset maximal signal velocity */
-  p->v_sig = 0.0f;
+  p->force.v_sig = 0.0f;
 }
 
 /**
@@ -186,14 +179,13 @@ __attribute__((always_inline))
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, float t0, float t1) {
 
-  const float dt = t1 - t0;
-
-  p->rho *= expf(-p->div_v * dt);
-  p->h *= expf(0.33333333f * p->div_v * dt);
-
+  /* Drift the pressure */
   const float dt_entr = t1 - 0.5f * (p->t_begin + p->t_end);
-  p->pressure =
+  p->force.pressure =
       (p->entropy + p->entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
+
+  /* Compute the new sound speed */
+  p->force.soundspeed = sqrtf(const_hydro_gamma * p->force.pressure / p->rho);
 }
 
 /**
@@ -214,9 +206,12 @@ __attribute__((always_inline))
  * @brief Kick the additional variables
  *
  * @param p The particle to act upon
+ * @param xp The particle extended data to act upon
+ * @param dt The time-step for this kick
+ * @param half_dt The half time-step for this kick
  */
-__attribute__((always_inline))
-    INLINE static void hydro_kick_extra(struct part* p, float dt) {
+__attribute__((always_inline)) INLINE static void hydro_kick_extra(
+    struct part* p, struct xpart* xp, float dt, float half_dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
   const float entropy_change = p->entropy_dt * dt;
@@ -242,4 +237,16 @@ __attribute__((always_inline))
 
   p->entropy = (const_hydro_gamma - 1.f) * p->entropy *
                powf(p->rho, -(const_hydro_gamma - 1.f));
+}
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline))
+    INLINE static float hydro_get_internal_energy(struct part* p) {
+
+  return p->entropy * powf(p->rho, const_hydro_gamma - 1.f) *
+         (1.f / (const_hydro_gamma - 1.f));
 }
