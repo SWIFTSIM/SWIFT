@@ -1549,7 +1549,7 @@ void engine_prepare(struct engine *e) {
 // tic)/CPU_TPS*1000 );
 #endif
   e->tic_step = getticks();
-
+ 
   /* Did this not go through? */
   if (rebuild) {
     // tic = getticks();
@@ -1557,7 +1557,7 @@ void engine_prepare(struct engine *e) {
     // message( "engine_rebuild took %.3f ms." , (double)(getticks() -
     // tic)/CPU_TPS*1000 );
   }
-
+ 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     // tic = getticks();
@@ -1718,7 +1718,7 @@ void engine_init_particles(struct engine *e) {
   struct space *s = e->s;
 
   message("Initialising particles");
-
+  
   engine_prepare(e);
 
   /* Make sure all particles are ready to go */

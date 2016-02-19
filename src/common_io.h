@@ -55,6 +55,14 @@ enum DATA_IMPORTANCE {
   OPTIONAL = 0
 };
 
+#define NUMBER_PARTICLE_TYPES 6
+#define PARTICLE_TYPE_STRINGLEN 12
+
+/* Particle Types can contain up to NUMBER_PARTICLE_TYPES types. */
+enum PARTICLE_TYPE {
+  GAS = 0,
+  DARKMATTER
+};
 hid_t hdf5Type(enum DATA_TYPE type);
 size_t sizeOfType(enum DATA_TYPE type);
 

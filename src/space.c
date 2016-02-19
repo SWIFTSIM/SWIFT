@@ -164,14 +164,20 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
-  if (s->cells != NULL) {
-    for (k = 0; k < s->nr_cells; k++) {
-      if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+  if(nr_parts) {
+    if (s->cells != NULL) {
+      for (k = 0; k < s->nr_cells; k++) {
+	if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+      }
+    } else {
+      for (k = 0; k < nr_parts; k++) {
+	if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+      }
+      s->h_max = h_max;
     }
-  } else {
-    for (k = 0; k < nr_parts; k++) {
-      if (s->parts[k].h > h_max) h_max = s->parts[k].h;
-    }
+  }
+  else {
+    h_max = s->dim[0]/16.0;
     s->h_max = h_max;
   }
 
@@ -308,6 +314,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   struct part *restrict p;
   int *ind;
   double ih[3], dim[3];
+ 
   // ticks tic;
 
   /* Be verbose about this. */
@@ -316,10 +323,11 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
   cells = s->cells;
-
-  /* Run through the particles and get their cell index. */
+  
+  /* Run through the SPH particles and get their cell index. */
   // tic = getticks();
-  const int ind_size = s->size_parts;
+ 
+  const int ind_size = nr_parts;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
   ih[0] = s->ih[0];
@@ -332,16 +340,17 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   cdim[1] = s->cdim[1];
   cdim[2] = s->cdim[2];
   for (k = 0; k < nr_parts; k++) {
-    p = &s->parts[k];
-    for (j = 0; j < 3; j++)
-      if (p->x[j] < 0.0)
-        p->x[j] += dim[j];
-      else if (p->x[j] >= dim[j])
-        p->x[j] -= dim[j];
-    ind[k] =
+      p = &s->parts[k];
+      for (j = 0; j < 3; j++)
+	if (p->x[j] < 0.0)
+	  p->x[j] += dim[j];
+	else if (p->x[j] >= dim[j])
+	  p->x[j] -= dim[j];
+      ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cells[ind[k]].count++;
+      cells[ind[k]].count++;
   }
+    
 // message( "getting particle indices took %.3f ms." , (double)(getticks() -
 // tic) / CPU_TPS * 1000 );
 
@@ -395,26 +404,14 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* Sort the parts according to their cells. */
   // tic = getticks();
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1);
+
   // message( "parts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
 
-  /* Re-link the gparts. */
-  for (k = 0; k < nr_parts; k++)
-    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
-
-  /* Verify space_sort_struct. */
-  /* for ( k = 1 ; k < nr_parts ; k++ ) {
-      if ( ind[k-1] > ind[k] ) {
-          error( "Sort failed!" );
-          }
-      else if ( ind[k] != cell_getid( cdim , parts[k].x[0]*ih[0] ,
-     parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) )
-          error( "Incorrect indices!" );
-      } */
-
+  
   /* We no longer need the indices as of here. */
   free(ind);
-
+ 
   /* Run through the gravity particles and get their cell index. */
   // tic = getticks();
   if ((ind = (int *)malloc(sizeof(int) * s->size_gparts)) == NULL)
@@ -441,13 +438,10 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   // message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
   // * 1000 );
 
-  /* Re-link the parts. */
-  for (k = 0; k < nr_gparts; k++)
-    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
-
+ 
   /* We no longer need the indices as of here. */
   free(ind);
-
+  
   /* Hook the cells up to the parts. */
   // tic = getticks();
   struct part *finger = s->parts;
@@ -462,6 +456,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     xfinger = &xfinger[c->count];
     gfinger = &gfinger[c->gcount];
   }
+  
   // message( "hooking up cells took %.3f ms." , (double)(getticks() - tic) /
   // CPU_TPS * 1000 );
 
@@ -980,6 +975,7 @@ void space_split(struct space *s, struct cell *c) {
   struct cell *temp;
   struct part *p, *parts = c->parts;
   struct xpart *xp, *xparts = c->xparts;
+  struct gpart *gp, *gparts = c->gparts;
 
   /* Check the depth. */
   if (c->depth > s->maxdepth) s->maxdepth = c->depth;
@@ -1013,7 +1009,7 @@ void space_split(struct space *s, struct cell *c) {
       temp->parent = c;
       c->progeny[k] = temp;
     }
-
+   
     /* Split the cell data. */
     cell_split(c);
 
@@ -1052,6 +1048,7 @@ void space_split(struct space *s, struct cell *c) {
     for (k = 0; k < count; k++) {
       p = &parts[k];
       xp = &xparts[k];
+
       xp->x_old[0] = p->x[0];
       xp->x_old[1] = p->x[1];
       xp->x_old[2] = p->x[2];
@@ -1060,14 +1057,26 @@ void space_split(struct space *s, struct cell *c) {
       if (h > h_max) h_max = h;
       if (t_end < t_end_min) t_end_min = t_end;
       if (t_end > t_end_max) t_end_max = t_end;
+      c->h_max = h_max;
     }
-    c->h_max = h_max;
+    if (!count) {
+       for (k = 0; k < count; k++) {
+	 gp = &gparts[k];
+	 t_end = gp->t_end;
+	 if (t_end < t_end_min) t_end_min = t_end;
+	 if (t_end > t_end_max) t_end_max = t_end;
+       }
+    }
+   
     c->t_end_min = t_end_min;
     c->t_end_max = t_end_max;
   }
 
   /* Set ownership according to the start of the parts array. */
-  c->owner = ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+  if(count)
+    c->owner = ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+  else
+    c->owner = ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
 }
 
 /**
@@ -1159,62 +1168,58 @@ struct cell *space_getcell(struct space *s) {
  * recursively.
  */
 
-void space_init(struct space *s, double dim[3], struct part *parts, int N,
-                int periodic, double h_max, int verbose) {
+void space_init(struct space *s, double dim[3], struct part *parts, struct gpart *gparts,
+		int Ngas, int Ndm, int periodic, double h_max, int verbose) {
 
   /* Store everything in the space. */
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
   s->periodic = periodic;
-  s->nr_parts = N;
-  s->size_parts = N;
+  /* SPH */
   s->parts = parts;
+  s->nr_parts = Ngas;
+  s->size_parts = Ngas;
   s->cell_min = h_max;
   s->nr_queues = 1;
-  s->size_parts_foreign = 0;
+  /* Dark Matter */
+  s->nr_gparts = Ndm;
+  s->size_gparts = Ndm;
+  s->gparts = gparts;
 
+  s->size_parts_foreign = 0;
+  
+
+  message("s->nr_parts = %d\t s->cell_min = %g\n", s->nr_parts, s->cell_min);
+  message("s->nr_gparts = %d\n", s->nr_gparts);
   /* Check that all the particle positions are reasonable, wrap if periodic. */
   if (periodic) {
-    for (int k = 0; k < N; k++)
+    for (int k = 0; k < Ngas; k++)
       for (int j = 0; j < 3; j++) {
         while (parts[k].x[j] < 0) parts[k].x[j] += dim[j];
         while (parts[k].x[j] >= dim[j]) parts[k].x[j] -= dim[j];
       }
+    for (int k = 0; k < Ndm; k++)
+      for (int j = 0; j < 3; j++) {
+        while (gparts[k].x[j] < 0) gparts[k].x[j] += dim[j];
+        while (gparts[k].x[j] >= dim[j]) gparts[k].x[j] -= dim[j];
+      }
   } else {
-    for (int k = 0; k < N; k++)
+    for (int k = 0; k < Ngas; k++)
       for (int j = 0; j < 3; j++)
         if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j])
+          error("Not all particles are within the specified domain.");
+    for (int k = 0; k < Ndm; k++)
+      for (int j = 0; j < 3; j++)
+        if (gparts[k].x[j] < 0 || gparts[k].x[j] >= dim[j])
           error("Not all particles are within the specified domain.");
   }
 
   /* Allocate the xtra parts array. */
   if (posix_memalign((void *)&s->xparts, part_align,
-                     N * sizeof(struct xpart)) != 0)
+                     Ngas * sizeof(struct xpart)) != 0)
     error("Failed to allocate xparts.");
-  bzero(s->xparts, N * sizeof(struct xpart));
-
-  /* For now, clone the parts to make gparts. */
-  if (posix_memalign((void *)&s->gparts, part_align,
-                     N * sizeof(struct gpart)) != 0)
-    error("Failed to allocate gparts.");
-  bzero(s->gparts, N * sizeof(struct gpart));
-  /* for ( int k = 0 ; k < N ; k++ ) {
-      s->gparts[k].x[0] = s->parts[k].x[0];
-      s->gparts[k].x[1] = s->parts[k].x[1];
-      s->gparts[k].x[2] = s->parts[k].x[2];
-      s->gparts[k].v[0] = s->parts[k].v[0];
-      s->gparts[k].v[1] = s->parts[k].v[1];
-      s->gparts[k].v[2] = s->parts[k].v[2];
-      s->gparts[k].mass = s->parts[k].mass;
-      s->gparts[k].dt = s->parts[k].dt;
-      s->gparts[k].id = s->parts[k].id;
-      s->gparts[k].part = &s->parts[k];
-      s->parts[k].gpart = &s->gparts[k];
-      }
-  s->nr_gparts = s->nr_parts; */
-  s->nr_gparts = 0;
-  s->size_gparts = s->size_parts;
+  bzero(s->xparts, Ngas * sizeof(struct xpart));
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

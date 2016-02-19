@@ -126,8 +126,8 @@ void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max);
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
-void space_init(struct space *s, double dim[3], struct part *parts, int N,
-                int periodic, double h_max, int verbose);
+void space_init(struct space *s, double dim[3], struct part *parts, struct gpart *gparts, 
+		int Ngas, int Ndm, int periodic, double h_max, int verbose);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
 void space_map_parts(struct space *s,
