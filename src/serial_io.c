@@ -619,9 +619,6 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
     /* Close file */
     H5Fclose(h_file);
-
-    /* Write footer of LXMF file descriptor */
-    writeXMFfooter(xmfFile);
   }
 
   /* Now loop over ranks and write the data */
@@ -654,6 +651,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     /* Wait for the read of the reading to complete */
     MPI_Barrier(comm);
   }
+
+  /* Write footer of LXMF file descriptor */
+  if (mpi_rank == 0)  writeXMFfooter(xmfFile);
 
   /* message("Done writing particles..."); */
   ++outputCount;
