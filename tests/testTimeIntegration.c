@@ -112,8 +112,8 @@ int main() {
     float r2 =
         c.parts[0].x[0] * c.parts[0].x[0] + c.parts[0].x[1] * c.parts[0].x[1];
     float r = sqrtf(r2);
-    c.parts[0].a[0] = -(G * M_sun * c.parts[0].x[0] / r * r * r);
-    c.parts[0].a[1] = -(G * M_sun * c.parts[0].x[1] / r * r * r);
+    c.parts[0].a_hydro[0] = -(G * M_sun * c.parts[0].x[0] / r * r * r);
+    c.parts[0].a_hydro[1] = -(G * M_sun * c.parts[0].x[1] / r * r * r);
 
     /* Kick... */
     runner_dokick(&run, &c, 0);
