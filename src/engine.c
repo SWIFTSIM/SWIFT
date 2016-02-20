@@ -1833,7 +1833,7 @@ void engine_step(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   int in_i[4], out_i[4];
-  out_t[0] = ti_end_min;
+  out_i[0] = ti_end_min;
   if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate t_end_min.");
@@ -1843,7 +1843,7 @@ void engine_step(struct engine *e) {
       MPI_SUCCESS)
     error("Failed to aggregate t_end_max.");
   ti_end_max = in_i[0];
-  doubles in_d[4], out_d[4];
+  double in_d[4], out_d[4];
   out_d[0] = updates;
   out_d[1] = e_kin;
   out_d[2] = e_int;
