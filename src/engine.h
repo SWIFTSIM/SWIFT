@@ -99,20 +99,18 @@ struct engine {
   struct scheduler sched;
 
   /* The minimum and maximum allowed dt */
-  float dt_min, dt_max;
+  double dt_min, dt_max;
 
   /* Time of the simulation beginning */
-  //float timeBegin;
-  //int ti_begin;
-  
+  double timeBegin;
+
   /* Time of the simulation end */
-  //float timeEnd;
-  //int ti_end;
-  
+  double timeEnd;
+
   /* The previous system time. */
   double timeOld;
   int ti_old;
-  
+
   /* The current system time. */
   double time;
   int ti_current;
@@ -122,7 +120,7 @@ struct engine {
 
   /* Time base */
   double timeBase;
-  
+
   /* File for statistics */
   FILE *file_stats;
 

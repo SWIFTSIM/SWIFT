@@ -1777,7 +1777,7 @@ void engine_init_particles(struct engine *e) {
   engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
 
-// message("\n0th ENTROPY CONVERSION\n")
+  // message("\n0th ENTROPY CONVERSION\n")
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
@@ -1863,8 +1863,8 @@ void engine_step(struct engine *e) {
   e->ti_old = e->ti_current;
   e->ti_current = ti_end_min;
   e->step += 1;
-  e->time = e->ti_current * e->timeBase;
-  e->timeOld = e->ti_old * e->timeBase;
+  e->time = e->ti_current * e->timeBase + e->timeBegin;
+  e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
 
   /* Drift everybody */
@@ -1934,7 +1934,7 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("%d %f %f %d %.3f\n", e->step, e->time, e->timeStep, updates,
+    printf("%d %e %e %d %.3f\n", e->step, e->time, e->timeStep, updates,
            ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
     fflush(stdout);
 
@@ -2219,8 +2219,6 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->policy = policy;
   e->step = 0;
   e->nullstep = 0;
-  e->time = 0.0;
-  e->ti_current = 0;
   e->nr_nodes = nr_nodes;
   e->nodeID = nodeID;
   e->proxy_ind = NULL;
@@ -2229,8 +2227,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->forcerepart = 0;
   e->links = NULL;
   e->nr_links = 0;
+  e->timeBegin = timeBegin;
+  e->timeEnd = timeEnd;
   e->timeOld = timeBegin;
   e->time = timeBegin;
+  e->ti_old = 0;
+  e->ti_current = 0;
   e->timeStep = 0.;
   e->dt_min = dt_min;
   e->dt_max = dt_max;
@@ -2264,12 +2266,23 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Print policy */
   engine_print_policy(e);
-  
+
   /* Deal with timestep */
+  e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
+  e->ti_current = 0;
+  message("Minimal timestep size: %e", e->timeBase);
+
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
+
+    /* Find timestep on the timeline */
+    int dti_timeline = max_nr_timesteps;
+    while (e->dt_min < dti_timeline * e->timeBase) dti_timeline /= 2;
+
+    e->dt_min = e->dt_max = dti_timeline * e->timeBase;
+
+    message("Timestep set to %e", e->dt_max);
   }
-  e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI

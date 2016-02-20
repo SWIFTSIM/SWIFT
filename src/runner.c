@@ -550,7 +550,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   float h_corr;
   const int ti_current = r->e->ti_current;
   const double timeBase = r->e->timeBase;
-  
+
   TIMER_TIC;
 
   /* Recurse? */
@@ -583,7 +583,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
       if (p->ti_end <= ti_current) {
 
         /* Finish the density calculation */
-        hydro_end_density(p, ti_current);       //MATTHIEU
+        hydro_end_density(p, ti_current);  // MATTHIEU
 
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
@@ -800,7 +800,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
 void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
-  //const float dt_max_timeline = r->e->timeEnd - r->e->timeBegin;
+  // const float dt_max_timeline = r->e->timeEnd - r->e->timeBegin;
   const float global_dt_min = r->e->dt_min;
   const float global_dt_max = r->e->dt_max;
   const float ti_current = r->e->ti_current;
@@ -874,15 +874,15 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           new_dt = fminf(new_dt, global_dt_max);
           new_dt = fmaxf(new_dt, global_dt_min);
 
-	  /* Convert to integer time */
-	  new_dti = new_dt * timeBase_inv;
+          /* Convert to integer time */
+          new_dti = new_dt * timeBase_inv;
 
           /* Recover the current timestep */
-          const float current_dti = p->ti_end - p->ti_begin;
+          const int current_dti = p->ti_end - p->ti_begin;
 
           /* Limit timestep increase */
-          if (current_dti > 0) new_dti = min(new_dt, 2 * current_dti);
-	  
+          if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+
           /* Put this timestep on the time line */
           dti_timeline = max_nr_timesteps;
           while (new_dti < dti_timeline) dti_timeline /= 2;
@@ -893,9 +893,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
         /* Compute the time step for this kick */
         const int ti_start = (p->ti_begin + p->ti_end) / 2;
-        const int ti_end = p->ti_end +  new_dti / 2;
+        const int ti_end = p->ti_end + new_dti / 2;
         const float dt = (ti_end - ti_start) * timeBase;
-	const float half_dt = (ti_end - p->ti_end) * timeBase;
+        const float half_dt = (ti_end - p->ti_end) * timeBase;
 
         /* Move particle forward in time */
         p->ti_begin = p->ti_end;
