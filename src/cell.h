@@ -40,7 +40,8 @@ extern int cell_next_tag;
 struct pcell {
 
   /* Stats on this cell's particles. */
-  double h_max, t_end_min, t_end_max;
+  double h_max;
+  int ti_end_min, ti_end_max;
 
   /* Number of particles in this cell. */
   int count;
@@ -65,7 +66,7 @@ struct cell {
   double h_max;
 
   /* Minimum and maximum end of time step in this cell. */
-  double t_end_min, t_end_max;
+  int ti_end_min, ti_end_max;
 
   /* Minimum dimension, i.e. smallest edge of this cell. */
   float dmin;

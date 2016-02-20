@@ -52,6 +52,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "minmax.h"
 #include "part.h"
 #include "timers.h"
 
@@ -1322,7 +1323,7 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
-  float t_end = e->time;
+  float ti_end = e->ti_current;
   struct cell *ci, *cj;
   // ticks tic = getticks();
 
@@ -1384,7 +1385,7 @@ int engine_marktasks(struct engine *e) {
                (t->type == task_type_sub && t->cj == NULL)) {
 
         /* Set this task's skip. */
-        t->skip = (t->ci->t_end_min > t_end);
+        t->skip = (t->ci->ti_end_min > ti_end);
       }
 
       /* Pair? */
@@ -1396,7 +1397,7 @@ int engine_marktasks(struct engine *e) {
         cj = t->cj;
 
         /* Set this task's skip. */
-        t->skip = (ci->t_end_min > t_end && cj->t_end_min > t_end);
+        t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
 
         /* Too much particle movement? */
         if (t->tight &&
@@ -1421,7 +1422,7 @@ int engine_marktasks(struct engine *e) {
 
       /* Kick? */
       else if (t->type == task_type_kick) {
-        t->skip = (t->ci->t_end_min > t_end);
+        t->skip = (t->ci->ti_end_min > ti_end);
       }
 
       /* Drift? */
@@ -1431,7 +1432,7 @@ int engine_marktasks(struct engine *e) {
       /* Init? */
       else if (t->type == task_type_init) {
         /* Set this task's skip. */
-        t->skip = (t->ci->t_end_min > t_end);
+        t->skip = (t->ci->ti_end_min > ti_end);
       }
 
       /* None? */
@@ -1617,7 +1618,7 @@ void engine_barrier(struct engine *e, int tid) {
 void engine_collect_kick(struct cell *c) {
 
   int updated = 0;
-  float t_end_min = FLT_MAX, t_end_max = 0.0f;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   struct cell *cp;
@@ -1639,8 +1640,8 @@ void engine_collect_kick(struct cell *c) {
         engine_collect_kick(cp);
 
         /* And update */
-        t_end_min = fminf(t_end_min, cp->t_end_min);
-        t_end_max = fmaxf(t_end_max, cp->t_end_max);
+        ti_end_min = min(ti_end_min, cp->ti_end_min);
+        ti_end_max = max(ti_end_max, cp->ti_end_max);
         updated += cp->updated;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
@@ -1655,8 +1656,8 @@ void engine_collect_kick(struct cell *c) {
   }
 
   /* Store the collected values in the cell. */
-  c->t_end_min = t_end_min;
-  c->t_end_max = t_end_max;
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
   c->updated = updated;
   c->e_kin = e_kin;
   c->e_int = e_int;
@@ -1797,7 +1798,7 @@ void engine_step(struct engine *e) {
 
   int k;
   int updates = 0;
-  float t_end_min = FLT_MAX, t_end_max = 0.f;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
   double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
@@ -1815,8 +1816,8 @@ void engine_step(struct engine *e) {
       engine_collect_kick(c);
 
       /* And aggregate */
-      t_end_min = fminf(t_end_min, c->t_end_min);
-      t_end_max = fmaxf(t_end_max, c->t_end_max);
+      ti_end_min = min(ti_end_min, c->ti_end_min);
+      ti_end_max = max(ti_end_max, c->ti_end_max);
       e_kin += c->e_kin;
       e_int += c->e_int;
       e_pot += c->e_pot;
@@ -1831,37 +1832,40 @@ void engine_step(struct engine *e) {
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-  double in[4], out[4];
-  out[0] = t_end_min;
-  if (MPI_Allreduce(out, in, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD) !=
+  int in_i[4], out_i[4];
+  out_t[0] = ti_end_min;
+  if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate t_end_min.");
-  t_end_min = in[0];
-  out[0] = t_end_max;
-  if (MPI_Allreduce(out, in, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD) !=
+  ti_end_min = in_i[0];
+  out_i[0] = ti_end_max;
+  if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate t_end_max.");
-  t_end_max = in[0];
-  out[0] = updates;
-  out[1] = e_kin;
-  out[2] = e_int;
-  out[3] = e_pot;
-  if (MPI_Allreduce(out, in, 3, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
+  ti_end_max = in_i[0];
+  doubles in_d[4], out_d[4];
+  out_d[0] = updates;
+  out_d[1] = e_kin;
+  out_d[2] = e_int;
+  out_d[3] = e_pot;
+  if (MPI_Allreduce(out_d, in_d, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate energies.");
-  updates = in[0];
-  e_kin = in[1];
-  e_int = in[2];
-  e_pot = in[3];
+  updates = in_d[0];
+  e_kin = in_d[1];
+  e_int = in_d[2];
+  e_pot = in_d[3];
 #endif
 
   // message("\nDRIFT\n");
 
   /* Move forward in time */
-  e->timeOld = e->time;
-  e->time = t_end_min;
+  e->ti_old = e->ti_current;
+  e->ti_current = ti_end_min;
   e->step += 1;
-  e->timeStep = e->time - e->timeOld;
+  e->time = e->ti_current * e->timeBase;
+  e->timeOld = e->ti_old * e->timeBase;
+  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
 
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -2216,6 +2220,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->step = 0;
   e->nullstep = 0;
   e->time = 0.0;
+  e->ti_current = 0;
   e->nr_nodes = nr_nodes;
   e->nodeID = nodeID;
   e->proxy_ind = NULL;
@@ -2224,8 +2229,6 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->forcerepart = 0;
   e->links = NULL;
   e->nr_links = 0;
-  e->timeBegin = timeBegin;
-  e->timeEnd = timeEnd;
   e->timeOld = timeBegin;
   e->time = timeBegin;
   e->timeStep = 0.;
@@ -2261,11 +2264,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Print policy */
   engine_print_policy(e);
-
+  
   /* Deal with timestep */
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
   }
+  e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI

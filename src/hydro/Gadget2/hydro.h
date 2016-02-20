@@ -124,10 +124,11 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
- * @param time The current time
+ * @param ti_current The current time (on the timeline)
+ * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* p, struct xpart* xp, float time) {
+    struct part* p, struct xpart* xp, int ti_current, double timeBase) {
 
   /* Compute the norm of the curl */
   p->force.curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
@@ -135,7 +136,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                           p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the pressure */
-  const float dt = time - 0.5f * (p->t_begin + p->t_end);
+  const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
   p->force.pressure =
       (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
 
@@ -175,12 +176,13 @@ __attribute__((always_inline))
  * @param xp The extended data of the particle
  * @param t0 The time at the start of the drift
  * @param t1 The time at the end of the drift
+ * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float t0, float t1) {
+    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
 
   /* Drift the pressure */
-  const float dt_entr = t1 - 0.5f * (p->t_begin + p->t_end);
+  const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
   p->force.pressure =
       (p->entropy + p->entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
 

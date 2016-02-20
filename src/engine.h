@@ -67,6 +67,9 @@ extern const char *engine_policy_names[];
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
 
+/* The maximal number of timesteps in a simulation */
+#define max_nr_timesteps (1 << 28)
+
 /* Mini struct to link cells to density/force tasks. */
 struct link {
 
@@ -99,20 +102,27 @@ struct engine {
   float dt_min, dt_max;
 
   /* Time of the simulation beginning */
-  float timeBegin;
-
+  //float timeBegin;
+  //int ti_begin;
+  
   /* Time of the simulation end */
-  float timeEnd;
-
+  //float timeEnd;
+  //int ti_end;
+  
   /* The previous system time. */
-  float timeOld;
-
+  double timeOld;
+  int ti_old;
+  
   /* The current system time. */
-  float time;
+  double time;
+  int ti_current;
 
   /* Time step */
-  float timeStep;
+  double timeStep;
 
+  /* Time base */
+  double timeBase;
+  
   /* File for statistics */
   FILE *file_stats;
 
