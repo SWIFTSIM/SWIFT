@@ -583,7 +583,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
       if (p->ti_end <= ti_current) {
 
         /* Finish the density calculation */
-        hydro_end_density(p, ti_current);  // MATTHIEU
+        hydro_end_density(p, ti_current);
 
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
@@ -800,7 +800,6 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
 void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
-  // const float dt_max_timeline = r->e->timeEnd - r->e->timeBegin;
   const float global_dt_min = r->e->dt_min;
   const float global_dt_max = r->e->dt_max;
   const float ti_current = r->e->ti_current;
