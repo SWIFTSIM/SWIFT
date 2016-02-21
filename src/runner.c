@@ -911,6 +911,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
         /* Extra kick work */
         hydro_kick_extra(p, xp, dt, half_dt);
+
+	/* Number of updated particles */
+	updated++;
       }
 
       /* Now collect quantities for statistics */
@@ -942,8 +945,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       ti_end_min = min(p->ti_end, ti_end_min);
       ti_end_max = max(p->ti_end, ti_end_max);
 
-      /* Number of updated particles */
-      updated++;
     }
 
   }

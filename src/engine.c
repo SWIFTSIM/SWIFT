@@ -1550,7 +1550,6 @@ void engine_prepare(struct engine *e) {
 // message( "rebuild allreduce took %.3f ms." , (double)(getticks() -
 // tic)/CPU_TPS*1000 );
 #endif
-  e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
@@ -1876,6 +1875,20 @@ void engine_step(struct engine *e) {
 
   // if(e->step == 2)   exit(0);
 
+  if (e->nodeID == 0) {
+
+    /* Print some information to the screen */
+    printf("%d %e %e %d %.3f\n", e->step, e->time, e->timeStep, updates,
+           e->wallclock_time);
+    fflush(stdout);
+
+    /* Write some energy statistics */
+    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f %f\n", e->step,
+            e->time, e_kin, e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1],
+            mom[2], ang[0], ang[1], ang[2]);
+    fflush(e->file_stats);
+  }
+
   // message("\nACCELERATION AND KICK\n");
 
   /* Re-distribute the particles amongst the nodes? */
@@ -1932,20 +1945,7 @@ void engine_step(struct engine *e) {
 
   TIMER_TOC2(timer_step);
 
-  if (e->nodeID == 0) {
-
-    /* Print some information to the screen */
-    printf("%d %e %e %d %.3f\n", e->step, e->time, e->timeStep, updates,
-           ((double)timers[timer_count - 1]) / CPU_TPS * 1000);
-    fflush(stdout);
-
-    /* Write some energy statistics */
-    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f %f\n", e->step,
-            e->time, e_kin, e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1],
-            mom[2], ang[0], ang[1], ang[2]);
-    fflush(e->file_stats);
-  }
-
+  e->wallclock_time = ((double)timers[timer_count - 1]) / CPU_TPS * 1000;
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 }
