@@ -1424,6 +1424,7 @@ int engine_marktasks(struct engine *e) {
       /* Kick? */
       else if (t->type == task_type_kick) {
         t->skip = (t->ci->ti_end_min > ti_end);
+        t->ci->updated = 0;
       }
 
       /* Drift? */
@@ -2238,6 +2239,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->dt_min = dt_min;
   e->dt_max = dt_max;
   e->file_stats = NULL;
+  e->wallclock_time = 0.f;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
