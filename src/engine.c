@@ -2268,13 +2268,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   /* Print policy */
   engine_print_policy(e);
 
+  /* Print information about the hydro scheme */
+  message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+  
   /* Deal with timestep */
   e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
   e->ti_current = 0;
-  message("Minimal timestep size: %e", e->timeBase);
-
-  /* Print information about the hydro scheme */
-  message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+  message("Absolute minimal timestep size: %e", e->timeBase);
 
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
@@ -2288,6 +2288,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     message("Timestep set to %e", e->dt_max);
   }
 
+  if(e->dt_min < e->timeBase)
+    error("Minimal timestep smaller than the absolue possible minimum dt=%e", e->timeBase);
+  
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_type(&e->part_mpi_type);
