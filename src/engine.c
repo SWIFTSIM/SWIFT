@@ -52,6 +52,7 @@
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
+#include "hydro.h"
 #include "minmax.h"
 #include "part.h"
 #include "timers.h"
@@ -2272,6 +2273,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->ti_current = 0;
   message("Minimal timestep size: %e", e->timeBase);
 
+  /* Print information about the hydro scheme */
+  message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
 
@@ -2384,3 +2388,4 @@ void engine_print_policy(struct engine *e) {
   fflush(stdout);
 #endif
 }
+
