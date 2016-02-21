@@ -2274,7 +2274,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   /* Deal with timestep */
   e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
   e->ti_current = 0;
-  message("Absolute minimal timestep size: %e", e->timeBase);
+  if (e->nodeID == 0)
+    message("Absolute minimal timestep size: %e", e->timeBase);
 
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
@@ -2285,10 +2286,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
     e->dt_min = e->dt_max = dti_timeline * e->timeBase;
 
-    message("Timestep set to %e", e->dt_max);
+    if (e->nodeID == 0) message("Timestep set to %e", e->dt_max);
   }
 
-  if (e->dt_min < e->timeBase)
+  if (e->dt_min < e->timeBase && e->nodeID == 0)
     error("Minimal timestep smaller than the absolue possible minimum dt=%e",
           e->timeBase);
 
