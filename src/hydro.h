@@ -38,6 +38,4 @@
 #error "Invalid choice of SPH variant"
 #endif
 
-void hydro_print_scheme();
-
 #endif /* SWIFT_HYDRO_H */
