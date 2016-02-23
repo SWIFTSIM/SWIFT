@@ -50,10 +50,10 @@ struct part {
   float h_dt;
 
   /* Particle time of beginning of time-step. */
-  float t_begin;
+  int ti_begin;
 
   /* Particle time of end of time-step. */
-  float t_end;
+  int ti_end;
 
   /* Particle internal energy. */
   float u;

@@ -653,7 +653,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   }
 
   /* Write footer of LXMF file descriptor */
-  if (mpi_rank == 0)  writeXMFfooter(xmfFile);
+  if (mpi_rank == 0) writeXMFfooter(xmfFile);
 
   /* message("Done writing particles..."); */
   ++outputCount;

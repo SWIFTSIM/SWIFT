@@ -55,9 +55,9 @@ struct part {
 
   float h_dt; /*!< Time derivative of smoothing length  */
 
-  float t_begin; /*!< Time at the beginning of time-step. */
+  int ti_begin; /*!< Time at the beginning of time-step. */
 
-  float t_end; /*!< Time at the end of time-step. */
+  int ti_end; /*!< Time at the end of time-step. */
 
   float u; /*!< Particle internal energy. */
 
