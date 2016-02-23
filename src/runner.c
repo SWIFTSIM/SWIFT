@@ -802,7 +802,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   const float global_dt_min = r->e->dt_min;
   const float global_dt_max = r->e->dt_max;
-  const float ti_current = r->e->ti_current;
+  const int ti_current = r->e->ti_current;
   const double timeBase = r->e->timeBase;
   const double timeBase_inv = 1.0 / r->e->timeBase;
   const int count = c->count;
