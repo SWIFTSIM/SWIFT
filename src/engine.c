@@ -1720,13 +1720,13 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
-  message("Initialising particles");
-
-  engine_prepare(e);
+  if(e->nodeID == 0) message("Initialising particles");
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
+
+  engine_prepare(e);
 
   engine_marktasks(e);
 

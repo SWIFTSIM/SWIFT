@@ -557,8 +557,9 @@ void cell_init_parts(struct cell *c, void *data) {
 
   struct part *p = c->parts;
   struct xpart *xp = c->xparts;
+  const int count = c->count;
 
-  for (int i = 0; i < c->count; ++i) {
+  for (int i = 0; i < count; ++i) {
     p[i].ti_begin = 0;
     p[i].ti_end = 0;
     xp[i].v_full[0] = p[i].v[0];
