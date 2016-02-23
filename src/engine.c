@@ -1551,6 +1551,7 @@ void engine_prepare(struct engine *e) {
 // message( "rebuild allreduce took %.3f ms." , (double)(getticks() -
 // tic)/CPU_TPS*1000 );
 #endif
+  e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
