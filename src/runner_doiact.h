@@ -958,8 +958,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct engine *restrict e = r->e;
   int pid, pjd, k, sid;
   double rshift, shift[3] = {0.0, 0.0, 0.0};
-  struct entry *restrict sort_i, *restrict sort_j;
-  struct entry *restrict sortdt_i = NULL, *restrict sortdt_j = NULL;
+  struct entry *sort_i, *sort_j;
+  struct entry *sortdt_i = NULL, *sortdt_j = NULL;
   int countdt_i = 0, countdt_j = 0;
   struct part *restrict pi, *restrict pj, *restrict parts_i, *restrict parts_j;
   double pix[3], pjx[3], di, dj;
