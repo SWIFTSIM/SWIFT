@@ -102,11 +102,13 @@ for n in range(n_iterations):
     x      = ids % L;
     y      = ((ids - x) / L) % L;
     z      = (ids - x - L * y) / L**2;
+    ids    = zeros(1)
     coords = zeros((N, 3))
     coords[:,0] = z[:,0] * boxSize / L + boxSize / (2*L)
     coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
     coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
     ds_x[offset:offset+N,:] = coords
+    coords  = zeros((1,3))
 
     offset += N
     print "Done", offset,"/", numPart, "(%.1f %%)"%(100*(float)(offset)/numPart)
