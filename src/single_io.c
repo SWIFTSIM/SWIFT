@@ -168,7 +168,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   hsize_t chunk_shape[2];
   char buffer[150];
 
-  message("Writing '%s' array...", name);
+  /* message("Writing '%s' array...", name); */
 
   /* Allocate temporary buffer */
   temp = malloc(N * dim * sizeOfType(type));
