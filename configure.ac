@@ -1,5 +1,6 @@
 # This file is part of SWIFT.
 # Copyright (C) 2012 pedro.gonnet@durham.ac.uk.
+#               2016 p.w.draper@durham.ac.uk.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -177,6 +178,27 @@ if test "$enable_san" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
+   fi
+fi
+
+# Intel compiler interprocedural optimization support. Needs special
+# handling for linking and archiving as well as compilation.
+AC_ARG_ENABLE([ipo],
+   [AS_HELP_STRING([--enable-ipo],
+     [Enable Intel interprocedural optimization @<:@no/yes@:>@]
+   )],
+   [enable_ipo="$enableval"],
+   [enable_ipo="no"]
+)
+
+if test "$enable_ipo" = "yes"; then
+   if test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -ip -ipo"
+      LDFLAGS="-ipo"
+      AR="xiar"
+      LD="xild"
+   else
+      AC_MSG_WARN([Compiler does not support interprocedural optimization])
    fi
 fi
 
