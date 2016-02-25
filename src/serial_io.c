@@ -225,7 +225,7 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 
   /* Create dataset */
   h_data = H5Dcreate(grp, name, hdf5Type(type), h_space, H5P_DEFAULT, h_prop,
-		     H5P_DEFAULT);
+                     H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while creating dataspace '%s'.", name);
   }
@@ -586,7 +586,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
     /* Open header to write simulation properties */
     /* message("Writing runtime parameters..."); */
-    h_grp = H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    h_grp = H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating runtime parameters group\n");
 
     /* Write the relevant information */
@@ -634,7 +635,8 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
     /* Create SPH particles group */
     /* message("Writing particle arrays..."); */
-    h_grp = H5Gcreate(h_file, "/PartType0", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    h_grp =
+        H5Gcreate(h_file, "/PartType0", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating particle group.\n");
 
     /* Close particle group */
