@@ -21,6 +21,7 @@
 
 #include "space.h"
 #include "cell.h"
+#include "task.h"
 #ifdef HAVE_METIS
 #include <metis.h>
 #endif
@@ -63,6 +64,8 @@ void part_split_metis(struct space *s, int nregions, int *celllist);
 
 #ifdef HAVE_METIS
 void part_graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj);
+void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes, 
+                 struct space *s, struct task *tasks, int nr_tasks);
 #endif
 
 int part_check_complete(struct space *s, int verbose, int nregions);

@@ -63,7 +63,6 @@ extern const char *engine_policy_names[];
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
 
-#define engine_maxmetisweight 10000.0f
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
