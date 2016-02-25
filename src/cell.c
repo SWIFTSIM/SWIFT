@@ -448,9 +448,9 @@ void cell_split(struct cell *c) {
     c->progeny[k]->xparts = &c->xparts[left[k]];
   }
 
-  /* Re-link the gparts. */
-  for (k = 0; k < count; k++)
-    if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k];
+  /* Re-link the gparts. THIS IS BROKEN BUT NEEDS MENDING J & T */
+  /* for (k = 0; k < count; k++) */
+  /*   if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k]; */
 
   /* Verify that _all_ the parts have been assigned to a cell. */
   /* for ( k = 1 ; k < 8 ; k++ )

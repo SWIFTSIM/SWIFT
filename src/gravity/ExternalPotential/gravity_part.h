@@ -16,51 +16,54 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PART_H
-#define SWIFT_PART_H
-
-/* Config parameters. */
-#include "../config.h"
+#ifndef SWIFT_GPART_H
+#define SWIFT_GPART_H
 
 /* Some standard headers. */
 #include <stdlib.h>
 
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
 
-/* Local headers. */
-#include "const.h"
+/* properties of external potential */
+static struct ExternalPointMass
+{
+  const float Mass;
+  const float Position[3];
+} PointMass = {.Mass = 1, .Position={0.,0.,0.}};
 
-/* Some constants. */
-#define part_align 64
-#define xpart_align 32
 
-/* Import the right particle definition */
-#if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_part.h"
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_part.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_part.h"
-#else
-#error "Invalid choice of SPH variant"
-#endif
+/* Gravity particle. */
+struct gpart {
 
-#if defined(GRAVITY)
-#if defined(DEFAULT_GRAVITY)
-#include "./gravity/Default/gravity_part.h"
-#elif defined(EXTERNAL_POTENTIAL)
-#include "./gravity/ExternalPotential/gravity_part.h"
-#elif
-#error "Invalid choice of gravity variant"
-#endif
-#endif
+  /* Particle position. */
+  double x[3];
 
-#ifdef WITH_MPI
-void part_create_mpi_type(MPI_Datatype* part_type);
-void xpart_create_mpi_type(MPI_Datatype* xpart_type);
-#endif
+  /* Particle velocity. */
+  float v[3];
 
-#endif /* SWIFT_PART_H */
+  /* Particle acceleration. */
+  float a[3];
+
+  /* Particle external gravity acceleration */
+  float a_grav_external[3];
+
+  /* Particle mass. */
+  float mass;
+
+  /* Particle time of beginning of time-step. */
+  float t_begin;
+
+  /* Particle time of end of time-step. */
+  float t_end;
+
+  /* Anonymous union for id/part. */
+  union {
+
+    /* Particle ID. */
+    size_t id;
+
+    /* Pointer to corresponding SPH part. */
+    struct part* part;
+  };
+
+} __attribute__((aligned(part_align)));
+#endif /* SWIFT_GPART_H */
