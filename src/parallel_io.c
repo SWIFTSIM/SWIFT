@@ -183,8 +183,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                        int mpi_rank, long long offset, char* part_c,
                        struct UnitSystem* us,
                        enum UnitConversionFactor convFactor) {
-  hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0, h_plist_id = 0;
-  hsize_t shape[2], shape_total[2], offsets[2];
+  hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0, h_plist_id = 0, h_prop = 0;
+  hsize_t shape[2], shape_total[2], offsets[2], chunk_shape[2];
   void* temp = 0;
   int i = 0, rank = 0;
   const size_t typeSize = sizeOfType(type);
@@ -223,6 +223,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
     shape_total[1] = dim;
     offsets[0] = offset;
     offsets[1] = 0;
+    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[1] = dim;
   } else {
     rank = 1;
     shape[0] = N;
@@ -231,6 +233,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
     shape_total[1] = 0;
     offsets[0] = offset;
     offsets[1] = 0;
+    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[1] = 0;
   }
 
   /* Change shape of memory data space */
@@ -246,8 +250,24 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
     error("Error while changing data space (file) shape for field '%s'.", name);
   }
 
+  /* Dataset properties */
+  h_prop = H5Pcreate(H5P_DATASET_CREATE);
+
+  /* Set chunk size */
+  h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
+  if (h_err < 0) {
+    error("Error while setting chunk size (%lld, %lld) for field '%s'.",
+          chunk_shape[0], chunk_shape[1], name);
+  }
+
+  /* Impose data compression */
+  h_err = H5Pset_deflate(h_prop, 4);
+  if (h_err < 0) {
+    error("Error while setting compression options for field '%s'.", name);
+  }
+
   /* Create dataset */
-  h_data = H5Dcreate(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  h_data = H5Dcreate(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT, h_prop, H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while creating dataset '%s'.", name);
   }
@@ -546,7 +566,7 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
-  h_grpsph = H5Gcreate(h_file, "/SPH" ,H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT););
+  h_grpsph = H5Gcreate(h_file, "/SPH" ,H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grpsph < 0) error("Error while creating SPH group");
   writeSPHflavour(h_grpsph);
   H5Gclose(h_grpsph);
