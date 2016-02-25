@@ -70,6 +70,12 @@
 #define GADGET2_SPH
 //#define DEFAULT_SPH
 
+
+/* Gravity properties */
+#define GRAVITY
+/* valid choices DEFAULT_GRAVITY || EXTERNAL_POTENTIAL */
+#define EXTERNAL_POTENTIAL
+
 /* System of units */
 #define const_unit_length_in_cgs 1   /* 3.08567810e16  /\* 1Mpc *\/ */
 #define const_unit_mass_in_cgs 1     /* 1.9891e33      /\* 1 M_sun *\/ */
