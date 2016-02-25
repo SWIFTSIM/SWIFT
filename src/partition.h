@@ -20,11 +20,7 @@
 #define SWIFT_PARTITION_H
 
 #include "space.h"
-#include "cell.h"
 #include "task.h"
-#ifdef HAVE_METIS
-#include <metis.h>
-#endif
 
 /* Initial partitioning types. */
 enum initpart_type {
@@ -55,19 +51,13 @@ enum repart_type {
 /* Simple descriptions of types for reports. */
 extern const char *repart_name[];
 
-void part_pick_vector(struct space *s, int nregions, int *samplecells);
-void part_split_vector(struct space *s, int nregions, int *samplecells);
-
 void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
                      int *celllist);
-void part_split_metis(struct space *s, int nregions, int *celllist);
 
-#ifdef HAVE_METIS
-void part_graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj);
 void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes, 
                  struct space *s, struct task *tasks, int nr_tasks);
-#endif
-
+void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
+               struct space *s);
 int part_check_complete(struct space *s, int verbose, int nregions);
 
 #endif /* SWIFT_PARTITION_H */

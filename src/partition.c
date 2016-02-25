@@ -19,7 +19,7 @@
 
 /**
  *  @file partition.c
- *  @brief file of various techniques for partitioning and repartitioning 
+ *  @brief file of various techniques for partitioning and repartitioning
  *  a grid of cells into geometrically connected regions.
  *
  *  Currently supported types, grid, vectorise and METIS.
@@ -79,6 +79,7 @@ const char *repart_name[] = {
 /*  Vectorisation support */
 /*  ===================== */
 
+#if defined(WITH_MPI)
 /**
  *  @brief Pick a number of cell positions from a vectorised list.
  *
@@ -90,7 +91,7 @@ const char *repart_name[] = {
  *  @param nregions the number of regions
  *  @param samplecells the list of sample cell positions, size of 3*nregions
  */
-void part_pick_vector(struct space *s, int nregions, int *samplecells) {
+static void pick_vector(struct space *s, int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
   int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -119,14 +120,16 @@ void part_pick_vector(struct space *s, int nregions, int *samplecells) {
     }
   }
 }
+#endif
 
+#if defined(WITH_MPI)
 /**
  * @brief Partition the space.
  *
  * Using the sample positions as seeds pick cells that are geometry closest
  * to each and apply the partition to the space.
  */
-void part_split_vector(struct space *s, int nregions, int *samplecells) {
+static void split_vector(struct space *s, int nregions, int *samplecells) {
   int n = 0;
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
@@ -149,6 +152,7 @@ void part_split_vector(struct space *s, int nregions, int *samplecells) {
     }
   }
 }
+#endif
 
 /* METIS support
  * =============
@@ -259,6 +263,143 @@ static void accumulate_counts(struct space *s, int *counts) {
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
     counts[cid]++;
   }
+}
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+/**
+ * @brief Apply METIS cell list partitioning to a cell structure.
+ *
+ * Uses the results of part_metis_pick to assign each cell's nodeID to the
+ * picked region index, thus partitioning the space into regions.
+ *
+ * @param s the space containing the cells to split into regions.
+ * @param nregions number of regions.
+ * @param celllist list of regions for each cell.
+ */
+static void split_metis(struct space *s, int nregions, int *celllist) {
+
+  for (int i = 0; i < s->nr_cells; i++)
+      s->cells[i].nodeID = celllist[i];
+}
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+/**
+ * @brief Partition the given space into a number of connected regions.
+ *
+ * Split the space using METIS to derive a partitions using the
+ * cell particle counts as weights.
+ *
+ * @param s the space of cells to partition.
+ * @param nregions the number of regions required in the partition.
+ * @param vertexw weights for the cells, sizeof number of cells if used,
+ *        NULL for unit weights.
+ * @param edgew weights for the graph edges between all cells, sizeof number
+ *        of cells * 26 if used, NULL for unit weights. Need to be packed
+ *        in CSR format, so same as adjncy array.
+ * @param celllist on exit this contains the ids of the selected regions,
+ *        sizeof number of cells.
+ */
+static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
+                       int *celllist) {
+
+  /* Total number of cells. */
+  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+
+  /* Nothing much to do if only using a single partition. Also avoids METIS
+   * bug that doesn't handle this case well. */
+  if (nregions == 1) {
+    for (int i = 0; i < ncells; i++) celllist[i] = 0;
+    return;
+  }
+
+  /* Allocate weights and adjacency arrays . */
+  idx_t *xadj;
+  if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
+    error("Failed to allocate xadj buffer.");
+  idx_t *adjncy;
+  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+    error("Failed to allocate adjncy array.");
+  idx_t *weights_v = NULL;
+  if (vertexw != NULL)
+    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate vertex weights array");
+  idx_t *weights_e = NULL;
+  if (edgew != NULL)
+    if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+      error("Failed to allocate edge weights array");
+  idx_t *regionid;
+  if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
+    error("Failed to allocate regionid array");
+
+  /* Define the cell graph. */
+  graph_init_metis(s, adjncy, xadj);
+
+  /* Init the vertex weights array. */
+  if (vertexw != NULL) {
+    for (int k = 0; k < ncells; k++) {
+      if (vertexw[k] > 0) {
+        weights_v[k] = vertexw[k];
+      } else {
+        weights_v[k] = 1;
+      }
+    }
+  }
+
+  /* Init the edges weights array. */
+  if (edgew != NULL) {
+    for (int k = 0; k < 26 * ncells; k++) {
+      if (edgew[k] > 0) {
+        weights_e[k] = edgew[k];
+      } else {
+        weights_e[k] = 1;
+      }
+    }
+  }
+
+  /* Set the METIS options. */
+  idx_t options[METIS_NOPTIONS];
+  METIS_SetDefaultOptions(options);
+  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
+  options[METIS_OPTION_NUMBERING] = 0;
+  options[METIS_OPTION_CONTIG] = 1;
+  options[METIS_OPTION_NCUTS] = 10;
+  options[METIS_OPTION_NITER] = 20;
+
+  /* Call METIS. */
+  idx_t one = 1;
+  idx_t idx_ncells = ncells;
+  idx_t idx_nregions = nregions;
+  idx_t objval;
+
+  /* Dump graph in METIS format */
+  /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
+   *                weights_v, weights_e, NULL);
+   */
+
+  if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, weights_e,
+                          NULL, &idx_nregions, NULL, NULL, options, &objval,
+                          regionid) != METIS_OK)
+    error("Call to METIS_PartGraphKway failed.");
+
+  /* Check that the regionids are ok. */
+  for (int k = 0; k < ncells; k++)
+    if (regionid[k] < 0 || regionid[k] >= nregions)
+      error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
+
+  /* Set the cell list to the region index. */
+  for (int k = 0; k < ncells; k++) {
+    celllist[k] = regionid[k];
+  }
+
+  /* Clean up. */
+  if (weights_v != NULL) free(weights_v);
+  if (weights_e != NULL) free(weights_e);
+  free(xadj);
+  free(adjncy);
+  free(regionid);
+
 }
 #endif
 
@@ -485,9 +626,9 @@ static void repart_edge_metis(int partweights, int bothweights,
 
     /* And partition, use both weights or not as requested. */
     if (bothweights)
-      part_pick_metis(s, nr_nodes, weights_v, weights_e, celllist);
+      pick_metis(s, nr_nodes, weights_v, weights_e, celllist);
     else
-      part_pick_metis(s, nr_nodes, NULL, weights_e, celllist);
+      pick_metis(s, nr_nodes, NULL, weights_e, celllist);
 
     /* Check that all cells have good values. */
     for (int k = 0; k < nr_cells; k++)
@@ -522,7 +663,7 @@ static void repart_edge_metis(int partweights, int bothweights,
     mpi_error(res, "Failed to bcast the cell list");
 
   /* And apply to our cells */
-  part_split_metis(s, nr_nodes, celllist);
+  split_metis(s, nr_nodes, celllist);
 
   /* Clean up. */
   if (bothweights) free(weights_v);
@@ -561,7 +702,7 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
   if (celllist == NULL) error("Failed to allocate celllist");
 
   if (nodeID == 0)
-    part_pick_metis(s, nr_nodes, weights, NULL, celllist);
+    pick_metis(s, nr_nodes, weights, NULL, celllist);
 
   /* Distribute the celllist partition and apply. */
   if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
@@ -569,12 +710,13 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
     mpi_error(res, "Failed to bcast the cell list");
 
   /* And apply to our cells */
-  part_split_metis(s, nr_nodes, celllist);
+  split_metis(s, nr_nodes, celllist);
 
   free(weights);
   free(celllist);
 }
 #endif
+
 
 /**
  * @brief Repartition the space using the given repartition type.
@@ -624,142 +766,151 @@ void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes,
 #endif
 }
 
-
 /**
- * @brief Partition the given space into a number of connected regions.
+ * @brief Partition the cells of a space.
  *
- * Split the space using METIS to derive a partitions using the
- * cell particle counts as weights.
+ * Cells are assigned to a node on the basis of various schemes, all of which
+ * should attempt to distribute them in geometrically close regions to
+ * minimise the movement of particles.
  *
- * @param s the space of cells to partition.
- * @param nregions the number of regions required in the partition.
- * @param vertexw weights for the cells, sizeof number of cells if used,
- *        NULL for unit weights.
- * @param edgew weights for the graph edges between all cells, sizeof number
- *        of cells * 26 if used, NULL for unit weights. Need to be packed
- *        in CSR format, so same as adjncy array.
- * @param celllist on exit this contains the ids of the selected regions,
- *        sizeof number of cells.
+ * Note that the partition type is a suggestion and will be ignored if that
+ * scheme fails. In that case we fallback to a vectorised scheme, that is
+ * guaranteed to work provided we have more cells than nodes.
+ *
+ * @param ipart the type of partitioning to try.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells.
  */
-void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
-                     int *celllist) {
+void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
+               struct space *s) {
+
+  /* Geometric grid partitioning. */
+  if (ipart->type == INITPART_GRID) {
+    int j, k;
+    int ind[3];
+    struct cell *c;
+
+    /* If we've got the wrong number of nodes, fail. */
+    if (nr_nodes != ipart->grid[0] * ipart->grid[1] * ipart->grid[2])
+      error("Grid size does not match number of nodes.");
+
+    /* Run through the cells and set their nodeID. */
+    // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
+    for (k = 0; k < s->nr_cells; k++) {
+      c = &s->cells[k];
+      for (j = 0; j < 3; j++) ind[j] = c->loc[j] / s->dim[j] * ipart->grid[j];
+      c->nodeID = ind[0] + ipart->grid[0] * (ind[1] + ipart->grid[1] * ind[2]);
+      // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
+      // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
+    }
+
+    /* The grid technique can fail, so check for this before proceeding. */
+    if (!part_check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        message("Grid initial partition failed, using a vectorised partition");
+      ipart->type = INITPART_VECTORIZE;
+      part_part(ipart, nodeID, nr_nodes, s);
+      return;
+    }
+
+  } else if (ipart->type == INITPART_METIS_WEIGHT ||
+             ipart->type == INITPART_METIS_NOWEIGHT) {
 #if defined(WITH_MPI) && defined(HAVE_METIS)
+    /* Simple k-way partition selected by METIS using cell particle counts as
+     * weights or not. Should be best when starting with a inhomogeneous dist.
+     */
 
-  /* Total number of cells. */
-  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+    /* Space for particles per cell counts, which will be used as weights or
+     * not. */
+    int *weights = NULL;
+    if (ipart->type == INITPART_METIS_WEIGHT) {
+        if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+        error("Failed to allocate weights buffer.");
+      bzero(weights, sizeof(int) * s->nr_cells);
 
-  /* Nothing much to do if only using a single partition. Also avoids METIS
-   * bug that doesn't handle this case well. */
-  if (nregions == 1) {
-    for (int i = 0; i < ncells; i++) celllist[i] = 0;
-    return;
-  }
-
-  /* Allocate weights and adjacency arrays . */
-  idx_t *xadj;
-  if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
-    error("Failed to allocate xadj buffer.");
-  idx_t *adjncy;
-  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
-    error("Failed to allocate adjncy array.");
-  idx_t *weights_v = NULL;
-  if (vertexw != NULL)
-    if ((weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate vertex weights array");
-  idx_t *weights_e = NULL;
-  if (edgew != NULL)
-    if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
-      error("Failed to allocate edge weights array");
-  idx_t *regionid;
-  if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
-    error("Failed to allocate regionid array");
-
-  /* Define the cell graph. */
-  graph_init_metis(s, adjncy, xadj);
-
-  /* Init the vertex weights array. */
-  if (vertexw != NULL) {
-    for (int k = 0; k < ncells; k++) {
-      if (vertexw[k] > 0) {
-        weights_v[k] = vertexw[k];
-      } else {
-        weights_v[k] = 1;
+      /* Check each particle and accumilate the counts per cell. */
+      struct part *parts = s->parts;
+      int *cdim = s->cdim;
+      double ih[3], dim[3];
+      ih[0] = s->ih[0];
+      ih[1] = s->ih[1];
+      ih[2] = s->ih[2];
+      dim[0] = s->dim[0];
+      dim[1] = s->dim[1];
+      dim[2] = s->dim[2];
+      for (int k = 0; k < s->nr_parts; k++) {
+        for (int j = 0; j < 3; j++) {
+          if (parts[k].x[j] < 0.0)
+            parts[k].x[j] += dim[j];
+          else if (parts[k].x[j] >= dim[j])
+            parts[k].x[j] -= dim[j];
+        }
+        const int cid =
+            cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
+                       parts[k].x[2] * ih[2]);
+        weights[cid]++;
       }
+
+      /* Get all the counts from all the nodes. */
+      if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT, MPI_SUM,
+                        MPI_COMM_WORLD) != MPI_SUCCESS)
+        error("Failed to allreduce particle cell weights.");
+
     }
-  }
 
-  /* Init the edges weights array. */
-  if (edgew != NULL) {
-    for (int k = 0; k < 26 * ncells; k++) {
-      if (edgew[k] > 0) {
-        weights_e[k] = edgew[k];
-      } else {
-        weights_e[k] = 1;
-      }
+    /* Main node does the partition calculation. */
+    int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
+    if (celllist == NULL) error("Failed to allocate celllist");
+    if (nodeID == 0)
+      pick_metis(s, nr_nodes, weights, NULL, celllist);
+
+    /* Distribute the celllist partition and apply. */
+    int res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS) mpi_error(res, "Failed to bcast the cell list");
+
+    /* And apply to our cells */
+    split_metis(s, nr_nodes, celllist);
+
+    /* It's not known if this can fail, but check for this before proceeding. */
+    if (!part_check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        message("METIS initial partition failed, using a vectorised partition");
+      ipart->type = INITPART_VECTORIZE;
+      part_part(ipart, nodeID, nr_nodes, s);
     }
-  }
 
-  /* Set the METIS options. */
-  idx_t options[METIS_NOPTIONS];
-  METIS_SetDefaultOptions(options);
-  options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-  options[METIS_OPTION_NUMBERING] = 0;
-  options[METIS_OPTION_CONTIG] = 1;
-  options[METIS_OPTION_NCUTS] = 10;
-  options[METIS_OPTION_NITER] = 20;
-
-  /* Call METIS. */
-  idx_t one = 1;
-  idx_t idx_ncells = ncells;
-  idx_t idx_nregions = nregions;
-  idx_t objval;
-
-  /* Dump graph in METIS format */
-  /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy,
-   *                weights_v, weights_e, NULL);
-   */
-
-  if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, weights_e,
-                          NULL, &idx_nregions, NULL, NULL, options, &objval,
-                          regionid) != METIS_OK)
-    error("Call to METIS_PartGraphKway failed.");
-
-  /* Check that the regionids are ok. */
-  for (int k = 0; k < ncells; k++)
-    if (regionid[k] < 0 || regionid[k] >= nregions)
-      error("Got bad nodeID %" PRIDX " for cell %i.", regionid[k], k);
-
-  /* Set the cell list to the region index. */
-  for (int k = 0; k < ncells; k++) {
-    celllist[k] = regionid[k];
-  }
-
-  /* Clean up. */
-  if (weights_v != NULL) free(weights_v);
-  if (weights_e != NULL) free(weights_e);
-  free(xadj);
-  free(adjncy);
-  free(regionid);
-
+    if (weights != NULL) free(weights);
+    free(celllist);
 #else
-  error("SWIFT was not compiled with METIS support.");
+    error("SWIFT was not compiled with METIS support");
 #endif
-}
 
-/**
- * @brief Apply METIS cell list partitioning to a cell structure.
- *
- * Uses the results of part_metis_pick to assign each cell's nodeID to the
- * picked region index, thus partitioning the space into regions.
- *
- * @param s the space containing the cells to split into regions.
- * @param nregions number of regions.
- * @param celllist list of regions for each cell.
- */
-void part_split_metis(struct space *s, int nregions, int *celllist) {
+  } else if (ipart->type == INITPART_VECTORIZE) {
 
-  for (int i = 0; i < s->nr_cells; i++)
-      s->cells[i].nodeID = celllist[i];
+#if defined(WITH_MPI)
+    /* Vectorised selection, guaranteed to work for samples less than the
+     * number of cells, but not very clumpy in the selection of regions. */
+    int *samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3);
+    if (samplecells == NULL) error("Failed to allocate samplecells");
+
+    if (nodeID == 0) {
+      pick_vector(s, nr_nodes, samplecells);
+    }
+
+    /* Share the samplecells around all the nodes. */
+    int res =
+        MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to bcast the partition sample cells.");
+
+    /* And apply to our cells */
+    split_vector(s, nr_nodes, samplecells);
+    free(samplecells);
+#else
+    error("SWIFT was not compiled with MPI support");
+#endif
+  }
 }
 
 /*  General support */
