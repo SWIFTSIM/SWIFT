@@ -19,8 +19,8 @@
 
 /**
  *  @file partition.c
- *  @brief file of various techniques for partitioning a grid of cells
- *         into geometrically connected regions.
+ *  @brief file of various techniques for partitioning and repartitioning 
+ *  a grid of cells into geometrically connected regions.
  *
  *  Currently supported types, grid, vectorise and METIS.
  */
@@ -158,6 +158,7 @@ void part_split_vector(struct space *s, int nregions, int *samplecells) {
  * weighted by the number of particles scheme. Note METIS is optional.
  */
 
+#if defined(WITH_MPI) && defined(HAVE_METIS)
 /**
  * @brief Fill the METIS xadj and adjncy arrays defining the graph of cells
  *        in a space.
@@ -172,7 +173,6 @@ void part_split_vector(struct space *s, int nregions, int *samplecells) {
  * @param xadj the METIS xadj array to fill, must be of size
  *             number of cells in space + 1. NULL for not used.
  */
-#if defined(WITH_MPI) && defined(HAVE_METIS)
 static void graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj) {
 
   /* Loop over all cells in the space. */
@@ -226,6 +226,7 @@ static void graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj) {
 }
 #endif
 
+#if defined(WITH_MPI) && defined(HAVE_METIS)
 /**
  * @brief Accumulate the counts of particles per cell.
  *
@@ -233,7 +234,6 @@ static void graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj) {
  * @param counts the number of particles per cell. Should be
  *               allocated as size s->nr_parts.
  */
-#if defined(WITH_MPI) && defined(HAVE_METIS)
 static void accumulate_counts(struct space *s, int *counts) {
 
   struct part *parts = s->parts;
@@ -262,6 +262,7 @@ static void accumulate_counts(struct space *s, int *counts) {
 }
 #endif
 
+#if defined(WITH_MPI) && defined(HAVE_METIS)
 /**
  * @brief Repartition the cells amongst the nodes using task timings
  *        as edge weights and vertex weights also from task timings
@@ -270,9 +271,12 @@ static void accumulate_counts(struct space *s, int *counts) {
  * @param partweights whether particle counts will be used as vertex weights.
  * @param bothweights whether vertex and edge weights will be used, otherwise
  *                    only edge weights will be used.
- * @param e The #engine.
+ * @param nodeID our nodeID.
+ * @param nr_nodes the number of nodes.
+ * @param s the space of cells holding our local particles.
+ * @param tasks the completed tasks from the last engine step for our node.
+ * @param nr_tasks the number of tasks.
  */
-#if defined(WITH_MPI) && defined(HAVE_METIS)
 static void repart_edge_metis(int partweights, int bothweights,
                               int nodeID, int nr_nodes, struct space *s,
                               struct task *tasks, int nr_tasks) {
