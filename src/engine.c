@@ -287,6 +287,355 @@ void engine_redistribute(struct engine *e) {
 #endif
 }
 
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+/**
+ * @brief Accumulate the counts of particles per cell.
+ *
+ * @param s the space containing the cells.
+ * @param counts the number of particles per cell. Should be
+ *               allocated as size s->nr_parts.
+ */
+static void metis_repart_counts(struct space *s, int *counts) {
+
+  struct part *parts = s->parts;
+  int *cdim = s->cdim;
+  double ih[3], dim[3];
+  ih[0] = s->ih[0];
+  ih[1] = s->ih[1];
+  ih[2] = s->ih[2];
+  dim[0] = s->dim[0];
+  dim[1] = s->dim[1];
+  dim[2] = s->dim[2];
+
+  bzero(counts, sizeof(int) * s->nr_cells);
+
+  for (int k = 0; k < s->nr_parts; k++) {
+    for (int j = 0; j < 3; j++) {
+      if (parts[k].x[j] < 0.0)
+        parts[k].x[j] += dim[j];
+      else if (parts[k].x[j] >= dim[j])
+        parts[k].x[j] -= dim[j];
+    }
+    const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
+                               parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    counts[cid]++;
+  }
+}
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+/**
+ * @brief Repartition the cells amongst the nodes using task timings
+ *        as edge weights and vertex weights also from task timings
+ *        or particle cells counts.
+ *
+ * @param partweights whether particle counts will be used as vertex weights.
+ * @param bothweights whether vertex and edge weights will be used, otherwise
+ *                    only edge weights will be used.
+ * @param e The #engine.
+ */
+static void metis_repart_edge(int partweights, int bothweights, struct engine *e) {
+
+  /* Create weight arrays using task ticks for vertices and edges (edges
+   * assume the same graph structure as used in the part_ calls). */
+
+  int nr_nodes = e->nr_nodes;
+  int nodeID = e->nodeID;
+  struct space *s = e->s;
+  int nr_cells = s->nr_cells;
+  struct cell *cells = s->cells;
+  struct task *tasks = e->sched.tasks;
+  float wscale = 1e-3, vscale = 1e-3, wscale_buff;
+  int wtot = 0;
+  int wmax = 1e9 / nr_nodes;
+  int wmin;
+
+  /* Allocate and fill the adjncy indexing array defining the graph of
+   * cells. */
+  idx_t *inds;
+  if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
+    error("Failed to allocate the inds array");
+  part_graph_init_metis(s, inds, NULL);
+
+  /* Allocate and init weights. */
+  int *weights_v = NULL;
+  int *weights_e = NULL;
+  if (bothweights) {
+    if ((weights_v = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+      error("Failed to allocate vertex weights arrays.");
+    bzero(weights_v, sizeof(int) * nr_cells);
+  }
+  if ((weights_e = (int *)malloc(sizeof(int) * 26 * nr_cells)) == NULL)
+      error("Failed to allocate edge weights arrays.");
+  bzero(weights_e, sizeof(int) * 26 * nr_cells);
+
+  /* Generate task weights for vertices. */
+  int taskvweights = (bothweights && !partweights);
+
+  /* Loop over the tasks... */
+  for (int j = 0; j < e->sched.nr_tasks; j++) {
+    /* Get a pointer to the kth task. */
+    struct task *t = &tasks[j];
+
+    /* Skip un-interesting tasks. */
+    if (t->type != task_type_self && t->type != task_type_pair &&
+        t->type != task_type_sub && t->type != task_type_ghost &&
+        t->type != task_type_drift && t->type != task_type_kick &&
+        t->type != task_type_init)
+      continue;
+
+    /* Get the task weight. */
+    int w = (t->toc - t->tic) * wscale;
+    if (w < 0) error("Bad task weight (%d).", w);
+
+    /* Do we need to re-scale? */
+    wtot += w;
+    while (wtot > wmax) {
+      wscale /= 2;
+      wtot /= 2;
+      w /= 2;
+      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
+      if (taskvweights)
+        for (int k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
+    }
+
+    /* Get the top-level cells involved. */
+    struct cell *ci, *cj;
+    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
+      ;
+    if (t->cj != NULL)
+      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
+        ;
+    else
+      cj = NULL;
+
+    /* Get the cell IDs. */
+    int cid = ci - cells;
+
+    /* Different weights for different tasks. */
+    if (t->type == task_type_ghost || t->type == task_type_drift ||
+        t->type == task_type_kick) {
+      /* Particle updates add only to vertex weight. */
+      if (taskvweights)
+        weights_v[cid] += w;
+
+    }
+
+    /* Self interaction? */
+    else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
+             (t->type == task_type_sub && cj == NULL &&
+                ci->nodeID == nodeID)) {
+      /* Self interactions add only to vertex weight. */
+      if (taskvweights)
+        weights_v[cid] += w;
+
+    }
+
+    /* Pair? */
+    else if (t->type == task_type_pair ||
+             (t->type == task_type_sub && cj != NULL)) {
+      /* In-cell pair? */
+      if (ci == cj) {
+        /* Add weight to vertex for ci. */
+        if (taskvweights)
+          weights_v[cid] += w;
+
+      }
+
+      /* Distinct cells with local ci? */
+      else if (ci->nodeID == nodeID) {
+        /* Index of the jth cell. */
+        int cjd = cj - cells;
+
+        /* Add half of weight to each cell. */
+        if (taskvweights) {
+          if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
+          if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
+        }
+
+        /* Add weights to edge. */
+        int kk;
+        for (kk = 26 * cid; inds[kk] != cjd; kk++)
+          ;
+        weights_e[kk] += w;
+        for (kk = 26 * cjd; inds[kk] != cid; kk++)
+          ;
+        weights_e[kk] += w;
+      }
+    }
+  }
+
+  /* Re-calculate the vertices if using particle counts. */
+  if (partweights && bothweights) {
+    metis_repart_counts(s, weights_v);
+
+    /*  Rescale to balance times. */
+    float vwscale = (float)wtot / (float)e->sched.nr_tasks;
+    for (int k = 0; k < nr_cells; k++) {
+      weights_v[k] *= vwscale;
+    }
+  }
+
+  /* Get the minimum scaling and re-scale if necessary. */
+  int res;
+  if ((res = MPI_Allreduce(&wscale, &wscale_buff, 1, MPI_FLOAT, MPI_MIN,
+                           MPI_COMM_WORLD)) != MPI_SUCCESS)
+    mpi_error(res, "Failed to allreduce the weight scales.");
+
+  if (wscale_buff != wscale) {
+    float scale = wscale_buff / wscale;
+    for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
+    if (bothweights)
+      for (int k = 0; k < nr_cells; k++) weights_v[k] *= scale;
+  }
+
+  /* Merge the weights arrays across all nodes. */
+  if (bothweights) {
+    if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
+                          nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD)) !=
+        MPI_SUCCESS)
+      mpi_error(res, "Failed to allreduce vertex weights.");
+  }
+
+  if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
+                        26 * nr_cells, MPI_INT, MPI_SUM, 0,
+                        MPI_COMM_WORLD)) != MPI_SUCCESS)
+    mpi_error(res, "Failed to allreduce edge weights.");
+
+  /* Allocate cell list for the partition. */
+  int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
+  if (celllist == NULL) error("Failed to allocate celllist");
+
+  /* As of here, only one node needs to compute the partition. */
+  if (nodeID == 0) {
+    /* Final rescale of all weights to avoid a large range. Large ranges
+     * have been seen to cause an incomplete graph. */
+    wmin = wmax;
+    wmax = 0;
+    for (int k = 0; k < 26 * nr_cells; k++) {
+      wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
+      wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
+    }
+    if (bothweights) {
+      for (int k = 0; k < nr_cells; k++) {
+        wmax = weights_v[k] > wmax ? weights_v[k] : wmax;
+        wmin = weights_v[k] < wmin ? weights_v[k] : wmin;
+      }
+    }
+
+    if ((wmax - wmin) > engine_maxmetisweight) {
+      wscale = engine_maxmetisweight / (wmax - wmin);
+      for (int k = 0; k < 26 * nr_cells; k++) {
+        weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
+      }
+      if (bothweights) {
+        for (int k = 0; k < nr_cells; k++) {
+          weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
+        }
+      }
+    }
+
+    /* Make sure there are no zero weights. */
+    for (int k = 0; k < 26 * nr_cells; k++)
+      if (weights_e[k] == 0) weights_e[k] = 1;
+    if (bothweights)
+      for (int k = 0; k < nr_cells; k++)
+        if ((weights_v[k] *= vscale) == 0) weights_v[k] = 1;
+
+    /* And partition, use both weights or not as requested. */
+    if (bothweights)
+      part_pick_metis(s, nr_nodes, weights_v, weights_e, celllist);
+    else
+      part_pick_metis(s, nr_nodes, NULL, weights_e, celllist);
+
+    /* Check that all cells have good values. */
+    for (int k = 0; k < nr_cells; k++)
+      if (celllist[k] < 0 || celllist[k] >= nr_nodes)
+        error("Got bad nodeID %d for cell %i.", celllist[k], k);
+
+    /* Check that the partition is complete and all nodes have some work. */
+    int present[nr_nodes];
+    int failed = 0;
+    for (int i = 0; i < nr_nodes; i++) present[i] = 0;
+    for (int i = 0; i < nr_cells; i++) present[celllist[i]]++;
+    for (int i = 0; i < nr_nodes; i++) {
+      if (!present[i]) {
+        failed = 1;
+        message("Node %d is not present after repartition", i);
+      }
+    }
+
+    /* If partition failed continue with the current one, but make this
+     * clear. */
+    if (failed) {
+      message(
+              "WARNING: METIS repartition has failed, continuing with "
+              "the current partition, load balance will not be optimal");
+      for (int k = 0; k < nr_cells; k++) celllist[k] = cells[k].nodeID;
+    }
+  }
+
+  /* Distribute the celllist partition and apply. */
+  if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
+      MPI_SUCCESS)
+    mpi_error(res, "Failed to bcast the cell list");
+
+  /* And apply to our cells */
+  part_split_metis(s, nr_nodes, celllist);
+
+  /* Clean up. */
+  if (bothweights) free(weights_v);
+  free(weights_e);
+  free(celllist);
+}
+#endif
+
+#if defined(WITH_MPI) && defined(HAVE_METIS)
+/**
+ * @brief Repartition the cells amongst the nodes using vertex weights
+ *
+ * @param e The #engine.
+ */
+static void metis_repart_vertex(struct engine *e) {
+
+  struct space *s = e->s;
+
+  /* Use particle counts as vertex weights. */
+  /* Space for particles per cell counts, which will be used as weights. */
+  int *weights = NULL;
+  if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    error("Failed to allocate weights buffer.");
+
+  /* Check each particle and accumulate the counts per cell. */
+  metis_repart_counts(s, weights);
+
+  /* Get all the counts from all the nodes. */
+  int res;
+  if ((res = MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT,
+                           MPI_SUM, MPI_COMM_WORLD)) != MPI_SUCCESS)
+    mpi_error(res, "Failed to allreduce particle cell weights.");
+
+  /* Main node does the partition calculation. */
+  int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
+  if (celllist == NULL) error("Failed to allocate celllist");
+
+  if (e->nodeID == 0)
+    part_pick_metis(s, e->nr_nodes, weights, NULL, celllist);
+
+  /* Distribute the celllist partition and apply. */
+  if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
+      MPI_SUCCESS)
+    mpi_error(res, "Failed to bcast the cell list");
+
+  /* And apply to our cells */
+  part_split_metis(s, e->nr_nodes, celllist);
+
+  free(weights);
+  free(celllist);
+}
+#endif
+
+
 /**
  * @brief Repartition the cells amongst the nodes.
  *
@@ -297,323 +646,23 @@ void engine_repartition(struct engine *e) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  int nr_nodes = e->nr_nodes;
-  int nodeID = e->nodeID;
-  struct space *s = e->s;
-
   /* Clear the repartition flag. */
   enum repart_type reparttype = e->forcerepart;
   e->forcerepart = REPART_NONE;
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
-  if (nr_nodes == 1) return;
+  if (e->nr_nodes == 1) return;
 
+  /* Do the repartitioning. */
   if (reparttype == REPART_METIS_BOTH || reparttype == REPART_METIS_EDGE ||
       reparttype == REPART_METIS_VERTEX_EDGE) {
-    /* Create weight arrays using task ticks for vertices and edges (edges
-     * assume the same graph structure as used in the part_ calls), we will
-     * drop the vertices for _EDGE and _VERTEX_EDGE. */
-    int nr_cells = s->nr_cells;
-    struct cell *cells = s->cells;
-    struct task *t, *tasks = e->sched.tasks;
-    float wscale = 1e-3, vscale = 1e-3, wscale_buff;
-    int wtot = 0;
-    int wmax = 1e9 / e->nr_nodes;
-    int wmin;
 
-    /* Allocate and fill the adjncy indexing array defining the graph of
-     * cells.*/
-    int *inds;
-    if ((inds = (int *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
-      error("Failed to allocate the inds array");
-    part_graph_init_metis(s, inds, NULL);
-
-    /* Allocate and init weights. */
-    int *weights_v = NULL;
-    int *weights_e = NULL;
-    if ((weights_v = (int *)malloc(sizeof(int) * nr_cells)) == NULL ||
-        (weights_e = (int *)malloc(sizeof(int) * 26 * nr_cells)) == NULL)
-      error("Failed to allocate weights arrays.");
-    bzero(weights_v, sizeof(int) * nr_cells);
-    bzero(weights_e, sizeof(int) * 26 * nr_cells);
-
-    /* Loop over the tasks... */
-    for (int j = 0; j < e->sched.nr_tasks; j++) {
-      /* Get a pointer to the kth task. */
-      t = &tasks[j];
-
-      /* Skip un-interesting tasks. */
-      if (t->type != task_type_self && t->type != task_type_pair &&
-          t->type != task_type_sub && t->type != task_type_ghost &&
-          t->type != task_type_drift && t->type != task_type_kick &&
-          t->type != task_type_init)
-        continue;
-
-      /* Get the task weight. */
-      int w = (t->toc - t->tic) * wscale;
-      if (w < 0) error("Bad task weight (%d).", w);
-
-      /* Do we need to re-scale? */
-      wtot += w;
-      while (wtot > wmax) {
-        wscale /= 2;
-        wtot /= 2;
-        w /= 2;
-        for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
-        for (int k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
-      }
-
-      /* Get the top-level cells involved. */
-      struct cell *ci, *cj;
-      for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-        ;
-      if (t->cj != NULL)
-        for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-          ;
-      else
-        cj = NULL;
-
-      /* Get the cell IDs. */
-      int cid = ci - cells;
-
-      /* Different weights for different tasks. */
-      if (t->type == task_type_ghost || t->type == task_type_drift ||
-          t->type == task_type_kick) {
-        /* Particle updates add only to vertex weight. */
-        weights_v[cid] += w;
-
-      }
-
-      /* Self interaction? */
-      else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
-               (t->type == task_type_sub && cj == NULL &&
-                ci->nodeID == nodeID)) {
-        /* Self interactions add only to vertex weight. */
-        weights_v[cid] += w;
-
-      }
-
-      /* Pair? */
-      else if (t->type == task_type_pair ||
-               (t->type == task_type_sub && cj != NULL)) {
-        /* In-cell pair? */
-        if (ci == cj) {
-          /* Add weight to vertex for ci. */
-          weights_v[cid] += w;
-
-        }
-
-        /* Distinct cells with local ci? */
-        else if (ci->nodeID == nodeID) {
-          /* Index of the jth cell. */
-          int cjd = cj - cells;
-
-          /* Add half of weight to each cell. */
-          if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
-          if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
-
-          /* Add weights to edge. */
-          int kk;
-          for (kk = 26 * cid; inds[kk] != cjd; kk++)
-            ;
-          weights_e[kk] += w;
-          for (kk = 26 * cjd; inds[kk] != cid; kk++)
-            ;
-          weights_e[kk] += w;
-        }
-      }
-    }
-
-    /* Re-calculate the vertices if using particle counts. */
-    if (reparttype == REPART_METIS_VERTEX_EDGE) {
-      struct part *parts = s->parts;
-      int *cdim = s->cdim;
-      double ih[3], dim[3];
-      ih[0] = s->ih[0];
-      ih[1] = s->ih[1];
-      ih[2] = s->ih[2];
-      dim[0] = s->dim[0];
-      dim[1] = s->dim[1];
-      dim[2] = s->dim[2];
-      bzero(weights_v, sizeof(int) * s->nr_cells);
-      for (int k = 0; k < s->nr_parts; k++) {
-        for (int j = 0; j < 3; j++) {
-          if (parts[k].x[j] < 0.0)
-            parts[k].x[j] += dim[j];
-          else if (parts[k].x[j] >= dim[j])
-            parts[k].x[j] -= dim[j];
-        }
-        const int cid =
-            cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
-                       parts[k].x[2] * ih[2]);
-        weights_v[cid]++;
-      }
-
-      /*  Rescale to balance times. */
-      float vwscale = (float)wtot / (float)e->sched.nr_tasks;
-      for (int k = 0; k < nr_cells; k++) {
-        weights_v[k] *= vwscale;
-      }
-    }
-
-    /* Get the minimum scaling and re-scale if necessary. */
-    int res;
-    if ((res = MPI_Allreduce(&wscale, &wscale_buff, 1, MPI_FLOAT, MPI_MIN,
-                             MPI_COMM_WORLD)) != MPI_SUCCESS)
-      mpi_error(res, "Failed to allreduce the weight scales.");
-
-    if (wscale_buff != wscale) {
-      float scale = wscale_buff / wscale;
-      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
-      for (int k = 0; k < nr_cells; k++) weights_v[k] *= scale;
-    }
-
-    /* Merge the weights arrays across all nodes. */
-    if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
-                          nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD)) !=
-        MPI_SUCCESS)
-      mpi_error(res, "Failed to allreduce vertex weights.");
-
-    if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                          26 * nr_cells, MPI_INT, MPI_SUM, 0,
-                          MPI_COMM_WORLD)) != MPI_SUCCESS)
-      mpi_error(res, "Failed to allreduce edge weights.");
-
-    /* Allocate cell list for the partition. */
-    int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
-    if (celllist == NULL) error("Failed to allocate celllist");
-
-    /* As of here, only one node needs to compute the partition. */
-    if (nodeID == 0) {
-      /* Final rescale of all weights to avoid a large range. Large ranges
-       * have been seen to cause an incomplete graph. */
-      wmin = wmax;
-      wmax = 0;
-      for (int k = 0; k < 26 * nr_cells; k++) {
-        wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
-        wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
-      }
-      for (int k = 0; k < nr_cells; k++) {
-        wmax = weights_v[k] > wmax ? weights_v[k] : wmax;
-        wmin = weights_v[k] < wmin ? weights_v[k] : wmin;
-      }
-
-      if ((wmax - wmin) > engine_maxmetisweight) {
-        wscale = engine_maxmetisweight / (wmax - wmin);
-        for (int k = 0; k < 26 * nr_cells; k++) {
-          weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
-        }
-        for (int k = 0; k < nr_cells; k++) {
-          weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
-        }
-      }
-
-      /* Make sure there are no zero weights. */
-      for (int k = 0; k < 26 * nr_cells; k++)
-        if (weights_e[k] == 0) weights_e[k] = 1;
-      for (int k = 0; k < nr_cells; k++)
-        if ((weights_v[k] *= vscale) == 0) weights_v[k] = 1;
-
-      /* And partition, use both weights or not as requested. */
-      if (reparttype == REPART_METIS_BOTH)
-        part_pick_metis(s, e->nr_nodes, weights_v, weights_e, celllist);
-      else
-        part_pick_metis(s, e->nr_nodes, NULL, weights_e, celllist);
-
-      /* Check that all cells have good values. */
-      for (int k = 0; k < nr_cells; k++)
-        if (celllist[k] < 0 || celllist[k] >= nr_nodes)
-          error("Got bad nodeID %d for cell %i.", celllist[k], k);
-
-      /* Check that the partition is complete and all nodes have some work. */
-      int present[nr_nodes];
-      int failed = 0;
-      for (int i = 0; i < nr_nodes; i++) present[i] = 0;
-      for (int i = 0; i < nr_cells; i++) present[celllist[i]]++;
-      for (int i = 0; i < nr_nodes; i++) {
-        if (!present[i]) {
-          failed = 1;
-          message("Node %d is not present after repartition", i);
-        }
-      }
-
-      /* If partition failed continue with the current one, but make this
-       * clear. */
-      if (failed) {
-        message(
-            "WARNING: METIS repartition has failed, continuing with "
-            "the current partition, load balance will not be optimal");
-        for (int k = 0; k < nr_cells; k++) celllist[k] = cells[k].nodeID;
-      }
-    }
-
-    /* Distribute the celllist partition and apply. */
-    if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
-        MPI_SUCCESS)
-      mpi_error(res, "Failed to bcast the cell list");
-
-    /* And apply to our cells */
-    part_split_metis(s, e->nr_nodes, celllist);
-
-    /* Clean up. */
-    free(weights_v);
-    free(weights_e);
-    free(celllist);
-
+    metis_repart_edge(reparttype == REPART_METIS_VERTEX_EDGE,
+                      reparttype == REPART_METIS_BOTH, e);
   } else if (reparttype == REPART_METIS_VERTEX) {
-    /* Use particle counts as vertex weights. */
-    /* Space for particles per cell counts, which will be used as weights. */
-    int *weights = NULL;
-    if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
-      error("Failed to allocate weights buffer.");
-    bzero(weights, sizeof(int) * s->nr_cells);
 
-    /* Check each particle and accumulate the counts per cell. */
-    struct part *parts = s->parts;
-    int *cdim = s->cdim;
-    double ih[3], dim[3];
-    ih[0] = s->ih[0];
-    ih[1] = s->ih[1];
-    ih[2] = s->ih[2];
-    dim[0] = s->dim[0];
-    dim[1] = s->dim[1];
-    dim[2] = s->dim[2];
-    for (int k = 0; k < s->nr_parts; k++) {
-      for (int j = 0; j < 3; j++) {
-        if (parts[k].x[j] < 0.0)
-          parts[k].x[j] += dim[j];
-        else if (parts[k].x[j] >= dim[j])
-          parts[k].x[j] -= dim[j];
-      }
-      const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
-                                 parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
-      weights[cid]++;
-    }
-
-    /* Get all the counts from all the nodes. */
-    int res;
-    if ((res = MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT,
-                             MPI_SUM, MPI_COMM_WORLD)) != MPI_SUCCESS)
-      mpi_error(res, "Failed to allreduce particle cell weights.");
-
-    /* Main node does the partition calculation. */
-    int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
-    if (celllist == NULL) error("Failed to allocate celllist");
-
-    if (e->nodeID == 0)
-      part_pick_metis(s, e->nr_nodes, weights, NULL, celllist);
-
-    /* Distribute the celllist partition and apply. */
-    if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
-        MPI_SUCCESS)
-      mpi_error(res, "Failed to bcast the cell list");
-
-    /* And apply to our cells */
-    part_split_metis(s, e->nr_nodes, celllist);
-
-    if (weights != NULL) free(weights);
-    free(celllist);
+    metis_repart_vertex(e);
   }
 
   /* Now comes the tricky part: Exchange particles between all nodes.
@@ -2061,7 +2110,7 @@ void engine_split(struct engine *e, struct initpart *ipart) {
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }
-    
+
     /* The grid technique can fail, so check for this before proceeding. */
     if (!part_check_complete(s, (e->nodeID == 0), e->nr_nodes)) {
       if (e->nodeID == 0)
@@ -2129,7 +2178,7 @@ void engine_split(struct engine *e, struct initpart *ipart) {
 
     /* It's not known if this can fail, but check for this before proceeding. */
     if (!part_check_complete(s, (e->nodeID == 0), e->nr_nodes)) {
-      if (e->nodeID == 0) 
+      if (e->nodeID == 0)
         message("METIS initial partition failed, using a vectorised partition");
       ipart->type = INITPART_VECTORIZE;
       engine_split(e, ipart);
