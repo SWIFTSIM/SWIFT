@@ -427,6 +427,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
         cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
     cells[ind[k]].gcount++;
   }
+  
+ 
   // message( "getting particle indices took %.3f ms." , (double)(getticks() -
   // tic) / CPU_TPS * 1000 );
 

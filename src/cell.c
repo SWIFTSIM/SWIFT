@@ -447,11 +447,11 @@ void cell_split(struct cell *c) {
     c->progeny[k]->parts = &c->parts[left[k]];
     c->progeny[k]->xparts = &c->xparts[left[k]];
   }
-
+#ifdef LINK
   /* Re-link the gparts. THIS IS BROKEN BUT NEEDS MENDING J & T */
-  /* for (k = 0; k < count; k++) */
-  /*   if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k]; */
-
+  for (k = 0; k < count; k++) 
+    if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k]; 
+#endif
   /* Verify that _all_ the parts have been assigned to a cell. */
   /* for ( k = 1 ; k < 8 ; k++ )
       if ( &c->progeny[k-1]->parts[ c->progeny[k-1]->count ] !=
@@ -541,10 +541,11 @@ void cell_split(struct cell *c) {
     c->progeny[k]->gcount = right[k] - left[k] + 1;
     c->progeny[k]->gparts = &c->gparts[left[k]];
   }
-
+#ifdef LINK
   /* Re-link the parts. */
   for (k = 0; k < gcount; k++)
     if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
+#endif
 }
 
 /**

@@ -31,6 +31,9 @@
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_iact.h"
 #include "./hydro/Default/hydro.h"
+#elif defined(NO_SPH)
+#include "./hydro/Gadget2/hydro_iact.h"
+#include "./hydro/Gadget2/hydro.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

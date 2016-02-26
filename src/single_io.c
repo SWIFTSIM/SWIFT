@@ -298,7 +298,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * Calls #error() if an error occurs.
  *
  */
-void read_ic_single(char* fileName, double dim[3], struct part** parts, struct gpart** gparts,
+void read_ic_single(char* fileName, double dim[3], struct part** parts, struct gpart **gparts, 
 		    int *Ngas, int *Ndm, int* periodic) {
   hid_t h_file = 0, h_grp = 0;
   double boxSize[3] = {0.0, -1.0, -1.0};

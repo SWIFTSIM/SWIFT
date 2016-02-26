@@ -67,14 +67,16 @@
 
 /* SPH variant to use */
 //#define MINIMAL_SPH
-#define GADGET2_SPH
+//#define GADGET2_SPH
 //#define DEFAULT_SPH
-
+#define NO_SPH
 
 /* Gravity properties */
 #define GRAVITY
 /* valid choices DEFAULT_GRAVITY || EXTERNAL_POTENTIAL */
 #define EXTERNAL_POTENTIAL
+//#define DEFAULT_GRAVITY
+
 
 /* System of units */
 #define const_unit_length_in_cgs 1   /* 3.08567810e16  /\* 1Mpc *\/ */

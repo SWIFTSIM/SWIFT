@@ -56,6 +56,12 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+#if defined(MINIMAL_SPH) || defined(GADGET2_SPH) || defined(DEFAULT_SPH)
+#define ENGINE_HYDRO engine_policy_hydro
+#else
+#define ENGINE_HYDRO 0
+#endif
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -63,7 +69,7 @@
 
 int main(int argc, char *argv[]) {
 
-  int c, icount, j, k, Ngas, Ndm, periodic = 1;
+  int c, icount, j, k, Ngas = 0, Ndm = 0, periodic = 1;
   long long N_total = -1;
   int nr_threads = 1, nr_queues = -1;
   int dump_tasks = 0;
@@ -265,10 +271,10 @@ int main(int argc, char *argv[]) {
   tic = getticks();
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, dim, &parts, &gparts, &Ngas, &Ndm, &periodic, myrank, nr_nodes,
+  read_ic_parallel(ICfileName, dim, &gparts, &Ndm, &periodic, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ndm, &periodic, myrank, nr_nodes,
+  read_ic_serial(ICfileName, dim, &gparts, &Ndm, &periodic, myrank, nr_nodes,
                  MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
@@ -282,7 +288,7 @@ int main(int argc, char *argv[]) {
 
 #if defined(WITH_MPI)
   long long tmp;
-  long long N_long = Ngas;
+  long long N_long = Ngas + Ndm;
   MPI_Reduce(&N_long, &tmp, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
   long long N_long = Ndm;
   MPI_Reduce(&N_long, &N_total, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -292,9 +298,12 @@ int main(int argc, char *argv[]) {
 #endif
   if (myrank == 0) message("Read %lld particles from the ICs", N_total);
 
+  j = 0;
   /* Apply h scaling */
-  if (scaling != 1.0)
-    for (k = 0; k < Ngas; k++) parts[k].h *= scaling;
+  if (scaling != 1.0) {
+    for (k = 0; k < Ngas; k++)
+      parts[k].h *= scaling;
+  }
 
   /* Apply shift */
   if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
@@ -331,6 +340,7 @@ int main(int argc, char *argv[]) {
     message("%i gas parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%i dm parts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
+    message("gparts[10].id = %ld.", gparts[10].id);
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
 
@@ -352,7 +362,7 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal | engine_policy_hydro, 0,
+              ENGINE_POLICY | engine_policy_steal | ENGINE_HYDRO, 0,
               time_end, dt_min, dt_max);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
@@ -398,10 +408,10 @@ int main(int argc, char *argv[]) {
         N_total, time_end, e.nr_threads, e.sched.nr_queues, e.dt_min, e.dt_max);
     fflush(stdout);
   }
-
+ 
   /* Initialise the particles */
   engine_init_particles(&e);
-  exit(-99);
+  //exit(-99);
   /* Legend */
   if (myrank == 0)
     printf(

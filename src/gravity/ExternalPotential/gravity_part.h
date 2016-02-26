@@ -22,14 +22,14 @@
 /* Some standard headers. */
 #include <stdlib.h>
 
-
+#ifdef DONOTUSEYET
 /* properties of external potential */
 static struct ExternalPointMass
 {
   const float Mass;
   const float Position[3];
 } PointMass = {.Mass = 1, .Position={0.,0.,0.}};
-
+#endif
 
 /* Gravity particle. */
 struct gpart {

@@ -1100,6 +1100,7 @@ void engine_maketasks(struct engine *e) {
         }
       }
 
+#ifdef DEFAULT_GRAVITY
   /* Add the gravity mm tasks. */
   for (i = 0; i < nr_cells; i++)
     if (cells[i].gcount > 0) {
@@ -1110,7 +1111,9 @@ void engine_maketasks(struct engine *e) {
           scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
                             &cells[i], &cells[j], 0);
     }
-
+#endif
+  scheduler_print_tasks(sched, "sched.txt");
+  return;
   /* Split the tasks. */
   scheduler_splittasks(sched);
 
@@ -1122,7 +1125,7 @@ void engine_maketasks(struct engine *e) {
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
-
+#ifdef GRAVITY
   /* Add the gravity up/down tasks at the top-level cells and push them down. */
   for (k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
@@ -1138,7 +1141,7 @@ void engine_maketasks(struct engine *e) {
       /* Push tasks down the cell hierarchy. */
       engine_addtasks_grav(e, &cells[k], up, down);
     }
-
+#endif
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
@@ -1184,7 +1187,7 @@ void engine_maketasks(struct engine *e) {
         }
       }
     }
-
+#ifdef DEFAULT_GRAVITY
     /* Link gravity multipole tasks to the up/down tasks. */
     if (t->type == task_type_grav_mm ||
         (t->type == task_type_sub && t->subtype == task_subtype_grav)) {
@@ -1196,8 +1199,8 @@ void engine_maketasks(struct engine *e) {
         scheduler_addunlock(sched, t, t->cj->grav_down);
       }
     }
+#endif
   }
-
   /* Append a ghost task to each cell, and add kick tasks to the
      super cells. */
   for (k = 0; k < nr_cells; k++) engine_mkghosts(e, &cells[k], NULL);
@@ -1505,6 +1508,7 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the tasks. */
   // tic = getticks();
   engine_maketasks(e);
+
   // message( "engine_maketasks took %.3f ms." , (double)(getticks() -
   // tic)/CPU_TPS*1000 );
 
@@ -1724,7 +1728,7 @@ void engine_init_particles(struct engine *e) {
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
-
+  
   engine_marktasks(e);
 
   // printParticle(e->s->parts, 1000, e->s->nr_parts);
@@ -1775,7 +1779,7 @@ void engine_init_particles(struct engine *e) {
   TIMER_TIC;
   engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);
-
+ 
 // message("\n0th ENTROPY CONVERSION\n")
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
