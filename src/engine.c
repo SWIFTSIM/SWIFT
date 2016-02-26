@@ -1113,7 +1113,7 @@ void engine_maketasks(struct engine *e) {
     }
 #endif
   scheduler_print_tasks(sched, "sched.txt");
-  return;
+
   /* Split the tasks. */
   scheduler_splittasks(sched);
 
