@@ -54,7 +54,9 @@ nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel.h
 		 hydro/Default/hydro.h hydro/Default/hydro_iact.h hydro/Default/hydro_io.h \
                  hydro/Default/hydro_debug.h hydro/Default/hydro_part.h \
 		 hydro/Gadget2/hydro.h hydro/Gadget2/hydro_iact.h hydro/Gadget2/hydro_io.h \
-                 hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h
+                 hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
+		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h hydro/Gizmo/hydro_io.h \
+                 hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h
 
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)
