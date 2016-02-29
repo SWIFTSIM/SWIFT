@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,38 +16,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-/* Some standard headers. */
-#include <stdlib.h>
+#ifndef SWIFT_RIEMANN_H
+#define SWIFT_RIEMANN_H
 
-/* Gravity particle. */
-struct gpart {
+/* gives us const_hydro_gamma and tells us which floating point type to use */
+#include "const.h"
+#include "math.h"
+#include "stdio.h"
+#include "float.h"
+#include "stdlib.h"
+#include "error.h"
 
-  /* Particle position. */
-  double x[3];
+#define HLLC_SOLVER
 
-  /* Particle velocity. */
-  float v[3];
+#ifdef EXACT_SOLVER
+#include "riemann/riemann_exact.h"
+#endif
 
-  /* Particle acceleration. */
-  float a[3];
+#ifdef TRRS_SOLVER
+#include "riemann/riemann_trrs.h"
+#endif
 
-  /* Particle mass. */
-  float mass;
+#ifdef HLLC_SOLVER
+#include "riemann/riemann_hllc.h"
+#endif
 
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
-
-  /* Anonymous union for id/part. */
-  union {
-
-    /* Particle ID. */
-    size_t id;
-
-    /* Pointer to corresponding SPH part. */
-    struct part* part;
-  };
-
-} __attribute__((aligned(part_align)));
+#endif /* SWIFT_RIEMANN_H */

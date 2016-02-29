@@ -75,12 +75,12 @@ void printgParticle(struct gpart *parts, long long int id, int N) {
     if (parts[i].id == -id || (parts[i].id > 0 && parts[i].part->id == id)) {
       printf(
           "## gParticle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
-          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%.3e, "
-          "t_end=%.3e\n",
+          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%d, "
+          "t_end=%d\n",
           i, parts[i].part->id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
           parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
-          parts[i].a[1], parts[i].a[2], parts[i].mass, parts[i].t_begin,
-          parts[i].t_end);
+          parts[i].a[1], parts[i].a[2], parts[i].mass, parts[i].ti_begin,
+          parts[i].ti_end);
       found = 1;
     }
 

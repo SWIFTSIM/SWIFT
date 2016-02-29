@@ -116,10 +116,11 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
- * @param time The current time
+ * @param ti_current The current time (on the timeline)
+ * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* p, struct xpart* xp, float time) {
+    struct part* p, struct xpart* xp, int ti_current, double timeBase) {
 
   p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);
 }
@@ -154,11 +155,12 @@ __attribute__((always_inline))
  *
  * @param p The particle
  * @param xp The extended data of the particle
- * @param t0 The time at the start of the drift
- * @param t1 The time at the end of the drift
+ * @param t0 The time at the start of the drift (on the timeline)
+ * @param t1 The time at the end of the drift (on the timeline)
+ * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float t0, float t1) {
+    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
 
   const float dt = t1 - t0;
 
