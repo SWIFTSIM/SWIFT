@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.1.0])
+AC_INIT([SWIFT],[0.2.0])
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
@@ -270,11 +270,13 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[true],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
+have_numa="no"
 if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
   # Check for libnuma.
   AC_CHECK_HEADER([numa.h])
   if test "$ac_cv_header_numa_h" = "yes"; then
     AC_CHECK_LIB([numa], [numa_available])
+    have_numa="yes"
   fi
 fi
 
@@ -335,14 +337,15 @@ AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfi
 
 # Report general configuration.
 AC_MSG_RESULT([
-   Compiler: $CC
-     vendor: $ax_cv_c_compiler_vendor
-    version: $ax_cv_c_compiler_version
-      flags: $CFLAGS
-   MPI enabled: $enable_mpi
-   HDF5 enabled: $with_hdf5
-       parallel: $have_parallel_hdf5
-   Metis enabled: $with_metis
+   Compiler        : $CC
+    - vendor       : $ax_cv_c_compiler_vendor
+    - version      : $ax_cv_c_compiler_version
+    - flags        : $CFLAGS
+   MPI enabled     : $enable_mpi
+   HDF5 enabled    : $with_hdf5
+    - parallel     : $have_parallel_hdf5
+   Metis enabled   : $with_metis
+   libNUMA enabled : $have_numa
 ])
 
 # Generate output.
