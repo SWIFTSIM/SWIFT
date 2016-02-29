@@ -1,5 +1,6 @@
 # This file is part of SWIFT.
 # Copyright (C) 2012 pedro.gonnet@durham.ac.uk.
+#               2016 p.w.draper@durham.ac.uk.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,12 +38,42 @@ AM_PROG_CC_C_O
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
 
-# Add libtool support.
-LT_INIT
-
 # Check for compiler version and vendor.
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
+
+# Interprocedural optimization support. Needs special handling for linking and
+# archiving as well as compilation with Intels, needs to be done before
+# libtool is configured (to use correct LD).
+AC_ARG_ENABLE([ipo],
+   [AS_HELP_STRING([--enable-ipo],
+     [Enable interprocedural optimization @<:@no/yes@:>@]
+   )],
+   [enable_ipo="$enableval"],
+   [enable_ipo="no"]
+)
+
+if test "$enable_ipo" = "yes"; then
+   if test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -ip -ipo"
+      LDFLAGS="$LDFLAGS -ipo"
+      : ${AR="xiar"}
+      : ${LD="xild"}
+      AC_MSG_RESULT([added Intel interprocedural optimization support])
+   elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      CFLAGS="$CFLAGS -flto"
+      LDFLAGS="$LDFLAGS -flto"
+      AC_MSG_RESULT([added GCC interprocedural optimization support])
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      CFLAGS="$CFLAGS -emit-llvm"
+      AC_MSG_RESULT([added LLVM interprocedural optimization support])
+   else
+      AC_MSG_WARN([Compiler does not support interprocedural optimization])
+   fi
+fi
+
+# Add libtool support.
+LT_INIT
 
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
 # as this changes the compiler.
@@ -179,6 +210,7 @@ if test "$enable_san" = "yes"; then
    fi
    if test "$enable_san" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
+      AC_MSG_RESULT([added address sanitizer support])
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
    fi
@@ -320,12 +352,12 @@ AC_ARG_ENABLE([compiler-warnings],
 if test "$enable_warn" != "no"; then
     AX_CFLAGS_WARN_ALL
     if test "$enable_warn" = "error"; then
-       case "$ax_cv_c_compiler_vendor" in 
-          intel | gnu ) 
+       case "$ax_cv_c_compiler_vendor" in
+          intel | gnu )
              CFLAGS="$CFLAGS -Werror"
           ;;
        esac
-    fi     
+    fi
 fi
 
 # Check for git, needed for revision stamps.
