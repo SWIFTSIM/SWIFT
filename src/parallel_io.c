@@ -247,7 +247,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   }
 
   /* Create dataset */
-  h_data = H5Dcreate(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  h_data = H5Dcreate(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while creating dataset '%s'.", name);
   }
