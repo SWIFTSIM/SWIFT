@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ * Copyright (c) 2016 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *                    Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,9 +21,10 @@
 /**
  *  @file partition.c
  *  @brief file of various techniques for partitioning and repartitioning
- *  a grid of cells into geometrically connected regions.
+ *  a grid of cells into geometrically connected regions and distributing
+ *  these around a number of MPI nodes.
  *
- *  Currently supported types, grid, vectorise and METIS.
+ *  Currently supported partitioning types: grid, vectorise and METIS.
  */
 
 /* Config parameters. */
@@ -50,11 +52,6 @@
 #include "const.h"
 #include "error.h"
 #include "debug.h"
-
-/* Useful defines. */
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) > (b) ? (b) : (a))
-#define CHUNK 512
 
 /* Maximum weight used for METIS. */
 #define metis_maxweight 10000.0f
@@ -126,8 +123,8 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
 /**
  * @brief Partition the space.
  *
- * Using the sample positions as seeds pick cells that are geometry closest
- * to each and apply the partition to the space.
+ * Using the sample positions as seeds pick cells that are geometrically
+ * closest and apply the partition to the space.
  */
 static void split_vector(struct space *s, int nregions, int *samplecells) {
   int n = 0;
@@ -160,6 +157,10 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
  * METIS partitions using a multi-level k-way scheme. We support using this in
  * a unweighted scheme, which works well and seems to be guaranteed, and a
  * weighted by the number of particles scheme. Note METIS is optional.
+ *
+ * Repartitioning is based on METIS and uses weights determined from the times
+ * that cell tasks have taken. These weight the graph edges and vertices, or
+ * just the edges, with vertex weights from the particle counts or none.
  */
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
@@ -289,7 +290,8 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
  * @brief Partition the given space into a number of connected regions.
  *
  * Split the space using METIS to derive a partitions using the
- * cell particle counts as weights.
+ * given edge and vertex weights. If no weights are given then an 
+ * unweighted partition is performed.
  *
  * @param s the space of cells to partition.
  * @param nregions the number of regions required in the partition.
@@ -650,8 +652,7 @@ static void repart_edge_metis(int partweights, int bothweights,
     /* If partition failed continue with the current one, but make this
      * clear. */
     if (failed) {
-      message(
-              "WARNING: METIS repartition has failed, continuing with "
+      message("WARNING: METIS repartition has failed, continuing with "
               "the current partition, load balance will not be optimal");
       for (int k = 0; k < nr_cells; k++) celllist[k] = cells[k].nodeID;
     }
@@ -767,7 +768,7 @@ void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes,
 }
 
 /**
- * @brief Partition the cells of a space.
+ * @brief Initial partition of space cells.
  *
  * Cells are assigned to a node on the basis of various schemes, all of which
  * should attempt to distribute them in geometrically close regions to

@@ -1720,11 +1720,10 @@ void engine_makeproxies(struct engine *e) {
 }
 
 /**
- * @brief Split the underlying space according to the given grid.
+ * @brief Split the underlying space into regions and assign to separate nodes.
  *
  * @param e The #engine.
- * @param ipart initpart structure define the partition technique and any
- *              additional metadata.
+ * @param ipart structure defining the cell partition technique
  */
 
 void engine_split(struct engine *e, struct initpart *ipart) {
