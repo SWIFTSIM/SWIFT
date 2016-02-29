@@ -508,7 +508,8 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
 
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
-  h_grp = H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  h_grp =
+      H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating runtime parameters group\n");
 
   /* Write the relevant information */
@@ -546,7 +547,7 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
-  h_grpsph = H5Gcreate(h_file, "/SPH" ,H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  h_grpsph = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grpsph < 0) error("Error while creating SPH group");
   writeSPHflavour(h_grpsph);
   H5Gclose(h_grpsph);
@@ -556,7 +557,8 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
 
   /* Create SPH particles group */
   /* message("Writing particle arrays..."); */
-  h_grp = H5Gcreate(h_file, "/PartType0", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  h_grp =
+      H5Gcreate(h_file, "/PartType0", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating particle group.\n");
 
   /* Write particle fields from the particle structure */
