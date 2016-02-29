@@ -51,13 +51,9 @@ enum repart_type {
 /* Simple descriptions of types for reports. */
 extern const char *repart_name[];
 
-void part_pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
-                     int *celllist);
-
 void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes, 
                  struct space *s, struct task *tasks, int nr_tasks);
 void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
                struct space *s);
-int part_check_complete(struct space *s, int verbose, int nregions);
 
 #endif /* SWIFT_PARTITION_H */

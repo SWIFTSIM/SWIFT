@@ -73,6 +73,9 @@ const char *repart_name[] = {
     "METIS particle count vertex and time edge cells"
 };
 
+/* Local functions, if needed. */
+static int check_complete(struct space *s, int verbose, int nregions);
+
 /*  Vectorisation support */
 /*  ===================== */
 
@@ -807,7 +810,7 @@ void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
     }
 
     /* The grid technique can fail, so check for this before proceeding. */
-    if (!part_check_complete(s, (nodeID == 0), nr_nodes)) {
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
       if (nodeID == 0)
         message("Grid initial partition failed, using a vectorised partition");
       ipart->type = INITPART_VECTORIZE;
@@ -874,7 +877,7 @@ void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
     split_metis(s, nr_nodes, celllist);
 
     /* It's not known if this can fail, but check for this before proceeding. */
-    if (!part_check_complete(s, (nodeID == 0), nr_nodes)) {
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
       if (nodeID == 0)
         message("METIS initial partition failed, using a vectorised partition");
       ipart->type = INITPART_VECTORIZE;
@@ -926,7 +929,7 @@ void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
  * @param verbose if true report the missing regions.
  * @return true if all regions have been found, false otherwise.
  */
-int part_check_complete(struct space *s, int verbose, int nregions) {
+static int check_complete(struct space *s, int verbose, int nregions) {
 
   int *present = (int *)malloc(sizeof(int) * nregions);
   if (present == NULL) error("Failed to allocate present array");
