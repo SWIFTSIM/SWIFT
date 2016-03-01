@@ -150,7 +150,7 @@ struct engine {
 
   /* Force the engine to rebuild? */
   int forcerebuild;
-  enum repart_type forcerepart;
+  enum repartition_type forcerepart;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -178,7 +178,7 @@ void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
-void engine_split(struct engine *e, struct initpart *ipart);
+void engine_split(struct engine *e, struct partition *initial_partition);
 int engine_exchange_strays(struct engine *e, int offset, int *ind, int N);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);

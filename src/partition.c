@@ -31,11 +31,11 @@
 #include "../config.h"
 
 /* Standard headers. */
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <values.h>
 #include <strings.h>
+#include <values.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -47,17 +47,17 @@
 #endif
 
 /* Local headers. */
-#include "space.h"
-#include "partition.h"
 #include "const.h"
-#include "error.h"
 #include "debug.h"
+#include "error.h"
+#include "partition.h"
+#include "space.h"
 
 /* Maximum weight used for METIS. */
 #define metis_maxweight 10000.0f
 
 /* Simple descriptions of initial partition types for reports. */
-const char *initpart_name[] = {
+const char *initial_partition_name[] = {
     "gridded cells",
     "vectorized point associated cells",
     "METIS particle weighted cells",
@@ -65,7 +65,7 @@ const char *initpart_name[] = {
 };
 
 /* Simple descriptions of repartition types for reports. */
-const char *repart_name[] = {
+const char *repartition_name[] = {
     "no",
     "METIS edge and vertex time weighted cells",
     "METIS particle count vertex weighted cells",
@@ -293,7 +293,7 @@ static void split_metis(struct space *s, int nregions, int *celllist) {
  * @brief Partition the given space into a number of connected regions.
  *
  * Split the space using METIS to derive a partitions using the
- * given edge and vertex weights. If no weights are given then an 
+ * given edge and vertex weights. If no weights are given then an
  * unweighted partition is performed.
  *
  * @param s the space of cells to partition.
@@ -735,8 +735,9 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes,
-                 struct space *s, struct task *tasks, int nr_tasks) {
+void partition_repartition(enum repartition_type reparttype, int nodeID,
+                           int nr_nodes, struct space *s, struct task *tasks,
+                           int nr_tasks) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
@@ -781,30 +782,33 @@ void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes,
  * scheme fails. In that case we fallback to a vectorised scheme, that is
  * guaranteed to work provided we have more cells than nodes.
  *
- * @param ipart the type of partitioning to try.
+ * @param initial_partition the type of partitioning to try.
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells.
  */
-void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
-               struct space *s) {
+void partition_initial_partition(struct partition *initial_partition,
+                                 int nodeID, int nr_nodes, struct space *s) {
 
   /* Geometric grid partitioning. */
-  if (ipart->type == INITPART_GRID) {
+  if (initial_partition->type == INITPART_GRID) {
     int j, k;
     int ind[3];
     struct cell *c;
 
     /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes != ipart->grid[0] * ipart->grid[1] * ipart->grid[2])
+    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1]
+        * initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
     // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
     for (k = 0; k < s->nr_cells; k++) {
       c = &s->cells[k];
-      for (j = 0; j < 3; j++) ind[j] = c->loc[j] / s->dim[j] * ipart->grid[j];
-      c->nodeID = ind[0] + ipart->grid[0] * (ind[1] + ipart->grid[1] * ind[2]);
+      for (j = 0; j < 3; j++)
+          ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
+      c->nodeID = ind[0] + initial_partition->grid[0] *
+                 (ind[1] + initial_partition->grid[1] * ind[2]);
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }
@@ -813,13 +817,13 @@ void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
       if (nodeID == 0)
         message("Grid initial partition failed, using a vectorised partition");
-      ipart->type = INITPART_VECTORIZE;
-      part_part(ipart, nodeID, nr_nodes, s);
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
       return;
     }
 
-  } else if (ipart->type == INITPART_METIS_WEIGHT ||
-             ipart->type == INITPART_METIS_NOWEIGHT) {
+  } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
+             initial_partition->type == INITPART_METIS_NOWEIGHT) {
 #if defined(WITH_MPI) && defined(HAVE_METIS)
     /* Simple k-way partition selected by METIS using cell particle counts as
      * weights or not. Should be best when starting with a inhomogeneous dist.
@@ -828,7 +832,7 @@ void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
     /* Space for particles per cell counts, which will be used as weights or
      * not. */
     int *weights = NULL;
-    if (ipart->type == INITPART_METIS_WEIGHT) {
+    if (initial_partition->type == INITPART_METIS_WEIGHT) {
         if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
         error("Failed to allocate weights buffer.");
       bzero(weights, sizeof(int) * s->nr_cells);
@@ -876,12 +880,13 @@ void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist);
 
-    /* It's not known if this can fail, but check for this before proceeding. */
+    /* It's not known if this can fail, but check for this before
+     * proceeding. */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
       if (nodeID == 0)
         message("METIS initial partition failed, using a vectorised partition");
-      ipart->type = INITPART_VECTORIZE;
-      part_part(ipart, nodeID, nr_nodes, s);
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
     }
 
     if (weights != NULL) free(weights);
@@ -890,7 +895,7 @@ void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
     error("SWIFT was not compiled with METIS support");
 #endif
 
-  } else if (ipart->type == INITPART_VECTORIZE) {
+  } else if (initial_partition->type == INITPART_VECTORIZE) {
 
 #if defined(WITH_MPI)
     /* Vectorised selection, guaranteed to work for samples less than the

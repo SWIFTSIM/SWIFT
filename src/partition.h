@@ -23,7 +23,7 @@
 #include "task.h"
 
 /* Initial partitioning types. */
-enum initpart_type {
+enum partition_type {
   INITPART_GRID = 0,
   INITPART_VECTORIZE,
   INITPART_METIS_WEIGHT,
@@ -31,16 +31,15 @@ enum initpart_type {
 };
 
 /* Simple descriptions of types for reports. */
-extern const char *initpart_name[];
+extern const char *initial_partition_name[];
 
 /* The selected initial partition type and any related metadata. */
-struct initpart {
-  enum initpart_type type;
+struct partition {
+  enum partition_type type;
   int grid[3];
 };
-
 /* Repartition type to use. */
-enum repart_type {
+enum repartition_type {
   REPART_NONE = 0,
   REPART_METIS_BOTH,
   REPART_METIS_VERTEX,
@@ -49,11 +48,12 @@ enum repart_type {
 };
 
 /* Simple descriptions of types for reports. */
-extern const char *repart_name[];
+extern const char *repartition_name[];
 
-void part_repart(enum repart_type reparttype, int nodeID, int nr_nodes, 
-                 struct space *s, struct task *tasks, int nr_tasks);
-void part_part(struct initpart *ipart, int nodeID, int nr_nodes,
-               struct space *s);
+void partition_repartition(enum repartition_type reparttype, int nodeID,
+                           int nr_nodes, struct space *s,
+                           struct task *tasks, int nr_tasks);
+void partition_initial_partition(struct partition *initial_partition,
+                                 int nodeID, int nr_nodes, struct space *s);
 
 #endif /* SWIFT_PARTITION_H */

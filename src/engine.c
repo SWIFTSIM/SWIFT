@@ -52,8 +52,8 @@
 #include "hydro.h"
 #include "minmax.h"
 #include "part.h"
-#include "timers.h"
 #include "partition.h"
+#include "timers.h"
 
 const char *engine_policy_names[12] = {
     "none",          "rand",   "steal",        "keep",
@@ -297,7 +297,7 @@ void engine_repartition(struct engine *e) {
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
   /* Clear the repartition flag. */
-  enum repart_type reparttype = e->forcerepart;
+  enum repartition_type reparttype = e->forcerepart;
   e->forcerepart = REPART_NONE;
 
   /* Nothing to do if only using a single node. Also avoids METIS
@@ -305,8 +305,8 @@ void engine_repartition(struct engine *e) {
   if (e->nr_nodes == 1) return;
 
   /* Do the repartitioning. */
-  part_repart(reparttype, e->nodeID, e->nr_nodes, e->s, e->sched.tasks, 
-              e->sched.nr_tasks);
+  partition_repartition(reparttype, e->nodeID, e->nr_nodes, e->s,
+                        e->sched.tasks, e->sched.nr_tasks);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
@@ -1730,16 +1730,16 @@ void engine_makeproxies(struct engine *e) {
  * @brief Split the underlying space into regions and assign to separate nodes.
  *
  * @param e The #engine.
- * @param ipart structure defining the cell partition technique
+ * @param initial_partition structure defining the cell partition technique
  */
 
-void engine_split(struct engine *e, struct initpart *ipart) {
+void engine_split(struct engine *e, struct partition *initial_partition) {
 
 #ifdef WITH_MPI
   struct space *s = e->s;
 
   /* Do the initial partition of the cells. */
-  part_part(ipart, e->nodeID, e->nr_nodes, s);
+  partition_initial_partition(initial_partition, e->nodeID, e->nr_nodes, s);
 
   /* Make the proxies. */
   engine_makeproxies(e);
@@ -1830,7 +1830,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
       int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
       bool done = false, swap_hyperthreads = hyperthreads_present();
-      if (swap_hyperthreads && nodeID == 0) 
+      if (swap_hyperthreads && nodeID == 0)
 	message("prefer physical cores to hyperthreads");
 
       while (!done) {
