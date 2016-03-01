@@ -148,10 +148,14 @@ if test "$enable_opt" = "yes" ; then
    ac_test_CFLAGS="yes"
    CFLAGS="$old_CFLAGS $CFLAGS"
 
-   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
+   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT). 
+   # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
+   # value from AX_CC_MAXOPT should be sufficient.
    AX_EXT
    if test "$SIMD_FLAGS" != ""; then
-       CFLAGS="$CFLAGS $SIMD_FLAGS"
+       if test "$ax_cv_c_compiler_vendor" != "intel"; then
+           CFLAGS="$CFLAGS $SIMD_FLAGS"
+       fi
    fi
 fi
 
