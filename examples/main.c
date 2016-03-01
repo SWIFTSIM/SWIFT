@@ -82,19 +82,20 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
-  struct partition initial_partition;
-#if defined(WITH_MPI) && defined(HAVE_METIS)
-  enum repartition_type reparttype = REPART_METIS_BOTH;
-#endif
 
-  /* Default initial partition type is grid for shared memory and when
-   * METIS is not available. */
+#ifdef WITH_MPI
+  struct partition initial_partition;
+  enum repartition_type reparttype = REPART_NONE;
+
   initial_partition.type = INITPART_GRID;
   initial_partition.grid[0] = 1;
   initial_partition.grid[1] = 1;
   initial_partition.grid[2] = 1;
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#ifdef HAVE_METIS
+  /* Defaults make use of METIS. */
+  reparttype = REPART_METIS_BOTH;
   initial_partition.type = INITPART_METIS_NOWEIGHT;
+#endif
 #endif
 
 /* Choke on FP-exceptions. */
@@ -193,6 +194,7 @@ int main(int argc, char *argv[]) {
       case 'P':
         /* Partition type is one of "g", "m", "w", or "v"; "g" can be
          * followed by three numbers defining the grid. */
+#ifdef WITH_MPI
         switch (optarg[0]) {
           case 'g':
             initial_partition.type = INITPART_GRID;
@@ -203,28 +205,33 @@ int main(int argc, char *argv[]) {
                 error("Error parsing grid.");
             }
             break;
+#ifdef HAVE_METIS
           case 'm':
             initial_partition.type = INITPART_METIS_NOWEIGHT;
             break;
           case 'w':
             initial_partition.type = INITPART_METIS_WEIGHT;
             break;
+#endif
           case 'v':
             initial_partition.type = INITPART_VECTORIZE;
             break;
         }
+#endif
         break;
       case 'q':
         if (sscanf(optarg, "%d", &nr_queues) != 1)
           error("Error parsing number of queues.");
         break;
       case 'R':
-        /* Repartition type "n", "b", "v", "e" or "x". */
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+        /* Repartition type "n", "b", "v", "e" or "x". 
+         * Note only none is available without METIS. */
+#ifdef WITH_MPI
         switch (optarg[0]) {
           case 'n':
             reparttype = REPART_NONE;
             break;
+#ifdef HAVE_METIS
           case 'b':
             reparttype = REPART_METIS_BOTH;
             break;
@@ -237,6 +244,7 @@ int main(int argc, char *argv[]) {
           case 'x':
             reparttype = REPART_METIS_VERTEX_EDGE;
             break;
+#endif
         }
 #endif
         break;
@@ -270,7 +278,7 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-#if defined(WITH_MPI)
+#ifdef WITH_MPI
   if (myrank == 0) {
     message("Running with %i thread(s) per node.", nr_threads);
     message("Using initial partition %s",
@@ -463,7 +471,7 @@ int main(int argc, char *argv[]) {
   for (j = 0; e.time < time_end; j++) {
 
 /* Repartition the space amongst the nodes? */
-#if defined(WITH_MPI) && defined(HAVE_METIS)
+#ifdef WITH_MPI
     if (j % 100 == 2) e.forcerepart = reparttype;
 #endif
 
