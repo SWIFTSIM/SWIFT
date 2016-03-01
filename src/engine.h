@@ -38,6 +38,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "partition.h"
 
 /* Some constants. */
 enum engine_policy {
@@ -62,7 +63,6 @@ extern const char *engine_policy_names[];
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
 
-#define engine_maxmetisweight 10000.0f
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -149,7 +149,8 @@ struct engine {
   float wallclock_time;
 
   /* Force the engine to rebuild? */
-  int forcerebuild, forcerepart;
+  int forcerebuild;
+  enum repartition_type forcerepart;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -177,7 +178,7 @@ void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
-void engine_split(struct engine *e, int *grid);
+void engine_split(struct engine *e, struct partition *initial_partition);
 int engine_exchange_strays(struct engine *e, int offset, int *ind, int N);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);

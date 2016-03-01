@@ -48,6 +48,7 @@
 #include "timers.h"
 #include "units.h"
 #include "tools.h"
+#include "partition.h"
 #include "version.h"
 
 #endif /* SWIFT_SWIFT_H */

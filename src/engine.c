@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -33,10 +34,6 @@
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
-/* METIS headers only used when MPI is also available. */
-#ifdef HAVE_METIS
-#include <metis.h>
-#endif
 #endif
 
 #ifdef HAVE_LIBNUMA
@@ -55,6 +52,7 @@
 #include "hydro.h"
 #include "minmax.h"
 #include "part.h"
+#include "partition.h"
 #include "timers.h"
 
 const char *engine_policy_names[12] = {
@@ -287,6 +285,7 @@ void engine_redistribute(struct engine *e) {
 #endif
 }
 
+
 /**
  * @brief Repartition the cells amongst the nodes.
  *
@@ -297,343 +296,17 @@ void engine_repartition(struct engine *e) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
 
-  int i, j, k, l, cid, cjd, ii, jj, kk, res;
-  idx_t *inds, *nodeIDs;
-  idx_t *weights_v = NULL, *weights_e = NULL;
-  struct space *s = e->s;
-  int nr_cells = s->nr_cells, my_cells = 0;
-  struct cell *cells = s->cells;
-  int ind[3], *cdim = s->cdim;
-  struct task *t, *tasks = e->sched.tasks;
-  struct cell *ci, *cj;
-  int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
-  float wscale = 1e-3, vscale = 1e-3, wscale_buff;
-  idx_t wtot = 0;
-  idx_t wmax = 1e9 / e->nr_nodes;
-  idx_t wmin;
-
   /* Clear the repartition flag. */
-  e->forcerepart = 0;
+  enum repartition_type reparttype = e->forcerepart;
+  e->forcerepart = REPART_NONE;
 
   /* Nothing to do if only using a single node. Also avoids METIS
    * bug that doesn't handle this case well. */
-  if (nr_nodes == 1) return;
+  if (e->nr_nodes == 1) return;
 
-  /* Allocate the inds and weights. */
-  if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 *nr_cells)) == NULL ||
-      (weights_v = (idx_t *)malloc(sizeof(idx_t) *nr_cells)) == NULL ||
-      (weights_e = (idx_t *)malloc(sizeof(idx_t) * 26 *nr_cells)) == NULL ||
-      (nodeIDs = (idx_t *)malloc(sizeof(idx_t) * nr_cells)) == NULL)
-    error("Failed to allocate inds and weights arrays.");
-
-  /* Fill the inds array. */
-  for (cid = 0; cid < nr_cells; cid++) {
-    ind[0] = cells[cid].loc[0] / s->cells[cid].h[0] + 0.5;
-    ind[1] = cells[cid].loc[1] / s->cells[cid].h[1] + 0.5;
-    ind[2] = cells[cid].loc[2] / s->cells[cid].h[2] + 0.5;
-    l = 0;
-    for (i = -1; i <= 1; i++) {
-      ii = ind[0] + i;
-      if (ii < 0)
-        ii += cdim[0];
-      else if (ii >= cdim[0])
-        ii -= cdim[0];
-      for (j = -1; j <= 1; j++) {
-        jj = ind[1] + j;
-        if (jj < 0)
-          jj += cdim[1];
-        else if (jj >= cdim[1])
-          jj -= cdim[1];
-        for (k = -1; k <= 1; k++) {
-          kk = ind[2] + k;
-          if (kk < 0)
-            kk += cdim[2];
-          else if (kk >= cdim[2])
-            kk -= cdim[2];
-          if (i || j || k) {
-            inds[cid * 26 + l] = cell_getid(cdim, ii, jj, kk);
-            l += 1;
-          }
-        }
-      }
-    }
-  }
-
-  /* Init the weights arrays. */
-  bzero(weights_e, sizeof(idx_t) * 26 * nr_cells);
-  bzero(weights_v, sizeof(idx_t) * nr_cells);
-
-  /* Loop over the tasks... */
-  for (j = 0; j < e->sched.nr_tasks; j++) {
-
-    /* Get a pointer to the kth task. */
-    t = &tasks[j];
-
-    /* Skip un-interesting tasks. */
-    if (t->type != task_type_self && t->type != task_type_pair &&
-        t->type != task_type_sub && t->type != task_type_ghost &&
-        t->type != task_type_drift && t->type != task_type_kick &&
-        t->type != task_type_init)
-      continue;
-
-    /* Get the task weight. */
-    idx_t w = (t->toc - t->tic) * wscale;
-    if (w < 0) error("Bad task weight (%" SCIDX ").", w);
-
-    /* Do we need to re-scale? */
-    wtot += w;
-    while (wtot > wmax) {
-      wscale /= 2;
-      wtot /= 2;
-      w /= 2;
-      for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= 0.5;
-      for (k = 0; k < nr_cells; k++) weights_v[k] *= 0.5;
-    }
-
-    /* Get the top-level cells involved. */
-    for (ci = t->ci; ci->parent != NULL; ci = ci->parent)
-      ;
-    if (t->cj != NULL)
-      for (cj = t->cj; cj->parent != NULL; cj = cj->parent)
-        ;
-    else
-      cj = NULL;
-
-    /* Get the cell IDs. */
-    cid = ci - cells;
-
-    /* Different weights for different tasks. */
-    if (t->type == task_type_ghost || t->type == task_type_drift ||
-        t->type == task_type_kick) {
-
-      /* Particle updates add only to vertex weight. */
-      weights_v[cid] += w;
-
-    }
-
-    /* Self interaction? */
-    else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
-             (t->type == task_type_sub && cj == NULL && ci->nodeID == nodeID)) {
-
-      /* Self interactions add only to vertex weight. */
-      weights_v[cid] += w;
-
-    }
-
-    /* Pair? */
-    else if (t->type == task_type_pair ||
-             (t->type == task_type_sub && cj != NULL)) {
-
-      /* In-cell pair? */
-      if (ci == cj) {
-
-        /* Add weight to vertex for ci. */
-        weights_v[cid] += w;
-
-      }
-
-      /* Distinct cells with local ci? */
-      else if (ci->nodeID == nodeID) {
-
-        /* Index of the jth cell. */
-        cjd = cj - cells;
-
-        /* Add half of weight to each cell. */
-        if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
-        if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
-
-        /* Add Weight to edge. */
-        for (k = 26 * cid; inds[k] != cjd; k++)
-          ;
-        weights_e[k] += w;
-        for (k = 26 * cjd; inds[k] != cid; k++)
-          ;
-        weights_e[k] += w;
-      }
-    }
-  }
-
-  /* Get the minimum scaling and re-scale if necessary. */
-  if ((res = MPI_Allreduce(&wscale, &wscale_buff, 1, MPI_FLOAT, MPI_MIN,
-                           MPI_COMM_WORLD)) != MPI_SUCCESS) {
-    char buff[MPI_MAX_ERROR_STRING];
-    MPI_Error_string(res, buff, &i);
-    error("Failed to allreduce the weight scales (%s).", buff);
-  }
-  if (wscale_buff != wscale) {
-    float scale = wscale_buff / wscale;
-    for (k = 0; k < 26 * nr_cells; k++) weights_e[k] *= scale;
-    for (k = 0; k < nr_cells; k++) weights_v[k] *= scale;
-  }
-
-/* Merge the weights arrays across all nodes. */
-#if IDXTYPEWIDTH == 32
-  if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
-                        nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD)) !=
-      MPI_SUCCESS) {
-#else
-  if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_v, weights_v,
-                        nr_cells, MPI_LONG_LONG_INT, MPI_SUM, 0,
-                        MPI_COMM_WORLD)) != MPI_SUCCESS) {
-#endif
-    char buff[MPI_MAX_ERROR_STRING];
-    MPI_Error_string(res, buff, &i);
-    error("Failed to allreduce vertex weights (%s).", buff);
-  }
-#if IDXTYPEWIDTH == 32
-  if (MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                 26 * nr_cells, MPI_INT, MPI_SUM, 0,
-                 MPI_COMM_WORLD) != MPI_SUCCESS)
-#else
-  if (MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                 26 * nr_cells, MPI_LONG_LONG_INT, MPI_SUM, 0,
-                 MPI_COMM_WORLD) != MPI_SUCCESS)
-#endif
-    error("Failed to allreduce edge weights.");
-
-  /* As of here, only one node needs to compute the partition. */
-  if (nodeID == 0) {
-
-    /* Final rescale of all weights to avoid a large range. Large ranges have
-     * been seen to cause an incomplete graph. */
-    wmin = wmax;
-    wmax = 0.0;
-    for (k = 0; k < 26 * nr_cells; k++) {
-      wmax = weights_e[k] > wmax ? weights_e[k] : wmax;
-      wmin = weights_e[k] < wmin ? weights_e[k] : wmin;
-    }
-    if ((wmax - wmin) > engine_maxmetisweight) {
-      wscale = engine_maxmetisweight / (wmax - wmin);
-      for (k = 0; k < 26 * nr_cells; k++) {
-        weights_e[k] = (weights_e[k] - wmin) * wscale + 1;
-      }
-      for (k = 0; k < nr_cells; k++) {
-        weights_v[k] = (weights_v[k] - wmin) * wscale + 1;
-      }
-    }
-
-    /* Check that the edge weights are fully symmetric. */
-    /* for ( cid = 0 ; cid < nr_cells ; cid++ )
-        for ( k = 0 ; k < 26 ; k++ ) {
-            cjd = inds[ cid*26 + k ];
-            for ( j = 26*cjd ; inds[j] != cid ; j++ );
-            if ( weights_e[ cid*26+k ] != weights_e[ j ] )
-                error( "Unsymmetric edge weights detected (%i vs %i)." ,
-       weights_e[ cid*26+k ] , weights_e[ j ] );
-            } */
-    /* int w_min = weights_e[0], w_max = weights_e[0], w_tot = weights_e[0];
-    for ( k = 1 ; k < 26*nr_cells ; k++ ) {
-        w_tot += weights_e[k];
-        if ( weights_e[k] < w_min )
-            w_min = weights_e[k];
-        else if ( weights_e[k] > w_max )
-            w_max = weights_e[k];
-        }
-    message( "edge weights in [ %i , %i ], tot=%i." , w_min , w_max , w_tot );
-    w_min = weights_e[0], w_max = weights_e[0]; w_tot = weights_v[0];
-    for ( k = 1 ; k < nr_cells ; k++ ) {
-        w_tot += weights_v[k];
-        if ( weights_v[k] < w_min )
-            w_min = weights_v[k];
-        else if ( weights_v[k] > w_max )
-            w_max = weights_v[k];
-        }
-    message( "vertex weights in [ %i , %i ], tot=%i." , w_min , w_max , w_tot );
-    */
-
-    /* Make sure there are no zero weights. */
-    for (k = 0; k < 26 * nr_cells; k++)
-      if (weights_e[k] == 0) weights_e[k] = 1;
-    for (k = 0; k < nr_cells; k++)
-      if ((weights_v[k] *= vscale) == 0) weights_v[k] = 1;
-
-    /* Allocate and fill the connection array. */
-    idx_t *offsets;
-    if ((offsets = (idx_t *)malloc(sizeof(idx_t) * (nr_cells + 1))) == NULL)
-      error("Failed to allocate offsets buffer.");
-    offsets[0] = 0;
-    for (k = 0; k < nr_cells; k++) offsets[k + 1] = offsets[k] + 26;
-
-    /* Set the METIS options. +1 to keep the GCC sanitizer happy. */
-    idx_t options[METIS_NOPTIONS + 1];
-    METIS_SetDefaultOptions(options);
-    options[METIS_OPTION_OBJTYPE] = METIS_OBJTYPE_CUT;
-    options[METIS_OPTION_NUMBERING] = 0;
-    options[METIS_OPTION_CONTIG] = 1;
-    options[METIS_OPTION_NCUTS] = 10;
-    options[METIS_OPTION_NITER] = 20;
-    // options[ METIS_OPTION_UFACTOR ] = 1;
-
-    /* Set the initial partition, although this is probably ignored. */
-    for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
-
-    /* Call METIS. */
-    idx_t one = 1, idx_nr_cells = nr_cells, idx_nr_nodes = nr_nodes;
-    idx_t objval;
-
-    /* Dump graph in METIS format */
-    /*dumpMETISGraph("metis_graph", idx_nr_cells, one, offsets, inds,
-                   weights_v, NULL, weights_e);*/
-
-    if (METIS_PartGraphRecursive(&idx_nr_cells, &one, offsets, inds, weights_v,
-                                 NULL, weights_e, &idx_nr_nodes, NULL, NULL,
-                                 options, &objval, nodeIDs) != METIS_OK)
-      error("Call to METIS_PartGraphRecursive failed.");
-
-    /* Dump the 3d array of cell IDs. */
-    /* printf( "engine_repartition: nodeIDs = reshape( [" );
-    for ( i = 0 ; i < cdim[0]*cdim[1]*cdim[2] ; i++ )
-        printf( "%i " , (int)nodeIDs[ i ] );
-    printf("] ,%i,%i,%i);\n",cdim[0],cdim[1],cdim[2]); */
-
-    /* Check that the nodeIDs are ok. */
-    for (k = 0; k < nr_cells; k++)
-      if (nodeIDs[k] < 0 || nodeIDs[k] >= nr_nodes)
-        error("Got bad nodeID %" PRIDX " for cell %i.", nodeIDs[k], k);
-
-    /* Check that the partition is complete and all nodes have some work. */
-    int present[nr_nodes];
-    int failed = 0;
-    for (i = 0; i < nr_nodes; i++) present[i] = 0;
-    for (i = 0; i < nr_cells; i++) present[nodeIDs[i]]++;
-    for (i = 0; i < nr_nodes; i++) {
-      if (!present[i]) {
-        failed = 1;
-        message("Node %d is not present after repartition", i);
-      }
-    }
-
-    /* If partition failed continue with the current one, but make this
-     * clear. */
-    if (failed) {
-      message(
-          "WARNING: METIS repartition has failed, continuing with "
-          "the current partition, load balance will not be optimal");
-      for (k = 0; k < nr_cells; k++) nodeIDs[k] = cells[k].nodeID;
-    }
-  }
-
-/* Broadcast the result of the partition. */
-#if IDXTYPEWIDTH == 32
-  if (MPI_Bcast(nodeIDs, nr_cells, MPI_INT, 0, MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to bcast the node IDs.");
-#else
-  if (MPI_Bcast(nodeIDs, nr_cells, MPI_LONG_LONG_INT, 0, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to bcast the node IDs.");
-#endif
-
-  /* Set the cell nodeIDs and clear any non-local parts. */
-  for (k = 0; k < nr_cells; k++) {
-    cells[k].nodeID = nodeIDs[k];
-    if (nodeIDs[k] == nodeID) my_cells += 1;
-  }
-
-  /* Clean up. */
-  free(inds);
-  free(weights_v);
-  free(weights_e);
-  free(nodeIDs);
+  /* Do the repartitioning. */
+  partition_repartition(reparttype, e->nodeID, e->nr_nodes, e->s,
+                        e->sched.tasks, e->sched.nr_tasks);
 
   /* Now comes the tricky part: Exchange particles between all nodes.
      This is done in two steps, first allreducing a matrix of
@@ -1894,7 +1567,7 @@ void engine_step(struct engine *e) {
   // message("\nACCELERATION AND KICK\n");
 
   /* Re-distribute the particles amongst the nodes? */
-  if (e->forcerepart) engine_repartition(e);
+  if (e->forcerepart != REPART_NONE) engine_repartition(e);
 
   /* Prepare the space. */
   engine_prepare(e);
@@ -2054,34 +1727,19 @@ void engine_makeproxies(struct engine *e) {
 }
 
 /**
- * @brief Split the underlying space according to the given grid.
+ * @brief Split the underlying space into regions and assign to separate nodes.
  *
  * @param e The #engine.
- * @param grid The grid.
+ * @param initial_partition structure defining the cell partition technique
  */
 
-void engine_split(struct engine *e, int *grid) {
+void engine_split(struct engine *e, struct partition *initial_partition) {
 
 #ifdef WITH_MPI
-
-  int j, k;
-  int ind[3];
   struct space *s = e->s;
-  struct cell *c;
 
-  /* If we've got the wrong number of nodes, fail. */
-  if (e->nr_nodes != grid[0] * grid[1] * grid[2])
-    error("Grid size does not match number of nodes.");
-
-  /* Run through the cells and set their nodeID. */
-  // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
-  for (k = 0; k < s->nr_cells; k++) {
-    c = &s->cells[k];
-    for (j = 0; j < 3; j++) ind[j] = c->loc[j] / s->dim[j] * grid[j];
-    c->nodeID = ind[0] + grid[0] * (ind[1] + grid[1] * ind[2]);
-    // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
-    // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
-  }
+  /* Do the initial partition of the cells. */
+  partition_initial_partition(initial_partition, e->nodeID, e->nr_nodes, s);
 
   /* Make the proxies. */
   engine_makeproxies(e);
@@ -2104,9 +1762,6 @@ void engine_split(struct engine *e, int *grid) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -2175,7 +1830,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
       int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
       bool done = false, swap_hyperthreads = hyperthreads_present();
-      if (swap_hyperthreads && nodeID == 0) 
+      if (swap_hyperthreads && nodeID == 0)
 	message("prefer physical cores to hyperthreads");
 
       while (!done) {
@@ -2228,7 +1883,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;
-  e->forcerepart = 0;
+  e->forcerepart = REPART_NONE;
   e->links = NULL;
   e->nr_links = 0;
   e->timeBegin = timeBegin;
