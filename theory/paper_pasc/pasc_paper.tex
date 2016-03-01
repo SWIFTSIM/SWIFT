@@ -444,8 +444,13 @@ corresponds to minimizing the time spent on the slowest rank.
 Computing such a partition is a standard graph problem and several
 software libraries which provide good solutions\footnote{Computing
 the optimal partition for more than two nodes is considered NP-hard.},
-e.g.~METIS \cite{ref:Karypis1998}, which is used in \swift,
-and Zoltan \cite{devine2002zoltan}, exist.
+e.g.~METIS \cite{ref:Karypis1998} and Zoltan \cite{devine2002zoltan}, exist.
+
+In \swift, the cost of each task is initially approximated via the
+asymptotic cost of the task type and the number of particles involved.
+After a task has been exectued, it's effective computational cost
+is computed and used.
+The graph partitioning is computed using the METIS library.
 
 Note that this approach does not explicitly consider any geometric
 constraints, or strive to partition the {\em amount} of data equitably.
