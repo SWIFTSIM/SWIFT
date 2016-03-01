@@ -236,6 +236,7 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
 # don't use that.
+have_metis="no"
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
        [root directory where metis is installed @<:@yes/no@:>@]
@@ -251,6 +252,7 @@ if test "x$with_metis" != "xno"; then
       METIS_LIBS="-lmetis"
       METIS_INCS=""
    fi
+   have_metis="yes"
    AC_CHECK_LIB([metis],[METIS_PartGraphKway],
       AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
       AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
@@ -380,7 +382,7 @@ AC_MSG_RESULT([
    MPI enabled     : $enable_mpi
    HDF5 enabled    : $with_hdf5
     - parallel     : $have_parallel_hdf5
-   Metis enabled   : $with_metis
+   Metis enabled   : $have_metis
    libNUMA enabled : $have_numa
 ])
 
