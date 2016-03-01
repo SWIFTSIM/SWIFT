@@ -49,35 +49,42 @@ strong scaling on more than 100\,000 cores.}
   
 \author{
 \alignauthor
-       Matthieu~Schaller\\
-       \affaddr{Institute for Computational Cosmology (ICC)}\\
-       \affaddr{Department of Physics}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-       \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
-\alignauthor
-       Pedro~Gonnet\\
-       \affaddr{School of Engineering and Computing Sciences}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-\alignauthor
-       Aidan~B.~G.~Chalk\\
-       \affaddr{School of Engineering and Computing Sciences}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-\and
-\alignauthor
-       Peter~W.~Draper\\
-       \affaddr{Institute for Computational Cosmology (ICC)}\\
-       \affaddr{Department of Physics}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-       %% \alignauthor
-       %% Tom Theuns\\
-       %% \affaddr{Institute for Computational Cosmology}\\
-       %% \affaddr{Department of Physics}\\
-       %% \affaddr{Durham University}\\
-       %% \affaddr{Durham DH1 3LE, UK}      
+       Main~Author\\
+       \affaddr{Institute}\\
+       \affaddr{Department}\\
+       \affaddr{University}\\
+       \affaddr{City Postal code, Country}\\
+       \email{\footnotesize \url{main.author@university.country}}
+% \alignauthor
+%        Matthieu~Schaller\\
+%        \affaddr{Institute for Computational Cosmology (ICC)}\\
+%        \affaddr{Department of Physics}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+%        \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
+% \alignauthor
+%        Pedro~Gonnet\\
+%        \affaddr{School of Engineering and Computing Sciences}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+% \alignauthor
+%        Aidan~B.~G.~Chalk\\
+%        \affaddr{School of Engineering and Computing Sciences}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+% \and
+% \alignauthor
+%        Peter~W.~Draper\\
+%        \affaddr{Institute for Computational Cosmology (ICC)}\\
+%        \affaddr{Department of Physics}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+%        %% \alignauthor
+%        %% Tom Theuns\\
+%        %% \affaddr{Institute for Computational Cosmology}\\
+%        %% \affaddr{Department of Physics}\\
+%        %% \affaddr{Durham University}\\
+%        %% \affaddr{Durham DH1 3LE, UK}      
 }
 
 
@@ -337,7 +344,8 @@ Task-based parallelism is not a particularly new concept and therefore
 several implementations thereof exist, e.g.~Cilk \cite{ref:Blumofe1995},
 QUARK \cite{ref:QUARK}, StarPU \cite{ref:Augonnet2011},
 SMP~Superscalar \cite{ref:SMPSuperscalar}, OpenMP~3.0 \cite{ref:Duran2009},
-and Intel's TBB \cite{ref:Reinders2007}.
+Intel's TBB \cite{ref:Reinders2007}, and, to some extent,
+Charm++ \cite{ref:Kale1993}.
 
 For convenience, and to make experimenting with different scheduling
 techniques easier, we chose to implement our own task scheduler
@@ -386,13 +394,17 @@ cores of a shared-memory machine \cite{gonnet2015efficient}.
 \centering
 \includegraphics[width=\columnwidth]{Figures/Hierarchy3}
 \caption{Task hierarchy for the SPH computations in \swift,
-  including communication tasks. Arrows indicate dependencies,
+  including communication tasks.
+  Arrows indicate dependencies,
   i.e.~an arrow from task $A$ to task $B$ indicates that $A$
-  depends on $B$. The task color corresponds to the cell or
+  depends on $B$. 
+  The task color corresponds to the cell or
   cells it operates on, e.g.~the density and force tasks work
   on individual cells or pairs of cells.
-  The blue cell data is on a separate rank as the yellow and
-  purple cells, and thus its data must be sent across during
+  The task hierarchy is shown for three cells: blue, yellow,
+  and purple. Although the data for the yellow cell resides on
+  Node~2, it is required for some tasks on Node~1, and thus needs
+  to be copied over  during
   the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
 \label{tasks}
 \end{figure}  
