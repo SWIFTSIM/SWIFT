@@ -247,7 +247,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   }
 
   /* Create dataset */
-  h_data = H5Dcreate1(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT);
+  h_data = H5Dcreate(grp, name, hdf5Type(type), h_filespace, H5P_DEFAULT,
+                     H5P_DEFAULT, H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while creating dataset '%s'.", name);
   }
@@ -378,7 +379,7 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
 
   /* Open header to read simulation properties */
   /* message("Reading runtime parameters..."); */
-  h_grp = H5Gopen1(h_file, "/RuntimePars");
+  h_grp = H5Gopen(h_file, "/RuntimePars", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening runtime parameters\n");
 
   /* Read the relevant information */
@@ -389,7 +390,7 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
 
   /* Open header to read simulation properties */
   /* message("Reading file header..."); */
-  h_grp = H5Gopen1(h_file, "/Header");
+  h_grp = H5Gopen(h_file, "/Header", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening file header\n");
 
   /* Read the relevant information and print status */
@@ -423,7 +424,7 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
 
   /* Open SPH particles group */
   /* message("Reading particle arrays..."); */
-  h_grp = H5Gopen1(h_file, "/PartType0");
+  h_grp = H5Gopen(h_file, "/PartType0", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening particle group.\n");
 
   /* Read particle fields into the particle structure */
@@ -508,7 +509,8 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
 
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
-  h_grp = H5Gcreate1(h_file, "/RuntimePars", 0);
+  h_grp =
+      H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating runtime parameters group\n");
 
   /* Write the relevant information */
@@ -519,7 +521,7 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
 
   /* Open header to write simulation properties */
   /* message("Writing file header..."); */
-  h_grp = H5Gcreate1(h_file, "/Header", 0);
+  h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating file header\n");
 
   /* Print the relevant information and print status */
@@ -546,7 +548,7 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
-  h_grpsph = H5Gcreate1(h_file, "/SPH", 0);
+  h_grpsph = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grpsph < 0) error("Error while creating SPH group");
   writeSPHflavour(h_grpsph);
   H5Gclose(h_grpsph);
@@ -556,7 +558,8 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
 
   /* Create SPH particles group */
   /* message("Writing particle arrays..."); */
-  h_grp = H5Gcreate1(h_file, "/PartType0", 0);
+  h_grp =
+      H5Gcreate(h_file, "/PartType0", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating particle group.\n");
 
   /* Write particle fields from the particle structure */

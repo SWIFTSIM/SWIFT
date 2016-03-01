@@ -94,7 +94,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
    * "compulsory": "optional  ", name); */
 
   /* Open data space */
-  h_data = H5Dopen1(grp, name);
+  h_data = H5Dopen(grp, name, H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while opening data space '%s'.", name);
   }
@@ -157,7 +157,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                        enum DATA_TYPE type, int N, int dim, char* part_c,
                        struct UnitSystem* us,
                        enum UnitConversionFactor convFactor) {
-  hid_t h_data = 0, h_err = 0, h_space = 0;
+  hid_t h_data = 0, h_err = 0, h_space = 0, h_prop = 0;
   void* temp = 0;
   int i = 0, rank = 0;
   const size_t typeSize = sizeOfType(type);
@@ -165,6 +165,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
   hsize_t shape[2];
+  hsize_t chunk_shape[2];
   char buffer[150];
 
   /* message("Writing '%s' array...", name); */
@@ -188,10 +189,14 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
     rank = 2;
     shape[0] = N;
     shape[1] = dim;
+    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[1] = dim;
   } else {
     rank = 1;
     shape[0] = N;
     shape[1] = 0;
+    chunk_shape[0] = 1 << 16; /* Just a guess...*/
+    chunk_shape[1] = 0;
   }
 
   /* Change shape of data space */
@@ -200,8 +205,25 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
     error("Error while changing data space shape for field '%s'.", name);
   }
 
+  /* Dataset properties */
+  h_prop = H5Pcreate(H5P_DATASET_CREATE);
+
+  /* Set chunk size */
+  h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
+  if (h_err < 0) {
+    error("Error while setting chunk size (%lld, %lld) for field '%s'.",
+          chunk_shape[0], chunk_shape[1], name);
+  }
+
+  /* Impose data compression */
+  h_err = H5Pset_deflate(h_prop, 4);
+  if (h_err < 0) {
+    error("Error while setting compression options for field '%s'.", name);
+  }
+
   /* Create dataset */
-  h_data = H5Dcreate1(grp, name, hdf5Type(type), h_space, H5P_DEFAULT);
+  h_data = H5Dcreate(grp, name, hdf5Type(type), h_space, H5P_DEFAULT, h_prop,
+                     H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while creating dataspace '%s'.", name);
   }
@@ -225,6 +247,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 
   /* Free and close everything */
   free(temp);
+  H5Pclose(h_prop);
   H5Dclose(h_data);
   H5Sclose(h_space);
 }
@@ -313,7 +336,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
 
   /* Open header to read simulation properties */
   /* message("Reading runtime parameters..."); */
-  h_grp = H5Gopen1(h_file, "/RuntimePars");
+  h_grp = H5Gopen(h_file, "/RuntimePars", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening runtime parameters\n");
 
   /* Read the relevant information */
@@ -324,7 +347,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
 
   /* Open header to read simulation properties */
   /* message("Reading file header..."); */
-  h_grp = H5Gopen1(h_file, "/Header");
+  h_grp = H5Gopen(h_file, "/Header", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening file header\n");
 
   /* Read the relevant information and print status */
@@ -352,7 +375,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, int* N,
 
   /* Open SPH particles group */
   /* message("Reading particle arrays..."); */
-  h_grp = H5Gopen1(h_file, "/PartType0");
+  h_grp = H5Gopen(h_file, "/PartType0", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening particle group.\n");
 
   /* Read particle fields into the particle structure */
@@ -415,7 +438,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   /* Open header to write simulation properties */
   /* message("Writing runtime parameters..."); */
-  h_grp = H5Gcreate1(h_file, "/RuntimePars", 0);
+  h_grp =
+      H5Gcreate(h_file, "/RuntimePars", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating runtime parameters group\n");
 
   /* Write the relevant information */
@@ -426,7 +450,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   /* Open header to write simulation properties */
   /* message("Writing file header..."); */
-  h_grp = H5Gcreate1(h_file, "/Header", 0);
+  h_grp = H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating file header\n");
 
   /* Print the relevant information and print status */
@@ -451,7 +475,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
-  h_grpsph = H5Gcreate1(h_file, "/SPH", 0);
+  h_grpsph = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grpsph < 0) error("Error while creating SPH group");
   writeSPHflavour(h_grpsph);
   H5Gclose(h_grpsph);
@@ -461,7 +485,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   /* Create SPH particles group */
   /* message("Writing particle arrays..."); */
-  h_grp = H5Gcreate1(h_file, "/PartType0", 0);
+  h_grp =
+      H5Gcreate(h_file, "/PartType0", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating particle group.\n");
 
   /* Write particle fields from the particle structure */
