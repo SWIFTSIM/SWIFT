@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
 
@@ -47,6 +46,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "cell.h"
+#include "clocks.h"
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
@@ -1465,29 +1465,6 @@ void engine_init_particles(struct engine *e) {
   e->step = -1;
 }
 
-
-/**
- * brief Get difference in milli-seconds between two timespecs.
- *
- * @param start the start time.
- * @param end the end time.
- *
- * @return the difference in milli-secinds.
- */
-static double time_diff(struct timespec start, struct timespec end)
-{
-  struct timespec temp;
-  if ((end.tv_nsec-start.tv_nsec)<0) {
-    temp.tv_sec = end.tv_sec-start.tv_sec-1;
-    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-  } else {
-    temp.tv_sec = end.tv_sec-start.tv_sec;
-    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-  }
-  return (double)temp.tv_sec*1000.0 + (double)temp.tv_nsec*1.0E-6;
-}
-
-
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -1506,8 +1483,8 @@ void engine_step(struct engine *e) {
 
   TIMER_TIC2;
 
-  struct timespec time1, time2;
-  clock_gettime(CLOCK_REALTIME, &time1);
+  struct clockstime time1, time2;
+  clocks_gettime(&time1);
 
   /* Collect the cell data. */
   for (k = 0; k < s->nr_cells; k++)
@@ -1647,11 +1624,12 @@ void engine_step(struct engine *e) {
 
   TIMER_TOC2(timer_step);
 
-  clock_gettime(CLOCK_REALTIME, &time2);
+  clocks_gettime(&time2);
 
-  e->wallclock_time_ticks = ((double)timers[timer_count - 1]) / CPU_TPS * 1000;
+  e->wallclock_time_ticks = 
+      ((double)timers[timer_count - 1]) / clocks_cpufreq() * 1000;
 
-  e->wallclock_time = (float) time_diff(time1, time2);
+  e->wallclock_time = (float) clocks_diff(&time1, &time2);
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 }

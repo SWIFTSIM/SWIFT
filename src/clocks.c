@@ -94,40 +94,40 @@ unsigned long long clocks_cpufreq() {
   if (cpufreq > 0) 
     return cpufreq;
 
-  /* Look for the system value, if available. */
-#ifdef __linux__
-  FILE *file = fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",
-                     "r");
-  if (file != NULL) {
-    unsigned long long maxfreq;
-    if (fscanf(file, "%llu", &maxfreq) == 1) {
-      cpufreq = maxfreq;
-    }
-    fclose(file);
-  }
+#ifdef HAVE_CLOCK_GETTIME
+  /* Try to time a nanosleep() in ticks. */
+  struct clockstime time1;
+  struct clockstime time2;
+
+  struct timespec sleep;
+  sleep.tv_sec = 0;
+  sleep.tv_nsec = SLEEPTIME;
+
+  clocks_gettime(&time1);
+  ticks tic = getticks();
+
+  /* Could do some calculation, but constant_tsc should protect us. */
+  nanosleep(&sleep, NULL);
+
+  clocks_gettime(&time2);
+  ticks toc = getticks(); 
+  double realsleep = clocks_diff(&time1, &time2);
+  
+  cpufreq = (signed long long) (double)(toc - tic) * 1.0/realsleep * 1000.0;
 #endif
 
-#ifdef HAVE_CLOCK_GETTIME
-  /* If not try to time a nanosleep() in ticks. */
+  /* Look for the system value, if available. Tends to be too large. */
+#ifdef __linux__
   if (cpufreq == 0) {
-    struct clockstime time1;
-    struct clockstime time2;
-
-    struct timespec sleep;
-    sleep.tv_sec = 0;
-    sleep.tv_nsec = SLEEPTIME;
-
-    clocks_gettime(&time1);
-    ticks tic = getticks();
-
-    /* Could do some calculation, but constant_tsc should protect us. */
-    nanosleep(&sleep, NULL);
-
-    clocks_gettime(&time2);
-    ticks toc = getticks(); 
-    double realsleep = clocks_diff(&time1, &time2);
-
-    cpufreq = (signed long long) (double)(toc - tic) * 1.0 / realsleep;
+    FILE *file = fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",
+                       "r");
+    if (file != NULL) {
+      unsigned long long maxfreq;
+      if (fscanf(file, "%llu", &maxfreq) == 1) {
+        cpufreq = maxfreq * 1000;
+      }
+      fclose(file);
+    }
   }
 #endif
 
