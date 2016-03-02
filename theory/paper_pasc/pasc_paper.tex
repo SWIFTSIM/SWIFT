@@ -187,7 +187,7 @@ The design and implementation of \swift\footnote{
 \swift is an open-source software project and the latest version of
 the source code, along with all the data needed to run the test cased
 presented in this paper, can be downloaded at \web.}
-\cite{gonnet2013swift,theuns2015swift,gonnet2015efficient}, a large-scale
+\cite{gonnet2013swift,theuns2015swift,ref:Gonnet2015}, a large-scale
 cosmological simulation code built from scratch, provided the perfect
 opportunity to test some newer
 approaches, i.e.~task-based parallelism, fully asynchronous communication, and
@@ -196,7 +196,7 @@ graph partition-based domain decompositions.
 This paper describes these techniques, which are not exclusive to
 cosmological simulations or any specific architecture, as well as
 the results obtained with them.
-While \cite{gonnet2013swift} already describes the underlying algorithms
+While \cite{gonnet2013swift,ref:Gonnet2015} already describes the underlying algorithms
 in more detail, in this paper we focus on the parallelization strategy
 and the results obtained  on larger Tier-1 systems.
 
@@ -288,7 +288,7 @@ particles and searching for their neighbours in the tree.
 Although such tree traversals are trivial to parallelize, they
 have several disadvantages, e.g.~with regards to computational
 efficiency, cache efficiency, and exploiting symmetries in the
-computation (see \cite{gonnet2015efficient} for a more detailed
+computation (see \cite{ref:Gonnet2015} for a more detailed
 analysis).
 
 
@@ -368,7 +368,7 @@ which is usually not an option for large and complex codebases.
 
 Since we were re-implementing \swift from scratch, this was not an issue.
 The tree-based neighbour-finding described above was replaced with a more
-task-friendly approach as described in \cite{gonnet2015efficient}.
+task-friendly approach as described in \cite{ref:Gonnet2015}.
 Particle interactions are computed within, and between pairs, of
 hierarchical {\em cells} containing one or more particles.
 The dependencies between the tasks are set following
@@ -393,7 +393,7 @@ Due to the cache-friendly nature of the task-based computations,
 and their ability to exploit symmetries in the particle interactions,
 the task-based approach is already more efficient than the tree-based
 neighbour search on a single core, and scales efficiently to all
-cores of a shared-memory machine \cite{gonnet2015efficient}.
+cores of a shared-memory machine \cite{ref:Gonnet2015}.
 
 \begin{figure}
 \centering
