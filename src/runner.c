@@ -40,12 +40,13 @@
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity.h"
+#include "hydro.h"
+#include "minmax.h"
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
 #include "timers.h"
-#include "hydro.h"
-#include "gravity.h"
 
 /* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
@@ -496,7 +497,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
   struct part *p, *parts = c->parts;
   const int count = c->count;
-  const float t_end = r->e->time;
+  const int ti_current = r->e->ti_current;
 
   TIMER_TIC;
 
@@ -513,7 +514,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       p = &parts[i];
 
-      if (p->t_end <= t_end) {
+      if (p->ti_end <= ti_current) {
 
         /* Get ready for a density calculation */
         hydro_init_part(p);
@@ -547,7 +548,8 @@ void runner_doghost(struct runner *r, struct cell *c) {
   int redo, count = c->count;
   int *pid;
   float h_corr;
-  float t_end = r->e->time;
+  const int ti_current = r->e->ti_current;
+  const double timeBase = r->e->timeBase;
 
   TIMER_TIC;
 
@@ -578,10 +580,10 @@ void runner_doghost(struct runner *r, struct cell *c) {
       xp = &xparts[pid[i]];
 
       /* Is this part within the timestep? */
-      if (p->t_end <= t_end) {
+      if (p->ti_end <= ti_current) {
 
         /* Finish the density calculation */
-        hydro_end_density(p, t_end);
+        hydro_end_density(p, ti_current);
 
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
@@ -618,7 +620,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
         /* As of here, particle force variables will be set. */
 
         /* Compute variables required for the force loop */
-        hydro_prepare_force(p, xp, t_end);
+        hydro_prepare_force(p, xp, ti_current, timeBase);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -696,7 +698,10 @@ void runner_doghost(struct runner *r, struct cell *c) {
 void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
   const int nr_parts = c->count;
-  const float dt = r->e->time - r->e->timeOld;
+  const double timeBase = r->e->timeBase;
+  const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
+  const float ti_old = r->e->ti_old;
+  const float ti_current = r->e->ti_current;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
   float dx_max = 0.f, h_max = 0.f;
@@ -742,7 +747,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
         p->rho *= expf(w);
 
       /* Predict the values of the extra fields */
-      hydro_predict_extra(p, xp, r->e->timeOld, r->e->time);
+      hydro_predict_extra(p, xp, ti_old, ti_current, timeBase);
 
       /* Compute motion since last cell construction */
       const float dx =
@@ -795,18 +800,20 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
 void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
-  const float dt_max_timeline = r->e->timeEnd - r->e->timeBegin;
-  const float global_dt_min = r->e->dt_min, global_dt_max = r->e->dt_max;
-  const float t_current = r->e->time;
+  const float global_dt_min = r->e->dt_min;
+  const float global_dt_max = r->e->dt_max;
+  const int ti_current = r->e->ti_current;
+  const double timeBase = r->e->timeBase;
+  const double timeBase_inv = 1.0 / r->e->timeBase;
   const int count = c->count;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
-  float new_dt;
-  float dt_timeline;
+  int new_dti;
+  int dti_timeline;
 
   int updated = 0;
-  float t_end_min = FLT_MAX, t_end_max = 0.f;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f};
   float ang[3] = {0.0f, 0.0f, 0.0f};
@@ -832,7 +839,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       x[2] = p->x[2];
 
       /* If particle needs to be kicked */
-      if (is_fixdt || p->t_end <= t_current) {
+      if (is_fixdt || p->ti_end <= ti_current) {
 
         /* First, finish the force loop */
         p->h_dt *= p->h * 0.333333333f;
@@ -845,7 +852,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         if (is_fixdt) {
 
           /* Now we have a time step, proceed with the kick */
-          new_dt = global_dt_max;
+          new_dti = global_dt_max * timeBase_inv;
 
         } else {
 
@@ -853,7 +860,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           const float new_dt_hydro = hydro_compute_timestep(p, xp);
           const float new_dt_grav = gravity_compute_timestep(p, xp);
 
-          new_dt = fminf(new_dt_hydro, new_dt_grav);
+          float new_dt = fminf(new_dt_hydro, new_dt_grav);
 
           /* Limit change in h */
           const float dt_h_change =
@@ -862,33 +869,36 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
           new_dt = fminf(new_dt, dt_h_change);
 
-          /* Recover the current timestep */
-          const float current_dt = p->t_end - p->t_begin;
-
-          /* Limit timestep increase */
-          if (current_dt > 0.0f) new_dt = fminf(new_dt, 2.0f * current_dt);
-
           /* Limit timestep within the allowed range */
           new_dt = fminf(new_dt, global_dt_max);
           new_dt = fmaxf(new_dt, global_dt_min);
 
+          /* Convert to integer time */
+          new_dti = new_dt * timeBase_inv;
+
+          /* Recover the current timestep */
+          const int current_dti = p->ti_end - p->ti_begin;
+
+          /* Limit timestep increase */
+          if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+
           /* Put this timestep on the time line */
-          dt_timeline = dt_max_timeline;
-          while (new_dt < dt_timeline) dt_timeline /= 2.;
+          dti_timeline = max_nr_timesteps;
+          while (new_dti < dti_timeline) dti_timeline /= 2;
 
           /* Now we have a time step, proceed with the kick */
-          new_dt = dt_timeline;
+          new_dti = dti_timeline;
         }
 
         /* Compute the time step for this kick */
-        const float t_start = 0.5f * (p->t_begin + p->t_end);
-        const float t_end = p->t_end + 0.5f * new_dt;
-        const float dt = t_end - t_start;
-        const float half_dt = t_end - p->t_end;
+        const int ti_start = (p->ti_begin + p->ti_end) / 2;
+        const int ti_end = p->ti_end + new_dti / 2;
+        const float dt = (ti_end - ti_start) * timeBase;
+        const float half_dt = (ti_end - p->ti_end) * timeBase;
 
         /* Move particle forward in time */
-        p->t_begin = p->t_end;
-        p->t_end = p->t_begin + new_dt;
+        p->ti_begin = p->ti_end;
+        p->ti_end = p->ti_begin + new_dti;
 
         /* Kick particles in momentum space */
         xp->v_full[0] += p->a_hydro[0] * dt;
@@ -901,6 +911,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
         /* Extra kick work */
         hydro_kick_extra(p, xp, dt, half_dt);
+
+        /* Number of updated particles */
+        updated++;
       }
 
       /* Now collect quantities for statistics */
@@ -929,11 +942,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       e_int += hydro_get_internal_energy(p);
 
       /* Minimal time for next end of time-step */
-      t_end_min = fminf(p->t_end, t_end_min);
-      t_end_max = fmaxf(p->t_end, t_end_max);
-
-      /* Number of updated particles */
-      updated++;
+      ti_end_min = min(p->ti_end, ti_end_min);
+      ti_end_max = max(p->ti_end, ti_end_max);
     }
 
   }
@@ -961,8 +971,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         ang[0] += cp->ang[0];
         ang[1] += cp->ang[1];
         ang[2] += cp->ang[2];
-        t_end_min = fminf(cp->t_end_min, t_end_min);
-        t_end_max = fmaxf(cp->t_end_max, t_end_max);
+        ti_end_min = min(cp->ti_end_min, ti_end_min);
+        ti_end_max = max(cp->ti_end_max, ti_end_max);
       }
   }
 
@@ -978,8 +988,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   c->ang[0] = ang[0];
   c->ang[1] = ang[1];
   c->ang[2] = ang[2];
-  c->t_end_min = t_end_min;
-  c->t_end_max = t_end_max;
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
 
   if (timer) {
 #ifdef TIMER_VERBOSE
@@ -1085,8 +1095,8 @@ void *runner_main(void *data) {
         case task_type_recv:
           parts = ci->parts;
           nr_parts = ci->count;
-          ci->t_end_min = ci->t_end_max = FLT_MAX;
-          for (k = 0; k < nr_parts; k++) parts[k].t_end = FLT_MAX;
+          ci->ti_end_min = ci->ti_end_max = max_nr_timesteps;
+          for (k = 0; k < nr_parts; k++) parts[k].ti_end = max_nr_timesteps;
           break;
         case task_type_grav_pp:
           if (t->cj == NULL)

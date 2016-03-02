@@ -25,15 +25,19 @@
 #if defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_iact.h"
 #include "./hydro/Minimal/hydro.h"
+#define SPH_IMPLEMENTATION "Minimal version of SPH (e.g. Price 2010)"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_iact.h"
 #include "./hydro/Gadget2/hydro.h"
+#define SPH_IMPLEMENTATION "Gadget-2 version of SPH (Springel 2005)"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_iact.h"
 #include "./hydro/Default/hydro.h"
+#define SPH_IMPLEMENTATION "Default version of SPH"
 #elif defined(NO_SPH)
 #include "./hydro/Gadget2/hydro_iact.h"
 #include "./hydro/Gadget2/hydro.h"
+#define SPH_IMPLEMENTATION "No SPH"
 #else
 #error "Invalid choice of SPH variant"
 #endif

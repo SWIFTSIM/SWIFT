@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,39 +16,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
+#ifndef SWIFT_RIEMANN_H
+#define SWIFT_RIEMANN_H
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Local headers. */
-#include "atomic.h"
-#include "cell.h"
+/* gives us const_hydro_gamma and tells us which floating point type to use */
 #include "const.h"
-#include "const.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
+#include "math.h"
+#include "stdio.h"
+#include "float.h"
+#include "stdlib.h"
 #include "error.h"
-#include "gravity.h"
-#include "hydro.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "units.h"
-#include "tools.h"
-#include "partition.h"
-#include "version.h"
 
-#endif /* SWIFT_SWIFT_H */
+#define HLLC_SOLVER
+
+#ifdef EXACT_SOLVER
+#include "riemann/riemann_exact.h"
+#endif
+
+#ifdef TRRS_SOLVER
+#include "riemann/riemann_trrs.h"
+#endif
+
+#ifdef HLLC_SOLVER
+#include "riemann/riemann_hllc.h"
+#endif
+
+#endif /* SWIFT_RIEMANN_H */

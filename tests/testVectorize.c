@@ -31,10 +31,11 @@ struct cell *make_cell(size_t n, double *offset, double h,
         part->v[0] = 1.0f;
         part->v[1] = 1.0f;
         part->v[2] = 1.0f;
-        part->dt = 0.01;
         part->h = h;
         part->id = ++(*partId);
         part->mass = 1.0f;
+	part->t_begin = 0.f;
+	part->t_end = 0.1f;
         ++part;
       }
     }
@@ -68,12 +69,7 @@ void zero_particle_fields(struct cell *c) {
   for (size_t pid = 0; pid < c->count; pid++) {
     c->parts[pid].rho = 0.f;
     c->parts[pid].rho_dh = 0.f;
-    c->parts[pid].density.wcount = 0.f;
-    c->parts[pid].density.wcount_dh = 0.f;
-    c->parts[pid].density.div_v = 0.f;
-    c->parts[pid].density.curl_v[0] = 0.f;
-    c->parts[pid].density.curl_v[1] = 0.f;
-    c->parts[pid].density.curl_v[2] = 0.f;
+    hydro_init_part(&c->parts[pid]);
   }
 }
 
@@ -91,8 +87,8 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
     fprintf(file, "%6llu %f %f %f %f %f %f %f %f\n", ci->parts[pid].id,
             ci->parts[pid].rho, ci->parts[pid].rho_dh,
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
-            ci->parts[pid].density.div_v, ci->parts[pid].density.curl_v[0],
-            ci->parts[pid].density.curl_v[1], ci->parts[pid].density.curl_v[2]);
+            ci->parts[pid].div_v, ci->parts[pid].density.rot_v[0],
+            ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]);
   }
 
   fprintf(file, "# -----------------------------------\n");
@@ -101,8 +97,8 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
     fprintf(file, "%6llu %f %f %f %f %f %f %f %f\n", cj->parts[pjd].id,
             cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-            cj->parts[pjd].density.div_v, cj->parts[pjd].density.curl_v[0],
-            cj->parts[pjd].density.curl_v[1], cj->parts[pjd].density.curl_v[2]);
+            cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
+            cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]);
   }
 
   fclose(file);
@@ -164,7 +160,7 @@ int main(int argc, char *argv[]) {
   }
 
   engine.s = &space;
-  engine.dt_step = 0.1;
+  engine.time = 0.1f;
   runner.e = &engine;
 
   time = 0;

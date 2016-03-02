@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   float dv[3], curlvr[3];
 
   /* Get the masses. */
-  const float mi = pj->mass;
+  const float mi = pi->mass;
   const float mj = pj->mass;
 
   /* Get r and r inverse. */

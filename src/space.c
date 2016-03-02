@@ -41,6 +41,7 @@
 #include "error.h"
 #include "kernel.h"
 #include "lock.h"
+#include "minmax.h"
 #include "runner.h"
 
 /* Shared sort structure. */
@@ -973,7 +974,8 @@ void space_map_cells_pre(struct space *s, int full,
 void space_split(struct space *s, struct cell *c) {
 
   int k, count = c->count, gcount = c->gcount, maxdepth = 0;
-  float h, h_max = 0.0f, t_end_min = FLT_MAX, t_end_max = 0., t_end;
+  float h, h_max = 0.0f;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_end;
   struct cell *temp;
   struct part *p, *parts = c->parts;
   struct xpart *xp, *xparts = c->xparts;
@@ -1023,16 +1025,16 @@ void space_split(struct space *s, struct cell *c) {
       } else {
         space_split(s, c->progeny[k]);
         h_max = fmaxf(h_max, c->progeny[k]->h_max);
-        t_end_min = fminf(t_end_min, c->progeny[k]->t_end_min);
-        t_end_max = fmaxf(t_end_max, c->progeny[k]->t_end_max);
+        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
         if (c->progeny[k]->maxdepth > maxdepth)
           maxdepth = c->progeny[k]->maxdepth;
       }
 
     /* Set the values for this cell. */
     c->h_max = h_max;
-    c->t_end_min = t_end_min;
-    c->t_end_max = t_end_max;
+    c->ti_end_min = ti_end_min;
+    c->ti_end_max = ti_end_max;
     c->maxdepth = maxdepth;
 
   }
@@ -1055,23 +1057,23 @@ void space_split(struct space *s, struct cell *c) {
       xp->x_old[1] = p->x[1];
       xp->x_old[2] = p->x[2];
       h = p->h;
-      t_end = p->t_end;
+      ti_end = p->ti_end;
       if (h > h_max) h_max = h;
-      if (t_end < t_end_min) t_end_min = t_end;
-      if (t_end > t_end_max) t_end_max = t_end;
+      if (ti_end < ti_end_min) ti_end_min = ti_end;
+      if (ti_end > ti_end_max) ti_end_max = ti_end;
       c->h_max = h_max;
     }
     if (!count) {
-       for (k = 0; k < count; k++) {
+       for (k = 0; k < gcount; k++) {
 	 gp = &gparts[k];
-	 t_end = gp->t_end;
-	 if (t_end < t_end_min) t_end_min = t_end;
-	 if (t_end > t_end_max) t_end_max = t_end;
+	 ti_end = gp->ti_end;
+	 if (ti_end < ti_end_min) ti_end_min = ti_end;
+	 if (ti_end > ti_end_max) ti_end_max = ti_end;
        }
     }
    
-    c->t_end_min = t_end_min;
-    c->t_end_max = t_end_max;
+    c->ti_end_min = ti_end_min;
+    c->ti_end_max = ti_end_max;
   }
 
   /* Set ownership according to the start of the parts array. */

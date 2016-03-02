@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016   Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,39 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
+#ifndef SWIFT_MINMAX_H
+#define SWIFT_MINMAX_H
 
-/* Config parameters. */
-#include "../config.h"
+/**
+ * @brief Minimum of two numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define min(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a < _b ? _a : _b;      \
+  })
 
-/* Local headers. */
-#include "atomic.h"
-#include "cell.h"
-#include "const.h"
-#include "const.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
-#include "error.h"
-#include "gravity.h"
-#include "hydro.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "units.h"
-#include "tools.h"
-#include "partition.h"
-#include "version.h"
+/**
+ * @brief Maximum of two numbers
+ *
+ * This macro evaluates its arguments exactly once.
+ */
+#define max(a, b)           \
+  ({                        \
+    __typeof__(a) _a = (a); \
+    __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;      \
+  })
 
-#endif /* SWIFT_SWIFT_H */
+#endif /* SWIFT_MINMAX_H */

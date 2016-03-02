@@ -61,3 +61,20 @@ swift_fixdt_mpi_SOURCES = main.c
 swift_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_fixdt | engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
 swift_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
+# Scripts to generate ICs
+EXTRA_DIST = UniformBox/makeIC.py \
+             PerturbedBox/makeIC.py \
+	     SedovBlast/makeIC.py SedovBlast/makeIC_fcc.py SedovBlast/solution.py \
+	     SodShock/makeIC.py SodShock/solution.py SodShock/glass_001.hdf5 SodShock/glass_002.hdf5 SodShock/rhox.py \
+	     CosmoVolume/getIC.sh \
+	     BigCosmoVolume/makeIC.py \
+	     BigPerturbedBox/makeIC_fcc.py \
+             GreshoVortex/makeIC.py GreshoVortex/solution.py
+
+
+# Scripts to plot task graphs
+EXTRA_DIST += plot_tasks_MPI.py plot_tasks.py \
+	      process_plot_tasks_MPI process_plot_tasks
+
+# Simple run scripts
+EXTRA_DIST += runs.sh

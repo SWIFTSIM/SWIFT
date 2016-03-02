@@ -86,9 +86,24 @@ int main(int argc, char *argv[]) {
   char dumpfile[30];
   float dt_max = 0.0f, dt_min = 0.0f;
   ticks tic;
-  int nr_nodes = 1, myrank = 0, grid[3] = {1, 1, 1};
+  int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
+
+#ifdef WITH_MPI
+  struct partition initial_partition;
+  enum repartition_type reparttype = REPART_NONE;
+
+  initial_partition.type = INITPART_GRID;
+  initial_partition.grid[0] = 1;
+  initial_partition.grid[1] = 1;
+  initial_partition.grid[2] = 1;
+#ifdef HAVE_METIS
+  /* Defaults make use of METIS. */
+  reparttype = REPART_METIS_BOTH;
+  initial_partition.type = INITPART_METIS_NOWEIGHT;
+#endif
+#endif
 
 /* Choke on FP-exceptions. */
 // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
@@ -114,9 +129,11 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
-  factor(nr_nodes, &grid[0], &grid[1]);
-  factor(nr_nodes / grid[1], &grid[0], &grid[2]);
-  factor(grid[0] * grid[1], &grid[1], &grid[0]);
+  factor(nr_nodes, &initial_partition.grid[0], &initial_partition.grid[1]);
+  factor(nr_nodes / initial_partition.grid[1], &initial_partition.grid[0],
+         &initial_partition.grid[2]);
+  factor(initial_partition.grid[0] * initial_partition.grid[1],
+         &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
 
   /* Greeting message */
@@ -144,7 +161,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:g:m:oq:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:m:oP:q:R:s:t:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -173,10 +190,6 @@ int main(int argc, char *argv[]) {
       case 'f':
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
         break;
-      case 'g':
-        if (sscanf(optarg, "%i %i %i", &grid[0], &grid[1], &grid[2]) != 3)
-          error("Error parsing grid.");
-        break;
       case 'm':
         if (sscanf(optarg, "%lf", &h_max) != 1) error("Error parsing h_max.");
         if (myrank == 0) message("maximum h set to %e.", h_max);
@@ -185,9 +198,62 @@ int main(int argc, char *argv[]) {
       case 'o':
         with_outputs = 0;
         break;
+      case 'P':
+        /* Partition type is one of "g", "m", "w", or "v"; "g" can be
+         * followed by three numbers defining the grid. */
+#ifdef WITH_MPI
+        switch (optarg[0]) {
+          case 'g':
+            initial_partition.type = INITPART_GRID;
+            if (strlen(optarg) > 2) {
+              if (sscanf(optarg, "g %i %i %i", &initial_partition.grid[0],
+                         &initial_partition.grid[1],
+                         &initial_partition.grid[2]) != 3)
+                error("Error parsing grid.");
+            }
+            break;
+#ifdef HAVE_METIS
+          case 'm':
+            initial_partition.type = INITPART_METIS_NOWEIGHT;
+            break;
+          case 'w':
+            initial_partition.type = INITPART_METIS_WEIGHT;
+            break;
+#endif
+          case 'v':
+            initial_partition.type = INITPART_VECTORIZE;
+            break;
+        }
+#endif
+        break;
       case 'q':
         if (sscanf(optarg, "%d", &nr_queues) != 1)
           error("Error parsing number of queues.");
+        break;
+      case 'R':
+        /* Repartition type "n", "b", "v", "e" or "x". 
+         * Note only none is available without METIS. */
+#ifdef WITH_MPI
+        switch (optarg[0]) {
+          case 'n':
+            reparttype = REPART_NONE;
+            break;
+#ifdef HAVE_METIS
+          case 'b':
+            reparttype = REPART_METIS_BOTH;
+            break;
+          case 'v':
+            reparttype = REPART_METIS_VERTEX;
+            break;
+          case 'e':
+            reparttype = REPART_METIS_EDGE;
+            break;
+          case 'x':
+            reparttype = REPART_METIS_VERTEX_EDGE;
+            break;
+#endif
+        }
+#endif
         break;
       case 's':
         if (sscanf(optarg, "%lf %lf %lf", &shift[0], &shift[1], &shift[2]) != 3)
@@ -219,10 +285,15 @@ int main(int argc, char *argv[]) {
         break;
     }
 
-#if defined(WITH_MPI)
+#ifdef WITH_MPI
   if (myrank == 0) {
     message("Running with %i thread(s) per node.", nr_threads);
-    message("grid set to [ %i %i %i ].", grid[0], grid[1], grid[2]);
+    message("Using initial partition %s",
+            initial_partition_name[initial_partition.type]);
+    if (initial_partition.type == INITPART_GRID)
+      message("grid set to [ %i %i %i ].", initial_partition.grid[0],
+              initial_partition.grid[1], initial_partition.grid[2]);
+    message("Using %s repartitioning", repartition_name[reparttype]);
 
     if (nr_nodes == 1) {
       message("WARNING: you are running with one MPI rank.");
@@ -371,7 +442,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef WITH_MPI
   /* Split the space. */
-  engine_split(&e, grid);
+  engine_split(&e, &initial_partition);
   engine_redistribute(&e);
 #endif
 
@@ -422,8 +493,8 @@ int main(int argc, char *argv[]) {
   for (j = 0; e.time < time_end; j++) {
 
 /* Repartition the space amongst the nodes? */
-#if defined(WITH_MPI) && defined(HAVE_METIS)
-    if (j % 100 == 2) e.forcerepart = 1;
+#ifdef WITH_MPI
+    if (j % 100 == 2) e.forcerepart = reparttype;
 #endif
 
     timers_reset(timers_mask_all);

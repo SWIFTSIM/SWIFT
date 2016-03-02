@@ -73,7 +73,7 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   return cell;
 }
 
-
+#ifdef DEFAULT_SPH
 
 /* Run a full time step integration for one cell */
 int main() {
@@ -151,3 +151,12 @@ int main() {
   
   return 0;
 }
+
+#else
+
+int main() {
+
+  return 0;
+}
+
+#endif

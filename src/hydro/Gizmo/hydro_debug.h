@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,39 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Local headers. */
-#include "atomic.h"
-#include "cell.h"
-#include "const.h"
-#include "const.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
-#include "error.h"
-#include "gravity.h"
-#include "hydro.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "units.h"
-#include "tools.h"
-#include "partition.h"
-#include "version.h"
-
-#endif /* SWIFT_SWIFT_H */
+__attribute__((always_inline))
+    INLINE static void hydro_debug_particle(struct part* p, struct xpart* xp) {
+  printf(
+      "x=[%.16e,%.16e,%.16e], "
+      "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], volume=%.3e\n",
+      p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a_hydro[0],
+      p->a_hydro[1], p->a_hydro[2], p->geometry.volume);
+}

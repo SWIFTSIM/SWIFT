@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+#include "approx_math.h"
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -108,7 +110,7 @@ __attribute__((always_inline))
  * @param time The current time
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* p, struct xpart* xp, float time) {
+    struct part* p, struct xpart* xp, int ti_current, double timeBase) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -146,7 +148,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                           (const_viscosity_alpha_max - p->alpha) * S;
 
   /* Update particle's viscosity paramter */
-  p->alpha += alpha_dot * (p->t_end - p->t_begin);
+  p->alpha += alpha_dot * (p->ti_end - p->ti_begin) * timeBase;
 }
 
 /**
@@ -178,18 +180,18 @@ __attribute__((always_inline))
  * @param xp The extended data of the particle
  * @param t0 The time at the start of the drift
  * @param t1 The time at the end of the drift
+ * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float t0, float t1) {
+    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
   float u, w;
 
-  const float dt = t1 - t0;
+  const float dt = (t1 - t0) * timeBase;
 
   /* Predict internal energy */
   w = p->force.u_dt / p->u * dt;
-  if (fabsf(w) < 0.01f) /* 1st order expansion of exp(w) */
-    u = p->u *=
-        1.0f + w * (1.0f + w * (0.5f + w * (1.0f / 6.0f + 1.0f / 24.0f * w)));
+  if (fabsf(w) < 0.2f)
+    u = p->u *= approx_expf(w);
   else
     u = p->u *= expf(w);
 
@@ -216,7 +218,7 @@ __attribute__((always_inline))
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) { }
+    struct part* p, struct xpart* xp, float dt, float half_dt) {}
 
 /**
  * @brief Converts hydro quantity of a particle

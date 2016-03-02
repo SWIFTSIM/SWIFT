@@ -192,7 +192,7 @@ void scheduler_splittasks(struct scheduler *s) {
           t->ci = ci->progeny[k];
           for (k += 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
-              scheduler_addtask(s, task_type_self, task_subtype_density, 0, 0,
+              scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                 ci->progeny[k], NULL, 0);
 
           /* Make a task for each pair of progeny. */
@@ -200,9 +200,8 @@ void scheduler_splittasks(struct scheduler *s) {
             if (ci->progeny[j] != NULL)
               for (k = j + 1; k < 8; k++)
                 if (ci->progeny[k] != NULL)
-                  scheduler_addtask(s, task_type_pair, task_subtype_density,
-                                    pts[j][k], 0, ci->progeny[j],
-                                    ci->progeny[k], 0);
+                  scheduler_addtask(s, task_type_pair, t->subtype, pts[j][k], 0,
+                                    ci->progeny[j], ci->progeny[k], 0);
         }
       }
 

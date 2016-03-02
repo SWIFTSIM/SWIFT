@@ -38,6 +38,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "partition.h"
 
 /* Some constants. */
 enum engine_policy {
@@ -62,10 +63,12 @@ extern const char *engine_policy_names[];
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
 
-#define engine_maxmetisweight 10000.0f
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
+
+/* The maximal number of timesteps in a simulation */
+#define max_nr_timesteps (1 << 28)
 
 /* Mini struct to link cells to density/force tasks. */
 struct link {
@@ -96,22 +99,27 @@ struct engine {
   struct scheduler sched;
 
   /* The minimum and maximum allowed dt */
-  float dt_min, dt_max;
+  double dt_min, dt_max;
 
   /* Time of the simulation beginning */
-  float timeBegin;
+  double timeBegin;
 
   /* Time of the simulation end */
-  float timeEnd;
+  double timeEnd;
 
   /* The previous system time. */
-  float timeOld;
+  double timeOld;
+  int ti_old;
 
   /* The current system time. */
-  float time;
+  double time;
+  int ti_current;
 
   /* Time step */
-  float timeStep;
+  double timeStep;
+
+  /* Time base */
+  double timeBase;
 
   /* File for statistics */
   FILE *file_stats;
@@ -137,8 +145,12 @@ struct engine {
   /* Tic at the start of a step. */
   ticks tic_step;
 
+  /* Wallclock time of the last time-step */
+  float wallclock_time;
+
   /* Force the engine to rebuild? */
-  int forcerebuild, forcerepart;
+  int forcerebuild;
+  enum repartition_type forcerepart;
 
   /* How many steps have we done with the same set of tasks? */
   int tasks_age;
@@ -166,7 +178,7 @@ void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
-void engine_split(struct engine *e, int *grid);
+void engine_split(struct engine *e, struct partition *initial_partition);
 int engine_exchange_strays(struct engine *e, int offset, int *ind, int N);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
