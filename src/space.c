@@ -43,6 +43,7 @@
 #include "lock.h"
 #include "minmax.h"
 #include "runner.h"
+#include "tools.h"
 
 /* Shared sort structure. */
 struct parallel_sort space_sort_struct;
@@ -200,10 +201,13 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.");
 
-/* In MPI-Land, we're not allowed to change the top-level cell size. */
+  /* In MPI-Land, changing the top-level cell size requires that the
+   * global partition is recomputed and the particles redistributed.
+   * Be prepared to do that. */
 #ifdef WITH_MPI
+  int partition = 0;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2])
-    error("Root-level change of cell size not allowed.");
+      partition = 1;
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -263,6 +267,32 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
               cdim[2]);
     fflush(stdout);
 
+#ifdef WITH_MPI
+    /* XXX create an engine_resplit() function to use the same method as the
+     * initial partition. Fake for now. */
+    if (partition) {
+        if (s->e->nodeID == 0)
+            message("cell dimensions have decreased. Recalculating the "
+                    "global partition.");
+
+        /* Change the global partitioning. */
+        int grid[3];
+        factor(s->e->nr_nodes, &grid[0], &grid[1]);
+        factor(s->e->nr_nodes / grid[1], &grid[0], &grid[2]);
+        factor(grid[0] * grid[1], &grid[1], &grid[0]);
+
+        /* Run through the cells and set their nodeID. */
+        int ind[3];
+        for (int k = 0; k < s->nr_cells; k++) {
+            c = &s->cells[k];
+            for (int j = 0; j < 3; j++) ind[j] = c->loc[j] / s->dim[j] * grid[j];
+            c->nodeID = ind[0] + grid[0] * (ind[1] + grid[1] * ind[2]);
+        }
+
+        /* Make the proxies. */
+        engine_makeproxies(s->e);
+    }
+#endif
   } /* re-build upper-level cells? */
   // message( "rebuilding upper-level cells took %.3f ms." , (double)(getticks()
   // - tic) / CPU_TPS * 1000 );
@@ -304,7 +334,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
 void space_rebuild(struct space *s, double cell_max, int verbose) {
 
-  int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
+  int j, k, cdim[3], nr_parts, nr_gparts;
   struct cell *restrict c, *restrict cells;
   struct part *restrict p;
   int *ind;
@@ -316,7 +346,11 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
+
+  /* Now set local space variables. */
+  nr_parts = s->nr_parts;
   cells = s->cells;
+  nr_gparts = s->nr_gparts;
 
   /* Run through the particles and get their cell index. */
   // tic = getticks();
