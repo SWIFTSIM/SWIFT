@@ -192,8 +192,8 @@ int main(int argc, char *argv[]) {
         with_outputs = 0;
         break;
       case 'P':
-        /* Partition type is one of "g", "m", "w", or "v"; "g" can be
-         * followed by three numbers defining the grid. */
+/* Partition type is one of "g", "m", "w", or "v"; "g" can be
+ * followed by three numbers defining the grid. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
           case 'g':
@@ -224,8 +224,8 @@ int main(int argc, char *argv[]) {
           error("Error parsing number of queues.");
         break;
       case 'R':
-        /* Repartition type "n", "b", "v", "e" or "x". 
-         * Note only none is available without METIS. */
+/* Repartition type "n", "b", "v", "e" or "x".
+ * Note only none is available without METIS. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
           case 'n':
@@ -468,7 +468,7 @@ int main(int argc, char *argv[]) {
         "[ms]\n");
 
   /* Let loose a runner on the space. */
-  for (j = 0; e.ti_current < max_nr_timesteps; j++) {
+  for (j = 0; !engine_is_done(&e); j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI

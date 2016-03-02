@@ -63,7 +63,6 @@ extern const char *engine_policy_names[];
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
 
-
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
 
@@ -186,5 +185,6 @@ void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
+int engine_is_done(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

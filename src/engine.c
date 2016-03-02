@@ -1625,6 +1625,13 @@ void engine_step(struct engine *e) {
 }
 
 /**
+ * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
+ */
+int engine_is_done(struct engine *e) {
+  return !(e->ti_current < max_nr_timesteps);
+}
+
+/**
  * @brief Create and fill the proxies.
  *
  * @param e The #engine.
@@ -1957,7 +1964,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
       float dt_max = timeEnd - timeBegin;
       while (dt_max > e->dt_max) dt_max /= 2.f;
 
-      message("Minimal timestep size (on time-line): %e", dt_max);
+      message("Maximal timestep size (on time-line): %e", dt_max);
     }
   }
 
