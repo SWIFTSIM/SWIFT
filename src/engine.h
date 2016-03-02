@@ -147,7 +147,6 @@ struct engine {
 
   /* Wallclock time of the last time-step */
   float wallclock_time;
-  float wallclock_time_ticks;
 
   /* Force the engine to rebuild? */
   int forcerebuild;
