@@ -795,8 +795,9 @@ course of a time-step. For example, on the SuperMUC machine with 32 nodes (512
 cores), each MPI rank contains approximately $1.6\times10^7$ particles in
 $2.5\times10^5$ cells. \swift will generate around $58\,000$ point-to-point
 asynchronous MPI communications (a pair of \texttt{send} and \texttt{recv} tasks)
-{\em per node} and {\em per timestep}. Such an insane number of messages is
-discouraged by most practitioners.
+{\em per node} and {\em per timestep}. Each one of these communications involves,
+on average, no more than 6\,kB of data. Such an insane number of small messages is
+discouraged by most practitioners, but seems to works well in practice.
 Dispatching communications
 over the course of the calculation and not in short bursts, as is commonly done,
 may also help lower the load on the network.
