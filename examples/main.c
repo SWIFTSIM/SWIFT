@@ -468,7 +468,7 @@ int main(int argc, char *argv[]) {
         "[ms]\n");
 
   /* Let loose a runner on the space. */
-  for (j = 0; e.time < time_end; j++) {
+  for (j = 0; e.ti_current < max_nr_timesteps; j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
