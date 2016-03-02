@@ -829,6 +829,16 @@ ability combined with future work on vectorization of the calculations within
 each task will hopefully make \swift an important tool for future simulations in
 cosmology and help push the entire field to a new level.
 
+These results, which are in no way restricted to astrophysical simulations,
+provide a compelling argument for moving away from the traditional
+branch-and-bound paradigm of both shared and distributed memory programming
+using synchronous MPI and OpenMP.
+Although fully asynchronous methods, due to their somewhat anarchic nature,
+may seem more difficult to control, they are conceptually simple and easy
+to implement\footnote{The \swift source code consists of less than 21\,k lines
+of code, of which rougly only one tenth are needed to implement the task-based
+parallelism and asynchronous communication.}.
+
 \swift, its documentation, and the test cases presented in this paper are all
 available at the address \web.
 
