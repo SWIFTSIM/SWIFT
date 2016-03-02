@@ -595,6 +595,11 @@ conditions are provided with the source code. We then run the \swift code for
 100 time-steps and average the wall clock time of these time-steps after having
 removed the first and last ones, where disk I/O occurs.
 
+The initial load balancing between nodes is computed in the first steps and
+re-computed every 100 time steps, and is therefore not included in the timings.
+Particles were exchanged between nodes whenever they strayed too far beyond
+the cells in which they originally resided.
+
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{Figures/cosmoVolume}
@@ -658,8 +663,9 @@ the 16 node run.
   is achieved when increasing the thread count from 1 (1 node) to 128 (8 nodes)
   even on this relatively small test case. The dashed line indicates the
   efficiency when running on one single node but using all the physical and
-  virtual cores (hyper-threading). As these CPUs only have one FPU per core, we
-  see no benefit from hyper-threading.
+  virtual cores (hyper-threading). As these CPUs only have one FPU per core, the
+  benefit from hyper-threading is limited to a 20\% improvement when going
+  from 16 cores to 32 hyperthreads.
   \label{fig:cosma}}
 \end{figure*}
 
