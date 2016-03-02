@@ -271,19 +271,25 @@ separately:
         within range of each other and evaluate \eqn{dvdt} and \eqn{dudt}.
 \end{enumerate}
 
-Finding the interacting neighbours for each particle constitutes
-the bulk of the computation.
-Many codes, e.g. in Astrophysics simulations \cite{Gingold1977},
-rely on spatial {\em trees}
-for neighbour finding \cite{Gingold1977,Hernquist1989,Springel2005,Wadsley2004},
-i.e.~$k$-d trees \cite{Bentley1975} or octrees \cite{Meagher1982}
-are used to decompose the simulation space.
-In Astrophysics in particular, spatial trees are also a somewhat natural
-choice as they are used to compute long-range gravitational interactions
-via a Barnes-Hut \cite{Barnes1986} or Fast Multipole
-\cite{Carrier1988} method. 
-The particle interactions are then computed by traversing the list of
-particles and searching for their neighbours in the tree.
+Finding the interacting neighbours for each particle constitutes the
+bulk of the computation.  Many codes, e.g. in Astrophysics simulations
+\cite{Gingold1977}, rely on spatial {\em trees} for neighbour finding
+\cite{Gingold1977,Hernquist1989,Springel2005,Wadsley2004}, i.e.~$k$-d
+trees \cite{Bentley1975} or octrees \cite{Meagher1982} are used to
+decompose the simulation space.  In Astrophysics in particular,
+spatial trees are also a somewhat natural choice as they are used to
+compute long-range gravitational interactions via a Barnes-Hut
+\cite{Barnes1986} or Fast Multipole \cite{Carrier1988} method.  The
+particle interactions are then computed by traversing the list of
+particles and searching for their neighbours in the tree.  In current
+state-of-the-art simulations (e.g. \cite{Schaye2015}), the gravity
+calculation corresponds to roughly one quarter of the calculation time
+whilst the hydrodynamics scheme takes approximatively half of the
+total time. The remainder is spent in the astrophysics modules, which
+contain interactions of the same kind as the SPH sums presented
+here. Gravity could, however, be vastly sped-up compared to commonly
+used software by employing more modern algorithms such as the Fast
+Multipole Method \cite{Carrier1988}.
 
 Although such tree traversals are trivial to parallelize, they
 have several disadvantages, e.g.~with regards to computational
