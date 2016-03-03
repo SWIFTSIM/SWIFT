@@ -1117,7 +1117,7 @@ int engine_marktasks(struct engine *e) {
     }
   }
 
-  // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+  // message( "took %.3f ms." , clocks_from_ticks(getticks() - tic));
 
   /* All is well... */
   return 0;
@@ -1168,29 +1168,29 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the space. */
   // tic = getticks();
   space_rebuild(e->s, 0.0, e->nodeID == 0);
-// message( "space_rebuild took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "space_rebuild took %.3f ms." ,
+  //clocks_from_ticks(getticks() -  tic));
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
   // tic = getticks();
   engine_exchange_cells(e);
-// message( "engine_exchange_cells took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "engine_exchange_cells took %.3f ms." ,
+  //clocks_from_ticks(getticks() - tic));
 #endif
 
   /* Re-build the tasks. */
   // tic = getticks();
   engine_maketasks(e);
-  // message( "engine_maketasks took %.3f ms." , (double)(getticks() -
-  // tic)/CPU_TPS*1000 );
+  // message( "engine_maketasks took %.3f ms." ,
+  //clocks_from_ticks(getticks() - tic));
 
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
-  // message( "engine_marktasks took %.3f ms." , (double)(getticks() -
-  // tic)/CPU_TPS*1000 );
+  // message( "engine_marktasks took %.3f ms." ,
+  //clocks_from_ticks(getticks() - tic));
 
   /* Print the status of the system */
   engine_print(e);
@@ -1211,8 +1211,8 @@ void engine_prepare(struct engine *e) {
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   rebuild = (e->forcerebuild || engine_marktasks(e));
-// message( "space_marktasks took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "space_marktasks took %.3f ms." ,
+  //clocks_from_ticks((getticks() - tic)));
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -1222,8 +1222,8 @@ void engine_prepare(struct engine *e) {
       MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
-// message( "rebuild allreduce took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "rebuild allreduce took %.3f ms." ,
+  //clocks_from_ticks(getticks() - tic));
 #endif
   e->tic_step = getticks();
 
@@ -1231,16 +1231,16 @@ void engine_prepare(struct engine *e) {
   if (rebuild) {
     // tic = getticks();
     engine_rebuild(e);
-    // message( "engine_rebuild took %.3f ms." , (double)(getticks() -
-    // tic)/CPU_TPS*1000 );
+    // message( "engine_rebuild took %.3f ms." ,
+    //clocks_from_ticks(getticks() - tic));
   }
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     // tic = getticks();
     scheduler_reweight(&e->sched);
-    // message( "scheduler_reweight took %.3f ms." , (double)(getticks() -
-    // tic)/CPU_TPS*1000 );
+    // message( "scheduler_reweight took %.3f ms." ,
+    //clocks_from_ticks(getticks() -tic));
   }
   e->tasks_age += 1;
 
@@ -1626,8 +1626,8 @@ void engine_step(struct engine *e) {
 
   clocks_gettime(&time2);
 
-  e->wallclock_time_ticks = 
-      ((double)timers[timer_count - 1]) / clocks_cpufreq() * 1000;
+  e->wallclock_time_ticks =
+      ((double)timers[timer_count - 1]) / clocks_get_cpufreq() * 1000;
 
   e->wallclock_time = (float) clocks_diff(&time1, &time2);
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);

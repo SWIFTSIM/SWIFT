@@ -320,7 +320,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
       (flags & 0x80) >> 7, (flags & 0x40) >> 6, (flags & 0x20) >> 5,
       (flags & 0x10) >> 4, (flags & 0x8) >> 3, (flags & 0x4) >> 2,
       (flags & 0x2) >> 1, (flags & 0x1) >> 0,
-      ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000);
+      clocks_from_ticks(TIMER_TOC(timer_dosort)));
   fflush(stdout);
 #else
   if (clock) TIMER_TOC(timer_dosort);
@@ -478,7 +478,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
       (flags & 0x80) >> 7, (flags & 0x40) >> 6, (flags & 0x20) >> 5,
       (flags & 0x10) >> 4, (flags & 0x8) >> 3, (flags & 0x4) >> 2,
       (flags & 0x2) >> 1, (flags & 0x1) >> 0,
-      ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000);
+      clocks_from_ticks(TIMER_TOC(timer_dosort)));
   fflush(stdout);
 #else
   if (clock) TIMER_TOC(timer_dosort);
@@ -525,7 +525,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
   if (timer) {
 #ifdef TIMER_VERBOSE
     message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_init)) / CPU_TPS * 1000);
+            c->depth, clocks_from_ticks(TIMER_TOC(timer_init)));
     fflush(stdout);
 #else
     TIMER_TOC(timer_init);
@@ -681,7 +681,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
 #ifdef TIMER_VERBOSE
   message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-          c->depth, ((double)TIMER_TOC(timer_doghost)) / CPU_TPS * 1000);
+          c->depth, clocks_from_ticks(TIMER_TOC(timer_doghost)));
   fflush(stdout);
 #else
   TIMER_TOC(timer_doghost);
@@ -782,7 +782,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   if (timer) {
 #ifdef TIMER_VERBOSE
     message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_drift)) / CPU_TPS * 1000);
+            c->depth, clocks_from_ticks(TIMER_TOC(timer_drift)));
     fflush(stdout);
 #else
     TIMER_TOC(timer_drift);
@@ -994,7 +994,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   if (timer) {
 #ifdef TIMER_VERBOSE
     message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_kick)) / CPU_TPS * 1000);
+            c->depth, clocks_from_ticks(TIMER_TOC(timer_kick)));
     fflush(stdout);
 #else
     TIMER_TOC(timer_kick);

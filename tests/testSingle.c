@@ -40,11 +40,6 @@
 /* Local headers. */
 #include "swift.h"
 
-/* Ticks per second on this machine. */
-#ifndef CPU_TPS
-#define CPU_TPS 2.67e9
-#endif
-
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
 #define ENGINE_POLICY engine_policy_none

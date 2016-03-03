@@ -207,7 +207,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
       "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
       "took %.3f ms.\n",
       r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
+      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
 #else
   TIMER_TOC(TIMER_DOPAIR);
 #endif
@@ -307,7 +307,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 
 #ifdef TIMER_VERBOSE
   printf("runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n", r->id,
-         count, c->depth, ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
+         count, c->depth, clocks_from_ticks(TIMER_TOC(TIMER_DOSELF)));
 #else
   TIMER_TOC(TIMER_DOSELF);
 #endif
@@ -515,7 +515,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
       "took %.3f ms.\n",
       r->id, count, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
+      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
 #else
   TIMER_TOC(timer_dopair_subset);
 #endif
@@ -635,7 +635,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
       "took %.3f ms.\n",
       r->id, count, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
+      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
 #else
   TIMER_TOC(timer_dopair_subset);
 #endif
@@ -744,7 +744,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 #ifdef TIMER_VERBOSE
   printf("runner_doself_subset[%02i]: %i/%i parts at depth %i took %.3f ms.\n",
          r->id, count, ci->count, ci->depth,
-         ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
+         clocks_from_ticks(TIMER_TOC(TIMER_DOSELF)));
 #else
   TIMER_TOC(timer_dopair_subset);
 #endif
@@ -871,7 +871,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   } /* loop over the parts in ci. */
 
   /* printf( "runner_dopair: first half took %.3f ms...\n" ,
-  ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+  clocks_from_ticks(getticks() - tic));
   tic = getticks(); */
 
   /* Loop over the parts in cj. */
@@ -947,7 +947,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       "took %.3f ms.\n",
       r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
       fmax(ci->h[0], fmax(ci->h[1], ci->h[2])),
-      ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000);
+      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
 #else
   TIMER_TOC(TIMER_DOPAIR);
 #endif
@@ -1183,7 +1183,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   } /* loop over the parts in ci. */
 
   /* printf( "runner_dopair: first half took %.3f ms...\n" ,
-  ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+  clocks_from_ticks(getticks() - tic));
   tic = getticks(); */
 
   /* Loop over the parts in cj. */
@@ -1342,7 +1342,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       "took %.3f ms.\n",
       r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
       fmax(ci->h[0], fmax(ci->h[1], ci->h[2])),
-      ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000);
+      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
 #else
   TIMER_TOC(TIMER_DOPAIR);
 #endif
@@ -1572,7 +1572,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
 #ifdef TIMER_VERBOSE
   printf("runner_doself1[%02i]: %i parts at depth %i took %.3f ms.\n", r->id,
-         count, c->depth, ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
+         count, c->depth, clocks_from_ticks(TIMER_TOC(TIMER_DOSELF)));
 #else
   TIMER_TOC(TIMER_DOSELF);
 #endif
@@ -1769,7 +1769,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
 #ifdef TIMER_VERBOSE
   printf("runner_doself2[%02i]: %i parts at depth %i took %.3f ms.\n", r->id,
-         count, c->depth, ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
+         count, c->depth, clocks_from_ticks(TIMER_TOC(TIMER_DOSELF)));
 #else
   TIMER_TOC(TIMER_DOSELF);
 #endif
@@ -2057,7 +2057,7 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (gettimer)
 #ifdef TIMER_VERBOSE
     printf("runner_dosub1[%02i]: flags=%i at depth %i took %.3f ms.\n", r->id,
-           sid, ci->depth, ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000);
+           sid, ci->depth, clocks_from_ticks(TIMER_TOC(TIMER_DOSUB)));
 #else
     TIMER_TOC(TIMER_DOSUB);
 #endif
@@ -2332,7 +2332,7 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (gettimer)
 #ifdef TIMER_VERBOSE
     printf("runner_dosub2[%02i]: flags=%i at depth %i took %.3f ms.\n", r->id,
-           sid, ci->depth, ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000);
+           sid, ci->depth, clocks_from_ticks(TIMER_TOC(TIMER_DOSUB)));
 #else
     TIMER_TOC(TIMER_DOSUB);
 #endif
@@ -2936,7 +2936,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (gettimer)
 #ifdef TIMER_VERBOSE
     printf("runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n", r->id,
-           sid, ci->depth, ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000);
+           sid, ci->depth, clocks_from_ticks(TIMER_TOC(TIMER_DOSUB)));
 #else
     TIMER_TOC(TIMER_DOSUB);
 #endif
