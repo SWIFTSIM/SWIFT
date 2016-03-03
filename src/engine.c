@@ -1970,7 +1970,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   if (e->dt_min < e->timeBase && e->nodeID == 0)
     error(
-        "Minimal time-step size smaller than the absolue possible minimum "
+        "Minimal time-step size smaller than the absolute possible minimum "
         "dt=%e",
         e->timeBase);
 
