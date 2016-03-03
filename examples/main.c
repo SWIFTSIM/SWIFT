@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
   struct space s;
   struct engine e;
   struct UnitSystem us;
-  struct clockstime tic, toc;
+  struct clocks_time tic, toc;
   char ICfileName[200] = "";
   char dumpfile[30];
   float dt_max = 0.0f, dt_min = 0.0f;

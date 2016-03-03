@@ -1483,7 +1483,7 @@ void engine_step(struct engine *e) {
 
   TIMER_TIC2;
 
-  struct clockstime time1, time2;
+  struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
   /* Collect the cell data. */

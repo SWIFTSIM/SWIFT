@@ -23,7 +23,7 @@
 #include "cycle.h"
 
 /* Struct to record a time for the clocks functions. */
-struct clockstime {
+struct clocks_time {
 #ifdef HAVE_CLOCK_GETTIME
     struct timespec time;
 #else
@@ -31,8 +31,8 @@ struct clockstime {
 #endif
 };
 
-void clocks_gettime(struct clockstime *time);
-double clocks_diff(struct clockstime *start, struct clockstime *end);
+void clocks_gettime(struct clocks_time *time);
+double clocks_diff(struct clocks_time *start, struct clocks_time *end);
 
 void clocks_set_cpufreq(unsigned long long freq);
 unsigned long long clocks_get_cpufreq();
