@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
       case 'd':
         if (sscanf(optarg, "%f", &dt_min) != 1)
           error("Error parsing minimal timestep.");
-        if (myrank == 0) message("dt_min set to %e.", dt_max);
+        if (myrank == 0) message("dt_min set to %e.", dt_min);
         fflush(stdout);
         break;
       case 'e':
@@ -192,8 +192,8 @@ int main(int argc, char *argv[]) {
         with_outputs = 0;
         break;
       case 'P':
-        /* Partition type is one of "g", "m", "w", or "v"; "g" can be
-         * followed by three numbers defining the grid. */
+/* Partition type is one of "g", "m", "w", or "v"; "g" can be
+ * followed by three numbers defining the grid. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
           case 'g':
@@ -224,8 +224,8 @@ int main(int argc, char *argv[]) {
           error("Error parsing number of queues.");
         break;
       case 'R':
-        /* Repartition type "n", "b", "v", "e" or "x". 
-         * Note only none is available without METIS. */
+/* Repartition type "n", "b", "v", "e" or "x".
+ * Note only none is available without METIS. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
           case 'n':
@@ -322,10 +322,6 @@ int main(int argc, char *argv[]) {
             conversionFactor(&us, UNIT_CONV_ENTROPY),
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
-
-  /* Check we have sensible time step bounds */
-  if (dt_min > dt_max)
-    error("Minimal time step size must be large than maximal time step size ");
 
   /* Check whether an IC file has been provided */
   if (strcmp(ICfileName, "") == 0)
@@ -468,7 +464,7 @@ int main(int argc, char *argv[]) {
         "[ms]\n");
 
   /* Let loose a runner on the space. */
-  for (j = 0; e.time < time_end; j++) {
+  for (j = 0; !engine_is_done(&e); j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
