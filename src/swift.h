@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "cell.h"
+#include "clocks.h"
 #include "const.h"
 #include "const.h"
 #include "cycle.h"

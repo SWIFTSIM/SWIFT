@@ -91,7 +91,7 @@ unsigned long long clocks_cpufreq() {
   static unsigned long long cpufreq = 0;
 
   /* If already evaluated return that. */
-  if (cpufreq > 0) 
+  if (cpufreq > 0)
     return cpufreq;
 
 #ifdef HAVE_CLOCK_GETTIME
@@ -110,9 +110,9 @@ unsigned long long clocks_cpufreq() {
   nanosleep(&sleep, NULL);
 
   clocks_gettime(&time2);
-  ticks toc = getticks(); 
+  ticks toc = getticks();
   double realsleep = clocks_diff(&time1, &time2);
-  
+
   cpufreq = (signed long long) (double)(toc - tic) * 1.0/realsleep * 1000.0;
 #endif
 
@@ -136,10 +136,43 @@ unsigned long long clocks_cpufreq() {
   if (cpufreq == 0)
     cpufreq = CPU_TPS;
 #endif
-  
+
   /* If all fails just report ticks in any times. */
   if (cpufreq == 0)
     cpufreq = 1;
 
   return cpufreq;
+}
+
+/**
+ * @brief Return the difference between two ticks in seconds.
+ *
+ * Only an approximation as based on how well we have estimated the
+ * rtc frequency. Should be good for machines that support constant_rtc
+ * and clock_gettime().
+ *
+ * @param tic a number of ticks returned by the cycle.h getticks() function.
+ * @param toc a number of ticks returned by the cycle.h getticks() function.
+ *
+ * @result the absolute difference in approximated seconds.
+ */
+double clocks_diff_ticks(ticks tic, ticks toc)
+{
+    return clocks_from_ticks(tic - toc);
+}
+
+/**
+ * @brief Convert a number of ticks into seconds.
+ *
+ * Only an approximation as based on how well we have estimated the
+ * rtc frequency. Should be good for machines that support constant_rtc
+ * and clock_gettime().
+ *
+ * @param tics a number of ticks returned by the cycle.h getticks() function.
+ *
+ * @result the approximated seconds.
+ */
+double clocks_from_ticks(ticks tics)
+{
+    return ((double)tics / (double)clocks_cpufreq() * 1000.0);
 }

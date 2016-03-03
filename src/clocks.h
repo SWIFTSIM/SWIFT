@@ -34,5 +34,7 @@ struct clockstime {
 void clocks_gettime(struct clockstime *time);
 double clocks_diff(struct clockstime *start, struct clockstime *end);
 unsigned long long clocks_cpufreq();
+double clocks_from_ticks(ticks tics);
+double clocks_diff_ticks(ticks tic, ticks toc);
 
 #endif /* SWIFT_CLOCKS_H */

@@ -46,11 +46,6 @@
 /* Local headers. */
 #include "swift.h"
 
-/* Ticks per second on this machine. */
-#ifndef CPU_TPS
-#define CPU_TPS 2.40e9
-#endif
-
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
 #define ENGINE_POLICY engine_policy_none
@@ -75,10 +70,10 @@ int main(int argc, char *argv[]) {
   struct space s;
   struct engine e;
   struct UnitSystem us;
+  struct clockstime tic, toc;
   char ICfileName[200] = "";
   char dumpfile[30];
   float dt_max = 0.0f, dt_min = 0.0f;
-  ticks tic;
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
@@ -224,7 +219,7 @@ int main(int argc, char *argv[]) {
           error("Error parsing number of queues.");
         break;
       case 'R':
-        /* Repartition type "n", "b", "v", "e" or "x". 
+        /* Repartition type "n", "b", "v", "e" or "x".
          * Note only none is available without METIS. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
@@ -332,7 +327,9 @@ int main(int argc, char *argv[]) {
     error("An IC file name must be provided via the option -f");
 
   /* Read particles and space information from (GADGET) IC */
-  tic = getticks();
+
+  if (myrank == 0)
+    clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
@@ -345,10 +342,12 @@ int main(int argc, char *argv[]) {
   read_ic_single(ICfileName, dim, &parts, &N, &periodic);
 #endif
 
-  if (myrank == 0)
+  if (myrank == 0) {
+    clocks_gettime(&toc);
     message("reading particle properties took %.3f ms.",
-            ((double)(getticks() - tic)) / CPU_TPS * 1000);
-  fflush(stdout);
+            clocks_diff(&tic, &toc));
+    fflush(stdout);
+  }
 
 #if defined(WITH_MPI)
   long long N_long = N;
@@ -374,12 +373,14 @@ int main(int argc, char *argv[]) {
   if (nr_queues < 0) nr_queues = nr_threads;
 
   /* Initialize the space with this data. */
-  tic = getticks();
-  space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
   if (myrank == 0)
-    message("space_init took %.3f ms.",
-            ((double)(getticks() - tic)) / CPU_TPS * 1000);
-  fflush(stdout);
+    clocks_gettime(&tic);
+  space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
+  if (myrank == 0) {
+    clocks_gettime(&toc);
+    message("space_init took %.3f ms.", clocks_diff(&tic, &toc));
+    fflush(stdout);
+  }
 
   /* Say a few nice things about the space we just created. */
   if (myrank == 0) {
@@ -408,15 +409,17 @@ int main(int argc, char *argv[]) {
   }
 
   /* Initialize the engine with this space. */
-  tic = getticks();
+  if (myrank == 0)
+    clocks_gettime(&tic);
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
               ENGINE_POLICY | engine_policy_steal | engine_policy_hydro, 0,
               time_end, dt_min, dt_max);
-  if (myrank == 0)
-    message("engine_init took %.3f ms.",
-            ((double)(getticks() - tic)) / CPU_TPS * 1000);
-  fflush(stdout);
+  if (myrank == 0) {
+    clocks_gettime(&toc);
+    message("engine_init took %.3f ms.", clocks_diff(&tic, &toc));
+    fflush(stdout);
+  }
 
 #ifdef WITH_MPI
   /* Split the space. */
@@ -427,7 +430,8 @@ int main(int argc, char *argv[]) {
   if (with_outputs) {
     /* Write the state of the system as it is before starting time integration.
      */
-    tic = getticks();
+    if (myrank == 0)
+      clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
@@ -439,10 +443,12 @@ int main(int argc, char *argv[]) {
 #else
     write_output_single(&e, &us);
 #endif
-    if (myrank == 0)
+    if (myrank == 0) {
+      clocks_gettime(&toc);
       message("writing particle properties took %.3f ms.",
-              ((double)(getticks() - tic)) / CPU_TPS * 1000);
-    fflush(stdout);
+              clocks_diff(&tic, &toc));
+      fflush(stdout);
+    }
   }
 
 /* Init the runner history. */
@@ -571,14 +577,14 @@ int main(int argc, char *argv[]) {
      * e.count_step, */
     /*              e.dt_min, e.dt_max); */
     /*       for (k = 0; k < timer_count; k++) */
-    /*         printf(" %.3f", ((double)timers[k]) / CPU_TPS * 1000); */
+    /*         printf(" %.3f", clocks_from_ticks(timers[k]); */
     /*       printf("\n"); */
     /*       fflush(stdout); */
     /*     } */
 
     /* if (myrank == 0) { */
     /*   printf("%i %e", j, e.time); */
-    /*   printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000); */
+    /*   printf(" %.3f", clocks_from_ticks(timers[timer_count - 1]); */
     /*   printf("\n"); */
     /*   fflush(stdout); */
     /* } */
