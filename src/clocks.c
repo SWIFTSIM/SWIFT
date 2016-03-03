@@ -36,6 +36,12 @@
 /* 0.25 of a second in nanoseconds. */
 #define SLEEPTIME 250000000
 
+/* The CPU frequency used to convert ticks to seconds. */
+static unsigned long long cpufreq = 0;
+
+/* Local prototypes. */
+static void estimate_cpufreq();
+
 /**
  * @brief Get the current time.
  *
@@ -49,7 +55,6 @@ void clocks_gettime(struct clockstime *time) {
   time->time = getticks();
 #endif
 }
-
 
 /**
  * @brief Get difference in milli-seconds between two times.
@@ -72,27 +77,54 @@ double clocks_diff(struct clockstime *start, struct clockstime *end)
   }
   return (double)temp.tv_sec * 1000.0 + (double)temp.tv_nsec * 1.0E-6;
 #else
-  return elapsed(end->time, start-time) / clocks_cpufreq() * 1000;
+  return elapsed(end->time, start-time) / clocks_get_cpufreq() * 1000;
 #endif
+
+}
+
+/**
+ * @brief Set the CPU frequency.
+ *
+ * This function should be called at least once to set the CPU frequency.
+ * To use the builtin estimation techniques give a value of 0.
+ *
+ * @param freq the CPU frequency in Hz or 0 to estimate one.
+ */
+void clocks_set_cpufreq(unsigned long long freq) {
+  if ( freq > 0 ) {
+    cpufreq = freq;
+  } else {
+    estimate_cpufreq();
+  }
+}
+
+/**
+ * @brief Get the CPU frequency in Hz.
+ *
+ * @result the CPU frequency.
+ */
+unsigned long long clocks_get_cpufreq() {
+
+  if (cpufreq > 0)
+    return cpufreq;
+
+  /* It not already set estimate it. */
+  estimate_cpufreq();
+  return cpufreq;
 
 }
 
 /**
  * @brief Estimate the CPU frequency in Hz.
  *
- * The technique is either to read the value from the cpuinfo_max_freq
- * file, or use a clock timed nanosleep, or use the macro CPU_TPS.
+ * If already set return the CPU frequency, then estimate the CPU frequency.
  *
- * Only evaulated once.
- *
- * @result the CPU frequency.
+ * The technique is either use a clock timed nanosleep (this was the best
+ * method on i7), to read the value from the cpuinfo_max_freq
+ * file (probably a overestimate), to use the macro value CPU_TPS or
+ * finally just use a value of 1.
  */
-unsigned long long clocks_cpufreq() {
-  static unsigned long long cpufreq = 0;
-
-  /* If already evaluated return that. */
-  if (cpufreq > 0)
-    return cpufreq;
+static void estimate_cpufreq() {
 
 #ifdef HAVE_CLOCK_GETTIME
   /* Try to time a nanosleep() in ticks. */
@@ -131,7 +163,7 @@ unsigned long long clocks_cpufreq() {
   }
 #endif
 
-  /* Final attempt */
+  /* Nearly final attempt */
 #ifdef CPU_TPS
   if (cpufreq == 0)
     cpufreq = CPU_TPS;
@@ -140,8 +172,6 @@ unsigned long long clocks_cpufreq() {
   /* If all fails just report ticks in any times. */
   if (cpufreq == 0)
     cpufreq = 1;
-
-  return cpufreq;
 }
 
 /**
@@ -174,5 +204,5 @@ double clocks_diff_ticks(ticks tic, ticks toc)
  */
 double clocks_from_ticks(ticks tics)
 {
-    return ((double)tics / (double)clocks_cpufreq() * 1000.0);
+    return ((double)tics / (double)clocks_get_cpufreq() * 1000.0);
 }

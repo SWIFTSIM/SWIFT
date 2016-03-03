@@ -33,7 +33,9 @@ struct clockstime {
 
 void clocks_gettime(struct clockstime *time);
 double clocks_diff(struct clockstime *start, struct clockstime *end);
-unsigned long long clocks_cpufreq();
+
+void clocks_set_cpufreq(unsigned long long freq);
+unsigned long long clocks_get_cpufreq();
 double clocks_from_ticks(ticks tics);
 double clocks_diff_ticks(ticks tic, ticks toc);
 
