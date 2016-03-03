@@ -58,8 +58,8 @@ struct gpart {
   /* Anonymous union for id/part. */
   union {
 
-    /* Particle ID. */
-    size_t id;
+    /* Particle ID. By default: gravity only particles have a negative ID*/
+    long id;
 
     /* Pointer to corresponding SPH part. */
     struct part* part;

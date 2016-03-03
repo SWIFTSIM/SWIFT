@@ -408,7 +408,28 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, struct g
 	if(GAS == ptype)
 	  hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts);
 	else if(DARKMATTER == ptype)
-	  darkmatter_read_particles(h_grp, *Ndm, *Ndm, 0, *gparts);
+	  {
+		 int i, ic;
+		 darkmatter_read_particles(h_grp, *Ndm, *Ndm, 0, *gparts);
+		 for(i=0; i<*Ndm; i++)
+			(*gparts)[i].id = -abs( (*gparts)[i].id );
+		 /* /\* for testing: copy gparts into parts as if we were doing SPH *\/ */
+		 /* *Ngas = *Ndm; */
+		 /* if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) != 0) */
+		 /* 	error("Error while allocating memory for SPH particles"); */
+		 /* bzero(*parts, *Ngas * sizeof(struct part)); */
+		 /* for(i=0; i<*Ndm; i++) */
+		 /* 	{ */
+		 /* 	  for(ic=0;ic<3;ic++) */
+		 /* 		 { */
+		 /* 			(*parts)[i].x[ic] = (*gparts)[i].x[ic]; */
+		 /* 			(*parts)[i].v[ic] = (*gparts)[i].v[ic]; */
+		 /* 		 } */
+		 /* 	  (*parts)[i].u   = 1.0; */
+		 /* 	  (*parts)[i].rho = 1.0; */
+		 /* 	} */
+
+	  }
 	else
 	  error("Particle Type %d not yet supported. Aborting", ptype);
 	  

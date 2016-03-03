@@ -1306,7 +1306,7 @@ void engine_collect_kick(struct cell *c) {
   if (c->kick != NULL) return;
 
   /* Only do something is the cell is non-empty */
-  if (c->count != 0) {
+  if (c->count != 0 || c->gcount != 0) {
 
     /* If this cell is not split, I'm in trouble. */
     if (!c->split) error("Cell has no super-cell.");
