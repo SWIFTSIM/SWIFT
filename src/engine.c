@@ -1557,8 +1557,8 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("%d %e %e %d %.3f %.3f\n", e->step, e->time, e->timeStep, updates,
-           e->wallclock_time, e->wallclock_time_ticks);
+    printf("%d %e %e %d %.3f\n", e->step, e->time, e->timeStep, updates,
+           e->wallclock_time);
     fflush(stdout);
 
     /* Write some energy statistics */
@@ -1625,9 +1625,6 @@ void engine_step(struct engine *e) {
   TIMER_TOC2(timer_step);
 
   clocks_gettime(&time2);
-
-  e->wallclock_time_ticks =
-      ((double)timers[timer_count - 1]) / clocks_get_cpufreq() * 1000;
 
   e->wallclock_time = (float) clocks_diff(&time1, &time2);
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
