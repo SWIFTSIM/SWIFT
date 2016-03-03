@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
       case 'd':
         if (sscanf(optarg, "%f", &dt_min) != 1)
           error("Error parsing minimal timestep.");
-        if (myrank == 0) message("dt_min set to %e.", dt_max);
+        if (myrank == 0) message("dt_min set to %e.", dt_min);
         fflush(stdout);
         break;
       case 'e':
@@ -322,10 +322,6 @@ int main(int argc, char *argv[]) {
             conversionFactor(&us, UNIT_CONV_ENTROPY),
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
-
-  /* Check we have sensible time step bounds */
-  if (dt_min > dt_max)
-    error("Minimal time step size must be large than maximal time step size ");
 
   /* Check whether an IC file has been provided */
   if (strcmp(ICfileName, "") == 0)

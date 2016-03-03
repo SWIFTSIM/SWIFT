@@ -1936,6 +1936,18 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   /* Print information about the hydro scheme */
   if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
 
+  /* Check we have sensible time bounds */
+  if (timeBegin >= timeEnd)
+    error(
+        "Final simulation time (t_end = %e) must be larger than the start time "
+        "(t_beg = %e)",
+        timeEnd, timeBegin);
+
+  /* Check we have sensible time step bounds */
+  if (e->dt_min > e->dt_max)
+    error(
+        "Minimal time step size must be smaller than maximal time step size ");
+
   /* Deal with timestep */
   e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
   e->ti_current = 0;
