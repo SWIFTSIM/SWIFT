@@ -77,6 +77,7 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
+  unsigned long long cpufreq = 0;
 
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -149,7 +150,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:m:oP:q:R:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -177,6 +178,12 @@ int main(int argc, char *argv[]) {
         break;
       case 'f':
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
+        break;
+      case 'h':
+        if (sscanf(optarg, "%llu", &cpufreq) != 1)
+          error("Error parsing CPU frequency.");
+        if (myrank == 0) message("CPU frequency set to %llu.", cpufreq);
+        fflush(stdout);
         break;
       case 'm':
         if (sscanf(optarg, "%lf", &h_max) != 1) error("Error parsing h_max.");
@@ -317,6 +324,12 @@ int main(int argc, char *argv[]) {
             conversionFactor(&us, UNIT_CONV_ENTROPY),
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
+
+  /* Initialize CPU frequency. */
+  clocks_set_cpufreq(cpufreq);
+  cpufreq = clocks_get_cpufreq();
+  if (myrank == 0)
+      message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
 
   /* Check we have sensible time step bounds */
   if (dt_min > dt_max)
