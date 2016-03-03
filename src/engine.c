@@ -286,7 +286,6 @@ void engine_redistribute(struct engine *e) {
 #endif
 }
 
-
 /**
  * @brief Repartition the cells amongst the nodes.
  *
@@ -1394,7 +1393,7 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
-  if(e->nodeID == 0) message("Initialising particles");
+  if (e->nodeID == 0) message("Initialising particles");
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
@@ -1632,6 +1631,13 @@ void engine_step(struct engine *e) {
 }
 
 /**
+ * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
+ */
+int engine_is_done(struct engine *e) {
+  return !(e->ti_current < max_nr_timesteps);
+}
+
+/**
  * @brief Create and fill the proxies.
  *
  * @param e The #engine.
@@ -1837,7 +1843,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
       int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
       bool done = false, swap_hyperthreads = hyperthreads_present();
       if (swap_hyperthreads && nodeID == 0)
-	message("prefer physical cores to hyperthreads");
+        message("prefer physical cores to hyperthreads");
 
       while (!done) {
         done = true;
@@ -1934,15 +1940,25 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if (e->nodeID == 0)
-    message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+  if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+
+  /* Check we have sensible time bounds */
+  if (timeBegin >= timeEnd)
+    error(
+        "Final simulation time (t_end = %e) must be larger than the start time "
+        "(t_beg = %e)",
+        timeEnd, timeBegin);
+
+  /* Check we have sensible time step bounds */
+  if (e->dt_min > e->dt_max)
+    error(
+        "Minimal time step size must be smaller than maximal time step size ");
 
   /* Deal with timestep */
   e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
   e->ti_current = 0;
-  if (e->nodeID == 0)
-    message("Absolute minimal timestep size: %e", e->timeBase);
 
+  /* Fixed time-step case */
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
 
@@ -1953,11 +1969,32 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     e->dt_min = e->dt_max = dti_timeline * e->timeBase;
 
     if (e->nodeID == 0) message("Timestep set to %e", e->dt_max);
+  } else {
+
+    if (e->nodeID == 0) {
+      message("Absolute minimal timestep size: %e", e->timeBase);
+
+      float dt_min = timeEnd - timeBegin;
+      while (dt_min > e->dt_min) dt_min /= 2.f;
+
+      message("Minimal timestep size (on time-line): %e", dt_min);
+
+      float dt_max = timeEnd - timeBegin;
+      while (dt_max > e->dt_max) dt_max /= 2.f;
+
+      message("Maximal timestep size (on time-line): %e", dt_max);
+    }
   }
 
   if (e->dt_min < e->timeBase && e->nodeID == 0)
-    error("Minimal timestep smaller than the absolue possible minimum dt=%e",
-          e->timeBase);
+    error(
+        "Minimal time-step size smaller than the absolute possible minimum "
+        "dt=%e",
+        e->timeBase);
+
+  if (e->dt_max > (e->timeEnd - e->timeBegin) && e->nodeID == 0)
+    error("Maximal time-step size larger than the simulation run time t=%e",
+          e->timeEnd - e->timeBegin);
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
