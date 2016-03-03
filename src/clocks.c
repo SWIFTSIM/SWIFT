@@ -64,8 +64,7 @@ void clocks_gettime(struct clocks_time *time) {
  *
  * @return the difference in milli-secinds.
  */
-double clocks_diff(struct clocks_time *start, struct clocks_time *end)
-{
+double clocks_diff(struct clocks_time *start, struct clocks_time *end) {
 #ifdef HAVE_CLOCK_GETTIME
   struct timespec temp;
   if ((end->time.tv_nsec - start->time.tv_nsec) < 0) {
@@ -77,9 +76,8 @@ double clocks_diff(struct clocks_time *start, struct clocks_time *end)
   }
   return (double)temp.tv_sec * 1000.0 + (double)temp.tv_nsec * 1.0E-6;
 #else
-  return elapsed(end->time, start-time) / clocks_get_cpufreq() * 1000;
+  return elapsed(end->time, start->time) / clocks_get_cpufreq() * 1000;
 #endif
-
 }
 
 /**
@@ -91,10 +89,10 @@ double clocks_diff(struct clocks_time *start, struct clocks_time *end)
  * @param freq the CPU frequency in Hz or 0 to estimate one.
  */
 void clocks_set_cpufreq(unsigned long long freq) {
-  if ( freq > 0 ) {
+  if (freq > 0) {
     clocks_cpufreq = freq;
   } else {
-      clocks_estimate_cpufreq();
+    clocks_estimate_cpufreq();
   }
 }
 
@@ -105,13 +103,11 @@ void clocks_set_cpufreq(unsigned long long freq) {
  */
 unsigned long long clocks_get_cpufreq() {
 
-  if (clocks_cpufreq > 0)
-    return clocks_cpufreq;
+  if (clocks_cpufreq > 0) return clocks_cpufreq;
 
   /* It not already set estimate it. */
   clocks_estimate_cpufreq();
   return clocks_cpufreq;
-
 }
 
 /**
@@ -145,14 +141,15 @@ static void clocks_estimate_cpufreq() {
   ticks toc = getticks();
   double realsleep = clocks_diff(&time1, &time2);
 
-  clocks_cpufreq = (signed long long) (double)(toc - tic) * 1.0/realsleep * 1000.0;
+  clocks_cpufreq =
+      (signed long long)(double)(toc - tic) * 1.0 / realsleep * 1000.0;
 #endif
 
-  /* Look for the system value, if available. Tends to be too large. */
+/* Look for the system value, if available. Tends to be too large. */
 #ifdef __linux__
   if (clocks_cpufreq == 0) {
-    FILE *file = fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq",
-                       "r");
+    FILE *file =
+        fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "r");
     if (file != NULL) {
       unsigned long long maxfreq;
       if (fscanf(file, "%llu", &maxfreq) == 1) {
@@ -163,15 +160,13 @@ static void clocks_estimate_cpufreq() {
   }
 #endif
 
-  /* Nearly final attempt */
+/* Nearly final attempt */
 #ifdef CPU_TPS
-  if (clocks_cpufreq == 0)
-    clocks_cpufreq = CPU_TPS;
+  if (clocks_cpufreq == 0) clocks_cpufreq = CPU_TPS;
 #endif
 
   /* If all fails just report ticks in any times. */
-  if (clocks_cpufreq == 0)
-    clocks_cpufreq = 1;
+  if (clocks_cpufreq == 0) clocks_cpufreq = 1;
 }
 
 /**
@@ -186,8 +181,7 @@ static void clocks_estimate_cpufreq() {
  *
  * @result the absolute difference in approximated seconds.
  */
-double clocks_diff_ticks(ticks tic, ticks toc)
-{
+double clocks_diff_ticks(ticks tic, ticks toc) {
   return clocks_from_ticks(tic - toc);
 }
 
@@ -202,7 +196,6 @@ double clocks_diff_ticks(ticks tic, ticks toc)
  *
  * @result the approximated seconds.
  */
-double clocks_from_ticks(ticks tics)
-{
+double clocks_from_ticks(ticks tics) {
   return ((double)tics / (double)clocks_get_cpufreq() * 1000.0);
 }

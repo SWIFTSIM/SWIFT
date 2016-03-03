@@ -25,9 +25,9 @@
 /* Struct to record a time for the clocks functions. */
 struct clocks_time {
 #ifdef HAVE_CLOCK_GETTIME
-    struct timespec time;
+  struct timespec time;
 #else
-    ticks time;
+  ticks time;
 #endif
 };
 
