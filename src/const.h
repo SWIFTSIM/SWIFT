@@ -20,6 +20,8 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
+#include  "physical_constants.h"
+
 /* Hydrodynamical constants. */
 #define const_hydro_gamma (5.0f / 3.0f)
 
@@ -56,7 +58,6 @@
   0.57735f /* Opening criteria, which is the ratio of the \
               cell distance over the cell width. */
 
-#define const_G 6.672e-8f             /* Gravitational constant. */
 #define const_epsilon 0.0014f         /* Gravity blending distance. */
 #define const_iepsilon 714.285714286f /* Inverse gravity blending distance. */
 #define const_iepsilon2 (const_iepsilon* const_iepsilon)
@@ -79,8 +80,18 @@
 
 
 /* System of units */
-#define const_unit_length_in_cgs 1   /* 3.08567810e16  /\* 1Mpc *\/ */
-#define const_unit_mass_in_cgs 1     /* 1.9891e33      /\* 1 M_sun *\/ */
-#define const_unit_velocity_in_cgs 1 /* 1e5            /\* km s^-1 *\/ */
+#define const_unit_length_in_cgs       (1000 *  PARSEC_IN_CGS )  /* kpc */
+#define const_unit_mass_in_cgs         (SOLAR_MASS_IN_CGS)       /* solar mass */
+#define const_unit_velocity_in_cgs     (1e5)                     /* km/s */ 
+
+/* Derived constants */
+#define const_unit_time_in_cgs (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
+#define const_G (NEWTON_GRAVITY_CGS * const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/ (const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs))
+
+/* External Potential Constants */
+#define External_Potential_X  (50000 * PARSEC_IN_CGS /  const_unit_length_in_cgs)
+#define External_Potential_Y  (50000 * PARSEC_IN_CGS /  const_unit_length_in_cgs)
+#define External_Potential_Z  (50000 * PARSEC_IN_CGS /  const_unit_length_in_cgs)
+#define External_Potential_Mass (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs)
 
 #endif /* SWIFT_CONST_H */

@@ -68,6 +68,11 @@ const float runner_shift[13 * 3] = {
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+#define OUT  if(CELL_ID == MY_CELL) {message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time);}
+//#define OUT  message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time);
+//#define OUT  if(CELL_ID == MY_CELL) message("\n cell %f %f %f %d %d %f\n",c->loc[0],c->loc[1],c->loc[2], CELL_ID, c->count, r->e->time);
+
+
 /* Import the density loop functions. */
 #define FUNCTION density
 #include "runner_doiact.h"
@@ -79,6 +84,69 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
+
+
+/**
+ * @brief Calculate gravity acceleration from external potential
+ *
+ * @param runner task
+ * @param cell
+ */
+void runner_dograv_external(struct runner *r, struct cell *c) {
+
+  struct part *p, *parts = c->parts;
+  float rinv;
+  float L[3], E;
+  int i, k, count = c->count;
+  float t_end = r->e->time;
+  //struct space *s = r->e->s;
+  //double CentreOfPotential[3];
+  TIMER_TIC
+
+  /* 	 /\* location of external gravity point mass - should pass in as paraneter *\/ */
+  /* CentreOfPotential[0] = 0.5 * s->dim[0]; */
+  /* CentreOfPotential[1] = 0.5 * s->dim[1]; */
+  /* CentreOfPotential[2] = 0.5 * s->dim[2]; */
+
+  /* Recurse? */
+  if (c->split) {
+    for (k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_dograv_external(r, c->progeny[k]);
+    return;
+  }
+
+#ifdef TASK_VERBOSE
+  	 OUT
+#endif
+  /* /\* Loop over the parts in this cell. *\/ */
+  /* for (i = 0; i < count; i++) { */
+
+  /* 	 /\* Get a direct pointer on the part. *\/ */
+  /* 	 p = &parts[i]; */
+
+  /* 	 /\* Is this part within the time step? *\/ */
+  /* 	 if (p->t_end <= t_end) { */
+  /* 		rinv = 1 / sqrtf((p->x[0]-External_Potential_X)*(p->x[0]-External_Potential_X) + (p->x[1]-External_Potential_Y)*(p->x[1]-External_Potential_Y) + (p->x[2]-External_Potential_Z)*(p->x[2]-External_Potential_Z)); */
+
+  /* 		/\* check for energy and angular momentum conservation *\/ */
+  /* 		E = 0.5 * ((p->v[0]*p->v[0]) + (p->v[1]*p->v[1]) + (p->v[2]*p->v[2])) - const_G *  External_Potential_Mass * rinv;  */
+  /* 		L[0] = (p->x[1] - External_Potential_X)*p->v[2] - (p->x[2] - External_Potential_X)*p->v[1]; */
+  /* 		L[1] = (p->x[2] - External_Potential_Y)*p->v[0] - (p->x[0] - External_Potential_Y)*p->v[2]; */
+  /* 		L[2] = (p->x[0] - External_Potential_Z)*p->v[1] - (p->x[1] - External_Potential_Z)*p->v[0]; */
+  /* 		if(p->id == 0) { */
+  /* 		  message("update %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\n", r->e->time, 1./rinv, p->x[0], p->x[1], p->x[2], E, L[0], L[1], L[2]); */
+  /* 		  message(" ... %f %f %f\n", p->v[0], p->v[1], p->v[2]); */
+  /* 		  message(" ... %e %e\n", const_G, External_Potential_Mass); */
+  /* 		} */
+  /* 		p->grav_accel[0] = - const_G *  External_Potential_Mass * (p->x[0] - External_Potential_X) * rinv * rinv * rinv; */
+  /* 		p->grav_accel[1] = - const_G *  External_Potential_Mass * (p->x[1] - External_Potential_Y) * rinv * rinv * rinv; */
+  /* 		p->grav_accel[2] = - const_G *  External_Potential_Mass * (p->x[2] - External_Potential_Z) * rinv * rinv * rinv; */
+		
+  /* 	 } */
+  /* } */
+  /* TIMER_TOC(timer_dograv_external); */
+}
+
 
 /**
  * @brief Sort the entries in ascending order using QuickSort.

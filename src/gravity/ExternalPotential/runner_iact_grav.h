@@ -26,7 +26,7 @@
 #include "vector.h"
 
 /**
- * @file  runner_iact_grav.h
+ * @file  runner_iact_grav.c
  * @brief Gravity interaction functions.
  *
  */
