@@ -19,8 +19,10 @@
 
 /**
  *  @file clocks.c
- *  @brief support for measuring intervals in seconds. Use cycle.h
- *  or timers.h for relative times.
+ *  @brief support for measuring intervals in milli seconds, when that
+ *  is possible, otherwise ticks.
+ *
+ *  Use cycle.h or timers.h for relative times.
  */
 
 /* Config parameters. */
@@ -38,6 +40,11 @@
 
 /* The CPU frequency used to convert ticks to seconds. */
 static unsigned long long clocks_cpufreq = 0;
+
+/* The units of any returned times. */
+static char *clocks_units[] = {"ms", "ticks"};
+static int clocks_units_index = 0;
+static double clocks_units_scale = 1000.0;
 
 /* Local prototypes. */
 static void clocks_estimate_cpufreq();
@@ -57,12 +64,12 @@ void clocks_gettime(struct clocks_time *time) {
 }
 
 /**
- * @brief Get difference in milli-seconds between two times.
+ * @brief Get difference in between two times.
  *
  * @param start the start time.
  * @param end the end time.
  *
- * @return the difference in milli-secinds.
+ * @return the difference.
  */
 double clocks_diff(struct clocks_time *start, struct clocks_time *end) {
 #ifdef HAVE_CLOCK_GETTIME
@@ -76,7 +83,7 @@ double clocks_diff(struct clocks_time *start, struct clocks_time *end) {
   }
   return (double)temp.tv_sec * 1000.0 + (double)temp.tv_nsec * 1.0E-6;
 #else
-  return elapsed(end->time, start->time) / clocks_get_cpufreq() * 1000;
+  return elapsed(end->time, start->time) / clocks_get_cpufreq() * clocks_units_scale;
 #endif
 }
 
@@ -117,8 +124,8 @@ unsigned long long clocks_get_cpufreq() {
  *
  * The technique is either use a clock timed nanosleep (this was the best
  * method on i7), to read the value from the cpuinfo_max_freq
- * file (probably a overestimate), to use the macro value CPU_TPS or
- * finally just use a value of 1.
+ * file (probably a overestimate) or finally just use a value of 1 with
+ * time units of ticks.
  */
 static void clocks_estimate_cpufreq() {
 
@@ -143,6 +150,8 @@ static void clocks_estimate_cpufreq() {
 
   clocks_cpufreq =
       (signed long long)(double)(toc - tic) * 1.0 / realsleep * 1000.0;
+  clocks_units_index = 0;
+  clocks_units_scale = 1000.0;
 #endif
 
 /* Look for the system value, if available. Tends to be too large. */
@@ -154,23 +163,24 @@ static void clocks_estimate_cpufreq() {
       unsigned long long maxfreq;
       if (fscanf(file, "%llu", &maxfreq) == 1) {
         clocks_cpufreq = maxfreq * 1000;
+        clocks_units_index = 0;
+        clocks_units_scale = 1000.0;
       }
       fclose(file);
     }
   }
 #endif
 
-/* Nearly final attempt */
-#ifdef CPU_TPS
-  if (clocks_cpufreq == 0) clocks_cpufreq = CPU_TPS;
-#endif
-
   /* If all fails just report ticks in any times. */
-  if (clocks_cpufreq == 0) clocks_cpufreq = 1;
+  if (clocks_cpufreq == 0) {
+    clocks_cpufreq = 1;
+    clocks_units_index = 1;
+    clocks_units_scale = 1.0;
+  }
 }
 
 /**
- * @brief Return the difference between two ticks in seconds.
+ * @brief Return the difference between two ticks.
  *
  * Only an approximation as based on how well we have estimated the
  * rtc frequency. Should be good for machines that support constant_rtc
@@ -179,23 +189,36 @@ static void clocks_estimate_cpufreq() {
  * @param tic a number of ticks returned by the cycle.h getticks() function.
  * @param toc a number of ticks returned by the cycle.h getticks() function.
  *
- * @result the absolute difference in approximated seconds.
+ * @result the difference.
  */
 double clocks_diff_ticks(ticks tic, ticks toc) {
   return clocks_from_ticks(tic - toc);
 }
 
 /**
- * @brief Convert a number of ticks into seconds.
+ * @brief Convert a number of ticks into milli seconds, if possible.
  *
  * Only an approximation as based on how well we have estimated the
  * rtc frequency. Should be good for machines that support constant_rtc
- * and clock_gettime().
+ * and clock_gettime(), and reasonable for most Linux machines, otherwise
+ * ticks will just be returned. See clocks_getunit() for the actual units.
  *
  * @param tics a number of ticks returned by the cycle.h getticks() function.
  *
- * @result the approximated seconds.
+ * @result the milli seconds, if possible.
  */
 double clocks_from_ticks(ticks tics) {
-  return ((double)tics / (double)clocks_get_cpufreq() * 1000.0);
+  return ((double)tics / (double)clocks_get_cpufreq() * clocks_units_scale);
+}
+
+/**
+ * @brief return the time units.
+ *
+ * Normally "ms" for milliseconds, but can be "ticks" when no conversion
+ * factor is available.
+ *
+ * @result the current time units.
+ */
+const char *clocks_getunit() {
+  return clocks_units[clocks_units_index];
 }
