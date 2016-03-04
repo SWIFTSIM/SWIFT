@@ -56,25 +56,25 @@ extern int engine_rank;
  *                         followed by the MPI error string and aborts.
  *
  */
-#define mpi_error(res,s, ...)                                            \
+#define mpi_error(res, s, ...)                                           \
   {                                                                      \
     fprintf(stderr, "[%03i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
     int len = 1024;                                                      \
     char buf[len];                                                       \
-    MPI_Error_string( res, buf, &len );                                  \
-    fprintf(stderr, "%s\n\n", buf );                                     \
+    MPI_Error_string(res, buf, &len);                                    \
+    fprintf(stderr, "%s\n\n", buf);                                      \
     MPI_Abort(MPI_COMM_WORLD, -1);                                       \
   }
 
-#define mpi_error_string(res,s, ...)                                            \
+#define mpi_error_string(res, s, ...)                                    \
   {                                                                      \
     fprintf(stderr, "[%03i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
     int len = 1024;                                                      \
     char buf[len];                                                       \
-    MPI_Error_string( res, buf, &len );                                  \
-    fprintf(stderr, "%s\n\n", buf );                                     \
+    MPI_Error_string(res, buf, &len);                                    \
+    fprintf(stderr, "%s\n\n", buf);                                      \
   }
 #endif
 
