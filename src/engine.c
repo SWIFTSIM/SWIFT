@@ -99,7 +99,7 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
   struct scheduler *s = &e->sched;
 
   /* Am I the super-cell? */
-  if (super == NULL && c->nr_tasks > 0) {
+  if (super == NULL && (c->count > 0 || c->gcount > 0)) {
 
     /* Remember me. */
     super = c;
@@ -107,26 +107,33 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
-      /* Generate the ghost task. */
-      c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
+		if(c->count > 0)
+		  {
+			 /* Generate the ghost task. */
+			 c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
+			 /* Add the init task. */
+			 c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
+												  NULL, 0);
+		  }
+
       /* Add the drift task. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
-      /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+
       /* Add the kick task. */
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
-		/* /\* Add the gravity tasks *\/ */
-      /* c->grav_external = scheduler_addtask(s, task_type_grav_external, task_subtype_none, 0, 0, */
-      /*                                      c, NULL, 0); */
-
-      /* /\* Enforce gravity calculated before kick  *\/ */
-      /* scheduler_addunlock(s, c->grav_external, c->kick); */
- 		
+		if(c->gcount > 0)
+		  {
+			 /* /\* Add the gravity tasks *\/ */
+			 /* c->grav_external = scheduler_addtask(s, task_type_grav_external, task_subtype_none, 0, 0, */
+			 /*                                      c, NULL, 0); */
+			 
+			 /* /\* Enforce gravity calculated before kick  *\/ */
+			 /* scheduler_addunlock(s, c->grav_external, c->kick); */
+		  }
     }
   }
 
