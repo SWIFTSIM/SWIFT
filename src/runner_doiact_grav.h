@@ -193,16 +193,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
   } /* loop over the parts in cj and interact with the multipole. */
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) "
-      "took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      fmax(ci->h[0], fmax(ci->h[1], ci->h[2])),
-      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
-#else
   TIMER_TOC(TIMER_DOPAIR);
-#endif
 }
 
 /**
@@ -430,15 +421,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
       runner_iact_grav(r2q[k], &dxq[3 * k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair_naive_grav[%02i]: %i/%i parts at depth %i "
-      "(r_max=%.3f/%.3f) took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
-#else
   TIMER_TOC(timer_dopair_grav);
-#endif
 }
 
 /**
@@ -526,15 +509,7 @@ void runner_doself_grav(struct runner *r, struct cell *restrict c) {
       runner_iact_grav(r2q[k], &dxq[3 * k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_doself_grav[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
-      "took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      clocks_from_ticks(TIMER_TOC(TIMER_DOPAIR)));
-#else
   TIMER_TOC(timer_doself_grav);
-#endif
 }
 
 /**
@@ -617,13 +592,7 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
       runner_dograv_mm(r, ci, cj);
   }
 
-  if (gettimer)
-#ifdef TIMER_VERBOSE
-    printf("runner_dosub_grav[%02i]: at depth %i took %.3f ms.\n", r->id,
-           ci->depth, clocks_from_ticks(TIMER_TOC(TIMER_DOSUB)));
-#else
-    TIMER_TOC(timer_dosub_grav);
-#endif
+  if (gettimer) TIMER_TOC(timer_dosub_grav);
 }
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */
