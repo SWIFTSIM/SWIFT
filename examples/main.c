@@ -357,8 +357,8 @@ int main(int argc, char *argv[]) {
 
   if (myrank == 0) {
     clocks_gettime(&toc);
-    message("reading particle properties took %.3f ms.",
-            clocks_diff(&tic, &toc));
+    message("reading particle properties took %.3f %s.",
+            clocks_diff(&tic, &toc), clocks_getunit());
     fflush(stdout);
   }
 
@@ -391,7 +391,8 @@ int main(int argc, char *argv[]) {
   space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
   if (myrank == 0) {
     clocks_gettime(&toc);
-    message("space_init took %.3f ms.", clocks_diff(&tic, &toc));
+    message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
     fflush(stdout);
   }
 
@@ -430,7 +431,8 @@ int main(int argc, char *argv[]) {
               time_end, dt_min, dt_max);
   if (myrank == 0) {
     clocks_gettime(&toc);
-    message("engine_init took %.3f ms.", clocks_diff(&tic, &toc));
+    message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
     fflush(stdout);
   }
 
@@ -458,8 +460,8 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0) {
       clocks_gettime(&toc);
-      message("writing particle properties took %.3f ms.",
-              clocks_diff(&tic, &toc));
+      message("writing particle properties took %.3f %s.",
+              clocks_diff(&tic, &toc), clocks_getunit());
       fflush(stdout);
     }
   }
@@ -484,7 +486,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0)
     printf(
         "# Step  Time  time-step  Number of updates    CPU Wall-clock time "
-        "[ms]\n");
+        "[%s]\n", clocks_getunit());
 
   /* Let loose a runner on the space. */
   for (j = 0; !engine_is_done(&e); j++) {

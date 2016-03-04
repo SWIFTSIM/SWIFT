@@ -835,8 +835,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-  /* printf( "runner_dopair: first half took %.3f ms...\n" ,
-  clocks_from_ticks(getticks() - tic));
+  /* printf( "runner_dopair: first half took %.3f %s...\n" ,
+  clocks_from_ticks(getticks() - tic), clocks_getunit());
   tic = getticks(); */
 
   /* Loop over the parts in cj. */
@@ -1138,8 +1138,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-  /* printf( "runner_dopair: first half took %.3f ms...\n" ,
-  clocks_from_ticks(getticks() - tic));
+  /* printf( "runner_dopair: first half took %.3f %s...\n" ,
+  clocks_from_ticks(getticks() - tic), clocks_getunit());
   tic = getticks(); */
 
   /* Loop over the parts in cj. */
