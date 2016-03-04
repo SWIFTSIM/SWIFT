@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = -DTIMER -DCOUNTER -DCPU_TPS=2.30e9 $(HDF5_CPPFLAGS)
+AM_CFLAGS = -DTIMER -DCOUNTER $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0 # -fsanitize=address
