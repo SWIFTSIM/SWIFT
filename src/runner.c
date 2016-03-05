@@ -1061,7 +1061,7 @@ void *runner_main(void *data) {
           space_do_parts_sort();
           break;
         case task_type_split_cell:
-          space_split(e->s, t->ci);
+          space_do_split(e->s, t->ci);
           break;
         case task_type_rewait:
           scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj,

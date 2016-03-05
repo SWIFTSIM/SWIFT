@@ -161,7 +161,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   float h_max = s->cell_min / kernel_gamma / space_stretch, dmin;
   int i, j, k, cdim[3], nr_parts = s->nr_parts;
   struct cell *restrict c;
-  // ticks tic;
+  ticks tic = getticks();
 
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
@@ -291,6 +291,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     }
     s->maxdepth = 0;
   }
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -309,7 +313,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   struct part *restrict p;
   int *ind;
   double ih[3], dim[3];
-  // ticks tic;
+  ticks tic = getticks();
 
   /* Be verbose about this. */
   // message( "re)building space..." ); fflush(stdout);
@@ -394,10 +398,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #endif
 
   /* Sort the parts according to their cells. */
-  // tic = getticks();
-  space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1);
-  // message( "parts_sort took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
+  space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
   for (k = 0; k < nr_parts; k++)
@@ -437,10 +438,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* TODO: Here we should exchange the gparts as well! */
 
   /* Sort the parts according to their cells. */
-  // tic = getticks();
-  gparts_sort(s->gparts, ind, nr_gparts, 0, s->nr_cells - 1);
-  // message( "gparts_sort took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
+  space_gparts_sort(s->gparts, ind, nr_gparts, 0, s->nr_cells - 1);
 
   /* Re-link the parts. */
   for (k = 0; k < nr_gparts; k++)
@@ -468,15 +466,32 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
-  // tic = getticks();
-  // for (k = 0; k < s->nr_cells; k++) space_split(s, &cells[k]);
-  for (k = 0; k < s->nr_cells; k++)
+  space_split(s, cells, verbose);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Split particles between cells of a hierarchy
+ *
+ * @param s The #space.
+ * @param cells The cell hierarchy
+ * @param verbose Are we talkative ?
+ */
+void space_split(struct space *s, struct cell *cells, int verbose) {
+
+  ticks tic = getticks();
+
+  for (int k = 0; k < s->nr_cells; k++)
     scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none, k,
                       0, &cells[k], NULL, 0);
   engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell, 0);
 
-  // message( "space_split took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -488,10 +503,15 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
  * @param N The number of parts
  * @param min Lowest index.
  * @param max highest index.
+ * @param verbose Are we talkative ?
  */
 
-void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
-  // Populate the global parallel_sort structure with the input data.
+void space_parts_sort(struct space *s, int *ind, int N, int min, int max,
+                      int verbose) {
+
+  ticks tic = getticks();
+
+  /*Populate the global parallel_sort structure with the input data */
   space_sort_struct.parts = s->parts;
   space_sort_struct.xparts = s->xparts;
   space_sort_struct.ind = ind;
@@ -502,7 +522,7 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   for (int i = 0; i < space_sort_struct.stack_size; i++)
     space_sort_struct.stack[i].ready = 0;
 
-  // Add the first interval.
+  /* Add the first interval. */
   space_sort_struct.stack[0].i = 0;
   space_sort_struct.stack[0].j = N - 1;
   space_sort_struct.stack[0].min = min;
@@ -512,7 +532,7 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
   space_sort_struct.last = 1;
   space_sort_struct.waiting = 1;
 
-  // Launch the sorting tasks.
+  /* Launch the sorting tasks. */
   engine_launch(s->e, s->e->nr_threads, (1 << task_type_psort), 0);
 
   /* Verify space_sort_struct. */
@@ -523,8 +543,12 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max) {
             ind[i], min, max);
   message("Sorting succeeded."); */
 
-  // Clean up.
+  /* Clean up. */
   free(space_sort_struct.stack);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 void space_do_parts_sort() {
@@ -652,7 +676,8 @@ void space_do_parts_sort() {
   } /* main loop. */
 }
 
-void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max) {
+void space_gparts_sort(struct gpart *gparts, int *ind, int N, int min,
+                       int max) {
 
   struct qstack {
     volatile int i, j, min, max;
@@ -974,7 +999,7 @@ void space_map_cells_pre(struct space *s, int full,
  * @param c The #cell under consideration.
  */
 
-void space_split(struct space *s, struct cell *c) {
+void space_do_split(struct space *s, struct cell *c) {
 
   int k, count = c->count, gcount = c->gcount, maxdepth = 0;
   float h, h_max = 0.0f;
@@ -1025,7 +1050,7 @@ void space_split(struct space *s, struct cell *c) {
         space_recycle(s, c->progeny[k]);
         c->progeny[k] = NULL;
       } else {
-        space_split(s, c->progeny[k]);
+        space_do_split(s, c->progeny[k]);
         h_max = fmaxf(h_max, c->progeny[k]->h_max);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
