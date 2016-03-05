@@ -37,7 +37,7 @@
 extern int engine_rank;
 #define error(s, ...)                                                    \
   {                                                                      \
-    fprintf(stderr, "[%03i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
+    fprintf(stderr, "[%04i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
     MPI_Abort(MPI_COMM_WORLD, -1);                                       \
   }
@@ -58,7 +58,7 @@ extern int engine_rank;
  */
 #define mpi_error(res, s, ...)                                           \
   {                                                                      \
-    fprintf(stderr, "[%03i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
+    fprintf(stderr, "[%04i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
     int len = 1024;                                                      \
     char buf[len];                                                       \
@@ -69,7 +69,7 @@ extern int engine_rank;
 
 #define mpi_error_string(res, s, ...)                                    \
   {                                                                      \
-    fprintf(stderr, "[%03i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
+    fprintf(stderr, "[%04i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
     int len = 1024;                                                      \
     char buf[len];                                                       \
@@ -85,7 +85,7 @@ extern int engine_rank;
 #ifdef WITH_MPI
 extern int engine_rank;
 #define message(s, ...) \
-  printf("[%03i] %s: " s "\n", engine_rank, __FUNCTION__, ##__VA_ARGS__)
+  printf("[%04i] %s: " s "\n", engine_rank, __FUNCTION__, ##__VA_ARGS__)
 #else
 #define message(s, ...) printf("%s: " s "\n", __FUNCTION__, ##__VA_ARGS__)
 #endif
@@ -99,7 +99,7 @@ extern int engine_rank;
 #define assert(expr)                                                       \
   {                                                                        \
     if (!(expr)) {                                                         \
-      fprintf(stderr, "[%03i] %s:%s():%i: FAILED ASSERTION: " #expr " \n", \
+      fprintf(stderr, "[%04i] %s:%s():%i: FAILED ASSERTION: " #expr " \n", \
               engine_rank, __FILE__, __FUNCTION__, __LINE__);              \
       fflush(stderr);                                                      \
       MPI_Abort(MPI_COMM_WORLD, -1);                                       \
