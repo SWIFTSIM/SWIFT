@@ -1116,7 +1116,8 @@ int engine_marktasks(struct engine *e) {
     }
   }
 
-  // message( "took %.3f %s." , clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // message( "took %.3f %s." , clocks_from_ticks(getticks() - tic),
+  // clocks_getunit());
 
   /* All is well... */
   return 0;
@@ -1142,10 +1143,11 @@ void engine_print(struct engine *e) {
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%03i] engine_print: task counts are [ %s=%i", e->nodeID,
-         taskID_names[0], counts[0]);
+  printf("[%03i] %s engine_print: task counts are [ %s=%i", e->nodeID,
+         clocks_get_timeofday(), taskID_names[0], counts[0]);
 #else
-  printf("engine_print: task counts are [ %s=%i", taskID_names[0], counts[0]);
+  printf("%s engine_print: task counts are [ %s=%i", clocks_get_timeofday(),
+         taskID_names[0], counts[0]);
 #endif
   for (k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
@@ -1167,29 +1169,29 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the space. */
   // tic = getticks();
   space_rebuild(e->s, 0.0, e->nodeID == 0);
-  // message( "space_rebuild took %.3f %s." ,
-  //clocks_from_ticks(getticks() -  tic), clocks_getunit());
+// message( "space_rebuild took %.3f %s." ,
+// clocks_from_ticks(getticks() -  tic), clocks_getunit());
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
   // tic = getticks();
   engine_exchange_cells(e);
-  // message( "engine_exchange_cells took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+// message( "engine_exchange_cells took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
   /* Re-build the tasks. */
   // tic = getticks();
   engine_maketasks(e);
   // message( "engine_maketasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
   // message( "engine_marktasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Print the status of the system */
   engine_print(e);
@@ -1210,8 +1212,8 @@ void engine_prepare(struct engine *e) {
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   rebuild = (e->forcerebuild || engine_marktasks(e));
-  // message( "space_marktasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+// message( "space_marktasks took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -1221,8 +1223,8 @@ void engine_prepare(struct engine *e) {
       MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
-  // message( "rebuild allreduce took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+// message( "rebuild allreduce took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
   e->tic_step = getticks();
 
@@ -1231,7 +1233,7 @@ void engine_prepare(struct engine *e) {
     // tic = getticks();
     engine_rebuild(e);
     // message( "engine_rebuild took %.3f %s." ,
-    //clocks_from_ticks(getticks() - tic), clocks_getunit());
+    // clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* Re-rank the tasks every now and then. */
@@ -1239,7 +1241,7 @@ void engine_prepare(struct engine *e) {
     // tic = getticks();
     scheduler_reweight(&e->sched);
     // message( "scheduler_reweight took %.3f %s." ,
-    //clocks_from_ticks(getticks() -tic), clocks_getunit());
+    // clocks_from_ticks(getticks() -tic), clocks_getunit());
   }
   e->tasks_age += 1;
 
@@ -1625,7 +1627,7 @@ void engine_step(struct engine *e) {
 
   clocks_gettime(&time2);
 
-  e->wallclock_time = (float) clocks_diff(&time1, &time2);
+  e->wallclock_time = (float)clocks_diff(&time1, &time2);
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 }
@@ -1874,9 +1876,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
     if (nodeID == 0) {
 #ifdef WITH_MPI
-      printf("[%03i] engine_init: cpu map is [ ", nodeID);
+      printf("[%03i] %s engine_init: cpu map is [ ", nodeID,
+             clocks_get_timeofday());
 #else
-      printf("engine_init: cpu map is [ ");
+      printf("%s engine_init: cpu map is [ ", clocks_get_timeofday());
 #endif
       for (i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
       printf("].\n");
@@ -2082,16 +2085,17 @@ void engine_print_policy(struct engine *e) {
 
 #ifdef WITH_MPI
   if (e->nodeID == 0) {
-    printf("[000] engine_policy: engine policies are [ ");
+    printf("[000] %s engine_policy: engine policies are [ ",
+           clocks_get_timeofday());
     for (int k = 1; k < 32; k++)
-      if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
 #else
-  printf("engine_policy: engine policies are [ ");
+  printf("%s engine_policy: engine policies are [ ", clocks_get_timeofday());
   for (int k = 1; k < 32; k++)
-    if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif

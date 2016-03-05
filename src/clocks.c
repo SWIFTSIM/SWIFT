@@ -83,7 +83,8 @@ double clocks_diff(struct clocks_time *start, struct clocks_time *end) {
   }
   return (double)temp.tv_sec * 1000.0 + (double)temp.tv_nsec * 1.0E-6;
 #else
-  return elapsed(end->time, start->time) / clocks_get_cpufreq() * clocks_units_scale;
+  return elapsed(end->time, start->time) / clocks_get_cpufreq() *
+         clocks_units_scale;
 #endif
 }
 
@@ -219,6 +220,20 @@ double clocks_from_ticks(ticks tics) {
  *
  * @result the current time units.
  */
-const char *clocks_getunit() {
-  return clocks_units[clocks_units_index];
+const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
+
+const char *clocks_get_timeofday() {
+
+  struct timeval time;
+  struct tm *local_time;
+  static char buffer[40];
+
+  /* Get the local time of day */
+  gettimeofday(&time, NULL);
+  local_time = localtime(&time.tv_sec);
+
+  /* Make it a string */
+  strftime(buffer, 40, "[%F %T]", local_time);
+
+  return buffer;
 }

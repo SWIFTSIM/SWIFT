@@ -24,6 +24,8 @@
 /* Some standard headers. */
 #include <stdio.h>
 
+#include "clocks.h"
+
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -35,18 +37,18 @@
  */
 #ifdef WITH_MPI
 extern int engine_rank;
-#define error(s, ...)                                                    \
-  {                                                                      \
-    fprintf(stderr, "[%04i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
-            __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
-    MPI_Abort(MPI_COMM_WORLD, -1);                                       \
-  }
-#else
 #define error(s, ...)                                                        \
   {                                                                          \
-    fprintf(stderr, "%s:%s():%i: " s "\n", __FILE__, __FUNCTION__, __LINE__, \
-            ##__VA_ARGS__);                                                  \
-    abort();                                                                 \
+    fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", clocks_get_timeofday(), \
+            engine_rank, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);   \
+    MPI_Abort(MPI_COMM_WORLD, -1);                                           \
+  }
+#else
+#define error(s, ...)                                                 \
+  {                                                                   \
+    fprintf(stderr, "%s %s:%s():%i: " s "\n", clocks_get_timeofday(), \
+            __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);         \
+    abort();                                                          \
   }
 #endif
 
@@ -56,25 +58,27 @@ extern int engine_rank;
  *                         followed by the MPI error string and aborts.
  *
  */
-#define mpi_error(res, s, ...)                                           \
-  {                                                                      \
-    fprintf(stderr, "[%04i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
-            __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
-    int len = 1024;                                                      \
-    char buf[len];                                                       \
-    MPI_Error_string(res, buf, &len);                                    \
-    fprintf(stderr, "%s\n\n", buf);                                      \
-    MPI_Abort(MPI_COMM_WORLD, -1);                                       \
+#define mpi_error(res, s, ...)                                        \
+  {                                                                   \
+    fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,     \
+            clocks_get_timeofday(), __FILE__, __FUNCTION__, __LINE__, \
+            ##__VA_ARGS__);                                           \
+    int len = 1024;                                                   \
+    char buf[len];                                                    \
+    MPI_Error_string(res, buf, &len);                                 \
+    fprintf(stderr, "%s\n\n", buf);                                   \
+    MPI_Abort(MPI_COMM_WORLD, -1);                                    \
   }
 
-#define mpi_error_string(res, s, ...)                                    \
-  {                                                                      \
-    fprintf(stderr, "[%04i] %s:%s():%i: " s "\n", engine_rank, __FILE__, \
-            __FUNCTION__, __LINE__, ##__VA_ARGS__);                      \
-    int len = 1024;                                                      \
-    char buf[len];                                                       \
-    MPI_Error_string(res, buf, &len);                                    \
-    fprintf(stderr, "%s\n\n", buf);                                      \
+#define mpi_error_string(res, s, ...)                                 \
+  {                                                                   \
+    fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank,     \
+            clocks_get_timeofday(), __FILE__, __FUNCTION__, __LINE__, \
+            ##__VA_ARGS__);                                           \
+    int len = 1024;                                                   \
+    char buf[len];                                                    \
+    MPI_Error_string(res, buf, &len);                                 \
+    fprintf(stderr, "%s\n\n", buf);                                   \
   }
 #endif
 
@@ -84,10 +88,12 @@ extern int engine_rank;
  */
 #ifdef WITH_MPI
 extern int engine_rank;
-#define message(s, ...) \
-  printf("[%04i] %s: " s "\n", engine_rank, __FUNCTION__, ##__VA_ARGS__)
+#define message(s, ...)                                                \
+  printf("[%04i] %s %s: " s "\n", engine_rank, clocks_get_timeofday(), \
+         __FUNCTION__, ##__VA_ARGS__)
 #else
-#define message(s, ...) printf("%s: " s "\n", __FUNCTION__, ##__VA_ARGS__)
+#define message(s, ...) \
+  printf("%s %s: " s "\n", clocks_get_timeofday(), __FUNCTION__, ##__VA_ARGS__)
 #endif
 
 /**
@@ -96,24 +102,25 @@ extern int engine_rank;
  */
 #ifdef WITH_MPI
 extern int engine_rank;
-#define assert(expr)                                                       \
-  {                                                                        \
-    if (!(expr)) {                                                         \
-      fprintf(stderr, "[%04i] %s:%s():%i: FAILED ASSERTION: " #expr " \n", \
-              engine_rank, __FILE__, __FUNCTION__, __LINE__);              \
-      fflush(stderr);                                                      \
-      MPI_Abort(MPI_COMM_WORLD, -1);                                       \
-    }                                                                      \
-  }
-#else
 #define assert(expr)                                                          \
   {                                                                           \
     if (!(expr)) {                                                            \
-      fprintf(stderr, "%s:%s():%i: FAILED ASSERTION: " #expr " \n", __FILE__, \
-              __FUNCTION__, __LINE__);                                        \
+      fprintf(stderr, "[%04i] %s %s:%s():%i: FAILED ASSERTION: " #expr " \n", \
+              engine_rank, clocks_get_timeofday(), __FILE__, __FUNCTION__,    \
+              __LINE__);                                                      \
       fflush(stderr);                                                         \
-      abort();                                                                \
+      MPI_Abort(MPI_COMM_WORLD, -1);                                          \
     }                                                                         \
+  }
+#else
+#define assert(expr)                                                     \
+  {                                                                      \
+    if (!(expr)) {                                                       \
+      fprintf(stderr, "%s %s:%s():%i: FAILED ASSERTION: " #expr " \n",   \
+              clocks_get_timeofday(), __FILE__, __FUNCTION__, __LINE__); \
+      fflush(stderr);                                                    \
+      abort();                                                           \
+    }                                                                    \
   }
 #endif
 
