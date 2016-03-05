@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
-  int verbose = 0;
+  int verbose = 0, talking;
   unsigned long long cpufreq = 0;
 
 #ifdef WITH_MPI
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:vw:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:v:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -263,7 +263,10 @@ int main(int argc, char *argv[]) {
           error("Error parsing number of threads.");
         break;
       case 'v':
-        verbose = 1;
+        /* verbose = 1: MPI rank 0 writes
+           verbose = 2: all MPI ranks write */
+        if (sscanf(optarg, "%d", &verbose) != 1)
+          error("Error parsing verbosity level.");
         break;
       case 'w':
         if (sscanf(optarg, "%d", &space_subsize) != 1)
@@ -388,6 +391,9 @@ int main(int argc, char *argv[]) {
   /* Set default number of queues. */
   if (nr_queues < 0) nr_queues = nr_threads;
 
+  /* How vocal are we ? */
+  talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+
   /* Initialize the space with this data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
@@ -429,7 +435,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
               ENGINE_POLICY | engine_policy_steal | engine_policy_hydro, 0,
-              time_end, dt_min, dt_max, (myrank == 0 && verbose));
+              time_end, dt_min, dt_max, talking);
   if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
