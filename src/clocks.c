@@ -222,8 +222,17 @@ double clocks_from_ticks(ticks tics) {
  */
 const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
 
+/**
+ * @brief returns a string containing the local date and time
+ *
+ * The date is return in the format [YYYY-MM-DD hh:mm:ss]
+ *
+ * @result the current time.
+ */
 const char *clocks_get_timeofday() {
 
+#if defined(HAVE_GETTIMEOFDAY) && defined(HAVE_LOCALTIME) && \
+    defined(HAVE_STRFTIME)
   struct timeval time;
   struct tm *local_time;
   static char buffer[40];
@@ -235,5 +244,8 @@ const char *clocks_get_timeofday() {
   /* Make it a string */
   strftime(buffer, 40, "[%F %T]", local_time);
 
+#else
+  static char buffer[40] = "[Unknown time]";
+#endif
   return buffer;
 }
