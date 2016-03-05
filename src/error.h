@@ -39,8 +39,8 @@
 extern int engine_rank;
 #define error(s, ...)                                                        \
   {                                                                          \
-    fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", clocks_get_timeofday(), \
-            engine_rank, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);   \
+    fprintf(stderr, "[%04i] %s %s:%s():%i: " s "\n", engine_rank , \
+            clocks_get_timeofday(), __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
     MPI_Abort(MPI_COMM_WORLD, -1);                                           \
   }
 #else

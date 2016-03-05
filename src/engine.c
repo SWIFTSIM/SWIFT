@@ -182,7 +182,7 @@ void engine_redistribute(struct engine *e) {
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
-  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1);
+  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
