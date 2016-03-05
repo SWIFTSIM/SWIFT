@@ -343,8 +343,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count++;
   }
-  // message( "getting particle indices took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit()):
+// message( "getting particle indices took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit()):
 
 #ifdef WITH_MPI
   /* Move non-local parts to the end of the list. */
@@ -397,7 +397,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   // tic = getticks();
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1);
   // message( "parts_sort took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Re-link the gparts. */
   for (k = 0; k < nr_parts; k++)
@@ -432,7 +432,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     cells[ind[k]].gcount++;
   }
   // message( "getting particle indices took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* TODO: Here we should exchange the gparts as well! */
 
@@ -440,7 +440,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   // tic = getticks();
   gparts_sort(s->gparts, ind, nr_gparts, 0, s->nr_cells - 1);
   // message( "gparts_sort took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Re-link the parts. */
   for (k = 0; k < nr_gparts; k++)
@@ -464,7 +464,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     gfinger = &gfinger[c->gcount];
   }
   // message( "hooking up cells took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
@@ -476,7 +476,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell, 0);
 
   // message( "space_split took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**

@@ -298,18 +298,18 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
       }
   }
 
-/* Verify the sorting. */
-/* for ( j = 0 ; j < 13 ; j++ ) {
-    if ( !( flags & (1 << j) ) )
-        continue;
-    finger = &sort[ j*(count + 1) ];
-    for ( k = 1 ; k < count ; k++ ) {
-        if ( finger[k].d < finger[k-1].d )
-            error( "Sorting failed, ascending array." );
-        if ( finger[k].i >= count )
-            error( "Sorting failed, indices borked." );
-        }
-    } */
+  /* Verify the sorting. */
+  /* for ( j = 0 ; j < 13 ; j++ ) {
+      if ( !( flags & (1 << j) ) )
+          continue;
+      finger = &sort[ j*(count + 1) ];
+      for ( k = 1 ; k < count ; k++ ) {
+          if ( finger[k].d < finger[k-1].d )
+              error( "Sorting failed, ascending array." );
+          if ( finger[k].i >= count )
+              error( "Sorting failed, indices borked." );
+          }
+      } */
 
   if (clock) TIMER_TOC(timer_dosort);
 }
@@ -443,18 +443,18 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
       }
   }
 
-/* Verify the sorting. */
-/* for ( j = 0 ; j < 13 ; j++ ) {
-    if ( !( flags & (1 << j) ) )
-        continue;
-    finger = &c->gsort[ j*(count + 1) ];
-    for ( k = 1 ; k < count ; k++ ) {
-        if ( finger[k].d < finger[k-1].d )
-            error( "Sorting failed, ascending array." );
-        if ( finger[k].i < 0 || finger[k].i >= count )
-            error( "Sorting failed, indices borked." );
-        }
-    } */
+  /* Verify the sorting. */
+  /* for ( j = 0 ; j < 13 ; j++ ) {
+      if ( !( flags & (1 << j) ) )
+          continue;
+      finger = &c->gsort[ j*(count + 1) ];
+      for ( k = 1 ; k < count ; k++ ) {
+          if ( finger[k].d < finger[k-1].d )
+              error( "Sorting failed, ascending array." );
+          if ( finger[k].i < 0 || finger[k].i >= count )
+              error( "Sorting failed, indices borked." );
+          }
+      } */
 
   if (clock) TIMER_TOC(timer_dosort);
 }
