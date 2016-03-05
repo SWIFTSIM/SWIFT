@@ -1170,7 +1170,7 @@ void engine_print(struct engine *e) {
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%03i] %s engine_print: task counts are [ %s=%i", e->nodeID,
+  printf("[%04i] %s engine_print: task counts are [ %s=%i", e->nodeID,
          clocks_get_timeofday(), taskID_names[0], counts[0]);
 #else
   printf("%s engine_print: task counts are [ %s=%i", clocks_get_timeofday(),
@@ -1831,6 +1831,7 @@ static bool hyperthreads_present(void) {
  * @param timeEnd Time at the end of the simulation.
  * @param dt_min Minimal allowed timestep (unsed with fixdt policy)
  * @param dt_max Maximal allowed timestep
+ * @param verbose Is this #engine talkative ?
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
@@ -1927,7 +1928,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
     if (nodeID == 0) {
 #ifdef WITH_MPI
-      printf("[%03i] %s engine_init: cpu map is [ ", nodeID,
+      printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
              clocks_get_timeofday());
 #else
       printf("%s engine_init: cpu map is [ ", clocks_get_timeofday());
@@ -2106,7 +2107,7 @@ void engine_print_policy(struct engine *e) {
 
 #ifdef WITH_MPI
   if (e->nodeID == 0) {
-    printf("[000] %s engine_policy: engine policies are [ ",
+    printf("[0000] %s engine_policy: engine policies are [ ",
            clocks_get_timeofday());
     for (int k = 1; k < 32; k++)
       if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
