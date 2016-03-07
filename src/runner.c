@@ -766,12 +766,14 @@ void runner_doghost(struct runner *r, struct cell *c) {
 void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
   const int nr_parts = c->count;
+  const int nr_gparts = c->gcount;
   const double timeBase = r->e->timeBase;
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
   const float ti_old = r->e->ti_old;
   const float ti_current = r->e->ti_current;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
+  struct gpart *restrict g, *restrict gparts = c->gparts;
   float dx_max = 0.f, h_max = 0.f;
   float w;
 
@@ -827,6 +829,16 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Maximal smoothing length */
       h_max = fmaxf(p->h, h_max);
     }
+	 
+	 /* Loop over all gparts in the cell */
+	 for (int k = 0; k < nr_gparts; k++)
+		{
+		  g = &gparts[k];
+		  g -> x[0] += g->v[0] * dt;
+		  g -> x[1] += g->v[1] * dt;
+		  g -> x[2] += g->v[2] * dt;
+		}
+	 
   }
 
   /* Otherwise, aggregate data from children. */
@@ -874,6 +886,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const double timeBase = r->e->timeBase;
   const double timeBase_inv = 1.0 / r->e->timeBase;
   const int count = c->count;
+  const int gcount = c->gcount;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
@@ -888,6 +901,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   float x[3], v_full[3];
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
+  struct gpart *restrict g, *restrict gparts = c->gparts;
 
   TIMER_TIC
 
@@ -1013,6 +1027,51 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       ti_end_min = min(p->ti_end, ti_end_min);
       ti_end_max = max(p->ti_end, ti_end_max);
     }
+	 /* For the moment we loop of gpart particles comppletely independently - this should be changed */
+	 
+	 for(int k = 0; k < gcount; k++)
+		{
+		  g = &gparts[k];
+
+		  x[0] = g->x[0];
+		  x[1] = g->x[1];
+		  x[2] = g->x[2];
+		  
+		  /* If particle needs to be kicked */
+		  if (is_fixdt || p->ti_end <= ti_current) {
+
+			 if (is_fixdt) {
+				
+				/* Now we have a time step, proceed with the kick */
+				new_dti = global_dt_max * timeBase_inv;
+				
+			 }
+			 else 
+				{
+				  /* need to calculate gravity step - todo */
+				  error(" gravity time step not implemented yet ");
+				}
+
+			 /* Compute the time step for this kick */
+			 const int ti_start = (g->ti_begin + g->ti_end) / 2;
+			 const int ti_end = g->ti_end + new_dti / 2;
+			 const float dt = (ti_end - ti_start) * timeBase;
+			 const float half_dt = (ti_end - g->ti_end) * timeBase;
+			 
+			 /* Move particle forward in time */
+			 g->ti_begin = g->ti_end;
+			 g->ti_end   = g->ti_begin + new_dti;
+			 
+			 /* Kick particles in momentum space */
+			 g->v[0] += g->a_grav_external[0] * dt;
+			 g->v[1] += g->a_grav_external[1] * dt;
+			 g->v[2] += g->a_grav_external[2] * dt;
+			 
+			 /* Number of updated particles */
+			 updated++;
+		  
+		  }
+		}
 
   }
 
