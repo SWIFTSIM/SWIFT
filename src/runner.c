@@ -67,8 +67,11 @@ const float runner_shift[13 * 3] = {
 /* Does the axis need flipping ? */
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-#define OUT  if(CELL_ID == MY_CELL) {message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time);}
+#define MY_CELL 428428428
+#define DX     0.1
+#define NX     1000
+#define CELL_ID ( (int)(c->loc[0]/DX) * NX * NX + (int)(c->loc[1]/DX) * NX + (int)(c->loc[2]/DX))
+#define OUT  if(CELL_ID == MY_CELL) {message(" cell= %d gcount=%d time=%f \n",CELL_ID, c->gcount, r->e->time);}
 //#define OUT  message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time);
 //#define OUT  if(CELL_ID == MY_CELL) message("\n cell %f %f %f %d %d %f\n",c->loc[0],c->loc[1],c->loc[2], CELL_ID, c->count, r->e->time);
 
@@ -778,6 +781,9 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   float w;
 
   TIMER_TIC
+#ifdef TASK_VERBOSE
+	 OUT
+#endif
 
   /* No children? */
   if (!c->split) {
@@ -904,6 +910,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict g, *restrict gparts = c->gparts;
 
   TIMER_TIC
+
+#ifdef TASK_VERBOSE
+	 OUT
+#endif
 
   /* No children? */
   if (!c->split) {
