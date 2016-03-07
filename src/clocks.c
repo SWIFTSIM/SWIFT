@@ -227,34 +227,18 @@ double clocks_from_ticks(ticks tics) {
 const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
 
 /**
- * @brief returns the time of day to 1/10th second accuracy.
+ * @brief returns the time since the start of the execution in seconds
  *
- * The date is return in the format [hh:mm:ss.s]
+ * The time is return in the format [ssssss.s]
  *
- * @result the current time of day.
+ * @result the time since the start of the execution
  */
 const char *clocks_get_timeofday() {
 
   static char buffer[40];
 
-#if defined(HAVE_CLOCK_GETTIME) && defined(HAVE_LOCALTIME) && \
-    defined(HAVE_STRFTIME)
-  struct timespec time;
-  struct tm *local_time;
-  char fmttime[40];
+  sprintf(buffer, "[%08.1f]",
+          clocks_diff_ticks(getticks(), clocks_start) / 1000.0);
 
-  clock_gettime(CLOCK_REALTIME, &time);
-  local_time = localtime(&time.tv_sec);
-
-  /* Make it a string */
-  strftime(fmttime, 40, "%T", local_time);
-
-  /* 1/10 seconds. */
-  int tseconds = time.tv_nsec / 100000000;
-  sprintf(buffer, "[%s.%01d]", fmttime, tseconds);
-
-#else
-  sprintf(buffer, "[%08.1f]", clocks_diff_ticks(getticks(),clocks_start)/100.0);
-#endif
   return buffer;
 }

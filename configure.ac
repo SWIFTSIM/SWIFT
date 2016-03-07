@@ -329,7 +329,7 @@ is defined in <sys/time.h>])],,
 [#if HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif])
-AC_CHECK_FUNCS([gethrtime read_real_time time_base_to_time clock_gettime mach_absolute_time strftime gettimeofday localtime])
+AC_CHECK_FUNCS([gethrtime read_real_time time_base_to_time clock_gettime mach_absolute_time])
 AC_MSG_CHECKING([for _rtc intrinsic])
 rtc_ok=yes
 AC_LINK_IFELSE([AC_LANG_PROGRAM(
