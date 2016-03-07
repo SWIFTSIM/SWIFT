@@ -127,12 +127,12 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
 
 		if(c->gcount > 0)
 		  {
-			 /* /\* Add the gravity tasks *\/ */
-			 /* c->grav_external = scheduler_addtask(s, task_type_grav_external, task_subtype_none, 0, 0, */
-			 /*                                      c, NULL, 0); */
+			 /* Add the gravity tasks */
+			 c->grav_external = scheduler_addtask(s, task_type_grav_external, task_subtype_none, 0, 0,
+			                                      c, NULL, 0);
 			 
-			 /* /\* Enforce gravity calculated before kick  *\/ */
-			 /* scheduler_addunlock(s, c->grav_external, c->kick); */
+			 /* Enforce gravity calculated before kick  */
+			 scheduler_addunlock(s, c->grav_external, c->kick);
 		  }
     }
   }
@@ -791,20 +791,8 @@ void engine_maketasks(struct engine *e) {
       }
 
 #ifdef GRAVITY
-#ifdef DEFAULT_GRAVITY
-  /* Add the gravity mm tasks. */
-  for (i = 0; i < nr_cells; i++)
-    if (cells[i].gcount > 0) {
-      scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                        &cells[i], NULL, 0);
-      for (j = i + 1; j < nr_cells; j++)
-        if (cells[j].gcount > 0)
-          scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                            &cells[i], &cells[j], 0);
-    }
-#endif
-/* #ifdef EXTERNAL_POTENTIAL */
-/*   /\* Add the external potential gravity *\/ */
+/* #ifdef DEFAULT_GRAVITY */
+/*   /\* Add the gravity mm tasks. *\/ */
 /*   for (i = 0; i < nr_cells; i++) */
 /*     if (cells[i].gcount > 0) { */
 /*       scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
@@ -814,10 +802,7 @@ void engine_maketasks(struct engine *e) {
 /*           scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
 /*                             &cells[i], &cells[j], 0); */
 /*     } */
-  
-/* #endif */
 #endif
-  scheduler_print_tasks(sched, "sched.txt");
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
@@ -1017,6 +1002,10 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the tasks age. */
   e->tasks_age = 0;
+
+  /* print all possibly scheduled tasks */
+  scheduler_print_tasks(sched, "sched.txt");
+
 }
 
 /**
@@ -1463,15 +1452,15 @@ void engine_init_particles(struct engine *e) {
 
   /* Add the tasks corresponding to self-gravity to the masks */
   if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
-
+	 
     /* Nothing here for now */
   }
 
-  /* Add the tasks corresponding to self-gravity to the masks */
+  /* Add the tasks corresponding to external gravity to the masks */
   if ((e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity) {
+	 mask |= 1 << task_type_grav_external;
 
-    /* Nothing here for now */
   }
 
   /* Add MPI tasks if need be */
@@ -1634,8 +1623,7 @@ void engine_step(struct engine *e) {
   /* Add the tasks corresponding to self-gravity to the masks */
   if ((e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity) {
-
-    /* Nothing here for now */
+	 mask |= 1 << task_type_grav_external;
   }
 
   /* Add MPI tasks if need be */

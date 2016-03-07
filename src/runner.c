@@ -121,33 +121,33 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 #ifdef TASK_VERBOSE
   	 OUT
 #endif
-  /* /\* Loop over the parts in this cell. *\/ */
-  /* for (i = 0; i < count; i++) { */
+  /* Loop over the parts in this cell. */
+  for (i = 0; i < count; i++) {
 
-  /* 	 /\* Get a direct pointer on the part. *\/ */
-  /* 	 p = &parts[i]; */
+  	 /* Get a direct pointer on the part. */
+  	 p = &parts[i];
 
-  /* 	 /\* Is this part within the time step? *\/ */
-  /* 	 if (p->t_end <= t_end) { */
-  /* 		rinv = 1 / sqrtf((p->x[0]-External_Potential_X)*(p->x[0]-External_Potential_X) + (p->x[1]-External_Potential_Y)*(p->x[1]-External_Potential_Y) + (p->x[2]-External_Potential_Z)*(p->x[2]-External_Potential_Z)); */
+  	 /* Is this part within the time step? */
+  	 if (p->t_end <= t_end) {
+  		rinv = 1 / sqrtf((p->x[0]-External_Potential_X)*(p->x[0]-External_Potential_X) + (p->x[1]-External_Potential_Y)*(p->x[1]-External_Potential_Y) + (p->x[2]-External_Potential_Z)*(p->x[2]-External_Potential_Z));
 
-  /* 		/\* check for energy and angular momentum conservation *\/ */
-  /* 		E = 0.5 * ((p->v[0]*p->v[0]) + (p->v[1]*p->v[1]) + (p->v[2]*p->v[2])) - const_G *  External_Potential_Mass * rinv;  */
-  /* 		L[0] = (p->x[1] - External_Potential_X)*p->v[2] - (p->x[2] - External_Potential_X)*p->v[1]; */
-  /* 		L[1] = (p->x[2] - External_Potential_Y)*p->v[0] - (p->x[0] - External_Potential_Y)*p->v[2]; */
-  /* 		L[2] = (p->x[0] - External_Potential_Z)*p->v[1] - (p->x[1] - External_Potential_Z)*p->v[0]; */
-  /* 		if(p->id == 0) { */
-  /* 		  message("update %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\n", r->e->time, 1./rinv, p->x[0], p->x[1], p->x[2], E, L[0], L[1], L[2]); */
-  /* 		  message(" ... %f %f %f\n", p->v[0], p->v[1], p->v[2]); */
-  /* 		  message(" ... %e %e\n", const_G, External_Potential_Mass); */
-  /* 		} */
-  /* 		p->grav_accel[0] = - const_G *  External_Potential_Mass * (p->x[0] - External_Potential_X) * rinv * rinv * rinv; */
-  /* 		p->grav_accel[1] = - const_G *  External_Potential_Mass * (p->x[1] - External_Potential_Y) * rinv * rinv * rinv; */
-  /* 		p->grav_accel[2] = - const_G *  External_Potential_Mass * (p->x[2] - External_Potential_Z) * rinv * rinv * rinv; */
+  		/* check for energy and angular momentum conservation */
+  		E = 0.5 * ((p->v[0]*p->v[0]) + (p->v[1]*p->v[1]) + (p->v[2]*p->v[2])) - const_G *  External_Potential_Mass * rinv;
+  		L[0] = (p->x[1] - External_Potential_X)*p->v[2] - (p->x[2] - External_Potential_X)*p->v[1];
+  		L[1] = (p->x[2] - External_Potential_Y)*p->v[0] - (p->x[0] - External_Potential_Y)*p->v[2];
+  		L[2] = (p->x[0] - External_Potential_Z)*p->v[1] - (p->x[1] - External_Potential_Z)*p->v[0];
+  		if(p->id == 0) {
+  		  message("update %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\n", r->e->time, 1./rinv, p->x[0], p->x[1], p->x[2], E, L[0], L[1], L[2]);
+  		  message(" ... %f %f %f\n", p->v[0], p->v[1], p->v[2]);
+  		  message(" ... %e %e\n", const_G, External_Potential_Mass);
+  		}
+  		p->grav_accel[0] = - const_G *  External_Potential_Mass * (p->x[0] - External_Potential_X) * rinv * rinv * rinv;
+  		p->grav_accel[1] = - const_G *  External_Potential_Mass * (p->x[1] - External_Potential_Y) * rinv * rinv * rinv;
+  		p->grav_accel[2] = - const_G *  External_Potential_Mass * (p->x[2] - External_Potential_Z) * rinv * rinv * rinv;
 		
-  /* 	 } */
-  /* } */
-  /* TIMER_TOC(timer_dograv_external); */
+  	 }
+  }
+  TIMER_TOC(timer_dograv_external);
 }
 
 
@@ -1077,6 +1077,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 			 g->v[1] += g->a_grav_external[1] * dt;
 			 g->v[2] += g->a_grav_external[2] * dt;
 			 
+			 /* Minimal time for next end of time-step */
+			 ti_end_min = min(g->ti_end, ti_end_min);
+			 ti_end_max = max(g->ti_end, ti_end_max);
+
 			 /* Number of updated particles */
 			 updated++;
 		  
@@ -1250,6 +1254,9 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           runner_dograv_down(r, t->ci);
           break;
+		  case task_type_grav_external:
+			 runner_dograv_external(r, t->ci);
+			 break;
         case task_type_psort:
           space_do_parts_sort();
           break;

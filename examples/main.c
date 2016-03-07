@@ -62,6 +62,8 @@
 #define ENGINE_HYDRO 0
 #endif
 
+
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -433,7 +435,7 @@ int main(int argc, char *argv[]) {
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal | ENGINE_HYDRO, 0,
+              ENGINE_POLICY | engine_policy_steal | ENGINE_HYDRO | engine_policy_external_gravity , 0, 
               time_end, dt_min, dt_max);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
