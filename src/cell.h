@@ -27,9 +27,11 @@
 /* Forward declaration of space, needed for cell_unpack. */
 struct space;
 
-/* Some constants. */
-#define cell_sid_dt 13
-#define cell_max_tag (1 << 16)
+/* Max tag size set to 2^29 to take into account some MPI implementations
+ * that use 2^31 as the upper bound on MPI tags and the fact that
+ * cell_next_tag is multiplied by 2 when passed to an MPI function.
+ * The maximum was lowered by a further factor of 2 to be on the safe side.*/
+#define cell_max_tag (1 << 29)
 
 /* Global variables. */
 extern int cell_next_tag;
@@ -38,7 +40,8 @@ extern int cell_next_tag;
 struct pcell {
 
   /* Stats on this cell's particles. */
-  double h_max, dt_min, dt_max;
+  double h_max;
+  int ti_end_min, ti_end_max;
 
   /* Number of particles in this cell. */
   int count;
@@ -62,8 +65,8 @@ struct cell {
   /* Max radii in this cell. */
   double h_max;
 
-  /* Minimum and maximum dt in this cell. */
-  double dt_min, dt_max;
+  /* Minimum and maximum end of time step in this cell. */
+  int ti_end_min, ti_end_max;
 
   /* Minimum dimension, i.e. smallest edge of this cell. */
   float dmin;
@@ -111,7 +114,7 @@ struct cell {
   int nr_density, nr_force, nr_grav;
 
   /* The ghost task to link density to interactions. */
-  struct task *ghost, *kick1, *kick2;
+  struct task *ghost, *init, *drift, *kick;
 
   /* Task receiving data. */
   struct task *recv_xv, *recv_rho;
@@ -134,8 +137,8 @@ struct cell {
   /* Momentum of particles in cell. */
   float mom[3], ang[3];
 
-  /* Potential and kinetic energy of particles in this cell. */
-  double epot, ekin;
+  /* Mass, potential, internal  and kinetic energy of particles in this cell. */
+  double mass, e_pot, e_int, e_kin;
 
   /* Number of particles updated in this cell. */
   int updated;
@@ -159,6 +162,10 @@ struct cell {
 
 } __attribute__((aligned(64)));
 
+/* Convert cell location to ID. */
+#define cell_getid(cdim, i, j, k) \
+  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
+
 /* Function prototypes. */
 void cell_split(struct cell *c);
 int cell_locktree(struct cell *c);
@@ -169,5 +176,8 @@ int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
 int cell_getsize(struct cell *c);
 int cell_link(struct cell *c, struct part *parts);
+void cell_init_parts(struct cell *c, void *data);
+void cell_convert_hydro(struct cell *c, void *data);
+void cell_clean_links(struct cell *c, void *data);
 
 #endif /* SWIFT_CELL_H */

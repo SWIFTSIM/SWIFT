@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
@@ -110,7 +111,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *restrict pi, *restrict pj;
   double pix[3];
   float dx[3], hi, hig2, r2;
-  float dt_step = e->dt_step;
+  const int ti_current = e->ti_current;
 #ifdef VECTORIZE
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -122,7 +123,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the relative distance between the pairs, wrapping. */
   for (k = 0; k < 3; k++) {
@@ -201,15 +202,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
       IACT(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair_naive[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
-      "took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(TIMER_DOPAIR);
-#endif
 }
 
 void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
@@ -219,7 +212,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
   struct part *restrict pi, *restrict pj;
   double pix[3] = {0.0, 0.0, 0.0};
   float dx[3], hi, hig2, r2;
-  float dt_step = r->e->dt_step;
+  const int ti_current = r->e->ti_current;
 #ifdef VECTORIZE
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -231,7 +224,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
   TIMER_TIC
 
   /* Anything to do here? */
-  if (c->dt_min > dt_step) return;
+  if (c->ti_end_min > ti_current) return;
 
   /* printf( "runner_dopair_naive: doing pair [ %g %g %g ]/[ %g %g %g ] with
   %i/%i parts and shift = [ %g %g %g ].\n" ,
@@ -304,12 +297,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
       IACT(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf("runner_doself[%02i]: %i parts at depth %i took %.3f ms.\n", r->id,
-         count, c->depth, ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(TIMER_DOSELF);
-#endif
 }
 
 /**
@@ -509,15 +497,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
-      "took %.3f ms.\n",
-      r->id, count, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(timer_dopair_subset);
-#endif
 }
 
 /**
@@ -629,15 +609,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair_subset[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
-      "took %.3f ms.\n",
-      r->id, count, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(timer_dopair_subset);
-#endif
 }
 
 /**
@@ -740,13 +712,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf("runner_doself_subset[%02i]: %i/%i parts at depth %i took %.3f ms.\n",
-         r->id, count, ci->count, ci->depth,
-         ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(timer_dopair_subset);
-#endif
 }
 
 /**
@@ -769,7 +735,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   double hi_max, hj_max;
   double di_max, dj_min;
   int count_i, count_j;
-  float dt_step = e->dt_step;
+  const int ti_current = e->ti_current;
 #ifdef VECTORIZE
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -781,7 +747,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the sort ID. */
   sid = space_getsid(e->s, &ci, &cj, shift);
@@ -815,7 +781,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
     /* Get a hold of the ith part in ci. */
     pi = &parts_i[sort_i[pid].i];
-    if (pi->dt > dt_step) continue;
+    if (pi->ti_end > ti_current) continue;
     hi = pi->h;
     di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
@@ -869,8 +835,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-  /* printf( "runner_dopair: first half took %.3f ms...\n" ,
-  ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+  /* printf( "runner_dopair: first half took %.3f %s...\n" ,
+  clocks_from_ticks(getticks() - tic), clocks_getunit());
   tic = getticks(); */
 
   /* Loop over the parts in cj. */
@@ -879,7 +845,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
     /* Get a hold of the jth part in cj. */
     pj = &parts_j[sort_j[pjd].i];
-    if (pj->dt > dt_step) continue;
+    if (pj->ti_end > ti_current) continue;
     hj = pj->h;
     dj = sort_j[pjd].d - hj * kernel_gamma - dx_max - rshift;
     if (dj > di_max) continue;
@@ -940,16 +906,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       IACT_NONSYM(r2q[k], &dxq[3 * k], hiq[k], hjq[k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) "
-      "took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      fmax(ci->h[0], fmax(ci->h[1], ci->h[2])),
-      ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000);
-#else
   TIMER_TOC(TIMER_DOPAIR);
-#endif
 }
 
 void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
@@ -957,8 +914,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct engine *restrict e = r->e;
   int pid, pjd, k, sid;
   double rshift, shift[3] = {0.0, 0.0, 0.0};
-  struct entry *restrict sort_i, *restrict sort_j;
-  struct entry *restrict sortdt_i = NULL, *restrict sortdt_j = NULL;
+  struct entry *sort_i, *sort_j;
+  struct entry *sortdt_i = NULL, *sortdt_j = NULL;
   int countdt_i = 0, countdt_j = 0;
   struct part *restrict pi, *restrict pj, *restrict parts_i, *restrict parts_j;
   double pix[3], pjx[3], di, dj;
@@ -966,7 +923,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   double hi_max, hj_max;
   double di_max, dj_min;
   int count_i, count_j;
-  float dt_step = e->dt_step;
+  const int ti_current = e->ti_current;
 #ifdef VECTORIZE
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
@@ -984,7 +941,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the shift ID. */
   sid = space_getsid(e->s, &ci, &cj, shift);
@@ -1013,28 +970,28 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   dx_max = (ci->dx_max + cj->dx_max);
 
   /* Collect the number of parts left and right below dt. */
-  if (ci->dt_max <= dt_step) {
+  if (ci->ti_end_max <= ti_current) {
     sortdt_i = sort_i;
     countdt_i = count_i;
-  } else if (ci->dt_min <= dt_step) {
+  } else if (ci->ti_end_min <= ti_current) {
     if ((sortdt_i = (struct entry *)alloca(sizeof(struct entry) * count_i)) ==
         NULL)
       error("Failed to allocate dt sortlists.");
     for (k = 0; k < count_i; k++)
-      if (parts_i[sort_i[k].i].dt <= dt_step) {
+      if (parts_i[sort_i[k].i].ti_end <= ti_current) {
         sortdt_i[countdt_i] = sort_i[k];
         countdt_i += 1;
       }
   }
-  if (cj->dt_max <= dt_step) {
+  if (cj->ti_end_max <= ti_current) {
     sortdt_j = sort_j;
     countdt_j = count_j;
-  } else if (cj->dt_min <= dt_step) {
+  } else if (cj->ti_end_min <= ti_current) {
     if ((sortdt_j = (struct entry *)alloca(sizeof(struct entry) * count_j)) ==
         NULL)
       error("Failed to allocate dt sortlists.");
     for (k = 0; k < count_j; k++)
-      if (parts_j[sort_j[k].i].dt <= dt_step) {
+      if (parts_j[sort_j[k].i].ti_end <= ti_current) {
         sortdt_j[countdt_j] = sort_j[k];
         countdt_j += 1;
       }
@@ -1054,7 +1011,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     for (k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
 
     /* Look at valid dt parts only? */
-    if (pi->dt > dt_step) {
+    if (pi->ti_end > ti_current) {
 
       /* Loop over the parts in cj within dt. */
       for (pjd = 0; pjd < countdt_j && sortdt_j[pjd].d < di; pjd++) {
@@ -1126,7 +1083,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 #ifndef VECTORIZE
 
           /* Does pj need to be updated too? */
-          if (pj->dt <= dt_step)
+          if (pj->ti_end <= ti_current)
             IACT(r2, dx, hi, hj, pi, pj);
           else
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
@@ -1134,7 +1091,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 #else
 
           /* Does pj need to be updated too? */
-          if (pj->dt <= dt_step) {
+          if (pj->ti_end <= ti_current) {
 
             /* Add this interaction to the symmetric queue. */
             r2q2[icount2] = r2;
@@ -1181,8 +1138,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-  /* printf( "runner_dopair: first half took %.3f ms...\n" ,
-  ((double)(getticks() - tic)) / CPU_TPS * 1000 );
+  /* printf( "runner_dopair: first half took %.3f %s...\n" ,
+  clocks_from_ticks(getticks() - tic), clocks_getunit());
   tic = getticks(); */
 
   /* Loop over the parts in cj. */
@@ -1199,7 +1156,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     hjg2 = hj * hj * kernel_gamma2;
 
     /* Is this particle outside the dt? */
-    if (pj->dt > dt_step) {
+    if (pj->ti_end > ti_current) {
 
       /* Loop over the parts in ci. */
       for (pid = countdt_i - 1; pid >= 0 && sortdt_i[pid].d > dj; pid--) {
@@ -1270,7 +1227,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 #ifndef VECTORIZE
 
           /* Does pi need to be updated too? */
-          if (pi->dt <= dt_step)
+          if (pi->ti_end <= ti_current)
             IACT(r2, dx, hj, hi, pj, pi);
           else
             IACT_NONSYM(r2, dx, hj, hi, pj, pi);
@@ -1335,16 +1292,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) "
-      "took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      fmax(ci->h[0], fmax(ci->h[1], ci->h[2])),
-      ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000);
-#else
   TIMER_TOC(TIMER_DOPAIR);
-#endif
 }
 
 /**
@@ -1360,7 +1308,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   double pix[3];
   float dx[3], hi, hj, hig2, r2;
   struct part *restrict parts = c->parts, *restrict pi, *restrict pj;
-  float dt_step = r->e->dt_step;
+  const int ti_current = r->e->ti_current;
   int firstdt = 0, countdt = 0, *indt = NULL, doj;
 #ifdef VECTORIZE
   int icount1 = 0;
@@ -1379,13 +1327,13 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   TIMER_TIC
 
   /* Set up indt if needed. */
-  if (c->dt_min > dt_step)
+  if (c->ti_end_min > ti_current)
     return;
-  else if (c->dt_max > dt_step) {
+  else if (c->ti_end_max > ti_current) {
     if ((indt = (int *)alloca(sizeof(int) * count)) == NULL)
       error("Failed to allocate indt.");
     for (k = 0; k < count; k++)
-      if (parts[k].dt <= dt_step) {
+      if (parts[k].ti_end <= ti_current) {
         indt[countdt] = k;
         countdt += 1;
       }
@@ -1403,7 +1351,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle inactive? */
-    if (pi->dt > dt_step) {
+    if (pi->ti_end > ti_current) {
 
       /* Loop over the other particles .*/
       for (pjd = firstdt; pjd < countdt; pjd++) {
@@ -1471,7 +1419,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           dx[k] = pix[k] - pj->x[k];
           r2 += dx[k] * dx[k];
         }
-        doj = (pj->dt <= dt_step) && (r2 < hj * hj * kernel_gamma2);
+        doj = (pj->ti_end <= ti_current) && (r2 < hj * hj * kernel_gamma2);
 
         /* Hit or miss? */
         if (r2 < hig2 || doj) {
@@ -1569,12 +1517,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf("runner_doself1[%02i]: %i parts at depth %i took %.3f ms.\n", r->id,
-         count, c->depth, ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(TIMER_DOSELF);
-#endif
 }
 
 void DOSELF2(struct runner *r, struct cell *restrict c) {
@@ -1583,7 +1526,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   double pix[3];
   float dx[3], hi, hj, hig2, r2;
   struct part *restrict parts = c->parts, *restrict pi, *restrict pj;
-  float dt_step = r->e->dt_step;
+  const int ti_current = r->e->ti_current;
   int firstdt = 0, countdt = 0, *indt = NULL;
 #ifdef VECTORIZE
   int icount1 = 0;
@@ -1602,13 +1545,13 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   TIMER_TIC
 
   /* Set up indt if needed. */
-  if (c->dt_min > dt_step)
+  if (c->ti_end_min > ti_current)
     return;
-  else if (c->dt_max > dt_step) {
+  else if (c->ti_end_max > ti_current) {
     if ((indt = (int *)alloca(sizeof(int) * count)) == NULL)
       error("Failed to allocate indt.");
     for (k = 0; k < count; k++)
-      if (parts[k].dt <= dt_step) {
+      if (parts[k].ti_end <= ti_current) {
         indt[countdt] = k;
         countdt += 1;
       }
@@ -1626,7 +1569,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle not active? */
-    if (pi->dt > dt_step) {
+    if (pi->ti_end > ti_current) {
 
       /* Loop over the other particles .*/
       for (pjd = firstdt; pjd < countdt; pjd++) {
@@ -1701,7 +1644,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #ifndef VECTORIZE
 
           /* Does pj need to be updated too? */
-          if (pj->dt <= dt_step)
+          if (pj->ti_end <= ti_current)
             IACT(r2, dx, hi, hj, pi, pj);
           else
             IACT_NONSYM(r2, dx, hi, hj, pi, pj);
@@ -1709,7 +1652,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 #else
 
           /* Does pj need to be updated too? */
-          if (pj->dt <= dt_step) {
+          if (pj->ti_end <= ti_current) {
 
             /* Add this interaction to the symmetric queue. */
             r2q2[icount2] = r2;
@@ -1766,12 +1709,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf("runner_doself2[%02i]: %i parts at depth %i took %.3f ms.\n", r->id,
-         count, c->depth, ((double)TIMER_TOC(TIMER_DOSELF)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(TIMER_DOSELF);
-#endif
 }
 
 /**
@@ -1794,7 +1732,7 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   double shift[3];
   float h;
   struct space *s = r->e->s;
-  float dt_step = r->e->dt_step;
+  const int ti_current = r->e->ti_current;
 
   TIMER_TIC
 
@@ -1802,7 +1740,7 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (cj == NULL) {
 
     /* Should we even bother? */
-    if (ci->dt_min > dt_step) return;
+    if (ci->ti_end_min > ti_current) return;
 
     /* Recurse? */
     if (ci->split) {
@@ -1828,7 +1766,7 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   else {
 
     /* Should we even bother? */
-    if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+    if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
     /* Get the cell dimensions. */
     h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
@@ -2041,7 +1979,7 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (ci->dt_min <= dt_step || cj->dt_min <= dt_step) {
+    else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
 
       /* Do any of the cells need to be sorted first? */
       if (!(ci->sorted & (1 << sid))) runner_dosort(r, ci, (1 << sid), 1);
@@ -2053,13 +1991,7 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   } /* otherwise, pair interaction. */
 
-  if (gettimer)
-#ifdef TIMER_VERBOSE
-    printf("runner_dosub1[%02i]: flags=%i at depth %i took %.3f ms.\n", r->id,
-           sid, ci->depth, ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000);
-#else
-    TIMER_TOC(TIMER_DOSUB);
-#endif
+  if (gettimer) TIMER_TOC(TIMER_DOSUB);
 }
 
 void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
@@ -2069,7 +2001,7 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   double shift[3];
   float h;
   struct space *s = r->e->s;
-  float dt_step = r->e->dt_step;
+  const int ti_current = r->e->ti_current;
 
   TIMER_TIC
 
@@ -2077,7 +2009,7 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (cj == NULL) {
 
     /* Should we even bother? */
-    if (ci->dt_min > dt_step) return;
+    if (ci->ti_end_min > ti_current) return;
 
     /* Recurse? */
     if (ci->split) {
@@ -2103,7 +2035,7 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   else {
 
     /* Should we even bother? */
-    if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+    if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
     /* Get the cell dimensions. */
     h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
@@ -2316,7 +2248,7 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (ci->dt_min <= dt_step || cj->dt_min <= dt_step) {
+    else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
 
       /* Do any of the cells need to be sorted first? */
       if (!(ci->sorted & (1 << sid))) runner_dosort(r, ci, (1 << sid), 1);
@@ -2328,13 +2260,7 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   } /* otherwise, pair interaction. */
 
-  if (gettimer)
-#ifdef TIMER_VERBOSE
-    printf("runner_dosub2[%02i]: flags=%i at depth %i took %.3f ms.\n", r->id,
-           sid, ci->depth, ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000);
-#else
-    TIMER_TOC(TIMER_DOSUB);
-#endif
+  if (gettimer) TIMER_TOC(TIMER_DOSUB);
 }
 
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
@@ -2345,7 +2271,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   float h;
   struct space *s = r->e->s;
   struct cell *sub = NULL;
-  float dt_step = r->e->dt_step;
+  const int ti_current = r->e->ti_current;
 
   TIMER_TIC
 
@@ -2905,7 +2831,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
     }
 
     /* Otherwise, compute the pair directly. */
-    else if (ci->dt_min <= dt_step || cj->dt_min <= dt_step) {
+    else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
 
       /* Get the relative distance between the pairs, wrapping. */
       for (k = 0; k < 3; k++) {
@@ -2932,11 +2858,5 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   } /* otherwise, pair interaction. */
 
-  if (gettimer)
-#ifdef TIMER_VERBOSE
-    printf("runner_dosub[%02i]: flags=%i at depth %i took %.3f ms.\n", r->id,
-           sid, ci->depth, ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000);
-#else
-    TIMER_TOC(TIMER_DOSUB);
-#endif
+  if (gettimer) TIMER_TOC(TIMER_DOSUB);
 }

@@ -21,6 +21,7 @@
 
 /* Includes. */
 #include "cell.h"
+#include "clocks.h"
 #include "part.h"
 
 /**
@@ -42,7 +43,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
   double pix[3];
   float dx[3], r2, h_max, di, dj;
   int count_i, count_j, cnj, cnj_new;
-  float dt_step = e->dt_step;
+  const int ti_current = e->ti_current;
   struct multipole m;
 #ifdef VECTORIZE
   int icount = 0;
@@ -53,7 +54,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the sort ID. */
   sid = space_getsid(e->s, &ci, &cj, shift);
@@ -93,7 +94,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
     /* Get a hold of the ith part in ci. */
     pi = &parts_i[sort_i[pid].i];
-    if (pi->dt > dt_step) continue;
+    if (pi->ti_end > ti_current) continue;
     di = sort_i[pid].d + h_max - rshift;
 
     for (k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
@@ -192,16 +193,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
   } /* loop over the parts in cj and interact with the multipole. */
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f, h=%.3f) "
-      "took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      fmax(ci->h[0], fmax(ci->h[1], ci->h[2])),
-      ((double)(TIMER_TOC(TIMER_DOPAIR))) / CPU_TPS * 1000);
-#else
   TIMER_TOC(TIMER_DOPAIR);
-#endif
 }
 
 /**
@@ -347,7 +339,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
   struct gpart *restrict pi, *restrict pj;
   double pix[3];
   float dx[3], r2;
-  float dt_step = e->dt_step;
+  const int ti_current = r->e->ti_current;
 #ifdef VECTORIZE
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -357,7 +349,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
   TIMER_TIC
 
   /* Anything to do here? */
-  if (ci->dt_min > dt_step && cj->dt_min > dt_step) return;
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the relative distance between the pairs, wrapping. */
   if (e->s->periodic)
@@ -429,15 +421,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
       runner_iact_grav(r2q[k], &dxq[3 * k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_dopair_naive_grav[%02i]: %i/%i parts at depth %i "
-      "(r_max=%.3f/%.3f) took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(timer_dopair_grav);
-#endif
 }
 
 /**
@@ -449,13 +433,12 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
 
 void runner_doself_grav(struct runner *r, struct cell *restrict c) {
 
-  struct engine *e = r->e;
   int pid, pjd, k, count = c->gcount;
   struct gpart *restrict parts = c->gparts;
   struct gpart *restrict pi, *restrict pj;
   double pix[3] = {0.0, 0.0, 0.0};
   float dx[3], r2;
-  float dt_step = e->dt_step;
+  const int ti_current = r->e->ti_current;
 #ifdef VECTORIZE
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
@@ -465,7 +448,7 @@ void runner_doself_grav(struct runner *r, struct cell *restrict c) {
   TIMER_TIC
 
   /* Anything to do here? */
-  if (c->dt_min > dt_step) return;
+  if (c->ti_end_min > ti_current) return;
 
   /* Loop over every part in c. */
   for (pid = 0; pid < count; pid++) {
@@ -526,15 +509,7 @@ void runner_doself_grav(struct runner *r, struct cell *restrict c) {
       runner_iact_grav(r2q[k], &dxq[3 * k], piq[k], pjq[k]);
 #endif
 
-#ifdef TIMER_VERBOSE
-  printf(
-      "runner_doself_grav[%02i]: %i/%i parts at depth %i (r_max=%.3f/%.3f) "
-      "took %.3f ms.\n",
-      r->id, count_i, count_j, ci->depth, ci->h_max, cj->h_max,
-      ((double)TIMER_TOC(TIMER_DOPAIR)) / CPU_TPS * 1000);
-#else
   TIMER_TOC(timer_doself_grav);
-#endif
 }
 
 /**
@@ -583,7 +558,7 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
     /* Get the opening angle theta. */
     float dx[3], theta;
     for (k = 0; k < 3; k++) {
-      dx[k] = fabsf(ci->loc[k] - cj->loc[k]);
+      dx[k] = fabs(ci->loc[k] - cj->loc[k]);
       if (periodic && dx[k] > 0.5 * s->dim[k]) dx[k] = -dx[k] + s->dim[k];
       if (dx[k] > 0.0f) dx[k] -= ci->h[k];
     }
@@ -617,13 +592,7 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
       runner_dograv_mm(r, ci, cj);
   }
 
-  if (gettimer)
-#ifdef TIMER_VERBOSE
-    printf("runner_dosub_grav[%02i]: at depth %i took %.3f ms.\n", r->id,
-           ci->depth, ((double)TIMER_TOC(TIMER_DOSUB)) / CPU_TPS * 1000);
-#else
-    TIMER_TOC(timer_dosub_grav);
-#endif
+  if (gettimer) TIMER_TOC(timer_dosub_grav);
 }
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */

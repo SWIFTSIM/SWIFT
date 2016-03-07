@@ -43,9 +43,12 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",    "sort",      "self",  "pair",       "sub",     "ghost",
-    "kick1",   "kick2",     "send",  "recv",       "grav_pp", "grav_mm",
-    "grav_up", "grav_down", "psort", "split_cell", "rewait"};
+    "none",    "sort",    "self",      "pair",  "sub",        "init",
+    "ghost",   "drift",   "kick",      "send",  "recv",       "grav_pp",
+    "grav_mm", "grav_up", "grav_down", "psort", "split_cell", "rewait"};
+
+const char *subtaskID_names[task_type_count] = {"none",  "density",
+                                                "force", "grav"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -300,4 +303,30 @@ void task_addunlock_old(struct task *ta, struct task *tb) {
   ta->nr_unlock_tasks += 1;
 
   lock_unlock_blind(&ta->lock);
+}
+
+/**
+ * @brief Prints the list of tasks contained in a given mask
+ *
+ * @param mask The mask to analyse
+ */
+void task_print_mask(unsigned int mask) {
+
+  printf("task_print_mask: The tasks to run are [");
+  for (int k = 1; k < task_type_count; k++)
+    printf(" %s=%s", taskID_names[k], (mask & (1 << k)) ? "yes" : "no");
+  printf(" ]\n");
+}
+
+/**
+ * @brief Prints the list of subtasks contained in a given submask
+ *
+ * @param submask The submask to analyse
+ */
+void task_print_submask(unsigned int submask) {
+
+  printf("task_print_submask: The subtasks to run are [");
+  for (int k = 1; k < task_subtype_count; k++)
+    printf(" %s=%s", subtaskID_names[k], (submask & (1 << k)) ? "yes" : "no");
+  printf(" ]\n");
 }

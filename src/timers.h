@@ -27,8 +27,9 @@
 enum {
   timer_none = 0,
   timer_prepare,
-  timer_kick1,
-  timer_kick2,
+  timer_init,
+  timer_drift,
+  timer_kick,
   timer_dosort,
   timer_doself_density,
   timer_doself_force,
@@ -56,11 +57,6 @@ extern ticks timers[timer_count];
 #define timers_mask_all ((1 << timer_count) - 1)
 
 /* Define the timer macros. */
-#ifdef TIMER_VERBOSE
-#ifndef TIMER
-#define TIMER
-#endif
-#endif
 #ifdef TIMER
 #define TIMER_TIC_ND tic = getticks();
 #define TIMER_TIC2_ND ticks tic2 = getticks();

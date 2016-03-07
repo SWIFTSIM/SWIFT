@@ -31,8 +31,6 @@ int main() {
   const double boxSize = 1.;
   const int L = 4;
   const double rho = 2.;
-  const double P = 1.;
-  const double gamma = 5. / 3.;
 
   /* Read data */
   read_ic_single("input.hdf5", dim, &parts, &N, &periodic);
@@ -61,11 +59,6 @@ int main() {
     float correct_h = 2.251 * boxSize / L;
     assert(h == correct_h);
 
-    /* Check internal energy */
-    float u = parts[n].u;
-    float correct_u = P / ((gamma - 1.) * rho);
-    assert(u == correct_u);
-
     /* Check velocity */
     assert(parts[n].v[0] == 0.);
     assert(parts[n].v[1] == 0.);
@@ -83,9 +76,9 @@ int main() {
     assert(parts[n].x[2] == correct_z);
 
     /* Check accelerations */
-    assert(parts[n].a[0] == 0.);
-    assert(parts[n].a[1] == 0.);
-    assert(parts[n].a[2] == 0.);
+    assert(parts[n].a_hydro[0] == 0.);
+    assert(parts[n].a_hydro[1] == 0.);
+    assert(parts[n].a_hydro[2] == 0.);
   }
 
   /* Clean-up */

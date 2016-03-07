@@ -1,5 +1,6 @@
 # This file is part of SWIFT.
 # Copyright (C) 2012 pedro.gonnet@durham.ac.uk.
+#               2016 p.w.draper@durham.ac.uk.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.1.0])
+AC_INIT([SWIFT],[0.2.0])
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
@@ -37,12 +38,42 @@ AM_PROG_CC_C_O
 # Enable POSIX and platform extension preprocessor macros.
 AC_USE_SYSTEM_EXTENSIONS
 
-# Add libtool support.
-LT_INIT
-
 # Check for compiler version and vendor.
 AX_COMPILER_VENDOR
 AX_COMPILER_VERSION
+
+# Interprocedural optimization support. Needs special handling for linking and
+# archiving as well as compilation with Intels, needs to be done before
+# libtool is configured (to use correct LD).
+AC_ARG_ENABLE([ipo],
+   [AS_HELP_STRING([--enable-ipo],
+     [Enable interprocedural optimization @<:@no/yes@:>@]
+   )],
+   [enable_ipo="$enableval"],
+   [enable_ipo="no"]
+)
+
+if test "$enable_ipo" = "yes"; then
+   if test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -ip -ipo"
+      LDFLAGS="$LDFLAGS -ipo"
+      : ${AR="xiar"}
+      : ${LD="xild"}
+      AC_MSG_RESULT([added Intel interprocedural optimization support])
+   elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      CFLAGS="$CFLAGS -flto"
+      LDFLAGS="$LDFLAGS -flto"
+      AC_MSG_RESULT([added GCC interprocedural optimization support])
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      CFLAGS="$CFLAGS -emit-llvm"
+      AC_MSG_RESULT([added LLVM interprocedural optimization support])
+   else
+      AC_MSG_WARN([Compiler does not support interprocedural optimization])
+   fi
+fi
+
+# Add libtool support.
+LT_INIT
 
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
 # as this changes the compiler.
@@ -148,10 +179,14 @@ if test "$enable_opt" = "yes" ; then
    ac_test_CFLAGS="yes"
    CFLAGS="$old_CFLAGS $CFLAGS"
 
-   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
+   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT). 
+   # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
+   # value from AX_CC_MAXOPT should be sufficient.
    AX_EXT
    if test "$SIMD_FLAGS" != ""; then
-       CFLAGS="$CFLAGS $SIMD_FLAGS"
+       if test "$ax_cv_c_compiler_vendor" != "intel"; then
+           CFLAGS="$CFLAGS $SIMD_FLAGS"
+       fi
    fi
 fi
 
@@ -175,8 +210,35 @@ if test "$enable_san" = "yes"; then
    fi
    if test "$enable_san" = "yes"; then
       CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer"
+      AC_MSG_RESULT([added address sanitizer support])
    else
       AC_MSG_WARN([Compiler does not support address sanitizer option])
+   fi
+fi
+
+#  Disable vectorisation for known compilers. This switches off optimizations
+#  that could be enabled above, so in general should be appended. Slightly odd
+#  implementation as want to describe as --disable-vec, but macro is enable
+#  (there is no enable action).
+AC_ARG_ENABLE([vec],
+   [AS_HELP_STRING([--disable-vec],
+     [Disable vectorization]
+   )],
+   [enable_vec="$enableval"],
+   [enable_vec="yes"]
+)
+if test "$enable_vec" = "no"; then
+   if test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -no-vec -no-simd"
+      AC_MSG_RESULT([disabled Intel vectorization])
+   elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      CFLAGS="$CFLAGS -fno-tree-vectorize"
+      AC_MSG_RESULT([disabled GCC vectorization])
+   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+      CFLAGS="$CFLAGS -fno-vectorize -fno-slp-vectorize"
+      AC_MSG_RESULT([disabled clang vectorization])
+   else
+      AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
    fi
 fi
 
@@ -200,6 +262,7 @@ AX_PTHREAD([LIBS="$PTHREAD_LIBS $LIBS" CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 # Check for metis. Note AX_LIB_METIS exists, but cannot be configured
 # to be default off (i.e. given no option it tries to locate METIS), so we
 # don't use that.
+have_metis="no"
 AC_ARG_WITH([metis],
     [AS_HELP_STRING([--with-metis=PATH],
        [root directory where metis is installed @<:@yes/no@:>@]
@@ -215,6 +278,7 @@ if test "x$with_metis" != "xno"; then
       METIS_LIBS="-lmetis"
       METIS_INCS=""
    fi
+   have_metis="yes"
    AC_CHECK_LIB([metis],[METIS_PartGraphKway],
       AC_DEFINE([HAVE_METIS],1,[The metis library appears to be present.]),
       AC_MSG_ERROR(something is wrong with the metis library!),$METIS_LIBS)
@@ -270,6 +334,19 @@ AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[true],
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])
 
+have_numa="no"
+if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
+  # Check for libnuma.
+  AC_CHECK_HEADER([numa.h])
+  if test "$ac_cv_header_numa_h" = "yes"; then
+    AC_CHECK_LIB([numa], [numa_available])
+    have_numa="yes"
+  fi
+fi
+
+# Check for Intel intrinsics header optionally used by vector.h.
+AC_CHECK_HEADERS([immintrin.h])
+
 # Check for timing functions needed by cycle.h.
 AC_HEADER_TIME
 AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
@@ -303,12 +380,12 @@ AC_ARG_ENABLE([compiler-warnings],
 if test "$enable_warn" != "no"; then
     AX_CFLAGS_WARN_ALL
     if test "$enable_warn" = "error"; then
-       case "$ax_cv_c_compiler_vendor" in 
-          intel | gnu ) 
+       case "$ax_cv_c_compiler_vendor" in
+          intel | gnu )
              CFLAGS="$CFLAGS -Werror"
           ;;
        esac
-    fi     
+    fi
 fi
 
 # Check for git, needed for revision stamps.
@@ -324,14 +401,15 @@ AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfi
 
 # Report general configuration.
 AC_MSG_RESULT([
-   Compiler: $CC
-     vendor: $ax_cv_c_compiler_vendor
-    version: $ax_cv_c_compiler_version
-      flags: $CFLAGS
-   MPI enabled: $enable_mpi
-   HDF5 enabled: $with_hdf5
-       parallel: $have_parallel_hdf5
-   Metis enabled: $with_metis
+   Compiler        : $CC
+    - vendor       : $ax_cv_c_compiler_vendor
+    - version      : $ax_cv_c_compiler_version
+    - flags        : $CFLAGS
+   MPI enabled     : $enable_mpi
+   HDF5 enabled    : $with_hdf5
+    - parallel     : $have_parallel_hdf5
+   Metis enabled   : $have_metis
+   libNUMA enabled : $have_numa
 ])
 
 # Generate output.

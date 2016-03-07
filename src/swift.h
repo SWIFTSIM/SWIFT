@@ -25,12 +25,15 @@
 /* Local headers. */
 #include "atomic.h"
 #include "cell.h"
+#include "clocks.h"
 #include "const.h"
 #include "const.h"
 #include "cycle.h"
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity.h"
+#include "hydro.h"
 #include "lock.h"
 #include "map.h"
 #include "multipole.h"
@@ -46,13 +49,7 @@
 #include "timers.h"
 #include "units.h"
 #include "tools.h"
+#include "partition.h"
 #include "version.h"
-
-#ifdef LEGACY_GADGET2_SPH
-#include "runner_iact_legacy.h"
-#else
-#include "runner_iact.h"
-#endif
-#include "runner_iact_grav.h"
 
 #endif /* SWIFT_SWIFT_H */

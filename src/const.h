@@ -38,7 +38,7 @@
   1.f /* Value taken from (Price,2008), not used in legacy gadget mode */
 
 /* Time integration constants. */
-#define const_cfl 0.3f
+#define const_cfl 0.1f
 #define const_ln_max_h_change                                           \
   0.231111721f /* Particle can't change volume by more than a factor of \
                   2=1.26^3 over one time step */
@@ -47,14 +47,15 @@
 /* Neighbour search constants. */
 #define const_eta_kernel \
   1.2349f /* Corresponds to 48 ngbs with the cubic spline kernel */
-#define const_delta_nwneigh 1.f
+#define const_delta_nwneigh 0.1f
+#define const_smoothing_max_iter 30
 #define CUBIC_SPLINE_KERNEL
 
 /* Gravity stuff. */
 #define const_theta_max                                   \
   0.57735f /* Opening criteria, which is the ratio of the \
               cell distance over the cell width. */
-// #define const_G                 6.67384e-8f     /* Gravitational constant. */
+
 #define const_G 6.672e-8f             /* Gravitational constant. */
 #define const_epsilon 0.0014f         /* Gravity blending distance. */
 #define const_iepsilon 714.285714286f /* Inverse gravity blending distance. */
@@ -65,7 +66,9 @@
 #define const_iepsilon6 (const_iepsilon3* const_iepsilon3)
 
 /* SPH variant to use */
-#define LEGACY_GADGET2_SPH
+//#define MINIMAL_SPH
+#define GADGET2_SPH
+//#define DEFAULT_SPH
 
 /* System of units */
 #define const_unit_length_in_cgs 1   /* 3.08567810e16  /\* 1Mpc *\/ */

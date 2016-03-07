@@ -29,17 +29,11 @@ struct engine;
 /* Some constants. */
 #define space_maxdepth 10
 #define space_cellallocchunk 1000
-#define space_splitratio 0.875f
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
 #define space_subsize_default 8000000
 #define space_stretch 1.10f
 #define space_maxreldx 0.25f
-#define space_qstack 2048
-
-/* Convert cell location to ID. */
-#define cell_getid(cdim, i, j, k) \
-  ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Split size. */
 extern int space_splitsize;
@@ -139,11 +133,14 @@ void space_map_cells_pre(struct space *s, int full,
 void space_map_parts(struct space *s,
                      void (*fun)(struct part *p, struct cell *c, void *data),
                      void *data);
+void space_map_parts_xparts(struct space *s,
+                            void (*fun)(struct part *p, struct xpart *xp,
+                                        struct cell *c));
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_rebuild(struct space *s, double h_max, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_split(struct space *s, struct cell *c);
 void space_do_parts_sort();
-
+void space_link_cleanup(struct space *s);
 #endif /* SWIFT_SPACE_H */
