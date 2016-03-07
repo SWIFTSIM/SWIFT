@@ -835,9 +835,15 @@ branch-and-bound paradigm of both shared and distributed memory programming
 using synchronous MPI and OpenMP.
 Although fully asynchronous methods, due to their somewhat anarchic nature,
 may seem more difficult to control, they are conceptually simple and easy
-to implement\footnote{The \swift source code consists of less than 21\,k lines
+to implement\footnote{The \swift source code consists of less than 21\,K lines
 of code, of which rougly only one tenth are needed to implement the task-based
 parallelism and asynchronous communication.}.
+The real cost of using a task-based approach comes from having
+to rethink the entire computation to fit the task-based setting. This may,
+as in our specific case, lead to completely rethinking the underlying
+algorithms and reimplementing a code from scratch.
+Given our results to date, however, we do not believe we will regret this
+investment.
 
 \swift, its documentation, and the test cases presented in this paper are all
 available at the address \web.
