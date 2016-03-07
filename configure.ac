@@ -235,8 +235,8 @@ if test "$enable_vec" = "no"; then
       CFLAGS="$CFLAGS -fno-tree-vectorize"
       AC_MSG_RESULT([disabled GCC vectorization])
    elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -fno-vectorize"
-      AC_MSG_RESULT([clang GCC vectorization])
+      CFLAGS="$CFLAGS -fno-vectorize -fno-slp-vectorize"
+      AC_MSG_RESULT([disabled clang vectorization])
    else
       AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
    fi
