@@ -80,7 +80,7 @@ void printgParticle(struct gpart *parts, long long int id, int N) {
           "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%d, "
           "t_end=%d\n",
           i, parts[i].part->id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
-          parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
+          parts[i].v_full[0], parts[i].v_full[1], parts[i].v_full[2], parts[i].a[0],
           parts[i].a[1], parts[i].a[2], parts[i].mass, parts[i].ti_begin,
           parts[i].ti_end);
       found = 1;

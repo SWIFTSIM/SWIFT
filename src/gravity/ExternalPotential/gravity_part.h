@@ -38,7 +38,7 @@ struct gpart {
   double x[3];
 
   /* Particle velocity. */
-  float v[3];
+  float v_full[3];
 
   /* Particle acceleration. */
   float a[3];

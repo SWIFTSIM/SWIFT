@@ -37,6 +37,7 @@ enum {
   timer_dopair_density,
   timer_dopair_force,
   timer_dopair_grav,
+  timer_dograv_external,
   timer_dosub_density,
   timer_dosub_force,
   timer_dosub_grav,

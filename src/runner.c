@@ -97,11 +97,12 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
  */
 void runner_dograv_external(struct runner *r, struct cell *c) {
 
-  struct part *p, *parts = c->parts;
+  struct gpart *g, *gparts = c->gparts;
   float rinv;
   float L[3], E;
-  int i, k, count = c->count;
-  float t_end = r->e->time;
+  int i, k, gcount = c->gcount;
+  const int ti_current = r->e->ti_current;
+
   //struct space *s = r->e->s;
   //double CentreOfPotential[3];
   TIMER_TIC
@@ -122,28 +123,28 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   	 OUT
 #endif
   /* Loop over the parts in this cell. */
-  for (i = 0; i < count; i++) {
+  for (i = 0; i < gcount; i++) {
 
   	 /* Get a direct pointer on the part. */
-  	 p = &parts[i];
+  	 g = &gparts[i];
 
   	 /* Is this part within the time step? */
-  	 if (p->t_end <= t_end) {
-  		rinv = 1 / sqrtf((p->x[0]-External_Potential_X)*(p->x[0]-External_Potential_X) + (p->x[1]-External_Potential_Y)*(p->x[1]-External_Potential_Y) + (p->x[2]-External_Potential_Z)*(p->x[2]-External_Potential_Z));
+  	 if (g->ti_end <= ti_current) {
+  		rinv = 1 / sqrtf((g->x[0]-External_Potential_X)*(g->x[0]-External_Potential_X) + (g->x[1]-External_Potential_Y)*(g->x[1]-External_Potential_Y) + (g->x[2]-External_Potential_Z)*(g->x[2]-External_Potential_Z));
 
   		/* check for energy and angular momentum conservation */
-  		E = 0.5 * ((p->v[0]*p->v[0]) + (p->v[1]*p->v[1]) + (p->v[2]*p->v[2])) - const_G *  External_Potential_Mass * rinv;
-  		L[0] = (p->x[1] - External_Potential_X)*p->v[2] - (p->x[2] - External_Potential_X)*p->v[1];
-  		L[1] = (p->x[2] - External_Potential_Y)*p->v[0] - (p->x[0] - External_Potential_Y)*p->v[2];
-  		L[2] = (p->x[0] - External_Potential_Z)*p->v[1] - (p->x[1] - External_Potential_Z)*p->v[0];
-  		if(p->id == 0) {
-  		  message("update %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\n", r->e->time, 1./rinv, p->x[0], p->x[1], p->x[2], E, L[0], L[1], L[2]);
-  		  message(" ... %f %f %f\n", p->v[0], p->v[1], p->v[2]);
+  		E = 0.5 * ((g->v_full[0]*g->v_full[0]) + (g->v_full[1]*g->v_full[1]) + (g->v_full[2]*g->v_full[2])) - const_G *  External_Potential_Mass * rinv;
+  		L[0] = (g->x[1] - External_Potential_X)*g->v_full[2] - (g->x[2] - External_Potential_X)*g->v_full[1];
+  		L[1] = (g->x[2] - External_Potential_Y)*g->v_full[0] - (g->x[0] - External_Potential_Y)*g->v_full[2];
+  		L[2] = (g->x[0] - External_Potential_Z)*g->v_full[1] - (g->x[1] - External_Potential_Z)*g->v_full[0];
+  		if(g->id == 0) {
+  		  message("update %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\n", r->e->time, 1./rinv, g->x[0], g->x[1], g->x[2], E, L[0], L[1], L[2]);
+  		  message(" ... %f %f %f\n", g->v_full[0], g->v_full[1], g->v_full[2]);
   		  message(" ... %e %e\n", const_G, External_Potential_Mass);
   		}
-  		p->grav_accel[0] = - const_G *  External_Potential_Mass * (p->x[0] - External_Potential_X) * rinv * rinv * rinv;
-  		p->grav_accel[1] = - const_G *  External_Potential_Mass * (p->x[1] - External_Potential_Y) * rinv * rinv * rinv;
-  		p->grav_accel[2] = - const_G *  External_Potential_Mass * (p->x[2] - External_Potential_Z) * rinv * rinv * rinv;
+  		g->a_grav_external[0] = - const_G *  External_Potential_Mass * (g->x[0] - External_Potential_X) * rinv * rinv * rinv;
+  		g->a_grav_external[1] = - const_G *  External_Potential_Mass * (g->x[1] - External_Potential_Y) * rinv * rinv * rinv;
+  		g->a_grav_external[2] = - const_G *  External_Potential_Mass * (g->x[2] - External_Potential_Z) * rinv * rinv * rinv;
 		
   	 }
   }
@@ -152,7 +153,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
 
 /**
- * @brief Sort the entries in ascending order using QuickSort.
+ * @Brief Sort the entries in ascending order using QuickSort.
  *
  * @param sort The entries
  * @param N The number of entries.
@@ -839,10 +840,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 	 /* Loop over all gparts in the cell */
 	 for (int k = 0; k < nr_gparts; k++)
 		{
-		  g = &gparts[k];
-		  g -> x[0] += g->v[0] * dt;
-		  g -> x[1] += g->v[1] * dt;
-		  g -> x[2] += g->v[2] * dt;
+		  g = &gparts[k]; /* nothing to do */
 		}
 	 
   }
@@ -1073,9 +1071,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 			 g->ti_end   = g->ti_begin + new_dti;
 			 
 			 /* Kick particles in momentum space */
-			 g->v[0] += g->a_grav_external[0] * dt;
-			 g->v[1] += g->a_grav_external[1] * dt;
-			 g->v[2] += g->a_grav_external[2] * dt;
+			 g->v_full[0] += g->a_grav_external[0] * dt;
+			 g->v_full[1] += g->a_grav_external[1] * dt;
+			 g->v_full[2] += g->a_grav_external[2] * dt;
 			 
 			 /* Minimal time for next end of time-step */
 			 ti_end_min = min(g->ti_end, ti_end_min);
