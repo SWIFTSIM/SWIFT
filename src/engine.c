@@ -1171,10 +1171,10 @@ void engine_print(struct engine *e) {
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print: task counts are [ %s=%i", e->nodeID,
-         clocks_get_timeofday(), taskID_names[0], counts[0]);
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
-  printf("%s engine_print: task counts are [ %s=%i", clocks_get_timeofday(),
-         taskID_names[0], counts[0]);
+  printf("%s engine_print: task counts are [ %s=%i",
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
   for (k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
@@ -1929,9 +1929,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     if (nodeID == 0) {
 #ifdef WITH_MPI
       printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
-             clocks_get_timeofday());
+             clocks_get_timesincestart());
 #else
-      printf("%s engine_init: cpu map is [ ", clocks_get_timeofday());
+      printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
 #endif
       for (int i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
       printf("].\n");
@@ -2108,14 +2108,15 @@ void engine_print_policy(struct engine *e) {
 #ifdef WITH_MPI
   if (e->nodeID == 0) {
     printf("[0000] %s engine_policy: engine policies are [ ",
-           clocks_get_timeofday());
+           clocks_get_timesincestart());
     for (int k = 1; k < 32; k++)
       if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
 #else
-  printf("%s engine_policy: engine policies are [ ", clocks_get_timeofday());
+  printf("%s engine_policy: engine policies are [ ",
+         clocks_get_timesincestart());
   for (int k = 1; k < 32; k++)
     if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
   printf(" ]\n");

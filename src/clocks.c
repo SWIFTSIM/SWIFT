@@ -233,7 +233,7 @@ const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
  *
  * @result the time since the start of the execution
  */
-const char *clocks_get_timeofday() {
+const char *clocks_get_timesincestart() {
 
   static char buffer[40];
 
