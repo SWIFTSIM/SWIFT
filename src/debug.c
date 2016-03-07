@@ -58,7 +58,7 @@ void printParticle(struct part *parts, struct xpart *xparts, long long int id,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf("## Particle[%d]:\n id=%lld", i, parts[i].id);
+      printf("## Particle[%zd]:\n id=%lld", i, parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
       found = 1;
       break;
@@ -75,7 +75,7 @@ void printgParticle(struct gpart *parts, long long int id, int N) {
   for (size_t i = 0; i < N; i++)
     if (parts[i].id == -id || (parts[i].id > 0 && parts[i].part->id == id)) {
       printf(
-          "## gParticle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
+          "## gParticle[%zd]: id=%lld, x=[%.16e,%.16e,%.16e], "
           "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%d, "
           "t_end=%d\n",
           i, parts[i].part->id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
