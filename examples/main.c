@@ -126,6 +126,9 @@ int main(int argc, char *argv[]) {
          &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
 
+  /* Initialize CPU frequency, this also starts time. */
+  clocks_set_cpufreq(cpufreq);
+
   /* Greeting message */
   if (myrank == 0) greetings();
 
@@ -332,11 +335,11 @@ int main(int argc, char *argv[]) {
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
 
-  /* Initialize CPU frequency. */
-  clocks_set_cpufreq(cpufreq);
-  cpufreq = clocks_get_cpufreq();
-  if (myrank == 0)
+  /* Report CPU frequency. */
+  if (myrank == 0) {
+    cpufreq = clocks_get_cpufreq();
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
+  }
 
   /* Check we have sensible time step bounds */
   if (dt_min > dt_max)

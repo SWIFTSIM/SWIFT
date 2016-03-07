@@ -41,6 +41,9 @@
 /* The CPU frequency used to convert ticks to seconds. */
 static unsigned long long clocks_cpufreq = 0;
 
+/* Ticks when the CPU frequency was initialised. Used in elapsed. */
+static ticks clocks_start = 0;
+
 /* The units of any returned times. */
 static char *clocks_units[] = {"ms", "ticks"};
 static int clocks_units_index = 0;
@@ -102,6 +105,7 @@ void clocks_set_cpufreq(unsigned long long freq) {
   } else {
     clocks_estimate_cpufreq();
   }
+  clocks_start = getticks();
 }
 
 /**
@@ -223,29 +227,34 @@ double clocks_from_ticks(ticks tics) {
 const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
 
 /**
- * @brief returns a string containing the local date and time
+ * @brief returns the time of day to 1/10th second accuracy.
  *
- * The date is return in the format [YYYY-MM-DD hh:mm:ss]
+ * The date is return in the format [hh:mm:ss.s]
  *
- * @result the current time.
+ * @result the current time of day.
  */
 const char *clocks_get_timeofday() {
 
-#if defined(HAVE_GETTIMEOFDAY) && defined(HAVE_LOCALTIME) && \
-    defined(HAVE_STRFTIME)
-  struct timeval time;
-  struct tm *local_time;
   static char buffer[40];
 
-  /* Get the local time of day */
-  gettimeofday(&time, NULL);
+#if defined(HAVE_CLOCK_GETTIME) && defined(HAVE_LOCALTIME) && \
+    defined(HAVE_STRFTIME)
+  struct timespec time;
+  struct tm *local_time;
+  char fmttime[40];
+
+  clock_gettime(CLOCK_REALTIME, &time);
   local_time = localtime(&time.tv_sec);
 
   /* Make it a string */
-  strftime(buffer, 40, "[%F %T]", local_time);
+  strftime(fmttime, 40, "%T", local_time);
+
+  /* 1/10 seconds. */
+  int tseconds = time.tv_nsec / 100000000;
+  sprintf(buffer, "[%s.%01d]", fmttime, tseconds);
 
 #else
-  static char buffer[40] = "[Unknown time]";
+  sprintf(buffer, "[%08.1f]", clocks_diff_ticks(getticks(),clocks_start)/100.0);
 #endif
   return buffer;
 }
