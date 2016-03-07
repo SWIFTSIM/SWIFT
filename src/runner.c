@@ -311,20 +311,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
         }
     } */
 
-#ifdef TIMER_VERBOSE
-  message(
-      "runner %02i: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) "
-      "took %.3f ms.",
-      r->id, count, c->depth, (flags & 0x1000) >> 12, (flags & 0x800) >> 11,
-      (flags & 0x400) >> 10, (flags & 0x200) >> 9, (flags & 0x100) >> 8,
-      (flags & 0x80) >> 7, (flags & 0x40) >> 6, (flags & 0x20) >> 5,
-      (flags & 0x10) >> 4, (flags & 0x8) >> 3, (flags & 0x4) >> 2,
-      (flags & 0x2) >> 1, (flags & 0x1) >> 0,
-      ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000);
-  fflush(stdout);
-#else
   if (clock) TIMER_TOC(timer_dosort);
-#endif
 }
 
 void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
@@ -469,20 +456,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
         }
     } */
 
-#ifdef TIMER_VERBOSE
-  message(
-      "runner %02i: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) "
-      "took %.3f ms.",
-      r->id, count, c->depth, (flags & 0x1000) >> 12, (flags & 0x800) >> 11,
-      (flags & 0x400) >> 10, (flags & 0x200) >> 9, (flags & 0x100) >> 8,
-      (flags & 0x80) >> 7, (flags & 0x40) >> 6, (flags & 0x20) >> 5,
-      (flags & 0x10) >> 4, (flags & 0x8) >> 3, (flags & 0x4) >> 2,
-      (flags & 0x2) >> 1, (flags & 0x1) >> 0,
-      ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000);
-  fflush(stdout);
-#else
   if (clock) TIMER_TOC(timer_dosort);
-#endif
 }
 
 /**
@@ -522,15 +496,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) {
-#ifdef TIMER_VERBOSE
-    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_init)) / CPU_TPS * 1000);
-    fflush(stdout);
-#else
-    TIMER_TOC(timer_init);
-#endif
-  }
+  if (timer) TIMER_TOC(timer_init);
 }
 
 /**
@@ -679,13 +645,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   if (count)
     message("Smoothing length failed to converge on %i particles.", count);
 
-#ifdef TIMER_VERBOSE
-  message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-          c->depth, ((double)TIMER_TOC(timer_doghost)) / CPU_TPS * 1000);
-  fflush(stdout);
-#else
   TIMER_TOC(timer_doghost);
-#endif
 }
 
 /**
@@ -779,15 +739,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   c->h_max = h_max;
   c->dx_max = dx_max;
 
-  if (timer) {
-#ifdef TIMER_VERBOSE
-    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_drift)) / CPU_TPS * 1000);
-    fflush(stdout);
-#else
-    TIMER_TOC(timer_drift);
-#endif
-  }
+  if (timer) TIMER_TOC(timer_drift);
 }
 
 /**
@@ -991,15 +943,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
-  if (timer) {
-#ifdef TIMER_VERBOSE
-    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_kick)) / CPU_TPS * 1000);
-    fflush(stdout);
-#else
-    TIMER_TOC(timer_kick);
-#endif
-  }
+  if (timer) TIMER_TOC(timer_kick);
 }
 
 /**

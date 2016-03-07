@@ -46,6 +46,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "cell.h"
+#include "clocks.h"
 #include "cycle.h"
 #include "debug.h"
 #include "error.h"
@@ -284,7 +285,6 @@ void engine_redistribute(struct engine *e) {
   error("SWIFT was not compiled with MPI support.");
 #endif
 }
-
 
 /**
  * @brief Repartition the cells amongst the nodes.
@@ -1116,7 +1116,7 @@ int engine_marktasks(struct engine *e) {
     }
   }
 
-  // message( "took %.3f ms." , (double)(getticks() - tic)/CPU_TPS*1000 );
+  // message( "took %.3f %s." , clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* All is well... */
   return 0;
@@ -1167,29 +1167,29 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the space. */
   // tic = getticks();
   space_rebuild(e->s, 0.0, e->nodeID == 0);
-// message( "space_rebuild took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "space_rebuild took %.3f %s." ,
+  //clocks_from_ticks(getticks() -  tic), clocks_getunit());
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
   // tic = getticks();
   engine_exchange_cells(e);
-// message( "engine_exchange_cells took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "engine_exchange_cells took %.3f %s." ,
+  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
   /* Re-build the tasks. */
   // tic = getticks();
   engine_maketasks(e);
-  // message( "engine_maketasks took %.3f ms." , (double)(getticks() -
-  // tic)/CPU_TPS*1000 );
+  // message( "engine_maketasks took %.3f %s." ,
+  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
-  // message( "engine_marktasks took %.3f ms." , (double)(getticks() -
-  // tic)/CPU_TPS*1000 );
+  // message( "engine_marktasks took %.3f %s." ,
+  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Print the status of the system */
   engine_print(e);
@@ -1210,8 +1210,8 @@ void engine_prepare(struct engine *e) {
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   rebuild = (e->forcerebuild || engine_marktasks(e));
-// message( "space_marktasks took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "space_marktasks took %.3f %s." ,
+  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -1221,8 +1221,8 @@ void engine_prepare(struct engine *e) {
       MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
-// message( "rebuild allreduce took %.3f ms." , (double)(getticks() -
-// tic)/CPU_TPS*1000 );
+  // message( "rebuild allreduce took %.3f %s." ,
+  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
   e->tic_step = getticks();
 
@@ -1230,16 +1230,16 @@ void engine_prepare(struct engine *e) {
   if (rebuild) {
     // tic = getticks();
     engine_rebuild(e);
-    // message( "engine_rebuild took %.3f ms." , (double)(getticks() -
-    // tic)/CPU_TPS*1000 );
+    // message( "engine_rebuild took %.3f %s." ,
+    //clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     // tic = getticks();
     scheduler_reweight(&e->sched);
-    // message( "scheduler_reweight took %.3f ms." , (double)(getticks() -
-    // tic)/CPU_TPS*1000 );
+    // message( "scheduler_reweight took %.3f %s." ,
+    //clocks_from_ticks(getticks() -tic), clocks_getunit());
   }
   e->tasks_age += 1;
 
@@ -1393,7 +1393,7 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
-  if(e->nodeID == 0) message("Initialising particles");
+  if (e->nodeID == 0) message("Initialising particles");
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
@@ -1481,6 +1481,9 @@ void engine_step(struct engine *e) {
   struct space *s = e->s;
 
   TIMER_TIC2;
+
+  struct clocks_time time1, time2;
+  clocks_gettime(&time1);
 
   /* Collect the cell data. */
   for (k = 0; k < s->nr_cells; k++)
@@ -1620,9 +1623,18 @@ void engine_step(struct engine *e) {
 
   TIMER_TOC2(timer_step);
 
-  e->wallclock_time = ((double)timers[timer_count - 1]) / CPU_TPS * 1000;
+  clocks_gettime(&time2);
+
+  e->wallclock_time = (float) clocks_diff(&time1, &time2);
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
+}
+
+/**
+ * @brief Returns 1 if the simulation has reached its end point, 0 otherwise
+ */
+int engine_is_done(struct engine *e) {
+  return !(e->ti_current < max_nr_timesteps);
 }
 
 /**
@@ -1831,7 +1843,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
       int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
       bool done = false, swap_hyperthreads = hyperthreads_present();
       if (swap_hyperthreads && nodeID == 0)
-	message("prefer physical cores to hyperthreads");
+        message("prefer physical cores to hyperthreads");
 
       while (!done) {
         done = true;
@@ -1928,15 +1940,25 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if (e->nodeID == 0)
-    message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+  if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+
+  /* Check we have sensible time bounds */
+  if (timeBegin >= timeEnd)
+    error(
+        "Final simulation time (t_end = %e) must be larger than the start time "
+        "(t_beg = %e)",
+        timeEnd, timeBegin);
+
+  /* Check we have sensible time step bounds */
+  if (e->dt_min > e->dt_max)
+    error(
+        "Minimal time step size must be smaller than maximal time step size ");
 
   /* Deal with timestep */
   e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
   e->ti_current = 0;
-  if (e->nodeID == 0)
-    message("Absolute minimal timestep size: %e", e->timeBase);
 
+  /* Fixed time-step case */
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
     e->dt_min = e->dt_max;
 
@@ -1947,11 +1969,32 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     e->dt_min = e->dt_max = dti_timeline * e->timeBase;
 
     if (e->nodeID == 0) message("Timestep set to %e", e->dt_max);
+  } else {
+
+    if (e->nodeID == 0) {
+      message("Absolute minimal timestep size: %e", e->timeBase);
+
+      float dt_min = timeEnd - timeBegin;
+      while (dt_min > e->dt_min) dt_min /= 2.f;
+
+      message("Minimal timestep size (on time-line): %e", dt_min);
+
+      float dt_max = timeEnd - timeBegin;
+      while (dt_max > e->dt_max) dt_max /= 2.f;
+
+      message("Maximal timestep size (on time-line): %e", dt_max);
+    }
   }
 
   if (e->dt_min < e->timeBase && e->nodeID == 0)
-    error("Minimal timestep smaller than the absolue possible minimum dt=%e",
-          e->timeBase);
+    error(
+        "Minimal time-step size smaller than the absolute possible minimum "
+        "dt=%e",
+        e->timeBase);
+
+  if (e->dt_max > (e->timeEnd - e->timeBegin) && e->nodeID == 0)
+    error("Maximal time-step size larger than the simulation run time t=%e",
+          e->timeEnd - e->timeBegin);
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI

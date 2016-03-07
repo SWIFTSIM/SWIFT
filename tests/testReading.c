@@ -31,7 +31,7 @@ int main() {
   const double boxSize = 1.;
   const int L = 4;
   const double rho = 2.;
-  
+
   /* Read data */
   read_ic_single("input.hdf5", dim, &parts, &N, &periodic);
 
