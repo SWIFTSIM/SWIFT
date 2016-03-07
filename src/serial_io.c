@@ -202,7 +202,7 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   }
 
   /* Make sure the chunks are not larger than the dataset */
-  if (chunk_shape[0] > N) chunk_shape[0] = N;
+  if (chunk_shape[0] > N_total) chunk_shape[0] = N_total;
 
   /* Change shape of data space */
   h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
