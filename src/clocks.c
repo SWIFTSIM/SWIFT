@@ -229,7 +229,9 @@ const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
 /**
  * @brief returns the time since the start of the execution in seconds
  *
- * The time is return in the format [ssssss.s]
+ * Need to call clocks_set_cpufreq() to mark the start of execution.
+ *
+ * The time is return in the format [sssss.s].
  *
  * @result the time since the start of the execution
  */
@@ -237,7 +239,7 @@ const char *clocks_get_timesincestart() {
 
   static char buffer[40];
 
-  sprintf(buffer, "[%08.1f]",
+  sprintf(buffer, "[%07.1f]",
           clocks_diff_ticks(getticks(), clocks_start) / 1000.0);
 
   return buffer;
