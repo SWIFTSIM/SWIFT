@@ -374,12 +374,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
   if (l != NULL) {
 
     /* Create the tasks. */
-    struct task *t_xv =
-        scheduler_addtask(s, task_type_send, task_subtype_none,
-                          2 * ci->tag, 0, ci, cj, 0);
-    struct task *t_rho =
-        scheduler_addtask(s, task_type_send, task_subtype_none,
-                          2 * ci->tag + 1, 0, ci, cj, 0);
+    struct task *t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                          2 * ci->tag, 0, ci, cj, 0);
+    struct task *t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                           2 * ci->tag + 1, 0, ci, cj, 0);
 
     /* The send_rho task depends on the cell's ghost task. */
     scheduler_addunlock(s, ci->super->ghost, t_rho);
@@ -421,12 +419,10 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   if (t_xv == NULL && c->nr_density > 0) {
 
     /* Create the tasks. */
-    t_xv = c->recv_xv =
-        scheduler_addtask(s, task_type_recv, task_subtype_none,
-                          2 * c->tag, 0, c, NULL, 0);
-    t_rho = c->recv_rho =
-        scheduler_addtask(s, task_type_recv, task_subtype_none,
-                          2 * c->tag + 1, 0, c, NULL, 0);
+    t_xv = c->recv_xv = scheduler_addtask(s, task_type_recv, task_subtype_none,
+                                          2 * c->tag, 0, c, NULL, 0);
+    t_rho = c->recv_rho = scheduler_addtask(
+        s, task_type_recv, task_subtype_none, 2 * c->tag + 1, 0, c, NULL, 0);
   }
 
   /* Add dependencies. */
@@ -686,7 +682,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     // message( "request from proxy %i has arrived." , pid );
     if (reqs_in[pid & ~1] == MPI_REQUEST_NULL &&
         reqs_in[pid | 1] == MPI_REQUEST_NULL) {
-      struct proxy* p = &e->proxies[pid >> 1];
+      struct proxy *p = &e->proxies[pid >> 1];
       memcpy(&s->parts[offset + count], p->parts_in,
              sizeof(struct part) * p->nr_parts_in);
       memcpy(&s->xparts[offset + count], p->xparts_in,
@@ -744,7 +740,7 @@ void engine_maketasks(struct engine *e) {
       for (int k = 0; k < cdim[2]; k++) {
         int cid = cell_getid(cdim, i, j, k);
         if (cells[cid].count == 0) continue;
-        struct cell* ci = &cells[cid];
+        struct cell *ci = &cells[cid];
         if (ci->count == 0) continue;
         if (ci->nodeID == nodeID)
           scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0,
@@ -762,7 +758,7 @@ void engine_maketasks(struct engine *e) {
               if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
               kkk = (kkk + cdim[2]) % cdim[2];
               int cjd = cell_getid(cdim, iii, jjj, kkk);
-              struct cell* cj = &cells[cjd];
+              struct cell *cj = &cells[cjd];
               if (cid >= cjd || cj->count == 0 ||
                   (ci->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
@@ -819,7 +815,7 @@ void engine_maketasks(struct engine *e) {
   for (int k = 0; k < sched->nr_tasks; k++) {
 
     /* Get the current task. */
-    struct task* t = &sched->tasks[k];
+    struct task *t = &sched->tasks[k];
     if (t->skip) continue;
 
     /* Link sort tasks together. */
@@ -883,7 +879,7 @@ void engine_maketasks(struct engine *e) {
   for (int k = 0; k < sched_nr_tasks; k++) {
 
     /* Get a pointer to the task. */
-    struct task* t = &sched->tasks[k];
+    struct task *t = &sched->tasks[k];
 
     /* Skip? */
     if (t->skip) continue;
@@ -892,8 +888,8 @@ void engine_maketasks(struct engine *e) {
     if (t->type == task_type_self && t->subtype == task_subtype_density) {
       scheduler_addunlock(sched, t->ci->super->init, t);
       scheduler_addunlock(sched, t, t->ci->super->ghost);
-      struct task* t2 = scheduler_addtask(sched, task_type_self, task_subtype_force, 0, 0,
-                             t->ci, NULL, 0);
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
       scheduler_addunlock(sched, t->ci->super->ghost, t2);
       scheduler_addunlock(sched, t2, t->ci->super->kick);
       t->ci->force = engine_addlink(e, t->ci->force, t2);
@@ -902,8 +898,8 @@ void engine_maketasks(struct engine *e) {
 
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
-      struct task* t2 = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0, 0,
-                             t->ci, t->cj, 0);
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
@@ -924,8 +920,9 @@ void engine_maketasks(struct engine *e) {
 
     /* Otherwise, sub interaction? */
     else if (t->type == task_type_sub && t->subtype == task_subtype_density) {
-      struct task* t2 = scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
-                             0, t->ci, t->cj, 0);
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
+                            0, t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
@@ -1005,15 +1002,15 @@ int engine_marktasks(struct engine *e) {
     for (int k = 0; k < nr_tasks; k++) {
 
       /* Get a handle on the kth task. */
-      struct task* t = &tasks[ind[k]];
+      struct task *t = &tasks[ind[k]];
 
       /* Pair? */
       if (t->type == task_type_pair ||
           (t->type == task_type_sub && t->cj != NULL)) {
 
         /* Local pointers. */
-        const struct cell* ci = t->ci;
-        const struct cell* cj = t->cj;
+        const struct cell *ci = t->ci;
+        const struct cell *cj = t->cj;
 
         /* Too much particle movement? */
         if (t->tight &&
@@ -1039,7 +1036,7 @@ int engine_marktasks(struct engine *e) {
     for (int k = 0; k < nr_tasks; k++) {
 
       /* Get a handle on the kth task. */
-      struct task* t = &tasks[ind[k]];
+      struct task *t = &tasks[ind[k]];
 
       /* Sort-task? Note that due to the task ranking, the sorts
          will all come before the pairs. */
@@ -1064,8 +1061,8 @@ int engine_marktasks(struct engine *e) {
                (t->type == task_type_sub && t->cj != NULL)) {
 
         /* Local pointers. */
-        const struct cell* ci = t->ci;
-        const struct cell* cj = t->cj;
+        const struct cell *ci = t->ci;
+        const struct cell *cj = t->cj;
 
         /* Set this task's skip. */
         t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
@@ -1113,7 +1110,8 @@ int engine_marktasks(struct engine *e) {
     }
   }
 
-  // message( "took %.3f %s." , clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // message( "took %.3f %s." , clocks_from_ticks(getticks() - tic),
+  // clocks_getunit());
 
   /* All is well... */
   return 0;
@@ -1141,7 +1139,8 @@ void engine_print_task_counts(struct engine *e) {
   printf("[%03i] engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
          taskID_names[0], counts[0]);
 #else
-  printf("engine_print_task_counts: task counts are [ %s=%i", taskID_names[0], counts[0]);
+  printf("engine_print_task_counts: task counts are [ %s=%i", taskID_names[0],
+         counts[0]);
 #endif
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
@@ -1163,29 +1162,29 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the space. */
   // tic = getticks();
   space_rebuild(e->s, 0.0, e->nodeID == 0);
-  // message( "space_rebuild took %.3f %s." ,
-  //clocks_from_ticks(getticks() -  tic), clocks_getunit());
+// message( "space_rebuild took %.3f %s." ,
+// clocks_from_ticks(getticks() -  tic), clocks_getunit());
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
   // tic = getticks();
   engine_exchange_cells(e);
-  // message( "engine_exchange_cells took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+// message( "engine_exchange_cells took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
   /* Re-build the tasks. */
   // tic = getticks();
   engine_maketasks(e);
   // message( "engine_maketasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
   // message( "engine_marktasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Print the status of the system */
   engine_print_task_counts(e);
@@ -1204,8 +1203,8 @@ void engine_prepare(struct engine *e) {
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
   int rebuild = (e->forcerebuild || engine_marktasks(e));
-  // message( "space_marktasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+// message( "space_marktasks took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -1215,8 +1214,8 @@ void engine_prepare(struct engine *e) {
       MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
-  // message( "rebuild allreduce took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+// message( "rebuild allreduce took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
   e->tic_step = getticks();
 
@@ -1225,7 +1224,7 @@ void engine_prepare(struct engine *e) {
     // tic = getticks();
     engine_rebuild(e);
     // message( "engine_rebuild took %.3f %s." ,
-    //clocks_from_ticks(getticks() - tic), clocks_getunit());
+    // clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* Re-rank the tasks every now and then. */
@@ -1233,7 +1232,7 @@ void engine_prepare(struct engine *e) {
     // tic = getticks();
     scheduler_reweight(&e->sched);
     // message( "scheduler_reweight took %.3f %s." ,
-    //clocks_from_ticks(getticks() -tic), clocks_getunit());
+    // clocks_from_ticks(getticks() -tic), clocks_getunit());
   }
   e->tasks_age += 1;
 
@@ -1504,31 +1503,33 @@ void engine_step(struct engine *e) {
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-{
-  int in_i[4], out_i[4];
-  out_i[0] = ti_end_min;
-  if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to aggregate t_end_min.");
-  ti_end_min = in_i[0];
-  out_i[0] = ti_end_max;
-  if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to aggregate t_end_max.");
-  ti_end_max = in_i[0];
-  }{
-  double in_d[4], out_d[4];
-  out_d[0] = updates;
-  out_d[1] = e_kin;
-  out_d[2] = e_int;
-  out_d[3] = e_pot;
-  if (MPI_Allreduce(out_d, in_d, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to aggregate energies.");
-  updates = in_d[0];
-  e_kin = in_d[1];
-  e_int = in_d[2];
-  e_pot = in_d[3];}
+  {
+    int in_i[4], out_i[4];
+    out_i[0] = ti_end_min;
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate t_end_min.");
+    ti_end_min = in_i[0];
+    out_i[0] = ti_end_max;
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate t_end_max.");
+    ti_end_max = in_i[0];
+  }
+  {
+    double in_d[4], out_d[4];
+    out_d[0] = updates;
+    out_d[1] = e_kin;
+    out_d[2] = e_int;
+    out_d[3] = e_pot;
+    if (MPI_Allreduce(out_d, in_d, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate energies.");
+    updates = in_d[0];
+    e_kin = in_d[1];
+    e_int = in_d[2];
+    e_pot = in_d[3];
+  }
 #endif
 
   // message("\nDRIFT\n");
@@ -1620,7 +1621,7 @@ void engine_step(struct engine *e) {
 
   clocks_gettime(&time2);
 
-  e->wallclock_time = (float) clocks_diff(&time1, &time2);
+  e->wallclock_time = (float)clocks_diff(&time1, &time2);
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 }
