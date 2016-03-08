@@ -1812,22 +1812,21 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
                  float timeBegin, float timeEnd, float dt_min, float dt_max) {
 
-  int i, k;
 #if defined(HAVE_SETAFFINITY)
   int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int j, cpuid[nr_cores];
+  int cpuid[nr_cores];
   cpu_set_t cpuset;
   if ((policy & engine_policy_cputight) == engine_policy_cputight) {
-    for (k = 0; k < nr_cores; k++) cpuid[k] = k;
+    for (int k = 0; k < nr_cores; k++) cpuid[k] = k;
   } else {
     /*  Get next highest power of 2. */
     int maxint = 1;
     while (maxint < nr_cores) maxint *= 2;
 
     cpuid[0] = 0;
-    k = 1;
-    for (i = 1; i < maxint; i *= 2)
-      for (j = maxint / i / 2; j < maxint; j += maxint / i)
+    int k = 1;
+    for (int i = 1; i < maxint; i *= 2)
+      for (int j = maxint / i / 2; j < maxint; j += maxint / i)
         if (j < nr_cores && j != 0) cpuid[k++] = j;
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
@@ -1835,29 +1834,29 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     if (numa_available() >= 0) {
       if (nodeID == 0) message("prefer NUMA-local CPUs");
 
-      int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
+      const int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
       bool done = false, swap_hyperthreads = hyperthreads_present();
       if (swap_hyperthreads && nodeID == 0)
         message("prefer physical cores to hyperthreads");
 
       while (!done) {
         done = true;
-        for (i = 1; i < nr_cores; i++) {
-          int node_a = numa_node_of_cpu(cpuid[i - 1]);
-          int node_b = numa_node_of_cpu(cpuid[i]);
+        for (int i = 1; i < nr_cores; i++) {
+          const int node_a = numa_node_of_cpu(cpuid[i - 1]);
+          const int node_b = numa_node_of_cpu(cpuid[i]);
 
           /* Avoid using local hyperthreads over unused remote physical cores.
            * Assume two hyperthreads, and that cpuid >= half partitions them.
            */
-          int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
-          int thread_b = swap_hyperthreads && cpuid[i] >= half;
+          const int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
+          const int thread_b = swap_hyperthreads && cpuid[i] >= half;
 
           bool swap = thread_a > thread_b;
           if (thread_a == thread_b)
             swap = numa_distance(home, node_a) > numa_distance(home, node_b);
 
           if (swap) {
-            int t = cpuid[i - 1];
+            const int t = cpuid[i - 1];
             cpuid[i - 1] = cpuid[i];
             cpuid[i] = t;
             done = false;
@@ -1873,7 +1872,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 #else
       printf("engine_init: cpu map is [ ");
 #endif
-      for (i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
+      for (int i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
       printf("].\n");
     }
   }
@@ -2015,7 +2014,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Create the sorting tasks. */
-  for (i = 0; i < e->nr_threads; i++)
+  for (int i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
 
@@ -2025,7 +2024,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   if ((e->runners =
            (struct runner *)malloc(sizeof(struct runner) * nr_threads)) == NULL)
     error("Failed to allocate threads array.");
-  for (k = 0; k < nr_threads; k++) {
+  for (int k = 0; k < nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;
     e->barrier_running += 1;
