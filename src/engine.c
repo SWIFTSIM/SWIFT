@@ -996,7 +996,7 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   const int nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *tasks = s->tasks;
-  float ti_end = e->ti_current;
+  const float ti_end = e->ti_current;
 
   /* Much less to do here if we're on a fixed time-step. */
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
@@ -1125,7 +1125,7 @@ int engine_marktasks(struct engine *e) {
  * @param e The #engine.
  */
 
-void engine_print(struct engine *e) {
+void engine_print_task_counts(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
 
@@ -1138,10 +1138,10 @@ void engine_print(struct engine *e) {
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%03i] engine_print: task counts are [ %s=%i", e->nodeID,
+  printf("[%03i] engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
          taskID_names[0], counts[0]);
 #else
-  printf("engine_print: task counts are [ %s=%i", taskID_names[0], counts[0]);
+  printf("engine_print_task_counts: task counts are [ %s=%i", taskID_names[0], counts[0]);
 #endif
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
@@ -1188,7 +1188,7 @@ void engine_rebuild(struct engine *e) {
   //clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Print the status of the system */
-  engine_print(e);
+  engine_print_task_counts(e);
 }
 
 /**
