@@ -597,7 +597,7 @@ void engine_exchange_cells(struct engine *e) {
  * @return The number of arrived parts copied to parts and xparts.
  */
 
-int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
+int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N) {
 
 #ifdef WITH_MPI
 
@@ -1180,7 +1180,7 @@ void engine_print(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %i.", e->s->nr_parts);
+  message("nr_parts = %zi.", e->s->nr_parts);
 }
 
 /**
