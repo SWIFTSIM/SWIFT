@@ -158,6 +158,9 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
+  /* Are we talkative ? */
+  int verbose;
+
 #ifdef WITH_MPI
   /* MPI data type for the particle transfers */
   MPI_Datatype part_mpi_type;
@@ -169,7 +172,8 @@ struct engine {
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max);
+                 float timeBegin, float timeEnd, float dt_min, float dt_max,
+                 int verbose);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);

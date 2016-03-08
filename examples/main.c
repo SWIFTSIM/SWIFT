@@ -77,6 +77,7 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
+  int verbose = 0, talking;
   unsigned long long cpufreq = 0;
 
 #ifdef WITH_MPI
@@ -125,6 +126,9 @@ int main(int argc, char *argv[]) {
          &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
 
+  /* Initialize CPU frequency, this also starts time. */
+  clocks_set_cpufreq(cpufreq);
+
   /* Greeting message */
   if (myrank == 0) greetings();
 
@@ -150,7 +154,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:v:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -226,8 +230,8 @@ int main(int argc, char *argv[]) {
           error("Error parsing number of queues.");
         break;
       case 'R':
-        /* Repartition type "n", "b", "v", "e" or "x".
-         * Note only none is available without METIS. */
+/* Repartition type "n", "b", "v", "e" or "x".
+ * Note only none is available without METIS. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
           case 'n':
@@ -260,6 +264,12 @@ int main(int argc, char *argv[]) {
       case 't':
         if (sscanf(optarg, "%d", &nr_threads) != 1)
           error("Error parsing number of threads.");
+        break;
+      case 'v':
+        /* verbose = 1: MPI rank 0 writes
+           verbose = 2: all MPI ranks write */
+        if (sscanf(optarg, "%d", &verbose) != 1)
+          error("Error parsing verbosity level.");
         break;
       case 'w':
         if (sscanf(optarg, "%d", &space_subsize) != 1)
@@ -325,11 +335,11 @@ int main(int argc, char *argv[]) {
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
 
-  /* Initialize CPU frequency. */
-  clocks_set_cpufreq(cpufreq);
-  cpufreq = clocks_get_cpufreq();
-  if (myrank == 0)
-      message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
+  /* Report CPU frequency. */
+  if (myrank == 0) {
+    cpufreq = clocks_get_cpufreq();
+    message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
+  }
 
   /* Check we have sensible time step bounds */
   if (dt_min > dt_max)
@@ -341,8 +351,7 @@ int main(int argc, char *argv[]) {
 
   /* Read particles and space information from (GADGET) IC */
 
-  if (myrank == 0)
-    clocks_gettime(&tic);
+  if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
@@ -385,11 +394,13 @@ int main(int argc, char *argv[]) {
   /* Set default number of queues. */
   if (nr_queues < 0) nr_queues = nr_threads;
 
+  /* How vocal are we ? */
+  talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+
   /* Initialize the space with this data. */
-  if (myrank == 0)
-    clocks_gettime(&tic);
+  if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
-  if (myrank == 0) {
+  if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
             clocks_getunit());
@@ -423,13 +434,12 @@ int main(int argc, char *argv[]) {
   }
 
   /* Initialize the engine with this space. */
-  if (myrank == 0)
-    clocks_gettime(&tic);
+  if (myrank == 0) clocks_gettime(&tic);
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
               ENGINE_POLICY | engine_policy_steal | engine_policy_hydro, 0,
-              time_end, dt_min, dt_max);
-  if (myrank == 0) {
+              time_end, dt_min, dt_max, talking);
+  if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
             clocks_getunit());
@@ -445,8 +455,7 @@ int main(int argc, char *argv[]) {
   if (with_outputs) {
     /* Write the state of the system as it is before starting time integration.
      */
-    if (myrank == 0)
-      clocks_gettime(&tic);
+    if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
@@ -458,7 +467,7 @@ int main(int argc, char *argv[]) {
 #else
     write_output_single(&e, &us);
 #endif
-    if (myrank == 0) {
+    if (myrank == 0 && verbose) {
       clocks_gettime(&toc);
       message("writing particle properties took %.3f %s.",
               clocks_diff(&tic, &toc), clocks_getunit());
@@ -486,7 +495,8 @@ int main(int argc, char *argv[]) {
   if (myrank == 0)
     printf(
         "# Step  Time  time-step  Number of updates    CPU Wall-clock time "
-        "[%s]\n", clocks_getunit());
+        "[%s]\n",
+        clocks_getunit());
 
   /* Let loose a runner on the space. */
   for (j = 0; !engine_is_done(&e); j++) {
@@ -506,6 +516,7 @@ int main(int argc, char *argv[]) {
 
     if (with_outputs && j % 100 == 0) {
 
+      if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
       write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
@@ -517,6 +528,12 @@ int main(int argc, char *argv[]) {
 #else
       write_output_single(&e, &us);
 #endif
+      if (myrank == 0 && verbose) {
+        clocks_gettime(&toc);
+        message("writing particle properties took %.3f %s.",
+                clocks_diff(&tic, &toc), clocks_getunit());
+        fflush(stdout);
+      }
     }
 
     /* Dump the task data using the given frequency. */
@@ -617,6 +634,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (with_outputs) {
+
+    if (myrank == 0) clocks_gettime(&tic);
 /* Write final output. */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -629,6 +648,12 @@ int main(int argc, char *argv[]) {
 #else
     write_output_single(&e, &us);
 #endif
+    if (myrank == 0 && verbose) {
+      clocks_gettime(&toc);
+      message("writing particle properties took %.3f %s.",
+              clocks_diff(&tic, &toc), clocks_getunit());
+      fflush(stdout);
+    }
   }
 
 #ifdef WITH_MPI
