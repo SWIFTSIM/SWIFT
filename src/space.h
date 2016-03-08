@@ -114,7 +114,7 @@ struct qstack {
 struct parallel_sort {
   struct part *parts;
   struct xpart *xparts;
-  int *ind;
+  size_t *ind;
   struct qstack *stack;
   unsigned int stack_size;
   volatile unsigned int first, last, waiting;

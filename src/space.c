@@ -311,7 +311,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
   struct cell *restrict c, *restrict cells;
   struct part *restrict p;
-  int *ind;
+  size_t *ind;
   double ih[3], dim[3];
   ticks tic = getticks();
 
@@ -324,8 +324,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Run through the particles and get their cell index. */
   // tic = getticks();
-  const int ind_size = s->size_parts;
-  if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
+  const size_t ind_size = s->size_parts;
+  if ((ind = (size_t *)malloc(sizeof(size_t) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
@@ -376,10 +376,10 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Re-allocate the index array if needed.. */
   if (s->nr_parts > ind_size) {
-    int *ind_new;
-    if ((ind_new = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
+    size_t *ind_new;
+    if ((ind_new = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
       error("Failed to allocate temporary particle indices.");
-    memcpy(ind_new, ind, sizeof(int) * nr_parts);
+    memcpy(ind_new, ind, sizeof(size_t) * nr_parts);
     free(ind);
     ind = ind_new;
   }
@@ -419,7 +419,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Run through the gravity particles and get their cell index. */
   // tic = getticks();
-  if ((ind = (int *)malloc(sizeof(int) * s->size_gparts)) == NULL)
+  if ((ind = (size_t *)malloc(sizeof(size_t) * s->size_gparts)) == NULL)
     error("Failed to allocate temporary particle indices.");
   for (k = 0; k < nr_gparts; k++) {
     struct gpart *gp = &s->gparts[k];
@@ -506,7 +506,7 @@ void space_split(struct space *s, struct cell *cells, int verbose) {
  * @param verbose Are we talkative ?
  */
 
-void space_parts_sort(struct space *s, int *ind, int N, int min, int max,
+void space_parts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
                       int verbose) {
 
   ticks tic = getticks();
@@ -554,7 +554,7 @@ void space_parts_sort(struct space *s, int *ind, int N, int min, int max,
 void space_do_parts_sort() {
 
   /* Pointers to the sorting data. */
-  int *ind = space_sort_struct.ind;
+  size_t *ind = space_sort_struct.ind;
   struct part *parts = space_sort_struct.parts;
   struct xpart *xparts = space_sort_struct.xparts;
 
@@ -676,11 +676,12 @@ void space_do_parts_sort() {
   } /* main loop. */
 }
 
-void space_gparts_sort(struct gpart *gparts, int *ind, int N, int min,
+void space_gparts_sort(struct gpart *gparts, size_t *ind, size_t N, int min,
                        int max) {
 
   struct qstack {
-    volatile int i, j, min, max;
+    volatile size_t i, j;
+    volatile int min, max;
     volatile int ready;
   };
   struct qstack *qstack;
@@ -688,7 +689,8 @@ void space_gparts_sort(struct gpart *gparts, int *ind, int N, int min,
   volatile unsigned int first, last, waiting;
 
   int pivot;
-  int i, ii, j, jj, temp_i, qid;
+  size_t i, ii, j, jj, temp_i;
+  int qid;
   struct gpart temp_p;
 
   /* for ( int k = 0 ; k < N ; k++ )
@@ -1186,7 +1188,7 @@ struct cell *space_getcell(struct space *s) {
  * recursively.
  */
 
-void space_init(struct space *s, double dim[3], struct part *parts, int N,
+void space_init(struct space *s, double dim[3], struct part *parts, size_t N,
                 int periodic, double h_max, int verbose) {
 
   /* Store everything in the space. */
