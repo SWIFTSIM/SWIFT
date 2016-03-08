@@ -154,7 +154,8 @@ void engine_redistribute(struct engine *e) {
   /* Start by sorting the particles according to their nodes and
      getting the counts. The counts array is indexed as
      count[from * nr_nodes + to]. */
-  int *counts, *dest;
+  int *counts;
+  size_t *dest;
   double ih[3], dim[3];
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
@@ -163,7 +164,7 @@ void engine_redistribute(struct engine *e) {
   dim[1] = s->dim[1];
   dim[2] = s->dim[2];
   if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
-      (dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
+      (dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   struct part *parts = s->parts;
@@ -650,9 +651,9 @@ int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N) 
 
   /* Count the total number of incoming particles and make sure we have
      enough space to accommodate them. */
-  int count_in = 0;
+  size_t count_in = 0;
   for (k = 0; k < e->nr_proxies; k++) count_in += e->proxies[k].nr_parts_in;
-  if (e->verbose) message("sent out %i particles, got %i back.", N, count_in);
+  if (e->verbose) message("sent out %zi particles, got %zi back.", N, count_in);
   if (offset + count_in > s->size_parts) {
     s->size_parts = (offset + count_in) * 1.05;
     struct part *parts_new = NULL;
@@ -1778,8 +1779,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-allocate the local parts. */
   if (e->nodeID == 0)
-    message("Re-allocating parts array from %i to %i.", s->size_parts,
-            (int)(s->nr_parts * 1.2));
+    message("Re-allocating parts array from %zi to %zi.", s->size_parts,
+            (size_t)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL;
