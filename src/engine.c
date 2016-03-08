@@ -1199,13 +1199,11 @@ void engine_rebuild(struct engine *e) {
 
 void engine_prepare(struct engine *e) {
 
-  int rebuild;
-
   TIMER_TIC
 
   /* Run through the tasks and mark as skip or not. */
   // tic = getticks();
-  rebuild = (e->forcerebuild || engine_marktasks(e));
+  int rebuild = (e->forcerebuild || engine_marktasks(e));
   // message( "space_marktasks took %.3f %s." ,
   //clocks_from_ticks(getticks() - tic), clocks_getunit());
 
@@ -1288,14 +1286,14 @@ void engine_barrier(struct engine *e, int tid) {
 
 void engine_collect_kick(struct cell *c) {
 
-  int updated = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  struct cell *cp;
-
   /* Skip super-cells (Their values are already set) */
   if (c->kick != NULL) return;
+
+  /* Counters for the different quantities. */
+  int updated = 0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
+  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
 
   /* Only do something is the cell is non-empty */
   if (c->count != 0) {
@@ -1305,7 +1303,8 @@ void engine_collect_kick(struct cell *c) {
 
     /* Collect the values from the progeny. */
     for (int k = 0; k < 8; k++)
-      if ((cp = c->progeny[k]) != NULL) {
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL) {
 
         /* Recurse */
         engine_collect_kick(cp);
