@@ -1,6 +1,7 @@
 /*******************************************************************************
 * This file is part of SWIFT.
 * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+*               2016 Peter W. Draper (p.w.draper@durham.ac.uk)
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU Lesser General Public License as published
@@ -205,9 +206,33 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
    * global partition is recomputed and the particles redistributed.
    * Be prepared to do that. */
 #ifdef WITH_MPI
-  int partition = 0;
-  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2])
-      partition = 1;
+  double oldh[3];
+  double oldcdim[3];
+  int *oldnodeIDs = NULL;
+  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
+
+    /* Capture state of current space. */
+    oldcdim[0] = s->cdim[0];
+    oldcdim[1] = s->cdim[1];
+    oldcdim[2] = s->cdim[2];
+    oldh[0] = s->h[0];
+    oldh[1] = s->h[1];
+    oldh[2] = s->h[2];
+
+    if ((oldnodeIDs = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+      error("Failed to allocate temporary nodeIDs.");
+
+    int cid = 0;
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          cid = cell_getid(oldcdim, i, j, k);
+          oldnodeIDs[cid] = s->cells[cid].nodeID;
+        }
+      }
+    }
+  }
+
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -268,29 +293,36 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     fflush(stdout);
 
 #ifdef WITH_MPI
-    /* XXX create an engine_resplit() function to use the same method as the
-     * initial partition. Fake for now. */
-    if (partition) {
-        if (s->e->nodeID == 0)
-            message("cell dimensions have decreased. Recalculating the "
-                    "global partition.");
+    if (oldnodeIDs != NULL) {
+      /* We have changed the top-level cell dimension, so need to redistribute
+       * cells around the nodes. We repartition using the old space node
+       * positions as a grid to resample. */
+      if (s->e->nodeID == 0)
+        message("basic cell dimensions have increased - recalculating the "
+                "global partition.");
 
-        /* Change the global partitioning. */
-        int grid[3];
-        factor(s->e->nr_nodes, &grid[0], &grid[1]);
-        factor(s->e->nr_nodes / grid[1], &grid[0], &grid[2]);
-        factor(grid[0] * grid[1], &grid[1], &grid[0]);
+      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s) ) {
 
-        /* Run through the cells and set their nodeID. */
-        int ind[3];
-        for (int k = 0; k < s->nr_cells; k++) {
-            c = &s->cells[k];
-            for (int j = 0; j < 3; j++) ind[j] = c->loc[j] / s->dim[j] * grid[j];
-            c->nodeID = ind[0] + grid[0] * (ind[1] + grid[1] * ind[2]);
-        }
+        /* Failed, try another technique that requires no settings. */
+        message("Failed to get a new partition, trying less optimal method");
+        struct partition initial_partition;
+#ifdef HAVE_METIS
+        initial_partition.type = INITPART_METIS_NOWEIGHT;
+#else
+        initial_partition.type = INITPART_VECTORIZE;
+#endif
+        partition_initial_partition(&initial_partition, s->e->nodeID,
+                                    s->e->nr_nodes, s);
+      }
 
-        /* Make the proxies. */
-        engine_makeproxies(s->e);
+      /* Re-distribute the particles to their new nodes. */
+      engine_redistribute(s->e);
+
+      /* Make the proxies. */
+      engine_makeproxies(s->e);
+
+      /* Finished with these. */
+      free(oldnodeIDs);
     }
 #endif
   } /* re-build upper-level cells? */

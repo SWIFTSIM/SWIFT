@@ -927,7 +927,10 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   int failed = 0;
   for (int i = 0; i < nregions; i++) present[i] = 0;
   for (int i = 0; i < s->nr_cells; i++) {
-    present[s->cells[i].nodeID]++;
+    if (s->cells[i].nodeID <= nregions)
+      present[s->cells[i].nodeID]++;
+    else
+      message("Bad nodeID: %d", s->cells[i].nodeID);
   }
   for (int i = 0; i < nregions; i++) {
     if (!present[i]) {
@@ -937,4 +940,54 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   }
   free(present);
   return (!failed);
+}
+
+
+/**
+ * @brief Partition a space of cells based on another space of cells.
+ *
+ * The two spaces are expected to be at different cell sizes, so what we'd
+ * like to do is assign the second space to geometrically closest nodes
+ * of the first, with the effect of minimizing particle movement when
+ * rebuilding the second space from the first.
+ *
+ * Since two spaces cannot exist simultaneously the old space is actually
+ * required in a decomposed state. These are the old cells sizes and counts
+ * per dimension, along with a list of the old nodeIDs. The old nodeIDs are
+ * indexed by the cellid (see cell_getid()), so should be stored that way.
+ *
+ * On exit the new space cells will have their nodeIDs assigned.
+ *
+ * @param oldh the cell dimensions of old space.
+ * @param oldcdim number of cells per dimension in old space.
+ * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old cellid.
+ * @param s the space to be partitioned.
+ *
+ * @return 1 if the new space contains nodeIDs from all nodes, 0 otherwise.
+ */
+int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
+                             struct space *s) {
+
+  /* Loop over all the new cells. */
+  int nr_nodes = 0;
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+
+        /* Scale indices to old cell space. */
+        int ii = rint(i * s->ih[0] * oldh[0]);
+        int jj = rint(j * s->ih[1] * oldh[1]);
+        int kk = rint(k * s->ih[2] * oldh[2]);
+
+        int cid = cell_getid(s->cdim, i, j, k);
+        int oldcid = cell_getid(oldcdim, ii, jj, kk);
+        s->cells[cid].nodeID = oldnodeIDs[oldcid];
+
+        if (oldnodeIDs[oldcid] > nr_nodes) nr_nodes = oldnodeIDs[oldcid];
+      }
+    }
+  }
+
+  /* Check we have all nodeIDs present in the resample. */
+  return check_complete(s, 1, nr_nodes + 1);
 }
