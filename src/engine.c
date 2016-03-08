@@ -1302,7 +1302,7 @@ void engine_collect_kick(struct cell *c) {
     if (!c->split) error("Cell has no super-cell.");
 
     /* Collect the values from the progeny. */
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       if (cp != NULL) {
 
@@ -1323,6 +1323,7 @@ void engine_collect_kick(struct cell *c) {
         ang[1] += cp->ang[1];
         ang[2] += cp->ang[2];
       }
+    }
   }
 
   /* Store the collected values in the cell. */
@@ -1640,10 +1641,9 @@ int engine_is_done(struct engine *e) {
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
-  int i, j, k, ii, jj, kk;
-  int cid, cjd, pid, ind[3], *cdim = e->s->cdim;
-  struct space *s = e->s;
-  struct cell *cells = s->cells;
+  const int *cdim = e->s->cdim;
+  const struct space *s = e->s;
+  const struct cell *cells = s->cells;
   struct proxy *proxies = e->proxies;
 
   /* Prepare the proxies and the proxy index. */
@@ -1658,40 +1658,41 @@ void engine_makeproxies(struct engine *e) {
      the proxies is identical for all nodes! */
 
   /* Loop over each cell in the space. */
+  int ind[3];
   for (ind[0] = 0; ind[0] < cdim[0]; ind[0]++)
     for (ind[1] = 0; ind[1] < cdim[1]; ind[1]++)
       for (ind[2] = 0; ind[2] < cdim[2]; ind[2]++) {
 
         /* Get the cell ID. */
-        cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
+        const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
         /* Loop over all its neighbours (periodic). */
-        for (i = -1; i <= 1; i++) {
-          ii = ind[0] + i;
+        for (int i = -1; i <= 1; i++) {
+          int ii = ind[0] + i;
           if (ii >= cdim[0])
             ii -= cdim[0];
           else if (ii < 0)
             ii += cdim[0];
-          for (j = -1; j <= 1; j++) {
-            jj = ind[1] + j;
+          for (int j = -1; j <= 1; j++) {
+            int jj = ind[1] + j;
             if (jj >= cdim[1])
               jj -= cdim[1];
             else if (jj < 0)
               jj += cdim[1];
-            for (k = -1; k <= 1; k++) {
-              kk = ind[2] + k;
+            for (int k = -1; k <= 1; k++) {
+              int kk = ind[2] + k;
               if (kk >= cdim[2])
                 kk -= cdim[2];
               else if (kk < 0)
                 kk += cdim[2];
 
               /* Get the cell ID. */
-              cjd = cell_getid(cdim, ii, jj, kk);
+              const int cjd = cell_getid(cdim, ii, jj, kk);
 
               /* Add to proxies? */
               if (cells[cid].nodeID == e->nodeID &&
                   cells[cjd].nodeID != e->nodeID) {
-                pid = e->proxy_ind[cells[cjd].nodeID];
+                int pid = e->proxy_ind[cells[cjd].nodeID];
                 if (pid < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
@@ -1708,7 +1709,7 @@ void engine_makeproxies(struct engine *e) {
 
               if (cells[cjd].nodeID == e->nodeID &&
                   cells[cid].nodeID != e->nodeID) {
-                pid = e->proxy_ind[cells[cid].nodeID];
+                int pid = e->proxy_ind[cells[cid].nodeID];
                 if (pid < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
