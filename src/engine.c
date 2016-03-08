@@ -1466,13 +1466,11 @@ void engine_init_particles(struct engine *e) {
  */
 void engine_step(struct engine *e) {
 
-  int k;
   int updates = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
   double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
-  struct cell *c;
   struct space *s = e->s;
 
   TIMER_TIC2;
@@ -1481,9 +1479,9 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time1);
 
   /* Collect the cell data. */
-  for (k = 0; k < s->nr_cells; k++)
+  for (int k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
-      c = &s->cells[k];
+      struct cell *c = &s->cells[k];
 
       /* Recurse */
       engine_collect_kick(c);
@@ -1505,6 +1503,7 @@ void engine_step(struct engine *e) {
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
+{
   int in_i[4], out_i[4];
   out_i[0] = ti_end_min;
   if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
@@ -1516,6 +1515,7 @@ void engine_step(struct engine *e) {
       MPI_SUCCESS)
     error("Failed to aggregate t_end_max.");
   ti_end_max = in_i[0];
+  }{
   double in_d[4], out_d[4];
   out_d[0] = updates;
   out_d[1] = e_kin;
@@ -1527,7 +1527,7 @@ void engine_step(struct engine *e) {
   updates = in_d[0];
   e_kin = in_d[1];
   e_int = in_d[2];
-  e_pot = in_d[3];
+  e_pot = in_d[3];}
 #endif
 
   // message("\nDRIFT\n");
@@ -1571,8 +1571,7 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
   /* Build the masks corresponding to the policy */
-  unsigned int mask = 0;
-  unsigned int submask = 0;
+  unsigned int mask = 0, submask = 0;
 
   /* We always have sort tasks and kick tasks */
   mask |= 1 << task_type_sort;
