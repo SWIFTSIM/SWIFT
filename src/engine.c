@@ -1794,6 +1794,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+#else
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
