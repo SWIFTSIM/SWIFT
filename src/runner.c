@@ -777,7 +777,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   const float ti_current = r->e->ti_current;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
-  struct gpart *restrict g, *restrict gparts = c->gparts;
+  struct gpart *restrict g, 
+  *restrict gparts = c->gparts;
   float dx_max = 0.f, h_max = 0.f;
   float w;
 
@@ -841,6 +842,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 	 for (int k = 0; k < nr_gparts; k++)
 		{
 		  g = &gparts[k]; /* nothing to do */
+		  g->x[0] *=1;
 		}
 	 
   }
@@ -1064,7 +1066,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 			 const int ti_start = (g->ti_begin + g->ti_end) / 2;
 			 const int ti_end = g->ti_end + new_dti / 2;
 			 const float dt = (ti_end - ti_start) * timeBase;
-			 const float half_dt = (ti_end - g->ti_end) * timeBase;
 			 
 			 /* Move particle forward in time */
 			 g->ti_begin = g->ti_end;

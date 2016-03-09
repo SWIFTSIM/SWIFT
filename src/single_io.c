@@ -409,7 +409,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, struct g
 	  hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts);
 	else if(DARKMATTER == ptype)
 	  {
-		 int i, ic;
+		 int i;
 		 darkmatter_read_particles(h_grp, *Ndm, *Ndm, 0, *gparts);
 		 for(i=0; i<*Ndm; i++)
 			(*gparts)[i].id = -abs( (*gparts)[i].id );
