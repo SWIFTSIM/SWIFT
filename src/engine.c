@@ -148,6 +148,7 @@ void engine_redistribute(struct engine *e) {
   int *cdim = s->cdim;
   struct cell *cells = s->cells;
   int nr_cells = s->nr_cells;
+  ticks tic = getticks();
 
   /* Start by sorting the particles according to their nodes and
      getting the counts. The counts array is indexed as
@@ -180,7 +181,7 @@ void engine_redistribute(struct engine *e) {
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
-  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1);
+  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -273,13 +274,18 @@ void engine_redistribute(struct engine *e) {
   /* Be verbose about what just happened. */
   for (int k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID) my_cells += 1;
-  message("node %i now has %zi parts in %i cells.", nodeID, nr_parts, my_cells);
+  if (e->verbose)
+    message("node %i now has %zi parts in %i cells.", nodeID, nr_parts,
+            my_cells);
 
   /* Clean up other stuff. */
   free(reqs);
   free(counts);
   free(dest);
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -294,6 +300,8 @@ void engine_redistribute(struct engine *e) {
 void engine_repartition(struct engine *e) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
+
+  ticks tic = getticks();
 
   /* Clear the repartition flag. */
   enum repartition_type reparttype = e->forcerepart;
@@ -322,6 +330,9 @@ void engine_repartition(struct engine *e) {
   /* Tell the engine it should re-build whenever possible */
   e->forcerebuild = 1;
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI and METIS support.");
 #endif
@@ -463,6 +474,7 @@ void engine_exchange_cells(struct engine *e) {
   MPI_Request reqs_in[engine_maxproxies];
   MPI_Request reqs_out[engine_maxproxies];
   MPI_Status status;
+  ticks tic = getticks();
 
   /* Run through the cells and get the size of the ones that will be sent off.
    */
@@ -561,6 +573,10 @@ void engine_exchange_cells(struct engine *e) {
   /* Free the pcell buffer. */
   free(pcells);
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -583,6 +599,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
 #ifdef WITH_MPI
 
   struct space *s = e->s;
+  ticks tic = getticks();
 
   /* Re-set the proxies. */
   for (int k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
@@ -631,7 +648,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
      enough space to accommodate them. */
   int count_in = 0;
   for (int k = 0; k < e->nr_proxies; k++) count_in += e->proxies[k].nr_parts_in;
-  message("sent out %i particles, got %i back.", N, count_in);
+  if (e->verbose) message("sent out %i particles, got %i back.", N, count_in);
   if (offset + count_in > s->size_parts) {
     s->size_parts = (offset + count_in) * 1.05;
     struct part *parts_new = NULL;
@@ -702,6 +719,10 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
   /* Return the number of harvested parts. */
   return count;
 
@@ -725,6 +746,7 @@ void engine_maketasks(struct engine *e) {
   const int nr_cells = s->nr_cells;
   const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
+  const ticks tic = getticks();
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
@@ -980,6 +1002,10 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the tasks age. */
   e->tasks_age = 0;
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -994,6 +1020,7 @@ int engine_marktasks(struct engine *e) {
   const int nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
   struct task *tasks = s->tasks;
   const float ti_end = e->ti_current;
+  const ticks tic = getticks();
 
   /* Much less to do here if we're on a fixed time-step. */
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
@@ -1110,8 +1137,9 @@ int engine_marktasks(struct engine *e) {
     }
   }
 
-  // message( "took %.3f %s." , clocks_from_ticks(getticks() - tic),
-  // clocks_getunit());
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
   /* All is well... */
   return 0;
@@ -1136,11 +1164,11 @@ void engine_print_task_counts(struct engine *e) {
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%03i] engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
-         taskID_names[0], counts[0]);
+  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
-  printf("engine_print_task_counts: task counts are [ %s=%i", taskID_names[0],
-         counts[0]);
+  printf("%s engine_print_task_counts: task counts are [ %s=%i",
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
@@ -1156,38 +1184,33 @@ void engine_print_task_counts(struct engine *e) {
  */
 
 void engine_rebuild(struct engine *e) {
+
+  ticks tic = getticks();
+
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
   /* Re-build the space. */
-  // tic = getticks();
-  space_rebuild(e->s, 0.0, e->nodeID == 0);
-// message( "space_rebuild took %.3f %s." ,
-// clocks_from_ticks(getticks() -  tic), clocks_getunit());
+  space_rebuild(e->s, 0.0, e->verbose);
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
-  // tic = getticks();
   engine_exchange_cells(e);
-// message( "engine_exchange_cells took %.3f %s." ,
-// clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
   /* Re-build the tasks. */
-  // tic = getticks();
   engine_maketasks(e);
-  // message( "engine_maketasks took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Run through the tasks and mark as skip or not. */
-  // tic = getticks();
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
-  // message( "engine_marktasks took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Print the status of the system */
   engine_print_task_counts(e);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -1198,45 +1221,37 @@ void engine_rebuild(struct engine *e) {
 
 void engine_prepare(struct engine *e) {
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Run through the tasks and mark as skip or not. */
-  // tic = getticks();
   int rebuild = (e->forcerebuild || engine_marktasks(e));
-// message( "space_marktasks took %.3f %s." ,
-// clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
-  // tic = getticks();
   int buff;
   if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
-// message( "rebuild allreduce took %.3f %s." ,
-// clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
   e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
-    // tic = getticks();
     engine_rebuild(e);
-    // message( "engine_rebuild took %.3f %s." ,
-    // clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
-    // tic = getticks();
     scheduler_reweight(&e->sched);
-    // message( "scheduler_reweight took %.3f %s." ,
-    // clocks_from_ticks(getticks() -tic), clocks_getunit());
   }
   e->tasks_age += 1;
 
   TIMER_TOC(timer_prepare);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -1646,6 +1661,7 @@ void engine_makeproxies(struct engine *e) {
   const struct space *s = e->s;
   struct cell *cells = s->cells;
   struct proxy *proxies = e->proxies;
+  ticks tic = getticks();
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
@@ -1729,6 +1745,9 @@ void engine_makeproxies(struct engine *e) {
         }
       }
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -1770,6 +1789,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+#else
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -1807,14 +1828,47 @@ static bool hyperthreads_present(void) {
  * @param timeEnd Time at the end of the simulation.
  * @param dt_min Minimal allowed timestep (unsed with fixdt policy)
  * @param dt_max Maximal allowed timestep
+ * @param verbose Is this #engine talkative ?
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max) {
+                 float timeBegin, float timeEnd, float dt_min, float dt_max,
+                 int verbose) {
+
+  /* Store the values. */
+  e->s = s;
+  e->nr_threads = nr_threads;
+  e->policy = policy;
+  e->step = 0;
+  e->nullstep = 0;
+  e->nr_nodes = nr_nodes;
+  e->nodeID = nodeID;
+  e->proxy_ind = NULL;
+  e->nr_proxies = 0;
+  e->forcerebuild = 1;
+  e->forcerepart = REPART_NONE;
+  e->links = NULL;
+  e->nr_links = 0;
+  e->timeBegin = timeBegin;
+  e->timeEnd = timeEnd;
+  e->timeOld = timeBegin;
+  e->time = timeBegin;
+  e->ti_old = 0;
+  e->ti_current = 0;
+  e->timeStep = 0.;
+  e->dt_min = dt_min;
+  e->dt_max = dt_max;
+  e->file_stats = NULL;
+  e->verbose = verbose;
+  e->wallclock_time = 0.f;
+  engine_rank = nodeID;
+
+  /* Make the space link back to the engine. */
+  s->e = e;
 
 #if defined(HAVE_SETAFFINITY)
-  int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
+  const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   int cpuid[nr_cores];
   cpu_set_t cpuset;
   if ((policy & engine_policy_cputight) == engine_policy_cputight) {
@@ -1835,8 +1889,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     if (numa_available() >= 0) {
       if (nodeID == 0) message("prefer NUMA-local CPUs");
 
-      const int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
-      bool done = false, swap_hyperthreads = hyperthreads_present();
+      const int home = numa_node_of_cpu(sched_getcpu());
+      const int half = nr_cores / 2;
+      const bool swap_hyperthreads = hyperthreads_present();
+      bool done = false;
       if (swap_hyperthreads && nodeID == 0)
         message("prefer physical cores to hyperthreads");
 
@@ -1869,45 +1925,16 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
     if (nodeID == 0) {
 #ifdef WITH_MPI
-      printf("[%03i] engine_init: cpu map is [ ", nodeID);
+      printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
+             clocks_get_timesincestart());
 #else
-      printf("engine_init: cpu map is [ ");
+      printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
 #endif
       for (int i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
       printf("].\n");
     }
   }
 #endif
-
-  /* Store the values. */
-  e->s = s;
-  e->nr_threads = nr_threads;
-  e->policy = policy;
-  e->step = 0;
-  e->nullstep = 0;
-  e->nr_nodes = nr_nodes;
-  e->nodeID = nodeID;
-  e->proxy_ind = NULL;
-  e->nr_proxies = 0;
-  e->forcerebuild = 1;
-  e->forcerepart = REPART_NONE;
-  e->links = NULL;
-  e->nr_links = 0;
-  e->timeBegin = timeBegin;
-  e->timeEnd = timeEnd;
-  e->timeOld = timeBegin;
-  e->time = timeBegin;
-  e->ti_old = 0;
-  e->ti_current = 0;
-  e->timeStep = 0.;
-  e->dt_min = dt_min;
-  e->dt_max = dt_max;
-  e->file_stats = NULL;
-  e->wallclock_time = 0.f;
-  engine_rank = nodeID;
-
-  /* Make the space link back to the engine. */
-  s->e = e;
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
@@ -2077,16 +2104,18 @@ void engine_print_policy(struct engine *e) {
 
 #ifdef WITH_MPI
   if (e->nodeID == 0) {
-    printf("[000] engine_policy: engine policies are [ ");
+    printf("[0000] %s engine_policy: engine policies are [ ",
+           clocks_get_timesincestart());
     for (int k = 1; k < 32; k++)
-      if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
 #else
-  printf("engine_policy: engine policies are [ ");
+  printf("%s engine_policy: engine policies are [ ",
+         clocks_get_timesincestart());
   for (int k = 1; k < 32; k++)
-    if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif
