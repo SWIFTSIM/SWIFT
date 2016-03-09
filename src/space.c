@@ -570,8 +570,8 @@ void space_do_parts_sort() {
       if (!space_sort_struct.waiting) return;
 
     /* Get the stack entry. */
-    int i = space_sort_struct.stack[qid].i;
-    int j = space_sort_struct.stack[qid].j;
+    ptrdiff_t i = space_sort_struct.stack[qid].i;
+    ptrdiff_t j = space_sort_struct.stack[qid].j;
     int min = space_sort_struct.stack[qid].min;
     int max = space_sort_struct.stack[qid].max;
     space_sort_struct.stack[qid].ready = 0;
@@ -585,13 +585,13 @@ void space_do_parts_sort() {
               i, j, min, max, pivot); */
 
       /* One pass of QuickSort's partitioning. */
-      int ii = i;
-      int jj = j;
+      ptrdiff_t ii = i;
+      ptrdiff_t jj = j;
       while (ii < jj) {
         while (ii <= j && ind[ii] <= pivot) ii++;
         while (jj >= i && ind[jj] > pivot) jj--;
         if (ii < jj) {
-          int temp_i = ind[ii];
+          size_t temp_i = ind[ii];
           ind[ii] = ind[jj];
           ind[jj] = temp_i;
           struct part temp_p = parts[ii];
@@ -689,7 +689,7 @@ void space_gparts_sort(struct gpart *gparts, size_t *ind, size_t N, int min,
   volatile unsigned int first, last, waiting;
 
   int pivot;
-  size_t i, ii, j, jj, temp_i;
+  ptrdiff_t i, ii, j, jj, temp_i;
   int qid;
   struct gpart temp_p;
 

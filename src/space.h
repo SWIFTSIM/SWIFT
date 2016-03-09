@@ -20,6 +20,9 @@
 #define SWIFT_SPACE_H
 
 /* Includes. */
+#include <stddef.h>
+
+/* Local includes. */
 #include "cell.h"
 #include "part.h"
 
@@ -107,7 +110,7 @@ struct space {
 
 /* Interval stack necessary for parallel particle sorting. */
 struct qstack {
-  volatile size_t i, j;
+  volatile ptrdiff_t i, j;
   volatile int min, max;
   volatile int ready;
 };
