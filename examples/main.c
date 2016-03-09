@@ -414,7 +414,7 @@ int main(int argc, char *argv[]) {
     message("space %s periodic.", s.periodic ? "is" : "isn't");
     message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
             s.cdim[1], s.cdim[2]);
-    message("%zd parts in %i cells.", s.nr_parts, s.tot_cells);
+    message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
