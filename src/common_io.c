@@ -544,6 +544,7 @@ void collect_dm_gparts(struct gpart* gparts, int Ntot, struct gpart* dmparts,
     /* And collect the DM ones */
     if (gparts[i].id < 0) {
       memcpy(&dmparts[count], &gparts[i], sizeof(struct gpart));
+      dmparts[count].id = -dmparts[count].id;
       count++;
     }
   }
