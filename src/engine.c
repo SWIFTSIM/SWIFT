@@ -595,7 +595,8 @@ void engine_exchange_cells(struct engine *e) {
  * @return The number of arrived parts copied to parts and xparts.
  */
 
-int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N) {
+int engine_exchange_strays(struct engine *e, int offset, size_t *ind,
+                           size_t N) {
 
 #ifdef WITH_MPI
 
@@ -734,40 +735,35 @@ int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N) 
 }
 
 /**
- * @brief Fill the #space's task list.
+ * @brief Constructs the top-level pair tasks for the first hydro loop over
+ *neighbours
  *
- * @param e The #engine we are working with.
+ * @param e The #engine.
  */
-
-void engine_maketasks(struct engine *e) {
+void engine_make_hydroloop_tasks(struct engine *e) {
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  struct cell *cells = s->cells;
-  const int nr_cells = s->nr_cells;
-  const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
-  const ticks tic = getticks();
-
-  /* Re-set the scheduler. */
-  scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
-
-  /* Add the space sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
-                      NULL, 0);
+  struct cell *cells = s->cells;
+  const int nodeID = e->nodeID;
 
   /* Run through the highest level of cells and add pairs. */
-  for (int i = 0; i < cdim[0]; i++)
-    for (int j = 0; j < cdim[1]; j++)
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
         int cid = cell_getid(cdim, i, j, k);
+
+        /* Skip cells without hydro particles */
         if (cells[cid].count == 0) continue;
         struct cell *ci = &cells[cid];
-        if (ci->count == 0) continue;
+
+        /* If the cells is local build a self-interaction */
         if (ci->nodeID == nodeID)
           scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0,
                             ci, NULL, 0);
+
+        /* Now loop over all the neighbours of this cell */
         for (int ii = -1; ii < 2; ii++) {
           int iii = i + ii;
           if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
@@ -782,6 +778,8 @@ void engine_maketasks(struct engine *e) {
               kkk = (kkk + cdim[2]) % cdim[2];
               int cjd = cell_getid(cdim, iii, jjj, kkk);
               struct cell *cj = &cells[cjd];
+
+              /* Is that neighbour local and does it have particles ? */
               if (cid >= cjd || cj->count == 0 ||
                   (ci->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
@@ -792,17 +790,71 @@ void engine_maketasks(struct engine *e) {
           }
         }
       }
+    }
+  }
+}
 
-  /* Add the gravity mm tasks. */
-  for (int i = 0; i < nr_cells; i++)
+/**
+ * @brief Constructs the top-level pair tasks for the gravity M-M interactions
+ *
+ * @param e The #engine.
+ */
+void engine_make_gravityinteraction_tasks(struct engine *e) {
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nr_cells = s->nr_cells;
+  struct cell *cells = s->cells;
+
+  /* Loop over all cells. */
+  for (int i = 0; i < nr_cells; i++) {
+
+    /* If it has gravity particles, add a self-task */
     if (cells[i].gcount > 0) {
       scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
                         &cells[i], NULL, 0);
-      for (int j = i + 1; j < nr_cells; j++)
-        if (cells[j].gcount > 0)
+
+      /* Loop over all remainding cells */
+      for (int j = i + 1; j < nr_cells; j++) {
+
+        /* If that other cell has gravity parts, add a pair interaction */
+        if (cells[j].gcount > 0) {
           scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
                             &cells[i], &cells[j], 0);
+        }
+      }
     }
+  }
+}
+
+/**
+ * @brief Fill the #space's task list.
+ *
+ * @param e The #engine we are working with.
+ */
+
+void engine_maketasks(struct engine *e) {
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  struct cell *cells = s->cells;
+  const int nr_cells = s->nr_cells;
+  const int nodeID = e->nodeID;
+  const ticks tic = getticks();
+
+  /* Re-set the scheduler. */
+  scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
+
+  /* Add the space sorting tasks. */
+  for (int i = 0; i < e->nr_threads; i++)
+    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
+                      NULL, 0);
+
+  /* Construct the firt hydro loop over neighbours */
+  engine_make_hydroloop_tasks(e);
+
+  /* Add the gravity mm tasks. */
+  engine_make_gravityinteraction_tasks(e);
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
@@ -1165,8 +1217,8 @@ void engine_print_task_counts(struct engine *e) {
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
-         clocks_get_timesincestart(), taskID_names[0], counts[0]);
+  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
+         e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
   printf("%s engine_print_task_counts: task counts are [ %s=%i",
          clocks_get_timesincestart(), taskID_names[0], counts[0]);
