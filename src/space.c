@@ -1189,7 +1189,7 @@ struct cell *space_getcell(struct space *s) {
  */
 
 void space_init(struct space *s, double dim[3], struct part *parts,
-                struct gpart *gparts, size_t N, size_t Ngpart, int periodic,
+                struct gpart *gparts, size_t Ngas, size_t Ngpart, int periodic,
                 double h_max, int verbose) {
 
   /* Store everything in the space. */
@@ -1197,54 +1197,50 @@ void space_init(struct space *s, double dim[3], struct part *parts,
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
   s->periodic = periodic;
-  s->nr_parts = N;
-  s->size_parts = N;
+  s->nr_parts = Ngas;
+  s->size_parts = Ngas;
   s->parts = parts;
+  s->nr_gparts = Ngpart;
+  s->size_gparts = Ngpart;
+  s->gparts = gparts;
   s->cell_min = h_max;
   s->nr_queues = 1;
   s->size_parts_foreign = 0;
 
-  /* Check that all the particle positions are reasonable, wrap if periodic. */
+  /* Check that all the gas particle positions are reasonable, wrap if periodic.
+   */
   if (periodic) {
-    for (int k = 0; k < N; k++)
+    for (int k = 0; k < Ngas; k++)
       for (int j = 0; j < 3; j++) {
         while (parts[k].x[j] < 0) parts[k].x[j] += dim[j];
         while (parts[k].x[j] >= dim[j]) parts[k].x[j] -= dim[j];
       }
   } else {
-    for (int k = 0; k < N; k++)
+    for (int k = 0; k < Ngas; k++)
       for (int j = 0; j < 3; j++)
         if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j])
           error("Not all particles are within the specified domain.");
   }
 
-  /* Allocate the xtra parts array. */
-  if (posix_memalign((void *)&s->xparts, part_align,
-                     N * sizeof(struct xpart)) != 0)
-    error("Failed to allocate xparts.");
-  bzero(s->xparts, N * sizeof(struct xpart));
-
-  /* For now, clone the parts to make gparts. */
-  if (posix_memalign((void *)&s->gparts, part_align,
-                     N * sizeof(struct gpart)) != 0)
-    error("Failed to allocate gparts.");
-  bzero(s->gparts, N * sizeof(struct gpart));
-  /* for ( int k = 0 ; k < N ; k++ ) {
-      s->gparts[k].x[0] = s->parts[k].x[0];
-      s->gparts[k].x[1] = s->parts[k].x[1];
-      s->gparts[k].x[2] = s->parts[k].x[2];
-      s->gparts[k].v[0] = s->parts[k].v[0];
-      s->gparts[k].v[1] = s->parts[k].v[1];
-      s->gparts[k].v[2] = s->parts[k].v[2];
-      s->gparts[k].mass = s->parts[k].mass;
-      s->gparts[k].dt = s->parts[k].dt;
-      s->gparts[k].id = s->parts[k].id;
-      s->gparts[k].part = &s->parts[k];
-      s->parts[k].gpart = &s->gparts[k];
+  /* Same for the gparts */
+  if (periodic) {
+    for (int k = 0; k < Ngpart; k++)
+      for (int j = 0; j < 3; j++) {
+        while (gparts[k].x[j] < 0) gparts[k].x[j] += dim[j];
+        while (gparts[k].x[j] >= dim[j]) gparts[k].x[j] -= dim[j];
       }
-  s->nr_gparts = s->nr_parts; */
-  s->nr_gparts = 0;
-  s->size_gparts = s->size_parts;
+  } else {
+    for (int k = 0; k < Ngpart; k++)
+      for (int j = 0; j < 3; j++)
+        if (gparts[k].x[j] < 0 || gparts[k].x[j] >= dim[j])
+          error("Not all particles are within the specified domain.");
+  }
+
+  /* Allocate the extra parts array. */
+  if (posix_memalign((void *)&s->xparts, xpart_align,
+                     Ngas * sizeof(struct xpart)) != 0)
+    error("Failed to allocate xparts.");
+  bzero(s->xparts, Ngas * sizeof(struct xpart));
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
