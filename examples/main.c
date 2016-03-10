@@ -380,9 +380,9 @@ int main(int argc, char *argv[]) {
   N_total[0] = Ngas;
   N_total[1] = Ngpart - Ngas;
 #endif
-      if (myrank == 0)
-      message("Read %lld gas particles and %lld DM particles from the ICs",
-              N_total[0], N_total[1]);
+  if (myrank == 0)
+    message("Read %lld gas particles and %lld DM particles from the ICs",
+            N_total[0], N_total[1]);
 
   /* Apply h scaling */
   if (scaling != 1.0)

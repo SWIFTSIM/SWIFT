@@ -121,14 +121,14 @@ void map_cellcheck(struct cell *c, void *data) {
         p->x[0] > c->loc[0] + c->h[0] || p->x[1] > c->loc[1] + c->h[1] ||
         p->x[2] > c->loc[2] + c->h[2]) {
       printf(
-          "map_cellcheck: g-particle at [ %.16e %.16e %.16e ] outside of cell [ "
+          "map_cellcheck: g-particle at [ %.16e %.16e %.16e ] outside of cell "
+          "[ "
           "%.16e %.16e %.16e ] - [ %.16e %.16e %.16e ].\n",
           p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[1], c->loc[2],
           c->loc[0] + c->h[0], c->loc[1] + c->h[1], c->loc[2] + c->h[2]);
       error("g-particle out of bounds!");
     }
   }
-
 }
 
 /**
