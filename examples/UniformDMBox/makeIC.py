@@ -72,7 +72,7 @@ m = zeros(1)
 
 ids = linspace(0, numPart, numPart, endpoint=False).reshape((numPart,1))
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
-ds[()] = ids
+ds[()] = ids + 1
 x      = ids % L;
 y      = ((ids - x) / L) % L;
 z      = (ids - x - L * y) / L**2;
