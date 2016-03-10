@@ -355,10 +355,10 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
+  read_ic_parallel(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  read_ic_serial(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
+  read_ic_serial(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
                  MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   long long N_long[2] = {Ngas, Ngpart};
   MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-  N_total[1] -= N_total[0]
+  N_total[1] -= N_total[0];
 #else
   N_total[0] = Ngas;
   N_total[1] = Ngpart - Ngas;
