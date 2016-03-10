@@ -440,8 +440,6 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef WITH_MPI
-  /* TODO: Here we should exchange the gparts as well! */
-  if (gcount > 0) error("gpart exchange not yet implemented");
 
   /* Move non-local gparts to the end of the list. */
   for (int k = 0; k < nr_gparts; k++)
@@ -458,9 +456,12 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
-  s->nr_gparts =
-      nr_gparts + engine_exchange_strays(s->e, nr_gparts, &ind[nr_gparts],
-                                         s->nr_gparts - nr_gparts);
+  //s->nr_gparts =
+  //    nr_gparts + engine_exchange_strays(s->e, nr_gparts, &ind[nr_gparts],
+  //                                        s->nr_gparts - nr_gparts);
+  if(nr_gparts > 0)
+    error("Need to implement the exchange of strays for the gparts");
+
 
   /* Re-allocate the index array if needed.. */
   if (s->nr_gparts > gind_size) {
@@ -473,7 +474,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   }
 
   /* Assign each particle to its cell. */
-  for (int k = nr_gparts; k < s->gnr_parts; k++) {
+  for (int k = nr_gparts; k < s->nr_gparts; k++) {
     struct gpart *p = &s->gparts[k];
     gind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
