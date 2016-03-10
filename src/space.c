@@ -308,11 +308,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
 void space_rebuild(struct space *s, double cell_max, int verbose) {
 
-  int j, k, cdim[3], nr_parts = s->nr_parts, nr_gparts = s->nr_gparts;
-  struct cell *restrict c, *restrict cells;
-  struct part *restrict p;
-  size_t *ind;
-  double ih[3], dim[3];
   ticks tic = getticks();
 
   /* Be verbose about this. */
@@ -320,13 +315,13 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
-  cells = s->cells;
 
-  /* Run through the particles and get their cell index. */
-  // tic = getticks();
-  const size_t ind_size = s->size_parts;
-  if ((ind = (size_t *)malloc(sizeof(size_t) * ind_size)) == NULL)
-    error("Failed to allocate temporary particle indices.");
+  int nr_parts = s->nr_parts;
+  int nr_gparts = s->nr_gparts;
+  struct cell *restrict cells = s->cells;
+
+  double ih[3], dim[3];
+  int cdim[3];
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
   ih[2] = s->ih[2];
@@ -336,9 +331,16 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   cdim[0] = s->cdim[0];
   cdim[1] = s->cdim[1];
   cdim[2] = s->cdim[2];
-  for (k = 0; k < nr_parts; k++) {
-    p = &s->parts[k];
-    for (j = 0; j < 3; j++)
+
+  /* Run through the particles and get their cell index. */
+  // tic = getticks();
+  const size_t ind_size = s->size_parts;
+  size_t *ind;
+  if ((ind = (size_t *)malloc(sizeof(size_t) * ind_size)) == NULL)
+    error("Failed to allocate temporary particle indices.");
+  for (int k = 0; k < nr_parts; k++) {
+    struct part *restrict p = &s->parts[k];
+    for (int j = 0; j < 3; j++)
       if (p->x[j] < 0.0)
         p->x[j] += dim[j];
       else if (p->x[j] >= dim[j])
@@ -352,8 +354,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
 #ifdef WITH_MPI
   /* Move non-local parts to the end of the list. */
-  int nodeID = s->e->nodeID;
-  for (k = 0; k < nr_parts; k++)
+  const int nodeID = s->e->nodeID;
+  for (int k = 0; k < nr_parts; k++)
     if (cells[ind[k]].nodeID != nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
@@ -385,8 +387,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   }
 
   /* Assign each particle to its cell. */
-  for (k = nr_parts; k < s->nr_parts; k++) {
-    p = &s->parts[k];
+  for (int k = nr_parts; k < s->nr_parts; k++) {
+    struct part *p = &s->parts[k];
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count += 1;
@@ -401,7 +403,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
-  for (k = 0; k < nr_parts; k++)
+  for (int k = 0; k < nr_parts; k++)
     if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
 
   /* Verify space_sort_struct. */
@@ -419,41 +421,88 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Run through the gravity particles and get their cell index. */
   // tic = getticks();
-  if ((ind = (size_t *)malloc(sizeof(size_t) * s->size_gparts)) == NULL)
-    error("Failed to allocate temporary particle indices.");
-  for (k = 0; k < nr_gparts; k++) {
+  const size_t gind_size = s->size_gparts;
+  size_t *gind;
+  if ((gind = (size_t *)malloc(sizeof(size_t) * gind_size)) == NULL)
+    error("Failed to allocate temporary g-particle indices.");
+  for (int k = 0; k < nr_gparts; k++) {
     struct gpart *gp = &s->gparts[k];
-    for (j = 0; j < 3; j++)
+    for (int j = 0; j < 3; j++)
       if (gp->x[j] < 0.0)
         gp->x[j] += dim[j];
       else if (gp->x[j] >= dim[j])
         gp->x[j] -= dim[j];
-    ind[k] =
+    gind[k] =
         cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
-    cells[ind[k]].gcount++;
+    cells[gind[k]].gcount++;
   }
-  // message( "getting particle indices took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit());
+// message( "getting particle indices took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+#ifdef WITH_MPI
   /* TODO: Here we should exchange the gparts as well! */
+  if (gcount > 0) error("gpart exchange not yet implemented");
+
+  /* Move non-local gparts to the end of the list. */
+  for (int k = 0; k < nr_gparts; k++)
+    if (cells[ind[k]].nodeID != nodeID) {
+      cells[ind[k]].gcount -= 1;
+      nr_gparts -= 1;
+      struct gpart tp = s->gparts[k];
+      s->gparts[k] = s->gparts[nr_gparts];
+      s->gparts[nr_gparts] = tp;
+      int t = ind[k];
+      ind[k] = ind[nr_gparts];
+      ind[nr_gparts] = t;
+    }
+
+  /* Exchange the strays, note that this potentially re-allocates
+     the parts arrays. */
+  s->nr_gparts =
+      nr_gparts + engine_exchange_strays(s->e, nr_gparts, &ind[nr_gparts],
+                                         s->nr_gparts - nr_gparts);
+
+  /* Re-allocate the index array if needed.. */
+  if (s->nr_gparts > gind_size) {
+    size_t *gind_new;
+    if ((gind_new = (size_t *)malloc(sizeof(size_t) * s->nr_gparts)) == NULL)
+      error("Failed to allocate temporary g-particle indices.");
+    memcpy(gind_new, gind, sizeof(size_t) * nr_gparts);
+    free(gind);
+    gind = gind_new;
+  }
+
+  /* Assign each particle to its cell. */
+  for (int k = nr_gparts; k < s->gnr_parts; k++) {
+    struct gpart *p = &s->gparts[k];
+    gind[k] =
+        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+    cells[gind[k]].count += 1;
+    /* if ( cells[ ind[k] ].nodeID != nodeID )
+        error( "Received part that does not belong to me (nodeID=%i)." , cells[
+       ind[k] ].nodeID ); */
+  }
+  nr_gparts = s->nr_gparts;
+
+#endif
 
   /* Sort the parts according to their cells. */
-  space_gparts_sort(s->gparts, ind, nr_gparts, 0, s->nr_cells - 1);
+  space_gparts_sort(s->gparts, gind, nr_gparts, 0, s->nr_cells - 1);
 
   /* Re-link the parts. */
-  for (k = 0; k < nr_gparts; k++)
+  for (int k = 0; k < nr_gparts; k++)
     if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
 
   /* We no longer need the indices as of here. */
-  free(ind);
+  free(gind);
 
   /* Hook the cells up to the parts. */
   // tic = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
   struct gpart *gfinger = s->gparts;
-  for (k = 0; k < s->nr_cells; k++) {
-    c = &cells[k];
+  for (int k = 0; k < s->nr_cells; k++) {
+    struct cell *restrict c = &cells[k];
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -1099,10 +1148,12 @@ void space_do_split(struct space *s, struct cell *c) {
   }
 
   /* Set ownership according to the start of the parts array. */
-  if(count > 0)
-    c->owner = ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+  if (count > 0)
+    c->owner =
+        ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
   else
-    c->owner = ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
+    c->owner =
+        ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
 }
 
 /**
