@@ -284,7 +284,7 @@ particle interactions are then computed by traversing the list of
 particles and searching for their neighbours in the tree.  In current
 state-of-the-art simulations (e.g. \cite{Schaye2015}), the gravity
 calculation corresponds to roughly one quarter of the calculation time
-whilst the hydrodynamics scheme takes approximatively half of the
+whilst the hydrodynamics scheme takes approximately half of the
 total time. The remainder is spent in the astrophysics modules, which
 contain interactions of the same kind as the SPH sums presented
 here. Gravity could, however, be vastly sped-up compared to commonly
@@ -460,7 +460,7 @@ e.g.~METIS \cite{ref:Karypis1998} and Zoltan \cite{devine2002zoltan}, exist.
 In \swift, the graph partitioning is computed using the METIS library.
 The cost of each task is initially approximated via the
 asymptotic cost of the task type and the number of particles involved.
-After a task has been exectued, it's effective computational cost
+After a task has been executed, it's effective computational cost
 is computed and used.
 
 Note that this approach does not explicitly consider any geometric
@@ -836,7 +836,7 @@ using synchronous MPI and OpenMP.
 Although fully asynchronous methods, due to their somewhat anarchic nature,
 may seem more difficult to control, they are conceptually simple and easy
 to implement\footnote{The \swift source code consists of less than 21\,K lines
-of code, of which rougly only one tenth are needed to implement the task-based
+of code, of which roughly only one tenth are needed to implement the task-based
 parallelism and asynchronous communication.}.
 The real cost of using a task-based approach comes from having
 to rethink the entire computation to fit the task-based setting. This may,
