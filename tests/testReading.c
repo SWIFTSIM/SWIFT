@@ -22,10 +22,12 @@
 
 int main() {
 
-  int N = -1, periodic = -1;
+  int Ngas = -1, Ngpart = -1;
+  int periodic = -1;
   int i, j, k, n;
   double dim[3];
   struct part *parts = NULL;
+  struct gpart *gparts = NULL;
 
   /* Properties of the ICs */
   const double boxSize = 1.;
@@ -33,25 +35,26 @@ int main() {
   const double rho = 2.;
 
   /* Read data */
-  read_ic_single("input.hdf5", dim, &parts, &N, &periodic);
+  read_ic_single("input.hdf5", dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);
   assert(dim[1] == boxSize);
   assert(dim[2] == boxSize);
-  assert(N == L * L * L);
+  assert(Ngas == L * L * L);
+  assert(Ngpart == L * L * L);
   assert(periodic == 1);
 
   /* Check particles */
-  for (n = 0; n < N; ++n) {
+  for (n = 0; n < Ngas; ++n) {
 
     /* Check that indices are in a reasonable range */
     unsigned long long index = parts[n].id;
-    assert(index < N);
+    assert(index < Ngas);
 
     /* Check masses */
     float mass = parts[n].mass;
-    float correct_mass = boxSize * boxSize * boxSize * rho / N;
+    float correct_mass = boxSize * boxSize * boxSize * rho / Ngas;
     assert(mass == correct_mass);
 
     /* Check smoothing length */
