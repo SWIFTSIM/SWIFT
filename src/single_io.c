@@ -566,10 +566,10 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
       case DM:
         /* Allocate temporary array */
-        if (posix_memalign((void*)dmparts, gpart_align,
+        if (posix_memalign((void*)&dmparts, gpart_align,
                            Ndm * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for DM particles");
-        bzero(&dmparts, Ndm * sizeof(struct gpart));
+        bzero(dmparts, Ndm * sizeof(struct gpart));
 
         /* Collect the DM particles from gpart */
         collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
