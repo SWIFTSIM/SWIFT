@@ -489,7 +489,7 @@ void prepare_dm_gparts(struct gpart* gparts, int Ndm) {
   for (int i = 0; i < Ndm; ++i) {
 
     /* 0 ir negative ids are not allowed */
-    if(gparts[i].id <= 0) error("0 or negative if for DM particle");
+    if(gparts[i].id <= 0) error("0 or negative ID for DM particle");
     
     gparts[i].id = -gparts[i].id;
   }
