@@ -604,7 +604,7 @@ void engine_exchange_cells(struct engine *e) {
  * @return The number of arrived parts copied to parts and xparts.
  */
 
-int engine_exchange_strays(struct engine *e, int offset, int *ind, size_t N) {
+int engine_exchange_strays(struct engine *e, size_t offset, int *ind, size_t N) {
 
 #ifdef WITH_MPI
 
