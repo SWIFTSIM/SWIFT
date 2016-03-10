@@ -117,7 +117,7 @@ struct qstack {
 struct parallel_sort {
   struct part *parts;
   struct xpart *xparts;
-  size_t *ind;
+  int *ind;
   struct qstack *stack;
   unsigned int stack_size;
   volatile unsigned int first, last, waiting;
@@ -125,9 +125,9 @@ struct parallel_sort {
 extern struct parallel_sort space_sort_struct;
 
 /* function prototypes. */
-void space_parts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
+void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
                       int verbose);
-void space_gparts_sort(struct gpart *gparts, size_t *ind, size_t N, int min, int max);
+void space_gparts_sort(struct gpart *gparts, int *ind, size_t N, int min, int max);
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);

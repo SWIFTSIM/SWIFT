@@ -154,7 +154,7 @@ void engine_redistribute(struct engine *e) {
      getting the counts. The counts array is indexed as
      count[from * nr_nodes + to]. */
   int *counts;
-  size_t *dest;
+  int *dest;
   double ih[3], dim[3];
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
@@ -163,7 +163,7 @@ void engine_redistribute(struct engine *e) {
   dim[1] = s->dim[1];
   dim[2] = s->dim[2];
   if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
-      (dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
+      (dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   struct part *parts = s->parts;
@@ -595,7 +595,7 @@ void engine_exchange_cells(struct engine *e) {
  * @return The number of arrived parts copied to parts and xparts.
  */
 
-int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N) {
+int engine_exchange_strays(struct engine *e, int offset, int *ind, size_t N) {
 
 #ifdef WITH_MPI
 
