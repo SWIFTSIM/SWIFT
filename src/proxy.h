@@ -32,7 +32,7 @@
 #define proxy_tag_count 0
 #define proxy_tag_parts 1
 #define proxy_tag_xparts 2
-#define proxy_tag_xparts 3
+#define proxy_tag_gparts 3
 #define proxy_tag_cells 4
 
 /* Data structure for the proxy. */

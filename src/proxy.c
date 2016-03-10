@@ -354,7 +354,7 @@ void proxy_gparts_load(struct proxy *p, struct gpart *gparts, int N) {
   }
 
   /* Copy the parts and xparts data to the buffer. */
-  memcpy(&p->gparts_out[p->nr_gparts_out], parts, sizeof(struct gpart) * N);
+  memcpy(&p->gparts_out[p->nr_gparts_out], gparts, sizeof(struct gpart) * N);
 
   /* Increase the counters. */
   p->nr_gparts_out += N;
