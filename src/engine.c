@@ -94,7 +94,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  * @param super The super #cell.
  */
 
-void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
+void engine_make_ghost_tasks(struct engine *e, struct cell *c,
+                             struct cell *super) {
 
   struct scheduler *s = &e->sched;
 
@@ -128,7 +129,8 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
   /* Recurse. */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) engine_mkghosts(e, c->progeny[k], super);
+      if (c->progeny[k] != NULL)
+        engine_make_ghost_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -1063,7 +1065,8 @@ void engine_maketasks(struct engine *e) {
 
   /* Append a ghost task to each cell, and add kick tasks to the
      super cells. */
-  for (int k = 0; k < nr_cells; k++) engine_mkghosts(e, &cells[k], NULL);
+  for (int k = 0; k < nr_cells; k++)
+    engine_make_ghost_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
