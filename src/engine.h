@@ -182,7 +182,9 @@ void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
-int engine_exchange_strays(struct engine *e, size_t offset, int *ind, size_t N);
+void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part,
+                            size_t *Npart, size_t offset_gparts, int *ind_gpart,
+                            size_t *Ngpart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
