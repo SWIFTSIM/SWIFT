@@ -1006,11 +1006,11 @@ void space_do_split(struct space *s, struct cell *c) {
   const int count = c->count;
   const int gcount = c->gcount;
   int maxdepth = 0;
-  float h, h_max = 0.0f;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_end;
+  float h_max = 0.0f;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
   struct cell *temp;
-  struct part *p, *parts = c->parts;
-  struct xpart *xp, *xparts = c->xparts;
+  struct part *parts = c->parts;
+  struct gpart *gparts = c->gparts;
 
   /* Check the depth. */
   if (c->depth > s->maxdepth) s->maxdepth = c->depth;
@@ -1080,14 +1080,16 @@ void space_do_split(struct space *s, struct cell *c) {
 
     /* Get dt_min/dt_max. */
     for (int k = 0; k < count; k++) {
-      p = &parts[k];
-      xp = &xparts[k];
-      xp->x_old[0] = p->x[0];
-      xp->x_old[1] = p->x[1];
-      xp->x_old[2] = p->x[2];
-      h = p->h;
-      ti_end = p->ti_end;
+      struct part *p = &parts[k];
+      const float h = p->h;
+      const int ti_end = p->ti_end;
       if (h > h_max) h_max = h;
+      if (ti_end < ti_end_min) ti_end_min = ti_end;
+      if (ti_end > ti_end_max) ti_end_max = ti_end;
+    }
+    for (int k = 0; k < gcount; k++) {
+      struct gpart *p = &gparts[k];
+      const int ti_end = p->ti_end;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
