@@ -1188,8 +1188,9 @@ struct cell *space_getcell(struct space *s) {
  * recursively.
  */
 
-void space_init(struct space *s, double dim[3], struct part *parts, size_t N,
-                int periodic, double h_max, int verbose) {
+void space_init(struct space *s, double dim[3], struct part *parts,
+                struct gpart *gparts, size_t N, size_t Ngpart, int periodic,
+                double h_max, int verbose) {
 
   /* Store everything in the space. */
   s->dim[0] = dim[0];

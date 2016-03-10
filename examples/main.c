@@ -58,8 +58,8 @@
 
 int main(int argc, char *argv[]) {
 
-  int c, icount, j, k, N, periodic = 1;
-  long long N_total = -1;
+  int c, icount, j, k, Ngas = 0, Ngpart = 0, periodic = 1;
+  long long N_total[2] = {0};
   int nr_threads = 1, nr_queues = -1;
   int dump_tasks = 0;
   int data[2];
@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
   double h_max = -1.0, scaling = 1.0;
   double time_end = DBL_MAX;
   struct part *parts = NULL;
+  struct gpart *gparts = NULL;
   struct space s;
   struct engine e;
   struct UnitSystem us;
@@ -361,7 +362,7 @@ int main(int argc, char *argv[]) {
                  MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  read_ic_single(ICfileName, dim, &parts, &N, &periodic);
+  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
 #endif
 
   if (myrank == 0) {
@@ -372,24 +373,34 @@ int main(int argc, char *argv[]) {
   }
 
 #if defined(WITH_MPI)
-  long long N_long = N;
-  MPI_Reduce(&N_long, &N_total, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  long long N_long[2] = {Ngas, Ngpart};
+  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  N_total[1] -= N_total[0]
 #else
-  N_total = N;
+  N_total[0] = Ngas;
+  N_total[1] = Ngpart - Ngas;
 #endif
-  if (myrank == 0) message("Read %lld particles from the ICs", N_total);
+      if (myrank == 0)
+      message("Read %lld gas particles and %lld DM particles from the ICs",
+              N_total[0], N_total[1]);
 
   /* Apply h scaling */
   if (scaling != 1.0)
-    for (k = 0; k < N; k++) parts[k].h *= scaling;
+    for (k = 0; k < Ngas; k++) parts[k].h *= scaling;
 
   /* Apply shift */
-  if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0)
-    for (k = 0; k < N; k++) {
+  if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
+    for (k = 0; k < Ngas; k++) {
       parts[k].x[0] += shift[0];
       parts[k].x[1] += shift[1];
       parts[k].x[2] += shift[2];
     }
+    for (k = 0; k < Ngpart; k++) {
+      gparts[k].x[0] += shift[0];
+      gparts[k].x[1] += shift[1];
+      gparts[k].x[2] += shift[2];
+    }
+  }
 
   /* Set default number of queues. */
   if (nr_queues < 0) nr_queues = nr_threads;
@@ -399,7 +410,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the space with this data. */
   if (myrank == 0) clocks_gettime(&tic);
-  space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
+  space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max,
+             myrank == 0);
   if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -482,9 +494,11 @@ int main(int argc, char *argv[]) {
 
   if (myrank == 0) {
     message(
-        "Running on %lld particles until t=%.3e with %i threads and %i "
+        "Running on %lld gas particles and %lld DM particles until t=%.3e with "
+        "%i threads and %i "
         "queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total, time_end, e.nr_threads, e.sched.nr_queues, e.dt_min, e.dt_max);
+        N_total[0], N_total[1], time_end, e.nr_threads, e.sched.nr_queues,
+        e.dt_min, e.dt_max);
     fflush(stdout);
   }
 

@@ -595,7 +595,8 @@ void engine_exchange_cells(struct engine *e) {
  * @return The number of arrived parts copied to parts and xparts.
  */
 
-int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N) {
+int engine_exchange_strays(struct engine *e, int offset, size_t *ind,
+                           size_t N) {
 
 #ifdef WITH_MPI
 
@@ -1165,8 +1166,8 @@ void engine_print_task_counts(struct engine *e) {
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
-         clocks_get_timesincestart(), taskID_names[0], counts[0]);
+  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
+         e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
   printf("%s engine_print_task_counts: task counts are [ %s=%i",
          clocks_get_timesincestart(), taskID_names[0], counts[0]);
