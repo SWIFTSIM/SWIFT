@@ -191,7 +191,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allreduce particle transfer counts.");
 
   /* Get the new number of parts for this node, be generous in allocating. */
-  int nr_parts = 0;
+  size_t nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL, *xparts = s->xparts;
@@ -249,7 +249,6 @@ void engine_redistribute(struct engine *e) {
   if ((res = MPI_Waitall(4 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
     for (int k = 0; k < 4 * nr_nodes; k++) {
       char buff[MPI_MAX_ERROR_STRING];
-      int res;
       MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
       message("request %i has error '%s'.", k, buff);
     }
@@ -257,7 +256,7 @@ void engine_redistribute(struct engine *e) {
   }
 
   /* Verify that all parts are in the right place. */
-  /* for ( k = 0 ; k < nr_parts ; k++ ) {
+  /* for (size_t k = 0 ; k < nr_parts ; k++ ) {
       cid = cell_getid( cdim , parts_new[k].x[0]*ih[0] , parts_new[k].x[1]*ih[1]
      , parts_new[k].x[2]*ih[2] );
       if ( cells[ cid ].nodeID != nodeID )
@@ -277,7 +276,7 @@ void engine_redistribute(struct engine *e) {
   for (int k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID) my_cells += 1;
   if (e->verbose)
-    message("node %i now has %i parts in %i cells.", nodeID, nr_parts,
+    message("node %i now has %zi parts in %i cells.", nodeID, nr_parts,
             my_cells);
 
   /* Clean up other stuff. */
