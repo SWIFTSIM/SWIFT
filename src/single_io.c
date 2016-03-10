@@ -390,8 +390,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
 
   /* Open SPH particles group */
   /* message("Reading particle arrays..."); */
-  message("BoxSize = %lf\n", dim[0]);
-  message("NumPart = [%d, %d] Total = %d\n", *Ngas, Ndm, *Ngparts);
+  message("BoxSize = %lf", dim[0]);
+  message("NumPart = [%d, %d] Total = %d", *Ngas, Ndm, *Ngparts);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < 6; ptype++) {
