@@ -51,7 +51,7 @@
  */
 
 void printParticle(struct part *parts, struct xpart *xparts, long long int id,
-                   int N) {
+                   size_t N) {
 
   int i, found = 0;
 
@@ -66,7 +66,7 @@ void printParticle(struct part *parts, struct xpart *xparts, long long int id,
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
 }
 
-void printgParticle(struct gpart *parts, long long int id, int N) {
+void printgParticle(struct gpart *parts, long long int id, size_t N) {
 
   int i, found = 0;
 
