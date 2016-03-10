@@ -1003,7 +1003,9 @@ void space_map_cells_pre(struct space *s, int full,
 
 void space_do_split(struct space *s, struct cell *c) {
 
-  int k, count = c->count, gcount = c->gcount, maxdepth = 0;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  int maxdepth = 0;
   float h, h_max = 0.0f;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0, ti_end;
   struct cell *temp;
@@ -1020,7 +1022,7 @@ void space_do_split(struct space *s, struct cell *c) {
     c->split = 1;
 
     /* Create the cell's progeny. */
-    for (k = 0; k < 8; k++) {
+    for (int k = 0; k < 8; k++) {
       temp = space_getcell(s);
       temp->count = 0;
       temp->gcount = 0;
@@ -1047,7 +1049,7 @@ void space_do_split(struct space *s, struct cell *c) {
     cell_split(c);
 
     /* Remove any progeny with zero parts. */
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0) {
         space_recycle(s, c->progeny[k]);
         c->progeny[k] = NULL;
@@ -1077,8 +1079,7 @@ void space_do_split(struct space *s, struct cell *c) {
     c->maxdepth = c->depth;
 
     /* Get dt_min/dt_max. */
-
-    for (k = 0; k < count; k++) {
+    for (int k = 0; k < count; k++) {
       p = &parts[k];
       xp = &xparts[k];
       xp->x_old[0] = p->x[0];
@@ -1096,7 +1097,10 @@ void space_do_split(struct space *s, struct cell *c) {
   }
 
   /* Set ownership according to the start of the parts array. */
-  c->owner = ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+  if(count > 0)
+    c->owner = ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+  else
+    c->owner = ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
 }
 
 /**
