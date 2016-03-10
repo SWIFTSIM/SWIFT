@@ -113,15 +113,15 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
 
   /* Get the sorting index. */
   int sid = 0;
-  for (k = 0; k < 3; k++)
+  for (int k = 0; k < 3; k++)
     sid = 3 * sid + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
 
   /* Switch the cells around? */
   if (runner_flip[sid]) {
-    const cell *temp = *ci;
+    struct cell *temp = *ci;
     *ci = *cj;
     *cj = temp;
-    for (k = 0; k < 3; k++) shift[k] = -shift[k];
+    for (int k = 0; k < 3; k++) shift[k] = -shift[k];
   }
   sid = sortlistID[sid];
 
@@ -187,7 +187,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (verbose) message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
 
   /* Get the new putative cell dimensions. */
-  int cdim[3]
+  int cdim[3];
   for (int k = 0; k < 3; k++)
     cdim[k] =
         floor(s->dim[k] / fmax(h_max * kernel_gamma * space_stretch, cell_max));
@@ -233,7 +233,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate cells.");
     bzero(s->cells, s->nr_cells * sizeof(struct cell));
-    for (k = 0; k < s->nr_cells; k++)
+    for (int k = 0; k < s->nr_cells; k++)
       if (lock_init(&s->cells[k].lock) != 0) error("Failed to init spinlock.");
 
     /* Set the cell location and sizes. */
