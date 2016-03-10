@@ -96,7 +96,6 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
 void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
 
-  int k;
   struct scheduler *s = &e->sched;
 
   /* Am I the super-cell? */
@@ -128,7 +127,7 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
 
   /* Recurse. */
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) engine_mkghosts(e, c->progeny[k], super);
 }
 
@@ -149,11 +148,13 @@ void engine_redistribute(struct engine *e) {
   int *cdim = s->cdim;
   struct cell *cells = s->cells;
   int nr_cells = s->nr_cells;
+  ticks tic = getticks();
 
   /* Start by sorting the particles according to their nodes and
      getting the counts. The counts array is indexed as
      count[from * nr_nodes + to]. */
-  int *counts, *dest;
+  int *counts;
+  size_t *dest;
   double ih[3], dim[3];
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
@@ -162,11 +163,11 @@ void engine_redistribute(struct engine *e) {
   dim[1] = s->dim[1];
   dim[2] = s->dim[2];
   if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
-      (dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
+      (dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   struct part *parts = s->parts;
-  for (int k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < s->nr_parts; k++) {
     for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
         parts[k].x[j] += dim[j];
@@ -181,7 +182,7 @@ void engine_redistribute(struct engine *e) {
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
-  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1);
+  space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -189,7 +190,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allreduce particle transfer counts.");
 
   /* Get the new number of parts for this node, be generous in allocating. */
-  int nr_parts = 0;
+  size_t nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL, *xparts = s->xparts;
@@ -205,7 +206,7 @@ void engine_redistribute(struct engine *e) {
       NULL)
     error("Failed to allocate MPI request list.");
   for (int k = 0; k < 4 * nr_nodes; k++) reqs[k] = MPI_REQUEST_NULL;
-  for (int offset_send = 0, offset_recv = 0, k = 0; k < nr_nodes; k++) {
+  for (size_t offset_send = 0, offset_recv = 0, k = 0; k < nr_nodes; k++) {
     int ind_send = nodeID * nr_nodes + k;
     int ind_recv = k * nr_nodes + nodeID;
     if (counts[ind_send] > 0) {
@@ -220,11 +221,11 @@ void engine_redistribute(struct engine *e) {
         if (MPI_Isend(&s->parts[offset_send], counts[ind_send],
                       e->part_mpi_type, k, 2 * ind_send + 0, MPI_COMM_WORLD,
                       &reqs[4 * k]) != MPI_SUCCESS)
-          error("Failed to isend parts to node %i.", k);
+          error("Failed to isend parts to node %zi.", k);
         if (MPI_Isend(&s->xparts[offset_send], counts[ind_send],
                       e->xpart_mpi_type, k, 2 * ind_send + 1, MPI_COMM_WORLD,
                       &reqs[4 * k + 1]) != MPI_SUCCESS)
-          error("Failed to isend xparts to node %i.", k);
+          error("Failed to isend xparts to node %zi.", k);
         offset_send += counts[ind_send];
       }
     }
@@ -232,11 +233,11 @@ void engine_redistribute(struct engine *e) {
       if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv], e->part_mpi_type,
                     k, 2 * ind_recv + 0, MPI_COMM_WORLD,
                     &reqs[4 * k + 2]) != MPI_SUCCESS)
-        error("Failed to emit irecv of parts from node %i.", k);
+        error("Failed to emit irecv of parts from node %zi.", k);
       if (MPI_Irecv(&xparts_new[offset_recv], counts[ind_recv],
                     e->xpart_mpi_type, k, 2 * ind_recv + 1, MPI_COMM_WORLD,
                     &reqs[4 * k + 3]) != MPI_SUCCESS)
-        error("Failed to emit irecv of parts from node %i.", k);
+        error("Failed to emit irecv of parts from node %zi.", k);
       offset_recv += counts[ind_recv];
     }
   }
@@ -274,13 +275,18 @@ void engine_redistribute(struct engine *e) {
   /* Be verbose about what just happened. */
   for (int k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID) my_cells += 1;
-  message("node %i now has %i parts in %i cells.", nodeID, nr_parts, my_cells);
+  if (e->verbose)
+    message("node %i now has %zi parts in %i cells.", nodeID, nr_parts,
+            my_cells);
 
   /* Clean up other stuff. */
   free(reqs);
   free(counts);
   free(dest);
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -295,6 +301,8 @@ void engine_redistribute(struct engine *e) {
 void engine_repartition(struct engine *e) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
+
+  ticks tic = getticks();
 
   /* Clear the repartition flag. */
   enum repartition_type reparttype = e->forcerepart;
@@ -323,6 +331,9 @@ void engine_repartition(struct engine *e) {
   /* Tell the engine it should re-build whenever possible */
   e->forcerebuild = 1;
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI and METIS support.");
 #endif
@@ -362,7 +373,6 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
 #ifdef WITH_MPI
-  int k;
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
 
@@ -376,12 +386,10 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
   if (l != NULL) {
 
     /* Create the tasks. */
-    struct task *t_xv =
-        scheduler_addtask(&e->sched, task_type_send, task_subtype_none,
-                          2 * ci->tag, 0, ci, cj, 0);
-    struct task *t_rho =
-        scheduler_addtask(&e->sched, task_type_send, task_subtype_none,
-                          2 * ci->tag + 1, 0, ci, cj, 0);
+    struct task *t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                          2 * ci->tag, 0, ci, cj, 0);
+    struct task *t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                           2 * ci->tag + 1, 0, ci, cj, 0);
 
     /* The send_rho task depends on the cell's ghost task. */
     scheduler_addunlock(s, ci->super->ghost, t_rho);
@@ -396,7 +404,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
   /* Recurse? */
   else if (ci->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) engine_addtasks_send(e, ci->progeny[k], cj);
 
 #else
@@ -417,19 +425,16 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho) {
 
 #ifdef WITH_MPI
-  int k;
   struct scheduler *s = &e->sched;
 
   /* Do we need to construct a recv task? */
   if (t_xv == NULL && c->nr_density > 0) {
 
     /* Create the tasks. */
-    t_xv = c->recv_xv =
-        scheduler_addtask(&e->sched, task_type_recv, task_subtype_none,
-                          2 * c->tag, 0, c, NULL, 0);
-    t_rho = c->recv_rho =
-        scheduler_addtask(&e->sched, task_type_recv, task_subtype_none,
-                          2 * c->tag + 1, 0, c, NULL, 0);
+    t_xv = c->recv_xv = scheduler_addtask(s, task_type_recv, task_subtype_none,
+                                          2 * c->tag, 0, c, NULL, 0);
+    t_rho = c->recv_rho = scheduler_addtask(
+        s, task_type_recv, task_subtype_none, 2 * c->tag + 1, 0, c, NULL, 0);
   }
 
   /* Add dependencies. */
@@ -443,7 +448,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
 
   /* Recurse? */
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho);
 
@@ -462,46 +467,49 @@ void engine_exchange_cells(struct engine *e) {
 
 #ifdef WITH_MPI
 
-  int j, k, pid, count = 0;
-  struct pcell *pcells;
   struct space *s = e->s;
   struct cell *cells = s->cells;
-  int nr_cells = s->nr_cells;
-  int nr_proxies = e->nr_proxies;
+  const int nr_cells = s->nr_cells;
+  const int nr_proxies = e->nr_proxies;
   int offset[nr_cells];
   MPI_Request reqs_in[engine_maxproxies];
   MPI_Request reqs_out[engine_maxproxies];
   MPI_Status status;
+  ticks tic = getticks();
 
   /* Run through the cells and get the size of the ones that will be sent off.
    */
-  for (k = 0; k < nr_cells; k++) {
-    offset[k] = count;
+  int count_out = 0;
+  for (int k = 0; k < nr_cells; k++) {
+    offset[k] = count_out;
     if (cells[k].sendto)
-      count += (cells[k].pcell_size = cell_getsize(&cells[k]));
+      count_out += (cells[k].pcell_size = cell_getsize(&cells[k]));
   }
 
   /* Allocate the pcells. */
-  if ((pcells = (struct pcell *)malloc(sizeof(struct pcell) * count)) == NULL)
+  struct pcell *pcells;
+  if ((pcells = (struct pcell *)malloc(sizeof(struct pcell) * count_out)) ==
+      NULL)
     error("Failed to allocate pcell buffer.");
 
   /* Pack the cells. */
   cell_next_tag = 0;
-  for (k = 0; k < nr_cells; k++)
+  for (int k = 0; k < nr_cells; k++)
     if (cells[k].sendto) {
       cell_pack(&cells[k], &pcells[offset[k]]);
       cells[k].pcell = &pcells[offset[k]];
     }
 
   /* Launch the proxies. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
     proxy_cells_exch1(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_cells_count_in;
     reqs_out[k] = e->proxies[k].req_cells_count_out;
   }
 
   /* Wait for each count to come in and start the recv. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
+    int pid;
     if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
@@ -514,18 +522,19 @@ void engine_exchange_cells(struct engine *e) {
     error("MPI_Waitall on sends failed.");
 
   /* Set the requests for the cells. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
     reqs_in[k] = e->proxies[k].req_cells_in;
     reqs_out[k] = e->proxies[k].req_cells_out;
   }
 
   /* Wait for each pcell array to come in from the proxies. */
-  for (k = 0; k < nr_proxies; k++) {
+  for (int k = 0; k < nr_proxies; k++) {
+    int pid;
     if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "cell data from proxy %i has arrived." , pid );
-    for (count = 0, j = 0; j < e->proxies[pid].nr_cells_in; j++)
+    for (int count = 0, j = 0; j < e->proxies[pid].nr_cells_in; j++)
       count += cell_unpack(&e->proxies[pid].pcells_in[count],
                            e->proxies[pid].cells_in[j], e->s);
   }
@@ -536,12 +545,13 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
-  for (count = 0, k = 0; k < nr_proxies; k++)
-    for (j = 0; j < e->proxies[k].nr_cells_in; j++)
-      count += e->proxies[k].cells_in[j]->count;
-  if (count > s->size_parts_foreign) {
+  int count_in = 0;
+  for (int k = 0; k < nr_proxies; k++)
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++)
+      count_in += e->proxies[k].cells_in[j]->count;
+  if (count_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) free(s->parts_foreign);
-    s->size_parts_foreign = 1.1 * count;
+    s->size_parts_foreign = 1.1 * count_in;
     if (posix_memalign((void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
@@ -549,9 +559,9 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
-  for (k = 0; k < nr_proxies; k++) {
-    for (count = 0, j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      count += cell_link(e->proxies[k].cells_in[j], parts);
+  for (int k = 0; k < nr_proxies; k++) {
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+      cell_link(e->proxies[k].cells_in[j], parts);
       parts = &parts[e->proxies[k].cells_in[j]->count];
     }
   }
@@ -563,6 +573,10 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Free the pcell buffer. */
   free(pcells);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -581,26 +595,22 @@ void engine_exchange_cells(struct engine *e) {
  * @return The number of arrived parts copied to parts and xparts.
  */
 
-int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
+int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N) {
 
 #ifdef WITH_MPI
 
-  int k, pid, count = 0, nr_in = 0, nr_out = 0;
-  MPI_Request reqs_in[2 * engine_maxproxies];
-  MPI_Request reqs_out[2 * engine_maxproxies];
-  MPI_Status status;
-  struct proxy *p;
   struct space *s = e->s;
+  ticks tic = getticks();
 
   /* Re-set the proxies. */
-  for (k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
+  for (int k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
 
   /* Put the parts into the corresponding proxies. */
-  for (k = 0; k < N; k++) {
-    int node_id = e->s->cells[ind[k]].nodeID;
+  for (size_t k = 0; k < N; k++) {
+    const int node_id = e->s->cells[ind[k]].nodeID;
     if (node_id < 0 || node_id >= e->nr_nodes)
       error("Bad node ID %i.", node_id);
-    pid = e->proxy_ind[node_id];
+    const int pid = e->proxy_ind[node_id];
     if (pid < 0)
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
@@ -612,15 +622,19 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   }
 
   /* Launch the proxies. */
-  for (k = 0; k < e->nr_proxies; k++) {
+  MPI_Request reqs_in[2 * engine_maxproxies];
+  MPI_Request reqs_out[2 * engine_maxproxies];
+  for (int k = 0; k < e->nr_proxies; k++) {
     proxy_parts_exch1(&e->proxies[k]);
     reqs_in[k] = e->proxies[k].req_parts_count_in;
     reqs_out[k] = e->proxies[k].req_parts_count_out;
   }
 
   /* Wait for each count to come in and start the recv. */
-  for (k = 0; k < e->nr_proxies; k++) {
-    if (MPI_Waitany(e->nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
+  for (int k = 0; k < e->nr_proxies; k++) {
+    int pid;
+    if (MPI_Waitany(e->nr_proxies, reqs_in, &pid, MPI_STATUS_IGNORE) !=
+            MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     // message( "request from proxy %i has arrived." , pid );
@@ -633,9 +647,9 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
 
   /* Count the total number of incoming particles and make sure we have
      enough space to accommodate them. */
-  int count_in = 0;
-  for (k = 0; k < e->nr_proxies; k++) count_in += e->proxies[k].nr_parts_in;
-  message("sent out %i particles, got %i back.", N, count_in);
+  size_t count_in = 0;
+  for (int k = 0; k < e->nr_proxies; k++) count_in += e->proxies[k].nr_parts_in;
+  if (e->verbose) message("sent out %zi particles, got %zi back.", N, count_in);
   if (offset + count_in > s->size_parts) {
     s->size_parts = (offset + count_in) * 1.05;
     struct part *parts_new = NULL;
@@ -654,7 +668,8 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
   }
 
   /* Collect the requests for the particle data from the proxies. */
-  for (k = 0; k < e->nr_proxies; k++) {
+  int nr_in = 0, nr_out = 0;
+  for (int k = 0; k < e->nr_proxies; k++) {
     if (e->proxies[k].nr_parts_in > 0) {
       reqs_in[2 * k] = e->proxies[k].req_parts_in;
       reqs_in[2 * k + 1] = e->proxies[k].req_xparts_in;
@@ -671,10 +686,11 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
 
   /* Wait for each part array to come in and collect the new
      parts from the proxies. */
-  for (k = 0; k < 2 * (nr_in + nr_out); k++) {
-    int err;
-    if ((err = MPI_Waitany(2 * e->nr_proxies, reqs_in, &pid, &status)) !=
-        MPI_SUCCESS) {
+  size_t count = 0;
+  for (int k = 0; k < 2 * (nr_in + nr_out); k++) {
+    int err, pid;
+    if ((err = MPI_Waitany(2 * e->nr_proxies, reqs_in, &pid,
+                           MPI_STATUS_IGNORE)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];
       int res;
       MPI_Error_string(err, buff, &res);
@@ -684,7 +700,7 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     // message( "request from proxy %i has arrived." , pid );
     if (reqs_in[pid & ~1] == MPI_REQUEST_NULL &&
         reqs_in[pid | 1] == MPI_REQUEST_NULL) {
-      p = &e->proxies[pid >> 1];
+      struct proxy *p = &e->proxies[pid >> 1];
       memcpy(&s->parts[offset + count], p->parts_in,
              sizeof(struct part) * p->nr_parts_in);
       memcpy(&s->xparts[offset + count], p->xparts_in,
@@ -703,6 +719,10 @@ int engine_exchange_strays(struct engine *e, int offset, int *ind, int N) {
     if (MPI_Waitall(2 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
         MPI_SUCCESS)
       error("MPI_Waitall on sends failed.");
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
   /* Return the number of harvested parts. */
   return count;
@@ -724,50 +744,48 @@ void engine_maketasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   struct cell *cells = s->cells;
-  int nr_cells = s->nr_cells;
-  int nodeID = e->nodeID;
-  int i, j, k, ii, jj, kk, iii, jjj, kkk, cid, cjd, sid;
-  int *cdim = s->cdim;
-  struct task *t, *t2;
-  struct cell *ci, *cj;
+  const int nr_cells = s->nr_cells;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  const ticks tic = getticks();
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
 
   /* Add the space sorting tasks. */
-  for (i = 0; i < e->nr_threads; i++)
+  for (int i = 0; i < e->nr_threads; i++)
     scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
 
   /* Run through the highest level of cells and add pairs. */
-  for (i = 0; i < cdim[0]; i++)
-    for (j = 0; j < cdim[1]; j++)
-      for (k = 0; k < cdim[2]; k++) {
-        cid = cell_getid(cdim, i, j, k);
+  for (int i = 0; i < cdim[0]; i++)
+    for (int j = 0; j < cdim[1]; j++)
+      for (int k = 0; k < cdim[2]; k++) {
+        int cid = cell_getid(cdim, i, j, k);
         if (cells[cid].count == 0) continue;
-        ci = &cells[cid];
+        struct cell *ci = &cells[cid];
         if (ci->count == 0) continue;
         if (ci->nodeID == nodeID)
           scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0,
                             ci, NULL, 0);
-        for (ii = -1; ii < 2; ii++) {
-          iii = i + ii;
+        for (int ii = -1; ii < 2; ii++) {
+          int iii = i + ii;
           if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
           iii = (iii + cdim[0]) % cdim[0];
-          for (jj = -1; jj < 2; jj++) {
-            jjj = j + jj;
+          for (int jj = -1; jj < 2; jj++) {
+            int jjj = j + jj;
             if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
             jjj = (jjj + cdim[1]) % cdim[1];
-            for (kk = -1; kk < 2; kk++) {
-              kkk = k + kk;
+            for (int kk = -1; kk < 2; kk++) {
+              int kkk = k + kk;
               if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
               kkk = (kkk + cdim[2]) % cdim[2];
-              cjd = cell_getid(cdim, iii, jjj, kkk);
-              cj = &cells[cjd];
+              int cjd = cell_getid(cdim, iii, jjj, kkk);
+              struct cell *cj = &cells[cjd];
               if (cid >= cjd || cj->count == 0 ||
                   (ci->nodeID != nodeID && cj->nodeID != nodeID))
                 continue;
-              sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+              int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
               scheduler_addtask(sched, task_type_pair, task_subtype_density,
                                 sid, 0, ci, cj, 1);
             }
@@ -776,11 +794,11 @@ void engine_maketasks(struct engine *e) {
       }
 
   /* Add the gravity mm tasks. */
-  for (i = 0; i < nr_cells; i++)
+  for (int i = 0; i < nr_cells; i++)
     if (cells[i].gcount > 0) {
       scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
                         &cells[i], NULL, 0);
-      for (j = i + 1; j < nr_cells; j++)
+      for (int j = i + 1; j < nr_cells; j++)
         if (cells[j].gcount > 0)
           scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
                             &cells[i], &cells[j], 0);
@@ -799,7 +817,7 @@ void engine_maketasks(struct engine *e) {
   e->nr_links = 0;
 
   /* Add the gravity up/down tasks at the top-level cells and push them down. */
-  for (k = 0; k < nr_cells; k++)
+  for (int k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID && cells[k].gcount > 0) {
 
       /* Create tasks at top level. */
@@ -817,15 +835,15 @@ void engine_maketasks(struct engine *e) {
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
-  for (k = 0; k < sched->nr_tasks; k++) {
+  for (int k = 0; k < sched->nr_tasks; k++) {
 
     /* Get the current task. */
-    t = &sched->tasks[k];
+    struct task *t = &sched->tasks[k];
     if (t->skip) continue;
 
     /* Link sort tasks together. */
     if (t->type == task_type_sort && t->ci->split)
-      for (j = 0; j < 8; j++)
+      for (int j = 0; j < 8; j++)
         if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
           t->ci->progeny[j]->sorts->skip = 0;
           scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
@@ -875,16 +893,16 @@ void engine_maketasks(struct engine *e) {
 
   /* Append a ghost task to each cell, and add kick tasks to the
      super cells. */
-  for (k = 0; k < nr_cells; k++) engine_mkghosts(e, &cells[k], NULL);
+  for (int k = 0; k < nr_cells; k++) engine_mkghosts(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  kk = sched->nr_tasks;
-  for (k = 0; k < kk; k++) {
+  int sched_nr_tasks = sched->nr_tasks;
+  for (int k = 0; k < sched_nr_tasks; k++) {
 
     /* Get a pointer to the task. */
-    t = &sched->tasks[k];
+    struct task *t = &sched->tasks[k];
 
     /* Skip? */
     if (t->skip) continue;
@@ -893,8 +911,8 @@ void engine_maketasks(struct engine *e) {
     if (t->type == task_type_self && t->subtype == task_subtype_density) {
       scheduler_addunlock(sched, t->ci->super->init, t);
       scheduler_addunlock(sched, t, t->ci->super->ghost);
-      t2 = scheduler_addtask(sched, task_type_self, task_subtype_force, 0, 0,
-                             t->ci, NULL, 0);
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
       scheduler_addunlock(sched, t->ci->super->ghost, t2);
       scheduler_addunlock(sched, t2, t->ci->super->kick);
       t->ci->force = engine_addlink(e, t->ci->force, t2);
@@ -903,8 +921,8 @@ void engine_maketasks(struct engine *e) {
 
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
-      t2 = scheduler_addtask(sched, task_type_pair, task_subtype_force, 0, 0,
-                             t->ci, t->cj, 0);
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
@@ -925,8 +943,9 @@ void engine_maketasks(struct engine *e) {
 
     /* Otherwise, sub interaction? */
     else if (t->type == task_type_sub && t->subtype == task_subtype_density) {
-      t2 = scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
-                             0, t->ci, t->cj, 0);
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
+                            0, t->ci, t->cj, 0);
       if (t->ci->nodeID == nodeID) {
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
@@ -962,12 +981,12 @@ void engine_maketasks(struct engine *e) {
 
     /* Loop through the proxy's incoming cells and add the
        recv tasks. */
-    for (k = 0; k < p->nr_cells_in; k++)
+    for (int k = 0; k < p->nr_cells_in; k++)
       engine_addtasks_recv(e, p->cells_in[k], NULL, NULL);
 
     /* Loop through the proxy's outgoing cells and add the
        send tasks. */
-    for (k = 0; k < p->nr_cells_out; k++)
+    for (int k = 0; k < p->nr_cells_out; k++)
       engine_addtasks_send(e, p->cells_out[k], p->cells_in[0]);
   }
 
@@ -984,6 +1003,10 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the tasks age. */
   e->tasks_age = 0;
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -995,28 +1018,27 @@ void engine_maketasks(struct engine *e) {
 int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
-  int k, nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
-  struct task *t, *tasks = s->tasks;
-  float ti_end = e->ti_current;
-  struct cell *ci, *cj;
-  // ticks tic = getticks();
+  const int nr_tasks = s->nr_tasks, *ind = s->tasks_ind;
+  struct task *tasks = s->tasks;
+  const float ti_end = e->ti_current;
+  const ticks tic = getticks();
 
   /* Much less to do here if we're on a fixed time-step. */
   if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+    for (int k = 0; k < nr_tasks; k++) {
 
       /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
+      struct task *t = &tasks[ind[k]];
 
       /* Pair? */
       if (t->type == task_type_pair ||
           (t->type == task_type_sub && t->cj != NULL)) {
 
         /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
+        const struct cell *ci = t->ci;
+        const struct cell *cj = t->cj;
 
         /* Too much particle movement? */
         if (t->tight &&
@@ -1039,10 +1061,10 @@ int engine_marktasks(struct engine *e) {
   } else {
 
     /* Run through the tasks and mark as skip or not. */
-    for (k = 0; k < nr_tasks; k++) {
+    for (int k = 0; k < nr_tasks; k++) {
 
       /* Get a handle on the kth task. */
-      t = &tasks[ind[k]];
+      struct task *t = &tasks[ind[k]];
 
       /* Sort-task? Note that due to the task ranking, the sorts
          will all come before the pairs. */
@@ -1067,8 +1089,8 @@ int engine_marktasks(struct engine *e) {
                (t->type == task_type_sub && t->cj != NULL)) {
 
         /* Local pointers. */
-        ci = t->ci;
-        cj = t->cj;
+        const struct cell *ci = t->ci;
+        const struct cell *cj = t->cj;
 
         /* Set this task's skip. */
         t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
@@ -1116,7 +1138,9 @@ int engine_marktasks(struct engine *e) {
     }
   }
 
-  // message( "took %.3f %s." , clocks_from_ticks(getticks() - tic), clocks_getunit());
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
   /* All is well... */
   return 0;
@@ -1128,30 +1152,30 @@ int engine_marktasks(struct engine *e) {
  * @param e The #engine.
  */
 
-void engine_print(struct engine *e) {
+void engine_print_task_counts(struct engine *e) {
 
-  int k;
   struct scheduler *sched = &e->sched;
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
-  for (k = 0; k <= task_type_count; k++) counts[k] = 0;
-  for (k = 0; k < sched->nr_tasks; k++)
+  for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
+  for (int k = 0; k < sched->nr_tasks; k++)
     if (!sched->tasks[k].skip)
       counts[(int)sched->tasks[k].type] += 1;
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%03i] engine_print: task counts are [ %s=%i", e->nodeID,
-         taskID_names[0], counts[0]);
+  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
-  printf("engine_print: task counts are [ %s=%i", taskID_names[0], counts[0]);
+  printf("%s engine_print_task_counts: task counts are [ %s=%i",
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
-  for (k = 1; k < task_type_count; k++)
+  for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %i.", e->s->nr_parts);
+  message("nr_parts = %zi.", e->s->nr_parts);
 }
 
 /**
@@ -1161,38 +1185,33 @@ void engine_print(struct engine *e) {
  */
 
 void engine_rebuild(struct engine *e) {
+
+  ticks tic = getticks();
+
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
 
   /* Re-build the space. */
-  // tic = getticks();
-  space_rebuild(e->s, 0.0, e->nodeID == 0);
-  // message( "space_rebuild took %.3f %s." ,
-  //clocks_from_ticks(getticks() -  tic), clocks_getunit());
+  space_rebuild(e->s, 0.0, e->verbose);
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
-  // tic = getticks();
   engine_exchange_cells(e);
-  // message( "engine_exchange_cells took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
   /* Re-build the tasks. */
-  // tic = getticks();
   engine_maketasks(e);
-  // message( "engine_maketasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Run through the tasks and mark as skip or not. */
-  // tic = getticks();
   if (engine_marktasks(e))
     error("engine_marktasks failed after space_rebuild.");
-  // message( "engine_marktasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Print the status of the system */
-  engine_print(e);
+  engine_print_task_counts(e);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -1203,47 +1222,37 @@ void engine_rebuild(struct engine *e) {
 
 void engine_prepare(struct engine *e) {
 
-  int rebuild;
-
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Run through the tasks and mark as skip or not. */
-  // tic = getticks();
-  rebuild = (e->forcerebuild || engine_marktasks(e));
-  // message( "space_marktasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
+  int rebuild = (e->forcerebuild || engine_marktasks(e));
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
-  // tic = getticks();
   int buff;
   if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
-  // message( "rebuild allreduce took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
   e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
-    // tic = getticks();
     engine_rebuild(e);
-    // message( "engine_rebuild took %.3f %s." ,
-    //clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
-    // tic = getticks();
     scheduler_reweight(&e->sched);
-    // message( "scheduler_reweight took %.3f %s." ,
-    //clocks_from_ticks(getticks() -tic), clocks_getunit());
   }
   e->tasks_age += 1;
 
   TIMER_TOC(timer_prepare);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -1292,14 +1301,14 @@ void engine_barrier(struct engine *e, int tid) {
 
 void engine_collect_kick(struct cell *c) {
 
-  int updated = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  struct cell *cp;
-
   /* Skip super-cells (Their values are already set) */
   if (c->kick != NULL) return;
+
+  /* Counters for the different quantities. */
+  int updated = 0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
+  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
 
   /* Only do something is the cell is non-empty */
   if (c->count != 0) {
@@ -1308,8 +1317,9 @@ void engine_collect_kick(struct cell *c) {
     if (!c->split) error("Cell has no super-cell.");
 
     /* Collect the values from the progeny. */
-    for (int k = 0; k < 8; k++)
-      if ((cp = c->progeny[k]) != NULL) {
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL) {
 
         /* Recurse */
         engine_collect_kick(cp);
@@ -1328,6 +1338,7 @@ void engine_collect_kick(struct cell *c) {
         ang[1] += cp->ang[1];
         ang[2] += cp->ang[2];
       }
+    }
   }
 
   /* Store the collected values in the cell. */
@@ -1471,13 +1482,11 @@ void engine_init_particles(struct engine *e) {
  */
 void engine_step(struct engine *e) {
 
-  int k;
   int updates = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
   double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
-  struct cell *c;
   struct space *s = e->s;
 
   TIMER_TIC2;
@@ -1486,9 +1495,9 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time1);
 
   /* Collect the cell data. */
-  for (k = 0; k < s->nr_cells; k++)
+  for (int k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
-      c = &s->cells[k];
+      struct cell *c = &s->cells[k];
 
       /* Recurse */
       engine_collect_kick(c);
@@ -1510,29 +1519,33 @@ void engine_step(struct engine *e) {
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-  int in_i[4], out_i[4];
-  out_i[0] = ti_end_min;
-  if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to aggregate t_end_min.");
-  ti_end_min = in_i[0];
-  out_i[0] = ti_end_max;
-  if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to aggregate t_end_max.");
-  ti_end_max = in_i[0];
-  double in_d[4], out_d[4];
-  out_d[0] = updates;
-  out_d[1] = e_kin;
-  out_d[2] = e_int;
-  out_d[3] = e_pot;
-  if (MPI_Allreduce(out_d, in_d, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
-      MPI_SUCCESS)
-    error("Failed to aggregate energies.");
-  updates = in_d[0];
-  e_kin = in_d[1];
-  e_int = in_d[2];
-  e_pot = in_d[3];
+  {
+    int in_i[4], out_i[4];
+    out_i[0] = ti_end_min;
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate t_end_min.");
+    ti_end_min = in_i[0];
+    out_i[0] = ti_end_max;
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate t_end_max.");
+    ti_end_max = in_i[0];
+  }
+  {
+    double in_d[4], out_d[4];
+    out_d[0] = updates;
+    out_d[1] = e_kin;
+    out_d[2] = e_int;
+    out_d[3] = e_pot;
+    if (MPI_Allreduce(out_d, in_d, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate energies.");
+    updates = in_d[0];
+    e_kin = in_d[1];
+    e_int = in_d[2];
+    e_pot = in_d[3];
+  }
 #endif
 
   // message("\nDRIFT\n");
@@ -1576,8 +1589,7 @@ void engine_step(struct engine *e) {
   engine_prepare(e);
 
   /* Build the masks corresponding to the policy */
-  unsigned int mask = 0;
-  unsigned int submask = 0;
+  unsigned int mask = 0, submask = 0;
 
   /* We always have sort tasks and kick tasks */
   mask |= 1 << task_type_sort;
@@ -1625,7 +1637,7 @@ void engine_step(struct engine *e) {
 
   clocks_gettime(&time2);
 
-  e->wallclock_time = (float) clocks_diff(&time1, &time2);
+  e->wallclock_time = (float)clocks_diff(&time1, &time2);
   // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
   // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 }
@@ -1646,17 +1658,17 @@ int engine_is_done(struct engine *e) {
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
-  int i, j, k, ii, jj, kk;
-  int cid, cjd, pid, ind[3], *cdim = e->s->cdim;
-  struct space *s = e->s;
+  const int *cdim = e->s->cdim;
+  const struct space *s = e->s;
   struct cell *cells = s->cells;
   struct proxy *proxies = e->proxies;
+  ticks tic = getticks();
 
   /* Prepare the proxies and the proxy index. */
   if (e->proxy_ind == NULL)
     if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
       error("Failed to allocate proxy index.");
-  for (k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
+  for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;
 
   /* The following loop is super-clunky, but it's necessary
@@ -1664,40 +1676,41 @@ void engine_makeproxies(struct engine *e) {
      the proxies is identical for all nodes! */
 
   /* Loop over each cell in the space. */
+  int ind[3];
   for (ind[0] = 0; ind[0] < cdim[0]; ind[0]++)
     for (ind[1] = 0; ind[1] < cdim[1]; ind[1]++)
       for (ind[2] = 0; ind[2] < cdim[2]; ind[2]++) {
 
         /* Get the cell ID. */
-        cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
+        const int cid = cell_getid(cdim, ind[0], ind[1], ind[2]);
 
         /* Loop over all its neighbours (periodic). */
-        for (i = -1; i <= 1; i++) {
-          ii = ind[0] + i;
+        for (int i = -1; i <= 1; i++) {
+          int ii = ind[0] + i;
           if (ii >= cdim[0])
             ii -= cdim[0];
           else if (ii < 0)
             ii += cdim[0];
-          for (j = -1; j <= 1; j++) {
-            jj = ind[1] + j;
+          for (int j = -1; j <= 1; j++) {
+            int jj = ind[1] + j;
             if (jj >= cdim[1])
               jj -= cdim[1];
             else if (jj < 0)
               jj += cdim[1];
-            for (k = -1; k <= 1; k++) {
-              kk = ind[2] + k;
+            for (int k = -1; k <= 1; k++) {
+              int kk = ind[2] + k;
               if (kk >= cdim[2])
                 kk -= cdim[2];
               else if (kk < 0)
                 kk += cdim[2];
 
               /* Get the cell ID. */
-              cjd = cell_getid(cdim, ii, jj, kk);
+              const int cjd = cell_getid(cdim, ii, jj, kk);
 
               /* Add to proxies? */
               if (cells[cid].nodeID == e->nodeID &&
                   cells[cjd].nodeID != e->nodeID) {
-                pid = e->proxy_ind[cells[cjd].nodeID];
+                int pid = e->proxy_ind[cells[cjd].nodeID];
                 if (pid < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
@@ -1714,7 +1727,7 @@ void engine_makeproxies(struct engine *e) {
 
               if (cells[cjd].nodeID == e->nodeID &&
                   cells[cid].nodeID != e->nodeID) {
-                pid = e->proxy_ind[cells[cid].nodeID];
+                int pid = e->proxy_ind[cells[cid].nodeID];
                 if (pid < 0) {
                   if (e->nr_proxies == engine_maxproxies)
                     error("Maximum number of proxies exceeded.");
@@ -1733,6 +1746,9 @@ void engine_makeproxies(struct engine *e) {
         }
       }
 
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -1758,8 +1774,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-allocate the local parts. */
   if (e->nodeID == 0)
-    message("Re-allocating parts array from %i to %i.", s->size_parts,
-            (int)(s->nr_parts * 1.2));
+    message("Re-allocating parts array from %zi to %zi.", s->size_parts,
+            (size_t)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
   struct part *parts_new = NULL;
   struct xpart *xparts_new = NULL;
@@ -1774,6 +1790,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+#else
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 
@@ -1811,78 +1829,13 @@ static bool hyperthreads_present(void) {
  * @param timeEnd Time at the end of the simulation.
  * @param dt_min Minimal allowed timestep (unsed with fixdt policy)
  * @param dt_max Maximal allowed timestep
+ * @param verbose Is this #engine talkative ?
  */
 
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max) {
-
-  int i, k;
-#if defined(HAVE_SETAFFINITY)
-  int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int j, cpuid[nr_cores];
-  cpu_set_t cpuset;
-  if ((policy & engine_policy_cputight) == engine_policy_cputight) {
-    for (k = 0; k < nr_cores; k++) cpuid[k] = k;
-  } else {
-    /*  Get next highest power of 2. */
-    int maxint = 1;
-    while (maxint < nr_cores) maxint *= 2;
-
-    cpuid[0] = 0;
-    k = 1;
-    for (i = 1; i < maxint; i *= 2)
-      for (j = maxint / i / 2; j < maxint; j += maxint / i)
-        if (j < nr_cores && j != 0) cpuid[k++] = j;
-
-#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-    /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
-    if (numa_available() >= 0) {
-      if (nodeID == 0) message("prefer NUMA-local CPUs");
-
-      int home = numa_node_of_cpu(sched_getcpu()), half = nr_cores / 2;
-      bool done = false, swap_hyperthreads = hyperthreads_present();
-      if (swap_hyperthreads && nodeID == 0)
-        message("prefer physical cores to hyperthreads");
-
-      while (!done) {
-        done = true;
-        for (i = 1; i < nr_cores; i++) {
-          int node_a = numa_node_of_cpu(cpuid[i - 1]);
-          int node_b = numa_node_of_cpu(cpuid[i]);
-
-          /* Avoid using local hyperthreads over unused remote physical cores.
-           * Assume two hyperthreads, and that cpuid >= half partitions them.
-           */
-          int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
-          int thread_b = swap_hyperthreads && cpuid[i] >= half;
-
-          bool swap = thread_a > thread_b;
-          if (thread_a == thread_b)
-            swap = numa_distance(home, node_a) > numa_distance(home, node_b);
-
-          if (swap) {
-            int t = cpuid[i - 1];
-            cpuid[i - 1] = cpuid[i];
-            cpuid[i] = t;
-            done = false;
-          }
-        }
-      }
-    }
-#endif
-
-    if (nodeID == 0) {
-#ifdef WITH_MPI
-      printf("[%03i] engine_init: cpu map is [ ", nodeID);
-#else
-      printf("engine_init: cpu map is [ ");
-#endif
-      for (i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
-      printf("].\n");
-    }
-  }
-#endif
+                 float timeBegin, float timeEnd, float dt_min, float dt_max,
+                 int verbose) {
 
   /* Store the values. */
   e->s = s;
@@ -1908,11 +1861,81 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->dt_min = dt_min;
   e->dt_max = dt_max;
   e->file_stats = NULL;
+  e->verbose = verbose;
   e->wallclock_time = 0.f;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
   s->e = e;
+
+#if defined(HAVE_SETAFFINITY)
+  const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
+  int cpuid[nr_cores];
+  cpu_set_t cpuset;
+  if ((policy & engine_policy_cputight) == engine_policy_cputight) {
+    for (int k = 0; k < nr_cores; k++) cpuid[k] = k;
+  } else {
+    /*  Get next highest power of 2. */
+    int maxint = 1;
+    while (maxint < nr_cores) maxint *= 2;
+
+    cpuid[0] = 0;
+    int k = 1;
+    for (int i = 1; i < maxint; i *= 2)
+      for (int j = maxint / i / 2; j < maxint; j += maxint / i)
+        if (j < nr_cores && j != 0) cpuid[k++] = j;
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+    /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
+    if (numa_available() >= 0) {
+      if (nodeID == 0) message("prefer NUMA-local CPUs");
+
+      const int home = numa_node_of_cpu(sched_getcpu());
+      const int half = nr_cores / 2;
+      const bool swap_hyperthreads = hyperthreads_present();
+      bool done = false;
+      if (swap_hyperthreads && nodeID == 0)
+        message("prefer physical cores to hyperthreads");
+
+      while (!done) {
+        done = true;
+        for (int i = 1; i < nr_cores; i++) {
+          const int node_a = numa_node_of_cpu(cpuid[i - 1]);
+          const int node_b = numa_node_of_cpu(cpuid[i]);
+
+          /* Avoid using local hyperthreads over unused remote physical cores.
+           * Assume two hyperthreads, and that cpuid >= half partitions them.
+           */
+          const int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
+          const int thread_b = swap_hyperthreads && cpuid[i] >= half;
+
+          bool swap = thread_a > thread_b;
+          if (thread_a == thread_b)
+            swap = numa_distance(home, node_a) > numa_distance(home, node_b);
+
+          if (swap) {
+            const int t = cpuid[i - 1];
+            cpuid[i - 1] = cpuid[i];
+            cpuid[i] = t;
+            done = false;
+          }
+        }
+      }
+    }
+#endif
+
+    if (nodeID == 0) {
+#ifdef WITH_MPI
+      printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
+             clocks_get_timesincestart());
+#else
+      printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
+#endif
+      for (int i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
+      printf("].\n");
+    }
+  }
+#endif
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
@@ -2020,7 +2043,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Create the sorting tasks. */
-  for (i = 0; i < e->nr_threads; i++)
+  for (int i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
 
@@ -2030,7 +2053,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   if ((e->runners =
            (struct runner *)malloc(sizeof(struct runner) * nr_threads)) == NULL)
     error("Failed to allocate threads array.");
-  for (k = 0; k < nr_threads; k++) {
+  for (int k = 0; k < nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;
     e->barrier_running += 1;
@@ -2082,16 +2105,18 @@ void engine_print_policy(struct engine *e) {
 
 #ifdef WITH_MPI
   if (e->nodeID == 0) {
-    printf("[000] engine_policy: engine policies are [ ");
+    printf("[0000] %s engine_policy: engine policies are [ ",
+           clocks_get_timesincestart());
     for (int k = 1; k < 32; k++)
-      if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
+      if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
     printf(" ]\n");
     fflush(stdout);
   }
 #else
-  printf("engine_policy: engine policies are [ ");
+  printf("%s engine_policy: engine policies are [ ",
+         clocks_get_timesincestart());
   for (int k = 1; k < 32; k++)
-    if (e->policy & (1 << k)) printf(" %s,", engine_policy_names[k + 1]);
+    if (e->policy & (1 << k)) printf(" %s ", engine_policy_names[k + 1]);
   printf(" ]\n");
   fflush(stdout);
 #endif

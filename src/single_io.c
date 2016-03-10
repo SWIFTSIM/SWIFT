@@ -199,6 +199,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
     chunk_shape[1] = 0;
   }
 
+  /* Make sure the chunks are not larger than the dataset */
+  if (chunk_shape[0] > N) chunk_shape[0] = N;
+
   /* Change shape of data space */
   h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if (h_err < 0) {

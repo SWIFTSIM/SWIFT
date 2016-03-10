@@ -359,9 +359,7 @@ FILE* prepareXMFfile() {
 
   if (tempFile == NULL) error("Unable to open temporary file.");
 
-  int i = 0;
-  while (fgets(buffer, 1024, tempFile) != NULL && i < counter - 3) {
-    i++;
+  for (int i = 0; fgets(buffer, 1024, tempFile) != NULL && i < counter - 3; i++) {
     fprintf(xmfFile, "%s", buffer);
   }
   fprintf(xmfFile, "\n");

@@ -41,6 +41,9 @@
 /* The CPU frequency used to convert ticks to seconds. */
 static unsigned long long clocks_cpufreq = 0;
 
+/* Ticks when the CPU frequency was initialised. Used in elapsed. */
+static ticks clocks_start = 0;
+
 /* The units of any returned times. */
 static char *clocks_units[] = {"ms", "ticks"};
 static int clocks_units_index = 0;
@@ -83,7 +86,8 @@ double clocks_diff(struct clocks_time *start, struct clocks_time *end) {
   }
   return (double)temp.tv_sec * 1000.0 + (double)temp.tv_nsec * 1.0E-6;
 #else
-  return elapsed(end->time, start->time) / clocks_get_cpufreq() * clocks_units_scale;
+  return elapsed(end->time, start->time) / clocks_get_cpufreq() *
+         clocks_units_scale;
 #endif
 }
 
@@ -101,6 +105,7 @@ void clocks_set_cpufreq(unsigned long long freq) {
   } else {
     clocks_estimate_cpufreq();
   }
+  clocks_start = getticks();
 }
 
 /**
@@ -219,6 +224,23 @@ double clocks_from_ticks(ticks tics) {
  *
  * @result the current time units.
  */
-const char *clocks_getunit() {
-  return clocks_units[clocks_units_index];
+const char *clocks_getunit() { return clocks_units[clocks_units_index]; }
+
+/**
+ * @brief returns the time since the start of the execution in seconds
+ *
+ * Need to call clocks_set_cpufreq() to mark the start of execution.
+ *
+ * The time is return in the format [sssss.s].
+ *
+ * @result the time since the start of the execution
+ */
+const char *clocks_get_timesincestart() {
+
+  static char buffer[40];
+
+  sprintf(buffer, "[%07.1f]",
+          clocks_diff_ticks(getticks(), clocks_start) / 1000.0);
+
+  return buffer;
 }

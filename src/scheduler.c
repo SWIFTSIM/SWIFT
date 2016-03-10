@@ -937,7 +937,7 @@ void scheduler_reweight(struct scheduler *s) {
     if (t->type == task_type_recv) t->weight *= 1.41;
   }
   // message( "weighting tasks took %.3f %s." ,
-  //clocks_from_ticks( getticks() - tic ), clocks_getunit());
+  // clocks_from_ticks( getticks() - tic ), clocks_getunit());
 
   /* int min = tasks[0].weight, max = tasks[0].weight;
   for ( k = 1 ; k < nr_tasks ; k++ )
@@ -974,7 +974,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
     s->tasks[k].rid = -1;
   }
   // message( "waiting tasks took %.3f %s." ,
-  //clocks_from_ticks(getticks() - tic), clocks_getunit() );
+  // clocks_from_ticks(getticks() - tic), clocks_getunit() );
 
   /* Enqueue a set of extraenous tasks to set the task waits. */
   struct task *rewait_tasks = &s->tasks[s->nr_tasks];
@@ -1034,7 +1034,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   }
 
   // message( "enqueueing tasks took %.3f %s." ,
-  //clocks_from_ticks( getticks() - tic ), clocks_getunit());
+  // clocks_from_ticks( getticks() - tic ), clocks_getunit());
 }
 
 /**
