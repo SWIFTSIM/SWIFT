@@ -106,6 +106,8 @@ struct space {
   /* Buffers for parts that we will receive from foreign cells. */
   struct part *parts_foreign;
   size_t nr_parts_foreign, size_parts_foreign;
+  struct gpart *gparts_foreign;
+  size_t nr_gparts_foreign, size_gparts_foreign;
 };
 
 /* Interval stack necessary for parallel particle sorting. */

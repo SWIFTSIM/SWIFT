@@ -36,6 +36,7 @@
 /* Some constants. */
 #define part_align 64
 #define xpart_align 32
+#define gpart_align 32
 
 /* Import the right particle definition */
 #if defined(MINIMAL_SPH)

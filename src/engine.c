@@ -545,33 +545,40 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
-  int count_in = 0;
+  int count_parts_in = 0, count_gparts_in = 0;
   for (int k = 0; k < nr_proxies; k++)
-    for (int j = 0; j < e->proxies[k].nr_cells_in; j++)
-      count_in += e->proxies[k].cells_in[j]->count;
-  if (count_in > s->size_parts_foreign) {
+    for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
+      count_parts_in += e->proxies[k].cells_in[j]->count;
+      count_gparts_in += e->proxies[k].cells_in[j]->gcount;
+    }
+  if (count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) free(s->parts_foreign);
-    s->size_parts_foreign = 1.1 * count_in;
+    s->size_parts_foreign = 1.1 * count_parts_in;
     if (posix_memalign((void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
       error("Failed to allocate foreign part data.");
   }
+  if (count_gparts_in > s->size_gparts_foreign) {
+    if (s->gparts_foreign != NULL) free(s->gparts_foreign);
+    s->size_gparts_foreign = 1.1 * count_gparts_in;
+    if (posix_memalign((void **)&s->gparts_foreign, gpart_align,
+                       sizeof(struct gpart) * s->size_gparts_foreign) != 0)
+      error("Failed to allocate foreign gpart data.");
+  }
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
-  // struct gpart *gparts = s->gparts_foreign;
+  struct gpart *gparts = s->gparts_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
       cell_link_parts(e->proxies[k].cells_in[j], parts);
-      // cell_link_gparts(e->proxies[k].cells_in[j], gparts);
+      cell_link_gparts(e->proxies[k].cells_in[j], gparts);
       parts = &parts[e->proxies[k].cells_in[j]->count];
+      gparts = &gparts[e->proxies[k].cells_in[j]->gcount];
     }
   }
   s->nr_parts_foreign = parts - s->parts_foreign;
-
-  /* Is the parts buffer large enough? */
-  if (s->nr_parts_foreign > s->size_parts_foreign)
-    error("Foreign parts buffer too small.");
+  s->nr_gparts_foreign = gparts - s->gparts_foreign;
 
   /* Free the pcell buffer. */
   free(pcells);
