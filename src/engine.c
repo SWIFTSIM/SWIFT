@@ -168,7 +168,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   struct part *parts = s->parts;
-  for (int k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < s->nr_parts; k++) {
     for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
         parts[k].x[j] += dim[j];
