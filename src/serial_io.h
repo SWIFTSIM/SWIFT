@@ -31,7 +31,7 @@
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
 
-void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
+void read_ic_serial(char* fileName, double dim[3], struct part** parts, size_t* N,
                     int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info);
 

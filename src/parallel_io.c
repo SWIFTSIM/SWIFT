@@ -357,7 +357,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  */
 void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
-                      int* N, int* periodic, int mpi_rank, int mpi_size,
+                      size_t* N, int* periodic, int mpi_rank, int mpi_size,
                       MPI_Comm comm, MPI_Info info) {
   hid_t h_file = 0, h_grp = 0;
   double boxSize[3] = {

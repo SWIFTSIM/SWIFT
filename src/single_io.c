@@ -322,14 +322,14 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  */
 void read_ic_single(char* fileName, double dim[3], struct part** parts,
-                    struct gpart** gparts, int* Ngas, int* Ngparts,
+                    struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
                     int* periodic) {
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
   int numParticles[6] = {0};
-  int Ndm;
+  size_t Ndm;
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -391,7 +391,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* Open SPH particles group */
   /* message("Reading particle arrays..."); */
   message("BoxSize = %lf", dim[0]);
-  message("NumPart = [%d, %d] Total = %d", *Ngas, Ndm, *Ngparts);
+  message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < 6; ptype++) {
@@ -457,8 +457,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
 void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
-  const int Ngas = e->s->nr_parts;
-  const int Ntot = e->s->nr_gparts;
+  const size_t Ngas = e->s->nr_parts;
+  const size_t Ntot = e->s->nr_gparts;
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;

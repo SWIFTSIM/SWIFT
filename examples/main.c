@@ -58,8 +58,9 @@
 
 int main(int argc, char *argv[]) {
 
-  int c, icount, j, k, Ngas = 0, Ngpart = 0, periodic = 1;
-  long long N_total[2] = {0};
+  int c, icount, periodic = 1;
+  size_t Ngas = 0, Ngpart = 0;
+  long long N_total[2] = {0, 0};
   int nr_threads = 1, nr_queues = -1;
   int dump_tasks = 0;
   int data[2];
@@ -386,16 +387,16 @@ int main(int argc, char *argv[]) {
 
   /* Apply h scaling */
   if (scaling != 1.0)
-    for (k = 0; k < Ngas; k++) parts[k].h *= scaling;
+    for (size_t k = 0; k < Ngas; k++) parts[k].h *= scaling;
 
   /* Apply shift */
   if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
-    for (k = 0; k < Ngas; k++) {
+    for (size_t k = 0; k < Ngas; k++) {
       parts[k].x[0] += shift[0];
       parts[k].x[1] += shift[1];
       parts[k].x[2] += shift[2];
     }
-    for (k = 0; k < Ngpart; k++) {
+    for (size_t k = 0; k < Ngpart; k++) {
       gparts[k].x[0] += shift[0];
       gparts[k].x[1] += shift[1];
       gparts[k].x[2] += shift[2];
@@ -513,7 +514,7 @@ int main(int argc, char *argv[]) {
         clocks_getunit());
 
   /* Let loose a runner on the space. */
-  for (j = 0; !engine_is_done(&e); j++) {
+  for (int j = 0; !engine_is_done(&e); j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI

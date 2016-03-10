@@ -27,7 +27,7 @@
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
 void read_ic_single(char* fileName, double dim[3], struct part** parts,
-                    struct gpart** gparts, int* Ngas, int* Ndm, int* periodic);
+                    struct gpart** gparts, size_t* Ngas, size_t* Ndm, int* periodic);
 
 void write_output_single(struct engine* e, struct UnitSystem* us);
 
