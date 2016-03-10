@@ -559,9 +559,11 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Unpack the cells and link to the particle data. */
   struct part *parts = s->parts_foreign;
+  // struct gpart *gparts = s->gparts_foreign;
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
-      cell_link(e->proxies[k].cells_in[j], parts);
+      cell_link_parts(e->proxies[k].cells_in[j], parts);
+      // cell_link_gparts(e->proxies[k].cells_in[j], gparts);
       parts = &parts[e->proxies[k].cells_in[j]->count];
     }
   }
