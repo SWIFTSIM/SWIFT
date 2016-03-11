@@ -67,6 +67,7 @@
 #else
 #define ENGINE_EXTERNAL_GRAVITY 0
 #endif
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *

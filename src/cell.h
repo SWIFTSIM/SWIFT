@@ -122,6 +122,9 @@ struct cell {
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
 
+  /* Task for external gravity */
+  struct task *grav_external;
+
   /* Number of tasks that are associated with this cell. */
   int nr_tasks;
 

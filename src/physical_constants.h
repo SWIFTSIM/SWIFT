@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2012 Pedro Gonnet (ptcedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,41 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-/* Some standard headers. */
-#include <stdlib.h>
 
-/* Gravity particle. */
-struct gpart {
+/* physical constants in cgs */
+#define NEWTON_GRAVITY_CGS  6.672e-8f
+#define SOLAR_MASS_IN_CGS   1.989e33f
+#define PARSEC_IN_CGS       3.086e18f
+#define PROTON_MASS_IN_CGS  1.6726231e24f
+#define YEAR_IN_CGS         3.154e+7f
 
-  /* Particle position. */
-  double x[3];
-
-  /* Particle velocity. */
-  float v[3];
-
-  /* Particle acceleration. */
-  float a[3];
-
-  /* Gravity acceleration */
-  float a_grav_external[3];
-
-  /* Particle mass. */
-  float mass;
-
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
-
-  /* Anonymous union for id/part. */
-  union {
-
-    /* Particle ID. */
-    size_t id;
-
-    /* Pointer to corresponding SPH part. */
-    struct part* part;
-  };
-
-} __attribute__((aligned(part_align)));
+/* Hydrodynamical constants. */
+#define const_hydro_gamma (5.0f / 3.0f)

@@ -413,6 +413,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, struct g
 	    (*gparts)[i].id = -abs( (*gparts)[i].id );
 	  }
 	}
+
 	else
 	  error("Particle Type %d not yet supported. Aborting", ptype);
 	  

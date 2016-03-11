@@ -314,17 +314,16 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   struct part *restrict p;
   int *ind;
   double ih[3], dim[3];
- 
-  // ticks tic;
+  ticks tic;
 
   /* Be verbose about this. */
-  // message( "re)building space..." ); fflush(stdout);
+  message( "re)building space..." ); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
   cells = s->cells;
   /* Run through the SPH particles and get their cell index. */
-  // tic = getticks();
+  tic = getticks();
  
   const int ind_size = nr_parts;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
@@ -427,16 +426,17 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     cells[ind[k]].gcount++;
   }
  
-  // message( "getting particle indices took %.3f ms." , (double)(getticks() -
-  // tic) / CPU_TPS * 1000 );
-
+  message( "getting particle indices took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
+#ifdef WITH_MPI
   /* TODO: Here we should exchange the gparts as well! */
+  message(" need to exchenge gravity particles ");
+  stop;
+#endif
 
   /* Sort the parts according to their cells. */
   // tic = getticks();
   gparts_sort(s->gparts, ind, nr_gparts, 0, s->nr_cells - 1);
-  // message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS
-  // * 1000 );
+  message( "gparts_sort took %.3f ms." , (double)(getticks() - tic) / CPU_TPS * 1000 );
 
  
   /* We no longer need the indices as of here. */
@@ -1060,17 +1060,16 @@ void space_split(struct space *s, struct cell *c) {
       if (ti_end > ti_end_max) ti_end_max = ti_end;
       c->h_max = h_max;
     }
-    if (!count) {
-       for (k = 0; k < gcount; k++) {
-	 gp = &gparts[k];
-	 ti_end = gp->ti_end;
-	 if (ti_end < ti_end_min) ti_end_min = ti_end;
-	 if (ti_end > ti_end_max) ti_end_max = ti_end;
-       }
-    }
-   
-    c->ti_end_min = ti_end_min;
-    c->ti_end_max = ti_end_max;
+
+	 for (k = 0; k < gcount; k++) {
+		gp = &gparts[k];
+		ti_end = gp->ti_end;
+		if (ti_end < ti_end_min) ti_end_min = ti_end;
+		if (ti_end > ti_end_max) ti_end_max = ti_end;
+	 }
+	 
+	 c->ti_end_min = ti_end_min;
+	 c->ti_end_max = ti_end_max;
   }
 
   /* Set ownership according to the start of the parts array. */

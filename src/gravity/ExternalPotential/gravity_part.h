@@ -38,7 +38,7 @@ struct gpart {
   double x[3];
 
   /* Particle velocity. */
-  float v[3];
+  float v_full[3];
 
   /* Particle acceleration. */
   float a[3];
@@ -58,8 +58,8 @@ struct gpart {
   /* Anonymous union for id/part. */
   union {
 
-    /* Particle ID. */
-    size_t id;
+    /* Particle ID. By default: gravity only particles have a negative ID*/
+    long id;
 
     /* Pointer to corresponding SPH part. */
     struct part* part;

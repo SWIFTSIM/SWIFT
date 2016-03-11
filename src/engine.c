@@ -99,7 +99,7 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
   struct scheduler *s = &e->sched;
 
   /* Am I the super-cell? */
-  if (super == NULL && c->nr_tasks > 0) {
+  if (super == NULL && (c->count > 0 || c->gcount > 0)) {
 
     /* Remember me. */
     super = c;
@@ -107,18 +107,33 @@ void engine_mkghosts(struct engine *e, struct cell *c, struct cell *super) {
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
-      /* Generate the ghost task. */
-      c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
+		if(c->count > 0)
+		  {
+			 /* Generate the ghost task. */
+			 c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
+			 /* Add the init task. */
+			 c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
+												  NULL, 0);
+		  }
+
       /* Add the drift task. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
-      /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+
       /* Add the kick task. */
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
+
+		if(c->gcount > 0)
+		  {
+			 /* Add the gravity tasks */
+			 c->grav_external = scheduler_addtask(s, task_type_grav_external, task_subtype_none, 0, 0,
+			                                      c, NULL, 0);
+			 
+			 /* Enforce gravity calculated before kick  */
+			 scheduler_addunlock(s, c->grav_external, c->kick);
+		  }
     }
   }
 
@@ -775,19 +790,19 @@ void engine_maketasks(struct engine *e) {
         }
       }
 
-#ifdef DEFAULT_GRAVITY
-  /* Add the gravity mm tasks. */
-  for (i = 0; i < nr_cells; i++)
-    if (cells[i].gcount > 0) {
-      scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                        &cells[i], NULL, 0);
-      for (j = i + 1; j < nr_cells; j++)
-        if (cells[j].gcount > 0)
-          scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                            &cells[i], &cells[j], 0);
-    }
+#ifdef GRAVITY
+/* #ifdef DEFAULT_GRAVITY */
+/*   /\* Add the gravity mm tasks. *\/ */
+/*   for (i = 0; i < nr_cells; i++) */
+/*     if (cells[i].gcount > 0) { */
+/*       scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
+/*                         &cells[i], NULL, 0); */
+/*       for (j = i + 1; j < nr_cells; j++) */
+/*         if (cells[j].gcount > 0) */
+/*           scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0, */
+/*                             &cells[i], &cells[j], 0); */
+/*     } */
 #endif
-  scheduler_print_tasks(sched, "sched.txt");
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
@@ -987,6 +1002,10 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the tasks age. */
   e->tasks_age = 0;
+
+  /* print all possibly scheduled tasks */
+  scheduler_print_tasks(sched, "sched.txt");
+
 }
 
 /**
@@ -1307,7 +1326,7 @@ void engine_collect_kick(struct cell *c) {
   if (c->kick != NULL) return;
 
   /* Only do something is the cell is non-empty */
-  if (c->count != 0) {
+  if (c->count != 0 || c->gcount != 0) {
 
     /* If this cell is not split, I'm in trouble. */
     if (!c->split) error("Cell has no super-cell.");
@@ -1429,15 +1448,15 @@ void engine_init_particles(struct engine *e) {
 
   /* Add the tasks corresponding to self-gravity to the masks */
   if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
-
+	 
     /* Nothing here for now */
   }
 
-  /* Add the tasks corresponding to self-gravity to the masks */
+  /* Add the tasks corresponding to external gravity to the masks */
   if ((e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity) {
     printf("%s: JR: Excellent lets add the external gravity tasks here.....\n", __FUNCTION__);
-    /* Nothing here for now */
+    mask |= 1 << task_type_grav_external;
   }
 
   /* Add MPI tasks if need be */
@@ -1600,8 +1619,7 @@ void engine_step(struct engine *e) {
   /* Add the tasks corresponding to self-gravity to the masks */
   if ((e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity) {
-
-    /* Nothing here for now */
+	 mask |= 1 << task_type_grav_external;
   }
 
   /* Add MPI tasks if need be */
