@@ -468,6 +468,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   int numFiles = 1;
   struct part* parts = e->s->parts;
   struct gpart* gparts = e->s->gparts;
+  struct gpart* dmparts = NULL;
   static int outputCount = 0;
 
   /* Number of particles of each type */
@@ -575,7 +576,6 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
       case DM:
         /* Allocate temporary array */
-	struct gpart* dmparts = NULL;
         if (posix_memalign((void*)&dmparts, gpart_align,
                            Ndm * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for DM particles");
