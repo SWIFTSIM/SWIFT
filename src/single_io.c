@@ -328,7 +328,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
-  int numParticles[6] = {0};
+  int numParticles[NUM_PARTICLE_TYPES] = {0};
   size_t Ndm;
 
   /* Open file */
@@ -394,7 +394,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts);
 
   /* Loop over all particle types */
-  for (int ptype = 0; ptype < 6; ptype++) {
+  for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
     /* Don't do anything if no particle of this kind */
     if (numParticles[ptype] == 0) continue;
@@ -469,8 +469,10 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   /* Number of particles of each type */
   const size_t Ndm = Ntot - Ngas;
-  int numParticles[6] = {Ngas, Ndm, 0}; /* Gadget-2 convention here */
-  int numParticlesHighWord[6] = {0};    /* Could use size_t instead */
+  int numParticles[NUM_PARTICLE_TYPES] = {Ngas, Ndm,
+                                          0}; /* Gadget-2 convention here */
+  int numParticlesHighWord[NUM_PARTICLE_TYPES] = {
+      0}; /* Could use size_t instead */
 
   /* File name */
   char fileName[200];
@@ -511,17 +513,20 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   /* Print the relevant information and print status */
   writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
-  writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
+  writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles,
+                 NUM_PARTICLE_TYPES);
   double dblTime = e->time;
   writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
 
   /* GADGET-2 legacy values */
-  writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
+  writeAttribute(h_grp, "NumPart_Total", UINT, numParticles,
+                 NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord,
-                 6);
-  double MassTable[6] = {0., 0., 0., 0., 0., 0.};
-  writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
-  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord, 6);
+                 NUM_PARTICLE_TYPES);
+  double MassTable[NUM_PARTICLE_TYPES] = {0., 0., 0., 0., 0., 0.};
+  writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, NUM_PARTICLE_TYPES);
+  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord,
+                 NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
 
   /* Close header */
@@ -540,7 +545,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   writeUnitSystem(h_file, us);
 
   /* Loop over all particle types */
-  for (int ptype = 0; ptype < 6; ptype++) {
+  for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
     /* Don't do anything if no particle of this kind */
     if (numParticles[ptype] == 0) continue;

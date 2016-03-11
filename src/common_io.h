@@ -63,8 +63,11 @@ enum DATA_IMPORTANCE {
 enum PARTICLE_TYPE {
   GAS = 0,
   DM = 1,
+  BOUNDARY = 2,
+  DUMMY = 3,
   STAR = 4,
-  BH = 5
+  BH = 5,
+  NUM_PARTICLE_TYPES
 };
 
 hid_t hdf5Type(enum DATA_TYPE type);
