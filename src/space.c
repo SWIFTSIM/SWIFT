@@ -1153,7 +1153,7 @@ void space_do_split(struct space *s, struct cell *c) {
   }
 
   /* Set ownership according to the start of the parts array. */
-  if (count > 0)
+  if (s->nr_parts > 0)
     c->owner =
         ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
   else
