@@ -127,7 +127,7 @@ void scheduler_splittasks(struct scheduler *s) {
     }
 
     /* Skip sorting tasks. */
-    if (t->type == task_type_psort) continue;
+    if (t->type == task_type_part_sort) continue;
 
     /* Empty task? */
     if (t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) {

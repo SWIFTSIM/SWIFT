@@ -755,7 +755,7 @@ void engine_maketasks(struct engine *e) {
 
   /* Add the space sorting tasks. */
   for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
+    scheduler_addtask(sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
 
   /* Run through the highest level of cells and add pairs. */
@@ -2050,7 +2050,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Create the sorting tasks. */
   for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
+    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
 
   scheduler_ranktasks(&e->sched);

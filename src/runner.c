@@ -1057,7 +1057,7 @@ void *runner_main(void *data) {
         case task_type_grav_down:
           runner_dograv_down(r, t->ci);
           break;
-        case task_type_psort:
+        case task_type_part_sort:
           space_do_parts_sort();
           break;
         case task_type_split_cell:

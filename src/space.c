@@ -582,7 +582,7 @@ void space_parts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
   space_sort_struct.waiting = 1;
 
   /* Launch the sorting tasks. */
-  engine_launch(s->e, s->e->nr_threads, (1 << task_type_psort), 0);
+  engine_launch(s->e, s->e->nr_threads, (1 << task_type_part_sort), 0);
 
   /* Verify space_sort_struct. */
   /* for (int i = 1; i < N; i++)
