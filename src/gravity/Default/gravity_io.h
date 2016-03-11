@@ -18,14 +18,14 @@
  ******************************************************************************/
 
 /**
- * @brief Reads the different particles to the HDF5 file
+ * @brief Read dark matter particles from HDF5.
  *
  * @param h_grp The HDF5 group in which to read the arrays.
  * @param N The number of particles on that MPI rank.
  * @param N_total The total number of particles (only used in MPI mode)
  * @param offset The offset of the particles for this MPI rank (only used in MPI
  *mode)
- * @param parts The particle array
+ * @param gparts The particle array
  *
  */
 __attribute__((always_inline)) INLINE static void darkmatter_read_particles(

@@ -306,9 +306,11 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
  *
  * @param fileName The file to read.
- * @param dim (output) The dimension of the volume read from the file.
- * @param parts (output) The array of #part read from the file.
- * @param N (output) The number of particles read from the file.
+ * @param dim (output) The dimension of the volume.
+ * @param parts (output) Array of Gas particles.
+ * @param gparts (output) Array of DM particles.
+ * @param Ngas (output) number of Gas particles read.
+ * @param Ngparts (output) The number of DM particles read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  *
  * Opens the HDF5 file fileName and reads the particles contained
