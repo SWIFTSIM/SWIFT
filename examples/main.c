@@ -62,6 +62,11 @@
 #define ENGINE_HYDRO 0
 #endif
 
+#if defined(EXTERNAL_POTENTIAL)
+#define ENGINE_EXTERNAL_GRAVITY engine_policy_external_gravity
+#else
+#define ENGINE_EXTERNAL_GRAVITY 0
+#endif
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -415,25 +420,12 @@ int main(int argc, char *argv[]) {
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
 
-  /* Verify that each particle is in it's proper cell. */
-  if (myrank == 0) {
-    icount = 0;
-    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
-    message("map_cellcheck picked up %i parts.", icount);
-  }
-
-  if (myrank == 0) {
-    data[0] = s.maxdepth;
-    data[1] = 0;
-    space_map_cells_pre(&s, 0, &map_maxdepth, data);
-    message("nr of cells at depth %i is %i.", data[0], data[1]);
-  }
-
+  
   /* Initialize the engine with this space. */
   tic = getticks();
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal | ENGINE_HYDRO, 0,
+              ENGINE_POLICY | engine_policy_steal | ENGINE_HYDRO | ENGINE_EXTERNAL_GRAVITY, 0,
               time_end, dt_min, dt_max);
   if (myrank == 0)
     message("engine_init took %.3f ms.",
@@ -482,6 +474,21 @@ int main(int argc, char *argv[]) {
  
   /* Initialise the particles */
   engine_init_particles(&e);
+  /* Verify that each particle is in it's proper cell. */
+  if (myrank == 0) {
+    icount = 0;
+    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
+    message("map_cellcheck picked up %i parts.", icount);
+    
+  }
+    
+  if (myrank == 0) {
+    data[0] = s.maxdepth;
+    data[1] = 0;
+    space_map_cells_pre(&s, 0, &map_maxdepth, data);
+    message("nr of cells at depth %i is %i.", data[0], data[1]);
+  }
+  
   //exit(-99);
   /* Legend */
   if (myrank == 0)
@@ -504,7 +511,7 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
-
+    
     if (with_outputs && j % 100 == 0) {
 
 #if defined(WITH_MPI)

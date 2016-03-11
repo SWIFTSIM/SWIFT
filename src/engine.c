@@ -1166,10 +1166,11 @@ void engine_print(struct engine *e) {
 void engine_rebuild(struct engine *e) {
   /* Clear the forcerebuild flag, whatever it was. */
   e->forcerebuild = 0;
-
+  
   /* Re-build the space. */
   // tic = getticks();
   space_rebuild(e->s, 0.0, e->nodeID == 0);
+  
 // message( "space_rebuild took %.3f ms." , (double)(getticks() -
 // tic)/CPU_TPS*1000 );
 
@@ -1216,7 +1217,7 @@ void engine_prepare(struct engine *e) {
   rebuild = (e->forcerebuild || engine_marktasks(e));
 // message( "space_marktasks took %.3f ms." , (double)(getticks() -
 // tic)/CPU_TPS*1000 );
-
+  
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
   // tic = getticks();
@@ -1237,7 +1238,7 @@ void engine_prepare(struct engine *e) {
     // message( "engine_rebuild took %.3f ms." , (double)(getticks() -
     // tic)/CPU_TPS*1000 );
   }
- 
+  
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
     // tic = getticks();
@@ -1404,13 +1405,8 @@ void engine_init_particles(struct engine *e) {
   space_map_cells_pre(s, 1, cell_init_parts, NULL);
 
   engine_prepare(e);
-
+  
   engine_marktasks(e);
-
-  // printParticle(e->s->parts, 1000, e->s->nr_parts);
-  // printParticle(e->s->parts, 515050, e->s->nr_parts);
-
-  // message("\n0th DENSITY CALC\n");
 
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0;
@@ -1440,7 +1436,7 @@ void engine_init_particles(struct engine *e) {
   /* Add the tasks corresponding to self-gravity to the masks */
   if ((e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity) {
-
+    printf("%s: JR: Excellent lets add the external gravity tasks here.....\n", __FUNCTION__);
     /* Nothing here for now */
   }
 
@@ -1979,6 +1975,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Create the sorting tasks. */
+  /* At the moment this is only implemented as a task for sorting parts, 
+   * a gparts implementation is in the works (March 2016).
+   */
   for (i = 0; i < e->nr_threads; i++)
     scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
                       NULL, 0);

@@ -37,7 +37,7 @@
 #elif defined(NO_SPH)
 #include "./hydro/Gadget2/hydro_iact.h"
 #include "./hydro/Gadget2/hydro.h"
-#define SPH_IMPLEMENTATION "No SPH"
+#define SPH_IMPLEMENTATION "No SPH i.e. use Gadget2 framework for now..."
 #else
 #error "Invalid choice of SPH variant"
 #endif

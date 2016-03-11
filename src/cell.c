@@ -558,7 +558,11 @@ void cell_init_parts(struct cell *c, void *data) {
 
   struct part *p = c->parts;
   struct xpart *xp = c->xparts;
-  const int count = c->count;
+  int count = c->gcount;
+  if(!count) count = c->count;
+
+
+  
 
   for (int i = 0; i < count; ++i) {
     p[i].ti_begin = 0;

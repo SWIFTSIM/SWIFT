@@ -407,8 +407,12 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, struct g
 	/* Read particle fields into the particle structure */
 	if(GAS == ptype)
 	  hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts);
-	else if(DARKMATTER == ptype)
+	else if(DARKMATTER == ptype) {
 	  darkmatter_read_particles(h_grp, *Ndm, *Ndm, 0, *gparts);
+	  for(int i=0; i<*Ndm; i++) {
+	    (*gparts)[i].id = -abs( (*gparts)[i].id );
+	  }
+	}
 	else
 	  error("Particle Type %d not yet supported. Aborting", ptype);
 	  

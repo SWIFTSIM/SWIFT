@@ -162,7 +162,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   int i, j, k, cdim[3], nr_parts = s->nr_parts;
   struct cell *restrict c;
   // ticks tic;
-
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
   if(nr_parts) {
@@ -178,7 +177,8 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     }
   }
   else {
-    h_max = s->dim[0]/16.0;
+    /* It would be nice to replace this with something more physical or meaningful */
+    h_max = s->dim[0]/16.0;   
     s->h_max = h_max;
   }
 
@@ -211,7 +211,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2])
     error("Root-level change of cell size not allowed.");
 #endif
-
   /* Do we need to re-build the upper-level cells? */
   // tic = getticks();
   if (s->cells == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
@@ -234,7 +233,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->ih[k] = 1.0 / s->h[k];
     }
     dmin = fminf(s->h[0], fminf(s->h[1], s->h[2]));
-
+   
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
     if (posix_memalign((void *)&s->cells, 64,
@@ -268,7 +267,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
               cdim[2]);
     fflush(stdout);
-
+    
   } /* re-build upper-level cells? */
   // message( "rebuilding upper-level cells took %.3f ms." , (double)(getticks()
   // - tic) / CPU_TPS * 1000 );
@@ -324,7 +323,6 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
   cells = s->cells;
-  
   /* Run through the SPH particles and get their cell index. */
   // tic = getticks();
  
@@ -428,7 +426,6 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
         cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
     cells[ind[k]].gcount++;
   }
-  
  
   // message( "getting particle indices took %.3f ms." , (double)(getticks() -
   // tic) / CPU_TPS * 1000 );
