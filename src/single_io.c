@@ -459,23 +459,21 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
  */
 void write_output_single(struct engine* e, struct UnitSystem* us) {
 
-  hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
+  hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
   const size_t Ntot = e->s->nr_gparts;
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
   struct gpart* gparts = e->s->gparts;
-  struct gpart* dmparts = NULL;
-  FILE* xmfFile = 0;
   static int outputCount = 0;
 
   /* Number of particles of each type */
   const size_t Ndm = Ntot - Ngas;
-  int numParticles[NUM_PARTICLE_TYPES] = {Ngas, Ndm,
-                                          0}; /* Gadget-2 convention here */
-  int numParticlesHighWord[NUM_PARTICLE_TYPES] = {
-      0}; /* Could use size_t instead */
+  int numParticles[NUM_PARTICLE_TYPES] = /* Gadget-2 convention here */
+    {Ngas, Ndm, 0};                      /* Could use size_t instead */
+  int numParticlesHighWord[NUM_PARTICLE_TYPES] =
+    {0};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -485,6 +483,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   if (outputCount == 0) createXMFfile();
 
   /* Prepare the XMF file for the new entry */
+  FILE* xmfFile = 0;
   xmfFile = prepareXMFfile();
 
   /* Write the part corresponding to this specific output */
@@ -539,10 +538,10 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
-  h_grpsph = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grpsph < 0) error("Error while creating SPH group");
-  writeSPHflavour(h_grpsph);
-  H5Gclose(h_grpsph);
+  h_grp = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating SPH group");
+  writeSPHflavour(h_grp);
+  H5Gclose(h_grp);
 
   /* Print the system of Units */
   writeUnitSystem(h_file, us);
@@ -574,6 +573,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
       case DM:
         /* Allocate temporary array */
+	struct gpart* dmparts = NULL;
         if (posix_memalign((void*)&dmparts, gpart_align,
                            Ndm * sizeof(struct gpart)) != 0)
           error("Error while allocating temporart memory for DM particles");
