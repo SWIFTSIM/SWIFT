@@ -1060,6 +1060,7 @@ void space_do_split(struct space *s, struct cell *c) {
   struct cell *temp;
   struct part *parts = c->parts;
   struct gpart *gparts = c->gparts;
+  struct xpart *xparts = c->xparts;
 
   /* Check the depth. */
   if (c->depth > s->maxdepth) s->maxdepth = c->depth;
@@ -1130,8 +1131,12 @@ void space_do_split(struct space *s, struct cell *c) {
     /* Get dt_min/dt_max. */
     for (int k = 0; k < count; k++) {
       struct part *p = &parts[k];
+      struct xpart *xp = &xparts[k];
       const float h = p->h;
       const int ti_end = p->ti_end;
+      xp->x_old[0] = p->x[0];
+      xp->x_old[1] = p->x[1];
+      xp->x_old[2] = p->x[2];
       if (h > h_max) h_max = h;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
