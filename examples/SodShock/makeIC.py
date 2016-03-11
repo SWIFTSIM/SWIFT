@@ -87,7 +87,7 @@ u = append(u1, u2,0)
 m = append(m1, m2,0)
 ids = zeros(numPart, dtype='L')
 for i in range(1, numPart+1):
-    ids[i] = i
+    ids[i-1] = i
 
 #Final operations
 h /= 2

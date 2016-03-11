@@ -1233,8 +1233,10 @@ struct cell *space_getcell(struct space *s) {
  *
  * @param s The #space to initialize.
  * @param dim Spatial dimensions of the domain.
- * @param parts Pointer to an array of #part.
- * @param N The number of parts in the space.
+ * @param parts Array of Gas particles.
+ * @param gparts Array of Gravity particles.
+ * @param Ngas The number of Gas particles in the space.
+ * @param Ngpart The number of Gravity particles in the space.
  * @param periodic flag whether the domain is periodic or not.
  * @param h_max The maximal interaction radius.
  * @param verbose Print messages to stdout or not
