@@ -483,10 +483,10 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N,
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void prepare_dm_gparts(struct gpart* gparts, int Ndm) {
+void prepare_dm_gparts(struct gpart* gparts, size_t Ndm) {
 
   /* Let's give all these gparts a negative id */
-  for (int i = 0; i < Ndm; ++i) {
+  for (size_t i = 0; i < Ndm; ++i) {
 
     /* 0 ir negative ids are not allowed */
     if (gparts[i].id <= 0) error("0 or negative ID for DM particle");
@@ -507,10 +507,10 @@ void prepare_dm_gparts(struct gpart* gparts, int Ndm) {
  * @param Ngas The number of gas particles read in.
  * @param Ndm The number of DM particles read in.
  */
-void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts, int Ngas,
-                            int Ndm) {
+void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts,
+                            size_t Ngas, size_t Ndm) {
 
-  for (int i = 0; i < Ngas; ++i) {
+  for (size_t i = 0; i < Ngas; ++i) {
 
     /* Duplicate the crucial information */
     gparts[i + Ndm].x[0] = parts[i].x[0];
@@ -537,13 +537,13 @@ void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts, int Ngas,
  * @param dmparts The array of #gpart containg DM particles to be filled.
  * @param Ndm The number of DM particles.
  */
-void collect_dm_gparts(struct gpart* gparts, int Ntot, struct gpart* dmparts,
-                       int Ndm) {
+void collect_dm_gparts(struct gpart* gparts, size_t Ntot, struct gpart* dmparts,
+                       size_t Ndm) {
 
-  int count = 0;
+  size_t count = 0;
 
   /* Loop over all gparts */
-  for (int i = 0; i < Ntot; ++i) {
+  for (size_t i = 0; i < Ntot; ++i) {
 
     /* And collect the DM ones */
     if (gparts[i].id < 0) {
@@ -555,7 +555,7 @@ void collect_dm_gparts(struct gpart* gparts, int Ntot, struct gpart* dmparts,
 
   /* Check that everything is fine */
   if (count != Ndm)
-    error("Collected the wrong number of dm particles (%d vs. %d expected)",
+    error("Collected the wrong number of dm particles (%zd vs. %zd expected)",
           count, Ndm);
 }
 
