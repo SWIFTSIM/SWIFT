@@ -1060,6 +1060,9 @@ void *runner_main(void *data) {
         case task_type_part_sort:
           space_do_parts_sort();
           break;
+        case task_type_gpart_sort:
+          space_do_gparts_sort();
+          break;
         case task_type_split_cell:
           space_do_split(e->s, t->ci);
           break;

@@ -754,9 +754,12 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
 
   /* Add the space sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
+  for (int i = 0; i < e->nr_threads; i++) {
     scheduler_addtask(sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
+    scheduler_addtask(sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   /* Run through the highest level of cells and add pairs. */
   for (int i = 0; i < cdim[0]; i++)
@@ -2049,9 +2052,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Create the sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
-                      NULL, 0);
+  for (int i = 0; i < e->nr_threads; i++) {
+    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+
+    scheduler_addtask(&e->sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   scheduler_ranktasks(&e->sched);
 
