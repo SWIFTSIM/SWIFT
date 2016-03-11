@@ -87,7 +87,9 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 }
 
 /**
- * @brief Generate the ghost and kick tasks for a hierarchy of cells.
+ * @brief Generate the ghosts all the O(Npart) tasks for a hierarchy of cells.
+ *
+ * Tasks are only created here. The dependencies will be added later on.
  *
  * @param e The #engine.
  * @param c The #cell.
@@ -740,15 +742,20 @@ int engine_exchange_strays(struct engine *e, int offset, size_t *ind,
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  *neighbours
  *
+ * Here we construct all the tasks for all possible neighbouring non-empty
+ * local cells in the hierarchy. No dependencies are being added thus far. 
+ * Additional loop over neighbours can later be added by simply duplicating
+ * all the tasks created by this function.
+ *
  * @param e The #engine.
  */
 void engine_make_hydroloop_tasks(struct engine *e) {
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
   struct cell *cells = s->cells;
-  const int nodeID = e->nodeID;
 
   /* Run through the highest level of cells and add pairs. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -798,6 +805,9 @@ void engine_make_hydroloop_tasks(struct engine *e) {
 
 /**
  * @brief Counts the tasks associated with one cell and constructs the links
+ *
+ * For each hydrodynamic task, construct the links with the corresponding cell.
+ * Similarly, construct the dependencies for all the sorting tasks.
  *
  * @param e The #engine.
  */
