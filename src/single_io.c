@@ -39,6 +39,9 @@
 #include "common_io.h"
 #include "error.h"
 
+#define FILENAME_BUFFER_SIZE 150
+#define PARTICLE_GROUP_BUFFER_SIZE 20
+
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
  *-----------------------------------------------------------------------------*/
@@ -166,7 +169,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   char* temp_c = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
-  char buffer[150];
+  char buffer[FILENAME_BUFFER_SIZE];
 
   /* message("Writing '%s' array...", name); */
 
@@ -400,7 +403,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
     if (numParticles[ptype] == 0) continue;
 
     /* Open the particle group in the file */
-    char partTypeGroupName[15];
+    char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
     sprintf(partTypeGroupName, "/PartType%d", ptype);
     h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
     if (h_grp < 0) {
@@ -475,7 +478,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
       0}; /* Could use size_t instead */
 
   /* File name */
-  char fileName[200];
+  char fileName[FILENAME_BUFFER_SIZE];
   sprintf(fileName, "output_%03i.hdf5", outputCount);
 
   /* First time, we need to create the XMF file */
@@ -551,7 +554,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
     if (numParticles[ptype] == 0) continue;
 
     /* Open the particle group in the file */
-    char partTypeGroupName[15];
+    char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
     sprintf(partTypeGroupName, "/PartType%d", ptype);
     h_grp = H5Gcreate(h_file, partTypeGroupName, H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
