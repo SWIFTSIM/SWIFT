@@ -468,9 +468,9 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   static int outputCount = 0;
 
   /* Number of particles of each type */
-  const int Ndm = Ntot - Ngas;
-  int numParticles[6] = {Ngas, Ndm, 0};
-  int numParticlesHighWord[6] = {0};
+  const size_t Ndm = Ntot - Ngas;
+  int numParticles[6] = {Ngas, Ndm, 0}; /* Gadget-2 convention here */
+  int numParticlesHighWord[6] = {0};    /* Could use size_t instead */
 
   /* File name */
   char fileName[200];
