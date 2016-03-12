@@ -474,9 +474,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   /* Number of particles of each type */
   const size_t Ndm = Ntot - Ngas;
   int numParticles[NUM_PARTICLE_TYPES] = /* Gadget-2 convention here */
-    {Ngas, Ndm, 0};                      /* Could use size_t instead */
-  int numParticlesHighWord[NUM_PARTICLE_TYPES] =
-    {0};
+      {Ngas, Ndm, 0};                    /* Could use size_t instead */
+  int numParticlesHighWord[NUM_PARTICLE_TYPES] = {0};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
