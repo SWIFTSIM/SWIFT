@@ -487,7 +487,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #endif
 
   /* Sort the gparts according to their cells. */
-  space_gparts_sort(s, ind, nr_gparts, 0, s->nr_cells - 1, verbose);
+  space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
   for (int k = 0; k < nr_gparts; k++)
