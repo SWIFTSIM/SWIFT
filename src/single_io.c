@@ -406,7 +406,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
-    sprintf(partTypeGroupName, "/PartType%d", ptype);
+    snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
+             ptype);
     h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
     if (h_grp < 0) {
       error("Error while opening particle group %s.", partTypeGroupName);
@@ -479,7 +480,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  sprintf(fileName, "output_%03i.hdf5", outputCount);
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "output_%03i.hdf5", outputCount);
 
   /* First time, we need to create the XMF file */
   if (outputCount == 0) createXMFfile();
@@ -556,7 +557,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
-    sprintf(partTypeGroupName, "/PartType%d", ptype);
+    snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
+             ptype);
     h_grp = H5Gcreate(h_file, partTypeGroupName, H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
     if (h_grp < 0) {
