@@ -59,6 +59,9 @@ struct proxy {
   int nr_parts_in, nr_parts_out;
   int size_gparts_in, size_gparts_out;
   int nr_gparts_in, nr_gparts_out;
+  
+  /* Buffer to hold the incomming/outgoing particle counts. */
+  int buff_out[2], buff_in[2];
 
 /* MPI request handles. */
 #ifdef WITH_MPI
