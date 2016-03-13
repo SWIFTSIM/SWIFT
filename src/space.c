@@ -370,9 +370,13 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
-  s->nr_parts =
-      nr_parts + engine_exchange_strays(s->e, nr_parts, &ind[nr_parts],
-                                        s->nr_parts - nr_parts);
+  /* TODO: This function also exchanges gparts, but this is shorted-out
+     until they are fully implemented. */
+  size_t nr_parts_exchanged = s->nr_parts - nr_parts;
+  size_t nr_gparts_exchanged = 0;
+  engine_exchange_strays(s->e, nr_parts, &ind[nr_parts],
+                         &nr_parts_exchanged, 0, NULL, &nr_gparts_exchanged);
+  s->nr_parts = nr_parts + nr_parts_exchanged;
 
   /* Re-allocate the index array if needed.. */
   if (s->nr_parts > ind_size) {
