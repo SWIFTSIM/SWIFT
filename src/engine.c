@@ -618,7 +618,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part
 
   struct space *s = e->s;
   ticks tic = getticks();
-
+  
   /* Re-set the proxies. */
   for (int k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
 
@@ -720,7 +720,6 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part
     if (e->proxies[k].nr_parts_in > 0) {
       reqs_in[3 * k] = e->proxies[k].req_parts_in;
       reqs_in[3 * k + 1] = e->proxies[k].req_xparts_in;
-      reqs_in[3 * k + 2] = e->proxies[k].req_gparts_in;
       nr_in += 2;
     } else {
       reqs_in[3 * k] = reqs_in[3 * k + 1] = MPI_REQUEST_NULL;
@@ -759,7 +758,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part
       error("MPI_Waitany failed (%s).", buff);
     }
     if (pid == MPI_UNDEFINED) break;
-    // message( "request from proxy %i has arrived." , pid );
+    // message( "request from proxy %i has arrived." , pid / 3 );
     pid = 3 * (pid / 3);
     if (reqs_in[pid + 0] == MPI_REQUEST_NULL &&
         reqs_in[pid + 1] == MPI_REQUEST_NULL &&
