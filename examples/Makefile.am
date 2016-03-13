@@ -63,13 +63,15 @@ swift_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_L
 
 # Scripts to generate ICs
 EXTRA_DIST = UniformBox/makeIC.py \
-             PerturbedBox/makeIC.py \
+	     UniformDMBox/makeIC.py
+	     PerturbedBox/makeIC.py \
 	     SedovBlast/makeIC.py SedovBlast/makeIC_fcc.py SedovBlast/solution.py \
 	     SodShock/makeIC.py SodShock/solution.py SodShock/glass_001.hdf5 SodShock/glass_002.hdf5 SodShock/rhox.py \
 	     CosmoVolume/getIC.sh \
 	     BigCosmoVolume/makeIC.py \
 	     BigPerturbedBox/makeIC_fcc.py \
-             GreshoVortex/makeIC.py GreshoVortex/solution.py
+             GreshoVortex/makeIC.py GreshoVortex/solution.py \
+             MultiTypes/makeIC.py
 
 
 # Scripts to plot task graphs
