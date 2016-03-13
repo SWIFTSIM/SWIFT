@@ -249,7 +249,7 @@ void proxy_parts_exch2(struct proxy *p) {
   /* Unpack the incomming parts counts. */
   p->nr_parts_in = p->buff_in[0];
   p->nr_gparts_in = p->buff_in[1];
-  
+
   /* Is there enough space in the buffer? */
   if (p->nr_parts_in > p->size_parts_in) {
     do {
@@ -268,8 +268,8 @@ void proxy_parts_exch2(struct proxy *p) {
       p->size_gparts_in *= proxy_buffgrow;
     } while (p->nr_gparts_in > p->size_gparts_in);
     free(p->gparts_in);
-    if ((p->gparts_in = (struct gpart *)malloc(
-             sizeof(struct gpart) *p->size_gparts_in)) == NULL)
+    if ((p->gparts_in = (struct gpart *)malloc(sizeof(struct gpart) *
+                                               p->size_gparts_in)) == NULL)
       error("Failed to re-allocate gparts_in buffers.");
   }
 
@@ -286,8 +286,9 @@ void proxy_parts_exch2(struct proxy *p) {
     // p->nodeID ); fflush(stdout);
   }
   if (p->nr_gparts_in > 0) {
-    if (MPI_Irecv(p->gparts_in, sizeof(struct gpart) * p->nr_gparts_in, MPI_BYTE,
-                  p->nodeID, p->nodeID * proxy_tag_shift + proxy_tag_gparts,
+    if (MPI_Irecv(p->gparts_in, sizeof(struct gpart) * p->nr_gparts_in,
+                  MPI_BYTE, p->nodeID,
+                  p->nodeID * proxy_tag_shift + proxy_tag_gparts,
                   MPI_COMM_WORLD, &p->req_gparts_in) != MPI_SUCCESS)
       error("Failed to irecv gpart data.");
     // message( "irecv gpart data (%i) from node %i." , p->nr_gparts_in ,
@@ -355,8 +356,8 @@ void proxy_gparts_load(struct proxy *p, struct gpart *gparts, int N) {
       p->size_gparts_out *= proxy_buffgrow;
     } while (p->nr_gparts_out + N > p->size_gparts_out);
     struct gpart *tp;
-    if ((tp = (struct gpart *)malloc(sizeof(struct gpart) *p->size_gparts_out)) ==
-            NULL)
+    if ((tp = (struct gpart *)malloc(sizeof(struct gpart) *
+                                     p->size_gparts_out)) == NULL)
       error("Failed to re-allocate gparts_out buffers.");
     memcpy(tp, p->gparts_out, sizeof(struct gpart) * p->nr_gparts_out);
     free(p->gparts_out);
@@ -423,15 +424,15 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the gpart send and receive buffers, if needed. */
   if (p->gparts_in == NULL) {
     p->size_gparts_in = proxy_buffinit;
-    if ((p->gparts_in = (struct gpart *)malloc(
-             sizeof(struct gpart) *p->size_gparts_in)) == NULL)
+    if ((p->gparts_in = (struct gpart *)malloc(sizeof(struct gpart) *
+                                               p->size_gparts_in)) == NULL)
       error("Failed to allocate gparts_in buffers.");
   }
   p->nr_gparts_in = 0;
   if (p->gparts_out == NULL) {
     p->size_gparts_out = proxy_buffinit;
-    if ((p->gparts_out = (struct gpart *)malloc(
-             sizeof(struct gpart) *p->size_gparts_out)) == NULL)
+    if ((p->gparts_out = (struct gpart *)malloc(sizeof(struct gpart) *
+                                                p->size_gparts_out)) == NULL)
       error("Failed to allocate gparts_out buffers.");
   }
   p->nr_gparts_out = 0;

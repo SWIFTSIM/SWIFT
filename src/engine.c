@@ -596,29 +596,32 @@ void engine_exchange_cells(struct engine *e) {
  * @brief Exchange straying parts with other nodes.
  *
  * @param e The #engine.
- * @param offset_parts The index in the parts array as of which the foreign parts
+ * @param offset_parts The index in the parts array as of which the foreign
+ *parts
  *reside.
  * @param ind_part The foreign #cell ID of each part.
  * @param Npart The number of stray parts, contains the number of parts received
  *        on return.
- * @param offset_gparts The index in the gparts array as of which the foreign parts
+ * @param offset_gparts The index in the gparts array as of which the foreign
+ *parts
  *reside.
  * @param ind_gpart The foreign #cell ID of each gpart.
- * @param Ngpart The number of stray gparts, contains the number of gparts received
+ * @param Ngpart The number of stray gparts, contains the number of gparts
+ *received
  *        on return.
  *
  * @return The number of arrived parts copied to parts and xparts.
  */
 
-void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part,
-                            size_t *Npart, size_t offset_gparts, int *ind_gpart,
-                            size_t *Ngpart) {
+void engine_exchange_strays(struct engine *e, size_t offset_parts,
+                            int *ind_part, size_t *Npart, size_t offset_gparts,
+                            int *ind_gpart, size_t *Ngpart) {
 
 #ifdef WITH_MPI
 
   struct space *s = e->s;
   ticks tic = getticks();
-  
+
   /* Re-set the proxies. */
   for (int k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
 
@@ -632,8 +635,9 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
           "id=%llu, x=[%e,%e,%e].",
-          node_id, s->parts[offset_parts + k].id, s->parts[offset_parts + k].x[0],
-          s->parts[offset_parts + k].x[1], s->parts[offset_parts + k].x[2]);
+          node_id, s->parts[offset_parts + k].id,
+          s->parts[offset_parts + k].x[0], s->parts[offset_parts + k].x[1],
+          s->parts[offset_parts + k].x[2]);
     proxy_parts_load(&e->proxies[pid], &s->parts[offset_parts + k],
                      &s->xparts[offset_parts + k], 1);
   }
@@ -646,8 +650,9 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
           "id=%zi, x=[%e,%e,%e].",
-          node_id, s->gparts[offset_parts + k].id, s->gparts[offset_gparts + k].x[0],
-          s->gparts[offset_parts + k].x[1], s->gparts[offset_gparts + k].x[2]);
+          node_id, s->gparts[offset_parts + k].id,
+          s->gparts[offset_gparts + k].x[0], s->gparts[offset_parts + k].x[1],
+          s->gparts[offset_gparts + k].x[2]);
     proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
   }
 
@@ -685,7 +690,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part
   }
   if (e->verbose) {
     message("sent out %zi/%zi parts/gparts, got %i/%i back.", *Npart, *Ngpart,
-    count_parts_in, count_gparts_in);
+            count_parts_in, count_gparts_in);
   }
   if (offset_parts + count_parts_in > s->size_parts) {
     s->size_parts = (offset_parts + count_parts_in) * 1.05;
@@ -1231,8 +1236,8 @@ void engine_print_task_counts(struct engine *e) {
     else
       counts[task_type_count] += 1;
 #ifdef WITH_MPI
-  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i", e->nodeID,
-         clocks_get_timesincestart(), taskID_names[0], counts[0]);
+  printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
+         e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
   printf("%s engine_print_task_counts: task counts are [ %s=%i",
          clocks_get_timesincestart(), taskID_names[0], counts[0]);
