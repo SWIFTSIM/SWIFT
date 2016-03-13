@@ -47,7 +47,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel.h vector.h \
 		 runner_doiact.h runner_doiact_grav.h units.h intrinsics.h minmax.h \
 		 gravity.h gravity_io.h \
-		 gravity/Default/gravity.h gravity/Default/runner_iact_grav.h gravity/Default/gravity_io.h \
+		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
 	 	 hydro.h hydro_io.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
