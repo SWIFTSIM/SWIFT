@@ -376,9 +376,9 @@ void cell_split(struct cell *c) {
 
   int i, j;
   const int count = c->count, gcount = c->gcount;
-  struct part* parts = c->parts;
-  struct xpart* xparts = c->xparts;
-  struct gpart* gparts = c->gparts;
+  struct part *parts = c->parts;
+  struct xpart *xparts = c->xparts;
+  struct gpart *gparts = c->gparts;
   int left[8], right[8];
   double pivot[3];
 

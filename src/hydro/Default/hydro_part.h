@@ -111,7 +111,7 @@ struct part {
   float mass;
 
   /* Particle ID. */
-  unsigned long long id;
+  long long id;
 
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;

@@ -98,7 +98,7 @@ for n in range(n_iterations):
     u = zeros(1)
 
     ids = linspace(offset, offset+N, N, endpoint=False).reshape((N,1))
-    ds_id[offset:offset+N] = ids
+    ds_id[offset:offset+N] = ids + 1
     x      = ids % L;
     y      = ((ids - x) / L) % L;
     z      = (ids - x - L * y) / L**2;
@@ -130,10 +130,8 @@ u = full((remainder, 1), internalEnergy)
 ds_u[offset:offset+remainder] = u
 u = zeros(1)
 
-print "Done", offset+remainder,"/", numPart
-
 ids = linspace(offset, offset+remainder, remainder, endpoint=False).reshape((remainder,1))
-ds_id[offset:offset+remainder] = ids
+ds_id[offset:offset+remainder] = ids + 1
 x      = ids % L;
 y      = ((ids - x) / L) % L;
 z      = (ids - x - L * y) / L**2;
@@ -143,6 +141,7 @@ coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
 coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
 ds_x[offset:offset+remainder,:] = coords
 
+print "Done", offset+remainder,"/", numPart
 
 
 
