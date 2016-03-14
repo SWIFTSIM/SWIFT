@@ -352,11 +352,31 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 // message( "getting particle indices took %.3f %s." ,
 // clocks_from_ticks(getticks() - tic), clocks_getunit()):
 
+  /* Run through the gravity particles and get their cell index. */
+  // tic = getticks();
+  const size_t gind_size = s->size_gparts;
+  int *gind;
+  if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
+    error("Failed to allocate temporary g-particle indices.");
+  for (int k = 0; k < nr_gparts; k++) {
+    struct gpart *gp = &s->gparts[k];
+    for (int j = 0; j < 3; j++)
+      if (gp->x[j] < 0.0)
+        gp->x[j] += dim[j];
+      else if (gp->x[j] >= dim[j])
+        gp->x[j] -= dim[j];
+    gind[k] =
+        cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
+    cells[gind[k]].gcount++;
+  }
+// message( "getting particle indices took %.3f %s." ,
+// clocks_from_ticks(getticks() - tic), clocks_getunit());
+
 #ifdef WITH_MPI
   /* Move non-local parts to the end of the list. */
-  const int nodeID = s->e->nodeID;
+  const int local_nodeID = s->e->nodeID;
   for (int k = 0; k < nr_parts; k++)
-    if (cells[ind[k]].nodeID != nodeID) {
+    if (cells[ind[k]].nodeID != local_nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
       struct part tp = s->parts[k];
@@ -370,15 +390,33 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       ind[nr_parts] = t;
     }
 
+  /* Move non-local gparts to the end of the list. */
+  for (int k = 0; k < nr_gparts; k++)
+    if (cells[ind[k]].nodeID != local_nodeID) {
+      cells[ind[k]].gcount -= 1;
+      nr_gparts -= 1;
+      struct gpart tp = s->gparts[k];
+      s->gparts[k] = s->gparts[nr_gparts];
+      s->gparts[nr_gparts] = tp;
+      int t = ind[k];
+      ind[k] = ind[nr_gparts];
+      ind[nr_gparts] = t;
+    }
+
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
   /* TODO: This function also exchanges gparts, but this is shorted-out
      until they are fully implemented. */
   size_t nr_parts_exchanged = s->nr_parts - nr_parts;
-  size_t nr_gparts_exchanged = 0;
-  engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged, 0,
-                         NULL, &nr_gparts_exchanged);
+  size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
+  engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged, nr_gparts,
+                         &gind[nr_gparts], &nr_gparts_exchanged);
+                         
+  /* Add post-processing, i.e. re-linking/creating of gparts here. */
+  
+  /* Set the new particle counts. */     
   s->nr_parts = nr_parts + nr_parts_exchanged;
+  s->nr_gparts = nr_gparts + nr_gparts_exchanged;
 
   /* Re-allocate the index array if needed.. */
   if (s->nr_parts > ind_size) {
@@ -423,48 +461,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* We no longer need the indices as of here. */
   free(ind);
 
-  /* Run through the gravity particles and get their cell index. */
-  // tic = getticks();
-  const size_t gind_size = s->size_gparts;
-  int *gind;
-  if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
-    error("Failed to allocate temporary g-particle indices.");
-  for (int k = 0; k < nr_gparts; k++) {
-    struct gpart *gp = &s->gparts[k];
-    for (int j = 0; j < 3; j++)
-      if (gp->x[j] < 0.0)
-        gp->x[j] += dim[j];
-      else if (gp->x[j] >= dim[j])
-        gp->x[j] -= dim[j];
-    gind[k] =
-        cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
-    cells[gind[k]].gcount++;
-  }
-// message( "getting particle indices took %.3f %s." ,
-// clocks_from_ticks(getticks() - tic), clocks_getunit());
-
 #ifdef WITH_MPI
-
-  /* Move non-local gparts to the end of the list. */
-  for (int k = 0; k < nr_gparts; k++)
-    if (cells[ind[k]].nodeID != nodeID) {
-      cells[ind[k]].gcount -= 1;
-      nr_gparts -= 1;
-      struct gpart tp = s->gparts[k];
-      s->gparts[k] = s->gparts[nr_gparts];
-      s->gparts[nr_gparts] = tp;
-      int t = ind[k];
-      ind[k] = ind[nr_gparts];
-      ind[nr_gparts] = t;
-    }
-
-  /* Exchange the strays, note that this potentially re-allocates
-     the parts arrays. */
-  // s->nr_gparts =
-  //    nr_gparts + engine_exchange_strays(s->e, nr_gparts, &ind[nr_gparts],
-  //                                        s->nr_gparts - nr_gparts);
-  if (nr_gparts > 0)
-    error("Need to implement the exchange of strays for the gparts");
 
   /* Re-allocate the index array if needed.. */
   if (s->nr_gparts > gind_size) {
