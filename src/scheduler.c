@@ -534,7 +534,7 @@ void scheduler_splittasks(struct scheduler *s) {
         else if (ci->split) {
 
           /* Make a single sub-task? */
-          if (scheduler_dosub && ci->count < space_subsize / ci->count) {
+          if (scheduler_dosub && ci->gcount < space_subsize / ci->gcount) {
 
             t->type = task_type_sub;
             t->subtype = task_subtype_grav;
@@ -582,7 +582,7 @@ void scheduler_splittasks(struct scheduler *s) {
       else {
 
         /* Make a sub-task? */
-        if (scheduler_dosub && ci->count < space_subsize / cj->count) {
+        if (scheduler_dosub && ci->gcount < space_subsize / cj->gcount) {
 
           t->type = task_type_sub;
           t->subtype = task_subtype_grav;

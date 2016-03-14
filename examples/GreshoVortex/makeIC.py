@@ -82,7 +82,7 @@ for i in range(L):
             else:
                 P = P + 3. + 4.*log(2.)
             u[index] = P / ((gamma - 1.)*rho)
-            ids[index] = partId
+            ids[index] = partId + 1
             partId = partId + 1
 
 
