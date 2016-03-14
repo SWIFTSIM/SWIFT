@@ -101,7 +101,7 @@ struct part {
     } force;
   };
 
-  unsigned long long id; /*!< Particle unique ID. */
+  long long id; /*!< Particle unique ID. */
 
   struct gpart* gpart; /*!< Pointer to corresponding gravity part. */
 

@@ -72,7 +72,7 @@ for i in range(L):
                 m[index] = mass
                 h[index] = 1.1255 * hbox
                 u[index] = internalEnergy
-                ids[index] = index
+                ids[index] = index + 1
                 if sqrt((x - boxSize/2.)**2 + (y - boxSize/2.)**2 + (z - boxSize/2.)**2) < 1.2 * hbox:
                     u[index] = u[index] + E0 / (28. * mass)
                     print "Particle " , index , " set to detonate."

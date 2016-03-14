@@ -24,6 +24,6 @@
 /* So far only one model here */
 /* Straight-forward import */
 #include "./gravity/Default/gravity.h"
-#include "./gravity/Default/runner_iact_grav.h"
+#include "./gravity/Default/gravity_iact.h"
 
 #endif

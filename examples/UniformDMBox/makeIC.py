@@ -22,22 +22,19 @@ import h5py
 import sys
 from numpy import *
 
-# Generates a swift IC file containing a cartesian distribution of particles
-# at a constant density and pressure in a cubic box
+# Generates a swift IC file containing a cartesian distribution of DM particles
+# with a density of 1
 
 # Parameters
 periodic= 1           # 1 For periodic box
 boxSize = 1.
+rho = 1.
 L = int(sys.argv[1])  # Number of particles along one axis
-rho = 2.              # Density
-P = 1.                # Pressure
-gamma = 5./3.         # Gas adiabatic index
-fileName = "uniformBox.hdf5" 
+fileName = "uniformDMBox_%d.hdf5"%L 
 
 #---------------------------------------------------
 numPart = L**3
 mass = boxSize**3 * rho / numPart
-internalEnergy = P / ((gamma - 1.)*rho)
 
 #--------------------------------------------------
 
@@ -47,12 +44,12 @@ file = h5py.File(fileName, 'w')
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_Total"] =  [0, numPart, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_ThisFile"] = [0, numPart, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+grp.attrs["MassTable"] = [0.0, mass, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 
 
@@ -61,7 +58,7 @@ grp = file.create_group("/RuntimePars")
 grp.attrs["PeriodicBoundariesOn"] = periodic
 
 #Particle group
-grp = file.create_group("/PartType0")
+grp = file.create_group("/PartType1")
 
 v  = zeros((numPart, 3))
 ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
@@ -72,17 +69,6 @@ m = full((numPart, 1), mass)
 ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
 m = zeros(1)
-
-h = full((numPart, 1), 1.1255 * boxSize / L)
-ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
-ds[()] = h
-h = zeros(1)
-
-u = full((numPart, 1), internalEnergy)
-ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
-ds[()] = u
-u = zeros(1)
-
 
 ids = linspace(0, numPart, numPart, endpoint=False).reshape((numPart,1))
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')

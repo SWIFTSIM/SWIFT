@@ -49,35 +49,42 @@ strong scaling on more than 100\,000 cores.}
   
 \author{
 \alignauthor
-       Matthieu~Schaller\\
-       \affaddr{Institute for Computational Cosmology (ICC)}\\
-       \affaddr{Department of Physics}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-       \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
-\alignauthor
-       Pedro~Gonnet\\
-       \affaddr{School of Engineering and Computing Sciences}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-\alignauthor
-       Aidan~B.~G.~Chalk\\
-       \affaddr{School of Engineering and Computing Sciences}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-\and
-\alignauthor
-       Peter~W.~Draper\\
-       \affaddr{Institute for Computational Cosmology (ICC)}\\
-       \affaddr{Department of Physics}\\
-       \affaddr{Durham University}\\
-       \affaddr{Durham DH1 3LE, UK}\\
-       %% \alignauthor
-       %% Tom Theuns\\
-       %% \affaddr{Institute for Computational Cosmology}\\
-       %% \affaddr{Department of Physics}\\
-       %% \affaddr{Durham University}\\
-       %% \affaddr{Durham DH1 3LE, UK}      
+       Main~Author\\
+       \affaddr{Institute}\\
+       \affaddr{Department}\\
+       \affaddr{University}\\
+       \affaddr{City Postal code, Country}\\
+       \email{\footnotesize \url{main.author@university.country}}
+% \alignauthor
+%        Matthieu~Schaller\\
+%        \affaddr{Institute for Computational Cosmology (ICC)}\\
+%        \affaddr{Department of Physics}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+%        \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
+% \alignauthor
+%        Pedro~Gonnet\\
+%        \affaddr{School of Engineering and Computing Sciences}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+% \alignauthor
+%        Aidan~B.~G.~Chalk\\
+%        \affaddr{School of Engineering and Computing Sciences}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+% \and
+% \alignauthor
+%        Peter~W.~Draper\\
+%        \affaddr{Institute for Computational Cosmology (ICC)}\\
+%        \affaddr{Department of Physics}\\
+%        \affaddr{Durham University}\\
+%        \affaddr{Durham DH1 3LE, UK}\\
+%        %% \alignauthor
+%        %% Tom Theuns\\
+%        %% \affaddr{Institute for Computational Cosmology}\\
+%        %% \affaddr{Department of Physics}\\
+%        %% \affaddr{Durham University}\\
+%        %% \affaddr{Durham DH1 3LE, UK}      
 }
 
 
@@ -180,7 +187,7 @@ The design and implementation of \swift\footnote{
 \swift is an open-source software project and the latest version of
 the source code, along with all the data needed to run the test cased
 presented in this paper, can be downloaded at \web.}
-\cite{gonnet2013swift,theuns2015swift,gonnet2015efficient}, a large-scale
+\cite{gonnet2013swift,theuns2015swift,ref:Gonnet2015}, a large-scale
 cosmological simulation code built from scratch, provided the perfect
 opportunity to test some newer
 approaches, i.e.~task-based parallelism, fully asynchronous communication, and
@@ -189,6 +196,9 @@ graph partition-based domain decompositions.
 This paper describes these techniques, which are not exclusive to
 cosmological simulations or any specific architecture, as well as
 the results obtained with them.
+While \cite{gonnet2013swift,ref:Gonnet2015} already describes the underlying algorithms
+in more detail, in this paper we focus on the parallelization strategy
+and the results obtained  on larger Tier-0 systems.
 
 
 %#####################################################################################################
@@ -261,24 +271,30 @@ separately:
         within range of each other and evaluate \eqn{dvdt} and \eqn{dudt}.
 \end{enumerate}
 
-Finding the interacting neighbours for each particle constitutes
-the bulk of the computation.
-Many codes, e.g. in Astrophysics simulations \cite{Gingold1977},
-rely on spatial {\em trees}
-for neighbour finding \cite{Gingold1977,Hernquist1989,Springel2005,Wadsley2004},
-i.e.~$k$-d trees \cite{Bentley1975} or octrees \cite{Meagher1982}
-are used to decompose the simulation space.
-In Astrophysics in particular, spatial trees are also a somewhat natural
-choice as they are used to compute long-range gravitational interactions
-via a Barnes-Hut \cite{Barnes1986} or Fast Multipole
-\cite{Carrier1988} method. 
-The particle interactions are then computed by traversing the list of
-particles and searching for their neighbours in the tree.
+Finding the interacting neighbours for each particle constitutes the
+bulk of the computation.  Many codes, e.g. in Astrophysics simulations
+\cite{Gingold1977}, rely on spatial {\em trees} for neighbour finding
+\cite{Gingold1977,Hernquist1989,Springel2005,Wadsley2004}, i.e.~$k$-d
+trees \cite{Bentley1975} or octrees \cite{Meagher1982} are used to
+decompose the simulation space.  In Astrophysics in particular,
+spatial trees are also a somewhat natural choice as they are used to
+compute long-range gravitational interactions via a Barnes-Hut
+\cite{Barnes1986} or Fast Multipole \cite{Carrier1988} method.  The
+particle interactions are then computed by traversing the list of
+particles and searching for their neighbours in the tree.  In current
+state-of-the-art simulations (e.g. \cite{Schaye2015}), the gravity
+calculation corresponds to roughly one quarter of the calculation time
+whilst the hydrodynamics scheme takes approximately half of the
+total time. The remainder is spent in the astrophysics modules, which
+contain interactions of the same kind as the SPH sums presented
+here. Gravity could, however, be vastly sped-up compared to commonly
+used software by employing more modern algorithms such as the Fast
+Multipole Method \cite{Carrier1988}.
 
 Although such tree traversals are trivial to parallelize, they
 have several disadvantages, e.g.~with regards to computational
 efficiency, cache efficiency, and exploiting symmetries in the
-computation (see \cite{gonnet2015efficient} for a more detailed
+computation (see \cite{ref:Gonnet2015} for a more detailed
 analysis).
 
 
@@ -337,7 +353,8 @@ Task-based parallelism is not a particularly new concept and therefore
 several implementations thereof exist, e.g.~Cilk \cite{ref:Blumofe1995},
 QUARK \cite{ref:QUARK}, StarPU \cite{ref:Augonnet2011},
 SMP~Superscalar \cite{ref:SMPSuperscalar}, OpenMP~3.0 \cite{ref:Duran2009},
-and Intel's TBB \cite{ref:Reinders2007}.
+Intel's TBB \cite{ref:Reinders2007}, and, to some extent,
+Charm++ \cite{ref:Kale1993}.
 
 For convenience, and to make experimenting with different scheduling
 techniques easier, we chose to implement our own task scheduler
@@ -357,7 +374,7 @@ which is usually not an option for large and complex codebases.
 
 Since we were re-implementing \swift from scratch, this was not an issue.
 The tree-based neighbour-finding described above was replaced with a more
-task-friendly approach as described in \cite{gonnet2015efficient}.
+task-friendly approach as described in \cite{ref:Gonnet2015}.
 Particle interactions are computed within, and between pairs, of
 hierarchical {\em cells} containing one or more particles.
 The dependencies between the tasks are set following
@@ -375,24 +392,30 @@ on a cell of particles have completed before the force evaluation tasks
 Once all the force tasks on a cell of particles have completed,
 the integrator tasks (inverted triangles) update the particle positions 
 and velocities.
+The decomposition was computed such that each cell contains $\sim 100$ particles,
+which leads to tasks of up to a few milliseconds each.
 
 Due to the cache-friendly nature of the task-based computations, 
 and their ability to exploit symmetries in the particle interactions,
 the task-based approach is already more efficient than the tree-based
 neighbour search on a single core, and scales efficiently to all
-cores of a shared-memory machine \cite{gonnet2015efficient}.
+cores of a shared-memory machine \cite{ref:Gonnet2015}.
 
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{Figures/Hierarchy3}
 \caption{Task hierarchy for the SPH computations in \swift,
-  including communication tasks. Arrows indicate dependencies,
+  including communication tasks.
+  Arrows indicate dependencies,
   i.e.~an arrow from task $A$ to task $B$ indicates that $A$
-  depends on $B$. The task color corresponds to the cell or
+  depends on $B$. 
+  The task color corresponds to the cell or
   cells it operates on, e.g.~the density and force tasks work
   on individual cells or pairs of cells.
-  The blue cell data is on a separate rank as the yellow and
-  purple cells, and thus its data must be sent across during
+  The task hierarchy is shown for three cells: blue, yellow,
+  and purple. Although the data for the yellow cell resides on
+  Node~2, it is required for some tasks on Node~1, and thus needs
+  to be copied over  during
   the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
 \label{tasks}
 \end{figure}  
@@ -432,8 +455,13 @@ corresponds to minimizing the time spent on the slowest rank.
 Computing such a partition is a standard graph problem and several
 software libraries which provide good solutions\footnote{Computing
 the optimal partition for more than two nodes is considered NP-hard.},
-e.g.~METIS \cite{ref:Karypis1998} and Zoltan \cite{devine2002zoltan},
-exist.
+e.g.~METIS \cite{ref:Karypis1998} and Zoltan \cite{devine2002zoltan}, exist.
+
+In \swift, the graph partitioning is computed using the METIS library.
+The cost of each task is initially approximated via the
+asymptotic cost of the task type and the number of particles involved.
+After a task has been executed, it's effective computational cost
+is computed and used.
 
 Note that this approach does not explicitly consider any geometric
 constraints, or strive to partition the {\em amount} of data equitably.
@@ -567,6 +595,11 @@ conditions are provided with the source code. We then run the \swift code for
 100 time-steps and average the wall clock time of these time-steps after having
 removed the first and last ones, where disk I/O occurs.
 
+The initial load balancing between nodes is computed in the first steps and
+re-computed every 100 time steps, and is therefore not included in the timings.
+Particles were exchanged between nodes whenever they strayed too far beyond
+the cells in which they originally resided.
+
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{Figures/cosmoVolume}
@@ -630,8 +663,9 @@ the 16 node run.
   is achieved when increasing the thread count from 1 (1 node) to 128 (8 nodes)
   even on this relatively small test case. The dashed line indicates the
   efficiency when running on one single node but using all the physical and
-  virtual cores (hyper-threading). As these CPUs only have one FPU per core, we
-  see no benefit from hyper-threading.
+  virtual cores (hyper-threading). As these CPUs only have one FPU per core, the
+  benefit from hyper-threading is limited to a 20\% improvement when going
+  from 16 cores to 32 hyperthreads.
   \label{fig:cosma}}
 \end{figure*}
 
@@ -641,7 +675,8 @@ the 16 node run.
 
 For our next test, we ran \swift on the SuperMUC x86 phase~1 thin
 nodes \footnote{\url{https://www.lrz.de/services/compute/supermuc/systemdescription/}}
-located at the Leibniz Supercomputing Center in Garching near Munich. This
+located at the Leibniz Supercomputing Center in Garching near Munich,
+currently ranked 23rd in the Top500 list\footnote{\url{http://www.top500.org/list/2015/11/}}. This
 system consists of 9\,216 nodes with 2 Intel Sandy Bridge-EP Xeon E5-2680
 8C\footnote{\url{http://ark.intel.com/products/64583/Intel-Xeon-Processor-E5-2680-(20M-Cache-2_70-GHz-8_00-GTs-Intel-QPI)}}
 at $2.7~\rm{GHz}$ CPUS. Each 16-core node has $32~\rm{GByte}$ of RAM.
@@ -681,7 +716,9 @@ threads per node, i.e.~one thread per physical core.
 
 For our last set of tests, we ran \swift on the JUQUEEN IBM Blue Gene/Q
 system\footnote{\url{http://www.fz-juelich.de/ias/jsc/EN/Expertise/Supercomputers/JUQUEEN/Configuration/Configuration_node.html}}
-located at the J\"ulich Supercomputing Center. This system consists of
+located at the J\"ulich Supercomputing Center,
+currently ranked 11th in the Top500 list.
+This system consists of
 28\,672 nodes with an IBM PowerPC A2 processor running at
 $1.6~\rm{GHz}$ and $16~\rm{GByte}$ of RAM each. Of notable interest
 is the presence of two floating units per compute core. The system is
@@ -764,8 +801,9 @@ course of a time-step. For example, on the SuperMUC machine with 32 nodes (512
 cores), each MPI rank contains approximately $1.6\times10^7$ particles in
 $2.5\times10^5$ cells. \swift will generate around $58\,000$ point-to-point
 asynchronous MPI communications (a pair of \texttt{send} and \texttt{recv} tasks)
-{\em per node} and {\em per timestep}. Such an insane number of messages is
-discouraged by most practitioners.
+{\em per node} and {\em per timestep}. Each one of these communications involves,
+on average, no more than 6\,kB of data. Such an insane number of small messages is
+discouraged by most practitioners, but seems to works well in practice.
 Dispatching communications
 over the course of the calculation and not in short bursts, as is commonly done,
 may also help lower the load on the network.
@@ -790,6 +828,22 @@ around 300 cores and stops scaling beyond that. This unprecedented scaling
 ability combined with future work on vectorization of the calculations within
 each task will hopefully make \swift an important tool for future simulations in
 cosmology and help push the entire field to a new level.
+
+These results, which are in no way restricted to astrophysical simulations,
+provide a compelling argument for moving away from the traditional
+branch-and-bound paradigm of both shared and distributed memory programming
+using synchronous MPI and OpenMP.
+Although fully asynchronous methods, due to their somewhat anarchic nature,
+may seem more difficult to control, they are conceptually simple and easy
+to implement\footnote{The \swift source code consists of less than 21\,K lines
+of code, of which roughly only one tenth are needed to implement the task-based
+parallelism and asynchronous communication.}.
+The real cost of using a task-based approach comes from having
+to rethink the entire computation to fit the task-based setting. This may,
+as in our specific case, lead to completely rethinking the underlying
+algorithms and reimplementing a code from scratch.
+Given our results to date, however, we do not believe we will regret this
+investment.
 
 \swift, its documentation, and the test cases presented in this paper are all
 available at the address \web.

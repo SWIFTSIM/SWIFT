@@ -64,7 +64,7 @@ v = inputFile["/PartType0/Velocities"][:,:]
 m = inputFile["/PartType0/Masses"][:]
 h = inputFile["/PartType0/SmoothingLength"][:]
 u = inputFile["/PartType0/InternalEnergy"][:]
-ids = np.array(range(np.size(u)), dtype='L')
+ids = np.array(range(np.size(u)), dtype='L') + 1
 
 # Downsample
 print "Downsampling..."
