@@ -52,8 +52,8 @@
  * (Should be used for debugging only as it runs in O(N).)
  */
 
-void printParticle(struct part *parts, struct xpart *xparts, long long int id,
-                   size_t N) {
+void printParticle(const struct part *parts, struct xpart *xparts,
+                   long long int id, size_t N) {
 
   int found = 0;
 
@@ -69,19 +69,21 @@ void printParticle(struct part *parts, struct xpart *xparts, long long int id,
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
 }
 
-void printgParticle(struct gpart *gparts, long long int id, size_t N) {
+void printgParticle(const struct gpart *gparts, const struct part *parts,
+                    long long int id, size_t N) {
 
   int found = 0;
 
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
-    if (gparts[i].id == -id) {
-      printf("## gParticle[%zd] (DM) :\n id=%lld", i, -gparts[i].id);
+    if (gparts[i].id_or_neg_offset == id) {
+      printf("## gParticle[%zd] (DM) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
-    } else if (gparts[i].id > 0 && gparts[i].part->id == id) {
-      printf("## gParticle[%zd] (hydro) :\n id=%lld", i, gparts[i].id);
+    } else if (gparts[i].id_or_neg_offset < 0 &&
+               parts[-gparts[i].id_or_neg_offset].id == id) {
+      printf("## gParticle[%zd] (hydro) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
@@ -98,7 +100,7 @@ void printgParticle(struct gpart *gparts, long long int id, size_t N) {
  *
  */
 
-void printParticle_single(struct part *p, struct xpart *xp) {
+void printParticle_single(const struct part *p, const struct xpart *xp) {
 
   printf("## Particle: id=%lld", p->id);
   hydro_debug_particle(p, xp);

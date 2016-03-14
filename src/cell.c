@@ -451,7 +451,9 @@ void cell_split(struct cell *c) {
 
   /* Re-link the gparts. */
   for (int k = 0; k < count; k++)
-    if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k];
+    if (parts[k].gpart != NULL) {
+      parts[k].gpart->id_or_neg_offset = -k;
+    }
 
   /* Verify that _all_ the parts have been assigned to a cell. */
   /* for ( k = 1 ; k < 8 ; k++ )
@@ -545,7 +547,9 @@ void cell_split(struct cell *c) {
 
   /* Re-link the parts. */
   for (int k = 0; k < gcount; k++)
-    if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
+    if (gparts[k].id_or_neg_offset < 0) {
+      parts[gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    }
 }
 
 /**

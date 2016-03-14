@@ -237,7 +237,8 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 }
 
 void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *__restrict__ parts, int N, int periodic) {
+                       struct gpart *__restrict__ gparts,
+                       const struct part *parts, int N, int periodic) {
 
   int i, k;
   // int mj, mk;
@@ -249,18 +250,20 @@ void pairs_single_grav(double *dim, long long int pid,
 
   /* Find "our" part. */
   for (k = 0; k < N; k++)
-    if ((parts[k].id > 0 && parts[k].part->id == pid) || parts[k].id == -pid)
+    if ((gparts[k].id_or_neg_offset < 0 &&
+         parts[-gparts[k].id_or_neg_offset].id == pid) ||
+        gparts[k].id_or_neg_offset == pid)
       break;
   if (k == N) error("Part not found.");
-  pi = parts[k];
+  pi = gparts[k];
   pi.a[0] = 0.0f;
   pi.a[1] = 0.0f;
   pi.a[2] = 0.0f;
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
-    if (parts[k].id == pi.id) continue;
-    pj = parts[k];
+    if (gparts[k].id_or_neg_offset == pi.id_or_neg_offset) continue;
+    pj = gparts[k];
     for (i = 0; i < 3; i++) {
       dx[i] = pi.x[i] - pj.x[i];
       if (periodic) {
@@ -287,7 +290,8 @@ void pairs_single_grav(double *dim, long long int pid,
   /* Dump the result. */
   message(
       "acceleration on gpart %lli is a=[ %e %e %e ], |a|=[ %.2e %.2e %.2e ].\n",
-      pi.part->id, a[0], a[1], a[2], aabs[0], aabs[1], aabs[2]);
+      parts[-pi.id_or_neg_offset].id, a[0], a[1], a[2], aabs[0], aabs[1],
+      aabs[2]);
 }
 
 /**
