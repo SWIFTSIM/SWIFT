@@ -96,14 +96,12 @@ void map_cells_plot(struct cell *c, void *data) {
 
 void map_cellcheck(struct cell *c, void *data) {
 
-  int k, *count = (int *)data;
-  struct part *p;
-
+  int *count = (int *)data;
   __sync_fetch_and_add(count, c->count);
 
   /* Loop over all parts and check if they are in the cell. */
-  for (k = 0; k < c->count; k++) {
-    p = &c->parts[k];
+  for (int k = 0; k < c->count; k++) {
+    struct part *p = &c->parts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
         p->x[0] > c->loc[0] + c->h[0] || p->x[1] > c->loc[1] + c->h[1] ||
         p->x[2] > c->loc[2] + c->h[2]) {
@@ -113,6 +111,21 @@ void map_cellcheck(struct cell *c, void *data) {
           p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[1], c->loc[2],
           c->loc[0] + c->h[0], c->loc[1] + c->h[1], c->loc[2] + c->h[2]);
       error("particle out of bounds!");
+    }
+  }
+
+  /* Loop over all gparts and check if they are in the cell. */
+  for (int k = 0; k < c->gcount; k++) {
+    struct gpart *p = &c->gparts[k];
+    if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
+        p->x[0] > c->loc[0] + c->h[0] || p->x[1] > c->loc[1] + c->h[1] ||
+        p->x[2] > c->loc[2] + c->h[2]) {
+      printf(
+          "map_cellcheck: g-particle at [ %.16e %.16e %.16e ] outside of cell "
+          "[ %.16e %.16e %.16e ] - [ %.16e %.16e %.16e ].\n",
+          p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[1], c->loc[2],
+          c->loc[0] + c->h[0], c->loc[1] + c->h[1], c->loc[2] + c->h[2]);
+      error("g-particle out of bounds!");
     }
   }
 }

@@ -103,6 +103,6 @@ ds[()] = h
 ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
 ds[()] = u
 ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
-ds[()] = ids
+ds[()] = ids + 1
 
 file.close()

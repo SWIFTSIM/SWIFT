@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,38 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-/* Some standard headers. */
-#include <stdlib.h>
 
-/* Gravity particle. */
-struct gpart {
-
-  /* Particle position. */
-  double x[3];
-
-  /* Particle velocity. */
-  float v_full[3];
-
-  /* Particle acceleration. */
-  float a[3];
-
-  /* Particle mass. */
-  float mass;
-
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
-
-  /* Anonymous union for id/part. */
-  union {
-
-    /* Particle ID. */
-    long long id;
-
-    /* Pointer to corresponding SPH part. */
-    struct part* part;
-  };
-
-} __attribute__((aligned(part_align)));
+__attribute__((always_inline))
+    INLINE static void gravity_debug_particle(struct gpart* p) {
+  printf(
+      "x=[%.3e,%.3e,%.3e], "
+      "v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
+      "mass=%.3e t_begin=%d, t_end=%d\n",
+      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
+      p->a[0], p->a[1], p->a[2], p->mass, p->ti_begin, p->ti_end);
+}

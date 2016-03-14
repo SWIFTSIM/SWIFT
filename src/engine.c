@@ -859,17 +859,17 @@ void engine_count_and_link_tasks(struct engine *e) {
       }
     }
 
-    /* Link gravity multipole tasks to the up/down tasks. */
-    if (t->type == task_type_grav_mm ||
-        (t->type == task_type_sub && t->subtype == task_subtype_grav)) {
-      atomic_inc(&t->ci->nr_tasks);
-      scheduler_addunlock(sched, t->ci->grav_up, t);
-      scheduler_addunlock(sched, t, t->ci->grav_down);
-      if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) {
-        scheduler_addunlock(sched, t->cj->grav_up, t);
-        scheduler_addunlock(sched, t, t->cj->grav_down);
-      }
-    }
+    /* /\* Link gravity multipole tasks to the up/down tasks. *\/ */
+    /* if (t->type == task_type_grav_mm || */
+    /*     (t->type == task_type_sub && t->subtype == task_subtype_grav)) { */
+    /*   atomic_inc(&t->ci->nr_tasks); */
+    /*   scheduler_addunlock(sched, t->ci->grav_up, t); */
+    /*   scheduler_addunlock(sched, t, t->ci->grav_down); */
+    /*   if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) { */
+    /*     scheduler_addunlock(sched, t->cj->grav_up, t); */
+    /*     scheduler_addunlock(sched, t, t->cj->grav_down); */
+    /*   } */
+    /* } */
   }
 }
 

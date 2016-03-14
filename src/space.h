@@ -127,12 +127,14 @@ extern struct parallel_sort space_sort_struct;
 /* function prototypes. */
 void space_parts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
                       int verbose);
-void space_gparts_sort(struct gpart *gparts, size_t *ind, size_t N, int min, int max);
+void space_gparts_sort(struct gpart *gparts, size_t *ind, size_t N, int min,
+                       int max);
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
-void space_init(struct space *s, double dim[3], struct part *parts, size_t N,
-                int periodic, double h_max, int verbose);
+void space_init(struct space *s, double dim[3], struct part *parts,
+                struct gpart *gparts, size_t N, size_t Ngpart, int periodic,
+                double h_max, int verbose);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
 void space_map_parts(struct space *s,
