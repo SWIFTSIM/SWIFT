@@ -138,17 +138,9 @@ int main(int argc, char *argv[]) {
   if ((ENGINE_POLICY) & engine_policy_setaffinity) {
     /* Ensure the NUMA node on which we initialise (first touch) everything
      * doesn't change before engine_init allocates NUMA-local workers.
-     * Otherwise,
-     * we may be scheduled elsewhere between the two times.
+     * Otherwise, we may be scheduled elsewhere between the two times.
      */
-    cpu_set_t affinity;
-    CPU_ZERO(&affinity);
-    CPU_SET(sched_getcpu(), &affinity);
-    if (sched_setaffinity(0, sizeof(cpu_set_t), &affinity) != 0) {
-      message("failed to set entry thread's affinity");
-    } else {
-      message("set entry thread's affinity");
-    }
+    engine_pin();
   }
 #endif
 
