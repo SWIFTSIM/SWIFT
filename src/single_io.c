@@ -204,7 +204,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 
   /* Make sure the chunks are not larger than the dataset */
   if (chunk_shape[0] > N) chunk_shape[0] = N;
-  
+
   /* Change shape of data space */
   h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if (h_err < 0) {
@@ -337,6 +337,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
   int numParticles[NUM_PARTICLE_TYPES] = {0};
+  int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
   size_t Ndm;
 
   /* Open file */
@@ -365,9 +366,12 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* Read the relevant information and print status */
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
+  readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-  *Ngas = numParticles[0];
-  Ndm = numParticles[1];
+  *Ngas = ((long long)numParticles[0]) +
+          ((long long)numParticles_highWord[0] << 32);
+  Ndm = ((long long)numParticles[1]) +
+        ((long long)numParticles_highWord[1] << 32);
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
