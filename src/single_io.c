@@ -314,9 +314,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param fileName The file to read.
  * @param dim (output) The dimension of the volume.
  * @param parts (output) Array of Gas particles.
- * @param gparts (output) Array of DM particles.
+ * @param gparts (output) Array of #gpart particles.
  * @param Ngas (output) number of Gas particles read.
- * @param Ngparts (output) The number of DM particles read.
+ * @param Ngparts (output) The number of #gpart read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  *
  * Opens the HDF5 file fileName and reads the particles contained
