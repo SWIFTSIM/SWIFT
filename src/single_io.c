@@ -338,6 +338,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
   int numParticles[NUM_PARTICLE_TYPES] = {0};
   int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
+  size_t N[NUM_PARTICLE_TYPES] = {0};
   size_t Ndm;
 
   /* Open file */
@@ -368,10 +369,10 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
   readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-  *Ngas = ((long long)numParticles[0]) +
-          ((long long)numParticles_highWord[0] << 32);
-  Ndm = ((long long)numParticles[1]) +
-        ((long long)numParticles_highWord[1] << 32);
+  for(int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
+    N[ptype] = ((long long)numParticles[ptype]) +
+               ((long long)numParticles_highWord[ptype] << 32);
+
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
@@ -382,16 +383,16 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* Close header */
   H5Gclose(h_grp);
 
-  /* Total number of particles */
-  *Ngparts = *Ngas + Ndm;
-
   /* Allocate memory to store SPH particles */
+  *Ngas = N[0];
   if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
       0)
     error("Error while allocating memory for SPH particles");
   bzero(*parts, *Ngas * sizeof(struct part));
 
   /* Allocate memory to store all particles */
+  Ndm = N[1];
+  *Ngparts = N[1] + N[0];
   if (posix_memalign((void*)gparts, gpart_align,
                      *Ngparts * sizeof(struct gpart)) != 0)
     error("Error while allocating memory for gravity particles");
@@ -400,8 +401,6 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
    * (1024.*1024.)); */
 
-  /* Open SPH particles group */
-  /* message("Reading particle arrays..."); */
   message("BoxSize = %lf", dim[0]);
   message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts);
 
@@ -409,7 +408,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
     /* Don't do anything if no particle of this kind */
-    if (numParticles[ptype] == 0) continue;
+    if (N[ptype] == 0) continue;
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];

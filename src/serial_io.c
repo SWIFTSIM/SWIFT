@@ -396,9 +396,15 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  * @param fileName The file to read.
  * @param dim (output) The dimension of the volume read from the file.
- * @param parts (output) The array of #part read from the file.
- * @param N (output) The number of particles read from the file.
+ * @param parts (output) The array of #part (gas particles) read from the file.
+ * @param gparts (output) The array of #gpart read from the file.
+ * @param Ngas (output) The number of #part read from the file on that node.
+ * @param Ngparts (output) The number of #gpart read from the file on that node.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
+ * @param mpi_rank The MPI rank of this node
+ * @param mpi_size The number of MPI ranks
+ * @param comm The MPI communicator
+ * @param info The MPI information object
  *
  * Opens the HDF5 file fileName and reads the particles contained
  * in the parts array. N is the returned number of particles found
@@ -411,17 +417,18 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  *
  */
 void read_ic_serial(char* fileName, double dim[3], struct part** parts,
-                    size_t* N, int* periodic, int mpi_rank, int mpi_size,
+		    struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
+		    int* periodic, int mpi_rank, int mpi_size,
                     MPI_Comm comm, MPI_Info info) {
   hid_t h_file = 0, h_grp = 0;
-  double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has only cubic boxes (in cosmological mode) */
-  int numParticles[6] = {0};
-  /* GADGET has 6 particle types. We only keep the type 0*/
-  int numParticles_highWord[6] = {0};
-  long long offset = 0;
-  long long N_total = 0;
-  int rank;
+  double boxSize[3] = {0.0, -1.0, -1.0};
+  /* GADGET has 6 particle types. We only keep the type 0 & 1 for now*/
+  int numParticles[NUM_PARTICLE_TYPES] = {0};
+  int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
+  size_t N[NUM_PARTICLE_TYPES] = {0};
+  long long N_total[NUM_PARTICLE_TYPES] = {0};
+  long long offset[NUM_PARTICLE_TYPES] = {0};
 
   /* First read some information about the content */
   if (mpi_rank == 0) {
@@ -453,8 +460,10 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
     readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
     readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-    N_total = ((long long)numParticles[0]) +
-              ((long long)numParticles_highWord[0] << 32);
+    for(int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
+      N_total[ptype] = ((long long)numParticles[ptype]) +
+	               ((long long)numParticles_highWord[ptype] << 32);
+
     dim[0] = boxSize[0];
     dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
     dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
@@ -474,42 +483,80 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
 
   /* Now need to broadcast that information to all ranks. */
   MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
-  MPI_Bcast(&N_total, 1, MPI_LONG_LONG, 0, comm);
+  MPI_Bcast(&N_total, NUM_PARTICLE_TYPES, MPI_LONG_LONG, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
 
   /* Divide the particles among the tasks. */
-  offset = mpi_rank * N_total / mpi_size;
-  *N = (mpi_rank + 1) * N_total / mpi_size - offset;
+  for(int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype) {
+    offset[ptype] = mpi_rank * N_total[ptype] / mpi_size;
+    N[ptype] = (mpi_rank + 1) * N_total[ptype] / mpi_size - offset[ptype];
+  }
 
-  /* Allocate memory to store particles */
-  if (posix_memalign((void*)parts, part_align, (*N) * sizeof(struct part)) != 0)
+  /* Allocate memory to store SPH particles */
+  *Ngas = N[0];
+  if (posix_memalign((void*)parts, part_align, (*Ngas) * sizeof(struct part)) != 0)
     error("Error while allocating memory for particles");
-  bzero(*parts, *N * sizeof(struct part));
+  bzero(*parts, *Ngas * sizeof(struct part));
+
+  /* Allocate memory to store all particles */
+  Ndm = N[1];
+  *Ngparts = N[1] + N[0];
+  if (posix_memalign((void*)gparts, gpart_align, *Ngparts * sizeof(struct gpart)) != 0)
+    error("Error while allocating memory for gravity particles");
+  bzero(*gparts, *Ngparts * sizeof(struct gpart));
+  
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / */
   /* 	  (1024.*1024.)); */
 
+  message("BoxSize = %lf", dim[0]);
+  message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts);
+  
   /* Now loop over ranks and read the data */
-  for (rank = 0; rank < mpi_size; ++rank) {
+  for (int rank = 0; rank < mpi_size; ++rank) {
 
     /* Is it this rank's turn to read ? */
     if (rank == mpi_rank) {
-
+	
       h_file = H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
       if (h_file < 0)
         error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
 
-      /* Open SPH particles group */
-      /* message("Reading particle arrays..."); */
-      h_grp = H5Gopen(h_file, "/PartType0", H5P_DEFAULT);
-      if (h_grp < 0)
-        error("Error while opening particle group on rank %d.\n", mpi_rank);
+      /* Loop over all particle types */
+      for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
-      /* Read particle fields into the particle structure */
-      hydro_read_particles(h_grp, *N, N_total, offset, *parts);
+	/* Don't do anything if no particle of this kind */
+	if (N[ptype] == 0) continue;
 
-      /* Close particle group */
-      H5Gclose(h_grp);
+	/* Open the particle group in the file */
+	char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
+	snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
+		 ptype);
+	h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
+	if (h_grp < 0) {
+	  error("Error while opening particle group %s.", partTypeGroupName);
+	}
 
+
+	/* Read particle fields into the particle structure */
+	switch (ptype) {
+	  
+	case GAS:
+	  hydro_read_particles(h_grp, N[ptype], N_total[ptype], offset[ptype], *parts);
+	  break;
+	  
+	case DM:
+	  darkmatter_read_particles(h_grp, N[ptype], N_total[ptype], offset[ptype], *gparts);
+	  break;
+	  
+	default:
+	  error("Particle Type %d not yet supported. Aborting", ptype);
+	}
+	
+	/* Close particle group */
+	H5Gclose(h_grp);
+	
+      }
+      
       /* Close file */
       H5Fclose(h_file);
     }
@@ -517,6 +564,12 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
     /* Wait for the read of the reading to complete */
     MPI_Barrier(comm);
   }
+
+  /* Prepare the DM particles */
+  prepare_dm_gparts(*gparts, Ndm);
+
+  /* Now duplicate the hydro particle into gparts */
+  duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
 
   /* message("Done Reading particles..."); */
 }
