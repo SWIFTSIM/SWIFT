@@ -380,6 +380,7 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   long long N_long[2] = {Ngas, Ngpart};
   MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  N_total[1] -= N_total[0];
   if (myrank == 0)
     message("Read %lld gas particles and %lld DM particles from the ICs",
             N_total[0], N_total[1]);
