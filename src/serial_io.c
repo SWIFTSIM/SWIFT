@@ -390,6 +390,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
+/* Import the right gravity definition */
+#include "gravity_io.h"
+
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
@@ -499,7 +502,7 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
   bzero(*parts, *Ngas * sizeof(struct part));
 
   /* Allocate memory to store all particles */
-  Ndm = N[1];
+  const size_t Ndm = N[1];
   *Ngparts = N[1] + N[0];
   if (posix_memalign((void*)gparts, gpart_align, *Ngparts * sizeof(struct gpart)) != 0)
     error("Error while allocating memory for gravity particles");

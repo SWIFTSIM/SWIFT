@@ -39,9 +39,6 @@
 #include "common_io.h"
 #include "error.h"
 
-#define FILENAME_BUFFER_SIZE 150
-#define PARTICLE_GROUP_BUFFER_SIZE 20
-
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
  *-----------------------------------------------------------------------------*/

@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
   read_ic_parallel(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  read_ic_serial(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
+  read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic, myrank, nr_nodes,
                  MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else

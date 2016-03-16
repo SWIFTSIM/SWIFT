@@ -70,6 +70,9 @@ enum PARTICLE_TYPE {
   NUM_PARTICLE_TYPES
 };
 
+#define FILENAME_BUFFER_SIZE 150
+#define PARTICLE_GROUP_BUFFER_SIZE 20
+
 hid_t hdf5Type(enum DATA_TYPE type);
 size_t sizeOfType(enum DATA_TYPE type);
 
