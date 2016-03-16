@@ -68,7 +68,8 @@
  */
 void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                       int dim, long long N_total, long long offset,
-                      char* part_c, enum DATA_IMPORTANCE importance) {
+                      char* part_c, size_t partSize,
+		      enum DATA_IMPORTANCE importance) {
   hid_t h_data = 0, h_err = 0, h_type = 0, h_memspace = 0, h_filespace = 0;
   hsize_t shape[2], offsets[2];
   htri_t exist = 0;
@@ -76,7 +77,6 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   int i = 0, rank = 0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
-  const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
 
   /* Check whether the dataspace exists or not */
@@ -269,7 +269,7 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  */
 void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                        enum DATA_TYPE type, int N, int dim, long long N_total,
-                       int mpi_rank, long long offset, char* part_c,
+                       int mpi_rank, long long offset, char* part_c, size_t partSize,
                        struct UnitSystem* us,
                        enum UnitConversionFactor convFactor) {
 
@@ -279,7 +279,6 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   int i = 0, rank = 0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
-  const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
 
   /* message("Writing '%s' array...", name); */
@@ -362,7 +361,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 #define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
                   importance)                                            \
   readArrayBackEnd(grp, name, type, N, dim, N_total, offset,             \
-                   (char*)(&(part[0]).field), importance)
+		   (char*)(&(part[0]).field), sizeof(part[0]), importance)
 
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
@@ -385,8 +384,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 #define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
                    mpi_rank, offset, field, us, convFactor)                   \
   writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total,      \
-                    mpi_rank, offset, (char*)(&(part[0]).field), us,          \
-                    convFactor)
+                    mpi_rank, offset, (char*)(&(part[0]).field),	      \
+		    sizeof(part[0]), us, convFactor)
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
@@ -511,8 +510,8 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) / */
   /* 	  (1024.*1024.)); */
 
-  message("BoxSize = %lf", dim[0]);
-  message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts);
+  /* message("BoxSize = %lf", dim[0]); */
+  /* message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts); */
   
   /* Now loop over ranks and read the data */
   for (int rank = 0; rank < mpi_size; ++rank) {
@@ -581,7 +580,11 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
  *
  * @param e The engine containing all the system.
- * @param us The UnitSystem used for the conversion of units in the output
+ * @param us The UnitSystem used for the conversion of units in the output.
+ * @param mpi_rank The MPI rank of this node.
+ * @param mpi_size The number of MPI ranks.
+ * @param comm The MPI communicator.
+ * @param info The MPI information object
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -594,35 +597,33 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
 void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
                          int mpi_size, MPI_Comm comm, MPI_Info info) {
   hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
-  int N = e->s->nr_parts;
+  const size_t Ngas = e->s->nr_parts;
+  const size_t Ntot = e->s->nr_gparts;
+  const size_t Ndm = Ntot - Ngas;
   int periodic = e->s->periodic;
-  int numParticles[6] = {N, 0};
-  int numParticlesHighWord[6] = {0};
-  unsigned int flagEntropy[6] = {0};
-  long long N_total = 0, offset = 0;
-  double offset_d = 0., N_d = 0., N_total_d = 0.;
   int numFiles = 1;
-  int rank = 0;
   struct part* parts = e->s->parts;
-  FILE* xmfFile = 0;
+  struct gpart* gparts = e->s->gparts;
+  struct gpart* dmparts = NULL;
   static int outputCount = 0;
+  FILE* xmfFile = 0;
 
   /* File name */
-  char fileName[200];
-  sprintf(fileName, "output_%03i.hdf5", outputCount);
+  char fileName[FILENAME_BUFFER_SIZE];
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "output_%03i.hdf5", outputCount);
 
   /* Compute offset in the file and total number of particles */
-  /* Done using double to allow for up to 2^50=10^15 particles */
-  N_d = (double)N;
-  MPI_Exscan(&N_d, &offset_d, 1, MPI_DOUBLE, MPI_SUM, comm);
-  N_total_d = offset_d + N_d;
-  MPI_Bcast(&N_total_d, 1, MPI_DOUBLE, mpi_size - 1, comm);
-  if (N_total_d > 1.e15)
-    error(
-        "Error while computing the offset for parallel output: Simulation has "
-        "more than 10^15 particles.\n");
-  N_total = (long long)N_total_d;
-  offset = (long long)offset_d;
+  size_t N[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
+  long long N_total[NUM_PARTICLE_TYPES] = {0};
+  long long offset[NUM_PARTICLE_TYPES] = {0};
+  MPI_Exscan(&N, &offset, NUM_PARTICLE_TYPES, MPI_LONG_LONG, MPI_SUM, comm);
+  for(int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype) 
+    N_total[ptype] = offset[ptype] + N[ptype];
+
+  /* The last rank now has the correct N_total. Let's broadcast from there */
+  MPI_Bcast(&N_total, 6, MPI_LONG_LONG, mpi_size - 1, comm);
+
+  /* Now everybody konws its offset and the total number of particles of each type */
 
   /* Do common stuff first */
   if (mpi_rank == 0) {
@@ -634,7 +635,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     xmfFile = prepareXMFfile();
 
     /* Write the part corresponding to this specific output */
-    writeXMFheader(xmfFile, N_total, fileName, e->time);
+    //writeXMFheader(xmfFile, N_total, fileName, e->time);
 
     /* Open file */
     /* message("Opening file '%s'.", fileName); */
@@ -666,15 +667,20 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
 
     /* GADGET-2 legacy values */
-    numParticles[0] = (unsigned int)N_total;
-    writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles, 6);
-    writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, 6);
-    numParticlesHighWord[0] = (unsigned int)(N_total >> 32);
-    writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord,
-                   6);
+    /* Number of particles of each type */
+    unsigned int numParticles[NUM_PARTICLE_TYPES] = {0};
+    unsigned int numParticlesHighWord[NUM_PARTICLE_TYPES] = {0};
+    for(int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype) {
+      numParticles[ptype] = (unsigned int) N_total[ptype]; 
+      numParticlesHighWord[ptype] = (unsigned int) (N_total[ptype] >> 32);
+    }      
+    writeAttribute(h_grp, "NumPart_ThisFile", LONGLONG, N_total, NUM_PARTICLE_TYPES);
+    writeAttribute(h_grp, "NumPart_Total", UINT, numParticles, NUM_PARTICLE_TYPES);
+    writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord, NUM_PARTICLE_TYPES);
     double MassTable[6] = {0., 0., 0., 0., 0., 0.};
-    writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, 6);
-    writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy, 6);
+    writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, NUM_PARTICLE_TYPES);
+    unsigned int flagEntropy[NUM_PARTICLE_TYPES] = {0};
+    writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy, NUM_PARTICLE_TYPES);
     writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
 
     /* Close header */
@@ -692,21 +698,32 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     /* Print the system of Units */
     writeUnitSystem(h_file, us);
 
-    /* Create SPH particles group */
-    /* message("Writing particle arrays..."); */
-    h_grp =
-        H5Gcreate(h_file, "/PartType0", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_grp < 0) error("Error while creating particle group.\n");
+    /* Loop over all particle types */
+    for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
-    /* Close particle group */
-    H5Gclose(h_grp);
+      /* Don't do anything if no particle of this kind */
+      if (numParticles[ptype] == 0) continue;
 
+      /* Open the particle group in the file */
+      char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
+      snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
+	       ptype);
+      h_grp = H5Gcreate(h_file, partTypeGroupName, H5P_DEFAULT, H5P_DEFAULT,
+			H5P_DEFAULT);
+      if (h_grp < 0) {
+	error("Error while creating particle group.\n");
+      }
+      
+      /* Close particle group */
+      H5Gclose(h_grp);
+    }
+    
     /* Close file */
     H5Fclose(h_file);
   }
 
   /* Now loop over ranks and write the data */
-  for (rank = 0; rank < mpi_size; ++rank) {
+  for (int rank = 0; rank < mpi_size; ++rank) {
 
     /* Is it this rank's turn to write ? */
     if (rank == mpi_rank) {
@@ -715,19 +732,57 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
       if (h_file < 0)
         error("Error while opening file '%s' on rank %d.", fileName, mpi_rank);
 
-      /* Open SPH particles group */
-      /* message("Reading particle arrays..."); */
-      h_grp = H5Gopen(h_file, "/PartType0", H5P_DEFAULT);
-      if (h_grp < 0)
-        error("Error while opening particle group on rank %d.\n", mpi_rank);
+      /* Loop over all particle types */
+      for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
-      /* Write particle fields from the particle structure */
-      hydro_write_particles(h_grp, fileName, xmfFile, N, N_total, mpi_rank,
-                            offset, parts, us);
+	/* Don't do anything if no particle of this kind */
+	if (N[ptype] == 0) continue;
 
-      /* Close particle group */
-      H5Gclose(h_grp);
+	/* Open the particle group in the file */
+	char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
+	snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
+		 ptype);
+	h_grp = H5Gopen(h_file, partTypeGroupName, H5P_DEFAULT);
+	if (h_grp < 0) {
+	  error("Error while opening particle group %s.", partTypeGroupName);
+	}
 
+	/* Read particle fields into the particle structure */
+	switch (ptype) {
+
+
+	case GAS:
+	  hydro_write_particles(h_grp, fileName, xmfFile, N[ptype], N_total[ptype], mpi_rank,
+				offset[ptype], parts, us);
+
+	  break;
+
+	case DM:
+	  /* Allocate temporary array */
+	  if (posix_memalign((void*)&dmparts, gpart_align,
+			     Ndm * sizeof(struct gpart)) != 0)
+	    error("Error while allocating temporart memory for DM particles");
+	  bzero(dmparts, Ndm * sizeof(struct gpart));
+	  
+	  /* Collect the DM particles from gpart */
+	  collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
+
+	  /* Write DM particles */
+	  darkmatter_write_particles(h_grp, fileName, xmfFile, N[ptype], N_total[ptype], mpi_rank, offset[ptype], dmparts, us);
+
+	  /* Free temporary array */
+	  free(dmparts);
+	  break;
+
+	default:
+	  error("Particle Type %d not yet supported. Aborting", ptype);
+
+	}
+      
+	/* Close particle group */
+	H5Gclose(h_grp);
+      }
+      
       /* Close file */
       H5Fclose(h_file);
     }
