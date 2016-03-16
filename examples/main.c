@@ -102,6 +102,9 @@ int main(int argc, char *argv[]) {
 /* Choke on FP-exceptions. */
 // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
 
+  /* Initialize CPU frequency, this also starts time. */
+  clocks_set_cpufreq(cpufreq);
+
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res, prov;
@@ -131,9 +134,6 @@ int main(int argc, char *argv[]) {
   factor(initial_partition.grid[0] * initial_partition.grid[1],
          &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
-
-  /* Initialize CPU frequency, this also starts time. */
-  clocks_set_cpufreq(cpufreq);
 
   /* Greeting message */
   if (myrank == 0) greetings();
