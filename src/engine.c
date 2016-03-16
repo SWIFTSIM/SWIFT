@@ -1907,24 +1907,6 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 #endif
 }
 
-#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-static bool hyperthreads_present(void) {
-#ifdef __linux__
-  FILE *f =
-      fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
-
-  int c;
-  while ((c = fgetc(f)) != EOF && c != ',')
-    ;
-  fclose(f);
-
-  return c == ',';
-#else
-  return true;  // just guess
-#endif
-}
-#endif
-
 #ifdef HAVE_SETAFFINITY
 static cpu_set_t entry_affinity;
 static bool use_entry_affinity = false;
@@ -2054,11 +2036,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
       if (nodeID == 0) message("prefer NUMA-local CPUs");
 
       const int home = numa_node_of_cpu(sched_getcpu());
-      const int half = nr_cores / 2;
-      const bool swap_hyperthreads = hyperthreads_present();
       bool done = false;
-      if (swap_hyperthreads && nodeID == 0)
-        message("prefer physical cores to hyperthreads");
 
       while (!done) {
         done = true;
@@ -2066,15 +2044,8 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
           const int node_a = numa_node_of_cpu(cpuid[i - 1]);
           const int node_b = numa_node_of_cpu(cpuid[i]);
 
-          /* Avoid using local hyperthreads over unused remote physical cores.
-           * Assume two hyperthreads, and that cpuid >= half partitions them.
-           */
-          const int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
-          const int thread_b = swap_hyperthreads && cpuid[i] >= half;
-
-          bool swap = thread_a > thread_b;
-          if (thread_a == thread_b)
-            swap = numa_distance(home, node_a) > numa_distance(home, node_b);
+          const bool swap =
+            numa_distance(home, node_a) > numa_distance(home, node_b);
 
           if (swap) {
             const int t = cpuid[i - 1];
