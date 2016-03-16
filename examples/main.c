@@ -51,6 +51,8 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+extern int engine_rank;
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -119,6 +121,8 @@ int main(int argc, char *argv[]) {
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
   if (myrank == 0) message("MPI is up and running with %i node(s).", nr_nodes);
   fflush(stdout);
+
+  engine_rank = myrank;
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
   factor(nr_nodes, &initial_partition.grid[0], &initial_partition.grid[1]);
