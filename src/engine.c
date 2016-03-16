@@ -743,7 +743,7 @@ int engine_exchange_strays(struct engine *e, int offset, size_t *ind,
  *neighbours
  *
  * Here we construct all the tasks for all possible neighbouring non-empty
- * local cells in the hierarchy. No dependencies are being added thus far. 
+ * local cells in the hierarchy. No dependencies are being added thus far.
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
