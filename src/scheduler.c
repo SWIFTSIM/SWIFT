@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -986,8 +987,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   const int waiting_old = s->waiting;
 
   /* We are going to use the task structure in a modified way to pass
-     information
-     to the task. Don't do this at home !
+     information to the task. Don't do this at home !
      - ci and cj will give the range of tasks to which the waits will be applied
      - the flags will be used to transfer the mask
      - the rank will be used to transfer the submask
@@ -1133,14 +1133,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
-    /* If no previous owner, find the shortest queue. */
+    /* If no previous owner, pick a random queue. */
     if (qid < 0) qid = rand() % s->nr_queues;
-
-    /* Increase the waiting counter. */
-    atomic_inc(&s->waiting);
 
     /* Insert the task into that queue. */
     queue_insert(&s->queues[qid], t);
+    
+    /* Increase the waiting counter. */
+    atomic_inc(&s->waiting);
   }
 }
 
