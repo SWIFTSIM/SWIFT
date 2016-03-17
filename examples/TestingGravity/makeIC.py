@@ -34,14 +34,14 @@ PROTON_MASS_IN_CGS  = 1.6726231e24
 YEAR_IN_CGS         = 3.154e+7
 
 # choice of units
-const_unit_length_in_cgs   =     (1000 *  PARSEC_IN_CGS )
-const_unit_mass_in_cgs     =     (SOLAR_MASS_IN_CGS)
-const_unit_velocity_in_cgs =    (1e5)
+const_unit_length_in_cgs   =   (1000*PARSEC_IN_CGS)
+const_unit_mass_in_cgs     =   (SOLAR_MASS_IN_CGS)
+const_unit_velocity_in_cgs =   (1e5)
 
 # derived units
 const_unit_time_in_cgs = (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
-const_G                = (NEWTON_GRAVITY_CGS * const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/ (const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs))
-
+const_G                = ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/(const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs)))
+print 'G=', const_G
 
 
 # Parameters

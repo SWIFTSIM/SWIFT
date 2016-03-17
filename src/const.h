@@ -80,13 +80,13 @@
 
 
 /* System of units */
-#define const_unit_length_in_cgs       (1000 *  PARSEC_IN_CGS )  /* kpc */
-#define const_unit_mass_in_cgs         (SOLAR_MASS_IN_CGS)       /* solar mass */
-#define const_unit_velocity_in_cgs     (1e5)                     /* km/s */ 
+#define const_unit_length_in_cgs       (1000*PARSEC_IN_CGS)    /* kpc */
+#define const_unit_mass_in_cgs         (SOLAR_MASS_IN_CGS)     /* solar mass */
+#define const_unit_velocity_in_cgs     (1e5)                   /* km/s */ 
 
 /* Derived constants */
 #define const_unit_time_in_cgs (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
-#define const_G (NEWTON_GRAVITY_CGS * const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/ (const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs))
+#define const_G ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs/(const_unit_velocity_in_cgs*const_unit_velocity_in_cgs*const_unit_length_in_cgs)))
 
 /* External Potential Constants */
 #define External_Potential_X  (50000 * PARSEC_IN_CGS /  const_unit_length_in_cgs)

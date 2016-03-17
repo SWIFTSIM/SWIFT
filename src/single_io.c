@@ -411,6 +411,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts, struct g
 	  darkmatter_read_particles(h_grp, *Ndm, *Ndm, 0, *gparts);
 	  for(int i=0; i<*Ndm; i++) {
 	    (*gparts)[i].id = -abs( (*gparts)[i].id );
+		 (*gparts)[i].tx = 0;
+		 (*gparts)[i].tv = 0;
 	  }
 	}
 

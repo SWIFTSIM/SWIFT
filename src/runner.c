@@ -100,6 +100,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   struct gpart *g, *gparts = c->gparts;
   float rinv;
   float L[3], E;
+  float dx, dy, dz;
   int i, k, gcount = c->gcount;
   const int ti_current = r->e->ti_current;
 
@@ -130,21 +131,27 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
   	 /* Is this part within the time step? */
   	 if (g->ti_end <= ti_current) {
-  		rinv = 1 / sqrtf((g->x[0]-External_Potential_X)*(g->x[0]-External_Potential_X) + (g->x[1]-External_Potential_Y)*(g->x[1]-External_Potential_Y) + (g->x[2]-External_Potential_Z)*(g->x[2]-External_Potential_Z));
+		dx  = g->x[0]-External_Potential_X;
+		dy  = g->x[1]-External_Potential_Y;
+		dz  = g->x[2]-External_Potential_Z;
+
+  		rinv = 1 / sqrtf(dx*dx + dy*dy + dz*dz);
 
   		/* check for energy and angular momentum conservation */
   		E = 0.5 * ((g->v_full[0]*g->v_full[0]) + (g->v_full[1]*g->v_full[1]) + (g->v_full[2]*g->v_full[2])) - const_G *  External_Potential_Mass * rinv;
-  		L[0] = (g->x[1] - External_Potential_X)*g->v_full[2] - (g->x[2] - External_Potential_X)*g->v_full[1];
-  		L[1] = (g->x[2] - External_Potential_Y)*g->v_full[0] - (g->x[0] - External_Potential_Y)*g->v_full[2];
-  		L[2] = (g->x[0] - External_Potential_Z)*g->v_full[1] - (g->x[1] - External_Potential_Z)*g->v_full[0];
+  		L[0] = dy * g->v_full[2] - dz * g->v_full[1];
+  		L[1] = dz * g->v_full[0] - dx * g->v_full[2];
+  		L[2] = dx * g->v_full[1] - dy * g->v_full[0];
   		if(g->id == 0) {
-  		  message("update %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\t %f\n", r->e->time, 1./rinv, g->x[0], g->x[1], g->x[2], E, L[0], L[1], L[2]);
-  		  message(" ... %f %f %f\n", g->v_full[0], g->v_full[1], g->v_full[2]);
-  		  message(" ... %e %e\n", const_G, External_Potential_Mass);
+		  float v2 = g->v_full[0]*g->v_full[0] + g->v_full[1]*g->v_full[1] + g->v_full[2]*g->v_full[2];
+		  float fg = const_G * External_Potential_Mass * rinv;
+  		  //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
+		  message("%f\t %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
+  		  // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
   		}
-  		g->a_grav_external[0] = - const_G *  External_Potential_Mass * (g->x[0] - External_Potential_X) * rinv * rinv * rinv;
-  		g->a_grav_external[1] = - const_G *  External_Potential_Mass * (g->x[1] - External_Potential_Y) * rinv * rinv * rinv;
-  		g->a_grav_external[2] = - const_G *  External_Potential_Mass * (g->x[2] - External_Potential_Z) * rinv * rinv * rinv;
+  		g->a_grav_external[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
+  		g->a_grav_external[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
+  		g->a_grav_external[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
 		
   	 }
   }
@@ -841,8 +848,13 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 	 /* Loop over all gparts in the cell */
 	 for (int k = 0; k < nr_gparts; k++)
 		{
-		  g = &gparts[k]; /* nothing to do */
-		  g->x[0] *=1;
+		  g        = &gparts[k];
+		  if(g->id == 0)
+			 message(" dt= %f tx= %f tv=%f \n",dt, g->tx, g->tv);
+		  g->x[0] += g->v_full[0] * dt;
+		  g->x[1] += g->v_full[1] * dt;
+		  g->x[2] += g->v_full[2] * dt;
+		  g->tx   += dt;
 		}
 	 
   }
@@ -1070,11 +1082,15 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 			 /* Move particle forward in time */
 			 g->ti_begin = g->ti_end;
 			 g->ti_end   = g->ti_begin + new_dti;
-			 
+
+			 if(g->id == 0)
+				 message(" dt= %f tx= %f tv=%f \n",dt, g->tx, g->tv);
+
 			 /* Kick particles in momentum space */
 			 g->v_full[0] += g->a_grav_external[0] * dt;
 			 g->v_full[1] += g->a_grav_external[1] * dt;
 			 g->v_full[2] += g->a_grav_external[2] * dt;
+			 g->tv        += dt;
 			 
 			 /* Minimal time for next end of time-step */
 			 ti_end_min = min(g->ti_end, ti_end_min);

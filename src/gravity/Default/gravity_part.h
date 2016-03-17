@@ -43,6 +43,11 @@ struct gpart {
   /* Particle time of end of time-step. */
   int ti_end;
 
+
+  /* current time of x, and of v_full */
+  float tx=0;
+  float tv=0;
+
   /* Anonymous union for id/part. */
   union {
 
