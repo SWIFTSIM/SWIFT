@@ -403,10 +403,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
-  for (size_t k = 0; k < nr_parts; k++)
-    if (s->parts[k].gpart != NULL) {
-      s->parts[k].gpart->id_or_neg_offset = -k;
-    }
+  part_relink_gparts(s->parts, nr_parts, 0);
 
   /* Verify space_sort_struct. */
   /* for ( k = 1 ; k < nr_parts ; k++ ) {
@@ -492,10 +489,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_gparts_sort(s->gparts, gind, nr_gparts, 0, s->nr_cells - 1);
 
   /* Re-link the parts. */
-  for (int k = 0; k < nr_gparts; k++)
-    if (s->gparts[k].id_or_neg_offset < 0) {
-      s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
-    }
+  part_relink_parts(s->gparts, nr_gparts, s->parts);
 
   /* We no longer need the indices as of here. */
   free(gind);
