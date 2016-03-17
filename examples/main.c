@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
-  int verbose = 0, talking;
+  int verbose = 0, talking = 0;
   unsigned long long cpufreq = 0;
 
 #ifdef WITH_MPI

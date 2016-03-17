@@ -1974,6 +1974,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->dt_max = dt_max;
   e->file_stats = NULL;
   e->verbose = verbose;
+  e->count_step = 0;
   e->wallclock_time = 0.f;
   engine_rank = nodeID;
 
