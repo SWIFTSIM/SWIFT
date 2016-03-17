@@ -51,8 +51,6 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
-extern int engine_rank;
-
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -99,8 +97,8 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-/* Choke on FP-exceptions. */
-// feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+  /* Choke on FP-exceptions. */
+  // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
 
   /* Initialize CPU frequency, this also starts time. */
   clocks_set_cpufreq(cpufreq);
@@ -124,8 +122,6 @@ int main(int argc, char *argv[]) {
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
   if (myrank == 0) message("MPI is up and running with %i node(s).", nr_nodes);
   fflush(stdout);
-
-  engine_rank = myrank;
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
   factor(nr_nodes, &initial_partition.grid[0], &initial_partition.grid[1]);
@@ -363,8 +359,8 @@ int main(int argc, char *argv[]) {
   read_ic_parallel(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic, myrank, nr_nodes,
-                 MPI_COMM_WORLD, MPI_INFO_NULL);
+  read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
   read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
@@ -388,7 +384,7 @@ int main(int argc, char *argv[]) {
   N_total[0] = Ngas;
   N_total[1] = Ngpart - Ngas;
   message("Read %lld gas particles and %lld DM particles from the ICs",
-	  N_total[0], N_total[1]);
+          N_total[0], N_total[1]);
 #endif
 
   /* Apply h scaling */

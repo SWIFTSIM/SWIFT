@@ -64,7 +64,7 @@
  */
 void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                       int dim, char* part_c, size_t partSize,
-		      enum DATA_IMPORTANCE importance) {
+                      enum DATA_IMPORTANCE importance) {
   hid_t h_data = 0, h_err = 0, h_type = 0;
   htri_t exist = 0;
   void* temp;
@@ -272,7 +272,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 #define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
                   importance)                                            \
   readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),   \
-		   sizeof(part[0]),importance)
+                   sizeof(part[0]), importance)
 
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
@@ -297,7 +297,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 #define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
                    mpi_rank, offset, field, us, convFactor)                   \
   writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim,               \
-		    (char*)(&(part[0]).field), sizeof(part[0]), us, convFactor)
+                    (char*)(&(part[0]).field), sizeof(part[0]), us,           \
+                    convFactor)
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
@@ -365,7 +366,7 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
   readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-  for(int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
+  for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
     N[ptype] = ((long long)numParticles[ptype]) +
                ((long long)numParticles_highWord[ptype] << 32);
 
@@ -526,10 +527,10 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   /* Number of particles of each type */
   unsigned int numParticles[NUM_PARTICLE_TYPES] = {0};
   unsigned int numParticlesHighWord[NUM_PARTICLE_TYPES] = {0};
-  for(int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype) {
-    numParticles[ptype] = (unsigned int) N_total[ptype]; 
-    numParticlesHighWord[ptype] = (unsigned int) (N_total[ptype] >> 32);
-  }      
+  for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype) {
+    numParticles[ptype] = (unsigned int)N_total[ptype];
+    numParticlesHighWord[ptype] = (unsigned int)(N_total[ptype] >> 32);
+  }
   writeAttribute(h_grp, "NumPart_ThisFile", LONGLONG, N_total,
                  NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumPart_Total", UINT, numParticles,
