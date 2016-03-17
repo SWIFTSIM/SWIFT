@@ -742,7 +742,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
       for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
         /* Don't do anything if no particle of this kind */
-        if (N[ptype] == 0) continue;
+        if (N_total[ptype] == 0) continue;
 
         /* Open the particle group in the file */
         char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
