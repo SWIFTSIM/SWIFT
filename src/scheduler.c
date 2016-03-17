@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -1279,7 +1278,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         if (res != NULL) break;
       }
     }
-
+    
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
     if (res == NULL && qid > 1) {
@@ -1287,7 +1286,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     if (res == NULL) {
 #endif
       pthread_mutex_lock(&s->sleep_mutex);
-      if (s->waiting > 0) pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+      res = queue_gettask(&s->queues[qid], prev, 0);
+      if (res == NULL && s->waiting > 0) {
+        pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+      }
       pthread_mutex_unlock(&s->sleep_mutex);
     }
   }
