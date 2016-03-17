@@ -1134,7 +1134,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* If no previous owner, pick a random queue. */
     if (qid < 0) qid = rand() % s->nr_queues;
-    
+
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
 
@@ -1278,7 +1278,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         if (res != NULL) break;
       }
     }
-    
+
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
     if (res == NULL && qid > 1) {
