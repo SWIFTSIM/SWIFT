@@ -1100,7 +1100,7 @@ void space_do_split(struct space *s, struct cell *c) {
     }
 
     /* Split the cell data. */
-    cell_split(c);
+    cell_split(c, c->parts - s->parts);
 
     /* Remove any progeny with zero parts. */
     for (int k = 0; k < 8; k++)
