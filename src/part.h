@@ -51,6 +51,8 @@
 
 #include "./gravity/Default/gravity_part.h"
 
+void part_relink_gparts(struct parts *parts, size_t N, ptrdiff_t offset);
+void part_relink_parts(struct gparts *parts, size_t N);
 #ifdef WITH_MPI
 void part_create_mpi_type(MPI_Datatype* part_type);
 void xpart_create_mpi_type(MPI_Datatype* xpart_type);

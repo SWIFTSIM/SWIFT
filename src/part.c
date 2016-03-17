@@ -28,6 +28,34 @@
 /* This object's header. */
 #include "part.h"
 
+/**
+ * @brief Re-link the #gparts associated with the list of #parts.
+ *
+ * @param parts The list of #part.
+ * @param N The number of particles to re-link;
+ * @param offset The offset of #parts relative to the global parts list.
+ */
+void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset) {
+  for (size_t k = 0; k < N; k++) {
+    parts[k]->gpart->id_or_neg_offset = -(k + offset);
+  }
+}
+
+/**
+ * @brief Re-link the #gparts associated with the list of #parts.
+ *
+ * @param gparts The list of #gpart.
+ * @param N The number of particles to re-link;
+ * @param parts The global part array in which to find the #gpart offsets.
+ */
+void part_relink_parts(struct gpart *gparts, size_t N, struct part *parts) {
+  for (size_t k = 0; k < N; k++) {
+    if (gparts[k].id_or_neg_offset < 0) {
+      parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
+    }
+  }
+}
+
 #ifdef WITH_MPI
 /**
  * @brief Registers and returns an MPI type for the particles
