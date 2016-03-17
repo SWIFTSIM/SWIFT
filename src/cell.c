@@ -550,7 +550,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
   /* Re-link the parts. */
   for (int k = 0; k < gcount; k++)
     if (gparts[k].id_or_neg_offset < 0) {
-      parts[gparts[k].id_or_neg_offset].gpart = &gparts[k];
+      parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
 }
 
