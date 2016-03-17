@@ -37,7 +37,7 @@
  */
 void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
-    parts[k]->gpart->id_or_neg_offset = -(k + offset);
+    parts[k].gpart->id_or_neg_offset = -(k + offset);
   }
 }
 
