@@ -1134,12 +1134,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* If no previous owner, pick a random queue. */
     if (qid < 0) qid = rand() % s->nr_queues;
-
-    /* Insert the task into that queue. */
-    queue_insert(&s->queues[qid], t);
     
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
+
+    /* Insert the task into that queue. */
+    queue_insert(&s->queues[qid], t);
   }
 }
 
