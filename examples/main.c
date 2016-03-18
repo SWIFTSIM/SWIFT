@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
@@ -395,6 +396,8 @@ int main(int argc, char *argv[]) {
   /* MATTHIEU: Temporary fix to preserve master */
   if (!with_gravity) {
     free(gparts);
+    for(size_t k = 0; k < Ngas; ++k)
+      parts[k].gpart = NULL;
     Ngpart = 0;
 #if defined(WITH_MPI)
     N_long[0] = Ngas;
