@@ -476,7 +476,11 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   static int outputCount = 0;
 
   /* Number of particles of each type */
-  const size_t Ndm = Ntot - Ngas;
+  //const size_t Ndm = Ntot - Ngas;
+
+  /* MATTHIEU: Temporary fix to preserve master */
+  const size_t Ndm = Ntot > 0 ? Ntot - Ngas: 0;
+  /* MATTHIEU: End temporary fix */
 
   long long N_total[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
 

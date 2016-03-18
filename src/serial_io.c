@@ -600,7 +600,6 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
   const size_t Ngas = e->s->nr_parts;
   const size_t Ntot = e->s->nr_gparts;
-  const size_t Ndm = Ntot - Ngas;
   int periodic = e->s->periodic;
   int numFiles = 1;
   struct part* parts = e->s->parts;
@@ -609,6 +608,13 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   static int outputCount = 0;
   FILE* xmfFile = 0;
 
+  /* Number of particles of each type */
+  //const size_t Ndm = Ntot - Ngas;
+
+  /* MATTHIEU: Temporary fix to preserve master */
+  const size_t Ndm = Ntot > 0 ? Ntot - Ngas: 0;
+  /* MATTHIEU: End temporary fix */
+  
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "output_%03i.hdf5", outputCount);

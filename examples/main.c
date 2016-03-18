@@ -387,6 +387,26 @@ int main(int argc, char *argv[]) {
           N_total[0], N_total[1]);
 #endif
 
+  /* MATTHIEU: Temporary fix to preserve master */
+  free(gparts);
+  Ngpart = 0;
+#if defined(WITH_MPI)
+  N_long[0] = Ngas;
+  N_long[1] = Ngpart;
+  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (myrank == 0)
+    message(
+        "AFTER FIX: Read %lld gas particles and %lld DM particles from the ICs",
+        N_total[0], N_total[1]);
+#else
+  N_total[0] = Ngas;
+  N_total[1] = Ngpart;
+  message(
+      "AFTER FIX: Read %lld gas particles and %lld DM particles from the ICs",
+      N_total[0], N_total[1]);
+#endif
+  /* MATTHIEU: End temporary fix */
+
   /* Apply h scaling */
   if (scaling != 1.0)
     for (size_t k = 0; k < Ngas; k++) parts[k].h *= scaling;
