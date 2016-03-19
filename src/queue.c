@@ -145,7 +145,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
 
   /* If there are no tasks, leave immediately. */
   if (q->count == 0) {
-    lock_unloc(qlock);
+    lock_unlock_blind(qlock);
     return NULL;
   }
 
