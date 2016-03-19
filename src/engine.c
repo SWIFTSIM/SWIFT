@@ -154,33 +154,30 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
  */
 void engine_redistribute(struct engine *e) {
 
-#if 1 //#ifdef WITH_MPI
+#ifdef WITH_MPI
 
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
-  const int *cdim = s->cdim;
   struct cell *cells = s->cells;
   const int nr_cells = s->nr_cells;
+  const int *cdim = s->cdim;
+  const double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  struct part *parts = s->parts;
+  struct xpart *xparts = s->xparts;
+  struct gpart *gparts = s->gparts;
   ticks tic = getticks();
 
   /* Start by sorting the particles according to their nodes and
      getting the counts. The counts array is indexed as
      count[from * nr_nodes + to]. */
-  double ih[3], dim[3];
-  ih[0] = s->ih[0];
-  ih[1] = s->ih[1];
-  ih[2] = s->ih[2];
-  dim[0] = s->dim[0];
-  dim[1] = s->dim[1];
-  dim[2] = s->dim[2];
   int *counts;
   size_t *dest;
   if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
       (dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
     error("Failed to allocate count and dest buffers.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
-  struct part *parts = s->parts;
   for (size_t k = 0; k < s->nr_parts; k++) {
     for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
@@ -198,6 +195,32 @@ void engine_redistribute(struct engine *e) {
   }
   space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
+
+  /* Now, do the same for the stand-alone gparts */
+  int *g_counts;
+  size_t *g_dest;
+  if ((g_counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
+      (g_dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
+    error("Failed to allocate count and dest buffers.");
+  bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    for (int j = 0; j < 3; j++) {
+      if (parts[k].x[j] < 0.0)
+        parts[k].x[j] += dim[j];
+      else if (parts[k].x[j] >= dim[j])
+        parts[k].x[j] -= dim[j];
+    }
+    const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
+                               parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    /* if (cid < 0 || cid >= s->nr_cells)
+       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
+             cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
+    dest[k] = cells[cid].nodeID;
+    counts[nodeID * nr_nodes + dest[k]] += 1;
+  }
+  space_gparts_sort(s, g_dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
+
+  
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
                     MPI_COMM_WORLD) != MPI_SUCCESS)
@@ -207,7 +230,7 @@ void engine_redistribute(struct engine *e) {
   size_t nr_parts = 0;
   for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   struct part *parts_new = NULL;
-  struct xpart *xparts_new = NULL, *xparts = s->xparts;
+  struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * nr_parts * 1.2) != 0 ||
       posix_memalign((void **)&xparts_new, part_align,
@@ -287,6 +310,7 @@ void engine_redistribute(struct engine *e) {
   s->size_parts = 1.2 * nr_parts;
 
   /* Be verbose about what just happened. */
+  int my_cells = 0;
   for (int k = 0; k < nr_cells; k++)
     if (cells[k].nodeID == nodeID) my_cells += 1;
   if (e->verbose)
