@@ -1286,7 +1286,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     if (res == NULL) {
 #endif
       pthread_mutex_lock(&s->sleep_mutex);
-      res = queue_gettask(&s->queues[qid], prev, 0);
+      res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }
