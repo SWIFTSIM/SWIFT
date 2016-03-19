@@ -778,9 +778,12 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     if (pid == MPI_UNDEFINED) break;
     // message( "request from proxy %i has arrived." , pid / 3 );
     pid = 3 * (pid / 3);
+    
+    /* If all the requests for a given proxy have arrived... */
     if (reqs_in[pid + 0] == MPI_REQUEST_NULL &&
         reqs_in[pid + 1] == MPI_REQUEST_NULL &&
         reqs_in[pid + 2] == MPI_REQUEST_NULL) {
+      /* Copy the particle data to the part/xpart/gpart arrays. */
       struct proxy *p = &e->proxies[pid >> 1];
       memcpy(&s->parts[offset_parts + count_parts], p->parts_in,
              sizeof(struct part) * p->nr_parts_in);
@@ -793,6 +796,18 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
             "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
             s->parts[k].id, s->parts[k].x[0], s->parts[k].x[1],
             s->parts[k].x[2], s->parts[k].h, p->nodeID); */
+            
+      /* Re-link the gparts. */
+      for (int k = 0; k < p->nr_gparts_in; k++) {
+        struct gpart *gp = &s->gparts[offset_gparts + count_gparts + k];
+        if (gp->id >= 0) {
+          struct part *p = &s->parts[offset_gparts + count_parts + gp->id];
+          gp->part = p;
+          p->gpart = gp;
+        }
+      }
+      
+      /* Advance the counters. */
       count_parts += p->nr_parts_in;
       count_gparts += p->nr_gparts_in;
     }
