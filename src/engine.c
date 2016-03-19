@@ -631,17 +631,26 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
   /* Put the parts and gparts into the corresponding proxies. */
   for (size_t k = 0; k < *Npart; k++) {
+    /* Get the target node and proxy ID. */
     const int node_id = e->s->cells[ind_part[k]].nodeID;
     if (node_id < 0 || node_id >= e->nr_nodes)
       error("Bad node ID %i.", node_id);
     const int pid = e->proxy_ind[node_id];
-    if (pid < 0)
+    if (pid < 0) {
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
           "id=%llu, x=[%e,%e,%e].",
           node_id, s->parts[offset_parts + k].id,
           s->parts[offset_parts + k].x[0], s->parts[offset_parts + k].x[1],
           s->parts[offset_parts + k].x[2]);
+    }
+    
+    /* Re-link the associated gpart with the buffer offset of the part. */
+    if (s->parts[offset_parts + k].gpart != NULL) {
+      s->parts[offset_parts + k].gpart->id = e->proxies[pid].nr_parts_in;
+    }
+    
+    /* Load the part and xpart into the proxy. */
     proxy_parts_load(&e->proxies[pid], &s->parts[offset_parts + k],
                      &s->xparts[offset_parts + k], 1);
   }
