@@ -601,18 +601,18 @@ void engine_exchange_cells(struct engine *e) {
  *
  * @param e The #engine.
  * @param offset_parts The index in the parts array as of which the foreign
- *parts
- *reside.
+ *        parts reside.
  * @param ind_part The foreign #cell ID of each part.
  * @param Npart The number of stray parts, contains the number of parts received
  *        on return.
  * @param offset_gparts The index in the gparts array as of which the foreign
- *parts
- *reside.
+ *        parts reside.
  * @param ind_gpart The foreign #cell ID of each gpart.
  * @param Ngpart The number of stray gparts, contains the number of gparts
- *received
- *        on return.
+ *        received on return.
+ *
+ * Note that this function does not mess-up the linkage between parts and
+ * gparts, i.e. the received particles have correct linkeage.
  *
  * @return The number of arrived parts copied to parts and xparts.
  */
