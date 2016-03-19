@@ -382,6 +382,12 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       struct part tp = s->parts[k];
       s->parts[k] = s->parts[nr_parts];
       s->parts[nr_parts] = tp;
+      if (s->parts[k].gpart != NULL) {
+        s->parts[k].gpart->part = &s->parts[k];
+      }
+      if (s->parts[nr_parts].gpart != NULL) {
+        s->parts[nr_parts].gpart->part = &s->parts[nr_parts];
+      }
       struct xpart txp = s->xparts[k];
       s->xparts[k] = s->xparts[nr_parts];
       s->xparts[nr_parts] = txp;
@@ -398,6 +404,12 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       struct gpart tp = s->gparts[k];
       s->gparts[k] = s->gparts[nr_gparts];
       s->gparts[nr_gparts] = tp;
+      if (s->gparts[k].id > 0) {
+        s->gparts[k].part->gpart = &s->gparts[k];
+      }
+      if (s->gparts[nr_gparts].id > 0) {
+        s->gparts[nr_gparts].part->gpart = &s->gparts[nr_gparts];
+      }
       int t = ind[k];
       ind[k] = ind[nr_gparts];
       ind[nr_gparts] = t;
