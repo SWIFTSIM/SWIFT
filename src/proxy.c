@@ -309,8 +309,8 @@ void proxy_parts_exch2(struct proxy *p) {
  * @param N The number of parts.
  */
 
-void proxy_parts_load(struct proxy *p, struct part *parts, struct xpart *xparts,
-                      int N) {
+void proxy_parts_load(struct proxy *p, const struct part *parts,
+                      const struct xpart *xparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_parts_out + N > p->size_parts_out) {
@@ -348,7 +348,7 @@ void proxy_parts_load(struct proxy *p, struct part *parts, struct xpart *xparts,
  * @param N The number of parts.
  */
 
-void proxy_gparts_load(struct proxy *p, struct gpart *gparts, int N) {
+void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_gparts_out + N > p->size_gparts_out) {
