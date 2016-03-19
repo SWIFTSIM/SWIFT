@@ -349,8 +349,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count++;
   }
-// message( "getting particle indices took %.3f %s." ,
-// clocks_from_ticks(getticks() - tic), clocks_getunit()):
+  // message( "getting particle indices took %.3f %s." ,
+  // clocks_from_ticks(getticks() - tic), clocks_getunit()):
 
   /* Run through the gravity particles and get their cell index. */
   // tic = getticks();
@@ -421,12 +421,12 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
      until they are fully implemented. */
   size_t nr_parts_exchanged = s->nr_parts - nr_parts;
   size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
-  engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged, nr_gparts,
-                         &gind[nr_gparts], &nr_gparts_exchanged);
-                         
+  engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
+                         nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged);
+
   /* Add post-processing, i.e. re-linking/creating of gparts here. */
-  
-  /* Set the new particle counts. */     
+
+  /* Set the new particle counts. */
   s->nr_parts = nr_parts + nr_parts_exchanged;
   s->nr_gparts = nr_gparts + nr_gparts_exchanged;
 
