@@ -166,6 +166,11 @@ struct engine {
   MPI_Datatype part_mpi_type;
   MPI_Datatype xpart_mpi_type;
 #endif
+
+  int part_mpi_tpye;
+  int xpart_mpi_tpye;
+  int gpart_mpi_tpye;
+  
 };
 
 /* Function prototypes. */
