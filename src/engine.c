@@ -32,7 +32,7 @@
 #include <stdbool.h>
 
 /* MPI headers. */
-#if 1  //#ifdef WITH_MPI
+#ifdef WITH_MPI
 #include <mpi.h>
 #endif
 
