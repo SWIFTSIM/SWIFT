@@ -32,7 +32,7 @@
 #include <stdbool.h>
 
 /* MPI headers. */
-#ifdef WITH_MPI
+#if 1 //#ifdef WITH_MPI
 #include <mpi.h>
 #endif
 
@@ -139,26 +139,34 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
  * @brief Redistribute the particles amongst the nodes according
  *      to their cell's node IDs.
  *
+ * The strategy here is as follows:
+ * 1) Each node counts the number of particles it has to send to each other
+ * node.
+ * 2) The number of particles of each type is then exchanged.
+ * 3) Each node allocates enough space for the new particles.
+ * 4) (Asynchronous) communications are issued to transfer the data.
+ *
+ * To simplify everything, only gparts without counterparts are transferred.
+ * gparts linked to a part are re-created from the part data on the receiveing
+ * side.
+ *
  * @param e The #engine.
  */
-
 void engine_redistribute(struct engine *e) {
 
-#ifdef WITH_MPI
+#if 1 //#ifdef WITH_MPI
 
-  int nr_nodes = e->nr_nodes, nodeID = e->nodeID;
+  const int nr_nodes = e->nr_nodes;
+  const int nodeID = e->nodeID;
   struct space *s = e->s;
-  int my_cells = 0;
-  int *cdim = s->cdim;
+  const int *cdim = s->cdim;
   struct cell *cells = s->cells;
-  int nr_cells = s->nr_cells;
+  const int nr_cells = s->nr_cells;
   ticks tic = getticks();
 
   /* Start by sorting the particles according to their nodes and
      getting the counts. The counts array is indexed as
      count[from * nr_nodes + to]. */
-  int *counts;
-  size_t *dest;
   double ih[3], dim[3];
   ih[0] = s->ih[0];
   ih[1] = s->ih[1];
@@ -166,6 +174,8 @@ void engine_redistribute(struct engine *e) {
   dim[0] = s->dim[0];
   dim[1] = s->dim[1];
   dim[2] = s->dim[2];
+  int *counts;
+  size_t *dest;
   if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
       (dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
     error("Failed to allocate count and dest buffers.");
@@ -743,7 +753,7 @@ int engine_exchange_strays(struct engine *e, int offset, size_t *ind,
  *neighbours
  *
  * Here we construct all the tasks for all possible neighbouring non-empty
- * local cells in the hierarchy. No dependencies are being added thus far. 
+ * local cells in the hierarchy. No dependencies are being added thus far.
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
@@ -2135,6 +2145,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 #ifdef WITH_MPI
   part_create_mpi_type(&e->part_mpi_type);
   xpart_create_mpi_type(&e->xpart_mpi_type);
+  gpart_create_mpi_type(&e->gpart_mpi_type);
 #endif
 
   /* First of all, init the barrier and lock it. */
