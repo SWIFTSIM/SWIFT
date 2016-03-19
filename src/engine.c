@@ -247,7 +247,8 @@ void engine_redistribute(struct engine *e) {
 
   /* Get the new number of parts and gparts for this node */
   size_t nr_parts = 0, nr_gparts = 0;
-  for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
+  for (int k = 0; k < nr_nodes; k++)
+    nr_parts += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
     nr_gparts += g_counts[k * nr_nodes + nodeID];
 
@@ -399,8 +400,8 @@ void engine_redistribute(struct engine *e) {
     int my_cells = 0;
     for (int k = 0; k < nr_cells; k++)
       if (cells[k].nodeID == nodeID) my_cells += 1;
-    message("node %i now has %zi parts in %i cells.", nodeID, nr_parts,
-            my_cells);
+    message("node %i now has %zi parts and %zi gparts in %i cells.",
+	    nodeID, nr_parts, nr_gparts, my_cells);
   }
 
   if (e->verbose)
