@@ -170,16 +170,28 @@ void engine_redistribute(struct engine *e) {
   struct gpart *gparts = s->gparts;
   ticks tic = getticks();
 
-  /* Start by sorting the particles according to their nodes and
-     getting the counts. The counts array is indexed as
-     count[from * nr_nodes + to]. */
-  int *counts;
-  size_t *dest;
-  if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
-      (dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
-    error("Failed to allocate count and dest buffers.");
+  /* Allocate temporary arrays to store the counts of particles to be sent
+     and the destination of each particle */
+  int *counts, *g_counts;
+  if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL)
+    error("Failed to allocate count temporary buffer.");
+  if ((g_counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL)
+    error("Failed to allocate gcount temporary buffer.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
+  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
+
+  // MATTHIEU: Should be int and not size_t once Pedro's changes are merged.
+  size_t *dest, *g_dest;
+  if((dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
+    error("Failed to allocate dest temporary buffer.");
+  if((g_dest = (size_t *)malloc(sizeof(size_t) * s->nr_gparts)) == NULL)
+    error("Failed to allocate g_dest temporary buffer.");
+
+  
+  /* The counts array is indexed as count[from * nr_nodes + to]. */
   for (size_t k = 0; k < s->nr_parts; k++) {
+
+    /* Periodic boundary conditions */
     for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
         parts[k].x[j] += dim[j];
@@ -194,16 +206,14 @@ void engine_redistribute(struct engine *e) {
     dest[k] = cells[cid].nodeID;
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
+
+  /* Sort the particles according to their cell index. */
   space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
   /* Now, do the same for the gparts */
-  int *g_counts;
-  size_t *g_dest;
-  if ((g_counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL ||
-      (g_dest = (size_t *)malloc(sizeof(size_t) * s->nr_gparts)) == NULL)
-    error("Failed to allocate g_count and g_dest buffers.");
-  bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
   for (size_t k = 0; k < s->nr_gparts; k++) {
+
+    /* Periodic boundary conditions */
     for (int j = 0; j < 3; j++) {
       if (gparts[k].x[j] < 0.0)
         gparts[k].x[j] += dim[j];
@@ -218,6 +228,8 @@ void engine_redistribute(struct engine *e) {
     g_dest[k] = cells[cid].nodeID;
     g_counts[nodeID * nr_nodes + dest[k]] += 1;
   }
+
+  /* Sort the gparticles according to their cell index. */
   space_gparts_sort(gparts, g_dest, s->nr_gparts, 0, nr_nodes - 1);
 
   /* Get all the counts from all the nodes. */
@@ -231,8 +243,7 @@ void engine_redistribute(struct engine *e) {
     error("Failed to allreduce gparticle transfer counts.");
 
   /* Each node knows how many parts and gparts will be transferred to every
-     other
-     node. We can start preparing to receive data */
+     other node. We can start preparing to receive data */
 
   /* Get the new number of parts and gparts for this node */
   size_t nr_parts = 0, nr_gparts = 0;
