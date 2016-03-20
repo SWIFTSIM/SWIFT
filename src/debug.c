@@ -38,6 +38,8 @@
 #error "Invalid choice of SPH variant"
 #endif
 
+#include "./gravity/Default/gravity_debug.h"
+
 /**
  * @brief Looks for the particle with the given id and prints its information to
  *the standard output.
@@ -67,21 +69,20 @@ void printParticle(struct part *parts, struct xpart *xparts, long long int id,
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
 }
 
-void printgParticle(struct gpart *parts, long long int id, size_t N) {
+void printgParticle(struct gpart *gparts, long long int id, size_t N) {
 
   int found = 0;
 
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
-    if (parts[i].id == -id || (parts[i].id > 0 && parts[i].part->id == id)) {
-      printf(
-          "## gParticle[%zd]: id=%lld, x=[%.16e,%.16e,%.16e], "
-          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%d, "
-          "t_end=%d\n",
-          i, parts[i].part->id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
-          parts[i].v[0], parts[i].v[1], parts[i].v[2], parts[i].a[0],
-          parts[i].a[1], parts[i].a[2], parts[i].mass, parts[i].ti_begin,
-          parts[i].ti_end);
+    if (gparts[i].id == -id) {
+      printf("## gParticle[%zd] (DM) :\n id=%lld", i, -gparts[i].id);
+      gravity_debug_particle(&gparts[i]);
+      found = 1;
+      break;
+    } else if (gparts[i].id > 0 && gparts[i].part->id == id) {
+      printf("## gParticle[%zd] (hydro) :\n id=%lld", i, gparts[i].id);
+      gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
     }

@@ -35,6 +35,7 @@
 
 /* Some constants. */
 #define part_align 64
+#define gpart_align 32
 #define xpart_align 32
 
 /* Import the right particle definition */

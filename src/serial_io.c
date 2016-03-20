@@ -410,9 +410,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * Calls #error() if an error occurs.
  *
  */
-void read_ic_serial(char* fileName, double dim[3], struct part** parts, int* N,
-                    int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
-                    MPI_Info info) {
+void read_ic_serial(char* fileName, double dim[3], struct part** parts,
+                    size_t* N, int* periodic, int mpi_rank, int mpi_size,
+                    MPI_Comm comm, MPI_Info info) {
   hid_t h_file = 0, h_grp = 0;
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has only cubic boxes (in cosmological mode) */

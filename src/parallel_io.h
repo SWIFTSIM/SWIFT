@@ -32,7 +32,7 @@
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && defined(HAVE_PARALLEL_HDF5)
 
 void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
-                      int* N, int* periodic, int mpi_rank, int mpi_size,
+                      size_t* N, int* periodic, int mpi_rank, int mpi_size,
                       MPI_Comm comm, MPI_Info info);
 
 void write_output_parallel(struct engine* e, struct UnitSystem* us,
