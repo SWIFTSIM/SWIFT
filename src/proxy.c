@@ -50,11 +50,9 @@ void proxy_cells_exch1(struct proxy *p) {
 
 #ifdef WITH_MPI
 
-  int k, ind;
-
   /* Get the number of pcells we will need to send. */
   p->size_pcells_out = 0;
-  for (k = 0; k < p->nr_cells_out; k++)
+  for (int k = 0; k < p->nr_cells_out; k++)
     p->size_pcells_out += p->cells_out[k]->pcell_size;
 
   /* Send the number of pcells. */
@@ -70,7 +68,7 @@ void proxy_cells_exch1(struct proxy *p) {
   if ((p->pcells_out = malloc(sizeof(struct pcell) * p->size_pcells_out)) ==
       NULL)
     error("Failed to allocate pcell_out buffer.");
-  for (ind = 0, k = 0; k < p->nr_cells_out; k++) {
+  for (int ind = 0, k = 0; k < p->nr_cells_out; k++) {
     memcpy(&p->pcells_out[ind], p->cells_out[k]->pcell,
            sizeof(struct pcell) * p->cells_out[k]->pcell_size);
     ind += p->cells_out[k]->pcell_size;
@@ -131,16 +129,14 @@ void proxy_cells_exch2(struct proxy *p) {
 
 void proxy_addcell_in(struct proxy *p, struct cell *c) {
 
-  int k;
-  struct cell **temp;
-
   /* Check if the cell is already registered with the proxy. */
-  for (k = 0; k < p->nr_cells_in; k++)
+  for (int k = 0; k < p->nr_cells_in; k++)
     if (p->cells_in[k] == c) return;
 
   /* Do we need to grow the number of in cells? */
   if (p->nr_cells_in == p->size_cells_in) {
     p->size_cells_in *= proxy_buffgrow;
+    struct cell **temp;
     if ((temp = malloc(sizeof(struct cell *) * p->size_cells_in)) == NULL)
       error("Failed to allocate incoming cell list.");
     memcpy(temp, p->cells_in, sizeof(struct cell *) * p->nr_cells_in);
@@ -162,16 +158,14 @@ void proxy_addcell_in(struct proxy *p, struct cell *c) {
 
 void proxy_addcell_out(struct proxy *p, struct cell *c) {
 
-  int k;
-  struct cell **temp;
-
   /* Check if the cell is already registered with the proxy. */
-  for (k = 0; k < p->nr_cells_out; k++)
+  for (int k = 0; k < p->nr_cells_out; k++)
     if (p->cells_out[k] == c) return;
 
   /* Do we need to grow the number of out cells? */
   if (p->nr_cells_out == p->size_cells_out) {
     p->size_cells_out *= proxy_buffgrow;
+    struct cell **temp;
     if ((temp = malloc(sizeof(struct cell *) * p->size_cells_out)) == NULL)
       error("Failed to allocate outgoing cell list.");
     memcpy(temp, p->cells_out, sizeof(struct cell *) * p->nr_cells_out);
@@ -278,8 +272,8 @@ void proxy_parts_exch2(struct proxy *p) {
  * @param N The number of parts.
  */
 
-void proxy_parts_load(struct proxy *p, struct part *parts, struct xpart *xparts,
-                      int N) {
+void proxy_parts_load(struct proxy *p, const struct part *parts,
+                      const struct xpart *xparts, int N) {
 
   /* Is there enough space in the buffer? */
   if (p->nr_parts_out + N > p->size_parts_out) {
