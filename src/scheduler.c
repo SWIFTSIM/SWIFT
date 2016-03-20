@@ -95,32 +95,29 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
 void scheduler_splittasks(struct scheduler *s) {
 
-  int j, k, ind, sid, tid = 0, redo;
-  struct cell *ci, *cj;
-  double hi, hj, shift[3];
-  struct task *t, *t_old;
-  // float dt_step = s->dt_step;
-  int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
-                   {-1, -1, 11, 10, 5, 4, 2, 1},
-                   {-1, -1, -1, 12, 7, 6, 4, 3},
-                   {-1, -1, -1, -1, 8, 7, 5, 4},
-                   {-1, -1, -1, -1, -1, 12, 10, 9},
-                   {-1, -1, -1, -1, -1, -1, 11, 10},
-                   {-1, -1, -1, -1, -1, -1, -1, 12}};
-  float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
-                         0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.5788};
+  const int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
+                         {-1, -1, 11, 10, 5, 4, 2, 1},
+                         {-1, -1, -1, 12, 7, 6, 4, 3},
+                         {-1, -1, -1, -1, 8, 7, 5, 4},
+                         {-1, -1, -1, -1, -1, 12, 10, 9},
+                         {-1, -1, -1, -1, -1, -1, 11, 10},
+                         {-1, -1, -1, -1, -1, -1, -1, 12}};
+  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
+                               0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
+                               0.5788, 0.4025, 0.5788};
 
   /* Loop through the tasks... */
-  redo = 0;
-  t_old = t = NULL;
+  int tid = 0, redo = 0;
+  struct task *t_old = NULL;
   while (1) {
 
     /* Get a pointer on the task. */
+    struct task *t = t_old;
     if (redo) {
       redo = 0;
-      t = t_old;
     } else {
-      if ((ind = atomic_inc(&tid)) < s->nr_tasks)
+      const int ind = atomic_inc(&tid);
+      if (ind < s->nr_tasks)
         t_old = t = &s->tasks[s->tasks_ind[ind]];
       else
         break;
@@ -161,7 +158,7 @@ void scheduler_splittasks(struct scheduler *s) {
     if (t->type == task_type_self) {
 
       /* Get a handle on the cell involved. */
-      ci = t->ci;
+      struct cell *ci = t->ci;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -187,18 +184,18 @@ void scheduler_splittasks(struct scheduler *s) {
           redo = 1;
 
           /* Add the self task. */
-          for (k = 0; ci->progeny[k] == NULL; k++)
-            ;
-          t->ci = ci->progeny[k];
-          for (k += 1; k < 8; k++)
+          int first_child = 0;
+          while (ci->progeny[first_child] == NULL) first_child++;
+          t->ci = ci->progeny[first_child];
+          for (int k = first_child + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                 ci->progeny[k], NULL, 0);
 
           /* Make a task for each pair of progeny. */
-          for (j = 0; j < 8; j++)
+          for (int j = 0; j < 8; j++)
             if (ci->progeny[j] != NULL)
-              for (k = j + 1; k < 8; k++)
+              for (int k = j + 1; k < 8; k++)
                 if (ci->progeny[k] != NULL)
                   scheduler_addtask(s, task_type_pair, t->subtype, pts[j][k], 0,
                                     ci->progeny[j], ci->progeny[k], 0);
@@ -211,10 +208,10 @@ void scheduler_splittasks(struct scheduler *s) {
     else if (t->type == task_type_pair) {
 
       /* Get a handle on the cells involved. */
-      ci = t->ci;
-      cj = t->cj;
-      hi = ci->dmin;
-      hj = cj->dmin;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+      const double hi = ci->dmin;
+      const double hj = cj->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -224,7 +221,8 @@ void scheduler_splittasks(struct scheduler *s) {
 
       /* Get the sort ID, use space_getsid and not t->flags
          to make sure we get ci and cj swapped if needed. */
-      sid = space_getsid(s->space, &ci, &cj, shift);
+      double shift[3];
+      int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
@@ -480,9 +478,9 @@ void scheduler_splittasks(struct scheduler *s) {
         /* Replace the current task. */
         t->type = task_type_none;
 
-        for (j = 0; j < 8; j++)
+        for (int j = 0; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            for (k = 0; k < 8; k++)
+            for (int k = 0; k < 8; k++)
               if (cj->progeny[k] != NULL) {
                 t = scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k], 0);
@@ -521,8 +519,8 @@ void scheduler_splittasks(struct scheduler *s) {
     else if (t->type == task_type_grav_mm) {
 
       /* Get a handle on the cells involved. */
-      ci = t->ci;
-      cj = t->cj;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
 
       /* Self-interaction? */
       if (cj == NULL) {
@@ -546,7 +544,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
             /* Split this task into tasks on its progeny. */
             t->type = task_type_none;
-            for (j = 0; j < 8; j++)
+            for (int j = 0; j < 8; j++)
               if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
                 if (t->type == task_type_none) {
                   t->type = task_type_grav_mm;
@@ -555,7 +553,7 @@ void scheduler_splittasks(struct scheduler *s) {
                 } else
                   t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none,
                                         0, 0, ci->progeny[j], NULL, 0);
-                for (k = j + 1; k < 8; k++)
+                for (int k = j + 1; k < 8; k++)
                   if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) {
                     if (t->type == task_type_none) {
                       t->type = task_type_grav_mm;
@@ -594,7 +592,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
           /* Get the opening angle theta. */
           float dx[3], theta;
-          for (k = 0; k < 3; k++) {
+          for (int k = 0; k < 3; k++) {
             dx[k] = fabs(ci->loc[k] - cj->loc[k]);
             if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k])
               dx[k] = -dx[k] + s->space->dim[k];
@@ -615,9 +613,9 @@ void scheduler_splittasks(struct scheduler *s) {
 
               /* Split this task into tasks on its progeny. */
               t->type = task_type_none;
-              for (j = 0; j < 8; j++)
+              for (int j = 0; j < 8; j++)
                 if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                  for (k = 0; k < 8; k++)
+                  for (int k = 0; k < 8; k++)
                     if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) {
                       if (t->type == task_type_none) {
                         t->type = task_type_grav_mm;
