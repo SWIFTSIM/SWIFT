@@ -858,21 +858,22 @@ void scheduler_reset(struct scheduler *s, int size) {
 
 void scheduler_reweight(struct scheduler *s) {
 
-  int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
-  struct task *t, *tasks = s->tasks;
-  int nodeID = s->nodeID;
-  float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
+  const int nr_tasks = s->nr_tasks;
+  int *tid = s->tasks_ind;
+  struct task *tasks = s->tasks;
+  const int nodeID = s->nodeID;
+  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
                          0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.5788};
-  float wscale = 0.001;
+  const float wscale = 0.001;
   // ticks tic;
 
   /* Run through the tasks backwards and set their waits and
      weights. */
   // tic = getticks();
-  for (k = nr_tasks - 1; k >= 0; k--) {
-    t = &tasks[tid[k]];
+  for (int k = nr_tasks - 1; k >= 0; k--) {
+    struct task *t = &tasks[tid[k]];
     t->weight = 0;
-    for (j = 0; j < t->nr_unlock_tasks; j++)
+    for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
     if (!t->implicit && t->tic > 0)
