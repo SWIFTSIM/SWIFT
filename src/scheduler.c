@@ -1364,7 +1364,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
  * @param s The #scheduler
  * @param fileName Name of the file to write to
  */
-void scheduler_print_tasks(struct scheduler *s, char *fileName) {
+void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 
   const int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
