@@ -1042,10 +1042,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
+  /* The target queue for this task. */
   int qid = -1;
-#ifdef WITH_MPI
-  int err;
-#endif
 
   /* Fail if this task has already been enqueued before. */
   if (t->rid >= 0) error("Task has already been enqueued.");
@@ -1067,6 +1065,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Otherwise, look for a suitable queue. */
   else {
+#ifdef WITH_MPI
+    int err;
+#endif
 
     /* Find the previous owner for each task type, and do
        any pre-processing needed. */
@@ -1089,9 +1090,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if ((err = MPI_Irecv(t->ci->parts, t->ci->count, s->part_mpi_type,
+        err = MPI_Irecv(t->ci->parts, t->ci->count, s->part_mpi_type,
                              t->ci->nodeID, t->flags, MPI_COMM_WORLD,
-                             &t->req)) != MPI_SUCCESS) {
+                             &t->req);
+        if (err != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
           MPI_Error_string(err, buff, &len);
@@ -1107,9 +1109,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        if ((err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type,
+        err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type,
                              t->cj->nodeID, t->flags, MPI_COMM_WORLD,
-                             &t->req)) != MPI_SUCCESS) {
+                             &t->req);
+        if (err != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
           MPI_Error_string(err, buff, &len);
