@@ -661,17 +661,14 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
                                int flags, int wait, struct cell *ci,
                                struct cell *cj, int tight) {
 
-  int ind;
-  struct task *t;
-
   /* Get the next free task. */
-  ind = atomic_inc(&s->tasks_next);
+  const int ind = atomic_inc(&s->tasks_next);
 
   /* Overflow? */
   if (ind >= s->size) error("Task list overflow.");
 
   /* Get a pointer to the new task. */
-  t = &s->tasks[ind];
+  struct task *t = &s->tasks[ind];
 
   /* Copy the data. */
   t->type = type;
@@ -766,24 +763,24 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
 void scheduler_ranktasks(struct scheduler *s) {
 
-  int i, j = 0, k, temp, left = 0, rank;
-  struct task *t, *tasks = s->tasks;
-  int *tid = s->tasks_ind, nr_tasks = s->nr_tasks;
+  struct task *tasks = s->tasks;
+  int *tid = s->tasks_ind;
+  const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
-  for (i = 0, k = 0; k < nr_tasks; k++) {
+  for (int k = 0; k < nr_tasks; k++) {
     tid[k] = k;
-    for (j = 0; j < tasks[k].nr_unlock_tasks; j++)
+    for (int j = 0; j < tasks[k].nr_unlock_tasks; j++)
       tasks[k].unlock_tasks[j]->wait += 1;
   }
 
   /* Main loop. */
-  for (j = 0, rank = 0; left < nr_tasks; rank++) {
+  for (int j = 0, rank = 0, left = 0; left < nr_tasks; rank++) {
 
     /* Load the tids of tasks with no waits. */
-    for (k = left; k < nr_tasks; k++)
+    for (int k = left; k < nr_tasks; k++)
       if (tasks[tid[k]].wait == 0) {
-        temp = tid[j];
+        int temp = tid[j];
         tid[j] = tid[k];
         tid[k] = temp;
         j += 1;
@@ -793,15 +790,16 @@ void scheduler_ranktasks(struct scheduler *s) {
     if (j == left) error("Unsatisfiable task dependencies detected.");
 
     /* Unlock the next layer of tasks. */
-    for (i = left; i < j; i++) {
-      t = &tasks[tid[i]];
+    for (int i = left; i < j; i++) {
+      struct task *t = &tasks[tid[i]];
       t->rank = rank;
       tid[i] = t - tasks;
       if (tid[i] >= nr_tasks) error("Task index overshoot.");
       /* message( "task %i of type %s has rank %i." , i ,
           (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ?
          "pair" : "sort" , rank ); */
-      for (k = 0; k < t->nr_unlock_tasks; k++) t->unlock_tasks[k]->wait -= 1;
+      for (int k = 0; k < t->nr_unlock_tasks; k++)
+        t->unlock_tasks[k]->wait -= 1;
     }
 
     /* The new left (no, not tony). */
