@@ -862,8 +862,9 @@ void scheduler_reweight(struct scheduler *s) {
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
   const int nodeID = s->nodeID;
-  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
-                         0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.5788};
+  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
+                               0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
+                               0.5788, 0.4025, 0.5788};
   const float wscale = 0.001;
   // ticks tic;
 
@@ -1091,8 +1092,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_recv:
 #ifdef WITH_MPI
         err = MPI_Irecv(t->ci->parts, t->ci->count, s->part_mpi_type,
-                             t->ci->nodeID, t->flags, MPI_COMM_WORLD,
-                             &t->req);
+                        t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         if (err != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
@@ -1110,8 +1110,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_send:
 #ifdef WITH_MPI
         err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type,
-                             t->cj->nodeID, t->flags, MPI_COMM_WORLD,
-                             &t->req);
+                        t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         if (err != MPI_SUCCESS) {
           char buff[MPI_MAX_ERROR_STRING];
           int len;
@@ -1163,7 +1162,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
 
-    int res = atomic_dec(&t2->wait);
+    const int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
     } else if (res == 1) {
@@ -1202,7 +1201,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
-    int res = atomic_dec(&t2->wait);
+    const int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
     } else if (res == 1) {
@@ -1239,7 +1238,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
 
   struct task *res = NULL;
-  int k, nr_queues = s->nr_queues;
+  const int nr_queues = s->nr_queues;
   unsigned int seed = qid;
 
   /* Check qid. */
@@ -1263,10 +1262,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       /* If unsuccessful, try stealing from the other queues. */
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
-        for (k = 0; k < nr_queues; k++)
+        for (int k = 0; k < nr_queues; k++)
           if (s->queues[k].count > 0) qids[count++] = k;
-        for (k = 0; k < scheduler_maxsteal && count > 0; k++) {
-          int ind = rand_r(&seed) % count;
+        for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
+          const int ind = rand_r(&seed) % count;
           TIMER_TIC
           res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
