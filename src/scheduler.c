@@ -821,8 +821,6 @@ void scheduler_ranktasks(struct scheduler *s) {
 
 void scheduler_reset(struct scheduler *s, int size) {
 
-  int k;
-
   /* Do we need to re-allocate? */
   if (size > s->size) {
 
@@ -849,7 +847,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_unlocks = 0;
 
   /* Set the task pointers in the queues. */
-  for (k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
+  for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
 }
 
 /**
