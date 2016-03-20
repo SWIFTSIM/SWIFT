@@ -954,8 +954,9 @@ void scheduler_reweight(struct scheduler *s) {
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
-  struct task *t, *tasks = s->tasks;
+  const int nr_tasks = s->nr_tasks;
+  int *tid = s->tasks_ind;
+  struct task *tasks = s->tasks;
   // ticks tic;
 
   /* Store the masks */
@@ -1020,7 +1021,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
-    t = &tasks[tid[k]];
+    struct task *t = &tasks[tid[k]];
     if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) &&
         ((1 << t->subtype) & s->submask) && !t->skip) {
       scheduler_enqueue(s, t);
