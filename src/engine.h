@@ -62,6 +62,7 @@ extern const char *engine_policy_names[];
 #define engine_maxtaskspercell 96
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
+#define engine_parts_size_grow 1.05
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -160,12 +161,6 @@ struct engine {
 
   /* Are we talkative ? */
   int verbose;
-
-#ifdef WITH_MPI
-  /* MPI data type for the particle transfers */
-  MPI_Datatype part_mpi_type;
-  MPI_Datatype xpart_mpi_type;
-#endif
 };
 
 /* Function prototypes. */

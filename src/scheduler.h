@@ -100,12 +100,6 @@ struct scheduler {
 
   /* The node we are working on. */
   int nodeID;
-
-#ifdef WITH_MPI
-  /* MPI data type for the particle transfers */
-  MPI_Datatype part_mpi_type;
-  MPI_Datatype xpart_mpi_type;
-#endif
 };
 
 /* Function prototypes. */

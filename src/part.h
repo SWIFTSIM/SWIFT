@@ -53,8 +53,14 @@
 #include "./gravity/Default/gravity_part.h"
 
 #ifdef WITH_MPI
-void part_create_mpi_type(MPI_Datatype* part_type);
-void xpart_create_mpi_type(MPI_Datatype* xpart_type);
+  /* MPI data type for the particle transfers */
+extern MPI_Datatype part_mpi_type;
+extern MPI_Datatype xpart_mpi_type;
+extern MPI_Datatype gpart_mpi_type;
+#endif
+
+#ifdef WITH_MPI
+void part_create_mpi_types();
 #endif
 
 #endif /* SWIFT_PART_H */

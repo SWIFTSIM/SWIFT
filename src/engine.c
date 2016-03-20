@@ -223,23 +223,23 @@ void engine_redistribute(struct engine *e) {
         offset_recv += counts[ind_recv];
       } else {
         if (MPI_Isend(&s->parts[offset_send], counts[ind_send],
-                      e->part_mpi_type, k, 2 * ind_send + 0, MPI_COMM_WORLD,
+                      part_mpi_type, k, 2 * ind_send + 0, MPI_COMM_WORLD,
                       &reqs[4 * k]) != MPI_SUCCESS)
           error("Failed to isend parts to node %zi.", k);
         if (MPI_Isend(&s->xparts[offset_send], counts[ind_send],
-                      e->xpart_mpi_type, k, 2 * ind_send + 1, MPI_COMM_WORLD,
+                      xpart_mpi_type, k, 2 * ind_send + 1, MPI_COMM_WORLD,
                       &reqs[4 * k + 1]) != MPI_SUCCESS)
           error("Failed to isend xparts to node %zi.", k);
         offset_send += counts[ind_send];
       }
     }
     if (k != nodeID && counts[ind_recv] > 0) {
-      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv], e->part_mpi_type,
+      if (MPI_Irecv(&parts_new[offset_recv], counts[ind_recv], part_mpi_type,
                     k, 2 * ind_recv + 0, MPI_COMM_WORLD,
                     &reqs[4 * k + 2]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %zi.", k);
       if (MPI_Irecv(&xparts_new[offset_recv], counts[ind_recv],
-                    e->xpart_mpi_type, k, 2 * ind_recv + 1, MPI_COMM_WORLD,
+                    xpart_mpi_type, k, 2 * ind_recv + 1, MPI_COMM_WORLD,
                     &reqs[4 * k + 3]) != MPI_SUCCESS)
         error("Failed to emit irecv of parts from node %zi.", k);
       offset_recv += counts[ind_recv];
@@ -613,8 +613,6 @@ void engine_exchange_cells(struct engine *e) {
  *
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
- *
- * @return The number of arrived parts copied to parts and xparts.
  */
 
 void engine_exchange_strays(struct engine *e, size_t offset_parts,
@@ -706,7 +704,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
             count_parts_in, count_gparts_in);
   }
   if (offset_parts + count_parts_in > s->size_parts) {
-    s->size_parts = (offset_parts + count_parts_in) * 1.05;
+    s->size_parts = (offset_parts + count_parts_in) * engine_parts_size_grow;
     struct part *parts_new = NULL;
     struct xpart *xparts_new = NULL;
     if (posix_memalign((void **)&parts_new, part_align,
@@ -722,7 +720,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     s->xparts = xparts_new;
   }
   if (offset_gparts + count_gparts_in > s->size_gparts) {
-    s->size_gparts = (offset_gparts + count_gparts_in) * 1.05;
+    s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
     struct gpart *gparts_new = NULL;
     if (posix_memalign((void **)&gparts_new, gpart_align,
                        sizeof(struct gpart) * s->size_gparts) != 0)
@@ -2227,8 +2225,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
-  part_create_mpi_type(&e->part_mpi_type);
-  xpart_create_mpi_type(&e->xpart_mpi_type);
+  part_create_mpi_types();
 #endif
 
   /* First of all, init the barrier and lock it. */
