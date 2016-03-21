@@ -185,7 +185,7 @@ void engine_redistribute(struct engine *e) {
   if ((g_dest = (size_t *)malloc(sizeof(size_t) * s->nr_gparts)) == NULL)
     error("Failed to allocate g_dest temporary buffer.");
 
-  /* The counts array is indexed as count[from * nr_nodes + to]. */
+  /* Get destination of each particle */
   for (size_t k = 0; k < s->nr_parts; k++) {
 
     /* Periodic boundary conditions */
@@ -201,13 +201,35 @@ void engine_redistribute(struct engine *e) {
        error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
              cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
     dest[k] = cells[cid].nodeID;
+
+    /* The counts array is indexed as count[from * nr_nodes + to]. */
     counts[nodeID * nr_nodes + dest[k]] += 1;
   }
 
   /* Sort the particles according to their cell index. */
   space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
-  /* Now, do the same for the gparts */
+  /* We need to re-link the gpart partners of parts. */
+  int current_dest = dest[0];
+  size_t count_this_dest = 0;
+  for (size_t k = 0; k < s->nr_parts; ++k) {
+    if (s->parts[k].gpart != NULL) {
+
+      /* As the addresses will be invalidated by the communications, we will */
+      /* instead store the absolute index from the start of the sub-array */
+      /* of particles to be sent to a given node. */
+      /* Recall that gparts without partners have a negative id. */
+      /* We will restore the pointers on the receiving node later on. */
+      if (dest[k] != current_dest) {
+        current_dest = dest[k];
+        count_this_dest = 0;
+      }
+
+      s->parts[k].gpart->id = count_this_dest;
+    }
+  }
+
+  /* Get destination of each g-particle */
   for (size_t k = 0; k < s->nr_gparts; k++) {
 
     /* Periodic boundary conditions */
@@ -223,6 +245,8 @@ void engine_redistribute(struct engine *e) {
        error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
              cid, k, g_parts[k].x[0], g_parts[k].x[1], g_parts[k].x[2]); */
     g_dest[k] = cells[cid].nodeID;
+
+    /* The counts array is indexed as count[from * nr_nodes + to]. */
     g_counts[nodeID * nr_nodes + dest[k]] += 1;
   }
 
@@ -365,6 +389,32 @@ void engine_redistribute(struct engine *e) {
     error("Failed during waitall for part data.");
   }
 
+  /* We now need to restore the part<->gpart links */
+  size_t offset_parts = 0, offset_gparts = 0;
+  for (int node = 0; node < nr_nodes; ++node) {
+
+    const int ind_recv = node * nr_nodes + nodeID;
+    const size_t count_parts = counts[ind_recv];
+    const size_t count_gparts = g_counts[ind_recv];
+
+    /* Loop over the gparts received from that node */
+    for (size_t k = offset_gparts; k < offset_gparts + count_gparts; ++k) {
+
+      /* Does this gpart have a partner ? */
+      if (gparts_new[k].id >= 0) {
+
+        const size_t partner_index = offset_parts + gparts_new[k].id;
+
+        /* Re-link */
+        gparts_new[k].part = &parts_new[partner_index];
+        gparts_new[k].part->gpart = &gparts_new[k];
+      }
+    }
+
+    offset_parts += count_parts;
+    offset_gparts += count_gparts;
+  }
+
   /* Verify that all parts are in the right place. */
   /* for ( k = 0 ; k < nr_parts ; k++ ) {
       cid = cell_getid( cdim , parts_new[k].x[0]*ih[0] , parts_new[k].x[1]*ih[1]
@@ -373,6 +423,19 @@ void engine_redistribute(struct engine *e) {
           error( "Received particle (%i) that does not belong here (nodeID=%i)."
      , k , cells[ cid ].nodeID );
       } */
+
+  /* Verify that the links are correct */
+  /* MATTHIEU: To be commented out once we are happy */
+  for (size_t k = 0; k < nr_gparts; ++k) {
+
+    if (gparts_new[k].id > 0) {
+
+      if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
+          gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
+          gparts_new[k].x[2] != gparts_new[k].part->x[2])
+        message("Linked particles are not at the same position !");
+    }
+  }
 
   /* Set the new part data, free the old. */
   free(parts);
