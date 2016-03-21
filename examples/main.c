@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
-  int res, prov;
+  int res = 0, prov = 0;
   if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) !=
       MPI_SUCCESS)
     error("Call to MPI_Init failed with error %i.", res);
