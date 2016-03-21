@@ -51,8 +51,8 @@ enum repartition_type {
 extern const char *repartition_name[];
 
 void partition_repartition(enum repartition_type reparttype, int nodeID,
-                           int nr_nodes, struct space *s,
-                           struct task *tasks, int nr_tasks);
+                           int nr_nodes, struct space *s, struct task *tasks,
+                           int nr_tasks);
 void partition_initial_partition(struct partition *initial_partition,
                                  int nodeID, int nr_nodes, struct space *s);
 

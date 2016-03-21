@@ -58,11 +58,6 @@ extern ticks timers[timer_count];
 #define timers_mask_all ((1 << timer_count) - 1)
 
 /* Define the timer macros. */
-#ifdef TIMER_VERBOSE
-#ifndef TIMER
-#define TIMER
-#endif
-#endif
 #ifdef TIMER
 #define TIMER_TIC_ND tic = getticks();
 #define TIMER_TIC2_ND ticks tic2 = getticks();

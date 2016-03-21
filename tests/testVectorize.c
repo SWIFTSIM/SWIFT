@@ -34,8 +34,8 @@ struct cell *make_cell(size_t n, double *offset, double h,
         part->h = h;
         part->id = ++(*partId);
         part->mass = 1.0f;
-	part->t_begin = 0.f;
-	part->t_end = 0.1f;
+        part->ti_begin = 0;
+        part->ti_end = 1;
         ++part;
       }
     }
@@ -177,13 +177,13 @@ int main(int argc, char *argv[]) {
 
     toc = getticks();
     time += toc - tic;
-    
+
     /* Dump if necessary */
     if (i % 50 == 0) dump_particle_fields("swift_dopair.dat", ci, cj);
   }
 
   /* Output timing */
-  message("SWIFT calculation took       %lli ticks." , time / runs);
+  message("SWIFT calculation took       %lli ticks.", time / runs);
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
   dump_particle_fields("brute_force.dat", ci, cj);
 
   /* Output timing */
-  message("Brute force calculation took %lli ticks." , toc - tic);
+  message("Brute force calculation took %lli ticks.", toc - tic);
 
   /* Clean things to make the sanitizer happy ... */
   clean_up(ci);

@@ -20,6 +20,9 @@
 #define SWIFT_SPACE_H
 
 /* Includes. */
+#include <stddef.h>
+
+/* Local includes. */
 #include "cell.h"
 #include "part.h"
 
@@ -85,8 +88,8 @@ struct space {
   struct gpart *gparts;
 
   /* The total number of parts in the space. */
-  int nr_parts, size_parts;
-  int nr_gparts, size_gparts;
+  size_t nr_parts, size_parts;
+  size_t nr_gparts, size_gparts;
 
   /* Is the space periodic? */
   int periodic;
@@ -102,18 +105,19 @@ struct space {
 
   /* Buffers for parts that we will receive from foreign cells. */
   struct part *parts_foreign;
-  int nr_parts_foreign, size_parts_foreign;
+  size_t nr_parts_foreign, size_parts_foreign;
 };
 
 /* Interval stack necessary for parallel particle sorting. */
 struct qstack {
-  volatile int i, j, min, max;
+  volatile ptrdiff_t i, j;
+  volatile int min, max;
   volatile int ready;
 };
 struct parallel_sort {
   struct part *parts;
   struct xpart *xparts;
-  int *ind;
+  size_t *ind;
   struct qstack *stack;
   unsigned int stack_size;
   volatile unsigned int first, last, waiting;
@@ -121,13 +125,16 @@ struct parallel_sort {
 extern struct parallel_sort space_sort_struct;
 
 /* function prototypes. */
-void space_parts_sort(struct space *s, int *ind, int N, int min, int max);
-void gparts_sort(struct gpart *gparts, int *ind, int N, int min, int max);
+void space_parts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
+                      int verbose);
+void space_gparts_sort(struct gpart *gparts, size_t *ind, size_t N, int min,
+                       int max);
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
-void space_init(struct space *s, double dim[3], struct part *parts, struct gpart *gparts, 
-		int Ngas, int Ndm, int periodic, double h_max, int verbose);
+void space_init(struct space *s, double dim[3], struct part *parts,
+                struct gpart *gparts, size_t N, size_t Ngpart, int periodic,
+                double h_max, int verbose);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
 void space_map_parts(struct space *s,
@@ -140,7 +147,8 @@ void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_rebuild(struct space *s, double h_max, int verbose);
 void space_recycle(struct space *s, struct cell *c);
-void space_split(struct space *s, struct cell *c);
+void space_split(struct space *s, struct cell *cells, int verbose);
+void space_do_split(struct space *s, struct cell *c);
 void space_do_parts_sort();
 void space_link_cleanup(struct space *s);
 #endif /* SWIFT_SPACE_H */

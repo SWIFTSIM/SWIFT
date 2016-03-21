@@ -473,4 +473,90 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N,
   fprintf(xmfFile, "</Attribute>\n");
 }
 
+/**
+ * @brief Prepare the DM particles (in gparts) read in for the addition of the
+ * other particle types
+ *
+ * This function assumes that the DM particles are all at the start of the
+ * gparts array
+ *
+ * @param gparts The array of #gpart freshly read in.
+ * @param Ndm The number of DM particles read in.
+ */
+void prepare_dm_gparts(struct gpart* gparts, size_t Ndm) {
+
+  /* Let's give all these gparts a negative id */
+  for (size_t i = 0; i < Ndm; ++i) {
+
+    /* 0 or negative ids are not allowed */
+    if (gparts[i].id <= 0) error("0 or negative ID for DM particle");
+
+    gparts[i].id = -gparts[i].id;
+  }
+}
+
+/**
+ * @brief Copy every #part into the corresponding #gpart and link them.
+ *
+ * This function assumes that the DM particles are all at the start of the
+ * gparts array and adds the hydro particles afterwards
+ *
+ * @param parts The array of #part freshly read in.
+ * @param gparts The array of #gpart freshly read in with all the DM particles
+ *at the start
+ * @param Ngas The number of gas particles read in.
+ * @param Ndm The number of DM particles read in.
+ */
+void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts,
+                            size_t Ngas, size_t Ndm) {
+
+  for (size_t i = 0; i < Ngas; ++i) {
+
+    /* Duplicate the crucial information */
+    gparts[i + Ndm].x[0] = parts[i].x[0];
+    gparts[i + Ndm].x[1] = parts[i].x[1];
+    gparts[i + Ndm].x[2] = parts[i].x[2];
+
+    gparts[i + Ndm].v_full[0] = parts[i].v[0];
+    gparts[i + Ndm].v_full[1] = parts[i].v[1];
+    gparts[i + Ndm].v_full[2] = parts[i].v[2];
+
+    gparts[i + Ndm].mass = parts[i].mass;
+
+    /* Link the particles */
+    gparts[i + Ndm].part = &parts[i];
+    parts[i].gpart = &gparts[i + Ndm];
+  }
+}
+
+/**
+ * @brief Copy every DM #gpart into the dmparts array.
+ *
+ * @param gparts The array of #gpart containing all particles.
+ * @param Ntot The number of #gpart.
+ * @param dmparts The array of #gpart containg DM particles to be filled.
+ * @param Ndm The number of DM particles.
+ */
+void collect_dm_gparts(struct gpart* gparts, size_t Ntot, struct gpart* dmparts,
+                       size_t Ndm) {
+
+  size_t count = 0;
+
+  /* Loop over all gparts */
+  for (size_t i = 0; i < Ntot; ++i) {
+
+    /* And collect the DM ones */
+    if (gparts[i].id < 0) {
+      memcpy(&dmparts[count], &gparts[i], sizeof(struct gpart));
+      dmparts[count].id = -dmparts[count].id;
+      count++;
+    }
+  }
+
+  /* Check that everything is fine */
+  if (count != Ndm)
+    error("Collected the wrong number of dm particles (%zd vs. %zd expected)",
+          count, Ndm);
+}
+
 #endif

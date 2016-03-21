@@ -97,7 +97,6 @@ void map_cells_plot(struct cell *c, void *data) {
 void map_cellcheck(struct cell *c, void *data) {
 
   int *count = (int *)data;
-
   __sync_fetch_and_add(count, c->count);
 
   /* Loop over all parts and check if they are in the cell. */
@@ -114,8 +113,7 @@ void map_cellcheck(struct cell *c, void *data) {
       error("particle out of bounds!");
     }
   }
-  __sync_fetch_and_add(count, c->gcount);
- 
+
   /* Loop over all gparts and check if they are in the cell. */
   for (int k = 0; k < c->gcount; k++) {
     struct gpart *p = &c->gparts[k];

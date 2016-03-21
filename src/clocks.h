@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2016 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,28 +16,29 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SERIAL_IO_H
-#define SWIFT_SERIAL_IO_H
+#ifndef SWIFT_CLOCKS_H
+#define SWIFT_CLOCKS_H
 
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
+#include <time.h>
+#include "cycle.h"
+
+/* Struct to record a time for the clocks functions. */
+struct clocks_time {
+#ifdef HAVE_CLOCK_GETTIME
+  struct timespec time;
+#else
+  ticks time;
 #endif
+};
 
-/* Includes. */
-#include "engine.h"
-#include "part.h"
-#include "units.h"
+void clocks_gettime(struct clocks_time *time);
+double clocks_diff(struct clocks_time *start, struct clocks_time *end);
+const char *clocks_getunit();
 
-#if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
+void clocks_set_cpufreq(unsigned long long freq);
+unsigned long long clocks_get_cpufreq();
+double clocks_from_ticks(ticks tics);
+double clocks_diff_ticks(ticks tic, ticks toc);
+const char *clocks_get_timesincestart();
 
-void read_ic_serial(char* fileName, double dim[3], struct part** parts,
-                    size_t* N, int* periodic, int mpi_rank, int mpi_size,
-                    MPI_Comm comm, MPI_Info info);
-
-void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
-                         int mpi_size, MPI_Comm comm, MPI_Info info);
-
-#endif
-
-#endif /* SWIFT_SERIAL_IO_H */
+#endif /* SWIFT_CLOCKS_H */

@@ -24,6 +24,7 @@
 #include "../config.h"
 
 /* Includes. */
+#include "part.h"
 #include "units.h"
 
 #if defined(HAVE_HDF5)
@@ -55,16 +56,28 @@ enum DATA_IMPORTANCE {
   OPTIONAL = 0
 };
 
-#define NUMBER_PARTICLE_TYPES 6
-#define PARTICLE_TYPE_STRINGLEN 12
-
-/* Particle Types can contain up to NUMBER_PARTICLE_TYPES types. */
+/**
+ * @brief The different particle types present in a GADGET IC file
+ *
+ */
 enum PARTICLE_TYPE {
   GAS = 0,
-  DARKMATTER
+  DM = 1,
+  BOUNDARY = 2,
+  DUMMY = 3,
+  STAR = 4,
+  BH = 5,
+  NUM_PARTICLE_TYPES
 };
+
 hid_t hdf5Type(enum DATA_TYPE type);
 size_t sizeOfType(enum DATA_TYPE type);
+
+void collect_dm_gparts(struct gpart* gparts, size_t Ntot, struct gpart* dmparts,
+                       size_t Ndm);
+void prepare_dm_gparts(struct gpart* gparts, size_t Ndm);
+void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts,
+                            size_t Ngas, size_t Ndm);
 
 void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data);
 

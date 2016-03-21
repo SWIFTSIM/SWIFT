@@ -63,7 +63,6 @@ extern const char *engine_policy_names[];
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
 
-
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
 
@@ -159,6 +158,9 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
+  /* Are we talkative ? */
+  int verbose;
+
 #ifdef WITH_MPI
   /* MPI data type for the particle transfers */
   MPI_Datatype part_mpi_type;
@@ -170,7 +172,8 @@ struct engine {
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max);
+                 float timeBegin, float timeEnd, float dt_min, float dt_max,
+                 int verbose);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);
@@ -179,12 +182,13 @@ void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
-int engine_exchange_strays(struct engine *e, int offset, int *ind, int N);
+int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
+int engine_is_done(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

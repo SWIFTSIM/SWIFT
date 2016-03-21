@@ -58,11 +58,8 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "gridded cells",
-    "vectorized point associated cells",
-    "METIS particle weighted cells",
-    "METIS unweighted cells"
-};
+    "gridded cells",                 "vectorized point associated cells",
+    "METIS particle weighted cells", "METIS unweighted cells"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
@@ -70,8 +67,7 @@ const char *repartition_name[] = {
     "METIS edge and vertex time weighted cells",
     "METIS particle count vertex weighted cells",
     "METIS time edge weighted cells",
-    "METIS particle count vertex and time edge cells"
-};
+    "METIS particle count vertex and time edge cells"};
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
@@ -229,7 +225,6 @@ static void graph_init_metis(struct space *s, idx_t *adjncy, idx_t *xadj) {
   if (xadj != NULL) {
     xadj[0] = 0;
     for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
-
   }
 }
 #endif
@@ -283,8 +278,7 @@ static void accumulate_counts(struct space *s, int *counts) {
  */
 static void split_metis(struct space *s, int nregions, int *celllist) {
 
-  for (int i = 0; i < s->nr_cells; i++)
-      s->cells[i].nodeID = celllist[i];
+  for (int i = 0; i < s->nr_cells; i++) s->cells[i].nodeID = celllist[i];
 }
 #endif
 
@@ -404,7 +398,6 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
   free(xadj);
   free(adjncy);
   free(regionid);
-
 }
 #endif
 
@@ -423,10 +416,9 @@ static void pick_metis(struct space *s, int nregions, int *vertexw, int *edgew,
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
  */
-static void repart_edge_metis(int partweights, int bothweights,
-                              int nodeID, int nr_nodes, struct space *s,
-                              struct task *tasks, int nr_tasks) {
-
+static void repart_edge_metis(int partweights, int bothweights, int nodeID,
+                              int nr_nodes, struct space *s, struct task *tasks,
+                              int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
@@ -453,7 +445,7 @@ static void repart_edge_metis(int partweights, int bothweights,
     bzero(weights_v, sizeof(int) * nr_cells);
   }
   if ((weights_e = (int *)malloc(sizeof(int) * 26 * nr_cells)) == NULL)
-      error("Failed to allocate edge weights arrays.");
+    error("Failed to allocate edge weights arrays.");
   bzero(weights_e, sizeof(int) * 26 * nr_cells);
 
   /* Generate task weights for vertices. */
@@ -503,18 +495,15 @@ static void repart_edge_metis(int partweights, int bothweights,
     if (t->type == task_type_ghost || t->type == task_type_drift ||
         t->type == task_type_kick) {
       /* Particle updates add only to vertex weight. */
-      if (taskvweights)
-        weights_v[cid] += w;
+      if (taskvweights) weights_v[cid] += w;
 
     }
 
     /* Self interaction? */
     else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
-             (t->type == task_type_sub && cj == NULL &&
-                ci->nodeID == nodeID)) {
+             (t->type == task_type_sub && cj == NULL && ci->nodeID == nodeID)) {
       /* Self interactions add only to vertex weight. */
-      if (taskvweights)
-        weights_v[cid] += w;
+      if (taskvweights) weights_v[cid] += w;
 
     }
 
@@ -524,8 +513,7 @@ static void repart_edge_metis(int partweights, int bothweights,
       /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */
-        if (taskvweights)
-          weights_v[cid] += w;
+        if (taskvweights) weights_v[cid] += w;
 
       }
 
@@ -585,8 +573,8 @@ static void repart_edge_metis(int partweights, int bothweights,
   }
 
   if ((res = MPI_Reduce((nodeID == 0) ? MPI_IN_PLACE : weights_e, weights_e,
-                        26 * nr_cells, MPI_INT, MPI_SUM, 0,
-                        MPI_COMM_WORLD)) != MPI_SUCCESS)
+                        26 * nr_cells, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD)) !=
+      MPI_SUCCESS)
     mpi_error(res, "Failed to allreduce edge weights.");
 
   /* Allocate cell list for the partition. */
@@ -655,8 +643,9 @@ static void repart_edge_metis(int partweights, int bothweights,
     /* If partition failed continue with the current one, but make this
      * clear. */
     if (failed) {
-      message("WARNING: METIS repartition has failed, continuing with "
-              "the current partition, load balance will not be optimal");
+      message(
+          "WARNING: METIS repartition has failed, continuing with "
+          "the current partition, load balance will not be optimal");
       for (int k = 0; k < nr_cells; k++) celllist[k] = cells[k].nodeID;
     }
   }
@@ -697,16 +686,15 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
 
   /* Get all the counts from all the nodes. */
   int res;
-  if ((res = MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT,
-                           MPI_SUM, MPI_COMM_WORLD)) != MPI_SUCCESS)
+  if ((res = MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT, MPI_SUM,
+                           MPI_COMM_WORLD)) != MPI_SUCCESS)
     mpi_error(res, "Failed to allreduce particle cell weights.");
 
   /* Main node does the partition calculation. */
   int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
   if (celllist == NULL) error("Failed to allocate celllist");
 
-  if (nodeID == 0)
-    pick_metis(s, nr_nodes, weights, NULL, celllist);
+  if (nodeID == 0) pick_metis(s, nr_nodes, weights, NULL, celllist);
 
   /* Distribute the celllist partition and apply. */
   if ((res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD)) !=
@@ -721,14 +709,14 @@ static void repart_vertex_metis(struct space *s, int nodeID, int nr_nodes) {
 }
 #endif
 
-
 /**
  * @brief Repartition the space using the given repartition type.
  *
  * Note that at the end of this process all the cells will be re-distributed
  * across the nodes, but the particles themselves will not be.
  *
- * @param reparttype the type of repartition to attempt, see the repart_type enum.
+ * @param reparttype the type of repartition to attempt, see the repart_type
+ *enum.
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
@@ -797,8 +785,8 @@ void partition_initial_partition(struct partition *initial_partition,
     struct cell *c;
 
     /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1]
-        * initial_partition->grid[2])
+    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
+                        initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
@@ -806,9 +794,9 @@ void partition_initial_partition(struct partition *initial_partition,
     for (k = 0; k < s->nr_cells; k++) {
       c = &s->cells[k];
       for (j = 0; j < 3; j++)
-          ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
+        ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
       c->nodeID = ind[0] + initial_partition->grid[0] *
-                 (ind[1] + initial_partition->grid[1] * ind[2]);
+                               (ind[1] + initial_partition->grid[1] * ind[2]);
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }
@@ -833,7 +821,7 @@ void partition_initial_partition(struct partition *initial_partition,
      * not. */
     int *weights = NULL;
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
-        if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+      if ((weights = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
         error("Failed to allocate weights buffer.");
       bzero(weights, sizeof(int) * s->nr_cells);
 
@@ -864,14 +852,12 @@ void partition_initial_partition(struct partition *initial_partition,
       if (MPI_Allreduce(MPI_IN_PLACE, weights, s->nr_cells, MPI_INT, MPI_SUM,
                         MPI_COMM_WORLD) != MPI_SUCCESS)
         error("Failed to allreduce particle cell weights.");
-
     }
 
     /* Main node does the partition calculation. */
     int *celllist = (int *)malloc(sizeof(int) * s->nr_cells);
     if (celllist == NULL) error("Failed to allocate celllist");
-    if (nodeID == 0)
-      pick_metis(s, nr_nodes, weights, NULL, celllist);
+    if (nodeID == 0) pick_metis(s, nr_nodes, weights, NULL, celllist);
 
     /* Distribute the celllist partition and apply. */
     int res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
@@ -908,8 +894,7 @@ void partition_initial_partition(struct partition *initial_partition,
     }
 
     /* Share the samplecells around all the nodes. */
-    int res =
-        MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+    int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS)
       mpi_error(res, "Failed to bcast the partition sample cells.");
 

@@ -41,14 +41,13 @@ int main() {
   float v_max = 30287.;        /* [m/s] */
   // float v_min = 29291.;           /* [m/s] */
 
-
   /* Derived quantities */
   float e = (r_max - r_min) / (r_max + r_min); /* Eccentricity */
   float b = sqrtf(r_max * r_min);              /* Semi-minor axis */
   float p = b * sqrtf(1 - e * e);              /* Semi-lactus rectum */
   float a = p / (1 - e * e);                   /* Semi-major axis */
   float T = sqrtf(4 * M_PI * M_PI * a * a * a /
-                 (G * (M_sun + M_earth))); /* Period [s] */
+                  (G * (M_sun + M_earth))); /* Period [s] */
 
   /* Print some info */
   message("Semi-major axis: a=%e [m]", a);
@@ -98,8 +97,8 @@ int main() {
   eng.time = 0.;
   eng.timeBegin = 0.;
   eng.timeEnd = N_orbits * T;
-  eng.dt_min = dt;              /* This forces the time-step to be dt        */
-  eng.dt_max = dt;              /* irrespective of the state of the particle */
+  eng.dt_min = dt; /* This forces the time-step to be dt        */
+  eng.dt_max = dt; /* irrespective of the state of the particle */
 
   /* Simulate ! */
   for (i = 0; i < N; i++) {

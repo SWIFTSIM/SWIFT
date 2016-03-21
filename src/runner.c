@@ -106,7 +106,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
   //struct space *s = r->e->s;
   //double CentreOfPotential[3];
-  TIMER_TIC
+  TIMER_TIC;
 
   /* 	 /\* location of external gravity point mass - should pass in as paraneter *\/ */
   /* CentreOfPotential[0] = 0.5 * s->dim[0]; */
@@ -121,39 +121,39 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   }
 
 #ifdef TASK_VERBOSE
-  	 OUT
+  OUT
 #endif
   /* Loop over the parts in this cell. */
   for (i = 0; i < gcount; i++) {
 
-  	 /* Get a direct pointer on the part. */
-  	 g = &gparts[i];
+    /* Get a direct pointer on the part. */
+    g = &gparts[i];
 
-  	 /* Is this part within the time step? */
-  	 if (g->ti_end <= ti_current) {
-		dx  = g->x[0]-External_Potential_X;
-		dy  = g->x[1]-External_Potential_Y;
-		dz  = g->x[2]-External_Potential_Z;
+    /* Is this part within the time step? */
+    if (g->ti_end <= ti_current) {
+      dx  = g->x[0]-External_Potential_X;
+      dy  = g->x[1]-External_Potential_Y;
+      dz  = g->x[2]-External_Potential_Z;
 
-  		rinv = 1 / sqrtf(dx*dx + dy*dy + dz*dz);
+      rinv = 1 / sqrtf(dx*dx + dy*dy + dz*dz);
 
-  		/* check for energy and angular momentum conservation */
-  		E = 0.5 * ((g->v_full[0]*g->v_full[0]) + (g->v_full[1]*g->v_full[1]) + (g->v_full[2]*g->v_full[2])) - const_G *  External_Potential_Mass * rinv;
-  		L[0] = dy * g->v_full[2] - dz * g->v_full[1];
-  		L[1] = dz * g->v_full[0] - dx * g->v_full[2];
-  		L[2] = dx * g->v_full[1] - dy * g->v_full[0];
-  		if(g->id == 0) {
-		  float v2 = g->v_full[0]*g->v_full[0] + g->v_full[1]*g->v_full[1] + g->v_full[2]*g->v_full[2];
-		  float fg = const_G * External_Potential_Mass * rinv;
-  		  //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
-		  message("%f\t %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
-  		  // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
-  		}
-  		g->a_grav_external[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
-  		g->a_grav_external[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
-  		g->a_grav_external[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
-		
-  	 }
+      /* check for energy and angular momentum conservation */
+      E = 0.5 * ((g->v_full[0]*g->v_full[0]) + (g->v_full[1]*g->v_full[1]) + (g->v_full[2]*g->v_full[2])) - const_G *  External_Potential_Mass * rinv;
+      L[0] = dy * g->v_full[2] - dz * g->v_full[1];
+      L[1] = dz * g->v_full[0] - dx * g->v_full[2];
+      L[2] = dx * g->v_full[1] - dy * g->v_full[0];
+      if(g->id == 0) {
+        float v2 = g->v_full[0]*g->v_full[0] + g->v_full[1]*g->v_full[1] + g->v_full[2]*g->v_full[2];
+        float fg = const_G * External_Potential_Mass * rinv;
+        //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
+        message("%f\t %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
+        // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
+      }
+      g->a_grav_external[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
+      g->a_grav_external[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
+      g->a_grav_external[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
+
+    }
   }
   TIMER_TOC(timer_dograv_external);
 }
@@ -377,33 +377,20 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
       }
   }
 
-/* Verify the sorting. */
-/* for ( j = 0 ; j < 13 ; j++ ) {
-    if ( !( flags & (1 << j) ) )
-        continue;
-    finger = &sort[ j*(count + 1) ];
-    for ( k = 1 ; k < count ; k++ ) {
-        if ( finger[k].d < finger[k-1].d )
-            error( "Sorting failed, ascending array." );
-        if ( finger[k].i >= count )
-            error( "Sorting failed, indices borked." );
-        }
-    } */
+  /* Verify the sorting. */
+  /* for ( j = 0 ; j < 13 ; j++ ) {
+      if ( !( flags & (1 << j) ) )
+          continue;
+      finger = &sort[ j*(count + 1) ];
+      for ( k = 1 ; k < count ; k++ ) {
+          if ( finger[k].d < finger[k-1].d )
+              error( "Sorting failed, ascending array." );
+          if ( finger[k].i >= count )
+              error( "Sorting failed, indices borked." );
+          }
+      } */
 
-#ifdef TIMER_VERBOSE
-  message(
-      "runner %02i: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) "
-      "took %.3f ms.",
-      r->id, count, c->depth, (flags & 0x1000) >> 12, (flags & 0x800) >> 11,
-      (flags & 0x400) >> 10, (flags & 0x200) >> 9, (flags & 0x100) >> 8,
-      (flags & 0x80) >> 7, (flags & 0x40) >> 6, (flags & 0x20) >> 5,
-      (flags & 0x10) >> 4, (flags & 0x8) >> 3, (flags & 0x4) >> 2,
-      (flags & 0x2) >> 1, (flags & 0x1) >> 0,
-      ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000);
-  fflush(stdout);
-#else
   if (clock) TIMER_TOC(timer_dosort);
-#endif
 }
 
 void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
@@ -535,33 +522,20 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
       }
   }
 
-/* Verify the sorting. */
-/* for ( j = 0 ; j < 13 ; j++ ) {
-    if ( !( flags & (1 << j) ) )
-        continue;
-    finger = &c->gsort[ j*(count + 1) ];
-    for ( k = 1 ; k < count ; k++ ) {
-        if ( finger[k].d < finger[k-1].d )
-            error( "Sorting failed, ascending array." );
-        if ( finger[k].i < 0 || finger[k].i >= count )
-            error( "Sorting failed, indices borked." );
-        }
-    } */
+  /* Verify the sorting. */
+  /* for ( j = 0 ; j < 13 ; j++ ) {
+      if ( !( flags & (1 << j) ) )
+          continue;
+      finger = &c->gsort[ j*(count + 1) ];
+      for ( k = 1 ; k < count ; k++ ) {
+          if ( finger[k].d < finger[k-1].d )
+              error( "Sorting failed, ascending array." );
+          if ( finger[k].i < 0 || finger[k].i >= count )
+              error( "Sorting failed, indices borked." );
+          }
+      } */
 
-#ifdef TIMER_VERBOSE
-  message(
-      "runner %02i: %i parts at depth %i (flags = %i%i%i%i%i%i%i%i%i%i%i%i%i) "
-      "took %.3f ms.",
-      r->id, count, c->depth, (flags & 0x1000) >> 12, (flags & 0x800) >> 11,
-      (flags & 0x400) >> 10, (flags & 0x200) >> 9, (flags & 0x100) >> 8,
-      (flags & 0x80) >> 7, (flags & 0x40) >> 6, (flags & 0x20) >> 5,
-      (flags & 0x10) >> 4, (flags & 0x8) >> 3, (flags & 0x4) >> 2,
-      (flags & 0x2) >> 1, (flags & 0x1) >> 0,
-      ((double)TIMER_TOC(timer_dosort)) / CPU_TPS * 1000);
-  fflush(stdout);
-#else
   if (clock) TIMER_TOC(timer_dosort);
-#endif
 }
 
 /**
@@ -601,15 +575,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) {
-#ifdef TIMER_VERBOSE
-    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_init)) / CPU_TPS * 1000);
-    fflush(stdout);
-#else
-    TIMER_TOC(timer_init);
-#endif
-  }
+  if (timer) TIMER_TOC(timer_init);
 }
 
 /**
@@ -758,13 +724,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   if (count)
     message("Smoothing length failed to converge on %i particles.", count);
 
-#ifdef TIMER_VERBOSE
-  message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-          c->depth, ((double)TIMER_TOC(timer_doghost)) / CPU_TPS * 1000);
-  fflush(stdout);
-#else
   TIMER_TOC(timer_doghost);
-#endif
 }
 
 /**
@@ -784,14 +744,14 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   const float ti_current = r->e->ti_current;
   struct part *restrict p, *restrict parts = c->parts;
   struct xpart *restrict xp, *restrict xparts = c->xparts;
-  struct gpart *restrict g, 
+  struct gpart *restrict g,
   *restrict gparts = c->gparts;
   float dx_max = 0.f, h_max = 0.f;
   float w;
 
   TIMER_TIC
 #ifdef TASK_VERBOSE
-	 OUT
+    OUT
 #endif
 
   /* No children? */
@@ -844,19 +804,17 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Maximal smoothing length */
       h_max = fmaxf(p->h, h_max);
     }
-	 
-	 /* Loop over all gparts in the cell */
-	 for (int k = 0; k < nr_gparts; k++)
-		{
-		  g        = &gparts[k];
-		  if(g->id == 0)
-			 message(" dt= %f tx= %f tv=%f \n",dt, g->tx, g->tv);
-		  g->x[0] += g->v_full[0] * dt;
-		  g->x[1] += g->v_full[1] * dt;
-		  g->x[2] += g->v_full[2] * dt;
-		  g->tx   += dt;
-		}
-	 
+
+    /* Loop over all gparts in the cell */
+    for (int k = 0; k < nr_gparts; k++) {
+      g = &gparts[k];
+      if (g->id == 0)
+        message(" dt= %f tx= %f tv=%f \n",dt, g->tx, g->tv);
+      g->x[0] += g->v_full[0] * dt;
+      g->x[1] += g->v_full[1] * dt;
+      g->x[2] += g->v_full[2] * dt;
+      g->tx   += dt;
+    }
   }
 
   /* Otherwise, aggregate data from children. */
@@ -877,15 +835,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   c->h_max = h_max;
   c->dx_max = dx_max;
 
-  if (timer) {
-#ifdef TIMER_VERBOSE
-    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_drift)) / CPU_TPS * 1000);
-    fflush(stdout);
-#else
-    TIMER_TOC(timer_drift);
-#endif
-  }
+  if (timer) TIMER_TOC(timer_drift);
 }
 
 /**
@@ -924,7 +874,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC
 
 #ifdef TASK_VERBOSE
-	 OUT
+  OUT
 #endif
 
   /* No children? */
@@ -1049,59 +999,56 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       ti_end_min = min(p->ti_end, ti_end_min);
       ti_end_max = max(p->ti_end, ti_end_max);
     }
-	 /* For the moment we loop of gpart particles comppletely independently - this should be changed */
-	 
-	 for(int k = 0; k < gcount; k++)
-		{
-		  g = &gparts[k];
+    /* For the moment we loop of gpart particles comppletely independently - this should be changed */
 
-		  x[0] = g->x[0];
-		  x[1] = g->x[1];
-		  x[2] = g->x[2];
-		  
-		  /* If particle needs to be kicked */
-		  if (is_fixdt || p->ti_end <= ti_current) {
+    for(int k = 0; k < gcount; k++) {
+      g = &gparts[k];
 
-			 if (is_fixdt) {
-				
-				/* Now we have a time step, proceed with the kick */
-				new_dti = global_dt_max * timeBase_inv;
-				
-			 }
-			 else 
-				{
-				  /* need to calculate gravity step - todo */
-				  error(" gravity time step not implemented yet ");
-				}
+      x[0] = g->x[0];
+      x[1] = g->x[1];
+      x[2] = g->x[2];
 
-			 /* Compute the time step for this kick */
-			 const int ti_start = (g->ti_begin + g->ti_end) / 2;
-			 const int ti_end = g->ti_end + new_dti / 2;
-			 const float dt = (ti_end - ti_start) * timeBase;
-			 
-			 /* Move particle forward in time */
-			 g->ti_begin = g->ti_end;
-			 g->ti_end   = g->ti_begin + new_dti;
+      /* If particle needs to be kicked */
+      if (is_fixdt || p->ti_end <= ti_current) {
 
-			 if(g->id == 0)
-				 message(" dt= %f tx= %f tv=%f \n",dt, g->tx, g->tv);
+        if (is_fixdt) {
 
-			 /* Kick particles in momentum space */
-			 g->v_full[0] += g->a_grav_external[0] * dt;
-			 g->v_full[1] += g->a_grav_external[1] * dt;
-			 g->v_full[2] += g->a_grav_external[2] * dt;
-			 g->tv        += dt;
-			 
-			 /* Minimal time for next end of time-step */
-			 ti_end_min = min(g->ti_end, ti_end_min);
-			 ti_end_max = max(g->ti_end, ti_end_max);
+          /* Now we have a time step, proceed with the kick */
+          new_dti = global_dt_max * timeBase_inv;
 
-			 /* Number of updated particles */
-			 updated++;
-		  
-		  }
-		}
+        }
+        else {
+          /* need to calculate gravity step - todo */
+          error(" gravity time step not implemented yet ");
+        }
 
+        /* Compute the time step for this kick */
+        const int ti_start = (g->ti_begin + g->ti_end) / 2;
+        const int ti_end = g->ti_end + new_dti / 2;
+        const float dt = (ti_end - ti_start) * timeBase;
+
+        /* Move particle forward in time */
+        g->ti_begin = g->ti_end;
+        g->ti_end   = g->ti_begin + new_dti;
+
+        if(g->id == 0)
+          message(" dt= %f tx= %f tv=%f \n",dt, g->tx, g->tv);
+
+        /* Kick particles in momentum space */
+        g->v_full[0] += g->a_grav_external[0] * dt;
+        g->v_full[1] += g->a_grav_external[1] * dt;
+        g->v_full[2] += g->a_grav_external[2] * dt;
+        g->tv        += dt;
+
+        /* Minimal time for next end of time-step */
+        ti_end_min = min(g->ti_end, ti_end_min);
+        ti_end_max = max(g->ti_end, ti_end_max);
+
+        /* Number of updated particles */
+        updated++;
+
+      }
+    }
   }
 
   /* Otherwise, aggregate data from children. */
@@ -1147,15 +1094,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
-  if (timer) {
-#ifdef TIMER_VERBOSE
-    message("runner %02i: %i parts at depth %i took %.3f ms.", r->id, c->count,
-            c->depth, ((double)TIMER_TOC(timer_kick)) / CPU_TPS * 1000);
-    fflush(stdout);
-#else
-    TIMER_TOC(timer_kick);
-#endif
-  }
+  if (timer) TIMER_TOC(timer_kick);
 }
 
 /**
@@ -1276,7 +1215,7 @@ void *runner_main(void *data) {
           space_do_parts_sort();
           break;
         case task_type_split_cell:
-          space_split(e->s, t->ci);
+          space_do_split(e->s, t->ci);
           break;
         case task_type_rewait:
           scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj,

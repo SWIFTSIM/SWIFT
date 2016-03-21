@@ -46,11 +46,6 @@
 /* Local headers. */
 #include "swift.h"
 
-/* Ticks per second on this machine. */
-#ifndef CPU_TPS
-#define CPU_TPS 2.40e9
-#endif
-
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
 #define ENGINE_POLICY engine_policy_none
@@ -75,8 +70,9 @@
 
 int main(int argc, char *argv[]) {
 
-  int c, icount, j, k, Ngas = 0, Ndm = 0, periodic = 1;
-  long long N_total = -1;
+  int c, icount, periodic = 1;
+  size_t Ngas = 0, Ngpart = 0;
+  long long N_total[2] = {0, 0};
   int nr_threads = 1, nr_queues = -1;
   int dump_tasks = 0;
   int data[2];
@@ -88,13 +84,15 @@ int main(int argc, char *argv[]) {
   struct space s;
   struct engine e;
   struct UnitSystem us;
+  struct clocks_time tic, toc;
   char ICfileName[200] = "";
   char dumpfile[30];
   float dt_max = 0.0f, dt_min = 0.0f;
-  ticks tic;
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
+  int verbose = 0, talking;
+  unsigned long long cpufreq = 0;
 
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -142,6 +140,9 @@ int main(int argc, char *argv[]) {
          &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
 
+  /* Initialize CPU frequency, this also starts time. */
+  clocks_set_cpufreq(cpufreq);
+
   /* Greeting message */
   if (myrank == 0) greetings();
 
@@ -167,7 +168,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:m:oP:q:R:s:t:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:v:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -184,7 +185,7 @@ int main(int argc, char *argv[]) {
       case 'd':
         if (sscanf(optarg, "%f", &dt_min) != 1)
           error("Error parsing minimal timestep.");
-        if (myrank == 0) message("dt_min set to %e.", dt_max);
+        if (myrank == 0) message("dt_min set to %e.", dt_min);
         fflush(stdout);
         break;
       case 'e':
@@ -196,6 +197,12 @@ int main(int argc, char *argv[]) {
       case 'f':
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
         break;
+      case 'h':
+        if (sscanf(optarg, "%llu", &cpufreq) != 1)
+          error("Error parsing CPU frequency.");
+        if (myrank == 0) message("CPU frequency set to %llu.", cpufreq);
+        fflush(stdout);
+        break;
       case 'm':
         if (sscanf(optarg, "%lf", &h_max) != 1) error("Error parsing h_max.");
         if (myrank == 0) message("maximum h set to %e.", h_max);
@@ -205,8 +212,8 @@ int main(int argc, char *argv[]) {
         with_outputs = 0;
         break;
       case 'P':
-        /* Partition type is one of "g", "m", "w", or "v"; "g" can be
-         * followed by three numbers defining the grid. */
+/* Partition type is one of "g", "m", "w", or "v"; "g" can be
+ * followed by three numbers defining the grid. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
           case 'g':
@@ -237,8 +244,8 @@ int main(int argc, char *argv[]) {
           error("Error parsing number of queues.");
         break;
       case 'R':
-        /* Repartition type "n", "b", "v", "e" or "x". 
-         * Note only none is available without METIS. */
+/* Repartition type "n", "b", "v", "e" or "x".
+ * Note only none is available without METIS. */
 #ifdef WITH_MPI
         switch (optarg[0]) {
           case 'n':
@@ -271,6 +278,12 @@ int main(int argc, char *argv[]) {
       case 't':
         if (sscanf(optarg, "%d", &nr_threads) != 1)
           error("Error parsing number of threads.");
+        break;
+      case 'v':
+        /* verbose = 1: MPI rank 0 writes
+           verbose = 2: all MPI ranks write */
+        if (sscanf(optarg, "%d", &verbose) != 1)
+          error("Error parsing verbosity level.");
         break;
       case 'w':
         if (sscanf(optarg, "%d", &space_subsize) != 1)
@@ -336,6 +349,12 @@ int main(int argc, char *argv[]) {
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
 
+  /* Report CPU frequency. */
+  if (myrank == 0) {
+    cpufreq = clocks_get_cpufreq();
+    message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
+  }
+
   /* Check we have sensible time step bounds */
   if (dt_min > dt_max)
     error("Minimal time step size must be large than maximal time step size ");
@@ -345,51 +364,52 @@ int main(int argc, char *argv[]) {
     error("An IC file name must be provided via the option -f");
 
   /* Read particles and space information from (GADGET) IC */
-  tic = getticks();
+
+  if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, dim, &gparts, &Ndm, &periodic, myrank, nr_nodes,
+  read_ic_parallel(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  read_ic_serial(ICfileName, dim, &gparts, &Ndm, &periodic, myrank, nr_nodes,
+  read_ic_serial(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
                  MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ndm, &periodic);
+  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
 #endif
 
-  if (myrank == 0)
-    message("reading particle properties took %.3f ms.",
-            ((double)(getticks() - tic)) / CPU_TPS * 1000);
-  fflush(stdout);
+  if (myrank == 0) {
+    clocks_gettime(&toc);
+    message("reading particle properties took %.3f %s.",
+            clocks_diff(&tic, &toc), clocks_getunit());
+    fflush(stdout);
+  }
 
 #if defined(WITH_MPI)
-  long long tmp;
-  long long N_long = Ngas + Ndm;
-  MPI_Reduce(&N_long, &tmp, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-  long long N_long = Ndm;
-  MPI_Reduce(&N_long, &N_total, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-  N_total += tmp;
+  long long N_long[2] = {Ngas, Ngpart};
+  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (myrank == 0)
+    message("Read %lld gas particles and %lld DM particles from the ICs",
+            N_total[0], N_total[1]);
 #else
-  N_total = Ngas + Ndm;
+  N_total[0] = Ngas;
+  N_total[1] = Ngpart - Ngas;
+  message("Read %lld gas particles and %lld DM particles from the ICs",
+          N_total[0], N_total[1]);
 #endif
-  if (myrank == 0) message("Read %lld particles from the ICs", N_total);
 
-  j = 0;
   /* Apply h scaling */
-  if (scaling != 1.0) {
-    for (k = 0; k < Ngas; k++)
-      parts[k].h *= scaling;
-  }
+  if (scaling != 1.0)
+    for (size_t k = 0; k < Ngas; k++) parts[k].h *= scaling;
 
   /* Apply shift */
   if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
-    for (k = 0; k < Ngas; k++) {
+    for (size_t k = 0; k < Ngas; k++) {
       parts[k].x[0] += shift[0];
       parts[k].x[1] += shift[1];
       parts[k].x[2] += shift[2];
     }
-    for (k = 0; k < Ndm; k++) {
+    for (size_t k = 0; k < Ngpart; k++) {
       gparts[k].x[0] += shift[0];
       gparts[k].x[1] += shift[1];
       gparts[k].x[2] += shift[2];
@@ -399,13 +419,19 @@ int main(int argc, char *argv[]) {
   /* Set default number of queues. */
   if (nr_queues < 0) nr_queues = nr_threads;
 
+  /* How vocal are we ? */
+  talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+
   /* Initialize the space with this data. */
-  tic = getticks();
-  space_init(&s, dim, parts, gparts, Ngas, Ndm, periodic, h_max, myrank == 0);
-  if (myrank == 0)
-    message("space_init took %.3f ms.",
-            ((double)(getticks() - tic)) / CPU_TPS * 1000);
-  fflush(stdout);
+  if (myrank == 0) clocks_gettime(&tic);
+  space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max,
+             myrank == 0);
+  if (myrank == 0 && verbose) {
+    clocks_gettime(&toc);
+    message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
+    fflush(stdout);
+  }
 
   /* Say a few nice things about the space we just created. */
   if (myrank == 0) {
@@ -414,24 +440,26 @@ int main(int argc, char *argv[]) {
     message("space %s periodic.", s.periodic ? "is" : "isn't");
     message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
             s.cdim[1], s.cdim[2]);
-    message("%i gas parts in %i cells.", s.nr_parts, s.tot_cells);
-    message("%i dm parts in %i cells.", s.nr_gparts, s.tot_cells);
+    message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
+    message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
     message("gparts[10].id = %ld.", gparts[10].id);
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
 
-  
+
   /* Initialize the engine with this space. */
-  tic = getticks();
+  if (myrank == 0) clocks_gettime(&tic);
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal | ENGINE_HYDRO | ENGINE_EXTERNAL_GRAVITY, 0,
-              time_end, dt_min, dt_max);
-  if (myrank == 0)
-    message("engine_init took %.3f ms.",
-            ((double)(getticks() - tic)) / CPU_TPS * 1000);
-  fflush(stdout);
+              ENGINE_POLICY | engine_policy_steal | engine_policy_hydro | ENGINE_EXTERNAL_GRAVITY, 0,
+              time_end, dt_min, dt_max, talking);
+  if (myrank == 0 && verbose) {
+    clocks_gettime(&toc);
+    message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
+    fflush(stdout);
+  }
 
 #ifdef WITH_MPI
   /* Split the space. */
@@ -442,7 +470,7 @@ int main(int argc, char *argv[]) {
   if (with_outputs) {
     /* Write the state of the system as it is before starting time integration.
      */
-    tic = getticks();
+    if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
     write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
@@ -454,10 +482,12 @@ int main(int argc, char *argv[]) {
 #else
     write_output_single(&e, &us);
 #endif
-    if (myrank == 0)
-      message("writing particle properties took %.3f ms.",
-              ((double)(getticks() - tic)) / CPU_TPS * 1000);
-    fflush(stdout);
+    if (myrank == 0 && verbose) {
+      clocks_gettime(&toc);
+      message("writing particle properties took %.3f %s.",
+              clocks_diff(&tic, &toc), clocks_getunit());
+      fflush(stdout);
+    }
   }
 
 /* Init the runner history. */
@@ -467,12 +497,13 @@ int main(int argc, char *argv[]) {
 
   if (myrank == 0) {
     message(
-        "Running on %lld particles until t=%.3e with %i threads and %i "
-        "queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total, time_end, e.nr_threads, e.sched.nr_queues, e.dt_min, e.dt_max);
+        "Running on %lld gas particles and %lld DM particles until t=%.3e with "
+        "%i threads and %i queues (dt_min=%.3e, dt_max=%.3e)...",
+        N_total[0], N_total[1], time_end, e.nr_threads, e.sched.nr_queues,
+        e.dt_min, e.dt_max);
     fflush(stdout);
   }
- 
+
   /* Initialise the particles */
   engine_init_particles(&e);
   /* Verify that each particle is in it's proper cell. */
@@ -480,25 +511,26 @@ int main(int argc, char *argv[]) {
     icount = 0;
     space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
     message("map_cellcheck picked up %i parts.", icount);
-    
+
   }
-    
+
   if (myrank == 0) {
     data[0] = s.maxdepth;
     data[1] = 0;
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
-  
+
   //exit(-99);
   /* Legend */
   if (myrank == 0)
     printf(
         "# Step  Time  time-step  Number of updates    CPU Wall-clock time "
-        "[ms]\n");
+        "[%s]\n",
+        clocks_getunit());
 
   /* Let loose a runner on the space. */
-  for (j = 0; e.time < time_end; j++) {
+  for (int j = 0; !engine_is_done(&e); j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
@@ -512,9 +544,10 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
-    
+
     if (with_outputs && j % 100 == 0) {
 
+      if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
       write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
@@ -526,6 +559,12 @@ int main(int argc, char *argv[]) {
 #else
       write_output_single(&e, &us);
 #endif
+      if (myrank == 0 && verbose) {
+        clocks_gettime(&toc);
+        message("writing particle properties took %.3f %s.",
+                clocks_diff(&tic, &toc), clocks_getunit());
+        fflush(stdout);
+      }
     }
 
     /* Dump the task data using the given frequency. */
@@ -601,14 +640,14 @@ int main(int argc, char *argv[]) {
      * e.count_step, */
     /*              e.dt_min, e.dt_max); */
     /*       for (k = 0; k < timer_count; k++) */
-    /*         printf(" %.3f", ((double)timers[k]) / CPU_TPS * 1000); */
+    /*         printf(" %.3f", clocks_from_ticks(timers[k]); */
     /*       printf("\n"); */
     /*       fflush(stdout); */
     /*     } */
 
     /* if (myrank == 0) { */
     /*   printf("%i %e", j, e.time); */
-    /*   printf(" %.3f", ((double)timers[timer_count - 1]) / CPU_TPS * 1000); */
+    /*   printf(" %.3f", clocks_from_ticks(timers[timer_count - 1]); */
     /*   printf("\n"); */
     /*   fflush(stdout); */
     /* } */
@@ -626,6 +665,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (with_outputs) {
+
+    if (myrank == 0) clocks_gettime(&tic);
 /* Write final output. */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -638,6 +679,12 @@ int main(int argc, char *argv[]) {
 #else
     write_output_single(&e, &us);
 #endif
+    if (myrank == 0 && verbose) {
+      clocks_gettime(&toc);
+      message("writing particle properties took %.3f %s.",
+              clocks_diff(&tic, &toc), clocks_getunit());
+      fflush(stdout);
+    }
   }
 
 #ifdef WITH_MPI

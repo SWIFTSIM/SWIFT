@@ -40,6 +40,8 @@
 #error "Invalid choice of SPH variant"
 #endif
 
+#include "./gravity/Default/gravity_debug.h"
+
 /**
  * @brief Looks for the particle with the given id and prints its information to
  *the standard output.
@@ -53,37 +55,38 @@
  */
 
 void printParticle(struct part *parts, struct xpart *xparts, long long int id,
-                   int N) {
+                   size_t N) {
 
-  int i, found = 0;
+  int found = 0;
 
   /* Look for the particle. */
-  for (i = 0; i < N; i++)
+  for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf("## Particle[%d]:\n id=%lld", i, parts[i].id);
+      printf("## Particle[%zd]:\n id=%lld", i, parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
       found = 1;
+      break;
     }
 
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
 }
 
-void printgParticle(struct gpart *parts, long long int id, int N) {
+void printgParticle(struct gpart *gparts, long long int id, size_t N) {
 
-  int i, found = 0;
+  int found = 0;
 
   /* Look for the particle. */
-  for (i = 0; i < N; i++)
-    if (parts[i].id == -id || (parts[i].id > 0 && parts[i].part->id == id)) {
-      printf(
-          "## gParticle[%d]: id=%lld, x=[%.16e,%.16e,%.16e], "
-          "v=[%.3e,%.3e,%.3e], a=[%.3e,%.3e,%.3e], m=%.3e, t_begin=%d, "
-          "t_end=%d\n",
-          i, parts[i].part->id, parts[i].x[0], parts[i].x[1], parts[i].x[2],
-          parts[i].v_full[0], parts[i].v_full[1], parts[i].v_full[2], parts[i].a[0],
-          parts[i].a[1], parts[i].a[2], parts[i].mass, parts[i].ti_begin,
-          parts[i].ti_end);
+  for (size_t i = 0; i < N; i++)
+    if (gparts[i].id == -id) {
+      printf("## gParticle[%zd] (DM) :\n id=%lld", i, -gparts[i].id);
+      gravity_debug_particle(&gparts[i]);
       found = 1;
+      break;
+    } else if (gparts[i].id > 0 && gparts[i].part->id == id) {
+      printf("## gParticle[%zd] (hydro) :\n id=%lld", i, gparts[i].id);
+      gravity_debug_particle(&gparts[i]);
+      found = 1;
+      break;
     }
 
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
@@ -135,8 +138,6 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   FILE *simplefile = NULL;
   FILE *weightfile = NULL;
   char fname[200];
-  idx_t i;
-  idx_t j;
   int haveedgeweight = 0;
   int havevertexsize = 0;
   int havevertexweight = 0;
@@ -144,7 +145,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   nseq++;
 
   if (vertexweights != NULL) {
-    for (i = 0; i < nvertices * nvertexweights; i++) {
+    for (idx_t i = 0; i < nvertices * nvertexweights; i++) {
       if (vertexweights[i] != 1) {
         havevertexweight = 1;
         break;
@@ -153,7 +154,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 
   if (vertexsizes != NULL) {
-    for (i = 0; i < nvertices; i++) {
+    for (idx_t i = 0; i < nvertices; i++) {
       if (vertexsizes[i] != 1) {
         havevertexsize = 1;
         break;
@@ -162,7 +163,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 
   if (edgeweights != NULL) {
-    for (i = 0; i < cellconruns[nvertices]; i++) {
+    for (idx_t i = 0; i < cellconruns[nvertices]; i++) {
       if (edgeweights[i] != 1) {
         haveedgeweight = 1;
         break;
@@ -202,7 +203,7 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   }
 
   /*  Write the rest of the graph. */
-  for (i = 0; i < nvertices; i++) {
+  for (idx_t i = 0; i < nvertices; i++) {
     fprintf(stdfile, "\n");
     fprintf(simplefile, "\n");
     if (weightfile != NULL) {
@@ -215,13 +216,13 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
     }
 
     if (havevertexweight) {
-      for (j = 0; j < nvertexweights; j++) {
+      for (idx_t j = 0; j < nvertexweights; j++) {
         fprintf(stdfile, " %" PRIDX, vertexweights[i * nvertexweights + j]);
         fprintf(weightfile, " %" PRIDX, vertexweights[i * nvertexweights + j]);
       }
     }
 
-    for (j = cellconruns[i]; j < cellconruns[i + 1]; j++) {
+    for (idx_t j = cellconruns[i]; j < cellconruns[i + 1]; j++) {
       fprintf(stdfile, " %" PRIDX, cellcon[j] + 1);
       fprintf(simplefile, " %" PRIDX, cellcon[j] + 1);
       if (haveedgeweight) {
