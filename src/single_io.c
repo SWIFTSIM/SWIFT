@@ -39,9 +39,6 @@
 #include "common_io.h"
 #include "error.h"
 
-#define FILENAME_BUFFER_SIZE 150
-#define PARTICLE_GROUP_BUFFER_SIZE 20
-
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
  *-----------------------------------------------------------------------------*/
@@ -66,14 +63,14 @@
  * Calls #error() if an error occurs.
  */
 void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
-                      int dim, char* part_c, enum DATA_IMPORTANCE importance) {
+                      int dim, char* part_c, size_t partSize,
+                      enum DATA_IMPORTANCE importance) {
   hid_t h_data = 0, h_err = 0, h_type = 0;
   htri_t exist = 0;
   void* temp;
   int i = 0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
-  const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
 
   /* Check whether the dataspace exists or not */
@@ -158,14 +155,13 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  */
 void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
                        enum DATA_TYPE type, int N, int dim, char* part_c,
-                       struct UnitSystem* us,
+                       size_t partSize, struct UnitSystem* us,
                        enum UnitConversionFactor convFactor) {
   hid_t h_data = 0, h_err = 0, h_space = 0, h_prop = 0;
   void* temp = 0;
   int i = 0, rank = 0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
-  const size_t partSize = sizeof(struct part);
   char* temp_c = 0;
   hsize_t shape[2];
   hsize_t chunk_shape[2];
@@ -204,7 +200,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 
   /* Make sure the chunks are not larger than the dataset */
   if (chunk_shape[0] > N) chunk_shape[0] = N;
-  
+
   /* Change shape of data space */
   h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if (h_err < 0) {
@@ -276,7 +272,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 #define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
                   importance)                                            \
   readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),   \
-                   importance)
+                   sizeof(part[0]), importance)
 
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
@@ -301,7 +297,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 #define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
                    mpi_rank, offset, field, us, convFactor)                   \
   writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim,               \
-                    (char*)(&(part[0]).field), us, convFactor)
+                    (char*)(&(part[0]).field), sizeof(part[0]), us,           \
+                    convFactor)
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
@@ -314,9 +311,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param fileName The file to read.
  * @param dim (output) The dimension of the volume.
  * @param parts (output) Array of Gas particles.
- * @param gparts (output) Array of DM particles.
+ * @param gparts (output) Array of #gpart particles.
  * @param Ngas (output) number of Gas particles read.
- * @param Ngparts (output) The number of DM particles read.
+ * @param Ngparts (output) The number of #gpart read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  *
  * Opens the HDF5 file fileName and reads the particles contained
@@ -337,6 +334,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   double boxSize[3] = {0.0, -1.0, -1.0};
   /* GADGET has 6 particle types. We only keep the type 0 & 1 for now...*/
   int numParticles[NUM_PARTICLE_TYPES] = {0};
+  int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
+  size_t N[NUM_PARTICLE_TYPES] = {0};
   size_t Ndm;
 
   /* Open file */
@@ -365,9 +364,12 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* Read the relevant information and print status */
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
+  readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
 
-  *Ngas = numParticles[0];
-  Ndm = numParticles[1];
+  for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype)
+    N[ptype] = ((long long)numParticles[ptype]) +
+               ((long long)numParticles_highWord[ptype] << 32);
+
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
@@ -378,16 +380,16 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* Close header */
   H5Gclose(h_grp);
 
-  /* Total number of particles */
-  *Ngparts = *Ngas + Ndm;
-
   /* Allocate memory to store SPH particles */
+  *Ngas = N[0];
   if (posix_memalign((void*)parts, part_align, *Ngas * sizeof(struct part)) !=
       0)
     error("Error while allocating memory for SPH particles");
   bzero(*parts, *Ngas * sizeof(struct part));
 
   /* Allocate memory to store all particles */
+  Ndm = N[1];
+  *Ngparts = N[1] + N[0];
   if (posix_memalign((void*)gparts, gpart_align,
                      *Ngparts * sizeof(struct gpart)) != 0)
     error("Error while allocating memory for gravity particles");
@@ -396,16 +398,14 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
    * (1024.*1024.)); */
 
-  /* Open SPH particles group */
-  /* message("Reading particle arrays..."); */
-  message("BoxSize = %lf", dim[0]);
-  message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts);
+  /* message("BoxSize = %lf", dim[0]); */
+  /* message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts); */
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
     /* Don't do anything if no particle of this kind */
-    if (numParticles[ptype] == 0) continue;
+    if (N[ptype] == 0) continue;
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -476,10 +476,13 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   static int outputCount = 0;
 
   /* Number of particles of each type */
-  const size_t Ndm = Ntot - Ngas;
-  int numParticles[NUM_PARTICLE_TYPES] = /* Gadget-2 convention here */
-      {Ngas, Ndm, 0};                    /* Could use size_t instead */
-  int numParticlesHighWord[NUM_PARTICLE_TYPES] = {0};
+  //const size_t Ndm = Ntot - Ngas;
+
+  /* MATTHIEU: Temporary fix to preserve master */
+  const size_t Ndm = Ntot > 0 ? Ntot - Ngas: 0;
+  /* MATTHIEU: End temporary fix */
+
+  long long N_total[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
@@ -521,19 +524,27 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
 
   /* Print the relevant information and print status */
   writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
-  writeAttribute(h_grp, "NumPart_ThisFile", UINT, numParticles,
-                 NUM_PARTICLE_TYPES);
   double dblTime = e->time;
   writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
 
   /* GADGET-2 legacy values */
+  /* Number of particles of each type */
+  unsigned int numParticles[NUM_PARTICLE_TYPES] = {0};
+  unsigned int numParticlesHighWord[NUM_PARTICLE_TYPES] = {0};
+  for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ++ptype) {
+    numParticles[ptype] = (unsigned int)N_total[ptype];
+    numParticlesHighWord[ptype] = (unsigned int)(N_total[ptype] >> 32);
+  }
+  writeAttribute(h_grp, "NumPart_ThisFile", LONGLONG, N_total,
+                 NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumPart_Total", UINT, numParticles,
                  NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticlesHighWord,
                  NUM_PARTICLE_TYPES);
-  double MassTable[NUM_PARTICLE_TYPES] = {0., 0., 0., 0., 0., 0.};
+  double MassTable[NUM_PARTICLE_TYPES] = {0};
   writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, NUM_PARTICLE_TYPES);
-  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, numParticlesHighWord,
+  unsigned int flagEntropy[NUM_PARTICLE_TYPES] = {0};
+  writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
                  NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
 

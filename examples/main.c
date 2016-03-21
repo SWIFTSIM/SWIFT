@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
@@ -79,7 +80,9 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
-  int verbose = 0, talking;
+  int with_gravity = 0;
+  int engine_policies = 0;
+  int verbose = 0, talking = 0;
   unsigned long long cpufreq = 0;
 
 #ifdef WITH_MPI
@@ -97,8 +100,11 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-/* Choke on FP-exceptions. */
-// feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+  /* Choke on FP-exceptions. */
+  // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+
+  /* Initialize CPU frequency, this also starts time. */
+  clocks_set_cpufreq(cpufreq);
 
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
@@ -128,9 +134,6 @@ int main(int argc, char *argv[]) {
          &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
 
-  /* Initialize CPU frequency, this also starts time. */
-  clocks_set_cpufreq(cpufreq);
-
   /* Greeting message */
   if (myrank == 0) greetings();
 
@@ -156,7 +159,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:v:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:gh:m:oP:q:R:s:t:v:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -184,6 +187,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'f':
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
+        break;
+      case 'g':
+        with_gravity = 1;
         break;
       case 'h':
         if (sscanf(optarg, "%llu", &cpufreq) != 1)
@@ -359,8 +365,8 @@ int main(int argc, char *argv[]) {
   read_ic_parallel(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  read_ic_serial(ICfileName, dim, &parts, &Ngas, &periodic, myrank, nr_nodes,
-                 MPI_COMM_WORLD, MPI_INFO_NULL);
+  read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
   read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
@@ -376,6 +382,7 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
   long long N_long[2] = {Ngas, Ngpart};
   MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  N_total[1] -= N_total[0];
   if (myrank == 0)
     message("Read %lld gas particles and %lld DM particles from the ICs",
             N_total[0], N_total[1]);
@@ -383,8 +390,33 @@ int main(int argc, char *argv[]) {
   N_total[0] = Ngas;
   N_total[1] = Ngpart - Ngas;
   message("Read %lld gas particles and %lld DM particles from the ICs",
-	  N_total[0], N_total[1]);
+          N_total[0], N_total[1]);
 #endif
+
+  /* MATTHIEU: Temporary fix to preserve master */
+  if (!with_gravity) {
+    free(gparts);
+    for(size_t k = 0; k < Ngas; ++k)
+      parts[k].gpart = NULL;
+    Ngpart = 0;
+#if defined(WITH_MPI)
+    N_long[0] = Ngas;
+    N_long[1] = Ngpart;
+    MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (myrank == 0)
+      message(
+          "AFTER FIX: Read %lld gas particles and %lld DM particles from the "
+          "ICs",
+          N_total[0], N_total[1]);
+#else
+    N_total[0] = Ngas;
+    N_total[1] = Ngpart;
+    message(
+        "AFTER FIX: Read %lld gas particles and %lld DM particles from the ICs",
+        N_total[0], N_total[1]);
+#endif
+  }
+  /* MATTHIEU: End temporary fix */
 
   /* Apply h scaling */
   if (scaling != 1.0)
@@ -448,12 +480,15 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
+  /* Construct the engine policy */
+  engine_policies = ENGINE_POLICY | engine_policy_steal | engine_policy_hydro;
+  if (with_gravity) engine_policies |= engine_policy_external_gravity;
+
   /* Initialize the engine with this space. */
   if (myrank == 0) clocks_gettime(&tic);
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal | engine_policy_hydro, 0,
-              time_end, dt_min, dt_max, talking);
+              engine_policies, 0, time_end, dt_min, dt_max, talking);
   if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
