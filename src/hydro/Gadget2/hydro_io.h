@@ -56,6 +56,8 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
  *
  * @param h_grp The HDF5 group in which to write the arrays.
  * @param fileName The name of the file (unsued in MPI mode).
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param xmfFile The XMF file to write to (unused in MPI mode).
  * @param N The number of particles on that MPI rank.
  * @param N_total The total number of particles (only used in MPI mode)
