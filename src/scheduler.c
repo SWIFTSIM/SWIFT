@@ -1011,6 +1011,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 
   /* Wait for the rewait tasks to have executed. */
   pthread_mutex_lock(&s->sleep_mutex);
+  pthread_cond_broadcast(&s->sleep_cond);
   while (s->waiting > waiting_old) {
     pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
   }
@@ -1031,6 +1032,11 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
       pthread_cond_broadcast(&s->sleep_cond);
     }
   }
+
+  /* To be safe, fire of one last sleep_cond in a safe way. */
+  pthread_mutex_lock(&s->sleep_mutex);
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
 
   // message( "enqueueing tasks took %.3f %s." ,
   // clocks_from_ticks( getticks() - tic ), clocks_getunit());
