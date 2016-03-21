@@ -1009,7 +1009,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       x[2] = g->x[2];
 
       /* If particle needs to be kicked */
-      if (is_fixdt || p->ti_end <= ti_current) {
+      if (is_fixdt || g->ti_end <= ti_current) {
 
         if (is_fixdt) {
 
@@ -1019,6 +1019,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         }
         else {
           /* need to calculate gravity step - todo */
+          new_dti = -1;
           error(" gravity time step not implemented yet ");
         }
 
