@@ -226,6 +226,7 @@ void engine_redistribute(struct engine *e) {
       }
 
       s->parts[k].gpart->id = count_this_dest;
+      count_this_dest++;
     }
   }
 
