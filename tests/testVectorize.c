@@ -11,7 +11,8 @@
 struct cell *make_cell(size_t n, double *offset, double h,
                        unsigned long long *partId) {
   size_t count = n * n * n;
-  struct cell *cell = malloc(sizeof *cell);
+  struct cell *cell = malloc(sizeof(struct cell));
+  bzero(cell, sizeof(struct cell));
   struct part *part;
   size_t x, y, z, size;
 
@@ -19,6 +20,7 @@ struct cell *make_cell(size_t n, double *offset, double h,
   if (posix_memalign((void **)&cell->parts, part_align, size) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
+  bzero(cell->parts, count * sizeof(struct part));
 
   part = cell->parts;
   for (x = 0; x < n; ++x) {
@@ -44,12 +46,17 @@ struct cell *make_cell(size_t n, double *offset, double h,
   cell->split = 0;
   cell->h_max = h;
   cell->count = count;
-  cell->dx_max = 1.;
+  cell->dx_max = 0.;
   cell->h[0] = n;
   cell->h[1] = n;
   cell->h[2] = n;
+  cell->loc[0] = offset[0];
+  cell->loc[1] = offset[1];
+  cell->loc[2] = offset[2];
 
-  cell->sort = malloc(13 * count * sizeof *cell->sort);
+  cell->sorted = 0;
+  cell->sort = NULL;
+  cell->sortsize = 0;
   runner_dosort(NULL, cell, 0x1FFF, 0);
 
   return cell;
@@ -147,6 +154,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  space.periodic = 0;
   volume = particles * particles * particles;
   message("particles: %zu B\npositions: 0 B", 2 * volume * sizeof(struct part));
 
