@@ -56,8 +56,6 @@
 #include "partition.h"
 #include "timers.h"
 
-#define engine_redistribute_alloc_margin 1.2
-
 const char *engine_policy_names[12] = {
     "none",          "rand",   "steal",        "keep",
     "block",         "fix_dt", "cpu_tight",    "mpi",
@@ -173,21 +171,20 @@ void engine_redistribute(struct engine *e) {
   /* Allocate temporary arrays to store the counts of particles to be sent
      and the destination of each particle */
   int *counts, *g_counts;
-  if ((counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL)
+  if ((counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate count temporary buffer.");
-  if ((g_counts = (int *)malloc(sizeof(int) *nr_nodes *nr_nodes)) == NULL)
+  if ((g_counts = (int *)malloc(sizeof(int) * nr_nodes * nr_nodes)) == NULL)
     error("Failed to allocate gcount temporary buffer.");
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
 
   // MATTHIEU: Should be int and not size_t once Pedro's changes are merged.
   size_t *dest, *g_dest;
-  if((dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
+  if ((dest = (size_t *)malloc(sizeof(size_t) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
-  if((g_dest = (size_t *)malloc(sizeof(size_t) * s->nr_gparts)) == NULL)
+  if ((g_dest = (size_t *)malloc(sizeof(size_t) * s->nr_gparts)) == NULL)
     error("Failed to allocate g_dest temporary buffer.");
 
-  
   /* The counts array is indexed as count[from * nr_nodes + to]. */
   for (size_t k = 0; k < s->nr_parts; k++) {
 
@@ -247,8 +244,7 @@ void engine_redistribute(struct engine *e) {
 
   /* Get the new number of parts and gparts for this node */
   size_t nr_parts = 0, nr_gparts = 0;
-  for (int k = 0; k < nr_nodes; k++)
-    nr_parts += counts[k * nr_nodes + nodeID];
+  for (int k = 0; k < nr_nodes; k++) nr_parts += counts[k * nr_nodes + nodeID];
   for (int k = 0; k < nr_nodes; k++)
     nr_gparts += g_counts[k * nr_nodes + nodeID];
 
@@ -400,8 +396,8 @@ void engine_redistribute(struct engine *e) {
     int my_cells = 0;
     for (int k = 0; k < nr_cells; k++)
       if (cells[k].nodeID == nodeID) my_cells += 1;
-    message("node %i now has %zi parts and %zi gparts in %i cells.",
-	    nodeID, nr_parts, nr_gparts, my_cells);
+    message("node %i now has %zi parts and %zi gparts in %i cells.", nodeID,
+            nr_parts, nr_gparts, my_cells);
   }
 
   if (e->verbose)
