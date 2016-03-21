@@ -45,6 +45,9 @@
 #include "kernel.h"
 #include "version.h"
 
+const char *particle_type_names[NUM_PARTICLE_TYPES] = {
+  "Gas", "DM", "Boundary", "Dummy", "Stars", "BH" };
+
 /**
  * @brief Converts a C data type to the HDF5 equivalent.
  *
@@ -406,24 +409,13 @@ void createXMFfile() {
  * @param hdfFileName The name of the HDF5 file corresponding to this output.
  * @param time The current simulation time.
  */
-void writeXMFheader(FILE* xmfFile, long long Nparts, char* hdfFileName,
-                    float time) {
+void writeXMFoutputheader(FILE* xmfFile, char* hdfFileName, float time) {
   /* Write end of file */
 
+  fprintf(xmfFile, "<!-- XMF description for file: %s -->\n", hdfFileName);
   fprintf(xmfFile,
           "<Grid GridType=\"Collection\" CollectionType=\"Spatial\">\n");
   fprintf(xmfFile, "<Time Type=\"Single\" Value=\"%f\"/>\n", time);
-  fprintf(xmfFile, "<Grid Name=\"Gas\" GridType=\"Uniform\">\n");
-  fprintf(xmfFile,
-          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%lld\"/>\n",
-          Nparts);
-  fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
-  fprintf(xmfFile,
-          "<DataItem Dimensions=\"%lld 3\" NumberType=\"Double\" "
-          "Precision=\"8\" "
-          "Format=\"HDF\">%s:/PartType0/Coordinates</DataItem>\n",
-          Nparts, hdfFileName);
-  fprintf(xmfFile, "</Geometry>");
 }
 
 /**
@@ -431,17 +423,39 @@ void writeXMFheader(FILE* xmfFile, long long Nparts, char* hdfFileName,
  *
  * @param xmfFile The file to write in.
  */
-void writeXMFfooter(FILE* xmfFile) {
+void writeXMFoutputfooter(FILE* xmfFile, int output, float time) {
   /* Write end of the section of this time step */
 
-  fprintf(xmfFile, "\n</Grid>\n");
-  fprintf(xmfFile, "</Grid>\n");
-  fprintf(xmfFile, "\n</Grid>\n");
+  fprintf(xmfFile, "\n</Grid> <!-- output=%03i time=%f -->\n", output, time);
+  fprintf(xmfFile, "\n</Grid> <!-- timeSeries -->\n");
   fprintf(xmfFile, "</Domain>\n");
   fprintf(xmfFile, "</Xdmf>\n");
 
   fclose(xmfFile);
 }
+
+
+void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
+			 enum PARTICLE_TYPE ptype) {
+  fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
+	  particle_type_names[ptype]);
+  fprintf(xmfFile,
+          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zi\"/>\n",
+          N);
+  fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
+  fprintf(xmfFile,
+          "<DataItem Dimensions=\"%zi 3\" NumberType=\"Double\" "
+          "Precision=\"8\" "
+          "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
+          N, hdfFileName, ptype);
+  fprintf(xmfFile, "</Geometry>");
+}
+
+void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
+  fprintf(xmfFile, "</Grid> <!-- parttype=%s -->\n", particle_type_names[ptype]);
+}
+
+
 
 /**
  * @brief Writes the lines corresponding to an array of the HDF5 output
@@ -455,21 +469,21 @@ void writeXMFfooter(FILE* xmfFile) {
  *
  * @todo Treat the types in a better way.
  */
-void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N,
-                  int dim, enum DATA_TYPE type) {
+void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
+		  char* name, size_t N, int dim, enum DATA_TYPE type) {
   fprintf(xmfFile,
           "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",
           name, dim == 1 ? "Scalar" : "Vector");
   if (dim == 1)
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%lld\" NumberType=\"Double\" "
-            "Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n",
-            N, type == FLOAT ? 4 : 8, fileName, name);
+            "<DataItem Dimensions=\"%zi\" NumberType=\"Double\" "
+            "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
+            N, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   else
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%lld %d\" NumberType=\"Double\" "
-            "Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n",
-            N, dim, type == FLOAT ? 4 : 8, fileName, name);
+            "<DataItem Dimensions=\"%zi %d\" NumberType=\"Double\" "
+            "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
+            N, dim, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
 }
 

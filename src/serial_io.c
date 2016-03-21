@@ -643,7 +643,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     xmfFile = prepareXMFfile();
 
     /* Write the part corresponding to this specific output */
-    // writeXMFheader(xmfFile, N_total, fileName, e->time);
+    writeXMFheader(xmfFile, N_total[0], fileName, e->time);
 
     /* Open file */
     /* message("Opening file '%s'.", fileName); */
