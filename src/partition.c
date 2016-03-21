@@ -424,7 +424,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
    * assume the same graph structure as used in the part_ calls). */
   int nr_cells = s->nr_cells;
   struct cell *cells = s->cells;
-  float wscale = 1e-3, vscale = 1e-3, wscale_buff;
+  float wscale = 1e-3, vscale = 1e-3, wscale_buff = 0.0;
   int wtot = 0;
   int wmax = 1e9 / nr_nodes;
   int wmin;

@@ -260,13 +260,11 @@ void engine_redistribute(struct engine *e) {
   }
 
   /* Verify that all parts are in the right place. */
-  /* for ( k = 0 ; k < nr_parts ; k++ ) {
-      cid = cell_getid( cdim , parts_new[k].x[0]*ih[0] , parts_new[k].x[1]*ih[1]
-     , parts_new[k].x[2]*ih[2] );
+  /* for ( int k = 0 ; k < nr_parts ; k++ ) {
+      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0], parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
       if ( cells[ cid ].nodeID != nodeID )
-          error( "Received particle (%i) that does not belong here (nodeID=%i)."
-     , k , cells[ cid ].nodeID );
-      } */
+          error( "Received particle (%i) that does not belong here (nodeID=%i).", k , cells[ cid ].nodeID );
+    } */
 
   /* Set the new part data, free the old. */
   free(parts);
@@ -513,7 +511,7 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Wait for each count to come in and start the recv. */
   for (int k = 0; k < nr_proxies; k++) {
-    int pid;
+    int pid = MPI_UNDEFINED;
     if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
@@ -533,7 +531,7 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Wait for each pcell array to come in from the proxies. */
   for (int k = 0; k < nr_proxies; k++) {
-    int pid;
+    int pid = MPI_UNDEFINED;
     if (MPI_Waitany(nr_proxies, reqs_in, &pid, &status) != MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
@@ -637,7 +635,7 @@ int engine_exchange_strays(struct engine *e, int offset, size_t *ind,
 
   /* Wait for each count to come in and start the recv. */
   for (int k = 0; k < e->nr_proxies; k++) {
-    int pid;
+    int pid = MPI_UNDEFINED;
     if (MPI_Waitany(e->nr_proxies, reqs_in, &pid, MPI_STATUS_IGNORE) !=
             MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
@@ -693,7 +691,7 @@ int engine_exchange_strays(struct engine *e, int offset, size_t *ind,
      parts from the proxies. */
   size_t count = 0;
   for (int k = 0; k < 2 * (nr_in + nr_out); k++) {
-    int err, pid;
+    int err = 0, pid = MPI_UNDEFINED;
     if ((err = MPI_Waitany(2 * e->nr_proxies, reqs_in, &pid,
                            MPI_STATUS_IGNORE)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];
@@ -1381,7 +1379,7 @@ void engine_prepare(struct engine *e) {
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
-  int buff;
+  int buff = 0;
   if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
       MPI_SUCCESS)
     error("Failed to aggregate the rebuild flag across nodes.");
@@ -1672,7 +1670,8 @@ void engine_step(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
-    int in_i[4], out_i[4];
+    int in_i[1], out_i[1];
+    in_i[0] = 0;
     out_i[0] = ti_end_min;
     if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
