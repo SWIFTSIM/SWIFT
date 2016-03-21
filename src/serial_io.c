@@ -256,17 +256,17 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile,
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param name The name of the array to write.
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
+ * @param partSize The size in bytes of the particle structure.
  * @param us The UnitSystem currently in use
- * @param convFactor The UnitConversionFactor for this array
- *
- *
- * Calls #error() if an error occurs.
+ * @param convFactor The UnitConversionFactor for this arrayo
  */
 void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
                        char* partTypeGroupName, char* name, enum DATA_TYPE type,

@@ -53,14 +53,13 @@
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
+ * @param partSize The size in bytes of the particle structure.
  * @param importance If COMPULSORY, the data must be present in the IC file. If
  *OPTIONAL, the array will be zeroed when the data is not present.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  *the part array
  * will be written once the structures have been stabilized.
- *
- * Calls #error() if an error occurs.
  */
 void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                       int dim, char* part_c, size_t partSize,
@@ -145,15 +144,14 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurrence of the field of
- *interest in the parts array
+ *interest in the parts array.
+ * @param partSize The size in bytes of the particle structure.
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this array
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  *the part array
  * will be written once the structures have been stabilized.
- *
- * Calls #error() if an error occurs.
  */
 void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
                        char* partTypeGroupName, char* name, enum DATA_TYPE type,

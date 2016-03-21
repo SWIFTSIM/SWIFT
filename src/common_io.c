@@ -405,7 +405,6 @@ void createXMFfile() {
  *snapshot
  *
  * @param xmfFile The file to write in.
- * @param Nparts The number of particles.
  * @param hdfFileName The name of the HDF5 file corresponding to this output.
  * @param time The current simulation time.
  */
@@ -422,11 +421,15 @@ void writeXMFoutputheader(FILE* xmfFile, char* hdfFileName, float time) {
  * @brief Writes the end of the XMF file (closes all open markups)
  *
  * @param xmfFile The file to write in.
+ * @param output The number of this output.
+ * @param time The current simulation time.
  */
 void writeXMFoutputfooter(FILE* xmfFile, int output, float time) {
   /* Write end of the section of this time step */
 
-  fprintf(xmfFile, "\n</Grid> <!-- output=%03i time=%f -->\n", output, time);
+  fprintf(xmfFile,
+          "\n</Grid> <!-- End of meta-data for output=%03i, time=%f -->\n",
+          output, time);
   fprintf(xmfFile, "\n</Grid> <!-- timeSeries -->\n");
   fprintf(xmfFile, "</Domain>\n");
   fprintf(xmfFile, "</Xdmf>\n");
@@ -446,11 +449,14 @@ void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
           "Precision=\"8\" "
           "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
           N, hdfFileName, ptype);
-  fprintf(xmfFile, "</Geometry>");
+  fprintf(xmfFile,
+          "</Geometry>\n <!-- Done geometry for %s, start of particle fields "
+          "list -->\n",
+          particle_type_names[ptype]);
 }
 
 void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
-  fprintf(xmfFile, "</Grid> <!-- parttype=%s -->\n",
+  fprintf(xmfFile, "</Grid> <!-- End of meta-data for parttype=%s -->\n",
           particle_type_names[ptype]);
 }
 
@@ -459,6 +465,8 @@ void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
  *
  * @param xmfFile The file in which to write
  * @param fileName The name of the HDF5 file associated to this XMF descriptor.
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param name The name of the array in the HDF5 file.
  * @param N The number of particles.
  * @param dim The dimension of the quantity (1 for scalars, 3 for vectors).
