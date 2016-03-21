@@ -575,7 +575,7 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
     /* Don't do anything if no particle of this kind */
     if (numParticles[ptype] == 0) continue;
 
-    /* Add the global information for that particle type */
+    /* Add the global information for that particle type to the XMF meta-file */
     writeXMFgroupheader(xmfFile, fileName, numParticles[ptype], ptype);
 
     /* Open the particle group in the file */
