@@ -70,7 +70,7 @@ enum PARTICLE_TYPE {
   NUM_PARTICLE_TYPES
 };
 
-extern const char *particle_type_names[];
+extern const char* particle_type_names[];
 
 #define FILENAME_BUFFER_SIZE 150
 #define PARTICLE_GROUP_BUFFER_SIZE 20
@@ -100,10 +100,10 @@ FILE* prepareXMFfile();
 void writeXMFoutputheader(FILE* xmfFile, char* hdfFileName, float time);
 void writeXMFoutputfooter(FILE* xmfFile, int outputCount, float time);
 void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
-			 enum PARTICLE_TYPE ptype);
+                         enum PARTICLE_TYPE ptype);
 void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype);
 void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
-		  char* name, size_t N, int dim, enum DATA_TYPE type);
+                  char* name, size_t N, int dim, enum DATA_TYPE type);
 
 void writeCodeDescription(hid_t h_file);
 void writeSPHflavour(hid_t h_file);

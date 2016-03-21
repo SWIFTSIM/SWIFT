@@ -138,7 +138,8 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
- * @param partTypeGroupName The name of the group containing the particles in the HDF5 file.
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param name The name of the array to write.
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
@@ -155,9 +156,9 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * Calls #error() if an error occurs.
  */
 void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
-		       char* partTypeGroupName, char* name,
-                       enum DATA_TYPE type, int N, int dim, char* part_c,
-                       size_t partSize, struct UnitSystem* us,
+                       char* partTypeGroupName, char* name, enum DATA_TYPE type,
+                       int N, int dim, char* part_c, size_t partSize,
+                       struct UnitSystem* us,
                        enum UnitConversionFactor convFactor) {
   hid_t h_data = 0, h_err = 0, h_space = 0, h_prop = 0;
   void* temp = 0;
@@ -283,7 +284,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
  * @param name The name of the array to write.
- * @param partTypeGroupName The name of the group containing the particles in the HDF5 file.
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
@@ -297,10 +299,12 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define writeArray(grp, fileName, xmfFile, partTypeGroupName, name, type, N,   \
-		   dim, part, N_total, mpi_rank, offset, field, us, convFactor)\
+#define writeArray(grp, fileName, xmfFile, partTypeGroupName, name, type, N,  \
+                   dim, part, N_total, mpi_rank, offset, field, us,           \
+                   convFactor)                                                \
   writeArrayBackEnd(grp, fileName, xmfFile, partTypeGroupName, name, type, N, \
-		    dim, (char*)(&(part[0]).field), sizeof(part[0]), us, convFactor)
+                    dim, (char*)(&(part[0]).field), sizeof(part[0]), us,      \
+                    convFactor)
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
@@ -478,10 +482,10 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   static int outputCount = 0;
 
   /* Number of particles of each type */
-  //const size_t Ndm = Ntot - Ngas;
+  // const size_t Ndm = Ntot - Ngas;
 
   /* MATTHIEU: Temporary fix to preserve master */
-  const size_t Ndm = Ntot > 0 ? Ntot - Ngas: 0;
+  const size_t Ndm = Ntot > 0 ? Ntot - Ngas : 0;
   /* MATTHIEU: End temporary fix */
 
   long long N_total[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
@@ -590,8 +594,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
     switch (ptype) {
 
       case GAS:
-        hydro_write_particles(h_grp, fileName, partTypeGroupName, 
-			      xmfFile, Ngas, Ngas, 0, 0, parts, us);
+        hydro_write_particles(h_grp, fileName, partTypeGroupName, xmfFile, Ngas,
+                              Ngas, 0, 0, parts, us);
         break;
 
       case DM:
@@ -605,8 +609,8 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
         collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
 
         /* Write DM particles */
-        darkmatter_write_particles(h_grp, fileName, partTypeGroupName,
-				   xmfFile, Ndm, Ndm, 0, 0, dmparts, us);
+        darkmatter_write_particles(h_grp, fileName, partTypeGroupName, xmfFile,
+                                   Ndm, Ndm, 0, 0, dmparts, us);
 
         /* Free temporary array */
         free(dmparts);

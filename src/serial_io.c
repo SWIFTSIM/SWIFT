@@ -609,12 +609,12 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   FILE* xmfFile = 0;
 
   /* Number of particles of each type */
-  //const size_t Ndm = Ntot - Ngas;
+  // const size_t Ndm = Ntot - Ngas;
 
   /* MATTHIEU: Temporary fix to preserve master */
-  const size_t Ndm = Ntot > 0 ? Ntot - Ngas: 0;
+  const size_t Ndm = Ntot > 0 ? Ntot - Ngas : 0;
   /* MATTHIEU: End temporary fix */
-  
+
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "output_%03i.hdf5", outputCount);

@@ -45,8 +45,8 @@
 #include "kernel.h"
 #include "version.h"
 
-const char *particle_type_names[NUM_PARTICLE_TYPES] = {
-  "Gas", "DM", "Boundary", "Dummy", "Stars", "BH" };
+const char* particle_type_names[NUM_PARTICLE_TYPES] = {
+    "Gas", "DM", "Boundary", "Dummy", "Star", "BH"};
 
 /**
  * @brief Converts a C data type to the HDF5 equivalent.
@@ -434,14 +434,12 @@ void writeXMFoutputfooter(FILE* xmfFile, int output, float time) {
   fclose(xmfFile);
 }
 
-
 void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
-			 enum PARTICLE_TYPE ptype) {
+                         enum PARTICLE_TYPE ptype) {
   fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
-	  particle_type_names[ptype]);
+          particle_type_names[ptype]);
   fprintf(xmfFile,
-          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zi\"/>\n",
-          N);
+          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zi\"/>\n", N);
   fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
   fprintf(xmfFile,
           "<DataItem Dimensions=\"%zi 3\" NumberType=\"Double\" "
@@ -452,10 +450,9 @@ void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
 }
 
 void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
-  fprintf(xmfFile, "</Grid> <!-- parttype=%s -->\n", particle_type_names[ptype]);
+  fprintf(xmfFile, "</Grid> <!-- parttype=%s -->\n",
+          particle_type_names[ptype]);
 }
-
-
 
 /**
  * @brief Writes the lines corresponding to an array of the HDF5 output
@@ -470,7 +467,7 @@ void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
  * @todo Treat the types in a better way.
  */
 void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
-		  char* name, size_t N, int dim, enum DATA_TYPE type) {
+                  char* name, size_t N, int dim, enum DATA_TYPE type) {
   fprintf(xmfFile,
           "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",
           name, dim == 1 ? "Scalar" : "Vector");
