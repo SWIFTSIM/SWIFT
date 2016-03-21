@@ -1094,10 +1094,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         err = MPI_Irecv(t->ci->parts, t->ci->count, s->part_mpi_type,
                         t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         if (err != MPI_SUCCESS) {
-          char buff[MPI_MAX_ERROR_STRING];
-          int len;
-          MPI_Error_string(err, buff, &len);
-          error("Failed to emit irecv for particle data (%s).", buff);
+          mpi_error(err, "Failed to emit irecv for particle data.");
         }
         // message( "receiving %i parts with tag=%i from %i to %i." ,
         //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
@@ -1112,10 +1109,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type,
                         t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
         if (err != MPI_SUCCESS) {
-          char buff[MPI_MAX_ERROR_STRING];
-          int len;
-          MPI_Error_string(err, buff, &len);
-          error("Failed to emit isend for particle data (%s).", buff);
+          mpi_error(err, "Failed to emit isend for particle data.");
         }
         // message( "sending %i parts with tag=%i from %i to %i." ,
         //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
