@@ -68,8 +68,8 @@ struct proxy {
 
 /* Function prototypes. */
 void proxy_init(struct proxy *p, int mynodeID, int nodeID);
-void proxy_parts_load(struct proxy *p, struct part *parts, struct xpart *xparts,
-                      int N);
+void proxy_parts_load(struct proxy *p, const struct part *parts,
+                      const struct xpart *xparts, int N);
 void proxy_parts_exch1(struct proxy *p);
 void proxy_parts_exch2(struct proxy *p);
 void proxy_addcell_in(struct proxy *p, struct cell *c);
