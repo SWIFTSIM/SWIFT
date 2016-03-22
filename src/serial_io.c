@@ -722,10 +722,6 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
       /* Don't do anything if no particle of this kind */
       if (N_total[ptype] == 0) continue;
 
-      /* Add the global information for that particle type to the XMF meta-file
-       */
-      writeXMFgroupheader(xmfFile, fileName, N_total[ptype], ptype);
-
       /* Open the particle group in the file */
       char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
       snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
@@ -738,9 +734,6 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
       /* Close particle group */
       H5Gclose(h_grp);
-
-      /* Close this particle group in the XMF file as well */
-      writeXMFgroupfooter(xmfFile, ptype);
     }
 
     /* Close file */
@@ -762,6 +755,10 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
         /* Don't do anything if no particle of this kind */
         if (N_total[ptype] == 0) continue;
+
+	/* Add the global information for that particle type to the XMF meta-file */
+	if (mpi_rank == 0)
+	  writeXMFgroupheader(xmfFile, fileName, N_total[ptype], ptype);
 
         /* Open the particle group in the file */
         char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -807,6 +804,10 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
         /* Close particle group */
         H5Gclose(h_grp);
+
+	/* Close this particle group in the XMF file as well */
+	if (mpi_rank == 0)
+	  writeXMFgroupfooter(xmfFile, ptype);
       }
 
       /* Close file */
