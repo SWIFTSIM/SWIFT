@@ -31,8 +31,8 @@ file1 = sys.argv[1]
 file2 = sys.argv[2]
 
 if len(sys.argv) >= 5:
-    abs_tol = sys.argv[3]
-    rel_tol = sys.argv[4]
+    abs_tol = float(sys.argv[3])
+    rel_tol = float(sys.argv[4])
 
 print "Absolute difference tolerance:", abs_tol
 print "Relative difference tolerance:", rel_tol
@@ -77,7 +77,7 @@ for i in range(n_lines):
 
 
 if error:
-    sys.exit(1)
+    exit(1)
 else:
     print "No differences found"
-    sys.exit(0)
+    exit(0)
