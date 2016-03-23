@@ -983,8 +983,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   const int waiting_old = s->waiting;
 
   /* We are going to use the task structure in a modified way to pass
-     information
-     to the task. Don't do this at home !
+     information to the task. Don't do this at home !
      - ci and cj will give the range of tasks to which the waits will be applied
      - the flags will be used to transfer the mask
      - the rank will be used to transfer the submask
@@ -1009,6 +1008,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 
   /* Wait for the rewait tasks to have executed. */
   pthread_mutex_lock(&s->sleep_mutex);
+  pthread_cond_broadcast(&s->sleep_cond);
   while (s->waiting > waiting_old) {
     pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
   }
@@ -1029,6 +1029,11 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
       pthread_cond_broadcast(&s->sleep_cond);
     }
   }
+
+  /* To be safe, fire of one last sleep_cond in a safe way. */
+  pthread_mutex_lock(&s->sleep_mutex);
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
 
   // message( "enqueueing tasks took %.3f %s." ,
   // clocks_from_ticks( getticks() - tic ), clocks_getunit());
@@ -1125,7 +1130,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
-    /* If no previous owner, find the shortest queue. */
+    /* If no previous owner, pick a random queue. */
     if (qid < 0) qid = rand() % s->nr_queues;
 
     /* Increase the waiting counter. */
@@ -1279,7 +1284,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     if (res == NULL) {
 #endif
       pthread_mutex_lock(&s->sleep_mutex);
-      if (s->waiting > 0) pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+      res = queue_gettask(&s->queues[qid], prev, 1);
+      if (res == NULL && s->waiting > 0) {
+        pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+      }
       pthread_mutex_unlock(&s->sleep_mutex);
     }
   }

@@ -136,14 +136,17 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   lock_type *qlock = &q->lock;
   struct task *res = NULL;
 
-  /* If there are no tasks, leave immediately. */
-  if (q->count == 0) return NULL;
-
   /* Grab the task lock. */
   if (blocking) {
     if (lock_lock(qlock) != 0) error("Locking the qlock failed.\n");
   } else {
     if (lock_trylock(qlock) != 0) return NULL;
+  }
+
+  /* If there are no tasks, leave immediately. */
+  if (q->count == 0) {
+    lock_unlock_blind(qlock);
+    return NULL;
   }
 
   /* Set some pointers we will use often. */
