@@ -261,9 +261,11 @@ void engine_redistribute(struct engine *e) {
 
   /* Verify that all parts are in the right place. */
   /* for ( int k = 0 ; k < nr_parts ; k++ ) {
-      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0], parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
+      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0],
+    parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
       if ( cells[ cid ].nodeID != nodeID )
-          error( "Received particle (%i) that does not belong here (nodeID=%i).", k , cells[ cid ].nodeID );
+          error( "Received particle (%i) that does not belong here
+    (nodeID=%i).", k , cells[ cid ].nodeID );
     } */
 
   /* Set the new part data, free the old. */
@@ -1078,9 +1080,12 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
 
   /* Add the space sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
+  for (int i = 0; i < e->nr_threads; i++) {
+    scheduler_addtask(sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
+    scheduler_addtask(sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   /* Construct the firt hydro loop over neighbours */
   engine_make_hydroloop_tasks(e);
