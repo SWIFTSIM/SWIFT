@@ -1,0 +1,7 @@
+---
+no_of_threads:      16 # The number of threads that will be used. 
+no_of_time_steps:   10
+max_h:      1.1255
+#Input file
+ic_file:    ic_file.ini
+...
