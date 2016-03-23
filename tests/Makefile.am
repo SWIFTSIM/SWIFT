@@ -21,10 +21,10 @@ AM_CFLAGS = -I../src $(HDF5_CPPFLAGS) -DTIMER
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testReading.sh testSingle testTimeIntegration
+TESTS = testGreetings testReading.sh testSingle testTimeIntegration testParser.sh
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration testSPHStep testVectorize
+check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration testSPHStep testVectorize testParser
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -39,5 +39,7 @@ testSingle_SOURCES = testSingle.c
 
 testVectorize_SOURCES = testVectorize.c
 
+testParser_SOURCES = testParser.c ../src/parser.c
+
 # Files necessary for distribution
-EXTRA_DIST = testReading.sh makeInput.py
+EXTRA_DIST = testReading.sh makeInput.py testParser.sh testParserInput.yaml
