@@ -54,6 +54,9 @@ struct cell *make_cell(size_t n, double *offset, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->ti_end_min = 1;
+  cell->ti_end_max = 1;
+
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
@@ -159,21 +162,20 @@ int main(int argc, char *argv[]) {
   }
 
   space.periodic = 0;
+  space.h_max = h;
+  space.dt_step = 0.1;
+
+  engine.s = &space;
+  engine.time = 0.1f;
+  engine.ti_current = 1;
+  runner.e = &engine;
+
   volume = particles * particles * particles;
   message("particles: %zu B\npositions: 0 B", 2 * volume * sizeof(struct part));
 
   ci = make_cell(particles, offset, h, &partId);
   for (size_t i = 0; i < type + 1; ++i) offset[i] = particles;
   cj = make_cell(particles, offset, h, &partId);
-
-  for (int i = 0; i < 3; ++i) {
-    space.h_max = h;
-    space.dt_step = 0.1;
-  }
-
-  engine.s = &space;
-  engine.time = 0.1f;
-  runner.e = &engine;
 
   time = 0;
   for (size_t i = 0; i < runs; ++i) {
@@ -205,7 +207,7 @@ int main(int argc, char *argv[]) {
 
   tic = getticks();
 
-  /* Run the test */
+  /* Run the brute-force test */
   pairs_all_density(&runner, ci, cj);
 
   toc = getticks();
