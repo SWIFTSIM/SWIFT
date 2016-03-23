@@ -57,21 +57,21 @@ for i in range(n_lines):
         if sum > 0:
             rel_diff = abs(data1[i,j] - data2[i,j]) / sum
         else:
-            rel_diff = 0. #
+            rel_diff = 0.
             
         if( abs_diff > abs_tol):
             print "Absolute difference larger than tolerance (%e) on line %d, column %d:"%(abs_tol, i,j)
-            print "%18s:           a = %e"%(file1, data1[i,j])
-            print "%18s:           b = %e"%(file2, data2[i,j])
-            print "%18s:       |a-b| = %e"%("Difference", abs_diff)
+            print "%10s:           a = %e"%("File 1", data1[i,j])
+            print "%10s:           b = %e"%("File 2", data2[i,j])
+            print "%10s:       |a-b| = %e"%("Difference", abs_diff)
             print ""
             error = True
 
         if( rel_diff > rel_tol):
             print "Relative difference larger than tolerance (%e) on line %d, column %d:"%(rel_tol, i,j)
-            print "%18s:           a = %e"%(file1, data1[i,j])
-            print "%18s:           b = %e"%(file2, data2[i,j])
-            print "%18s: |a-b|/|a+b| = %e"%("Difference", rel_diff)
+            print "%10s:           a = %e"%("File 1", data1[i,j])
+            print "%10s:           b = %e"%("File 2", data2[i,j])
+            print "%10s: |a-b|/|a+b| = %e"%("Difference", rel_diff)
             print ""
             error = True
 
