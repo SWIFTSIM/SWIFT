@@ -25,7 +25,7 @@ examples/swift_mindt
 examples/swift_mindt_mpi
 examples/swift_mpi
 
-tests/testVectorize
+tests/testPair
 tests/brute_force.dat
 tests/swift_dopair.dat
 tests/testGreetings

@@ -125,6 +125,10 @@ int main(int argc, char *argv[]) {
   static unsigned long long partId = 0;
   ticks tic, toc, time;
 
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
   while ((c = getopt(argc, argv, "h:p:r:t:")) != -1) {
     switch (c) {
       case 'h':
