@@ -305,8 +305,8 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
  */
 
 void space_rebuild(struct space *s, double cell_max, int verbose) {
-
-  ticks tic = getticks();
+  
+  const ticks tic = getticks();
 
   /* Be verbose about this. */
   // message( "re)building space..." ); fflush(stdout);
@@ -529,7 +529,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
  */
 void space_split(struct space *s, struct cell *cells, int verbose) {
 
-  ticks tic = getticks();
+  const ticks tic = getticks();
 
   for (int k = 0; k < s->nr_cells; k++)
     scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none, k,
@@ -555,7 +555,7 @@ void space_split(struct space *s, struct cell *cells, int verbose) {
 void space_parts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
                       int verbose) {
 
-  ticks tic = getticks();
+  const ticks tic = getticks();
 
   /*Populate the global parallel_sort structure with the input data */
   space_sort_struct.parts = s->parts;
@@ -727,8 +727,8 @@ void space_do_parts_sort() {
  *indices.
  *
  * @param s The #space.
- * @param ind The indices with respect to which the parts are sorted.
- * @param N The number of parts
+ * @param ind The indices with respect to which the gparts are sorted.
+ * @param N The number of gparts
  * @param min Lowest index.
  * @param max highest index.
  * @param verbose Are we talkative ?
@@ -736,7 +736,7 @@ void space_do_parts_sort() {
 void space_gparts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
                        int verbose) {
 
-  ticks tic = getticks();
+  const ticks tic = getticks();
 
   /*Populate the global parallel_sort structure with the input data */
   space_sort_struct.gparts = s->gparts;
