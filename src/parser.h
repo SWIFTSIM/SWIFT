@@ -25,8 +25,9 @@
 #define MAX_LINE_SIZE 128
 #define MAX_NO_OF_PARAMS 512 
 
-#define COMMENT "#"
-#define VALUE ':'
+#define COMMENT_CHAR "#"
+#define VALUE_CHAR ':'
+#define VALUE_STRING ":"
 #define END_OF_FILE "..."
 
 struct parameter {
@@ -44,10 +45,11 @@ void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(struct swift_params *params);
 void parser_get_param_int(struct swift_params *params, char *name, int *retParam);
 void parser_get_param_float(struct swift_params *params, char *name, float *retParam);
+void parser_get_param_double(struct swift_params *params, char * name, double * retParam);
 void parser_get_param_string(struct swift_params *params, char *name, char *retParam);
 
 /* Private functions. */
-static void read_param(FILE *fp, struct swift_params *params);
+static void parse_line(FILE *fp, struct swift_params *params);
 static int count_char(char *str, char val); 
 
 #endif /* SWIFT_PARSER_H */
