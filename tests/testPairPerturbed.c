@@ -1,3 +1,22 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+
 #include <fenv.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,11 +24,18 @@
 #include <unistd.h>
 #include "swift.h"
 
+/**
+ * Returns a random number (uniformly distributed) in [a,b[
+ */
+double random_uniform(double a, double b) {
+  return (rand() / (double)RAND_MAX) * (a - b) + a;
+}
+
 /* n is both particles per axis and box size:
  * particles are generated on a mesh with unit spacing
  */
 struct cell *make_cell(size_t n, double *offset, double h,
-                       unsigned long long *partId) {
+                       unsigned long long *partId, double pert) {
   size_t count = n * n * n;
   struct cell *cell = malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
@@ -27,9 +53,9 @@ struct cell *make_cell(size_t n, double *offset, double h,
     for (y = 0; y < n; ++y) {
       for (z = 0; z < n; ++z) {
         // Add .5 for symmetry: 0.5, 1.5, 2.5 vs. 0, 1, 2
-        part->x[0] = x + offset[0] + 0.5;
-        part->x[1] = y + offset[1] + 0.5;
-        part->x[2] = z + offset[2] + 0.5;
+        part->x[0] = x + offset[0] + 0.5 + random_uniform(-0.5, 0.5) * pert;
+        part->x[1] = y + offset[1] + 0.5 + random_uniform(-0.5, 0.5) * pert;
+        part->x[2] = z + offset[2] + 0.5 + random_uniform(-0.5, 0.5) * pert;
         part->v[0] = 1.0f;
         part->v[1] = 1.0f;
         part->v[2] = 1.0f;
@@ -91,10 +117,12 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
   FILE *file = fopen(fileName, "w");
 
   fprintf(file,
-          "# ID  rho  rho_dh  wcount  wcount_dh  div_v  curl_v:[x y z]\n");
+          "# ID  pos:[x y z]  rho  rho_dh  wcount  wcount_dh  div_v  curl_v:[x "
+          "y z]\n");
 
   for (size_t pid = 0; pid < ci->count; pid++) {
-    fprintf(file, "%6llu %f %f %f %f %f %f %f %f\n", ci->parts[pid].id,
+    fprintf(file, "%6llu %f %f %f %f %f %f %f %f %f %f %f\n", ci->parts[pid].id,
+            ci->parts[pid].x[0], ci->parts[pid].x[1], ci->parts[pid].x[2],
             ci->parts[pid].rho, ci->parts[pid].rho_dh,
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
             ci->parts[pid].div_v, ci->parts[pid].density.rot_v[0],
@@ -104,7 +132,8 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
   fprintf(file, "# -----------------------------------\n");
 
   for (size_t pjd = 0; pjd < cj->count; pjd++) {
-    fprintf(file, "%6llu %f %f %f %f %f %f %f %f\n", cj->parts[pjd].id,
+    fprintf(file, "%6llu %f %f %f %f %f %f %f %f %f %f %f\n", cj->parts[pjd].id,
+            cj->parts[pjd].x[0], cj->parts[pjd].x[1], cj->parts[pjd].x[2],
             cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
             cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
@@ -119,8 +148,9 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
-  double offset[3] = {0, 0, 0}, h = 1.1255;  // * DIM/PARTS_PER_AXIS == * 1
-  struct cell *ci, *cj;
+  double offset[3] = {0, 0, 0}, h = 1.1255;
+  double perturbation = 0.1;
+  struct cell * ci, *cj;
   struct space space;
   struct engine engine;
   struct runner runner;
@@ -131,6 +161,8 @@ int main(int argc, char *argv[]) {
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
+
+  srand(0);
 
   while ((c = getopt(argc, argv, "h:p:r:t:")) != -1) {
     switch (c) {
@@ -146,6 +178,9 @@ int main(int argc, char *argv[]) {
       case 't':
         sscanf(optarg, "%zu", &type);
         break;
+      case 'd':
+        sscanf(optarg, "%lf", &perturbation);
+        break;
     }
   }
 
@@ -156,7 +191,8 @@ int main(int argc, char *argv[]) {
         "\nThese are then interacted using runner_dopair1_density."
         "\n\nOptions:"
         "\n-t TYPE=0          - cells share face (0), edge (1) or corner (2)"
-        "\n-h DISTANCE=1.1255 - smoothing length\n",
+        "\n-h DISTANCE=1.1255 - smoothing length\n"
+	"\n-d pert            - perturbation to apply to the particles [0,1[",
         argv[0]);
     exit(1);
   }
@@ -173,9 +209,9 @@ int main(int argc, char *argv[]) {
   volume = particles * particles * particles;
   message("particles: %zu B\npositions: 0 B", 2 * volume * sizeof(struct part));
 
-  ci = make_cell(particles, offset, h, &partId);
+  ci = make_cell(particles, offset, h, &partId, perturbation);
   for (size_t i = 0; i < type + 1; ++i) offset[i] = particles;
-  cj = make_cell(particles, offset, h, &partId);
+  cj = make_cell(particles, offset, h, &partId, perturbation);
 
   time = 0;
   for (size_t i = 0; i < runs; ++i) {
