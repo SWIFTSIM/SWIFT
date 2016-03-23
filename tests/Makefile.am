@@ -25,7 +25,7 @@ TESTS = testGreetings testReading.sh testSingle testPair.sh testPairPerturbed.sh
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
-		 testSPHStep testPair testPairPerturbed
+		 testSPHStep testPair
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -39,8 +39,6 @@ testSPHStep_SOURCES = testSPHStep.c
 testSingle_SOURCES = testSingle.c
 
 testPair_SOURCES = testPair.c
-
-testPairPerturbed_SOURCES = testPairPerturbed.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh

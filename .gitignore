@@ -26,9 +26,8 @@ examples/swift_mindt_mpi
 examples/swift_mpi
 
 tests/testPair
-tests/testPairPerturbed
-tests/brute_force.dat
-tests/swift_dopair.dat
+tests/brute_force_standard.dat
+tests/swift_dopair_standard.dat
 tests/brute_force_perturbed.dat
 tests/swift_dopair_perturbed.dat
 tests/testGreetings
