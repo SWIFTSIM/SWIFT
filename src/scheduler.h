@@ -128,7 +128,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t);
 void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
 void scheduler_set_unlocks(struct scheduler *s);
 void scheduler_dump_queue(struct scheduler *s);
-void scheduler_print_tasks(struct scheduler *s, char *fileName);
+void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
                          unsigned int mask, unsigned int submask);
 
