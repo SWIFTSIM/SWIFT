@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 James Willis (james.s.willis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,14 +17,31 @@
  *
  ******************************************************************************/
 
-#include "parser.h"
+/* Config parameters. */
+#include "../config.h"
 
+/* Some standard headers. */
 /* Needs to be included so that strtok returns char * instead of a int *. */
 #include <string.h>
 #include <stdlib.h>
+
+/* This object's header. */
+#include "parser.h"
+
+/* Local headers. */
 #include "error.h"
 
-/* Reads an input file and stores each parameter in a structure.*/ 
+/* Private functions. */
+static int count_char(char *str, char val);
+static void parse_line(FILE *fp, struct swift_params *params);
+
+/**
+ * @brief Reads an input file and stores each parameter in a structure.  
+ * 
+ * @param file_name Name of file to be read
+ * @param params Structure to be populated from file
+ */
+
 void parser_read_file(const char *file_name, struct swift_params *params) {
  
     FILE *fp;
@@ -46,44 +63,55 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
     fclose(fp);
 }
 
-/* Counts the number of characters in a string.*/
+/**
+ * @brief Counts the number of times a specific character appears in a string.
+ *
+ * @param str String to be checked
+ * @param val Character to be counted
+ */
+
 static int count_char(char *str, char val) {
 
-    int i, count = 0;
+    int count = 0;
 
-    for(i=0; i<strlen(str); i++) {
-      
-      /* Check if the line contains the character */
-      if(str[i] == val) count++; 
-
+    /* Check if the line contains the character */
+    while(*str) {
+        if (*str++ == val) ++count;
     }
 
     return count;
 }
 
-/* Parses a line from a file and stores any parameters in a structure. */
+/** 
+ * @brief Parses a line from a file and stores any parameters in a structure.
+ *
+ * @param fp File pointer to file to be read
+ * @param params Structure to be populated from file
+ * 
+ */
+
 static void parse_line(FILE *fp, struct swift_params *params) {
 
-    char line [MAX_LINE_SIZE];
-    char trim_line [MAX_LINE_SIZE];
+    char line [PARSER_MAX_LINE_SIZE];
+    char trim_line [PARSER_MAX_LINE_SIZE];
 
     /* Read a line of the file */
-    if(fgets(line,MAX_LINE_SIZE,fp) != NULL) {
+    if(fgets(line,PARSER_MAX_LINE_SIZE,fp) != NULL) {
         
         char *token;
         /* Remove comments */
-        token = strtok(line,COMMENT_CHAR);
+        token = strtok(line,PARSER_COMMENT_CHAR);
         strcpy(trim_line,token);
         
         /* Check if the line contains a value */
-        if(strchr(trim_line,VALUE_CHAR)) {
+        if(strchr(trim_line,PARSER_VALUE_CHAR)) {
           /* Check for more than one parameter on the same line. */
-          if(count_char(trim_line,VALUE_CHAR) > 1) { 
+          if(count_char(trim_line,PARSER_VALUE_CHAR) > 1) { 
             error("Found more than one parameter in '%s', only one allowed.",line);
           }
           else { 
             /* Take first token as the parameter name. */
-            token = strtok(trim_line,VALUE_STRING);
+            token = strtok(trim_line,PARSER_VALUE_STRING);
             strcpy(params->data[params->count].name,token);
             
             /* Take second token as the parameter value. */
@@ -94,12 +122,18 @@ static void parse_line(FILE *fp, struct swift_params *params) {
     }
 }
 
-/* Retrieve integer parameter from structure. */
+/** 
+ * @brief Retrieve integer parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param retParam Value of the parameter found
+ *
+ */
+
 void parser_get_param_int(struct swift_params *params, char * name, int * retParam) {
   
-   int i; 
-   
-   for(i=0; i<params->count; i++) {
+   for(int i=0; i<params->count; i++) {
 
      /*strcmp returns 0 if both strings are the same.*/
      if(!strcmp(name,params->data[i].name)) {
@@ -126,12 +160,18 @@ void parser_get_param_int(struct swift_params *params, char * name, int * retPar
    }
 }
 
-/* Retrieve float parameter from structure. */
+/** 
+ * @brief Retrieve float parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param retParam Value of the parameter found
+ *
+ */
+
 void parser_get_param_float(struct swift_params *params, char * name, float * retParam) {
   
-   int i; 
-   
-   for(i=0; i<params->count; i++) {
+   for(int i=0; i<params->count; i++) {
 
      /*strcmp returns 0 if both strings are the same.*/
      if(!strcmp(name,params->data[i].name)) {
@@ -141,12 +181,19 @@ void parser_get_param_float(struct swift_params *params, char * name, float * re
    }
 }
 
-/* Retrieve double parameter from structure. */
+
+/** 
+ * @brief Retrieve double parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param retParam Value of the parameter found
+ *
+ */
+
 void parser_get_param_double(struct swift_params *params, char * name, double * retParam) {
   
-   int i; 
-   
-   for(i=0; i<params->count; i++) {
+   for(int i=0; i<params->count; i++) {
 
      /*strcmp returns 0 if both strings are the same.*/
      if(!strcmp(name,params->data[i].name)) {
@@ -156,12 +203,18 @@ void parser_get_param_double(struct swift_params *params, char * name, double * 
    }
 }
 
-/* Retrieve string parameter from structure. */
+/** 
+ * @brief Retrieve string parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param retParam Value of the parameter found
+ *
+ */
+
 void parser_get_param_string(struct swift_params *params, char * name, char * retParam) {
   
-   int i; 
-   
-   for(i=0; i<params->count; i++) {
+   for(int i=0; i<params->count; i++) {
 
      /*strcmp returns 0 if both strings are the same.*/
      if(!strcmp(name,params->data[i].name)) {
@@ -171,16 +224,20 @@ void parser_get_param_string(struct swift_params *params, char * name, char * re
    }
 }
 
-/* Prints the contents of the parameter structure. */
-void parser_print_params(struct swift_params *params) {
+/** 
+ * @brief Prints the contents of the parameter structure.
+ *
+ * @param params Structure that holds the parameters
+ *
+ */
 
-    int i;
+void parser_print_params(struct swift_params *params) {
 
     printf("\n--------------------------\n");
     printf("|  SWIFT Parameter File  |\n");
     printf("--------------------------\n");
     
-    for(i=0; i<params->count; i++) {
+    for(int i=0; i<params->count; i++) {
         printf("Parameter name: %s\n",params->data[i].name);
         printf("Parameter value: %s\n",params->data[i].value);
     }
