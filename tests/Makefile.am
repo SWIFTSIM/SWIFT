@@ -39,7 +39,7 @@ testSingle_SOURCES = testSingle.c
 
 testVectorize_SOURCES = testVectorize.c
 
-testParser_SOURCES = testParser.c ../src/parser.c
+testParser_SOURCES = testParser.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testParser.sh testParserInput.yaml
