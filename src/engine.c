@@ -314,7 +314,7 @@ void engine_redistribute(struct engine *e) {
     if (counts[ind_send] > 0) {
 
       /* message("Sending %d part to node %d", counts[ind_send], k); */
- 
+
       /* If the send is to the same node, just copy */
       if (k == nodeID) {
         memcpy(&parts_new[offset_recv], &s->parts[offset_send],
@@ -426,9 +426,11 @@ void engine_redistribute(struct engine *e) {
 
   /* Verify that all parts are in the right place. */
   /* for ( int k = 0 ; k < nr_parts ; k++ ) {
-      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0], parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
+      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0],
+    parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
       if ( cells[ cid ].nodeID != nodeID )
-          error( "Received particle (%i) that does not belong here (nodeID=%i).", k , cells[ cid ].nodeID );
+          error( "Received particle (%i) that does not belong here
+    (nodeID=%i).", k , cells[ cid ].nodeID );
     } */
 
   /* Verify that the links are correct */
@@ -437,8 +439,8 @@ void engine_redistribute(struct engine *e) {
 
     if (gparts_new[k].id > 0) {
 
-      if(gparts_new[k].part->gpart != &gparts_new[k])
-	error("Linking problem !");
+      if (gparts_new[k].part->gpart != &gparts_new[k])
+        error("Linking problem !");
 
       if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
           gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
@@ -447,11 +449,10 @@ void engine_redistribute(struct engine *e) {
     }
   }
   for (size_t k = 0; k < nr_parts; ++k) {
-    
+
     if (parts_new[k].gpart != NULL) {
 
-      if(parts_new[k].gpart->part != &parts_new[k])
-	error("Linking problem !"); 
+      if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !");
     }
   }
 
