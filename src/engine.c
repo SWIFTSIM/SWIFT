@@ -212,8 +212,11 @@ void engine_redistribute(struct engine *e) {
   /* We need to re-link the gpart partners of parts. */
   int current_dest = dest[0];
   size_t count_this_dest = 0;
+  size_t count_links = 0;
   for (size_t k = 0; k < s->nr_parts; ++k) {
     if (s->parts[k].gpart != NULL) {
+
+      ++count_links;
 
       /* As the addresses will be invalidated by the communications, we will */
       /* instead store the absolute index from the start of the sub-array */
@@ -225,10 +228,15 @@ void engine_redistribute(struct engine *e) {
         count_this_dest = 0;
       }
 
+      if(s->parts[k].gpart->id < 0)
+	error("Trying to link a partnerless gpart !");
+
       s->parts[k].gpart->id = count_this_dest;
       count_this_dest++;
     }
   }
+
+  message("Got %zd gparts with a link (n_parts=%zd n_gparts=%zd)", count_links, s->nr_parts, s->nr_gparts);
 
   /* Get destination of each g-particle */
   for (size_t k = 0; k < s->nr_gparts; k++) {
@@ -253,6 +261,13 @@ void engine_redistribute(struct engine *e) {
 
   /* Sort the gparticles according to their cell index. */
   space_gparts_sort(gparts, g_dest, s->nr_gparts, 0, nr_nodes - 1);
+
+  count_links = 0;
+  for(size_t k = 0; k < s->nr_gparts;  ++k) {
+    if(gparts[k].id >= 0)
+      ++count_links;
+  }
+  message("Got %zd gparts with a link (n_parts=%zd n_gparts=%zd)", count_links, s->nr_parts, s->nr_gparts);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -309,6 +324,8 @@ void engine_redistribute(struct engine *e) {
     /* Are we sending any part/xpart ? */
     if (counts[ind_send] > 0) {
 
+      message("Sending %d part to node %d", counts[ind_send], k);
+
       /* If the send is to the same node, just copy */
       if (k == nodeID) {
         memcpy(&parts_new[offset_recv], &s->parts[offset_send],
@@ -335,6 +352,8 @@ void engine_redistribute(struct engine *e) {
     /* Are we sending any gpart ? */
     if (g_counts[ind_send] > 0) {
 
+      message("Sending %d gpart to node %d", g_counts[ind_send], k);
+
       /* If the send is to the same node, just copy */
       if (k == nodeID) {
         memcpy(&gparts_new[g_offset_recv], &s->gparts[g_offset_send],
@@ -348,7 +367,7 @@ void engine_redistribute(struct engine *e) {
                       e->gpart_mpi_type, k, 3 * ind_send + 2, MPI_COMM_WORLD,
                       &reqs[6 * k + 2]) != MPI_SUCCESS)
           error("Failed to isend gparts to node %i.", k);
-        g_offset_send += counts[ind_send];
+        g_offset_send += g_counts[ind_send];
       }
     }
 
@@ -425,15 +444,35 @@ void engine_redistribute(struct engine *e) {
 
   /* Verify that the links are correct */
   /* MATTHIEU: To be commented out once we are happy */
+  count_links = 0;
   for (size_t k = 0; k < nr_gparts; ++k) {
 
     if (gparts_new[k].id > 0) {
 
+      ++count_links;
+
+      if(gparts_new[k].part->gpart != &gparts_new[k])
+	error("Linking problem !");
+
       if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
           gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
           gparts_new[k].x[2] != gparts_new[k].part->x[2])
-        message("Linked particles are not at the same position !");
+        error("Linked particles are not at the same position !");
     }
+  }
+
+  message("Got %zd gparts with a link (n_parts=%zd n_gparts=%zd)", count_links, nr_parts, nr_gparts);
+
+  for (size_t k = 0; k < nr_parts; ++k) {
+
+    if (parts_new[k].gpart != NULL) {
+
+      if(parts_new[k].gpart->part != &parts_new[k])
+	error("Linking problem !");
+      
+
+    }
+
   }
 
   /* Set the new part data, free the old. */
