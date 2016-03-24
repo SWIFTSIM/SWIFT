@@ -1,4 +1,26 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (C) 2016 James Willis (james.s.willis@durham.ac.uk).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+
 #include "parser.h"
+#include <assert.h>
+#include <string.h>
+#include <math.h>
 
 int main(int argc, char *argv[]) {
 
@@ -11,7 +33,7 @@ int main(int argc, char *argv[]) {
   int no_of_threads = 0;
   int no_of_time_steps = 0;
   float max_h = 0.0f;
-  char ic_file [MAX_LINE_SIZE];
+  char ic_file [PARSER_MAX_LINE_SIZE];
 
   /* Read the parameter file. */
   parser_read_file(input_file,&param_file);
@@ -29,4 +51,11 @@ int main(int argc, char *argv[]) {
   
   /* Print the variables to check their values are correct. */
   printf("no_of_threads: %d, no_of_time_steps: %d, max_h: %f, ic_file: %s\n",no_of_threads, no_of_time_steps, max_h, ic_file);
+
+  assert(no_of_threads == 16);
+  assert(no_of_time_steps == 10);
+  assert(fabs(max_h - 1.1255) < 0.00001);
+  assert(strcmp(ic_file,"ic_file.ini") == 0); /*strcmp returns 0 if correct.*/
+
+  return 0;
 }
