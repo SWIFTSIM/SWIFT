@@ -54,6 +54,7 @@
 #ifdef WITH_MPI
 void part_create_mpi_type(MPI_Datatype* part_type);
 void xpart_create_mpi_type(MPI_Datatype* xpart_type);
+void gpart_create_mpi_type(MPI_Datatype* gpart_type);
 #endif
 
 #endif /* SWIFT_PART_H */
