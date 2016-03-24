@@ -145,7 +145,7 @@ int task_lock(struct task *t) {
 
 #ifdef WITH_MPI
     /* Check the status of the MPI request. */
-    int res, err;
+    int res = 0, err = 0;
     MPI_Status stat;
     if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];

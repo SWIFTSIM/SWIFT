@@ -746,7 +746,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xp, *restrict xparts = c->xparts;
   struct gpart *restrict g,
   *restrict gparts = c->gparts;
-  float dx_max = 0.f, h_max = 0.f;
+  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
   float w;
 
   TIMER_TIC
@@ -794,12 +794,11 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, ti_old, ti_current, timeBase);
 
-      /* Compute motion since last cell construction */
-      const float dx =
-          sqrtf((p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
-                (p->x[1] - xp->x_old[1]) * (p->x[1] - xp->x_old[1]) +
-                (p->x[2] - xp->x_old[2]) * (p->x[2] - xp->x_old[2]));
-      dx_max = fmaxf(dx_max, dx);
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = (p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
+                        (p->x[1] - xp->x_old[1]) * (p->x[1] - xp->x_old[1]) +
+                        (p->x[2] - xp->x_old[2]) * (p->x[2] - xp->x_old[2]);
+      dx2_max = fmaxf(dx2_max, dx2);
 
       /* Maximal smoothing length */
       h_max = fmaxf(p->h, h_max);
@@ -815,6 +814,9 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       g->x[2] += g->v_full[2] * dt;
       g->tx   += dt;
     }
+
+    /* Now, get the maximal particle motion from its square */
+    dx_max = sqrtf(dx2_max);
   }
 
   /* Otherwise, aggregate data from children. */

@@ -97,12 +97,10 @@ const int sortlistID[27] = {
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift) {
 
-  int k, sid = 0, periodic = s->periodic;
-  struct cell *temp;
-  double dx[3];
-
   /* Get the relative distance between the pairs, wrapping. */
-  for (k = 0; k < 3; k++) {
+  const int periodic = s->periodic;
+  double dx[3];
+  for (int k = 0; k < 3; k++) {
     dx[k] = (*cj)->loc[k] - (*ci)->loc[k];
     if (periodic && dx[k] < -s->dim[k] / 2)
       shift[k] = s->dim[k];
@@ -114,15 +112,16 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
   }
 
   /* Get the sorting index. */
-  for (k = 0; k < 3; k++)
+  int sid = 0;
+  for (int k = 0; k < 3; k++)
     sid = 3 * sid + ((dx[k] < 0.0) ? 0 : ((dx[k] > 0.0) ? 2 : 1));
 
   /* Switch the cells around? */
   if (runner_flip[sid]) {
-    temp = *ci;
+    struct cell *temp = *ci;
     *ci = *cj;
     *cj = temp;
-    for (k = 0; k < 3; k++) shift[k] = -shift[k];
+    for (int k = 0; k < 3; k++) shift[k] = -shift[k];
   }
   sid = sortlistID[sid];
 
@@ -137,10 +136,8 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
 
 void space_rebuild_recycle(struct space *s, struct cell *c) {
 
-  int k;
-
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         space_rebuild_recycle(s, c->progeny[k]);
         space_recycle(s, c->progeny[k]);
@@ -158,8 +155,8 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
 
 void space_regrid(struct space *s, double cell_max, int verbose) {
 
-  float h_max = s->cell_min / kernel_gamma / space_stretch, dmin;
-  int i, j, k, cdim[3], nr_parts = s->nr_parts;
+  float h_max = s->cell_min / kernel_gamma / space_stretch;
+  const size_t nr_parts = s->nr_parts;
   struct cell *restrict c;
   ticks tic = getticks();
 
@@ -197,7 +194,8 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (verbose) message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
 
   /* Get the new putative cell dimensions. */
-  for (k = 0; k < 3; k++)
+  int cdim[3];
+  for (int k = 0; k < 3; k++)
     cdim[k] =
         floor(s->dim[k] / fmax(h_max * kernel_gamma * space_stretch, cell_max));
 
@@ -219,7 +217,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
     /* Free the old cells, if they were allocated. */
     if (s->cells != NULL) {
-      for (k = 0; k < s->nr_cells; k++) {
+      for (int k = 0; k < s->nr_cells; k++) {
         space_rebuild_recycle(s, &s->cells[k]);
         if (s->cells[k].sort != NULL) free(s->cells[k].sort);
       }
@@ -228,12 +226,12 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     }
 
     /* Set the new cell dimensions only if smaller. */
-    for (k = 0; k < 3; k++) {
+    for (int k = 0; k < 3; k++) {
       s->cdim[k] = cdim[k];
       s->h[k] = s->dim[k] / cdim[k];
       s->ih[k] = 1.0 / s->h[k];
     }
-    dmin = fminf(s->h[0], fminf(s->h[1], s->h[2]));
+    const float dmin = fminf(s->h[0], fminf(s->h[1], s->h[2]));
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
@@ -241,13 +239,13 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate cells.");
     bzero(s->cells, s->nr_cells * sizeof(struct cell));
-    for (k = 0; k < s->nr_cells; k++)
+    for (int k = 0; k < s->nr_cells; k++)
       if (lock_init(&s->cells[k].lock) != 0) error("Failed to init spinlock.");
 
     /* Set the cell location and sizes. */
-    for (i = 0; i < cdim[0]; i++)
-      for (j = 0; j < cdim[1]; j++)
-        for (k = 0; k < cdim[2]; k++) {
+    for (int i = 0; i < cdim[0]; i++)
+      for (int j = 0; j < cdim[1]; j++)
+        for (int k = 0; k < cdim[2]; k++) {
           c = &s->cells[cell_getid(cdim, i, j, k)];
           c->loc[0] = i * s->h[0];
           c->loc[1] = j * s->h[1];
@@ -277,7 +275,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   else {
 
     /* Free the old cells, if they were allocated. */
-    for (k = 0; k < s->nr_cells; k++) {
+    for (int k = 0; k < s->nr_cells; k++) {
       space_rebuild_recycle(s, &s->cells[k]);
       s->cells[k].sorts = NULL;
       s->cells[k].nr_tasks = 0;

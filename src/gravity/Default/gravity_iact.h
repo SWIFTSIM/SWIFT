@@ -27,17 +27,8 @@
 #include "../../timers.h"
 
 /**
- * @file  runner_iact_grav.h
- * @brief Gravity interaction functions.
- *
- */
-
-
-
-/**
  * @brief Gravity potential
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_grav(
     float r2, float *dx, struct gpart *pi, struct gpart *pj) {
 

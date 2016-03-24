@@ -58,4 +58,4 @@ struct gpart {
     struct part* part;
   };
 
-} __attribute__((aligned(part_align)));
+} __attribute__((aligned(gpart_align)));
