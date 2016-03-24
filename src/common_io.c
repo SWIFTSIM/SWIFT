@@ -565,8 +565,10 @@ void collect_dm_gparts(const struct gpart *const gparts, size_t Ntot, struct gpa
   /* Loop over all gparts */
   for (size_t i = 0; i < Ntot; ++i) {
 
+    /* message("i=%zd count=%zd id=%lld part=%p", i, count, gparts[i].id, gparts[i].part); */
+
     /* And collect the DM ones */
-    if (gparts[i].id < 0) {
+    if (gparts[i].id < 0LL) {
       memcpy(&dmparts[count], &gparts[i], sizeof(struct gpart));
       dmparts[count].id = -dmparts[count].id;
       count++;
