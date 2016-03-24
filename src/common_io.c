@@ -502,7 +502,7 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void prepare_dm_gparts(struct gpart* gparts, size_t Ndm) {
+void prepare_dm_gparts(struct gpart *const gparts, size_t Ndm) {
 
   /* Let's give all these gparts a negative id */
   for (size_t i = 0; i < Ndm; ++i) {
@@ -527,7 +527,7 @@ void prepare_dm_gparts(struct gpart* gparts, size_t Ndm) {
  * @param Ngas The number of gas particles read in.
  * @param Ndm The number of DM particles read in.
  */
-void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts,
+void duplicate_hydro_gparts(struct part *const parts, struct gpart *const gparts,
                             size_t Ngas, size_t Ndm) {
 
   for (size_t i = 0; i < Ngas; ++i) {
@@ -557,7 +557,7 @@ void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts,
  * @param dmparts The array of #gpart containg DM particles to be filled.
  * @param Ndm The number of DM particles.
  */
-void collect_dm_gparts(struct gpart* gparts, size_t Ntot, struct gpart* dmparts,
+void collect_dm_gparts(const struct gpart *const gparts, size_t Ntot, struct gpart *const dmparts,
                        size_t Ndm) {
 
   size_t count = 0;
