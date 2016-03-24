@@ -2100,7 +2100,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   engine_makeproxies(e);
 
   /* Re-allocate the local parts. */
-  if (e->nodeID == 0)
+  if (e->verbose)
     message("Re-allocating parts array from %zi to %zi.", s->size_parts,
             (size_t)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
@@ -2108,7 +2108,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * s->size_parts) != 0 ||
-      posix_memalign((void **)&xparts_new, part_align,
+      posix_memalign((void **)&xparts_new, xpart_align,
                      sizeof(struct xpart) * s->size_parts) != 0)
     error("Failed to allocate new part data.");
   memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
@@ -2117,6 +2117,20 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+
+  /* Same for the g-parts. */
+  if (e->verbose)
+    message("Re-allocating gparts array from %zi to %zi.", s->size_gparts,
+            (size_t)(s->nr_gparts * 1.2));
+  s->size_gparts = s->nr_gparts * 1.2;
+  struct gpart *gparts_new = NULL;
+  if (posix_memalign((void **)&gparts_new, gpart_align,
+                     sizeof(struct part) * s->size_gparts) != 0)
+    error("Failed to allocate new gpart data.");
+  memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
+  free(s->gparts);
+  s->gparts = gparts_new;
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
