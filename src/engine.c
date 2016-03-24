@@ -248,7 +248,7 @@ void engine_redistribute(struct engine *e) {
     g_dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
-    g_counts[nodeID * nr_nodes + dest[k]] += 1;
+    g_counts[nodeID * nr_nodes + g_dest[k]] += 1;
   }
 
   /* Sort the gparticles according to their cell index. */
@@ -337,7 +337,7 @@ void engine_redistribute(struct engine *e) {
 
       /* If the send is to the same node, just copy */
       if (k == nodeID) {
-        memcpy(&gparts_new[g_offset_recv], &s->gparts[offset_send],
+        memcpy(&gparts_new[g_offset_recv], &s->gparts[g_offset_send],
                sizeof(struct gpart) * g_counts[ind_recv]);
         g_offset_send += g_counts[ind_send];
         g_offset_recv += g_counts[ind_recv];
