@@ -475,7 +475,7 @@ int main(int argc, char *argv[]) {
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
-    message("gparts[10].id = %ld.", gparts[10].id);
+    message("gparts[10].id = %lld.", gparts[10].id);
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
 

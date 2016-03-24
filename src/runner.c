@@ -142,7 +142,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
       L[0] = dy * g->v_full[2] - dz * g->v_full[1];
       L[1] = dz * g->v_full[0] - dx * g->v_full[2];
       L[2] = dx * g->v_full[1] - dy * g->v_full[0];
-      if(g->id == 0) {
+      if(abs(g->id) == 1) {
         float v2 = g->v_full[0]*g->v_full[0] + g->v_full[1]*g->v_full[1] + g->v_full[2]*g->v_full[2];
         float fg = const_G * External_Potential_Mass * rinv;
         //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);

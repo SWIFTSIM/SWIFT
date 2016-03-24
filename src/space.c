@@ -164,11 +164,11 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   // tic = getticks();
   if(nr_parts) {
     if (s->cells != NULL) {
-      for (k = 0; k < s->nr_cells; k++) {
+      for (int k = 0; k < s->nr_cells; k++) {
 	if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
       }
     } else {
-      for (k = 0; k < nr_parts; k++) {
+      for (int k = 0; k < nr_parts; k++) {
 	if (s->parts[k].h > h_max) h_max = s->parts[k].h;
       }
       s->h_max = h_max;
