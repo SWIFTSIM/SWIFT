@@ -2118,18 +2118,26 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->parts = parts_new;
   s->xparts = xparts_new;
 
-  /* Same for the g-parts. */
+  /* Re-link the gparts. */
+  for (size_t k = 0; k < s->nr_parts; k++)
+    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
+
+  /* Re-allocate the local gparts. */
   if (e->verbose)
     message("Re-allocating gparts array from %zi to %zi.", s->size_gparts,
             (size_t)(s->nr_gparts * 1.2));
   s->size_gparts = s->nr_gparts * 1.2;
   struct gpart *gparts_new = NULL;
   if (posix_memalign((void **)&gparts_new, gpart_align,
-                     sizeof(struct part) * s->size_gparts) != 0)
+                     sizeof(struct gpart) * s->size_gparts) != 0)
     error("Failed to allocate new gpart data.");
   memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
   free(s->gparts);
   s->gparts = gparts_new;
+
+  /* Re-link the parts. */
+  for (size_t k = 0; k < s->nr_gparts; k++)
+    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
 
 #else
   error("SWIFT was not compiled with MPI support.");
