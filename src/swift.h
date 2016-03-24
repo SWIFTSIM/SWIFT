@@ -51,5 +51,6 @@
 #include "tools.h"
 #include "partition.h"
 #include "version.h"
+#include "parser.h"
 
 #endif /* SWIFT_SWIFT_H */
