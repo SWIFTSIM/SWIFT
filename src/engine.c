@@ -248,7 +248,7 @@ void engine_redistribute(struct engine *e) {
     g_dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
-    g_counts[nodeID * nr_nodes + dest[k]] += 1;
+    g_counts[nodeID * nr_nodes + g_dest[k]] += 1;
   }
 
   /* Sort the gparticles according to their cell index. */
@@ -337,7 +337,7 @@ void engine_redistribute(struct engine *e) {
 
       /* If the send is to the same node, just copy */
       if (k == nodeID) {
-        memcpy(&gparts_new[g_offset_recv], &s->gparts[offset_send],
+        memcpy(&gparts_new[g_offset_recv], &s->gparts[g_offset_send],
                sizeof(struct gpart) * g_counts[ind_recv]);
         g_offset_send += g_counts[ind_send];
         g_offset_recv += g_counts[ind_recv];
@@ -2100,7 +2100,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   engine_makeproxies(e);
 
   /* Re-allocate the local parts. */
-  if (e->nodeID == 0)
+  if (e->verbose)
     message("Re-allocating parts array from %zi to %zi.", s->size_parts,
             (size_t)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
@@ -2108,7 +2108,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   struct xpart *xparts_new = NULL;
   if (posix_memalign((void **)&parts_new, part_align,
                      sizeof(struct part) * s->size_parts) != 0 ||
-      posix_memalign((void **)&xparts_new, part_align,
+      posix_memalign((void **)&xparts_new, xpart_align,
                      sizeof(struct xpart) * s->size_parts) != 0)
     error("Failed to allocate new part data.");
   memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
@@ -2117,6 +2117,28 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   free(s->xparts);
   s->parts = parts_new;
   s->xparts = xparts_new;
+
+  /* Re-link the gparts. */
+  for (size_t k = 0; k < s->nr_parts; k++)
+    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
+
+  /* Re-allocate the local gparts. */
+  if (e->verbose)
+    message("Re-allocating gparts array from %zi to %zi.", s->size_gparts,
+            (size_t)(s->nr_gparts * 1.2));
+  s->size_gparts = s->nr_gparts * 1.2;
+  struct gpart *gparts_new = NULL;
+  if (posix_memalign((void **)&gparts_new, gpart_align,
+                     sizeof(struct gpart) * s->size_gparts) != 0)
+    error("Failed to allocate new gpart data.");
+  memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
+  free(s->gparts);
+  s->gparts = gparts_new;
+
+  /* Re-link the parts. */
+  for (size_t k = 0; k < s->nr_gparts; k++)
+    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif

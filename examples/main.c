@@ -396,6 +396,7 @@ int main(int argc, char *argv[]) {
   /* MATTHIEU: Temporary fix to preserve master */
   if (!with_gravity) {
     free(gparts);
+    gparts = NULL;
     for(size_t k = 0; k < Ngas; ++k)
       parts[k].gpart = NULL;
     Ngpart = 0;
