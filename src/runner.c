@@ -135,23 +135,33 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
       dy  = g->x[1]-External_Potential_Y;
       dz  = g->x[2]-External_Potential_Z;
 
-      rinv = 1 / sqrtf(dx*dx + dy*dy + dz*dz);
+      rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
 
-      /* check for energy and angular momentum conservation */
-      E = 0.5 * ((g->v_full[0]*g->v_full[0]) + (g->v_full[1]*g->v_full[1]) + (g->v_full[2]*g->v_full[2])) - const_G *  External_Potential_Mass * rinv;
-      L[0] = dy * g->v_full[2] - dz * g->v_full[1];
-      L[1] = dz * g->v_full[0] - dx * g->v_full[2];
-      L[2] = dx * g->v_full[1] - dy * g->v_full[0];
-      if(abs(g->id) == 1) {
-        float v2 = g->v_full[0]*g->v_full[0] + g->v_full[1]*g->v_full[1] + g->v_full[2]*g->v_full[2];
-        float fg = const_G * External_Potential_Mass * rinv;
-        //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
-        message("%f\t %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, v2, fg, E, L[2], g->x[0], g->x[1], g->v_full[0], g->v_full[1]);
-        // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
-      }
+		/* current acceleration */
       g->a_grav_external[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
       g->a_grav_external[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
       g->a_grav_external[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
+
+
+      /* check for energy and angular momentum conservation - begin by synchronizing velocity*/
+		const int current_dti = g->ti_end - g->ti_begin;
+		const float dt = 0.5f * current_dti * r->e->timeBase;
+		const float vx = g->v_full[0] + dt * g->a_grav_external[0];
+		const float vy = g->v_full[1] + dt * g->a_grav_external[1];
+		const float vz = g->v_full[2] + dt * g->a_grav_external[2];
+
+		/* E/L */
+      E = 0.5 * ((vx*vx) + (vy*vy) + (vz*vz)) - const_G *  External_Potential_Mass * rinv;
+      L[0] = dy * vz - dz * vy;
+      L[1] = dz * vx - dx * vz;
+      L[2] = dx * vy - dy * vx;
+      if(abs(g->id) == 1) {
+        float v2 = vx*vx + vy*vy + vz*vz;
+        float fg = const_G * External_Potential_Mass * rinv;
+        //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], vx, vy);
+        message("%f\t %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, dt, v2, fg, E, L[2], g->x[0], g->x[1], vx, vy);
+        // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
+      }
 
     }
   }
@@ -549,7 +559,8 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
 void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
   struct part *p, *parts = c->parts;
-  const int count = c->count;
+  struct gpart *g, *gparts = c->gparts;
+  const int count = c->count, gcount = c->gcount;
   const int ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -571,6 +582,19 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
         /* Get ready for a density calculation */
         hydro_init_part(p);
+      }
+	 }
+
+    /* Loop over the parts in this cell. */
+    for (int i = 0; i < gcount; i++) {
+
+      /* Get a direct pointer on the part. */
+      g = &gparts[i];
+
+      if (g->ti_end <= ti_current) {
+
+        /* Get ready for a density calculation */
+        gravity_init_gpart(g);
       }
     }
   }
@@ -1021,9 +1045,27 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         }
         else {
           /* need to calculate gravity step - todo */
-          new_dti = -1;
-          error(" gravity time step not implemented yet ");
-        }
+			 const float new_dt_external =  external_gravity_compute_timestep(g);
+			 
+          float new_dt = fminf(new_dt_external, global_dt_max);
+          new_dt = fmaxf(new_dt_external, global_dt_min);
+
+          /* Convert to integer time */
+          new_dti = new_dt * timeBase_inv;
+
+			 /* Recover the current timestep */
+          const int current_dti = g->ti_end - g->ti_begin;
+
+          /* Limit timestep increase */
+          if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+
+          /* Put this timestep on the time line */
+          dti_timeline = max_nr_timesteps;
+          while (new_dti < dti_timeline) dti_timeline /= 2;
+
+          /* Now we have a time step, proceed with the kick */
+          new_dti = dti_timeline;
+       }
 
         /* Compute the time step for this kick */
         const int ti_start = (g->ti_begin + g->ti_end) / 2;

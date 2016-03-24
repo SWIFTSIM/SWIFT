@@ -114,10 +114,11 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
         /* Generate the ghost task. */
         c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                      c, NULL, 0);
-        /* Add the init task. */
-        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                    NULL, 0);
       }
+
+		/* Add the init task. */
+		c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
+											 NULL, 0);
 
       /* Add the drift task. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
@@ -134,6 +135,10 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
 
         /* Enforce gravity calculated before kick  */
         scheduler_addunlock(s, c->grav_external, c->kick);
+
+		  /* Enforce gravity calculated after init */
+		  scheduler_addunlock(s, c->init, c->grav_external);
+
       }
     }
   }

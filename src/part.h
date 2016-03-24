@@ -52,13 +52,7 @@
 #endif
 
 #if defined(GRAVITY)
-#if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_part.h"
-#elif defined(EXTERNAL_POTENTIAL)
-#include "./gravity/ExternalPotential/gravity_part.h"
-#else
-#error "Invalid choice of gravity variant"
-#endif
 #endif
 
 #ifdef WITH_MPI
