@@ -56,9 +56,9 @@ struct cell *make_cell(size_t n, double *offset, double h,
         part->x[0] = x + offset[0] + 0.5 + random_uniform(-0.5, 0.5) * pert;
         part->x[1] = y + offset[1] + 0.5 + random_uniform(-0.5, 0.5) * pert;
         part->x[2] = z + offset[2] + 0.5 + random_uniform(-0.5, 0.5) * pert;
-        part->v[0] = 1.0f;
-        part->v[1] = 1.0f;
-        part->v[2] = 1.0f;
+        part->v[0] = 0.0f;
+        part->v[1] = 0.0f;
+        part->v[2] = 0.0f;
         part->h = h;
         part->id = ++(*partId);
         part->mass = 1.0f;
