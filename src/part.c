@@ -26,15 +26,21 @@
 #endif
 
 /* This object's header. */
+#include "error.h"
 #include "part.h"
 
 #ifdef WITH_MPI
+/* MPI data type for the particle transfers */
+MPI_Datatype part_mpi_type;
+MPI_Datatype xpart_mpi_type;
+MPI_Datatype gpart_mpi_type;
+#endif
+
+#ifdef WITH_MPI
 /**
- * @brief Registers and returns an MPI type for the particles
- *
- * @param part_type The type container
+ * @brief Registers MPI particle types.
  */
-void part_create_mpi_type(MPI_Datatype* part_type) {
+void part_create_mpi_types() {
 
   /* This is not the recommended way of doing this.
      One should define the structure field by field
@@ -42,45 +48,20 @@ void part_create_mpi_type(MPI_Datatype* part_type) {
      we don't really care.
      Also we would have to modify this function everytime something
      is added to the part structure. */
-  MPI_Type_contiguous(sizeof(struct part) / sizeof(unsigned char), MPI_BYTE,
-                      part_type);
-  MPI_Type_commit(part_type);
+  if (MPI_Type_contiguous(sizeof(struct part) / sizeof(unsigned char), MPI_BYTE,
+                          &part_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&part_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for parts.");
+  }
+  if (MPI_Type_contiguous(sizeof(struct xpart) / sizeof(unsigned char),
+                          MPI_BYTE, &xpart_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&xpart_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for xparts.");
+  }
+  if (MPI_Type_contiguous(sizeof(struct gpart) / sizeof(unsigned char),
+                          MPI_BYTE, &gpart_mpi_type) != MPI_SUCCESS ||
+      MPI_Type_commit(&gpart_mpi_type) != MPI_SUCCESS) {
+    error("Failed to create MPI type for gparts.");
+  }
 }
-
-/**
- * @brief Registers and returns an MPI type for the xparticles
- *
- * @param xpart_type The type container
- */
-void xpart_create_mpi_type(MPI_Datatype* xpart_type) {
-
-  /* This is not the recommended way of doing this.
-     One should define the structure field by field
-     But as long as we don't do serialization via MPI-IO
-     we don't really care.
-     Also we would have to modify this function everytime something
-     is added to the part structure. */
-  MPI_Type_contiguous(sizeof(struct xpart) / sizeof(unsigned char), MPI_BYTE,
-                      xpart_type);
-  MPI_Type_commit(xpart_type);
-}
-
-/**
- * @brief Registers and returns an MPI type for the gparticles
- *
- * @param gpart_type The type container
- */
-void gpart_create_mpi_type(MPI_Datatype* gpart_type) {
-
-  /* This is not the recommended way of doing this.
-     One should define the structure field by field
-     But as long as we don't do serialization via MPI-IO
-     we don't really care.
-     Also we would have to modify this function everytime something
-     is added to the part structure. */
-  MPI_Type_contiguous(sizeof(struct gpart) / sizeof(unsigned char), MPI_BYTE,
-                      gpart_type);
-  MPI_Type_commit(gpart_type);
-}
-
 #endif

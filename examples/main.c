@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-		   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
   read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
                  myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
@@ -397,8 +397,7 @@ int main(int argc, char *argv[]) {
   if (!with_gravity) {
     free(gparts);
     gparts = NULL;
-    for(size_t k = 0; k < Ngas; ++k)
-      parts[k].gpart = NULL;
+    for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
     Ngpart = 0;
 #if defined(WITH_MPI)
     N_long[0] = Ngas;
