@@ -480,7 +480,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     const struct gpart *const p = &s->gparts[k];
     gind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cells[gind[k]].count += 1;
+    cells[gind[k]].gcount += 1;
     /* if ( cells[ ind[k] ].nodeID != nodeID )
         error( "Received part that does not belong to me (nodeID=%i)." , cells[
        ind[k] ].nodeID ); */
@@ -490,7 +490,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #endif
 
   /* Sort the parts according to their cells. */
-  space_gparts_sort(s->gparts, gind, nr_gparts, 0, s->nr_cells - 1);
+  space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
   for (int k = 0; k < nr_gparts; k++)
@@ -739,7 +739,7 @@ void space_do_parts_sort() {
  * @param max highest index.
  * @param verbose Are we talkative ?
  */
-void space_gparts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
+void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
                        int verbose) {
 
   const ticks tic = getticks();
@@ -786,7 +786,7 @@ void space_gparts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
 void space_do_gparts_sort() {
 
   /* Pointers to the sorting data. */
-  size_t *ind = space_sort_struct.ind;
+  int *ind = space_sort_struct.ind;
   struct gpart *gparts = space_sort_struct.gparts;
 
   /* Main loop. */
@@ -902,15 +902,6 @@ void space_do_gparts_sort() {
     atomic_dec(&space_sort_struct.waiting);
 
   } /* main loop. */
-
-  /* Verify space_sort_struct. */
-  /* for ( i = 1 ; i < N ; i++ )
-      if ( ind[i-1] > ind[i] )
-          error( "Sorting failed (ind[%i]=%i,ind[%i]=%i)." , i-1 , ind[i-1] , i
-     , ind[i] ); */
-
-  /* Clean up. */
-  free(qstack);
 }
 
 /**

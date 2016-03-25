@@ -130,7 +130,7 @@ extern struct parallel_sort space_sort_struct;
 /* function prototypes. */
 void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
                       int verbose);
-void space_gparts_sort(struct space *s, size_t *ind, size_t N, int min, int max,
+void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
                        int verbose);
 struct cell *space_getcell(struct space *s);
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
