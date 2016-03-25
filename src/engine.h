@@ -63,6 +63,7 @@ extern const char *engine_policy_names[];
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
 #define engine_parts_size_grow 1.05
+#define engine_redistribute_alloc_margin 1.2
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -177,9 +178,9 @@ void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
-void engine_exchange_strays(struct engine *e, size_t offset_parts, int *ind_part,
-                            size_t *Npart, size_t offset_gparts, int *ind_gpart,
-                            size_t *Ngpart);
+void engine_exchange_strays(struct engine *e, size_t offset_parts,
+                            int *ind_part, size_t *Npart, size_t offset_gparts,
+                            int *ind_gpart, size_t *Ngpart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);

@@ -53,13 +53,13 @@ void part_create_mpi_types() {
       MPI_Type_commit(&part_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for parts.");
   }
-  if (MPI_Type_contiguous(sizeof(struct xpart) / sizeof(unsigned char), MPI_BYTE,
-                          &xpart_mpi_type) != MPI_SUCCESS ||
+  if (MPI_Type_contiguous(sizeof(struct xpart) / sizeof(unsigned char),
+                          MPI_BYTE, &xpart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&xpart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for xparts.");
   }
-  if (MPI_Type_contiguous(sizeof(struct gpart) / sizeof(unsigned char), MPI_BYTE,
-                          &gpart_mpi_type) != MPI_SUCCESS ||
+  if (MPI_Type_contiguous(sizeof(struct gpart) / sizeof(unsigned char),
+                          MPI_BYTE, &gpart_mpi_type) != MPI_SUCCESS ||
       MPI_Type_commit(&gpart_mpi_type) != MPI_SUCCESS) {
     error("Failed to create MPI type for gparts.");
   }
