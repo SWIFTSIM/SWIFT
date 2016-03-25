@@ -44,7 +44,7 @@ struct pcell {
   int ti_end_min, ti_end_max;
 
   /* Number of particles in this cell. */
-  int count;
+  int count, gcount;
 
   /* tag used for MPI communication. */
   int tag;
@@ -175,7 +175,8 @@ void cell_gunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
 int cell_getsize(struct cell *c);
-int cell_link(struct cell *c, struct part *parts);
+int cell_link_parts(struct cell *c, struct part *parts);
+int cell_link_gparts(struct cell *c, struct gpart *gparts);
 void cell_init_parts(struct cell *c, void *data);
 void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);

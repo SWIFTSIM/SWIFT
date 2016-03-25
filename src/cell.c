@@ -89,14 +89,18 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->ti_end_min = pc->ti_end_min;
   c->ti_end_max = pc->ti_end_max;
   c->count = pc->count;
+  c->gcount = pc->gcount;
   c->tag = pc->tag;
 
-  /* Fill the progeny recursively, depth-first. */
+  /* Number of new cells created. */
   int count = 1;
+
+  /* Fill the progeny recursively, depth-first. */
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       struct cell *temp = space_getcell(s);
       temp->count = 0;
+      temp->gcount = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -122,7 +126,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
 }
 
 /**
- * @brief Link the cells recursively to the given part array.
+ * @brief Link the cells recursively to the given #part array.
  *
  * @param c The #cell.
  * @param parts The #part array.
@@ -130,7 +134,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
  * @return The number of particles linked.
  */
 
-int cell_link(struct cell *c, struct part *parts) {
+int cell_link_parts(struct cell *c, struct part *parts) {
 
   c->parts = parts;
 
@@ -139,12 +143,38 @@ int cell_link(struct cell *c, struct part *parts) {
     int offset = 0;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL)
-        offset += cell_link(c->progeny[k], &parts[offset]);
+        offset += cell_link_parts(c->progeny[k], &parts[offset]);
     }
   }
 
-  /* Return the total number of unpacked cells. */
+  /* Return the total number of linked particles. */
   return c->count;
+}
+
+/**
+ * @brief Link the cells recursively to the given #gpart array.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+
+int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+  c->gparts = gparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_gparts(c->progeny[k], &gparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->gcount;
 }
 
 /**
@@ -164,6 +194,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
   pc->ti_end_min = c->ti_end_min;
   pc->ti_end_max = c->ti_end_max;
   pc->count = c->count;
+  pc->gcount = c->gcount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
   /* Fill in the progeny, depth-first recursion. */
