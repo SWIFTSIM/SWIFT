@@ -91,7 +91,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->count = pc->count;
   c->gcount = pc->gcount;
   c->tag = pc->tag;
-  
+
   /* Number of new cells created. */
   int count = 1;
 
