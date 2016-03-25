@@ -306,7 +306,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
 void space_rebuild(struct space *s, double cell_max, int verbose) {
 
-  ticks tic = getticks();
+  const ticks tic = getticks();
 
   /* Be verbose about this. */
   // message( "re)building space..." ); fflush(stdout);
@@ -318,17 +318,9 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   int nr_gparts = s->nr_gparts;
   struct cell *restrict cells = s->cells;
 
-  double ih[3], dim[3];
-  int cdim[3];
-  ih[0] = s->ih[0];
-  ih[1] = s->ih[1];
-  ih[2] = s->ih[2];
-  dim[0] = s->dim[0];
-  dim[1] = s->dim[1];
-  dim[2] = s->dim[2];
-  cdim[0] = s->cdim[0];
-  cdim[1] = s->cdim[1];
-  cdim[2] = s->cdim[2];
+  const double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 
   /* Run through the particles and get their cell index. */
   // tic = getticks();
@@ -357,7 +349,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
   for (int k = 0; k < nr_gparts; k++) {
-    struct gpart *gp = &s->gparts[k];
+    struct gpart *restrict gp = &s->gparts[k];
     for (int j = 0; j < 3; j++)
       if (gp->x[j] < 0.0)
         gp->x[j] += dim[j];
@@ -440,7 +432,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Assign each particle to its cell. */
   for (int k = nr_parts; k < s->nr_parts; k++) {
-    struct part *p = &s->parts[k];
+    const struct part *const p = &s->parts[k];
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count += 1;
@@ -485,7 +477,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Assign each particle to its cell. */
   for (int k = nr_gparts; k < s->nr_gparts; k++) {
-    struct gpart *p = &s->gparts[k];
+    const struct gpart *const p = &s->gparts[k];
     gind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[gind[k]].count += 1;
@@ -542,7 +534,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
  */
 void space_split(struct space *s, struct cell *cells, int verbose) {
 
-  ticks tic = getticks();
+  const ticks tic = getticks();
 
   for (int k = 0; k < s->nr_cells; k++)
     scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none, k,
