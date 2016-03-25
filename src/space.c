@@ -377,7 +377,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     if (cells[ind[k]].nodeID != local_nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
-      struct part tp = s->parts[k];
+      const struct part tp = s->parts[k];
       s->parts[k] = s->parts[nr_parts];
       s->parts[nr_parts] = tp;
       if (s->parts[k].gpart != NULL) {
@@ -386,20 +386,20 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       if (s->parts[nr_parts].gpart != NULL) {
         s->parts[nr_parts].gpart->part = &s->parts[nr_parts];
       }
-      struct xpart txp = s->xparts[k];
+      const struct xpart txp = s->xparts[k];
       s->xparts[k] = s->xparts[nr_parts];
       s->xparts[nr_parts] = txp;
-      int t = ind[k];
+      const int t = ind[k];
       ind[k] = ind[nr_parts];
       ind[nr_parts] = t;
     }
 
   /* Move non-local gparts to the end of the list. */
   for (int k = 0; k < nr_gparts; k++)
-    if (cells[ind[k]].nodeID != local_nodeID) {
-      cells[ind[k]].gcount -= 1;
+    if (cells[gind[k]].nodeID != local_nodeID) {
+      cells[gind[k]].gcount -= 1;
       nr_gparts -= 1;
-      struct gpart tp = s->gparts[k];
+      const struct gpart tp = s->gparts[k];
       s->gparts[k] = s->gparts[nr_gparts];
       s->gparts[nr_gparts] = tp;
       if (s->gparts[k].id > 0) {
@@ -408,9 +408,9 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       if (s->gparts[nr_gparts].id > 0) {
         s->gparts[nr_gparts].part->gpart = &s->gparts[nr_gparts];
       }
-      int t = ind[k];
-      ind[k] = ind[nr_gparts];
-      ind[nr_gparts] = t;
+      const int t = gind[k];
+      gind[k] = gind[nr_gparts];
+      gind[nr_gparts] = t;
     }
 
   /* Exchange the strays, note that this potentially re-allocates
