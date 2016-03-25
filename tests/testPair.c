@@ -208,7 +208,6 @@ int main(int argc, char *argv[]) {
 
   space.periodic = 0;
   space.h_max = h;
-  space.dt_step = 0.1;
 
   engine.s = &space;
   engine.time = 0.1f;
