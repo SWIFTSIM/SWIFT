@@ -64,9 +64,6 @@ struct space {
   /* The minimum and maximum cutoff radii. */
   double h_max, cell_min;
 
-  /* Current time step for particles. */
-  float dt_step;
-
   /* Current maximum displacement for particles. */
   float dx_max;
 

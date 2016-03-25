@@ -99,7 +99,6 @@ void scheduler_splittasks(struct scheduler *s) {
   struct cell *ci, *cj;
   double hi, hj, shift[3];
   struct task *t, *t_old;
-  // float dt_step = s->dt_step;
   int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
                    {-1, -1, 11, 10, 5, 4, 2, 1},
                    {-1, -1, -1, 12, 7, 6, 4, 3},
