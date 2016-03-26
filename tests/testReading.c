@@ -22,7 +22,7 @@
 
 int main() {
 
-  int Ngas = -1, Ngpart = -1;
+  size_t Ngas = 0, Ngpart = 0;
   int periodic = -1;
   int i, j, k, n;
   double dim[3];
