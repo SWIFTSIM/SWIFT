@@ -57,14 +57,13 @@
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
+ * @param partSize The size in bytes of the particle structure.
  * @param importance If COMPULSORY, the data must be present in the IC file. If
  *OPTIONAL, the array will be zeroed when the data is not present.
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  *the part array
  * will be written once the structures have been stabilized.
- *
- * Calls #error() if an error occurs.
  */
 void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                       int dim, long long N_total, long long offset,
@@ -172,9 +171,10 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * Routines writing an output file
  *-----------------------------------------------------------------------------*/
 
-void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
-                  enum DATA_TYPE type, long long N_total, int dim,
-                  struct UnitSystem* us, enum UnitConversionFactor convFactor) {
+void prepareArray(hid_t grp, char* fileName, FILE* xmfFile,
+                  char* partTypeGroupName, char* name, enum DATA_TYPE type,
+                  long long N_total, int dim, struct UnitSystem* us,
+                  enum UnitConversionFactor convFactor) {
   hid_t h_data = 0, h_err = 0, h_space = 0, h_prop = 0;
   int rank = 0;
   hsize_t shape[2];
@@ -234,7 +234,7 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
   }
 
   /* Write XMF description for this data set */
-  writeXMFline(xmfFile, fileName, name, N_total, dim, type);
+  writeXMFline(xmfFile, fileName, partTypeGroupName, name, N_total, dim, type);
 
   /* Write unit conversion factors for this data set */
   conversionString(buffer, us, convFactor);
@@ -255,22 +255,23 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param name The name of the array to write.
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
+ * @param partSize The size in bytes of the particle structure.
  * @param us The UnitSystem currently in use
- * @param convFactor The UnitConversionFactor for this array
- *
- *
- * Calls #error() if an error occurs.
+ * @param convFactor The UnitConversionFactor for this arrayo
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
-                       enum DATA_TYPE type, int N, int dim, long long N_total,
-                       int mpi_rank, long long offset, char* part_c,
-                       size_t partSize, struct UnitSystem* us,
+void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
+                       char* partTypeGroupName, char* name, enum DATA_TYPE type,
+                       int N, int dim, long long N_total, int mpi_rank,
+                       long long offset, char* part_c, size_t partSize,
+                       struct UnitSystem* us,
                        enum UnitConversionFactor convFactor) {
 
   hid_t h_data = 0, h_err = 0, h_memspace = 0, h_filespace = 0;
@@ -285,8 +286,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
 
   /* Prepare the arrays in the file */
   if (mpi_rank == 0)
-    prepareArray(grp, fileName, xmfFile, name, type, N_total, dim, us,
-                 convFactor);
+    prepareArray(grp, fileName, xmfFile, partTypeGroupName, name, type, N_total,
+                 dim, us, convFactor);
 
   /* Allocate temporary buffer */
   temp = malloc(N * dim * sizeOfType(type));
@@ -370,21 +371,26 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile, char* name,
  * @param fileName Unused parameter in non-MPI mode
  * @param xmfFile Unused parameter in non-MPI mode
  * @param name The name of the array to write.
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param type The #DATA_TYPE of the array.
  * @param N The number of particles to write.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part A (char*) pointer on the first occurrence of the field of
- *interest
- *in the parts array
+ *interest in the parts array
+ * @param N_total Unused parameter in non-MPI mode
+ * @param mpi_rank Unused parameter in non-MPI mode
+ * @param offset Unused parameter in non-MPI mode
  * @param field The name (code name) of the field to read from.
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define writeArray(grp, fileName, xmfFile, name, type, N, dim, part, N_total, \
-                   mpi_rank, offset, field, us, convFactor)                   \
-  writeArrayBackEnd(grp, fileName, xmfFile, name, type, N, dim, N_total,      \
-                    mpi_rank, offset, (char*)(&(part[0]).field),              \
+#define writeArray(grp, fileName, xmfFile, partTypeGroupName, name, type, N,   \
+                   dim, part, N_total, mpi_rank, offset, field, us,            \
+                   convFactor)                                                 \
+  writeArrayBackEnd(grp, fileName, xmfFile, partTypeGroupName, name, type, N,  \
+                    dim, N_total, mpi_rank, offset, (char*)(&(part[0]).field), \
                     sizeof(part[0]), us, convFactor)
 
 /* Import the right hydro definition */
@@ -609,12 +615,12 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   FILE* xmfFile = 0;
 
   /* Number of particles of each type */
-  //const size_t Ndm = Ntot - Ngas;
+  // const size_t Ndm = Ntot - Ngas;
 
   /* MATTHIEU: Temporary fix to preserve master */
-  const size_t Ndm = Ntot > 0 ? Ntot - Ngas: 0;
+  const size_t Ndm = Ntot > 0 ? Ntot - Ngas : 0;
   /* MATTHIEU: End temporary fix */
-  
+
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
   snprintf(fileName, FILENAME_BUFFER_SIZE, "output_%03i.hdf5", outputCount);
@@ -643,7 +649,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
     xmfFile = prepareXMFfile();
 
     /* Write the part corresponding to this specific output */
-    // writeXMFheader(xmfFile, N_total, fileName, e->time);
+    writeXMFoutputheader(xmfFile, fileName, e->time);
 
     /* Open file */
     /* message("Opening file '%s'.", fileName); */
@@ -750,6 +756,11 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
         /* Don't do anything if no particle of this kind */
         if (N_total[ptype] == 0) continue;
 
+        /* Add the global information for that particle type to the XMF
+         * meta-file */
+        if (mpi_rank == 0)
+          writeXMFgroupheader(xmfFile, fileName, N_total[ptype], ptype);
+
         /* Open the particle group in the file */
         char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
         snprintf(partTypeGroupName, PARTICLE_GROUP_BUFFER_SIZE, "/PartType%d",
@@ -763,9 +774,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
         switch (ptype) {
 
           case GAS:
-            hydro_write_particles(h_grp, fileName, xmfFile, N[ptype],
-                                  N_total[ptype], mpi_rank, offset[ptype],
-                                  parts, us);
+            hydro_write_particles(h_grp, fileName, partTypeGroupName, xmfFile,
+                                  N[ptype], N_total[ptype], mpi_rank,
+                                  offset[ptype], parts, us);
 
             break;
 
@@ -780,9 +791,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
             collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
 
             /* Write DM particles */
-            darkmatter_write_particles(h_grp, fileName, xmfFile, N[ptype],
-                                       N_total[ptype], mpi_rank, offset[ptype],
-                                       dmparts, us);
+            darkmatter_write_particles(h_grp, fileName, partTypeGroupName,
+                                       xmfFile, N[ptype], N_total[ptype],
+                                       mpi_rank, offset[ptype], dmparts, us);
 
             /* Free temporary array */
             free(dmparts);
@@ -794,6 +805,9 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
 
         /* Close particle group */
         H5Gclose(h_grp);
+
+        /* Close this particle group in the XMF file as well */
+        if (mpi_rank == 0) writeXMFgroupfooter(xmfFile, ptype);
       }
 
       /* Close file */
@@ -805,7 +819,7 @@ void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
   }
 
   /* Write footer of LXMF file descriptor */
-  if (mpi_rank == 0) writeXMFfooter(xmfFile);
+  if (mpi_rank == 0) writeXMFoutputfooter(xmfFile, outputCount, e->time);
 
   /* message("Done writing particles..."); */
   ++outputCount;
