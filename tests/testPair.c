@@ -35,7 +35,8 @@ double random_uniform(double a, double b) {
  * particles are generated on a mesh with unit spacing
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
-                       double density, unsigned long long *partId, double pert) {
+                       double density, unsigned long long *partId,
+                       double pert) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
   struct cell *cell = malloc(sizeof(struct cell));
@@ -64,7 +65,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         // part->v[0] = part->x[0] - 1.5;
         // part->v[1] = part->x[1] - 1.5;
         // part->v[2] = part->x[2] - 1.5;
-	part->v[0] = random_uniform(-0.05, 0.05);
+        part->v[0] = random_uniform(-0.05, 0.05);
         part->v[1] = random_uniform(-0.05, 0.05);
         part->v[2] = random_uniform(-0.05, 0.05);
         part->h = size * h / (float)n;
@@ -127,8 +128,8 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   /* Write header */
   fprintf(file,
-          "# %4s %10s %10s %10s %10s %10s %10s %10s %10s  %10s   %10s %10s "
-          "%10s %10s %10s\n",
+          "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
+          "%13s %13s %13s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
           "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
 
@@ -136,34 +137,28 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   for (size_t pid = 0; pid < ci->count; pid++) {
     fprintf(file,
-            "%6llu %10f %10f %10f %10f %10f %10f %10f %10f  %10f   %10f %10f "
-            "%10f %10f %10f\n",
-            ci->parts[pid].id, ci->parts[pid].x[0],
-            ci->parts[pid].x[1], ci->parts[pid].x[2],
-            ci->parts[pid].v[0], ci->parts[pid].v[1],
-            ci->parts[pid].v[2], ci->parts[pid].rho,
-            ci->parts[pid].rho_dh, ci->parts[pid].density.wcount,
-            ci->parts[pid].density.wcount_dh,
+            "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+            "%13e %13e %13e\n",
+            ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
+            ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
+            ci->parts[pid].v[2], ci->parts[pid].rho, ci->parts[pid].rho_dh,
+            ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
             ci->parts[pid].div_v, ci->parts[pid].density.rot_v[0],
-            ci->parts[pid].density.rot_v[1],
-            ci->parts[pid].density.rot_v[2]);
+            ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]);
   }
 
   fprintf(file, "# cj --------------------------------------------\n");
-  
+
   for (size_t pjd = 0; pjd < cj->count; pjd++) {
     fprintf(file,
-            "%6llu %10f %10f %10f %10f %10f %10f %10f %10f  %10f   %10f %10f "
-            "%10f %10f %10f\n",
-            cj->parts[pjd].id, cj->parts[pjd].x[0],
-            cj->parts[pjd].x[1], cj->parts[pjd].x[2],
-            cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-            cj->parts[pjd].v[2], cj->parts[pjd].rho,
-            cj->parts[pjd].rho_dh, cj->parts[pjd].density.wcount,
-            cj->parts[pjd].density.wcount_dh,
+            "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+            "%13e %13e %13e\n",
+            cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
+            cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
+            cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+            cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
             cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
-            cj->parts[pjd].density.rot_v[1],
-            cj->parts[pjd].density.rot_v[2]);
+            cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]);
   }
 
   fclose(file);

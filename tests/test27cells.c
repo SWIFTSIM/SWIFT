@@ -138,8 +138,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
   /* Write header */
   fprintf(file,
-          "# %4s %10s %10s %10s %10s %10s %10s %10s %10s  %10s   %10s %10s "
-          "%10s %10s %10s\n",
+          "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
+          "%13s %13s %13s\n",
           "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
           "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
 
@@ -148,8 +148,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   /* Write main cell */
   for (size_t pid = 0; pid < main_cell->count; pid++) {
     fprintf(file,
-            "%6llu %10f %10f %10f %10f %10f %10f %10f %10f  %10f   %10f %10f "
-            "%10f %10f %10f\n",
+            "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+            "%13e %13e %13e\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
@@ -176,8 +176,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
         for (size_t pjd = 0; pjd < cj->count; pjd++) {
           fprintf(
               file,
-              "%6llu %10f %10f %10f %10f %10f %10f %10f %10f  %10f   %10f %10f "
-              "%10f %10f %10f\n",
+              "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
+              "%13e %13e %13e\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
               cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,

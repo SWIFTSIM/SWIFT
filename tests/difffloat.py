@@ -25,20 +25,24 @@ rel_tol = 1e-7
 
 # Compares the content of two ASCII tables of floats line by line and
 # reports all differences beyond the given tolerances
-# Comparisons are done both in absolute and relative values
+# Comparisons are done both in absolute and relative terms
+
+# Individual tolerances for each column can be provided in a file
 
 file1 = sys.argv[1]
 file2 = sys.argv[2]
+fileTol = ""
 
-if len(sys.argv) >= 5:
-    abs_tol = float(sys.argv[3])
-    rel_tol = float(sys.argv[4])
+if len(sys.argv) == 4:
+    fileTol = sys.argv[3]
 
-print "Absolute difference tolerance:", abs_tol
-print "Relative difference tolerance:", rel_tol
-    
 data1 = loadtxt(file1)
 data2 = loadtxt(file2)
+if fileTol != "":
+    dataTol = loadtxt(fileTol)
+    n_linesTol = shape(dataTol)[0]
+    n_columnsTol = shape(dataTol)[1]
+
 
 if shape(data1) != shape(data2):
     print "Non-matching array sizes in the files", file1, "and", file2, "."
@@ -46,6 +50,22 @@ if shape(data1) != shape(data2):
 
 n_lines = shape(data1)[0]
 n_columns = shape(data1)[1]
+
+if fileTol != "":
+    if n_linesTol != 2:
+        print "Incorrect number of lines in tolerance file '%s'."%fileTol
+    if n_columnsTol != n_columns:
+        print "Incorrect number of columns in tolerance file '%s'."%fileTol
+
+if fileTol == "":
+    print "Absolute difference tolerance:", abs_tol
+    print "Relative difference tolerance:", rel_tol
+    absTol = ones(n_columns) * abs_tol
+    relTol = ones(n_columns) * rel_tol
+else:
+    print "Tolerances read from file"
+    absTol = dataTol[0,:]
+    relTol = dataTol[1,:]
 
 error = False
 for i in range(n_lines):
@@ -58,17 +78,17 @@ for i in range(n_lines):
             rel_diff = abs(data1[i,j] - data2[i,j]) / sum
         else:
             rel_diff = 0.
-            
-        if( abs_diff > abs_tol):
-            print "Absolute difference larger than tolerance (%e) on line %d, column %d:"%(abs_tol, i,j)
+
+        if( abs_diff > absTol[j]):
+            print "Absolute difference larger than tolerance (%e) on line %d, column %d:"%(absTol[j], i,j)
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s:       |a-b| = %e"%("Difference", abs_diff)
             print ""
             error = True
 
-        if( rel_diff > rel_tol):
-            print "Relative difference larger than tolerance (%e) on line %d, column %d:"%(rel_tol, i,j)
+        if( rel_diff > relTol[j]):
+            print "Relative difference larger than tolerance (%e) on line %d, column %d:"%(relTol[j], i,j)
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s: |a-b|/|a+b| = %e"%("Difference", rel_diff)
