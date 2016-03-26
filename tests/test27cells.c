@@ -28,7 +28,7 @@
  * Returns a random number (uniformly distributed) in [a,b[
  */
 double random_uniform(double a, double b) {
-  return (rand() / (double)RAND_MAX) * (a - b) + a;
+  return (rand() / (double)RAND_MAX) * (b - a) + a;
 }
 
 /* n is both particles per axis and box size:
@@ -52,7 +52,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
-        // Add .5 for symmetry: 0.5, 1.5, 2.5 vs. 0, 1, 2
         part->x[0] =
             offset[0] +
             size * (x + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
@@ -62,9 +61,12 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->x[2] =
             offset[2] +
             size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
-        part->v[0] = 1. * random_uniform(-0.1, 0.1);
-        part->v[1] = 1. * random_uniform(-0.1, 0.1);
-        part->v[2] = 1. * random_uniform(-0.1, 0.1);
+        // part->v[0] = part->x[0] - 1.5;
+        // part->v[1] = part->x[1] - 1.5;
+        // part->v[2] = part->x[2] - 1.5;
+        part->v[0] = random_uniform(-0.05, 0.05);
+        part->v[1] = random_uniform(-0.05, 0.05);
+        part->v[2] = random_uniform(-0.05, 0.05);
         part->h = size * h / (float)n;
         part->id = ++(*partId);
         part->mass = density * volume / count;
@@ -134,41 +136,58 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
   FILE *file = fopen(fileName, "w");
 
+  /* Write header */
   fprintf(file,
-          "# ID  pos:[x y z]  rho  rho_dh  wcount  wcount_dh  div_v  curl_v:[x "
-          "y z]\n");
+          "# %4s %10s %10s %10s %10s %10s %10s %10s %10s  %10s   %10s %10s "
+          "%10s %10s %10s\n",
+          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
+          "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
 
-  fprintf(file, "# -----------------------------------\n");
+  fprintf(file, "# Main cell --------------------------------------------\n");
 
+  /* Write main cell */
   for (size_t pid = 0; pid < main_cell->count; pid++) {
-    fprintf(file, "%6llu %f %f %f %f %f %f %f %f %f %f %f\n",
+    fprintf(file,
+            "%6llu %10f %10f %10f %10f %10f %10f %10f %10f  %10f   %10f %10f "
+            "%10f %10f %10f\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
-            main_cell->parts[pid].rho, main_cell->parts[pid].rho_dh,
-            main_cell->parts[pid].density.wcount,
+            main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
+            main_cell->parts[pid].v[2], main_cell->parts[pid].rho,
+            main_cell->parts[pid].rho_dh, main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
             main_cell->parts[pid].div_v, main_cell->parts[pid].density.rot_v[0],
             main_cell->parts[pid].density.rot_v[1],
             main_cell->parts[pid].density.rot_v[2]);
   }
 
-  for (int j = 0; j < 27; ++j) {
+  /* Write all other cells */
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      for (int k = 0; k < 3; ++k) {
 
-    struct cell *cj = cells[j];
-    if (cj == main_cell) continue;
+        struct cell *cj = cells[i * 9 + j * 3 + k];
+        if (cj == main_cell) continue;
 
-    fprintf(file, "# -----------------------------------\n");
+        fprintf(file,
+                "# Offset: [%2d %2d %2d] -----------------------------------\n",
+                i - 1, j - 1, k - 1);
 
-    for (size_t pjd = 0; pjd < cj->count; pjd++) {
-      fprintf(file, "%6llu %f %f %f %f %f %f %f %f %f %f %f\n",
+        for (size_t pjd = 0; pjd < cj->count; pjd++) {
+          fprintf(
+              file,
+              "%6llu %10f %10f %10f %10f %10f %10f %10f %10f  %10f   %10f %10f "
+              "%10f %10f %10f\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
-              cj->parts[pjd].x[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+              cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
+              cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
               cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
               cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
               cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]);
+        }
+      }
     }
   }
-
   fclose(file);
 }
 
@@ -180,7 +199,7 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 int main(int argc, char *argv[]) {
 
   size_t runs = 0, particles = 0;
-  double h = 1.1255, size = 1., rho = 1.;
+  double h = 1.12575, size = 1., rho = 1.;
   double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
@@ -229,13 +248,17 @@ int main(int argc, char *argv[]) {
         "\nThese are then interacted using runner_dopair1_density."
         "\n\nOptions:"
         "\n-h DISTANCE=1.1255 - Smoothing length"
-	"\n-m rho             - Physical density in the cell"
-	"\n-s size            - Physical size of the cell"
+        "\n-m rho             - Physical density in the cell"
+        "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
         "\n-f fileName        - Part of the file name used to save the dumps\n",
         argv[0]);
     exit(1);
   }
+
+  /* Help users... */
+  message("Smoothing length: h = %f", h);
+  message("Neighbour target: N = %f", kernel_nwneigh);
 
   /* Build the infrastructure */
   struct space space;
@@ -259,13 +282,13 @@ int main(int argc, char *argv[]) {
       for (int k = 0; k < 3; ++k) {
 
         double offset[3] = {i * size, j * size, k * size};
-
         cells[i * 9 + j * 3 + k] =
             make_cell(particles, offset, size, h, rho, &partId, perturbation);
       }
     }
   }
 
+  /* Store the main cell for future use */
   main_cell = cells[13];
 
   ticks time = 0;
