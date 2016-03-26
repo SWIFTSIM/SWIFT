@@ -52,6 +52,7 @@
  * @param N The number of particles.
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurrence of the field of
+ * @param partSize The size in bytes of the particle structure.
  *interest in the parts array
  * @param importance If COMPULSORY, the data must be present in the IC file. If
  *OPTIONAL, the array will be zeroed when the data is not present.
@@ -144,6 +145,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * @param dim The dimension of the data (1 for scalar, 3 for vector)
  * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array
+ * @param partSize The size in bytes of the particle structure.
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this array
  *
