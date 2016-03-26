@@ -211,10 +211,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Balsara term */
   const float balsara_i =
       fabsf(pi->div_v) /
-      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
+      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001f * ci / fac_mu / hi);
   const float balsara_j =
       fabsf(pj->div_v) /
-      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
+      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001f * cj / fac_mu / hj);
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
@@ -309,10 +309,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Balsara term */
   const float balsara_i =
       fabsf(pi->div_v) /
-      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001 * ci / fac_mu / hi);
+      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001f * ci / fac_mu / hi);
   const float balsara_j =
       fabsf(pj->div_v) /
-      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001 * cj / fac_mu / hj);
+      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001f * cj / fac_mu / hj);
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
