@@ -299,7 +299,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Output timing */
-  message("SWIFT calculation took       %lli ticks.", time / runs);
+  message("SWIFT calculation took       : %15lli ticks.", time / runs);
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */
-  message("Brute force calculation took %lli ticks.", toc - tic);
+  message("Brute force calculation took : %15lli ticks.", toc - tic);
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);
