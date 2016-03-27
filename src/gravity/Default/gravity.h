@@ -44,7 +44,7 @@ __attribute__((always_inline)) INLINE static float gravity_compute_timestep(
  * @param gp The particle to act upon
  */
 __attribute__((always_inline))
-    INLINE static void gravity_first_init_part(struct gpart* gp) {
+    INLINE static void gravity_first_init_gpart(struct gpart* gp) {
 }
 
 /**

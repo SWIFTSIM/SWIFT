@@ -45,6 +45,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+#include "gravity.h"
 #include "hydro.h"
 #include "space.h"
 #include "timers.h"
@@ -620,6 +621,7 @@ void cell_init_gparts(struct cell *c, void *data) {
   for (int i = 0; i < gcount; ++i) {
     gp[i].ti_begin = 0;
     gp[i].ti_end = 0;
+    gravity_first_init_gpart(&gp[i]);
   }
   c->ti_end_min = 0;
   c->ti_end_max = 0;
