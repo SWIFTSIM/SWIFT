@@ -442,10 +442,10 @@ void engine_redistribute(struct engine *e) {
       if (gparts_new[k].part->gpart != &gparts_new[k])
         error("Linking problem !");
 
-      /* if (gparts_new[k].x[0] != gparts_new[k].part->x[0] || */
-      /*     gparts_new[k].x[1] != gparts_new[k].part->x[1] || */
-      /*     gparts_new[k].x[2] != gparts_new[k].part->x[2]) */
-      /*   error("Linked particles are not at the same position !"); */
+      if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
+          gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
+          gparts_new[k].x[2] != gparts_new[k].part->x[2])
+        error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < nr_parts; ++k) {
