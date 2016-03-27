@@ -961,6 +961,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         xp->v_full[1] += a_tot[1] * dt;
         xp->v_full[2] += a_tot[2] * dt;
 
+        if (p->gpart != NULL) {
+          p->gpart->v_full[0] = xp->v_full[0];
+          p->gpart->v_full[1] = xp->v_full[1];
+          p->gpart->v_full[2] = xp->v_full[2];
+        }
+
         /* Go back by half-step for the hydro velocity */
         p->v[0] = xp->v_full[0] - half_dt * a_tot[0];
         p->v[1] = xp->v_full[1] - half_dt * a_tot[1];
@@ -1020,7 +1026,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
         /* And aggregate */
         updated += cp->updated;
-	g_updated += cp->g_updated;
+        g_updated += cp->g_updated;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
