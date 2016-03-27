@@ -649,7 +649,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Drift particles forward in time
+ * @brief Drift particles and g-particles forward in time
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -658,26 +658,39 @@ void runner_doghost(struct runner *r, struct cell *c) {
 void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
   const int nr_parts = c->count;
+  const int nr_gparts = c->gcount;
   const double timeBase = r->e->timeBase;
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
-  const float ti_old = r->e->ti_old;
-  const float ti_current = r->e->ti_current;
-  struct part *restrict p, *restrict parts = c->parts;
-  struct xpart *restrict xp, *restrict xparts = c->xparts;
+  const int ti_old = r->e->ti_old;
+  const int ti_current = r->e->ti_current;
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  struct gpart *const gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
-  float w;
 
   TIMER_TIC
 
   /* No children? */
   if (!c->split) {
 
-    /* Loop over all the particles in the cell */
+    /* Loop over all the g-particles in the cell */
+    for (int k = 0; k < nr_gparts; ++k) {
+
+      /* Get a handle on the gpart. */
+      struct gpart *const gp = &gparts[k];
+
+      /* Drift... */
+      gp->x[0] += gp->v_full[0] * dt;
+      gp->x[1] += gp->v_full[1] * dt;
+      gp->x[2] += gp->v_full[2] * dt;
+    }
+
+    /* Loop over all the particles in the cell (more work for these !) */
     for (int k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      p = &parts[k];
-      xp = &xparts[k];
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
 
       /* Useful quantity */
       const float h_inv = 1.0f / p->h;
@@ -693,18 +706,18 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->v[2] += p->a_hydro[2] * dt;
 
       /* Predict smoothing length */
-      w = p->h_dt * h_inv * dt;
-      if (fabsf(w) < 0.2f)
-        p->h *= approx_expf(w); /* 4th order expansion of exp(w) */
+      const float w1 = p->h_dt * h_inv * dt;
+      if (fabsf(w1) < 0.2f)
+        p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
       else
-        p->h *= expf(w);
+        p->h *= expf(w1);
 
       /* Predict density */
-      w = -3.0f * p->h_dt * h_inv * dt;
-      if (fabsf(w) < 0.2f)
-        p->rho *= approx_expf(w); /* 4th order expansion of exp(w) */
+      const float w2 = -3.0f * p->h_dt * h_inv * dt;
+      if (fabsf(w2) < 0.2f)
+        p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
       else
-        p->rho *= expf(w);
+        p->rho *= expf(w2);
 
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, ti_old, ti_current, timeBase);
