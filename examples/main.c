@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
@@ -56,7 +55,6 @@
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
-
 int main(int argc, char *argv[]) {
 
   int c, icount, periodic = 1;
