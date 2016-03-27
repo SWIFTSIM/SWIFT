@@ -141,7 +141,7 @@ struct cell {
   double mass, e_pot, e_int, e_kin;
 
   /* Number of particles updated in this cell. */
-  int updated;
+  int updated, g_updated;
 
   /* Linking pointer for "memory management". */
   struct cell *next;

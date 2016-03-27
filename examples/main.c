@@ -544,8 +544,8 @@ int main(int argc, char *argv[]) {
   /* Legend */
   if (myrank == 0)
     printf(
-        "# Step  Time  time-step  Number of updates    CPU Wall-clock time "
-        "[%s]\n",
+        "# Step  Time  time-step  Number of updates  Number of updates "
+        "CPU Wall-clock time [%s]\n",
         clocks_getunit());
 
   /* Let loose a runner on the space. */
