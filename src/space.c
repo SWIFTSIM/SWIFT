@@ -499,6 +499,28 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* We no longer need the indices as of here. */
   free(gind);
 
+  /* Verify that the links are correct */
+  /* MATTHIEU: To be commented out once we are happy */
+  for (size_t k = 0; k < nr_gparts; ++k) {
+
+    if (s->gparts[k].id > 0) {
+
+      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+
+      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
+          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
+          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+        error("Linked particles are not at the same position !");
+    }
+  }
+  for (size_t k = 0; k < nr_parts; ++k) {
+
+    if (s->parts[k].gpart != NULL) {
+
+      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
+    }
+  }
+
   /* Hook the cells up to the parts. */
   // tic = getticks();
   struct part *finger = s->parts;

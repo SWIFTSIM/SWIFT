@@ -1558,7 +1558,7 @@ int engine_marktasks(struct engine *e) {
       else if (t->type == task_type_kick) {
         t->skip = (t->ci->ti_end_min > ti_end);
         t->ci->updated = 0;
-	t->ci->g_updated = 0;
+        t->ci->g_updated = 0;
       }
 
       /* Drift? */
@@ -1615,6 +1615,7 @@ void engine_print_task_counts(struct engine *e) {
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
   message("nr_parts = %zi.", e->s->nr_parts);
+  message("nr_gparts = %zi.", e->s->nr_gparts);
 }
 
 /**
@@ -1767,7 +1768,7 @@ void engine_collect_kick(struct cell *c) {
         ti_end_min = min(ti_end_min, cp->ti_end_min);
         ti_end_max = max(ti_end_max, cp->ti_end_max);
         updated += cp->updated;
-	g_updated += cp->g_updated;
+        g_updated += cp->g_updated;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
@@ -2264,6 +2265,28 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link the parts. */
   for (size_t k = 0; k < s->nr_gparts; k++)
     if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
+
+  /* Verify that the links are correct */
+  /* MATTHIEU: To be commented out once we are happy */
+  for (size_t k = 0; k < nr_gparts; ++k) {
+
+    if (s->gparts[k].id > 0) {
+
+      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+
+      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
+          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
+          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+        error("Linked particles are not at the same position !");
+    }
+  }
+  for (size_t k = 0; k < nr_parts; ++k) {
+
+    if (s->parts[k].gpart != NULL) {
+
+      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
+    }
+  }
 
 #else
   error("SWIFT was not compiled with MPI support.");
