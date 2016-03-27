@@ -773,6 +773,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const double timeBase = r->e->timeBase;
   const double timeBase_inv = 1.0 / r->e->timeBase;
   const int count = c->count;
+  //const int gcount = c->gcount;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
@@ -784,9 +785,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f};
   float ang[3] = {0.0f, 0.0f, 0.0f};
-  float x[3], v_full[3];
-  struct part *restrict p, *restrict parts = c->parts;
-  struct xpart *restrict xp, *restrict xparts = c->xparts;
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  //struct gpart *const gparts = c->gparts;
 
   TIMER_TIC
 
@@ -797,13 +798,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      p = &parts[k];
-      xp = &xparts[k];
-
-      const float m = p->mass;
-      x[0] = p->x[0];
-      x[1] = p->x[1];
-      x[2] = p->x[2];
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
 
       /* If particle needs to be kicked */
       if (is_fixdt || p->ti_end <= ti_current) {
@@ -872,6 +868,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         xp->v_full[1] += p->a_hydro[1] * dt;
         xp->v_full[2] += p->a_hydro[2] * dt;
 
+	/* Go back by half-step for the hydro velocity */
         p->v[0] = xp->v_full[0] - half_dt * p->a_hydro[0];
         p->v[1] = xp->v_full[1] - half_dt * p->a_hydro[1];
         p->v[2] = xp->v_full[2] - half_dt * p->a_hydro[2];
@@ -885,9 +882,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
       /* Now collect quantities for statistics */
 
-      v_full[0] = xp->v_full[0];
-      v_full[1] = xp->v_full[1];
-      v_full[2] = xp->v_full[2];
+      const double x[3] = {p->x[0], p->x[1], p->x[2]};
+      const float v_full[3] = {xp->v_full[0], xp->v_full[1], xp->v_full[2]};
+      const float m = p->mass;
 
       /* Collect mass */
       mass += m;
@@ -921,7 +918,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
+        struct cell *const cp = c->progeny[k];
 
         /* Recurse */
         runner_dokick(r, cp, 0);
