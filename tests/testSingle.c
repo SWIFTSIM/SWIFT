@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
   p2.force.POrho2 = p2.u * (const_hydro_gamma - 1.0f) / p2.rho;
 
   /* Dump a header. */
-  printParticle_single(&p1, NULL);
-  printParticle_single(&p2, NULL);
+  //printParticle_single(&p1, NULL);
+  //printParticle_single(&p2, NULL);
   printf("# r a_1 udt_1 a_2 udt_2\n");
 
   /* Loop over the different radii. */
