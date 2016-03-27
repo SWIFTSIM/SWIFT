@@ -469,8 +469,10 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
 
 void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
-  struct part *p, *parts = c->parts;
+  struct part *const parts = c->parts;
+  struct gpart *const gparts = c->gparts;
   const int count = c->count;
+  const int gcount = c->gcount;
   const int ti_current = r->e->ti_current;
 
   TIMER_TIC;
@@ -486,12 +488,25 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      p = &parts[i];
+      struct part *const p = &parts[i];
 
       if (p->ti_end <= ti_current) {
 
         /* Get ready for a density calculation */
         hydro_init_part(p);
+      }
+    }
+
+    /* Loop over the gparts in this cell. */
+    for (int i = 0; i < gcount; i++) {
+
+      /* Get a direct pointer on the part. */
+      struct gpart *const gp = &gparts[i];
+
+      if (gp->ti_end <= ti_current) {
+
+        /* Get ready for a density calculation */
+        gravity_init_part(gp);
       }
     }
   }
@@ -773,7 +788,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   const double timeBase = r->e->timeBase;
   const double timeBase_inv = 1.0 / r->e->timeBase;
   const int count = c->count;
-  //const int gcount = c->gcount;
+  // const int gcount = c->gcount;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
@@ -787,7 +802,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   float ang[3] = {0.0f, 0.0f, 0.0f};
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
-  //struct gpart *const gparts = c->gparts;
+  // struct gpart *const gparts = c->gparts;
 
   TIMER_TIC
 
@@ -868,7 +883,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         xp->v_full[1] += p->a_hydro[1] * dt;
         xp->v_full[2] += p->a_hydro[2] * dt;
 
-	/* Go back by half-step for the hydro velocity */
+        /* Go back by half-step for the hydro velocity */
         p->v[0] = xp->v_full[0] - half_dt * p->a_hydro[0];
         p->v[1] = xp->v_full[1] - half_dt * p->a_hydro[1];
         p->v[2] = xp->v_full[2] - half_dt * p->a_hydro[2];

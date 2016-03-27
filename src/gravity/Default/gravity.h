@@ -33,3 +33,33 @@ __attribute__((always_inline)) INLINE static float gravity_compute_timestep(
   /* Currently no limit is imposed */
   return FLT_MAX;
 }
+
+
+/**
+ * @brief Initialises the g-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline))
+    INLINE static void gravity_first_init_part(struct gpart* gp) {
+}
+
+/**
+ * @brief Prepares a g-particle for the gravity calculation
+ *
+ * Zeroes all the relevant arrays in preparation for the sums taking place in
+ * the variaous tasks
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline))
+    INLINE static void gravity_init_part(struct gpart* gp) {
+
+  /* Zero the acceleration */
+  gp->a_grav[0] = 0.f;
+  gp->a_grav[1] = 0.f;
+  gp->a_grav[2] = 0.f;
+}
