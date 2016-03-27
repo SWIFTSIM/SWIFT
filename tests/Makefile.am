@@ -45,4 +45,4 @@ test27cells_SOURCES = test27cells.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \
-	     test27cells.sh test27cellsPerturbed.sh
+	     test27cells.sh test27cellsPerturbed.sh tolerance.dat

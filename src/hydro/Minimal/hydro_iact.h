@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RUNNER_IACT_H
-#define SWIFT_RUNNER_IACT_H
+#ifndef SWIFT_RUNNER_IACT_MINIMAL_H
+#define SWIFT_RUNNER_IACT_MINIMAL_H
 
 /* Includes. */
 #include "const.h"
@@ -38,33 +38,31 @@
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  float r = sqrtf(r2);
-  float xi, xj;
-  float h_inv;
   float wi, wj, wi_dx, wj_dx;
-  float mi, mj;
+
+  const float r = sqrtf(r2);
 
   /* Get the masses. */
-  mi = pi->mass;
-  mj = pj->mass;
+  const float mi = pi->mass;
+  const float mj = pj->mass;
 
   /* Compute density of pi. */
-  h_inv = 1.0 / hi;
-  xi = r * h_inv;
+  const float hi_inv = 1.f / hi;
+  const float xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.0 * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (3.f * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
   /* Compute density of pj. */
-  h_inv = 1.f / hj;
-  xj = r * h_inv;
+  const float hj_inv = 1.f / hj;
+  const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (3.0 * wj + xj * wj_dx);
+  pj->rho_dh -= mi * (3.f * wj + xj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
 }
@@ -76,24 +74,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  float r;
-  float xi;
-  float h_inv;
   float wi, wi_dx;
-  float mj;
 
   /* Get the masses. */
-  mj = pj->mass;
+  const float mj = pj->mass;
 
   /* Get r and r inverse. */
-  r = sqrtf(r2);
+  const float r = sqrtf(r2);
 
-  h_inv = 1.f / hi;
-  xi = r * h_inv;
+  const float h_inv = 1.f / hi;
+  const float xi = r * h_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.0 * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (3.f * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 }
@@ -148,7 +142,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute sound speeds */
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
-  float v_sig = ci + cj + 3.f * omega_ij;
+  const float v_sig = ci + cj + 3.f * omega_ij;
 
   /* SPH acceleration term */
   const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
@@ -225,7 +219,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute sound speeds */
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
-  float v_sig = ci + cj + 3.f * omega_ij;
+  const float v_sig = ci + cj + 3.f * omega_ij;
 
   /* SPH acceleration term */
   const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
@@ -245,4 +239,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 }
 
-#endif /* SWIFT_RUNNER_IACT_H */
+#endif /* SWIFT_RUNNER_IACT_MINIMAL_H */
