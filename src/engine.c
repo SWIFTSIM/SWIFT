@@ -2434,10 +2434,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
         "(t_beg = %e)",
         timeEnd, timeBegin);
 
-  /* Check we have sensible time step bounds */
+  /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
     error(
-        "Minimal time step size must be smaller than maximal time step size ");
+        "Minimal time-step size (%e) must be smaller than maximal time-step "
+        "size (%e)",
+        e->dt_min, e->dt_max);
 
   /* Deal with timestep */
   e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;

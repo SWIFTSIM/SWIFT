@@ -353,10 +353,6 @@ int main(int argc, char *argv[]) {
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
-  /* Check we have sensible time step bounds */
-  if (dt_min > dt_max)
-    error("Minimal time step size must be large than maximal time step size ");
-
   /* Check whether an IC file has been provided */
   if (strcmp(ICfileName, "") == 0)
     error("An IC file name must be provided via the option -f");
