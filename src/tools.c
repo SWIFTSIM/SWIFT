@@ -300,9 +300,9 @@ void pairs_single_grav(double *dim, long long int pid,
       break;
   if (k == N) error("Part not found.");
   pi = parts[k];
-  pi.a[0] = 0.0f;
-  pi.a[1] = 0.0f;
-  pi.a[2] = 0.0f;
+  pi.a_grav[0] = 0.0f;
+  pi.a_grav[1] = 0.0f;
+  pi.a_grav[2] = 0.0f;
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -320,15 +320,15 @@ void pairs_single_grav(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     runner_iact_grav(r2, fdx, &pi, &pj);
-    a[0] += pi.a[0];
-    a[1] += pi.a[1];
-    a[2] += pi.a[2];
-    aabs[0] += fabsf(pi.a[0]);
-    aabs[1] += fabsf(pi.a[1]);
-    aabs[2] += fabsf(pi.a[2]);
-    pi.a[0] = 0.0f;
-    pi.a[1] = 0.0f;
-    pi.a[2] = 0.0f;
+    a[0] += pi.a_grav[0];
+    a[1] += pi.a_grav[1];
+    a[2] += pi.a_grav[2];
+    aabs[0] += fabsf(pi.a_grav[0]);
+    aabs[1] += fabsf(pi.a_grav[1]);
+    aabs[2] += fabsf(pi.a_grav[2]);
+    pi.a_grav[0] = 0.0f;
+    pi.a_grav[1] = 0.0f;
+    pi.a_grav[2] = 0.0f;
   }
 
   /* Dump the result. */

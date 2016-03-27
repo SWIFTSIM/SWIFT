@@ -49,8 +49,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav(
   /* Aggregate the accelerations. */
   for (k = 0; k < 3; k++) {
     w = acc * dx[k];
-    pi->a[k] -= w * mj;
-    pj->a[k] += w * mi;
+    pi->a_grav[k] -= w * mj;
+    pj->a_grav[k] += w * mi;
   }
 }
 
@@ -100,8 +100,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_grav(
     ai.v = w.v * mj.v;
     aj.v = w.v * mi.v;
     for (j = 0; j < VEC_SIZE; j++) {
-      pi[j]->a[k] -= ai.f[j];
-      pj[j]->a[k] += aj.f[j];
+      pi[j]->a_grav[k] -= ai.f[j];
+      pj[j]->a_grav[k] += aj.f[j];
     }
   }
 
