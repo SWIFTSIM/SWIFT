@@ -606,6 +606,26 @@ void cell_init_parts(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Initialises all g-particles to a valid state even if the ICs were
+ *stupid
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_init_gparts(struct cell *c, void *data) {
+
+  struct gpart *gp = c->gparts;
+  const int gcount = c->gcount;
+
+  for (int i = 0; i < gcount; ++i) {
+    gp[i].ti_begin = 0;
+    gp[i].ti_end = 0;
+  }
+  c->ti_end_min = 0;
+  c->ti_end_max = 0;
+}
+
+/**
  * @brief Converts hydro quantities to a valid state after the initial density
  *calculation
  *
