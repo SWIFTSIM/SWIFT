@@ -159,7 +159,8 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
 void space_regrid(struct space *s, double cell_max, int verbose) {
 
   float h_max = s->cell_min / kernel_gamma / space_stretch, dmin;
-  int i, j, k, cdim[3], nr_parts = s->nr_parts;
+  int i, j, k, cdim[3];
+  const size_t nr_parts = s->nr_parts;
   struct cell *restrict c;
   ticks tic = getticks();
 
