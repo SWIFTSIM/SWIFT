@@ -45,7 +45,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel.h vector.h \
-		 runner_doiact.h runner_doiact_grav.h units.h intrinsics.h minmax.h parser.h \
+		 runner_doiact.h runner_doiact_grav.h units.h intrinsics.h minmax.h \
 		 gravity.h gravity_io.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
