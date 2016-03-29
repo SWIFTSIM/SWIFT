@@ -657,15 +657,13 @@ void runner_doghost(struct runner *r, struct cell *c) {
  */
 void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
-  const int nr_parts = c->count;
   const double timeBase = r->e->timeBase;
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
   const float ti_old = r->e->ti_old;
   const float ti_current = r->e->ti_current;
-  struct part *restrict p, *restrict parts = c->parts;
-  struct xpart *restrict xp, *restrict xparts = c->xparts;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
-  float w;
 
   TIMER_TIC
 
@@ -673,11 +671,12 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   if (!c->split) {
 
     /* Loop over all the particles in the cell */
-    for (int k = 0; k < nr_parts; k++) {
+    const size_t nr_parts = c->count;
+    for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      p = &parts[k];
-      xp = &xparts[k];
+      struct part *p = &parts[k];
+      struct xpart *xp = &xparts[k];
 
       /* Useful quantity */
       const float h_inv = 1.0f / p->h;
@@ -693,7 +692,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       p->v[2] += p->a_hydro[2] * dt;
 
       /* Predict smoothing length */
-      w = p->h_dt * h_inv * dt;
+      float w = p->h_dt * h_inv * dt;
       if (fabsf(w) < 0.2f)
         p->h *= approx_expf(w); /* 4th order expansion of exp(w) */
       else
@@ -959,10 +958,6 @@ void *runner_main(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
-  struct task *t = NULL;
-  struct cell *ci, *cj;
-  struct part *parts;
-  int k, nr_parts;
 
   /* Main loop. */
   while (1) {
@@ -971,6 +966,7 @@ void *runner_main(void *data) {
     engine_barrier(e, r->id);
 
     /* Re-set the pointer to the previous task, as there is none. */
+    struct task *t = NULL;
     struct task *prev = NULL;
 
     /* Loop while there are tasks... */
@@ -989,8 +985,8 @@ void *runner_main(void *data) {
       }
 
       /* Get the cells. */
-      ci = t->ci;
-      cj = t->cj;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
       t->rid = r->cpuid;
 
       /* Different types of tasks... */
@@ -1038,12 +1034,14 @@ void *runner_main(void *data) {
           break;
         case task_type_send:
           break;
-        case task_type_recv:
-          parts = ci->parts;
-          nr_parts = ci->count;
+        case task_type_recv: {
+          struct part *parts = ci->parts;
+          size_t nr_parts = ci->count;
           ci->ti_end_min = ci->ti_end_max = max_nr_timesteps;
-          for (k = 0; k < nr_parts; k++) parts[k].ti_end = max_nr_timesteps;
+          for (size_t k = 0; k < nr_parts; k++)
+            parts[k].ti_end = max_nr_timesteps;
           break;
+        }
         case task_type_grav_pp:
           if (t->cj == NULL)
             runner_doself_grav(r, t->ci);
