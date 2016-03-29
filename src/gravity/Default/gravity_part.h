@@ -26,7 +26,7 @@ struct gpart {
   double x[3];
 
   /* Particle velocity. */
-  float v[3];
+  float v_full[3];
 
   /* Particle acceleration. */
   float a[3];
@@ -44,10 +44,10 @@ struct gpart {
   union {
 
     /* Particle ID. */
-    size_t id;
+    long long id;
 
     /* Pointer to corresponding SPH part. */
     struct part* part;
   };
 
-} __attribute__((aligned(part_align)));
+} __attribute__((aligned(gpart_align)));

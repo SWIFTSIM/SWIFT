@@ -60,11 +60,12 @@ int cell_next_tag = 0;
 
 int cell_getsize(struct cell *c) {
 
-  int k, count = 1;
+  /* Number of cells in this subtree. */
+  int count = 1;
 
   /* Sum up the progeny if split. */
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) count += cell_getsize(c->progeny[k]);
 
   /* Return the final count. */
@@ -83,21 +84,23 @@ int cell_getsize(struct cell *c) {
 
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
 
-  int k, count = 1;
-  struct cell *temp;
-
   /* Unpack the current pcell. */
   c->h_max = pc->h_max;
   c->ti_end_min = pc->ti_end_min;
   c->ti_end_max = pc->ti_end_max;
   c->count = pc->count;
+  c->gcount = pc->gcount;
   c->tag = pc->tag;
 
+  /* Number of new cells created. */
+  int count = 1;
+
   /* Fill the progeny recursively, depth-first. */
-  for (k = 0; k < 8; k++)
+  for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
-      temp = space_getcell(s);
+      struct cell *temp = space_getcell(s);
       temp->count = 0;
+      temp->gcount = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -123,7 +126,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
 }
 
 /**
- * @brief Link the cells recursively to the given part array.
+ * @brief Link the cells recursively to the given #part array.
  *
  * @param c The #cell.
  * @param parts The #part array.
@@ -131,19 +134,47 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
  * @return The number of particles linked.
  */
 
-int cell_link(struct cell *c, struct part *parts) {
-
-  int k, ind = 0;
+int cell_link_parts(struct cell *c, struct part *parts) {
 
   c->parts = parts;
 
   /* Fill the progeny recursively, depth-first. */
-  if (c->split)
-    for (k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) ind += cell_link(c->progeny[k], &parts[ind]);
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_parts(c->progeny[k], &parts[offset]);
+    }
+  }
 
-  /* Return the total number of unpacked cells. */
+  /* Return the total number of linked particles. */
   return c->count;
+}
+
+/**
+ * @brief Link the cells recursively to the given #gpart array.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+
+int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+  c->gparts = gparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_gparts(c->progeny[k], &gparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->gcount;
 }
 
 /**
@@ -158,17 +189,17 @@ int cell_link(struct cell *c, struct part *parts) {
 
 int cell_pack(struct cell *c, struct pcell *pc) {
 
-  int k, count = 1;
-
   /* Start by packing the data of the current cell. */
   pc->h_max = c->h_max;
   pc->ti_end_min = c->ti_end_min;
   pc->ti_end_max = c->ti_end_max;
   pc->count = c->count;
+  pc->gcount = c->gcount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
   /* Fill in the progeny, depth-first recursion. */
-  for (k = 0; k < 8; k++)
+  int count = 1;
+  for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
       pc->progeny[k] = count;
       count += cell_pack(c->progeny[k], &pc[count]);
@@ -187,7 +218,6 @@ int cell_pack(struct cell *c, struct pcell *pc) {
 
 int cell_locktree(struct cell *c) {
 
-  struct cell *finger, *finger2;
   TIMER_TIC
 
   /* First of all, try to lock this cell. */
@@ -208,6 +238,7 @@ int cell_locktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
 
     /* Lock this cell. */
@@ -230,7 +261,8 @@ int cell_locktree(struct cell *c) {
   else {
 
     /* Undo the holds up to finger. */
-    for (finger2 = c->parent; finger2 != finger; finger2 = finger2->parent)
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
       __sync_fetch_and_sub(&finger2->hold, 1);
 
     /* Unlock this cell. */
@@ -244,7 +276,6 @@ int cell_locktree(struct cell *c) {
 
 int cell_glocktree(struct cell *c) {
 
-  struct cell *finger, *finger2;
   TIMER_TIC
 
   /* First of all, try to lock this cell. */
@@ -265,6 +296,7 @@ int cell_glocktree(struct cell *c) {
   }
 
   /* Climb up the tree and lock/hold/unlock. */
+  struct cell *finger;
   for (finger = c->parent; finger != NULL; finger = finger->parent) {
 
     /* Lock this cell. */
@@ -287,7 +319,8 @@ int cell_glocktree(struct cell *c) {
   else {
 
     /* Undo the holds up to finger. */
-    for (finger2 = c->parent; finger2 != finger; finger2 = finger2->parent)
+    for (struct cell *finger2 = c->parent; finger2 != finger;
+         finger2 = finger2->parent)
       __sync_fetch_and_sub(&finger2->ghold, 1);
 
     /* Unlock this cell. */
@@ -307,14 +340,13 @@ int cell_glocktree(struct cell *c) {
 
 void cell_unlocktree(struct cell *c) {
 
-  struct cell *finger;
   TIMER_TIC
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->lock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
     __sync_fetch_and_sub(&finger->hold, 1);
 
   TIMER_TOC(timer_locktree);
@@ -322,14 +354,13 @@ void cell_unlocktree(struct cell *c) {
 
 void cell_gunlocktree(struct cell *c) {
 
-  struct cell *finger;
   TIMER_TIC
 
   /* First of all, try to unlock this cell. */
   if (lock_unlock(&c->glock) != 0) error("Failed to unlock cell.");
 
   /* Climb up the tree and unhold the parents. */
-  for (finger = c->parent; finger != NULL; finger = finger->parent)
+  for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
     __sync_fetch_and_sub(&finger->ghold, 1);
 
   TIMER_TOC(timer_locktree);
@@ -343,15 +374,16 @@ void cell_gunlocktree(struct cell *c) {
 
 void cell_split(struct cell *c) {
 
-  int i, j, k, count = c->count, gcount = c->gcount;
-  struct part temp, *parts = c->parts;
-  struct xpart xtemp, *xparts = c->xparts;
-  struct gpart gtemp, *gparts = c->gparts;
+  int i, j;
+  const int count = c->count, gcount = c->gcount;
+  struct part *parts = c->parts;
+  struct xpart *xparts = c->xparts;
+  struct gpart *gparts = c->gparts;
   int left[8], right[8];
   double pivot[3];
 
   /* Init the pivots. */
-  for (k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->h[k] / 2;
+  for (int k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->h[k] / 2;
 
   /* Split along the x-axis. */
   i = 0;
@@ -360,10 +392,10 @@ void cell_split(struct cell *c) {
     while (i <= count - 1 && parts[i].x[0] <= pivot[0]) i += 1;
     while (j >= 0 && parts[j].x[0] > pivot[0]) j -= 1;
     if (i < j) {
-      temp = parts[i];
+      struct part temp = parts[i];
       parts[i] = parts[j];
       parts[j] = temp;
-      xtemp = xparts[i];
+      struct xpart xtemp = xparts[i];
       xparts[i] = xparts[j];
       xparts[j] = xtemp;
     }
@@ -380,17 +412,17 @@ void cell_split(struct cell *c) {
   right[0] = j;
 
   /* Split along the y axis, twice. */
-  for (k = 1; k >= 0; k--) {
+  for (int k = 1; k >= 0; k--) {
     i = left[k];
     j = right[k];
     while (i <= j) {
       while (i <= right[k] && parts[i].x[1] <= pivot[1]) i += 1;
       while (j >= left[k] && parts[j].x[1] > pivot[1]) j -= 1;
       if (i < j) {
-        temp = parts[i];
+        struct part temp = parts[i];
         parts[i] = parts[j];
         parts[j] = temp;
-        xtemp = xparts[i];
+        struct xpart xtemp = xparts[i];
         xparts[i] = xparts[j];
         xparts[j] = xtemp;
       }
@@ -410,17 +442,17 @@ void cell_split(struct cell *c) {
   }
 
   /* Split along the z axis, four times. */
-  for (k = 3; k >= 0; k--) {
+  for (int k = 3; k >= 0; k--) {
     i = left[k];
     j = right[k];
     while (i <= j) {
       while (i <= right[k] && parts[i].x[2] <= pivot[2]) i += 1;
       while (j >= left[k] && parts[j].x[2] > pivot[2]) j -= 1;
       if (i < j) {
-        temp = parts[i];
+        struct part temp = parts[i];
         parts[i] = parts[j];
         parts[j] = temp;
-        xtemp = xparts[i];
+        struct xpart xtemp = xparts[i];
         xparts[i] = xparts[j];
         xparts[j] = xtemp;
       }
@@ -442,14 +474,14 @@ void cell_split(struct cell *c) {
   }
 
   /* Store the counts and offsets. */
-  for (k = 0; k < 8; k++) {
+  for (int k = 0; k < 8; k++) {
     c->progeny[k]->count = right[k] - left[k] + 1;
     c->progeny[k]->parts = &c->parts[left[k]];
     c->progeny[k]->xparts = &c->xparts[left[k]];
   }
 
   /* Re-link the gparts. */
-  for (k = 0; k < count; k++)
+  for (int k = 0; k < count; k++)
     if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k];
 
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -463,17 +495,17 @@ void cell_split(struct cell *c) {
       error( "Particle sorting failed (right edge)." ); */
 
   /* Verify a few sub-cells. */
-  /* for ( k = 0 ; k < c->progeny[0]->count ; k++ )
+  /* for (int k = 0 ; k < c->progeny[0]->count ; k++ )
       if ( c->progeny[0]->parts[k].x[0] > pivot[0] ||
            c->progeny[0]->parts[k].x[1] > pivot[1] ||
            c->progeny[0]->parts[k].x[2] > pivot[2] )
           error( "Sorting failed (progeny=0)." );
-  for ( k = 0 ; k < c->progeny[1]->count ; k++ )
+  for (int k = 0 ; k < c->progeny[1]->count ; k++ )
       if ( c->progeny[1]->parts[k].x[0] > pivot[0] ||
            c->progeny[1]->parts[k].x[1] > pivot[1] ||
            c->progeny[1]->parts[k].x[2] <= pivot[2] )
           error( "Sorting failed (progeny=1)." );
-  for ( k = 0 ; k < c->progeny[2]->count ; k++ )
+  for (int k = 0 ; k < c->progeny[2]->count ; k++ )
       if ( c->progeny[2]->parts[k].x[0] > pivot[0] ||
            c->progeny[2]->parts[k].x[1] <= pivot[1] ||
            c->progeny[2]->parts[k].x[2] > pivot[2] )
@@ -488,7 +520,7 @@ void cell_split(struct cell *c) {
     while (i <= gcount - 1 && gparts[i].x[0] <= pivot[0]) i += 1;
     while (j >= 0 && gparts[j].x[0] > pivot[0]) j -= 1;
     if (i < j) {
-      gtemp = gparts[i];
+      struct gpart gtemp = gparts[i];
       gparts[i] = gparts[j];
       gparts[j] = gtemp;
     }
@@ -499,14 +531,14 @@ void cell_split(struct cell *c) {
   right[0] = j;
 
   /* Split along the y axis, twice. */
-  for (k = 1; k >= 0; k--) {
+  for (int k = 1; k >= 0; k--) {
     i = left[k];
     j = right[k];
     while (i <= j) {
       while (i <= right[k] && gparts[i].x[1] <= pivot[1]) i += 1;
       while (j >= left[k] && gparts[j].x[1] > pivot[1]) j -= 1;
       if (i < j) {
-        gtemp = gparts[i];
+        struct gpart gtemp = gparts[i];
         gparts[i] = gparts[j];
         gparts[j] = gtemp;
       }
@@ -518,14 +550,14 @@ void cell_split(struct cell *c) {
   }
 
   /* Split along the z axis, four times. */
-  for (k = 3; k >= 0; k--) {
+  for (int k = 3; k >= 0; k--) {
     i = left[k];
     j = right[k];
     while (i <= j) {
       while (i <= right[k] && gparts[i].x[2] <= pivot[2]) i += 1;
       while (j >= left[k] && gparts[j].x[2] > pivot[2]) j -= 1;
       if (i < j) {
-        gtemp = gparts[i];
+        struct gpart gtemp = gparts[i];
         gparts[i] = gparts[j];
         gparts[j] = gtemp;
       }
@@ -537,13 +569,13 @@ void cell_split(struct cell *c) {
   }
 
   /* Store the counts and offsets. */
-  for (k = 0; k < 8; k++) {
+  for (int k = 0; k < 8; k++) {
     c->progeny[k]->gcount = right[k] - left[k] + 1;
     c->progeny[k]->gparts = &c->gparts[left[k]];
   }
 
   /* Re-link the parts. */
-  for (k = 0; k < gcount; k++)
+  for (int k = 0; k < gcount; k++)
     if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
 }
 

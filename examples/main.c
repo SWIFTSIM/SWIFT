@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
@@ -58,8 +59,9 @@
 
 int main(int argc, char *argv[]) {
 
-  int c, icount, j, k, N, periodic = 1;
-  long long N_total = -1;
+  int c, icount, periodic = 1;
+  size_t Ngas = 0, Ngpart = 0;
+  long long N_total[2] = {0, 0};
   int nr_threads = 1, nr_queues = -1;
   int dump_tasks = 0;
   int data[2];
@@ -67,6 +69,7 @@ int main(int argc, char *argv[]) {
   double h_max = -1.0, scaling = 1.0;
   double time_end = DBL_MAX;
   struct part *parts = NULL;
+  struct gpart *gparts = NULL;
   struct space s;
   struct engine e;
   struct UnitSystem us;
@@ -77,7 +80,9 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
-  int verbose = 0, talking;
+  int with_gravity = 0;
+  int engine_policies = 0;
+  int verbose = 0, talking = 0;
   unsigned long long cpufreq = 0;
 
 #ifdef WITH_MPI
@@ -95,12 +100,15 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-/* Choke on FP-exceptions. */
-// feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+  /* Choke on FP-exceptions. */
+  // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
+
+  /* Initialize CPU frequency, this also starts time. */
+  clocks_set_cpufreq(cpufreq);
 
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
-  int res, prov;
+  int res = 0, prov = 0;
   if ((res = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &prov)) !=
       MPI_SUCCESS)
     error("Call to MPI_Init failed with error %i.", res);
@@ -125,9 +133,6 @@ int main(int argc, char *argv[]) {
   factor(initial_partition.grid[0] * initial_partition.grid[1],
          &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
-
-  /* Initialize CPU frequency, this also starts time. */
-  clocks_set_cpufreq(cpufreq);
 
   /* Greeting message */
   if (myrank == 0) greetings();
@@ -154,7 +159,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:h:m:oP:q:R:s:t:v:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:gh:m:oP:q:R:s:t:v:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -182,6 +187,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'f':
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
+        break;
+      case 'g':
+        with_gravity = 1;
         break;
       case 'h':
         if (sscanf(optarg, "%llu", &cpufreq) != 1)
@@ -354,14 +362,14 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
-                   MPI_COMM_WORLD, MPI_INFO_NULL);
+  read_ic_parallel(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  read_ic_serial(ICfileName, dim, &parts, &N, &periodic, myrank, nr_nodes,
-                 MPI_COMM_WORLD, MPI_INFO_NULL);
+  read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  read_ic_single(ICfileName, dim, &parts, &N, &periodic);
+  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
 #endif
 
   if (myrank == 0) {
@@ -372,24 +380,61 @@ int main(int argc, char *argv[]) {
   }
 
 #if defined(WITH_MPI)
-  long long N_long = N;
-  MPI_Reduce(&N_long, &N_total, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  long long N_long[2] = {Ngas, Ngpart};
+  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  N_total[1] -= N_total[0];
+  if (myrank == 0)
+    message("Read %lld gas particles and %lld DM particles from the ICs",
+            N_total[0], N_total[1]);
 #else
-  N_total = N;
+  N_total[0] = Ngas;
+  N_total[1] = Ngpart - Ngas;
+  message("Read %lld gas particles and %lld DM particles from the ICs",
+          N_total[0], N_total[1]);
 #endif
-  if (myrank == 0) message("Read %lld particles from the ICs", N_total);
+
+  /* MATTHIEU: Temporary fix to preserve master */
+  if (!with_gravity) {
+    free(gparts);
+    gparts = NULL;
+    for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
+    Ngpart = 0;
+#if defined(WITH_MPI)
+    N_long[0] = Ngas;
+    N_long[1] = Ngpart;
+    MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (myrank == 0)
+      message(
+          "AFTER FIX: Read %lld gas particles and %lld DM particles from the "
+          "ICs",
+          N_total[0], N_total[1]);
+#else
+    N_total[0] = Ngas;
+    N_total[1] = Ngpart;
+    message(
+        "AFTER FIX: Read %lld gas particles and %lld DM particles from the ICs",
+        N_total[0], N_total[1]);
+#endif
+  }
+  /* MATTHIEU: End temporary fix */
 
   /* Apply h scaling */
   if (scaling != 1.0)
-    for (k = 0; k < N; k++) parts[k].h *= scaling;
+    for (size_t k = 0; k < Ngas; k++) parts[k].h *= scaling;
 
   /* Apply shift */
-  if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0)
-    for (k = 0; k < N; k++) {
+  if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
+    for (size_t k = 0; k < Ngas; k++) {
       parts[k].x[0] += shift[0];
       parts[k].x[1] += shift[1];
       parts[k].x[2] += shift[2];
     }
+    for (size_t k = 0; k < Ngpart; k++) {
+      gparts[k].x[0] += shift[0];
+      gparts[k].x[1] += shift[1];
+      gparts[k].x[2] += shift[2];
+    }
+  }
 
   /* Set default number of queues. */
   if (nr_queues < 0) nr_queues = nr_threads;
@@ -399,7 +444,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the space with this data. */
   if (myrank == 0) clocks_gettime(&tic);
-  space_init(&s, dim, parts, N, periodic, h_max, myrank == 0);
+  space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max,
+             myrank == 0);
   if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -415,6 +461,7 @@ int main(int argc, char *argv[]) {
     message("highest-level cell dimensions are [ %i %i %i ].", s.cdim[0],
             s.cdim[1], s.cdim[2]);
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
+    message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
@@ -433,12 +480,15 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
+  /* Construct the engine policy */
+  engine_policies = ENGINE_POLICY | engine_policy_steal | engine_policy_hydro;
+  if (with_gravity) engine_policies |= engine_policy_external_gravity;
+
   /* Initialize the engine with this space. */
   if (myrank == 0) clocks_gettime(&tic);
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              ENGINE_POLICY | engine_policy_steal | engine_policy_hydro, 0,
-              time_end, dt_min, dt_max, talking);
+              engine_policies, 0, time_end, dt_min, dt_max, talking);
   if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -482,9 +532,10 @@ int main(int argc, char *argv[]) {
 
   if (myrank == 0) {
     message(
-        "Running on %lld particles until t=%.3e with %i threads and %i "
-        "queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total, time_end, e.nr_threads, e.sched.nr_queues, e.dt_min, e.dt_max);
+        "Running on %lld gas particles and %lld DM particles until t=%.3e with "
+        "%i threads and %i queues (dt_min=%.3e, dt_max=%.3e)...",
+        N_total[0], N_total[1], time_end, e.nr_threads, e.sched.nr_queues,
+        e.dt_min, e.dt_max);
     fflush(stdout);
   }
 
@@ -499,7 +550,7 @@ int main(int argc, char *argv[]) {
         clocks_getunit());
 
   /* Let loose a runner on the space. */
-  for (j = 0; !engine_is_done(&e); j++) {
+  for (int j = 0; !engine_is_done(&e); j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI

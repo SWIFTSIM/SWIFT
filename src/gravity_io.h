@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,29 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SERIAL_IO_H
-#define SWIFT_SERIAL_IO_H
+#ifndef SWIFT_GRAVITY_IO_H
+#define SWIFT_GRAVITY_IO_H
 
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
+#include "./const.h"
 
-/* Includes. */
-#include "engine.h"
-#include "part.h"
-#include "units.h"
+#include "./gravity/Default/gravity_io.h"
 
-#if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
-
-void read_ic_serial(char* fileName, double dim[3], struct part** parts,
-                    struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
-                    int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
-                    MPI_Info info);
-
-void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
-                         int mpi_size, MPI_Comm comm, MPI_Info info);
-
-#endif
-
-#endif /* SWIFT_SERIAL_IO_H */
+#endif /* SWIFT_GRAVITY_IO_H */

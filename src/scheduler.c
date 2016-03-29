@@ -95,32 +95,29 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
 void scheduler_splittasks(struct scheduler *s) {
 
-  int j, k, ind, sid, tid = 0, redo;
-  struct cell *ci, *cj;
-  double hi, hj, shift[3];
-  struct task *t, *t_old;
-  // float dt_step = s->dt_step;
-  int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
-                   {-1, -1, 11, 10, 5, 4, 2, 1},
-                   {-1, -1, -1, 12, 7, 6, 4, 3},
-                   {-1, -1, -1, -1, 8, 7, 5, 4},
-                   {-1, -1, -1, -1, -1, 12, 10, 9},
-                   {-1, -1, -1, -1, -1, -1, 11, 10},
-                   {-1, -1, -1, -1, -1, -1, -1, 12}};
-  float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
-                         0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.5788};
+  const int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
+                         {-1, -1, 11, 10, 5, 4, 2, 1},
+                         {-1, -1, -1, 12, 7, 6, 4, 3},
+                         {-1, -1, -1, -1, 8, 7, 5, 4},
+                         {-1, -1, -1, -1, -1, 12, 10, 9},
+                         {-1, -1, -1, -1, -1, -1, 11, 10},
+                         {-1, -1, -1, -1, -1, -1, -1, 12}};
+  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
+                               0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
+                               0.5788, 0.4025, 0.5788};
 
   /* Loop through the tasks... */
-  redo = 0;
-  t_old = t = NULL;
+  int tid = 0, redo = 0;
+  struct task *t_old = NULL;
   while (1) {
 
     /* Get a pointer on the task. */
+    struct task *t = t_old;
     if (redo) {
       redo = 0;
-      t = t_old;
     } else {
-      if ((ind = atomic_inc(&tid)) < s->nr_tasks)
+      const int ind = atomic_inc(&tid);
+      if (ind < s->nr_tasks)
         t_old = t = &s->tasks[s->tasks_ind[ind]];
       else
         break;
@@ -161,7 +158,7 @@ void scheduler_splittasks(struct scheduler *s) {
     if (t->type == task_type_self) {
 
       /* Get a handle on the cell involved. */
-      ci = t->ci;
+      struct cell *ci = t->ci;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -187,18 +184,18 @@ void scheduler_splittasks(struct scheduler *s) {
           redo = 1;
 
           /* Add the self task. */
-          for (k = 0; ci->progeny[k] == NULL; k++)
-            ;
-          t->ci = ci->progeny[k];
-          for (k += 1; k < 8; k++)
+          int first_child = 0;
+          while (ci->progeny[first_child] == NULL) first_child++;
+          t->ci = ci->progeny[first_child];
+          for (int k = first_child + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
               scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
                                 ci->progeny[k], NULL, 0);
 
           /* Make a task for each pair of progeny. */
-          for (j = 0; j < 8; j++)
+          for (int j = 0; j < 8; j++)
             if (ci->progeny[j] != NULL)
-              for (k = j + 1; k < 8; k++)
+              for (int k = j + 1; k < 8; k++)
                 if (ci->progeny[k] != NULL)
                   scheduler_addtask(s, task_type_pair, t->subtype, pts[j][k], 0,
                                     ci->progeny[j], ci->progeny[k], 0);
@@ -211,10 +208,10 @@ void scheduler_splittasks(struct scheduler *s) {
     else if (t->type == task_type_pair) {
 
       /* Get a handle on the cells involved. */
-      ci = t->ci;
-      cj = t->cj;
-      hi = ci->dmin;
-      hj = cj->dmin;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+      const double hi = ci->dmin;
+      const double hj = cj->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -224,7 +221,8 @@ void scheduler_splittasks(struct scheduler *s) {
 
       /* Get the sort ID, use space_getsid and not t->flags
          to make sure we get ci and cj swapped if needed. */
-      sid = space_getsid(s->space, &ci, &cj, shift);
+      double shift[3];
+      int sid = space_getsid(s->space, &ci, &cj, shift);
 
       /* Should this task be split-up? */
       if (ci->split && cj->split &&
@@ -480,9 +478,9 @@ void scheduler_splittasks(struct scheduler *s) {
         /* Replace the current task. */
         t->type = task_type_none;
 
-        for (j = 0; j < 8; j++)
+        for (int j = 0; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            for (k = 0; k < 8; k++)
+            for (int k = 0; k < 8; k++)
               if (cj->progeny[k] != NULL) {
                 t = scheduler_addtask(s, task_type_pair, t->subtype, 0, 0,
                                       ci->progeny[j], cj->progeny[k], 0);
@@ -521,8 +519,8 @@ void scheduler_splittasks(struct scheduler *s) {
     else if (t->type == task_type_grav_mm) {
 
       /* Get a handle on the cells involved. */
-      ci = t->ci;
-      cj = t->cj;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
 
       /* Self-interaction? */
       if (cj == NULL) {
@@ -534,7 +532,7 @@ void scheduler_splittasks(struct scheduler *s) {
         else if (ci->split) {
 
           /* Make a single sub-task? */
-          if (scheduler_dosub && ci->count < space_subsize / ci->count) {
+          if (scheduler_dosub && ci->gcount < space_subsize / ci->gcount) {
 
             t->type = task_type_sub;
             t->subtype = task_subtype_grav;
@@ -546,7 +544,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
             /* Split this task into tasks on its progeny. */
             t->type = task_type_none;
-            for (j = 0; j < 8; j++)
+            for (int j = 0; j < 8; j++)
               if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
                 if (t->type == task_type_none) {
                   t->type = task_type_grav_mm;
@@ -555,7 +553,7 @@ void scheduler_splittasks(struct scheduler *s) {
                 } else
                   t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none,
                                         0, 0, ci->progeny[j], NULL, 0);
-                for (k = j + 1; k < 8; k++)
+                for (int k = j + 1; k < 8; k++)
                   if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) {
                     if (t->type == task_type_none) {
                       t->type = task_type_grav_mm;
@@ -582,7 +580,7 @@ void scheduler_splittasks(struct scheduler *s) {
       else {
 
         /* Make a sub-task? */
-        if (scheduler_dosub && ci->count < space_subsize / cj->count) {
+        if (scheduler_dosub && ci->gcount < space_subsize / cj->gcount) {
 
           t->type = task_type_sub;
           t->subtype = task_subtype_grav;
@@ -594,7 +592,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
           /* Get the opening angle theta. */
           float dx[3], theta;
-          for (k = 0; k < 3; k++) {
+          for (int k = 0; k < 3; k++) {
             dx[k] = fabs(ci->loc[k] - cj->loc[k]);
             if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k])
               dx[k] = -dx[k] + s->space->dim[k];
@@ -615,9 +613,9 @@ void scheduler_splittasks(struct scheduler *s) {
 
               /* Split this task into tasks on its progeny. */
               t->type = task_type_none;
-              for (j = 0; j < 8; j++)
+              for (int j = 0; j < 8; j++)
                 if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                  for (k = 0; k < 8; k++)
+                  for (int k = 0; k < 8; k++)
                     if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) {
                       if (t->type == task_type_none) {
                         t->type = task_type_grav_mm;
@@ -663,17 +661,14 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
                                int flags, int wait, struct cell *ci,
                                struct cell *cj, int tight) {
 
-  int ind;
-  struct task *t;
-
   /* Get the next free task. */
-  ind = atomic_inc(&s->tasks_next);
+  const int ind = atomic_inc(&s->tasks_next);
 
   /* Overflow? */
   if (ind >= s->size) error("Task list overflow.");
 
   /* Get a pointer to the new task. */
-  t = &s->tasks[ind];
+  struct task *t = &s->tasks[ind];
 
   /* Copy the data. */
   t->type = type;
@@ -768,24 +763,24 @@ void scheduler_set_unlocks(struct scheduler *s) {
 
 void scheduler_ranktasks(struct scheduler *s) {
 
-  int i, j = 0, k, temp, left = 0, rank;
-  struct task *t, *tasks = s->tasks;
-  int *tid = s->tasks_ind, nr_tasks = s->nr_tasks;
+  struct task *tasks = s->tasks;
+  int *tid = s->tasks_ind;
+  const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
-  for (i = 0, k = 0; k < nr_tasks; k++) {
+  for (int k = 0; k < nr_tasks; k++) {
     tid[k] = k;
-    for (j = 0; j < tasks[k].nr_unlock_tasks; j++)
+    for (int j = 0; j < tasks[k].nr_unlock_tasks; j++)
       tasks[k].unlock_tasks[j]->wait += 1;
   }
 
   /* Main loop. */
-  for (j = 0, rank = 0; left < nr_tasks; rank++) {
+  for (int j = 0, rank = 0, left = 0; left < nr_tasks; rank++) {
 
     /* Load the tids of tasks with no waits. */
-    for (k = left; k < nr_tasks; k++)
+    for (int k = left; k < nr_tasks; k++)
       if (tasks[tid[k]].wait == 0) {
-        temp = tid[j];
+        int temp = tid[j];
         tid[j] = tid[k];
         tid[k] = temp;
         j += 1;
@@ -795,15 +790,16 @@ void scheduler_ranktasks(struct scheduler *s) {
     if (j == left) error("Unsatisfiable task dependencies detected.");
 
     /* Unlock the next layer of tasks. */
-    for (i = left; i < j; i++) {
-      t = &tasks[tid[i]];
+    for (int i = left; i < j; i++) {
+      struct task *t = &tasks[tid[i]];
       t->rank = rank;
       tid[i] = t - tasks;
       if (tid[i] >= nr_tasks) error("Task index overshoot.");
       /* message( "task %i of type %s has rank %i." , i ,
           (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ?
          "pair" : "sort" , rank ); */
-      for (k = 0; k < t->nr_unlock_tasks; k++) t->unlock_tasks[k]->wait -= 1;
+      for (int k = 0; k < t->nr_unlock_tasks; k++)
+        t->unlock_tasks[k]->wait -= 1;
     }
 
     /* The new left (no, not tony). */
@@ -824,8 +820,6 @@ void scheduler_ranktasks(struct scheduler *s) {
  */
 
 void scheduler_reset(struct scheduler *s, int size) {
-
-  int k;
 
   /* Do we need to re-allocate? */
   if (size > s->size) {
@@ -853,7 +847,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->nr_unlocks = 0;
 
   /* Set the task pointers in the queues. */
-  for (k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
+  for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
 }
 
 /**
@@ -864,21 +858,23 @@ void scheduler_reset(struct scheduler *s, int size) {
 
 void scheduler_reweight(struct scheduler *s) {
 
-  int k, j, nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
-  struct task *t, *tasks = s->tasks;
-  int nodeID = s->nodeID;
-  float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.1897,
-                         0.4025, 0.1897, 0.4025, 0.5788, 0.4025, 0.5788};
-  float wscale = 0.001;
+  const int nr_tasks = s->nr_tasks;
+  int *tid = s->tasks_ind;
+  struct task *tasks = s->tasks;
+  const int nodeID = s->nodeID;
+  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
+                               0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
+                               0.5788, 0.4025, 0.5788};
+  const float wscale = 0.001;
   // ticks tic;
 
   /* Run through the tasks backwards and set their waits and
      weights. */
   // tic = getticks();
-  for (k = nr_tasks - 1; k >= 0; k--) {
-    t = &tasks[tid[k]];
+  for (int k = nr_tasks - 1; k >= 0; k--) {
+    struct task *t = &tasks[tid[k]];
     t->weight = 0;
-    for (j = 0; j < t->nr_unlock_tasks; j++)
+    for (int j = 0; j < t->nr_unlock_tasks; j++)
       if (t->unlock_tasks[j]->weight > t->weight)
         t->weight = t->unlock_tasks[j]->weight;
     if (!t->implicit && t->tic > 0)
@@ -959,8 +955,9 @@ void scheduler_reweight(struct scheduler *s) {
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
-  struct task *t, *tasks = s->tasks;
+  const int nr_tasks = s->nr_tasks;
+  int *tid = s->tasks_ind;
+  struct task *tasks = s->tasks;
   // ticks tic;
 
   /* Store the masks */
@@ -986,8 +983,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   const int waiting_old = s->waiting;
 
   /* We are going to use the task structure in a modified way to pass
-     information
-     to the task. Don't do this at home !
+     information to the task. Don't do this at home !
      - ci and cj will give the range of tasks to which the waits will be applied
      - the flags will be used to transfer the mask
      - the rank will be used to transfer the submask
@@ -1012,6 +1008,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 
   /* Wait for the rewait tasks to have executed. */
   pthread_mutex_lock(&s->sleep_mutex);
+  pthread_cond_broadcast(&s->sleep_cond);
   while (s->waiting > waiting_old) {
     pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
   }
@@ -1025,13 +1022,18 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* Loop over the tasks and enqueue whoever is ready. */
   // tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
-    t = &tasks[tid[k]];
+    struct task *t = &tasks[tid[k]];
     if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) &&
         ((1 << t->subtype) & s->submask) && !t->skip) {
       scheduler_enqueue(s, t);
       pthread_cond_broadcast(&s->sleep_cond);
     }
   }
+
+  /* To be safe, fire of one last sleep_cond in a safe way. */
+  pthread_mutex_lock(&s->sleep_mutex);
+  pthread_cond_broadcast(&s->sleep_cond);
+  pthread_mutex_unlock(&s->sleep_mutex);
 
   // message( "enqueueing tasks took %.3f %s." ,
   // clocks_from_ticks( getticks() - tic ), clocks_getunit());
@@ -1046,10 +1048,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 
 void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
+  /* The target queue for this task. */
   int qid = -1;
-#ifdef WITH_MPI
-  int err;
-#endif
 
   /* Fail if this task has already been enqueued before. */
   if (t->rid >= 0) error("Task has already been enqueued.");
@@ -1071,6 +1071,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Otherwise, look for a suitable queue. */
   else {
+#ifdef WITH_MPI
+    int err;
+#endif
 
     /* Find the previous owner for each task type, and do
        any pre-processing needed. */
@@ -1093,13 +1096,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        if ((err = MPI_Irecv(t->ci->parts, t->ci->count, s->part_mpi_type,
-                             t->ci->nodeID, t->flags, MPI_COMM_WORLD,
-                             &t->req)) != MPI_SUCCESS) {
-          char buff[MPI_MAX_ERROR_STRING];
-          int len;
-          MPI_Error_string(err, buff, &len);
-          error("Failed to emit irecv for particle data (%s).", buff);
+        err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
+                        t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        if (err != MPI_SUCCESS) {
+          mpi_error(err, "Failed to emit irecv for particle data.");
         }
         // message( "receiving %i parts with tag=%i from %i to %i." ,
         //     t->ci->count , t->flags , t->ci->nodeID , s->nodeID );
@@ -1111,13 +1111,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        if ((err = MPI_Isend(t->ci->parts, t->ci->count, s->part_mpi_type,
-                             t->cj->nodeID, t->flags, MPI_COMM_WORLD,
-                             &t->req)) != MPI_SUCCESS) {
-          char buff[MPI_MAX_ERROR_STRING];
-          int len;
-          MPI_Error_string(err, buff, &len);
-          error("Failed to emit isend for particle data (%s).", buff);
+        err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
+                        t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        if (err != MPI_SUCCESS) {
+          mpi_error(err, "Failed to emit isend for particle data.");
         }
         // message( "sending %i parts with tag=%i from %i to %i." ,
         //     t->ci->count , t->flags , s->nodeID , t->cj->nodeID );
@@ -1133,7 +1130,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
 
-    /* If no previous owner, find the shortest queue. */
+    /* If no previous owner, pick a random queue. */
     if (qid < 0) qid = rand() % s->nr_queues;
 
     /* Increase the waiting counter. */
@@ -1164,7 +1161,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
 
-    int res = atomic_dec(&t2->wait);
+    const int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
     } else if (res == 1) {
@@ -1203,7 +1200,7 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
-    int res = atomic_dec(&t2->wait);
+    const int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
     } else if (res == 1) {
@@ -1240,7 +1237,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev) {
 
   struct task *res = NULL;
-  int k, nr_queues = s->nr_queues;
+  const int nr_queues = s->nr_queues;
   unsigned int seed = qid;
 
   /* Check qid. */
@@ -1264,10 +1261,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       /* If unsuccessful, try stealing from the other queues. */
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
-        for (k = 0; k < nr_queues; k++)
+        for (int k = 0; k < nr_queues; k++)
           if (s->queues[k].count > 0) qids[count++] = k;
-        for (k = 0; k < scheduler_maxsteal && count > 0; k++) {
-          int ind = rand_r(&seed) % count;
+        for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
+          const int ind = rand_r(&seed) % count;
           TIMER_TIC
           res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
@@ -1287,7 +1284,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     if (res == NULL) {
 #endif
       pthread_mutex_lock(&s->sleep_mutex);
-      if (s->waiting > 0) pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+      res = queue_gettask(&s->queues[qid], prev, 1);
+      if (res == NULL && s->waiting > 0) {
+        pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+      }
       pthread_mutex_unlock(&s->sleep_mutex);
     }
   }
@@ -1352,12 +1352,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->tasks = NULL;
   s->tasks_ind = NULL;
   scheduler_reset(s, nr_tasks);
-
-/* Construct types for MPI communications */
-#ifdef WITH_MPI
-  part_create_mpi_type(&s->part_mpi_type);
-  xpart_create_mpi_type(&s->xpart_mpi_type);
-#endif
 }
 
 /**
@@ -1366,7 +1360,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
  * @param s The #scheduler
  * @param fileName Name of the file to write to
  */
-void scheduler_print_tasks(struct scheduler *s, char *fileName) {
+void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
 
   const int nr_tasks = s->nr_tasks, *tid = s->tasks_ind;
   struct task *t, *tasks = s->tasks;
