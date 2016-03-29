@@ -22,7 +22,7 @@
 
 /* Includes. */
 #include "const.h"
-#include "kernel.h"
+#include "kernel_gravity.h"
 #include "vector.h"
 
 /**
