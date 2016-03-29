@@ -44,23 +44,23 @@ static void parse_line(FILE *fp, struct swift_params *params);
 
 void parser_read_file(const char *file_name, struct swift_params *params) {
  
-    FILE *fp;
-    
+    /* Open file for reading */
+    FILE *file = fopen(file_name, "r");
+   
+    /* Initialise parameter count. */
     params->count = 0;
 
-    /* Open file for reading */
-    fp = fopen(file_name, "r");
-    
-    if(fp == NULL) {
+    /* Check if parameter file exits. */
+    if(file == NULL) {
       error("Error opening parameter file: %s",file_name);
     }
   
     /* Read until the end of the file is reached.*/
-    while(!feof(fp)) {
-      parse_line(fp,params); 
+    while(!feof(file)) {
+      parse_line(file,params); 
     }
 
-    fclose(fp);
+    fclose(file);
 }
 
 /**
@@ -252,4 +252,21 @@ void parser_print_params(struct swift_params *params) {
         printf("Parameter value: %s\n",params->data[i].value);
     }
 
+}
+
+void parser_write_params_to_file(struct swift_params *params, const char *file_name) {
+
+    FILE *file = fopen(file_name, "w");
+    
+    /* Start of file identifier in YAML. */
+    fprintf(file,"%s\n",PARSER_START_OF_FILE);
+    
+    for(int i=0; i<params->count; i++) {
+        fprintf(file,"%s%c %s\n",params->data[i].name,PARSER_VALUE_CHAR,params->data[i].value);
+    }
+
+    /* End of file identifier in YAML. */
+    fprintf(file,PARSER_END_OF_FILE);
+    
+    fclose(file);
 }
