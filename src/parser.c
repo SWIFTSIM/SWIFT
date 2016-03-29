@@ -133,31 +133,23 @@ static void parse_line(FILE *fp, struct swift_params *params) {
 
 void parser_get_param_int(struct swift_params *params, char * name, int * retParam) {
   
+   char str [128];
+
    for(int i=0; i<params->count; i++) {
 
      /*strcmp returns 0 if both strings are the same.*/
      if(!strcmp(name,params->data[i].name)) {
-       
-       /* Check if value is 0, to avoid integers of 0 causing an error in the following checks. */
-       if(!strcmp("0",params->data[i].value)) {
-           *retParam = 0;
-       }
-       /* Check if the value is a string. */
-       else if(!atoi(params->data[i].value)) {
-         error("Tried to parse '%s' but found '%s', when expecting an integer.",params->data[i].name,params->data[i].value);       
-       }
-       /* Check if the value is a float.*/
-       else if( strchr(params->data[i].value,'.') || strchr(params->data[i].value,'e') || 
-                strchr(params->data[i].value,'E') ) {
-         error("Tried to parse '%s' but found '%s', when expecting an integer.",params->data[i].name,params->data[i].value);       
-       }
-       else {
-         *retParam = atoi(params->data[i].value);       
-       }
-       return;
-       
+         
+         /* Check that exactly one number is parsed. */
+         if(sscanf(params->data[i].value,"%d%s",retParam,str) != 1) {
+           error("Tried parsing int '%s' but found '%s' with illegal integer characters '%s'.",params->data[i].name,params->data[i].value,str);       
+         }
+
+         return;
      }
    }
+
+   message("Cannot find '%s' in the structure.",name);
 }
 
 /** 
@@ -171,14 +163,23 @@ void parser_get_param_int(struct swift_params *params, char * name, int * retPar
 
 void parser_get_param_float(struct swift_params *params, char * name, float * retParam) {
   
+   char str [128];
+   
    for(int i=0; i<params->count; i++) {
 
      /*strcmp returns 0 if both strings are the same.*/
      if(!strcmp(name,params->data[i].name)) {
-       *retParam = atof(params->data[i].value);       
+       
+       /* Check that exactly one number is parsed. */
+       if(sscanf(params->data[i].value,"%f%s",retParam,str) != 1) {
+            error("Tried parsing float '%s' but found '%s' with illegal float characters '%s'.",params->data[i].name,params->data[i].value,str);       
+       }
+
        return;
      }
    }
+
+   message("Cannot find '%s' in the structure.",name);
 }
 
 
@@ -193,14 +194,23 @@ void parser_get_param_float(struct swift_params *params, char * name, float * re
 
 void parser_get_param_double(struct swift_params *params, char * name, double * retParam) {
   
+   char str [128];
+   
    for(int i=0; i<params->count; i++) {
 
      /*strcmp returns 0 if both strings are the same.*/
      if(!strcmp(name,params->data[i].name)) {
-       *retParam = atof(params->data[i].value);       
+         
+       /* Check that exactly one number is parsed. */
+       if(sscanf(params->data[i].value,"%lf",retParam) != 1) {
+            error("Tried parsing double '%s' but found '%s' with illegal double characters '%s'.",params->data[i].name,params->data[i].value,str);       
+       }
+       
        return;
      }
    }
+
+   message("Cannot find '%s' in the structure.",name);
 }
 
 /** 
