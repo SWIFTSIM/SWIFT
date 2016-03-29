@@ -1,0 +1,240 @@
+\documentclass[a4paper]{mnras}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{xspace}
+
+\newcommand{\swift}{{\sc Swift}\xspace}
+
+
+
+%opening
+\title{SPH kernels in SWIFT}
+\author{Matthieu Schaller}
+
+\begin{document}
+
+\maketitle
+
+In here we follow the definitions of Dehnen \& Aly 2012.
+
+\section{General Definitions}
+
+The desirable properties of an SPH kernels $W(\vec{x},h)$ are:
+\begin{enumerate}
+\item $W(\vec{x},h)$ should be isotropic in $\vec{x}$.
+\item $W(\vec{x},h)$ should be positive and decrease monotonically.
+\item $W(\vec{x},h)$ should be twice differentiable.
+\item $W(\vec{x},h)$ should have a finite support and be cheap to
+  compute.
+\end{enumerate}
+
+As a consequence, the smoothing kernels used in SPH can
+hence be written (in 3D) as
+
+\begin{equation}
+ W(\vec{x},h) \equiv \frac{1}{H^3}f\left(\frac{|\vec{x}|}{H}\right),
+\end{equation}
+
+where $H(h)$ is defined below and $f(u)$ is a dimensionless function,
+usually a low-order polynomial, such that $f(u \geq 1) = 0$ and
+normalised such that
+
+\begin{equation}
+  \int f(|\vec{u}|){\rm d}^3u = 1.
+\end{equation}
+
+$H$ is the kernel's support radius and is used as the ``smoothing
+length'' in the Gadget code( {i.e.} $H(h)=h$). This definition is,
+however, not very physical and makes comparison of kernels at a
+\emph{fixed resolution} difficult. A more sensible definition of the
+smoothing length, related to the Taylor expansion of the
+re-constructed density field is given in terms of the kernel's
+standard deviation
+
+\begin{equation}
+  \sigma^2 \equiv \frac{1}{3}\int \vec{u}^2 W(\vec{u},h) {\rm d}^3u.
+  \label{eq:sph:sigma}
+\end{equation}
+
+The smoothing length is then:
+\begin{equation}
+  h\equiv2\sigma.
+    \label{eq:sph:h}
+\end{equation}
+
+Each kernel, {\it i.e.} defintion of $f(u)$, will have a different
+ratio $h/H$. So for a \emph{fixed resolution} $h$, one will have
+different kernel support sizes, $H$, and different number of
+neighbours, $N_{\rm ngb}$ to interact with. One would typically choose
+$h$ for a simulation as a multiple $\eta$ of the mean-interparticle
+separation:
+
+\begin{equation}
+  h = \eta \langle x \rangle = \eta \left(\frac{m}{\rho}\right)^{1/3},
+\end{equation}
+
+where $\rho$ is the local density of the fluid and $m$ the SPH
+particle mass. 
+
+The (weighted) number of neighbours within the kernel support is a
+useful quantity to use in implementations of SPH. It is defined as (in
+3D)
+
+\begin{equation}
+  N_{\rm ngb} \equiv \frac{4}{3}\pi \left(\frac{H}{h}\eta\right)^3.
+\end{equation}
+
+Once the fixed ratio $H/h$ is known (via equations \ref{eq:sph:sigma}
+and \ref{eq:sph:h}) for a given kernel, the number of neighbours only
+depends on the resolution $\eta$.
+For the usual cubic spline kernel (see below), setting the simulation
+resolution to $\eta=1.2348$ yields the commonly used value $N_{\rm
+  ngb} = 48$.
+
+\section{Kernels available in \swift}
+
+The \swift kernels are split into two categories, the B-splines
+($M_{4,5,6}$) and the Wendland kernels ($C2$, $C4$ and $C6$). In all
+cases we impose $f(u>1) = 0$.\\
+
+The spline kernels are defined as:
+
+\begin{align}
+  f(u) &= C M_n(u), \\
+  M_n(u) &\equiv \frac{1}{2\pi}
+  \int_{-\infty}^{\infty}
+  \left(\frac{\sin\left(k/n\right)}{k/n}\right)^n\cos\left(ku\right){\rm
+  d}k,
+\end{align}
+
+whilst the Wendland kernels read
+
+\begin{align}
+  f(u) &= C \Psi_{i,j}(u), \\
+  \Psi_{i,j}(u) &\equiv \mathcal{I}^k\left[\max\left(1-u,0\right)\right],\\
+  \mathcal{I}[f](u) &\equiv \int_u^\infty f\left(k\right)k{\rm d}k.
+\end{align}
+
+\subsubsection{Cubic spline ($M_4$) kernel}
+
+In 3D, we have $C=\frac{16}{\pi}$ and $H/h = 1.825742$.\\
+The kernel function $f(u)$ reads:
+
+\begin{equation}
+  M_4(u) = \left\lbrace\begin{array}{rcl}
+  3u^3 - 3u^2 + \frac{1}{2} & \mbox{if} & u<\frac{1}{2}\\
+  -u^3 + 3u^2 - 3u + 1 & \mbox{if} & u \geq \frac{1}{2}
+  \end{array}
+  \right.
+    \nonumber
+\end{equation}
+
+
+\subsubsection{Quartic spline ($M_5$) kernel}
+
+In 3D, we have $C=\frac{15625}{512\pi}$ and $H/h = 2.018932$.\\
+The kernel function $f(u)$ reads:
+
+\begin{equation}
+  M_5(u) = \left\lbrace\begin{array}{rcl}
+  6u^4 - \frac{12}{5}u^2 + \frac{46}{125} & \mbox{if} & u < \frac{1}{5} \\
+  -4u^4 + 8u^3  - \frac{24}{5}u^2 + \frac{8}{25}u + \frac{44}{125} &  \mbox{if} &  \frac{1}{5} \leq u < \frac{3}{5}\\
+  u^4 - 4u^3 + 6u^2 - 4u + 1 &  \mbox{if} &  \frac{3}{5} \leq u \\
+  \end{array}
+  \right.
+  \nonumber
+\end{equation}
+
+
+\subsubsection{Quintic spline ($M_6$) kernel}
+
+In 3D, we have $C=\frac{2187}{40\pi}$ and $H/h = 2.195775$.\\
+The kernel function $f(u)$ reads:
+
+\begin{equation}
+  M_6(u) = \left\lbrace\begin{array}{rcl}
+  -10u^5 + 10u^4 - \frac{20}{9}u^2 + \frac{22}{81} & \mbox{if} & u < \frac{1}{3} \\
+  5u^5 - 15u^4 + \frac{50}{3}u^3 - \frac{70}{9}u^2 + \frac{25}{27}u + \frac{17}{81} &  \mbox{if} &  \frac{1}{3} \leq u < \frac{2}{3}\\
+  -1u^5 + 5u^4 - 10u^3 + 10u^2 - 5u + 1. & \mbox{if} & u \geq \frac{2}{3}
+  \end{array}
+  \right.
+    \nonumber
+\end{equation}
+
+
+\subsubsection{Wendland C2 kernel}
+
+In 3D, we have $C=\frac{21}{2\pi}$ and $H/h = 1.936492$.\\
+The kernel function $f(u)$ reads:
+
+\begin{align}
+  \Psi_{i,j}(u) &= 4u^5 - 15u^4 + 20u^3 - 10u^2 + 1.
+    \nonumber
+\end{align}
+
+
+\subsubsection{Wendland C4 kernel}
+
+In 3D, we have $C=\frac{495}{32\pi}$ and $H/h = 2.207940$.\\
+The kernel function $f(u)$ reads:
+
+\begin{align}
+  \Psi_{i,j}(u) &= \frac{35}{3}u^8 - 64u^7 + 140u^6\\
+  & - \frac{448}{3}u^5 + 70u^4 - \frac{28}{3}u^2 + 1
+    \nonumber
+\end{align}
+
+
+\subsubsection{Wendland C6 kernel}
+
+In 3D, we have $C=\frac{1365}{64\pi}$ and $H/h = 2.449490$.\\
+The kernel function $f(u)$ reads:
+
+\begin{align}
+  \Psi_{i,j}(u) &= 32u^{11} - 231u^{10} + 704u^9 - 1155u^8\\
+  & + 1056u^7 - 462u^6 + 66u^4 - 11u^2 + 1
+    \nonumber
+\end{align}
+
+
+\subsubsection{Summary}
+
+All kernels available in \swift are shown on Fig.~\ref{fig:sph:kernels}.
+
+\begin{figure}
+\includegraphics[width=\columnwidth]{kernels.pdf}
+\caption{The kernel functions available in \swift for a mean
+  inter-particle separation $\langle x\rangle=1.5$ and a resolution
+  $\eta=1.2348$. The corresponding kernel support radii $H$ (shown by
+  arrows) and number of neighours $N_{\rm ngb}$ are indicated on the
+  figure. A Gaussian kernel with the same smoothing length is shown
+  for comparison. Note that all these kernels have the \emph{same
+    resolution} despite having vastly different number of neighbours.}
+\label{fig:sph:kernels}
+\end{figure}
+
+\begin{figure}
+\includegraphics[width=\columnwidth]{kernel_derivatives.pdf}
+\caption{The first and secon derivatives of the kernel functions
+  available in \swift for a mean inter-particle separation $\langle
+  x\rangle=1.5$ and a resolution $\eta=1.2348$.  A Gaussian kernel
+  with the same smoothing length is shown for comparison.}
+\label{fig:sph:kernel_derivatives}
+\end{figure}
+
+
+\section{Kernel Derivatives}
+
+The derivatives of the kernel function have relatively simple
+expressions and are shown on Fig.~\ref{fig:sph:kernel_derivatives}.
+
+\begin{eqnarray*}
+ \vec\nabla_x W(\vec{x},h) &=& \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|} \\
+ \frac{\partial W(\vec{x},h)}{\partial h} &=&- \frac{1}{h^4}\left[3f\left(\frac{|\vec{x}|}{h}\right) + 
+\frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right]
+\end{eqnarray*}
+
+Note that for all the kernels listed above, $f'(0) = 0$. 
+
+\end{document}

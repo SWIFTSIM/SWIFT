@@ -21,7 +21,7 @@ params = {
     'ytick.major.pad': 2.5,
     'text.usetex': True,
 'figure.figsize' : (4.15,4.15),
-'figure.subplot.left'    : 0.12,
+'figure.subplot.left'    : 0.14,
 'figure.subplot.right'   : 0.99  ,
 'figure.subplot.bottom'  : 0.08  ,
 'figure.subplot.top'     : 0.99  ,
@@ -37,7 +37,7 @@ rc('font',**{'family':'sans-serif','sans-serif':['Times']})
 
 #Parameters
 eta = 1.2348422195325 # Resolution (Gives 48 neighbours for a cubic spline kernel)
-dx  = 1.#4 #2.7162  # Mean inter-particle separation
+dx  = 1.5#4 #2.7162  # Mean inter-particle separation
 
 #Constants
 PI = math.pi
@@ -267,16 +267,18 @@ plot(xx, dW_WendlandC2(xx), 'r-', label="${\\rm Wendland~C2}$")
 plot(xx, dW_WendlandC4(xx), 'm-', label="${\\rm Wendland~C4}$")
 plot(xx, dW_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$")
 
+maxY = d_Gaussian(h/2, h)
+
 # Show h
-plot([h, h], [-0.8*maxY, 0.1], 'k:', linewidth=0.5)
+plot([h, h], [2*maxY, 0.1], 'k:', linewidth=0.5)
 
 # Show <x>
-plot([dx, dx], [-0.8*maxY, 0.1], 'k:', linewidth=0.5)
+plot([dx, dx], [2*maxY, 0.1], 'k:', linewidth=0.5)
 
 
 xlim(0., 2.5*h)
 gca().xaxis.set_ticklabels([])
-ylim(-0.9*maxY, 0.02)
+ylim(1.2*maxY, -0.1*maxY)
 xlabel("$r$", labelpad=0)
 ylabel("$\\partial W(r,h)/\\partial r$", labelpad=0.5)
 legend(loc="lower right")
@@ -284,11 +286,13 @@ legend(loc="lower right")
 
 
 subplot(212)
-plot([h, h], [-17*maxY, 9.*maxY], 'k:', linewidth=0.5)
-text(h, -2.6*maxY, "$h\\equiv\\eta\\langle x\\rangle = %.4f$"%h, rotation=90, backgroundcolor='w', ha='center', va='bottom')
 
-plot([dx, dx], [-17*maxY, 9.*maxY], 'k:', linewidth=0.5)
-text(dx, -2.6*maxY, "$\\langle x\\rangle = %.1f$"%dx, rotation=90, backgroundcolor='w', ha='center', va='bottom')
+maxY = d2_Gaussian(h,h)
+plot([h, h], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
+text(h, -3.*maxY, "$h\\equiv\\eta\\langle x\\rangle = %.4f$"%h, rotation=90, backgroundcolor='w', ha='center', va='bottom')
+
+plot([dx, dx], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
+text(dx, -3.*maxY, "$\\langle x\\rangle = %.1f$"%dx, rotation=90, backgroundcolor='w', ha='center', va='bottom')
 
 plot([0, 2.5*h], [0., 0.], 'k--', linewidth=0.7)
 plot(xx, d2_Gaussian(xx, h), 'k-', linewidth=0.7, label="${\\rm Gaussian}$")
@@ -300,7 +304,7 @@ plot(xx, d2W_WendlandC4(xx), 'm-', label="${\\rm Wendland~C4}$")
 plot(xx, d2W_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$")
 
 xlim(0., 2.5*h)
-ylim(-2.8*maxY, 1*maxY)
+ylim(-3.2*maxY, 1.4*maxY)
 xlabel("$r$", labelpad=0)
 ylabel("$\\partial^2 W(r,h)/\\partial r^2$", labelpad=0.5)
 
