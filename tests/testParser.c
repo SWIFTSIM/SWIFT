@@ -39,8 +39,11 @@ int main(int argc, char *argv[]) {
   /* Read the parameter file. */
   parser_read_file(input_file,&param_file);
 
-  /* Print the contents of the structure. */
+  /* Print the contents of the structure to stdout. */
   parser_print_params(&param_file);
+  
+  /* Print the contents of the structure to a file in YAML format. */
+  parser_write_params_to_file(&param_file,"test.yaml");
   
   /* Retrieve parameters and store them in variables defined above. 
    * Have to specify the name of the parameter as it appears in the 
