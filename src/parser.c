@@ -254,6 +254,14 @@ void parser_print_params(struct swift_params *params) {
 
 }
 
+/** 
+ * @brief Write the contents of the parameter structure to a file in YAML format.
+ *
+ * @param params Structure that holds the parameters
+ * @param file_name Name of file to be written
+ *
+ */
+
 void parser_write_params_to_file(struct swift_params *params, const char *file_name) {
 
     FILE *file = fopen(file_name, "w");
