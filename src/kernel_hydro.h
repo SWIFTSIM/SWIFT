@@ -193,13 +193,23 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_eval(float x,
+__attribute__((always_inline)) INLINE static void kernel_eval(float u,
                                                               float *const W) {
-  const int ind = fminf(x * 0.5f, kernel_ivals);
+  /* Go to the range [0,1[ from [0,H[ */
+  const float x = u * (float)kernel_igamma;
+
+  /* Pick the correct branch of the kernel */
+  const int ind = (int)fminf(x * (float)kernel_ivals, kernel_ivals);
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+
+  /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
+
+  /* ... and the rest of them */
   for (int k = 2; k <= kernel_degree; k++) w = x * w + coeffs[k];
-  *W = w;
+
+  /* Return everything */
+  *W = w * (float)kernel_constant * (float)kernel_igamma3;
 }
 
 /* Some cross-check functions */
