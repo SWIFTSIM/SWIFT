@@ -91,13 +91,16 @@ __attribute__((always_inline))
   const float ih2 = ih * ih;
   const float ih4 = ih2 * ih2;
 
-  /* Final operation on the density. */
-  p->rho = ih * ih2 * (p->rho + p->mass * kernel_root);
-  p->rho_dh = (p->rho_dh - 3.0f * p->mass * kernel_root) * ih4;
-  p->density.wcount =
-      (p->density.wcount + kernel_root) * (4.0f / 3.0 * M_PI * kernel_gamma3);
-  p->density.wcount_dh =
-      p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
+  /* Final operation on the density (add self-contribution). */
+  p->rho += p->mass * kernel_root;
+  p->rho_dh -= 3.0f * p->mass * kernel_root * kernel_igamma;
+  p->density.wcount += kernel_root;
+
+  /* Finish the calculation by inserting the missing h-factors */
+  p->rho *= ih * ih2;
+  p->rho_dh *= ih4;
+  p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
+  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma4);
 }
 
 /**
