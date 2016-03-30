@@ -26,8 +26,7 @@
 #include "inline.h"
 #include "vector.h"
 
-
-/* ----------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
 #if defined(CUBIC_SPLINE_KERNEL)
 
 /* Coefficients for the kernel. */
@@ -37,12 +36,49 @@
 #define kernel_gamma 1.825742
 #define kernel_constant 16. * M_1_PI
 static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
-    __attribute__((aligned(16))) = {
-        +48.f * M_1_PI, -48.f * M_1_PI, 0.f,            +8.f * M_1_PI,
-        -16.f * M_1_PI, +48.f * M_1_PI, -48.f * M_1_PI, +16.f * M_1_PI,
-        0.f,            0.f,            0.f,            0.f};
+    __attribute__((aligned(16))) = {3.f,  -3.f, 0.f,  0.5f, /* 0 < u < 0.5 */
+                                    -1.f, 3.f,  -3.f, 1.f,  /* 0.5 < u < 1 */
+                                    0.f,  0.f,  0.f,  0.f}; /* 1 < u */
 
-/* ----------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+#elif defined(QUARTIC_SPLINE_KERNEL)
+
+/* Coefficients for the kernel. */
+#define kernel_name "Quartic spline (M5)"
+#define kernel_degree 4
+#define kernel_ivals 5
+#define kernel_gamma 2.018932
+#define kernel_constant 15625. * M_1_PI / 512.
+static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+    __attribute__((aligned(16))) = {
+        6.f,  0.f,  -2.4f, 0.f,   0.368f, /* 0 < u < 0.2 */
+        -4.f, 8.f,  -4.8f, 0.32f, 0.352f, /* 0.2 < u < 0.4 */
+        -4.f, 8.f,  -4.8f, 0.32f, 0.352f, /* 0.4 < u < 0.6 */
+        1.f,  -4.f, 6.f,   -4.f,  1.f,    /* 0.6 < u < 0.8 */
+        1.f,  -4.f, 6.f,   -4.f,  1.f,    /* 0.8 < u < 1 */
+        0.f,  0.f,  0.f,   0.f,   0.f};   /* 1 < u */
+
+/* ------------------------------------------------------------------------- */
+#elif defined(QUINTIC_SPLINE_KERNEL)
+
+/* Coefficients for the kernel. */
+#define kernel_name "Quintic spline (M6)"
+#define kernel_degree 5
+#define kernel_ivals 3
+#define kernel_gamma 2.195775
+#define kernel_constant 2187. * M_1_PI / 40.
+static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+    __attribute__((aligned(16))) = {
+        -10.f,        10.f,      0.f,
+        -2.2222222f,  0.f,       0.271604938f, /* 0 < u < 1/3 */
+        5.f,          -15.f,     16.666667f,
+        -7.77777777f, 0.925925f, 0.209876543f, /* 1/3 < u < 2/3 */
+        -1.f,         5.f,       -10.f,
+        10.f,         -5.f,      1.f, /* 2/3 < u < 1. */
+        0.f,          0.f,       0.f,
+        0.f,          0.f,       0.f}; /* 1 < u */
+
+/* ------------------------------------------------------------------------- */
 #elif defined(WENDLAND_C2_KERNEL)
 
 /* Coefficients for the kernel. */
@@ -50,18 +86,50 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_degree 5
 #define kernel_ivals 1
 #define kernel_gamma 1.936492
-#define kernel_constant 10.5 * M_1_PI
+#define kernel_constant 21. * M_1_PI / 2.
 static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
-        42.f * M_1_PI, -157.5f * M_1_PI, 210.f * M_1_PI, -105.f * M_1_PI,
-        0.f,           10.5f * M_1_PI,   0.f,            0.f,
-        0.f,           0.f,              0.f,            0.f};
+        4.f, -15.f, 20.f, -10.f, 1.f,  /* 0 < u < 1 */
+        0.f, 0.f,   0.f,  0.f,   0.f}; /* 1 < u */
 
-/* ----------------------------------------------------------------------------- */
+/* ------------------------------------------------------------------------- */
+#elif defined(WENDLAND_C4_KERNEL)
+
+/* Coefficients for the kernel. */
+#define kernel_name "Wendland C4"
+#define kernel_degree 8
+#define kernel_ivals 1
+#define kernel_gamma 2.207940
+#define kernel_constant 495. * M_1_PI / 32.
+static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+    __attribute__((aligned(16))) = {
+        11.666667f, -64.f,       140.f, -149.333333f, 70.f,
+        0.f,        -9.3333333f, 0.f,   1.f, /* 0 < u < 1 */
+        0.f,        0.f,         0.f,   0.f,          0.f,
+        0.f,        0.f,         0.f,   0.f}; /* 1 < u */
+
+/* ------------------------------------------------------------------------- */
+#elif defined(WENDLAND_C6_KERNEL)
+
+/* Coefficients for the kernel. */
+#define kernel_name "Wendland C6"
+#define kernel_degree 11
+#define kernel_ivals 1
+#define kernel_gamma 2.449490
+#define kernel_constant 1365. * M_1_PI / 64.
+static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+    __attribute__((aligned(16))) = {
+        32.f, -231.f, 704.f, -1155.f, 1056.f, -462.f,
+        0.f,  66.f,   0.f,   -11.f,   0.f,    1.f, /* 0 < u < 1 */
+        0.f,  0.f,    0.f,   0.f,     0.f,    0.f,
+        0.f,  0.f,    0.f,   0.f,     0.f,    0.f}; /* 1 < u */
+
+/* ------------------------------------------------------------------------- */
 #else
 
 #error "A kernel function must be chosen in const.h !!"
 
+/* ------------------------------------------------------------------------- */
 #endif
 
 /* Ok, now comes the real deal. */
@@ -82,7 +150,8 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_nwneigh 4.0 * M_PI *kernel_gamma3 *kernel_eta3 / 3.0
 
 /* Kernel self contribution (i.e. W(0,h)) */
-#define kernel_root (kernel_coeffs[kernel_degree]) * kernel_igamma3
+#define kernel_root \
+  (kernel_coeffs[kernel_degree]) * kernel_constant *kernel_igamma3
 
 /**
  * @brief Computes the kernel function and its derivative.
@@ -97,7 +166,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
     float u, float *const W, float *const dW_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
-  const float x = u * kernel_igamma;
+  const float x = u * (float)kernel_igamma;
 
   /* Pick the correct branch of the kernel */
   const int ind = (int)fminf(x * (float)kernel_ivals, kernel_ivals);
@@ -114,8 +183,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   }
 
   /* Return everything */
-  *W = w * kernel_igamma3;
-  *dW_dx = dw_dx * kernel_igamma4;
+  *W = w * (float)kernel_constant * (float)kernel_igamma3;
+  *dW_dx = dw_dx * (float)kernel_constant * (float)kernel_igamma4;
 }
 
 /**

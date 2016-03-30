@@ -61,12 +61,12 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->x[2] =
             offset[2] +
             size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
-        // part->v[0] = part->x[0] - 1.5;
-        // part->v[1] = part->x[1] - 1.5;
-        // part->v[2] = part->x[2] - 1.5;
-        part->v[0] = random_uniform(-0.05, 0.05);
-        part->v[1] = random_uniform(-0.05, 0.05);
-        part->v[2] = random_uniform(-0.05, 0.05);
+        part->v[0] = part->x[0] - 1.5;
+        part->v[1] = part->x[1] - 1.5;
+        part->v[2] = part->x[2] - 1.5;
+        //part->v[0] = random_uniform(-0.05, 0.05);
+        //part->v[1] = random_uniform(-0.05, 0.05);
+        //part->v[2] = random_uniform(-0.05, 0.05);
         part->h = size * h / (float)n;
         part->id = ++(*partId);
         part->mass = density * volume / count;
@@ -209,7 +209,7 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 int main(int argc, char *argv[]) {
 
   size_t runs = 0, particles = 0;
-  double h = 1.12575, size = 1., rho = 1.;
+  double h = 1.2348, size = 1., rho = 1.;
   double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
         "\nGenerates a cell pair, filled with particles on a Cartesian grid."
         "\nThese are then interacted using runner_dopair1_density."
         "\n\nOptions:"
-        "\n-h DISTANCE=1.1255 - Smoothing length"
+        "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
@@ -268,6 +268,7 @@ int main(int argc, char *argv[]) {
 
   /* Help users... */
   message("Smoothing length: h = %f", h);
+  message("Kernel          : %s", kernel_name);
   message("Neighbour target: N = %f", kernel_nwneigh);
 
   /* Build the infrastructure */
