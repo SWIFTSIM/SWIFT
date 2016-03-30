@@ -41,6 +41,7 @@ tests/input.hdf5
 tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
+tests/testKernel
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf
