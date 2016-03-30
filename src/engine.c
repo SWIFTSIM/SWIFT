@@ -2268,7 +2268,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Verify that the links are correct */
   /* MATTHIEU: To be commented out once we are happy */
-  for (size_t k = 0; k < nr_gparts; ++k) {
+  for (size_t k = 0; k < s->nr_gparts; ++k) {
 
     if (s->gparts[k].id > 0) {
 
@@ -2280,7 +2280,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
         error("Linked particles are not at the same position !");
     }
   }
-  for (size_t k = 0; k < nr_parts; ++k) {
+  for (size_t k = 0; k < s->nr_parts; ++k) {
 
     if (s->parts[k].gpart != NULL) {
 
