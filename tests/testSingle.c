@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
   p2.force.POrho2 = p2.u * (const_hydro_gamma - 1.0f) / p2.rho;
 
   /* Dump a header. */
-  printParticle_single(&p1);
-  printParticle_single(&p2);
+  //printParticle_single(&p1, NULL);
+  //printParticle_single(&p2, NULL);
   printf("# r a_1 udt_1 a_2 udt_2\n");
 
   /* Loop over the different radii. */
@@ -103,9 +103,9 @@ int main(int argc, char *argv[]) {
     r2 = dx[0] * dx[0];
 
     /* Clear the particle fields. */
-    p1.a[0] = 0.0f;
+    p1.a_hydro[0] = 0.0f;
     p1.force.u_dt = 0.0f;
-    p2.a[0] = 0.0f;
+    p2.a_hydro[0] = 0.0f;
     p2.force.u_dt = 0.0f;
 
     /* Interact the particles. */
@@ -130,8 +130,8 @@ int main(int argc, char *argv[]) {
 
     /* Output the results. */
     printf(
-        "%.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n", -dx[0], p1.a[0],
-        p1.a[1], p1.a[2], p1.force.u_dt,
+        "%.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e\n", -dx[0],
+        p1.a_hydro[0], p1.a_hydro[1], p1.a_hydro[2], p1.force.u_dt,
         /// -dx[0] , p1.rho , p1.density.wcount , p2.rho , p2.density.wcount ,
         w, dwdx, gradw[0], gradw[1], gradw[2]);
 

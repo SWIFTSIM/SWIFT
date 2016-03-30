@@ -1235,7 +1235,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 #else
 
           /* Does pi need to be updated too? */
-          if (pi->dt <= dt_step) {
+          if (pi->ti_end <= ti_current) {
 
             /* Add this interaction to the symmetric queue. */
             r2q2[icount2] = r2;
