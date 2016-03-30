@@ -22,8 +22,7 @@
 /**
  * @brief Computes the gravity time-step of a given particle
  *
- * @param p Pointer to the particle data
- * @param xp Pointer to the extended particle data
+ * @param gp Pointer to the g-particle data
  *
  */
 
