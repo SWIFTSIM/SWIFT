@@ -85,12 +85,11 @@ useful quantity to use in implementations of SPH. It is defined as (in
   N_{\rm ngb} \equiv \frac{4}{3}\pi \left(\frac{H}{h}\eta\right)^3.
 \end{equation}
 
-Once the fixed ratio $H/h$ is known (via equations \ref{eq:sph:sigma}
-and \ref{eq:sph:h}) for a given kernel, the number of neighbours only
-depends on the resolution $\eta$.
-For the usual cubic spline kernel (see below), setting the simulation
-resolution to $\eta=1.2348$ yields the commonly used value $N_{\rm
-  ngb} = 48$.
+Once the fixed ratio $\gamma= H/h$ is known (via equations
+\ref{eq:sph:sigma} and \ref{eq:sph:h}) for a given kernel, the number
+of neighbours only depends on the resolution $\eta$.  For the usual
+cubic spline kernel (see below), setting the simulation resolution to
+$\eta=1.2348$ yields the commonly used value $N_{\rm ngb} = 48$.
 
 \section{Kernels available in \swift}
 
@@ -118,7 +117,7 @@ whilst the Wendland kernels read
 
 \subsubsection{Cubic spline ($M_4$) kernel}
 
-In 3D, we have $C=\frac{16}{\pi}$ and $H/h = 1.825742$.\\
+In 3D, we have $C=\frac{16}{\pi}$ and $\gamma=H/h = 1.825742$.\\
 The kernel function $f(u)$ reads:
 
 \begin{equation}
@@ -133,7 +132,22 @@ The kernel function $f(u)$ reads:
 
 \subsubsection{Quartic spline ($M_5$) kernel}
 
-In 3D, we have $C=\frac{15625}{512\pi}$ and $H/h = 2.018932$.\\
+In 3D, we have $C=\frac{15625}{512\pi}$ and $\gamma=H/h = 1.825742$.\\
+The kernel function $f(u)$ reads:
+
+\begin{equation}
+  M_4(u) = \left\lbrace\begin{array}{rcl}
+  3u^3 - 3u^2 + \frac{1}{2} & \mbox{if} & u<\frac{1}{2}\\
+  -u^3 + 3u^2 - 3u + 1 & \mbox{if} & u \geq \frac{1}{2}
+  \end{array}
+  \right.
+    \nonumber
+\end{equation}
+
+
+\subsubsection{Quartic spline ($M_5$) kernel}
+
+In 3D, we have $C=\frac{15625}{512\pi}$ and $\gamma=H/h = 2.018932$.\\
 The kernel function $f(u)$ reads:
 
 \begin{equation}
@@ -149,7 +163,7 @@ The kernel function $f(u)$ reads:
 
 \subsubsection{Quintic spline ($M_6$) kernel}
 
-In 3D, we have $C=\frac{2187}{40\pi}$ and $H/h = 2.195775$.\\
+In 3D, we have $C=\frac{2187}{40\pi}$ and $\gamma=H/h = 2.195775$.\\
 The kernel function $f(u)$ reads:
 
 \begin{equation}
@@ -165,7 +179,7 @@ The kernel function $f(u)$ reads:
 
 \subsubsection{Wendland C2 kernel}
 
-In 3D, we have $C=\frac{21}{2\pi}$ and $H/h = 1.936492$.\\
+In 3D, we have $C=\frac{21}{2\pi}$ and $\gamma=H/h = 1.936492$.\\
 The kernel function $f(u)$ reads:
 
 \begin{align}
@@ -176,7 +190,7 @@ The kernel function $f(u)$ reads:
 
 \subsubsection{Wendland C4 kernel}
 
-In 3D, we have $C=\frac{495}{32\pi}$ and $H/h = 2.207940$.\\
+In 3D, we have $C=\frac{495}{32\pi}$ and $\gamma=H/h = 2.207940$.\\
 The kernel function $f(u)$ reads:
 
 \begin{align}
@@ -188,7 +202,7 @@ The kernel function $f(u)$ reads:
 
 \subsubsection{Wendland C6 kernel}
 
-In 3D, we have $C=\frac{1365}{64\pi}$ and $H/h = 2.449490$.\\
+In 3D, we have $C=\frac{1365}{64\pi}$ and $\gamma=H/h = 2.449490$.\\
 The kernel function $f(u)$ reads:
 
 \begin{align}
