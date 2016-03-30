@@ -45,6 +45,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+#include "gravity.h"
 #include "hydro.h"
 #include "space.h"
 #include "timers.h"
@@ -600,6 +601,27 @@ void cell_init_parts(struct cell *c, void *data) {
     hydro_first_init_part(&p[i], &xp[i]);
     hydro_init_part(&p[i]);
     hydro_reset_acceleration(&p[i]);
+  }
+  c->ti_end_min = 0;
+  c->ti_end_max = 0;
+}
+
+/**
+ * @brief Initialises all g-particles to a valid state even if the ICs were
+ *stupid
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_init_gparts(struct cell *c, void *data) {
+
+  struct gpart *gp = c->gparts;
+  const int gcount = c->gcount;
+
+  for (int i = 0; i < gcount; ++i) {
+    gp[i].ti_begin = 0;
+    gp[i].ti_end = 0;
+    gravity_first_init_gpart(&gp[i]);
   }
   c->ti_end_min = 0;
   c->ti_end_max = 0;
