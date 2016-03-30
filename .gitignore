@@ -41,6 +41,7 @@ tests/input.hdf5
 tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
+tests/testParser
 
 theory/latex/swift.pdf
 
