@@ -25,15 +25,23 @@ examples/swift_mindt
 examples/swift_mindt_mpi
 examples/swift_mpi
 
-tests/testVectorize
-tests/brute_force.dat
-tests/swift_dopair.dat
+tests/testPair
+tests/brute_force_standard.dat
+tests/swift_dopair_standard.dat
+tests/brute_force_perturbed.dat
+tests/swift_dopair_perturbed.dat
+tests/test27cells
+tests/brute_force_27_standard.dat
+tests/swift_dopair_27_standard.dat
+tests/brute_force_27_perturbed.dat
+tests/swift_dopair_27_perturbed.dat
 tests/testGreetings
 tests/testReading
 tests/input.hdf5
 tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
+tests/testParser
 
 theory/latex/swift.pdf
 

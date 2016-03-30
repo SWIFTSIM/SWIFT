@@ -32,7 +32,8 @@
 #define proxy_tag_count 0
 #define proxy_tag_parts 1
 #define proxy_tag_xparts 2
-#define proxy_tag_cells 3
+#define proxy_tag_gparts 3
+#define proxy_tag_cells 4
 
 /* Data structure for the proxy. */
 struct proxy {
@@ -53,14 +54,21 @@ struct proxy {
   /* The parts and xparts buffers for input and output. */
   struct part *parts_in, *parts_out;
   struct xpart *xparts_in, *xparts_out;
+  struct gpart *gparts_in, *gparts_out;
   int size_parts_in, size_parts_out;
   int nr_parts_in, nr_parts_out;
+  int size_gparts_in, size_gparts_out;
+  int nr_gparts_in, nr_gparts_out;
+
+  /* Buffer to hold the incomming/outgoing particle counts. */
+  int buff_out[2], buff_in[2];
 
 /* MPI request handles. */
 #ifdef WITH_MPI
   MPI_Request req_parts_count_out, req_parts_count_in;
   MPI_Request req_parts_out, req_parts_in;
   MPI_Request req_xparts_out, req_xparts_in;
+  MPI_Request req_gparts_out, req_gparts_in;
   MPI_Request req_cells_count_out, req_cells_count_in;
   MPI_Request req_cells_out, req_cells_in;
 #endif
@@ -70,6 +78,7 @@ struct proxy {
 void proxy_init(struct proxy *p, int mynodeID, int nodeID);
 void proxy_parts_load(struct proxy *p, const struct part *parts,
                       const struct xpart *xparts, int N);
+void proxy_gparts_load(struct proxy *p, const struct gpart *gparts, int N);
 void proxy_parts_exch1(struct proxy *p);
 void proxy_parts_exch2(struct proxy *p);
 void proxy_addcell_in(struct proxy *p, struct cell *c);

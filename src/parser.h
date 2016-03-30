@@ -22,7 +22,7 @@
 #include <stdio.h>
 
 #define PARSER_MAX_LINE_SIZE 128
-#define PARSER_MAX_NO_OF_PARAMS 512 
+#define PARSER_MAX_NO_OF_PARAMS 512
 
 #define PARSER_COMMENT_STRING "#"
 #define PARSER_COMMENT_CHAR '#'
@@ -32,22 +32,26 @@
 #define PARSER_END_OF_FILE "..."
 
 struct parameter {
-    char name [PARSER_MAX_LINE_SIZE];
-    char value [PARSER_MAX_LINE_SIZE];
+  char name[PARSER_MAX_LINE_SIZE];
+  char value[PARSER_MAX_LINE_SIZE];
 };
 
 struct swift_params {
-    struct parameter data [PARSER_MAX_NO_OF_PARAMS];
-    int count;
+  struct parameter data[PARSER_MAX_NO_OF_PARAMS];
+  int count;
 };
 
 /* Public API. */
 void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(struct swift_params *params);
-void parser_write_params_to_file(struct swift_params *params, const char *file_name);
-void parser_get_param_int(struct swift_params *params, char *name, int *retParam);
-void parser_get_param_float(struct swift_params *params, char *name, float *retParam);
-void parser_get_param_double(struct swift_params *params, char * name, double * retParam);
-void parser_get_param_string(struct swift_params *params, char *name, char *retParam);
+void parser_write_params_to_file(struct swift_params *params, const char *file_name); 
+void parser_get_param_int(struct swift_params *params, char *name,
+                          int *retParam);
+void parser_get_param_float(struct swift_params *params, char *name,
+                            float *retParam);
+void parser_get_param_double(struct swift_params *params, char *name,
+                             double *retParam);
+void parser_get_param_string(struct swift_params *params, char *name,
+                             char *retParam);
 
 #endif /* SWIFT_PARSER_H */

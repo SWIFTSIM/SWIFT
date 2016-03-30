@@ -33,6 +33,7 @@ void pairs_single_density(double *dim, long long int pid,
                           struct part *__restrict__ parts, int N, int periodic);
 
 void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj);
+void self_all_density(struct runner *r, struct cell *ci);
 
 void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
               int periodic);

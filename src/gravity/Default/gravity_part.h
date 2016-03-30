@@ -29,7 +29,7 @@ struct gpart {
   float v_full[3];
 
   /* Particle acceleration. */
-  float a[3];
+  float a_grav[3];
 
   /* Particle mass. */
   float mass;

@@ -236,6 +236,53 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 }
 
+void self_all_density(struct runner *r, struct cell *ci) {
+  float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
+  struct part *pi, *pj;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->count; ++i) {
+
+    pi = &ci->parts[i];
+    hi = pi->h;
+    hig2 = hi * hi * kernel_gamma2;
+
+    for (int j = i + 1; j < ci->count; ++j) {
+
+      pj = &ci->parts[j];
+      hj = pj->h;
+      hjg2 = hj * hj * kernel_gamma2;
+
+      if (pi == pj) continue;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dxi[k] = ci->parts[i].x[k] - ci->parts[j].x[k];
+        r2 += dxi[k] * dxi[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2) {
+
+        /* Interact */
+        runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
+      }
+
+      /* Hit or miss? */
+      if (r2 < hjg2) {
+
+        dxi[0] = -dxi[0];
+        dxi[1] = -dxi[1];
+        dxi[2] = -dxi[2];
+
+        /* Interact */
+        runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi);
+      }
+    }
+  }
+}
+
 void pairs_single_grav(double *dim, long long int pid,
                        struct gpart *__restrict__ parts, int N, int periodic) {
 
@@ -253,9 +300,9 @@ void pairs_single_grav(double *dim, long long int pid,
       break;
   if (k == N) error("Part not found.");
   pi = parts[k];
-  pi.a[0] = 0.0f;
-  pi.a[1] = 0.0f;
-  pi.a[2] = 0.0f;
+  pi.a_grav[0] = 0.0f;
+  pi.a_grav[1] = 0.0f;
+  pi.a_grav[2] = 0.0f;
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -273,15 +320,15 @@ void pairs_single_grav(double *dim, long long int pid,
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
     runner_iact_grav(r2, fdx, &pi, &pj);
-    a[0] += pi.a[0];
-    a[1] += pi.a[1];
-    a[2] += pi.a[2];
-    aabs[0] += fabsf(pi.a[0]);
-    aabs[1] += fabsf(pi.a[1]);
-    aabs[2] += fabsf(pi.a[2]);
-    pi.a[0] = 0.0f;
-    pi.a[1] = 0.0f;
-    pi.a[2] = 0.0f;
+    a[0] += pi.a_grav[0];
+    a[1] += pi.a_grav[1];
+    a[2] += pi.a_grav[2];
+    aabs[0] += fabsf(pi.a_grav[0]);
+    aabs[1] += fabsf(pi.a_grav[1]);
+    aabs[2] += fabsf(pi.a_grav[2]);
+    pi.a_grav[0] = 0.0f;
+    pi.a_grav[1] = 0.0f;
+    pi.a_grav[2] = 0.0f;
   }
 
   /* Dump the result. */

@@ -24,21 +24,21 @@
 
 int main(int argc, char *argv[]) {
 
-  const char * input_file = argv[1];
-  
-  /* Create a structure to read file into. */ 
+  const char *input_file = argv[1];
+
+  /* Create a structure to read file into. */
   struct swift_params param_file;
-  
+
   /* Create variables that will be set from the parameter file. */
   int no_of_threads = 0;
   int no_of_time_steps = 0;
   int kernel = 0;
   float max_h = 0.0f;
   double start_time = 0.0;
-  char ic_file [PARSER_MAX_LINE_SIZE];
+  char ic_file[PARSER_MAX_LINE_SIZE];
 
   /* Read the parameter file. */
-  parser_read_file(input_file,&param_file);
+  parser_read_file(input_file, &param_file);
 
   /* Print the contents of the structure to stdout. */
   parser_print_params(&param_file);
