@@ -35,7 +35,7 @@
 #define kernel_ivals 2  /* Number of branches */
 #define kernel_gamma 1.825742
 #define kernel_constant 16. * M_1_PI
-static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {3.f,  -3.f, 0.f,  0.5f, /* 0 < u < 0.5 */
                                     -1.f, 3.f,  -3.f, 1.f,  /* 0.5 < u < 1 */
                                     0.f,  0.f,  0.f,  0.f}; /* 1 < u */
@@ -49,7 +49,7 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_ivals 5
 #define kernel_gamma 2.018932
 #define kernel_constant 15625. * M_1_PI / 512.
-static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         6.f,  0.f,  -2.4f, 0.f,   0.368f, /* 0 < u < 0.2 */
         -4.f, 8.f,  -4.8f, 0.32f, 0.352f, /* 0.2 < u < 0.4 */
@@ -67,7 +67,7 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_ivals 3
 #define kernel_gamma 2.195775
 #define kernel_constant 2187. * M_1_PI / 40.
-static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         -10.f,        10.f,      0.f,
         -2.2222222f,  0.f,       0.271604938f, /* 0 < u < 1/3 */
@@ -87,7 +87,7 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_ivals 1
 #define kernel_gamma 1.936492
 #define kernel_constant 21. * M_1_PI / 2.
-static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         4.f, -15.f, 20.f, -10.f, 1.f,  /* 0 < u < 1 */
         0.f, 0.f,   0.f,  0.f,   0.f}; /* 1 < u */
@@ -101,7 +101,7 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_ivals 1
 #define kernel_gamma 2.207940
 #define kernel_constant 495. * M_1_PI / 32.
-static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         11.666667f, -64.f,       140.f, -149.333333f, 70.f,
         0.f,        -9.3333333f, 0.f,   1.f, /* 0 < u < 1 */
@@ -117,7 +117,7 @@ static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_ivals 1
 #define kernel_gamma 2.449490
 #define kernel_constant 1365. * M_1_PI / 64.
-static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
+static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         32.f, -231.f, 704.f, -1155.f, 1056.f, -462.f,
         0.f,  66.f,   0.f,   -11.f,   0.f,    1.f, /* 0 < u < 1 */
