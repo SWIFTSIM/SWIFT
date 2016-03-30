@@ -31,8 +31,8 @@
 
 /* Coefficients for the kernel. */
 #define kernel_name "Cubic spline (M4)"
-#define kernel_degree 3
-#define kernel_ivals 2
+#define kernel_degree 3 /* Degree of the polynomial */
+#define kernel_ivals 2  /* Number of branches */
 #define kernel_gamma 1.825742
 #define kernel_constant 16. * M_1_PI
 static float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
