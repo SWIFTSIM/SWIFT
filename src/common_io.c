@@ -45,6 +45,9 @@
 #include "kernel.h"
 #include "version.h"
 
+const char* particle_type_names[NUM_PARTICLE_TYPES] = {
+    "Gas", "DM", "Boundary", "Dummy", "Star", "BH"};
+
 /**
  * @brief Converts a C data type to the HDF5 equivalent.
  *
@@ -402,45 +405,59 @@ void createXMFfile() {
  *snapshot
  *
  * @param xmfFile The file to write in.
- * @param Nparts The number of particles.
  * @param hdfFileName The name of the HDF5 file corresponding to this output.
  * @param time The current simulation time.
  */
-void writeXMFheader(FILE* xmfFile, long long Nparts, char* hdfFileName,
-                    float time) {
+void writeXMFoutputheader(FILE* xmfFile, char* hdfFileName, float time) {
   /* Write end of file */
 
+  fprintf(xmfFile, "<!-- XMF description for file: %s -->\n", hdfFileName);
   fprintf(xmfFile,
           "<Grid GridType=\"Collection\" CollectionType=\"Spatial\">\n");
   fprintf(xmfFile, "<Time Type=\"Single\" Value=\"%f\"/>\n", time);
-  fprintf(xmfFile, "<Grid Name=\"Gas\" GridType=\"Uniform\">\n");
-  fprintf(xmfFile,
-          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%lld\"/>\n",
-          Nparts);
-  fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
-  fprintf(xmfFile,
-          "<DataItem Dimensions=\"%lld 3\" NumberType=\"Double\" "
-          "Precision=\"8\" "
-          "Format=\"HDF\">%s:/PartType0/Coordinates</DataItem>\n",
-          Nparts, hdfFileName);
-  fprintf(xmfFile, "</Geometry>");
 }
 
 /**
  * @brief Writes the end of the XMF file (closes all open markups)
  *
  * @param xmfFile The file to write in.
+ * @param output The number of this output.
+ * @param time The current simulation time.
  */
-void writeXMFfooter(FILE* xmfFile) {
+void writeXMFoutputfooter(FILE* xmfFile, int output, float time) {
   /* Write end of the section of this time step */
 
-  fprintf(xmfFile, "\n</Grid>\n");
-  fprintf(xmfFile, "</Grid>\n");
-  fprintf(xmfFile, "\n</Grid>\n");
+  fprintf(xmfFile,
+          "\n</Grid> <!-- End of meta-data for output=%03i, time=%f -->\n",
+          output, time);
+  fprintf(xmfFile, "\n</Grid> <!-- timeSeries -->\n");
   fprintf(xmfFile, "</Domain>\n");
   fprintf(xmfFile, "</Xdmf>\n");
 
   fclose(xmfFile);
+}
+
+void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
+                         enum PARTICLE_TYPE ptype) {
+  fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
+          particle_type_names[ptype]);
+  fprintf(xmfFile,
+          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zi\"/>\n", N);
+  fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
+  fprintf(xmfFile,
+          "<DataItem Dimensions=\"%zi 3\" NumberType=\"Double\" "
+          "Precision=\"8\" "
+          "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
+          N, hdfFileName, ptype);
+  fprintf(xmfFile,
+          "</Geometry>\n <!-- Done geometry for %s, start of particle fields "
+          "list -->\n",
+          particle_type_names[ptype]);
+}
+
+void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
+  fprintf(xmfFile, "</Grid> <!-- End of meta-data for parttype=%s -->\n",
+          particle_type_names[ptype]);
 }
 
 /**
@@ -448,6 +465,8 @@ void writeXMFfooter(FILE* xmfFile) {
  *
  * @param xmfFile The file in which to write
  * @param fileName The name of the HDF5 file associated to this XMF descriptor.
+ * @param partTypeGroupName The name of the group containing the particles in
+ *the HDF5 file.
  * @param name The name of the array in the HDF5 file.
  * @param N The number of particles.
  * @param dim The dimension of the quantity (1 for scalars, 3 for vectors).
@@ -455,21 +474,21 @@ void writeXMFfooter(FILE* xmfFile) {
  *
  * @todo Treat the types in a better way.
  */
-void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N,
-                  int dim, enum DATA_TYPE type) {
+void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
+                  char* name, size_t N, int dim, enum DATA_TYPE type) {
   fprintf(xmfFile,
           "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",
           name, dim == 1 ? "Scalar" : "Vector");
   if (dim == 1)
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%lld\" NumberType=\"Double\" "
-            "Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n",
-            N, type == FLOAT ? 4 : 8, fileName, name);
+            "<DataItem Dimensions=\"%zi\" NumberType=\"Double\" "
+            "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
+            N, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   else
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%lld %d\" NumberType=\"Double\" "
-            "Precision=\"%d\" Format=\"HDF\">%s:/PartType0/%s</DataItem>\n",
-            N, dim, type == FLOAT ? 4 : 8, fileName, name);
+            "<DataItem Dimensions=\"%zi %d\" NumberType=\"Double\" "
+            "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
+            N, dim, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
 }
 
@@ -483,14 +502,13 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* name, long long N,
  * @param gparts The array of #gpart freshly read in.
  * @param Ndm The number of DM particles read in.
  */
-void prepare_dm_gparts(struct gpart* gparts, size_t Ndm) {
+void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
 
   /* Let's give all these gparts a negative id */
   for (size_t i = 0; i < Ndm; ++i) {
-
     /* 0 or negative ids are not allowed */
     if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle");
+      error("0 or negative ID for DM particle %zd: ID=%lld", i, gparts[i].id_or_neg_offset);
   }
 }
 
@@ -506,8 +524,9 @@ void prepare_dm_gparts(struct gpart* gparts, size_t Ndm) {
  * @param Ngas The number of gas particles read in.
  * @param Ndm The number of DM particles read in.
  */
-void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts,
-                            size_t Ngas, size_t Ndm) {
+void duplicate_hydro_gparts(struct part* const parts,
+                            struct gpart* const gparts, size_t Ngas,
+                            size_t Ndm) {
 
   for (size_t i = 0; i < Ngas; ++i) {
 
@@ -536,13 +555,16 @@ void duplicate_hydro_gparts(struct part* parts, struct gpart* gparts,
  * @param dmparts The array of #gpart containg DM particles to be filled.
  * @param Ndm The number of DM particles.
  */
-void collect_dm_gparts(struct gpart* gparts, size_t Ntot, struct gpart* dmparts,
-                       size_t Ndm) {
+void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
+                       struct gpart* const dmparts, size_t Ndm) {
 
   size_t count = 0;
 
   /* Loop over all gparts */
   for (size_t i = 0; i < Ntot; ++i) {
+
+    /* message("i=%zd count=%zd id=%lld part=%p", i, count, gparts[i].id,
+     * gparts[i].part); */
 
     /* And collect the DM ones */
     if (gparts[i].id_or_neg_offset > 0) {

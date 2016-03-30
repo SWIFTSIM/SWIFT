@@ -267,9 +267,9 @@ void runner_dograv_down(struct runner *r, struct cell *c) {
     /* Apply the multipole acceleration to all gparts. */
     for (int k = 0; k < c->gcount; k++) {
       struct gpart *p = &c->gparts[k];
-      p->a[0] += m->a[0];
-      p->a[1] += m->a[1];
-      p->a[2] += m->a[2];
+      p->a_grav[0] += m->a[0];
+      p->a_grav[1] += m->a[1];
+      p->a_grav[2] += m->a[2];
     }
   }
 }
@@ -594,5 +594,4 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
 
   if (gettimer) TIMER_TOC(timer_dosub_grav);
 }
-
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */

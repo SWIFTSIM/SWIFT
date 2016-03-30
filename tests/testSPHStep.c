@@ -77,6 +77,10 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
 
 #ifdef DEFAULT_SPH
 
+/* Just a forward declaration... */
+void runner_doself1_density(struct runner *r, struct cell *ci);
+void runner_doself2_force(struct runner *r, struct cell *ci);
+
 /* Run a full time step integration for one cell */
 int main() {
 
@@ -132,7 +136,7 @@ int main() {
 
   /* Initialise the particles */
   for (j = 0; j < 27; ++j) {
-    runner_doinit(&r, cells[j]);
+    runner_doinit(&r, cells[j], 0);
   }
 
   /* Compute density */
@@ -145,7 +149,7 @@ int main() {
   runner_doself2_force(&r, ci);
   runner_dokick(&r, ci, 1);
 
-  message("t_end=%f", p->t_end);
+  message("ti_end=%d", p->ti_end);
 
   free(ci->parts);
   free(ci->xparts);

@@ -45,6 +45,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+#include "gravity.h"
 #include "hydro.h"
 #include "space.h"
 #include "timers.h"
@@ -89,14 +90,18 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
   c->ti_end_min = pc->ti_end_min;
   c->ti_end_max = pc->ti_end_max;
   c->count = pc->count;
+  c->gcount = pc->gcount;
   c->tag = pc->tag;
 
-  /* Fill the progeny recursively, depth-first. */
+  /* Number of new cells created. */
   int count = 1;
+
+  /* Fill the progeny recursively, depth-first. */
   for (int k = 0; k < 8; k++)
     if (pc->progeny[k] >= 0) {
       struct cell *temp = space_getcell(s);
       temp->count = 0;
+      temp->gcount = 0;
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
@@ -122,7 +127,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
 }
 
 /**
- * @brief Link the cells recursively to the given part array.
+ * @brief Link the cells recursively to the given #part array.
  *
  * @param c The #cell.
  * @param parts The #part array.
@@ -130,7 +135,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
  * @return The number of particles linked.
  */
 
-int cell_link(struct cell *c, struct part *parts) {
+int cell_link_parts(struct cell *c, struct part *parts) {
 
   c->parts = parts;
 
@@ -139,12 +144,38 @@ int cell_link(struct cell *c, struct part *parts) {
     int offset = 0;
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL)
-        offset += cell_link(c->progeny[k], &parts[offset]);
+        offset += cell_link_parts(c->progeny[k], &parts[offset]);
     }
   }
 
-  /* Return the total number of unpacked cells. */
+  /* Return the total number of linked particles. */
   return c->count;
+}
+
+/**
+ * @brief Link the cells recursively to the given #gpart array.
+ *
+ * @param c The #cell.
+ * @param gparts The #gpart array.
+ *
+ * @return The number of particles linked.
+ */
+
+int cell_link_gparts(struct cell *c, struct gpart *gparts) {
+
+  c->gparts = gparts;
+
+  /* Fill the progeny recursively, depth-first. */
+  if (c->split) {
+    int offset = 0;
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        offset += cell_link_gparts(c->progeny[k], &gparts[offset]);
+    }
+  }
+
+  /* Return the total number of linked particles. */
+  return c->gcount;
 }
 
 /**
@@ -164,6 +195,7 @@ int cell_pack(struct cell *c, struct pcell *pc) {
   pc->ti_end_min = c->ti_end_min;
   pc->ti_end_max = c->ti_end_max;
   pc->count = c->count;
+  pc->gcount = c->gcount;
   c->tag = pc->tag = atomic_inc(&cell_next_tag) % cell_max_tag;
 
   /* Fill in the progeny, depth-first recursion. */
@@ -569,6 +601,27 @@ void cell_init_parts(struct cell *c, void *data) {
     hydro_first_init_part(&p[i], &xp[i]);
     hydro_init_part(&p[i]);
     hydro_reset_acceleration(&p[i]);
+  }
+  c->ti_end_min = 0;
+  c->ti_end_max = 0;
+}
+
+/**
+ * @brief Initialises all g-particles to a valid state even if the ICs were
+ *stupid
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_init_gparts(struct cell *c, void *data) {
+
+  struct gpart *gp = c->gparts;
+  const int gcount = c->gcount;
+
+  for (int i = 0; i < gcount; ++i) {
+    gp[i].ti_begin = 0;
+    gp[i].ti_end = 0;
+    gravity_first_init_gpart(&gp[i]);
   }
   c->ti_end_min = 0;
   c->ti_end_max = 0;
