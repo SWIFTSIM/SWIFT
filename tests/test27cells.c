@@ -24,8 +24,15 @@
 #include <unistd.h>
 #include "swift.h"
 
+enum velocity_types {
+  velocity_zero,
+  velocity_random,
+  velocity_divergent,
+  velocity_rotating
+};
+
 /**
- * Returns a random number (uniformly distributed) in [a,b[
+ * @breif Returns a random number (uniformly distributed) in [a,b[
  */
 double random_uniform(double a, double b) {
   return (rand() / (double)RAND_MAX) * (b - a) + a;
@@ -35,7 +42,8 @@ double random_uniform(double a, double b) {
  * particles are generated on a mesh with unit spacing
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
-                       double density, long long *partId, double pert) {
+                       double density, long long *partId, double pert,
+                       enum velocity_types vel) {
   const size_t count = n * n * n;
   const double volume = size * size * size;
   struct cell *cell = malloc(sizeof(struct cell));
@@ -61,12 +69,28 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->x[2] =
             offset[2] +
             size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
-        part->v[0] = part->x[0] - 1.5;
-        part->v[1] = part->x[1] - 1.5;
-        part->v[2] = part->x[2] - 1.5;
-        //part->v[0] = random_uniform(-0.05, 0.05);
-        //part->v[1] = random_uniform(-0.05, 0.05);
-        //part->v[2] = random_uniform(-0.05, 0.05);
+        switch (vel) {
+          case velocity_zero:
+            part->v[0] = 0.f;
+            part->v[1] = 0.f;
+            part->v[2] = 0.f;
+            break;
+          case velocity_random:
+            part->v[0] = random_uniform(-0.05, 0.05);
+            part->v[1] = random_uniform(-0.05, 0.05);
+            part->v[2] = random_uniform(-0.05, 0.05);
+            break;
+          case velocity_divergent:
+            part->v[0] = part->x[0] - 1.5 * size;
+            part->v[1] = part->x[1] - 1.5 * size;
+            part->v[2] = part->x[2] - 1.5 * size;
+            break;
+          case velocity_rotating:
+            part->v[0] = part->x[1];
+            part->v[1] = -part->x[0];
+            part->v[2] = 0.f;
+            break;
+        }
         part->h = size * h / (float)n;
         part->id = ++(*partId);
         part->mass = density * volume / count;
@@ -213,6 +237,7 @@ int main(int argc, char *argv[]) {
   double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
+  int vel = velocity_zero;
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -222,7 +247,7 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   char c;
-  while ((c = getopt(argc, argv, "m:s:h:p:r:t:d:f:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:p:r:t:d:f:v:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -245,6 +270,9 @@ int main(int argc, char *argv[]) {
       case 'f':
         strcpy(outputFileNameExtension, optarg);
         break;
+      case 'v':
+        sscanf(optarg, "%d", &vel);
+        break;
       case '?':
         error("Unknown option.");
         break;
@@ -261,15 +289,21 @@ int main(int argc, char *argv[]) {
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
+        "\n-v type (0,1,2,3)  - Velocity field: (zero, random, divergent, "
+        "rotating)"
         "\n-f fileName        - Part of the file name used to save the dumps\n",
         argv[0]);
     exit(1);
   }
 
   /* Help users... */
-  message("Smoothing length: h = %f", h);
-  message("Kernel          : %s", kernel_name);
-  message("Neighbour target: N = %f", kernel_nwneigh);
+  message("Smoothing length: h = %f", h * size);
+  message("Kernel:               %s", kernel_name);
+  message("Neighbour target: N = %f", h * h * h * kernel_nwneigh / 1.88273);
+  message("Density target: rho = %f", rho);
+  message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
+  message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
+  printf("\n");
 
   /* Build the infrastructure */
   struct space space;
@@ -293,8 +327,8 @@ int main(int argc, char *argv[]) {
       for (int k = 0; k < 3; ++k) {
 
         double offset[3] = {i * size, j * size, k * size};
-        cells[i * 9 + j * 3 + k] =
-            make_cell(particles, offset, size, h, rho, &partId, perturbation);
+        cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
+                                             &partId, perturbation, vel);
       }
     }
   }
