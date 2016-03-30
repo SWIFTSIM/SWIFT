@@ -94,13 +94,16 @@ static void parse_line(FILE *fp, struct swift_params *params) {
 
     char line [PARSER_MAX_LINE_SIZE];
     char trim_line [PARSER_MAX_LINE_SIZE];
+    char tmp_str [PARSER_MAX_LINE_SIZE];
+    char param_name [PARSER_MAX_LINE_SIZE];
+    static char section [PARSER_MAX_LINE_SIZE];
 
-    /* Read a line of the file */
-    if(fgets(line,PARSER_MAX_LINE_SIZE,fp) != NULL) {
+    /* Read a line of the file if it doesn't begin with a comment*/
+    if(fgets(line,PARSER_MAX_LINE_SIZE,fp) != NULL && (*line != PARSER_COMMENT_CHAR) ) {
         
         char *token;
         /* Remove comments */
-        token = strtok(line,PARSER_COMMENT_CHAR);
+        token = strtok(line,PARSER_COMMENT_STRING);
         strcpy(trim_line,token);
         
         /* Check if the line contains a value */
@@ -110,13 +113,27 @@ static void parse_line(FILE *fp, struct swift_params *params) {
             error("Found more than one parameter in '%s', only one allowed.",line);
           }
           else { 
-            /* Take first token as the parameter name. */
-            token = strtok(trim_line,PARSER_VALUE_STRING);
-            strcpy(params->data[params->count].name,token);
+            /* Take first token as the parameter name and trim leading white space. */
+            token = strtok(trim_line," :\t");
+            strcpy(tmp_str,token);
             
             /* Take second token as the parameter value. */
-            token = strtok (NULL, " #\n");
-            strcpy(params->data[params->count++].value,token);
+            token = strtok(NULL, " #\n");
+           
+            /* If second token is NULL then the line must be a section heading. */
+            if(token == NULL) {
+                strcat(tmp_str,PARSER_VALUE_STRING);
+                strcpy(section,tmp_str);
+            }
+            else {
+                /* Prefix the parameter name with its section name and 
+                 * copy it into the parameter structure. */
+                strcpy(param_name,section);
+                strcat(param_name,tmp_str);
+                strcpy(params->data[params->count].name,param_name);
+                strcpy(params->data[params->count++].value,token);
+            }
+            
           }
         }
     }
@@ -133,7 +150,7 @@ static void parse_line(FILE *fp, struct swift_params *params) {
 
 void parser_get_param_int(struct swift_params *params, char * name, int * retParam) {
   
-   char str [128];
+   char str [PARSER_MAX_LINE_SIZE];
 
    for(int i=0; i<params->count; i++) {
 
@@ -163,7 +180,7 @@ void parser_get_param_int(struct swift_params *params, char * name, int * retPar
 
 void parser_get_param_float(struct swift_params *params, char * name, float * retParam) {
   
-   char str [128];
+   char str [PARSER_MAX_LINE_SIZE];
    
    for(int i=0; i<params->count; i++) {
 
@@ -194,7 +211,7 @@ void parser_get_param_float(struct swift_params *params, char * name, float * re
 
 void parser_get_param_double(struct swift_params *params, char * name, double * retParam) {
   
-   char str [128];
+   char str [PARSER_MAX_LINE_SIZE];
    
    for(int i=0; i<params->count; i++) {
 
@@ -265,12 +282,35 @@ void parser_print_params(struct swift_params *params) {
 void parser_write_params_to_file(struct swift_params *params, const char *file_name) {
 
     FILE *file = fopen(file_name, "w");
-    
+    char section [PARSER_MAX_LINE_SIZE];
+    char param_name [PARSER_MAX_LINE_SIZE];
+    char *token;
+
     /* Start of file identifier in YAML. */
     fprintf(file,"%s\n",PARSER_START_OF_FILE);
     
     for(int i=0; i<params->count; i++) {
-        fprintf(file,"%s%c %s\n",params->data[i].name,PARSER_VALUE_CHAR,params->data[i].value);
+       
+        /* Check that the parameter name contains a section name. */
+        if(strchr(params->data[i].name,PARSER_VALUE_CHAR)) {
+            /* Copy the parameter name into a temporary string and find the section name. */
+            strcpy(param_name,params->data[i].name);
+            token = strtok(param_name,PARSER_VALUE_STRING);
+     
+            /* If a new section name is found print it to the file. */
+            if(strcmp(token,section)) {
+                strcpy(section,token);
+                fprintf(file,"\n%s%c\n",section,PARSER_VALUE_CHAR);
+            }
+
+            /* Remove white space from parameter name and write it to the file. */
+            token = strtok(NULL, " #\n");
+        
+            fprintf(file,"\t%s%c %s\n",token,PARSER_VALUE_CHAR,params->data[i].value);
+        }
+        else {
+            fprintf(file,"%s%c %s\n",params->data[i].name,PARSER_VALUE_CHAR,params->data[i].value);
+        }
     }
 
     /* End of file identifier in YAML. */
