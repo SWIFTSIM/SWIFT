@@ -2463,6 +2463,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Print information about the hydro scheme */
   if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+  if (e->nodeID == 0) message("Hydrodynamic kernel: %s", kernel_name);
 
   /* Check we have sensible time bounds */
   if (timeBegin >= timeEnd)
