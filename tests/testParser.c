@@ -23,7 +23,6 @@
 #include <math.h>
 
 int main(int argc, char *argv[]) {
-
   const char *input_file = argv[1];
 
   /* Create a structure to read file into. */
@@ -42,29 +41,33 @@ int main(int argc, char *argv[]) {
 
   /* Print the contents of the structure to stdout. */
   parser_print_params(&param_file);
-  
+
   /* Print the contents of the structure to a file in YAML format. */
-  parser_write_params_to_file(&param_file,"test.yaml");
-  
-  /* Retrieve parameters and store them in variables defined above. 
-   * Have to specify the name of the parameter as it appears in the 
+  parser_write_params_to_file(&param_file, "test.yaml");
+
+  /* Retrieve parameters and store them in variables defined above.
+   * Have to specify the name of the parameter as it appears in the
    * input file: testParserInput.yaml.*/
-  parser_get_param_int(&param_file,"Scheduler:no_of_threads",&no_of_threads);
-  parser_get_param_int(&param_file,"Simulation:no_of_time_steps",&no_of_time_steps);
-  parser_get_param_float(&param_file,"Simulation:max_h",&max_h);
-  parser_get_param_double(&param_file,"Simulation:start_time",&start_time);
-  parser_get_param_string(&param_file,"IO:ic_file",ic_file);
- 
-  parser_get_param_int(&param_file,"kernel",&kernel);
+  parser_get_param_int(&param_file, "Scheduler:no_of_threads", &no_of_threads);
+  parser_get_param_int(&param_file, "Simulation:no_of_time_steps",
+                       &no_of_time_steps);
+  parser_get_param_float(&param_file, "Simulation:max_h", &max_h);
+  parser_get_param_double(&param_file, "Simulation:start_time", &start_time);
+  parser_get_param_string(&param_file, "IO:ic_file", ic_file);
+
+  parser_get_param_int(&param_file, "kernel", &kernel);
 
   /* Print the variables to check their values are correct. */
-  printf("no_of_threads: %d, no_of_time_steps: %d, max_h: %f, start_time: %lf, ic_file: %s, kernel: %d\n",no_of_threads, no_of_time_steps, max_h, start_time, ic_file, kernel);
+  printf(
+      "no_of_threads: %d, no_of_time_steps: %d, max_h: %f, start_time: %lf, "
+      "ic_file: %s, kernel: %d\n",
+      no_of_threads, no_of_time_steps, max_h, start_time, ic_file, kernel);
 
   assert(no_of_threads == 16);
   assert(no_of_time_steps == 10);
   assert(fabs(max_h - 1.1255) < 0.00001);
   assert(fabs(start_time - 1.23456789) < 0.00001);
-  assert(strcmp(ic_file,"ic_file.ini") == 0); /*strcmp returns 0 if correct.*/
+  assert(strcmp(ic_file, "ic_file.ini") == 0); /*strcmp returns 0 if correct.*/
   assert(kernel == 4);
 
   return 0;

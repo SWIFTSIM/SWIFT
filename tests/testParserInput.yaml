@@ -1,19 +1,19 @@
 ---
 #section_1:
-#    var_a: 4.5e10
-#    var_b: Hello World!
+#  var_a: 4.5e10
+#  var_b: Hello World!
+
+Scheduler:
+  no_of_threads:      16 # The number of threads that will be used. 
 
 kernel: 4
 
-Scheduler:
-    no_of_threads:      16 # The number of threads that will be used. 
-
 Simulation:    
-    no_of_time_steps:   10
-    max_h:              1.1255
-    start_time:         1.23456789
+  no_of_time_steps:   10
+  max_h:              1.1255
+  start_time:         1.23456789
 
 IO:
-    #Input file
-    ic_file:            ic_file.ini
+  #Input file
+  ic_file:            ic_file.ini
 ...
