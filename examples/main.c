@@ -45,23 +45,10 @@
 
 /* Local headers. */
 #include "swift.h"
-#include "gravity/Default/potentials.h"
 
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
 #define ENGINE_POLICY engine_policy_none
-#endif
-
-#if defined(MINIMAL_SPH) || defined(GADGET2_SPH) || defined(DEFAULT_SPH)
-#define ENGINE_HYDRO engine_policy_hydro
-#else
-#define ENGINE_HYDRO 0
-#endif
-
-#if defined(EXTERNAL_POTENTIAL)
-#define ENGINE_EXTERNAL_GRAVITY engine_policy_external_gravity
-#else
-#define ENGINE_EXTERNAL_GRAVITY 0
 #endif
 
 /**

@@ -40,7 +40,7 @@
 #include "task.h"
 #include "partition.h"
 #include "physical_constants.h"
-#include "gravity/Default/potentials.h"
+#include "potentials.h"
 
 /* Some constants. */
 enum engine_policy {

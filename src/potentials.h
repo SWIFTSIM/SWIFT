@@ -1,5 +1,6 @@
 #ifndef SWIFT_POTENTIALS_H
 #define SWIFT_POTENTIALS_H
+
 #include "physical_constants_cgs.h"
 #include "physical_constants.h"
 #include "units.h"
@@ -22,8 +23,7 @@ struct external_potential{
 #define External_Potential_Mass (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs)
 
 
-__attribute__((always_inline)) INLINE static float external_gravity_pointmass_timestep(const struct phys_const* phys_const,
-																													struct gpart* g) {
+__attribute__((always_inline)) INLINE static float external_gravity_pointmass_timestep(const struct phys_const* phys_const, struct gpart* g) {
 
   const double G_newton    = phys_const->newton_gravity;
   /* Currently no limit is imposed */
