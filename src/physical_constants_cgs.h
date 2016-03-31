@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (ptcedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_PHYSICAL_CONSTANTS_CGS_H
+#define SWIFT_PHYSICAL_CONSTANTS_CGS_H
 
 /* physical constants in cgs */
 #define NEWTON_GRAVITY_CGS  6.672e-8f
@@ -27,3 +29,6 @@
 
 /* Hydrodynamical constants. */
 #define const_hydro_gamma (5.0f / 3.0f)
+
+
+#endif /* SWIFT_PHYSICAL_CONSTANTS_CGS_H */

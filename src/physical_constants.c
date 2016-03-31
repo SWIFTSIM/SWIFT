@@ -17,22 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_PHYSICAL_CONSTANTS_H
-#define SWIFT_PHYSICAL_CONSTANTS_H
-
-#include "units.h"
-
-/* physical constants in in defined programme units */
-struct phys_const{
-  double newton_gravity;
-};
 
 
-/**
- * @brief Converts physical constants to the internal unit system
- */
-void initPhysicalConstants(struct UnitSystem* us, struct phys_const* prog_const);
+#include "physical_constants_cgs.h"
+
+#include "physical_constants.h"
 
 
-#endif /* SWIFT_PHYSICAL_CONSTANTS_H */
-
+void initPhysicalConstants(struct UnitSystem* us, struct phys_const* prog_const)
+{
+  float dimension[5] = {1, -3, 2, 0, 0}; 
+  prog_const->newton_gravity = NEWTON_GRAVITY_CGS * generalConversionFactor(us, dimension);
+}

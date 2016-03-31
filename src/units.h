@@ -18,7 +18,6 @@
  ******************************************************************************/
 #ifndef SWIFT_UNITS_H
 #define SWIFT_UNITS_H
-#include "physical_constants.h"
 /**
  * @brief The unit system used internally.
  *
@@ -155,12 +154,6 @@ void generalConversionString(char* buffer, struct UnitSystem* us,
  */
 void conversionString(char* buffer, struct UnitSystem* us,
                       enum UnitConversionFactor unit);
-
-
-/**
- * @brief Converts physical constants to the internal unit system
- */
-void initPhysicalConstants(struct UnitSystem* us, struct phys_const* prog_const);
 
 
 #endif /* SWIFT_UNITS_H */

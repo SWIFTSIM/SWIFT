@@ -39,13 +39,12 @@
 /* Includes. */
 #include "const.h"
 #include "error.h"
-#include "physical_constants_cgs.h"
+
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
  * const.h
  * @param us The UnitSystem to initialize
  */
-
 void initUnitSystem(struct UnitSystem* us) {
   us->UnitMass_in_cgs = const_unit_mass_in_cgs;
   us->UnitLength_in_cgs = const_unit_length_in_cgs;
@@ -445,8 +444,3 @@ void generalConversionString(char* buffer, struct UnitSystem* us,
   strncat(buffer, "]", 2);
 }
 
-void initPhysicalConstants(struct UnitSystem* us, struct phys_const* prog_const)
-{
-  float dimension[5] = {1, -3, 2, 0, 0}; 
-  prog_const->newton_gravity = NEWTON_GRAVITY_CGS * generalConversionFactor(us, dimension);
-}
