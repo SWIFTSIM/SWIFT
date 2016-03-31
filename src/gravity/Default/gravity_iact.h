@@ -21,10 +21,9 @@
 #define SWIFT_RUNNER_IACT_GRAV_H
 
 /* Includes. */
-#include "../../const.h"
-#include "../../kernel.h"
-#include "../../vector.h"
-#include "../../timers.h"
+#include "const.h"
+#include "kernel.h"
+#include "vector.h"
 
 /**
  * @brief Gravity potential
