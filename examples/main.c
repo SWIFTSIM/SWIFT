@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
@@ -56,7 +55,6 @@
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
-
 int main(int argc, char *argv[]) {
 
   int c, icount, periodic = 1;
@@ -80,7 +78,8 @@ int main(int argc, char *argv[]) {
   int nr_nodes = 1, myrank = 0;
   FILE *file_thread;
   int with_outputs = 1;
-  int with_gravity = 0;
+  int with_external_gravity = 0;
+  int with_self_gravity = 0;
   int engine_policies = 0;
   int verbose = 0, talking = 0;
   unsigned long long cpufreq = 0;
@@ -159,7 +158,7 @@ int main(int argc, char *argv[]) {
   bzero(&s, sizeof(struct space));
 
   /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:gh:m:oP:q:R:s:t:v:w:y:z:")) != -1)
+  while ((c = getopt(argc, argv, "a:c:d:e:f:gGh:m:oP:q:R:s:t:v:w:y:z:")) != -1)
     switch (c) {
       case 'a':
         if (sscanf(optarg, "%lf", &scaling) != 1)
@@ -189,7 +188,10 @@ int main(int argc, char *argv[]) {
         if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
         break;
       case 'g':
-        with_gravity = 1;
+        with_external_gravity = 1;
+        break;
+      case 'G':
+        with_self_gravity = 1;
         break;
       case 'h':
         if (sscanf(optarg, "%llu", &cpufreq) != 1)
@@ -349,10 +351,6 @@ int main(int argc, char *argv[]) {
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
-  /* Check we have sensible time step bounds */
-  if (dt_min > dt_max)
-    error("Minimal time step size must be large than maximal time step size ");
-
   /* Check whether an IC file has been provided */
   if (strcmp(ICfileName, "") == 0)
     error("An IC file name must be provided via the option -f");
@@ -394,7 +392,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* MATTHIEU: Temporary fix to preserve master */
-  if (!with_gravity) {
+  if (!with_external_gravity && !with_self_gravity) {
     free(gparts);
     gparts = NULL;
     for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
@@ -482,7 +480,8 @@ int main(int argc, char *argv[]) {
 
   /* Construct the engine policy */
   engine_policies = ENGINE_POLICY | engine_policy_steal | engine_policy_hydro;
-  if (with_gravity) engine_policies |= engine_policy_external_gravity;
+  if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
+  if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
 
   /* Initialize the engine with this space. */
   if (myrank == 0) clocks_gettime(&tic);
@@ -545,8 +544,8 @@ int main(int argc, char *argv[]) {
   /* Legend */
   if (myrank == 0)
     printf(
-        "# Step  Time  time-step  Number of updates    CPU Wall-clock time "
-        "[%s]\n",
+        "# Step  Time  time-step  Number of updates  Number of updates "
+        "CPU Wall-clock time [%s]\n",
         clocks_getunit());
 
   /* Let loose a runner on the space. */

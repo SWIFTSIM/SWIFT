@@ -42,6 +42,7 @@ tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
 tests/testKernel
+tests/testParser
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf

@@ -127,7 +127,7 @@ __attribute__((always_inline)) INLINE static void multipole_iact_mp(
 
 /* Compute the forces on both multipoles. */
 #if multipole_order == 1
-  for (k = 0; k < 3; k++) p->a[k] += dx[k] * acc;
+  for (k = 0; k < 3; k++) p->a_grav[k] += dx[k] * acc;
 #else
 #error( "Multipoles of order %i not yet implemented." , multipole_order )
 #endif
