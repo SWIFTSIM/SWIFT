@@ -58,6 +58,7 @@
   0.57735f /* Opening criteria, which is the ratio of the \
               cell distance over the cell width. */
 
+#define const_G 6.672e-8f             /* Gravitational constant. */
 #define const_epsilon 0.0014f         /* Gravity blending distance. */
 #define const_iepsilon 714.285714286f /* Inverse gravity blending distance. */
 #define const_iepsilon2 (const_iepsilon* const_iepsilon)
@@ -80,11 +81,4 @@
 #define const_unit_mass_in_cgs (SOLAR_MASS_IN_CGS)       /* solar mass */
 #define const_unit_velocity_in_cgs (1e5)                 /* km/s */
 
-/* Derived constants */
-#define const_unit_time_in_cgs \
-  (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
-#define const_G                                              \
-  ((NEWTON_GRAVITY_CGS* const_unit_mass_in_cgs /             \
-    (const_unit_velocity_in_cgs* const_unit_velocity_in_cgs* \
-         const_unit_length_in_cgs)))
 #endif /* SWIFT_CONST_H */
