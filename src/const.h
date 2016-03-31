@@ -68,9 +68,8 @@
 
 /* SPH variant to use */
 //#define MINIMAL_SPH
-//#define GADGET2_SPH
+#define GADGET2_SPH
 //#define DEFAULT_SPH
-#define NO_SPH
 
 /* Gravity properties */
 /* valid choices EXTERNAL_POTENTIAL_POINTMASS */

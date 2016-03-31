@@ -45,8 +45,6 @@
 #include "./hydro/Gadget2/hydro_part.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_part.h"
-#elif defined(NO_SPH)
-#include "./hydro/Gadget2/hydro_part.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
