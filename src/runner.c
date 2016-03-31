@@ -101,7 +101,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   float L[3], E;
   int i, k, gcount = c->gcount;
   const int ti_current = r->e->ti_current;
-
+  
   //struct space *s = r->e->s;
   //double CentreOfPotential[3];
   TIMER_TIC;
@@ -110,6 +110,10 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   /* CentreOfPotential[0] = 0.5 * s->dim[0]; */
   /* CentreOfPotential[1] = 0.5 * s->dim[1]; */
   /* CentreOfPotential[2] = 0.5 * s->dim[2]; */
+
+  message(" (x,y,z) = (%e, %e, %e), M= %e", r->e->potential->point_mass.x, r->e->potential->point_mass.y, r->e->potential->point_mass.z, r->e->potential->point_mass.mass);
+  exit(-1);
+
 
   /* Recurse? */
   if (c->split) {
@@ -129,7 +133,8 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
-		external_gravity_pointmass(g);
+		//		external_gravity_pointmass(e->physical_constants, potential_constants, g);
+		external_gravity_pointmass(r->e->physical_constants, g);
 		  
       /* check for energy and angular momentum conservation - begin by synchronizing velocity*/
       const float dx   = g->x[0]-External_Potential_X;
@@ -926,7 +931,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Compute the next timestep (gravity condition) */
-          float new_dt = gravity_compute_timestep(gp);
+          float new_dt = gravity_compute_timestep(r->e->physical_constants, gp);
 
           /* Limit timestep within the allowed range */
           new_dt = fminf(new_dt, global_dt_max);
@@ -1012,7 +1017,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           /* Compute the next timestep (gravity condition) */
           float new_dt_grav = FLT_MAX;
           if (p->gpart != NULL)
-            new_dt_grav = gravity_compute_timestep(p->gpart);
+            new_dt_grav = gravity_compute_timestep(r->e->physical_constants, p->gpart);
 
           float new_dt = fminf(new_dt_hydro, new_dt_grav);
 

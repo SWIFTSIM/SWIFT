@@ -39,6 +39,8 @@
 #include "space.h"
 #include "task.h"
 #include "partition.h"
+#include "physical_constants.h"
+#include "gravity/Default/potentials.h"
 
 /* Some constants. */
 enum engine_policy {
@@ -162,6 +164,13 @@ struct engine {
 
   /* Are we talkative ? */
   int verbose;
+
+  /* Physical constants definition */
+  const struct phys_const* physical_constants; 
+
+  /* Properties of external gravitational potential */
+  const struct external_potential* potential;
+
 };
 
 /* Function prototypes. */
@@ -169,7 +178,7 @@ void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
                  float timeBegin, float timeEnd, float dt_min, float dt_max,
-                 int verbose);
+                 int verbose, const struct phys_const* physical_constants, const struct external_potential* potential);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);

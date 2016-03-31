@@ -41,7 +41,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
-    kernel.c tools.c part.c partition.c clocks.c parser.c
+    kernel.c tools.c part.c partition.c clocks.c parser.c gravity/Default/potentials.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel.h vector.h \

@@ -2343,7 +2343,7 @@ static bool hyperthreads_present(void) {
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
                  float timeBegin, float timeEnd, float dt_min, float dt_max,
-                 int verbose) {
+                 int verbose,  const struct phys_const* physical_constants, const struct external_potential* potential) {
 
   /* Store the values. */
   e->s = s;
@@ -2372,8 +2372,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->verbose = verbose;
   e->count_step = 0;
   e->wallclock_time = 0.f;
+  e->physical_constants = physical_constants;
+  e->potential = potential;
   engine_rank = nodeID;
-
+  
   /* Make the space link back to the engine. */
   s->e = e;
 

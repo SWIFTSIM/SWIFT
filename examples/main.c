@@ -45,6 +45,7 @@
 
 /* Local headers. */
 #include "swift.h"
+#include "gravity/Default/potentials.h"
 
 /* Engine policy flags. */
 #ifndef ENGINE_POLICY
@@ -95,6 +96,8 @@ int main(int argc, char *argv[]) {
   int engine_policies = 0;
   int verbose = 0, talking = 0;
   unsigned long long cpufreq = 0;
+  struct phys_const prog_const;
+  struct external_potential potential;
 
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -343,6 +346,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialize unit system */
   initUnitSystem(&us);
+  initPhysicalConstants(&us, &prog_const);
+  initPotentialProperties(&us, &potential);
   if (myrank == 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
     message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
@@ -355,6 +360,8 @@ int main(int argc, char *argv[]) {
     message("Entropy units: %e a^%f h^%f.",
             conversionFactor(&us, UNIT_CONV_ENTROPY),
             aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
+	 message("Gravity constant = %e", prog_const.newton_gravity);
+	 message("Point mass properties are (x,y,z) = (%e, %e, %e), M = %e", potential.point_mass.x, potential.point_mass.y, potential.point_mass.z, potential.point_mass.mass);
   }
 
   /* Report CPU frequency. */
@@ -487,7 +494,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              engine_policies, 0, time_end, dt_min, dt_max, talking);
+              engine_policies, 0, time_end, dt_min, dt_max, talking, &prog_const, &potential);
   if (myrank == 0 && verbose) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

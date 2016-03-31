@@ -20,7 +20,7 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
-#include  "physical_constants.h"
+#include  "physical_constants_cgs.h"
 
 /* Hydrodynamical constants. */
 #define const_hydro_gamma (5.0f / 3.0f)
@@ -78,12 +78,11 @@
 
 
 /* System of units */
-#define const_unit_length_in_cgs       (1000*PARSEC_IN_CGS)    /* kpc */
+#define const_unit_length_in_cgs       (1000.*PARSEC_IN_CGS)    /* kpc */
 #define const_unit_mass_in_cgs         (SOLAR_MASS_IN_CGS)     /* solar mass */
 #define const_unit_velocity_in_cgs     (1e5)                   /* km/s */ 
 
 /* Derived constants */
 #define const_unit_time_in_cgs (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
 #define const_G ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs/(const_unit_velocity_in_cgs*const_unit_velocity_in_cgs*const_unit_length_in_cgs)))
-
 #endif /* SWIFT_CONST_H */

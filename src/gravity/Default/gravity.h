@@ -27,11 +27,11 @@
  */
 
 __attribute__((always_inline))
-    INLINE static float gravity_compute_timestep(struct gpart* gp) {
+INLINE static float gravity_compute_timestep(const struct phys_const* phys_const, struct gpart* gp) {
   float dt = FLT_MAX;
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  dt = fminf(dt, external_gravity_pointmass_timestep(gp));
+  dt = fminf(dt, external_gravity_pointmass_timestep(phys_const, gp));
 #endif
   return dt;
 }
@@ -64,10 +64,10 @@ __attribute__((always_inline))
   gp->a_grav[2] = 0.f;
 }
 
-__attribute__((always_inline)) INLINE static void external_gravity(struct gpart *g)
+__attribute__((always_inline)) INLINE static void external_gravity(const struct phys_const* phys_const, struct gpart *g)
 {
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  external_gravity_pointmass(g);
+  external_gravity_pointmass(phys_const, g);
 #endif
 }
 
