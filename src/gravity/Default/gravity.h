@@ -22,35 +22,43 @@
 /**
  * @brief Computes the gravity time-step of a given particle
  *
- * @param p Pointer to the particle data
- * @param xp Pointer to the extended particle data
+ * @param gp Pointer to the g-particle data
  *
  */
 
-__attribute__((always_inline)) INLINE static float gravity_compute_timestep(
-    struct part* p, struct xpart* xp) {
+__attribute__((always_inline))
+    INLINE static float gravity_compute_timestep(struct gpart* gp) {
 
   /* Currently no limit is imposed */
   return FLT_MAX;
 }
 
-__attribute__((always_inline)) INLINE static void gravity_init_gpart(struct gpart* g) {
-  
-  /* zero gravity acceleration */
-  g->a_grav_external[0] = 0.f;
-  g->a_grav_external[1] = 0.f;
-  g->a_grav_external[2] = 0.f;
+/**
+ * @brief Initialises the g-particles for the first time
+ *
+ * This function is called only once just after the ICs have been
+ * read in to do some conversions.
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline))
+    INLINE static void gravity_first_init_gpart(struct gpart* gp) {}
 
-}
+/**
+ * @brief Prepares a g-particle for the gravity calculation
+ *
+ * Zeroes all the relevant arrays in preparation for the sums taking place in
+ * the variaous tasks
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline))
+    INLINE static void gravity_init_part(struct gpart* gp) {
 
-
-
-__attribute__((always_inline)) INLINE static float external_gravity_compute_timestep(struct gpart* g) {
-  float dtmin = FLT_MAX;
-#ifdef EXTERNAL_POTENTIAL_POINTMASS
-  dtmin = fminf(dtmin, external_gravity_pointmass_timestep(g));
-#endif
-  return dtmin;
+  /* Zero the acceleration */
+  gp->a_grav[0] = 0.f;
+  gp->a_grav[1] = 0.f;
+  gp->a_grav[2] = 0.f;
 }
 
 __attribute__((always_inline)) INLINE static void external_gravity(struct gpart *g)
@@ -59,4 +67,12 @@ __attribute__((always_inline)) INLINE static void external_gravity(struct gpart 
   external_gravity_pointmass(g);
 #endif
 
-}
+/**
+ * @brief Kick the additional variables
+ *
+ * @param gp The particle to act upon
+ * @param dt The time-step for this kick
+ * @param half_dt The half time-step for this kick
+ */
+__attribute__((always_inline)) INLINE static void gravity_kick_extra(
+    struct gpart* gp, float dt, float half_dt) {}
