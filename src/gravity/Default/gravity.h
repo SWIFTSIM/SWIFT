@@ -20,19 +20,20 @@
 #include <float.h>
 #include "potentials.h"
 /**
- * @brief Computes the gravity time-step of a given particle
+ * @brief Computes the gravity time-step of a given particle.
  *
- * @param gp Pointer to the g-particle data
- *
+ * @param phys_cont The physical constants in internal units.
+ * @param gp Pointer to the g-particle data.
  */
+__attribute__((always_inline)) INLINE static float gravity_compute_timestep(
+    const struct phys_const* const phys_const, const struct gpart* const gp) {
 
-__attribute__((always_inline))
-INLINE static float gravity_compute_timestep(const struct phys_const* phys_const, struct gpart* gp) {
   float dt = FLT_MAX;
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
   dt = fminf(dt, external_gravity_pointmass_timestep(phys_const, gp));
 #endif
+
   return dt;
 }
 
@@ -64,10 +65,27 @@ __attribute__((always_inline))
   gp->a_grav[2] = 0.f;
 }
 
-__attribute__((always_inline)) INLINE static void external_gravity(const struct phys_const* phys_const, struct gpart *g)
-{
+/**
+ * @brief Finishes the gravity calculation.
+ *
+ * Multiplies the forces and accelerations by the appropiate constants
+ *
+ * @param gp The particle to act upon
+ */
+__attribute__((always_inline))
+    INLINE static void gravity_end_force(struct gpart* gp) {}
+
+/**
+ * @brief Computes the gravitational acceleration induced by external potentials
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param gp The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void external_gravity(
+    const struct phys_const* const phys_const, struct gpart* gp) {
+
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  external_gravity_pointmass(phys_const, g);
+  external_gravity_pointmass(phys_const, gp);
 #endif
 }
 
@@ -80,6 +98,3 @@ __attribute__((always_inline)) INLINE static void external_gravity(const struct 
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
     struct gpart* gp, float dt, float half_dt) {}
-
-__attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp) {}

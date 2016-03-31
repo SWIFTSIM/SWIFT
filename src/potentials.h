@@ -15,18 +15,26 @@ struct external_potential {
 
 /* Properties of Point Mass */
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
+
 #define External_Potential_X (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
 #define External_Potential_Y (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
 #define External_Potential_Z (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
 #define External_Potential_Mass \
   (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs)
 
+
+/**
+ * @brief Computes the time-step due to the acceleration from a point mass
+ *
+ * @param phys_cont The physical constants in internal units.
+ * @param gp Pointer to the g-particle data.
+ */
 __attribute__((always_inline))
     INLINE static float external_gravity_pointmass_timestep(
-        const struct phys_const* phys_const, struct gpart* g) {
+        const struct phys_const* const phys_const,
+        const struct gpart* const g) {
 
   const double G_newton = phys_const->newton_gravity;
-  /* Currently no limit is imposed */
   const float dx = g->x[0] - External_Potential_X;
   const float dy = g->x[1] - External_Potential_Y;
   const float dz = g->x[2] - External_Potential_Z;
@@ -47,8 +55,17 @@ __attribute__((always_inline))
   return 0.03f * sqrtf(a_2 / dota_2);
 }
 
+
+/**
+ * @brief Computes the gravitational acceleration of a particle due to a point
+ * mass
+ *
+ * @param phys_cont The physical constants in internal units.
+ * @param gp Pointer to the g-particle data.
+ */
 __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
-    const struct phys_const* phys_const, struct gpart* g) {
+    const struct phys_const* const phys_const, struct gpart* g) {
+
   const double G_newton = phys_const->newton_gravity;
   const float dx = g->x[0] - External_Potential_X;
   const float dy = g->x[1] - External_Potential_Y;
@@ -60,6 +77,14 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
   g->a_grav[2] += -G_newton * External_Potential_Mass * dz * rinv * rinv * rinv;
 }
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
+
+/**
+ * @brief Initialises the external potential properties in the internal system
+ * of units.
+ *
+ * @param us The current internal system of units
+ * @param potential The external potential properties to initialize
+ */
 void initPotentialProperties(struct UnitSystem* us,
                              struct external_potential* potential);
 
