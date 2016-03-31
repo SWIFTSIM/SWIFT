@@ -129,13 +129,8 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
-		float agrav_x, agrav_y, agrav_z;
-		external_gravity_pointmass(g, &agrav_x, &agrav_y, &agrav_z);
-		g->a_grav_external[0] += agrav_x;
-		g->a_grav_external[1] += agrav_y;
-		g->a_grav_external[2] += agrav_z;
+		external_gravity_pointmass(g);
 		  
-
       /* check for energy and angular momentum conservation - begin by synchronizing velocity*/
       const float dx   = g->x[0]-External_Potential_X;
       const float dy   = g->x[1]-External_Potential_Y;

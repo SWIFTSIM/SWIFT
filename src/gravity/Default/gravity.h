@@ -45,34 +45,18 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(struct gpar
 
 
 
-__attribute__((always_inline)) INLINE static float external_gravity_compute_timestep(
-    struct gpart* g) {
-
-  /* Currently no limit is imposed */
-  const float dx   = g->x[0]-External_Potential_X;
-  const float dy   = g->x[1]-External_Potential_Y;
-  const float dz   = g->x[2]-External_Potential_Z;
-  const float rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
-  const float drdv = (g->x[0]-External_Potential_X) * (g->v_full[0]) + (g->x[1]-External_Potential_Y) * (g->v_full[1]) + (g->x[2]-External_Potential_Z) * (g->v_full[2]); 
-  const float dota_x = const_G * External_Potential_Mass * rinv * rinv * rinv * (-g->v_full[0] + 3.f * rinv * rinv * drdv * dx);
-  const float dota_y = const_G * External_Potential_Mass * rinv * rinv * rinv * (-g->v_full[1] + 3.f * rinv * rinv * drdv * dy);
-  const float dota_z = const_G * External_Potential_Mass * rinv * rinv * rinv * (-g->v_full[2] + 3.f * rinv * rinv * drdv * dz);
-  const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
-  const float a_2    = g->a_grav_external[0] * g->a_grav_external[0] + g->a_grav_external[1] * g->a_grav_external[1] + g->a_grav_external[2] * g->a_grav_external[2];
-  
-  return 0.03f * sqrtf(a_2/dota_2);
+__attribute__((always_inline)) INLINE static float external_gravity_compute_timestep(struct gpart* g) {
+  float dtmin = FLT_MAX;
+#ifdef EXTERNAL_POTENTIAL_POINTMASS
+  dtmin = fminf(dtmin, external_gravity_pointmass_timestep(g));
+#endif
+  return dtmin;
 }
 
-__attribute__((always_inline)) INLINE static void external_gravity_pointmass(struct gpart *g, float* agrav_x, float* agrav_y, float* agrav_z)
+__attribute__((always_inline)) INLINE static void external_gravity(struct gpart *g)
 {
-  const float dx   = g->x[0]-External_Potential_X;
-  const float dy   = g->x[1]-External_Potential_Y;
-  const float dz   = g->x[2]-External_Potential_Z;
-  const float rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
-
-
-  *agrav_x = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
-  *agrav_y = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
-  *agrav_z = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
+#ifdef EXTERNAL_POTENTIAL_POINTMASS
+  external_gravity_pointmass(g);
+#endif
 
 }
