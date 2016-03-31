@@ -23,16 +23,14 @@
 #include "units.h"
 
 /* physical constants in in defined programme units */
-struct phys_const{
+struct phys_const {
   double newton_gravity;
 };
-
 
 /**
  * @brief Converts physical constants to the internal unit system
  */
-void initPhysicalConstants(struct UnitSystem* us, struct phys_const* prog_const);
-
+void initPhysicalConstants(struct UnitSystem* us,
+                           struct phys_const* prog_const);
 
 #endif /* SWIFT_PHYSICAL_CONSTANTS_H */
-

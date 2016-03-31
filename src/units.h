@@ -155,5 +155,4 @@ void generalConversionString(char* buffer, struct UnitSystem* us,
 void conversionString(char* buffer, struct UnitSystem* us,
                       enum UnitConversionFactor unit);
 
-
 #endif /* SWIFT_UNITS_H */

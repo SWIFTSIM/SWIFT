@@ -1074,10 +1074,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         p->ti_begin = p->ti_end;
         p->ti_end = p->ti_begin + new_dti;
         if (p->gpart != NULL) {
-	  p->gpart->ti_begin = p->ti_begin;
-	  p->gpart->ti_end = p->ti_end;
-	}
-	
+          p->gpart->ti_begin = p->ti_begin;
+          p->gpart->ti_end = p->ti_end;
+        }
+
         /* Get the acceleration */
         float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
         if (p->gpart != NULL) {

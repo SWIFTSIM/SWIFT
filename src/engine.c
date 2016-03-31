@@ -110,15 +110,15 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
-      if(c->count > 0) {
+      if (c->count > 0) {
         /* Generate the ghost task. */
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
-                                     c, NULL, 0);
+        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                                     0, c, NULL, 0);
       }
 
-		/* Add the init task. */
-		c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-											 NULL, 0);
+      /* Add the init task. */
+      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
+                                  NULL, 0);
 
       /* Add the drift task. */
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
@@ -128,17 +128,16 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
-      if(c->gcount > 0) {
+      if (c->gcount > 0) {
         /* Add the gravity tasks */
-        c->grav_external = scheduler_addtask(s, task_type_grav_external, task_subtype_none, 0, 0,
-                                             c, NULL, 0);
+        c->grav_external = scheduler_addtask(
+            s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
 
         /* Enforce gravity calculated before kick  */
         scheduler_addunlock(s, c->grav_external, c->kick);
 
-		  /* Enforce gravity calculated after init */
-		  scheduler_addunlock(s, c->init, c->grav_external);
-
+        /* Enforce gravity calculated after init */
+        scheduler_addunlock(s, c->init, c->grav_external);
       }
     }
   }
@@ -1910,7 +1909,8 @@ void engine_init_particles(struct engine *e) {
   /* Add the tasks corresponding to external gravity to the masks */
   if ((e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity) {
-    printf("%s: JR: Excellent lets add the external gravity tasks here.....\n", __FUNCTION__);
+    printf("%s: JR: Excellent lets add the external gravity tasks here.....\n",
+           __FUNCTION__);
     mask |= 1 << task_type_grav_external;
   }
 
@@ -2343,7 +2343,8 @@ static bool hyperthreads_present(void) {
 void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
                  int nr_queues, int nr_nodes, int nodeID, int policy,
                  float timeBegin, float timeEnd, float dt_min, float dt_max,
-                 int verbose,  const struct phys_const* physical_constants, const struct external_potential* potential) {
+                 int verbose, const struct phys_const *physical_constants,
+                 const struct external_potential *potential) {
 
   /* Store the values. */
   e->s = s;
@@ -2375,7 +2376,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->physical_constants = physical_constants;
   e->potential = potential;
   engine_rank = nodeID;
-  
+
   /* Make the space link back to the engine. */
   s->e = e;
 

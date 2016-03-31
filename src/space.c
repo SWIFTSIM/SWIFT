@@ -162,21 +162,21 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
-  if(nr_parts) {
+  if (nr_parts) {
     if (s->cells != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
-	if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+        if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
       }
     } else {
       for (int k = 0; k < nr_parts; k++) {
-	if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+        if (s->parts[k].h > h_max) h_max = s->parts[k].h;
       }
       s->h_max = h_max;
     }
-  }
-  else {
-    /* It would be nice to replace this with something more physical or meaningful */
-    h_max = s->dim[0]/16.0;
+  } else {
+    /* It would be nice to replace this with something more physical or
+     * meaningful */
+    h_max = s->dim[0] / 16.0;
     s->h_max = h_max;
   }
 
@@ -315,7 +315,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   const ticks tic = getticks();
 
   /* Be verbose about this. */
-  message( "re)building space..." ); fflush(stdout);
+  message("re)building space...");
+  fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
@@ -343,7 +344,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
         p->x[j] -= dim[j];
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-      cells[ind[k]].count++;
+    cells[ind[k]].count++;
   }
   // message( "getting particle indices took %.3f %s." ,
   // clocks_from_ticks(getticks() - tic), clocks_getunit()):
@@ -501,7 +502,6 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* Re-link the parts. */
   for (int k = 0; k < nr_gparts; k++)
     if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
-
 
   /* We no longer need the indices as of here. */
   free(gind);
@@ -1307,7 +1307,6 @@ void space_init(struct space *s, double dim[3], struct part *parts,
   s->gparts = gparts;
 
   s->size_parts_foreign = 0;
-
 
   /* Check that all the gas particle positions are reasonable, wrap if periodic.
    */

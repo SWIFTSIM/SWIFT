@@ -18,14 +18,13 @@
  *
  ******************************************************************************/
 
-
 #include "physical_constants_cgs.h"
 
 #include "physical_constants.h"
 
-
-void initPhysicalConstants(struct UnitSystem* us, struct phys_const* prog_const)
-{
-  float dimension[5] = {1, -3, 2, 0, 0}; 
-  prog_const->newton_gravity = NEWTON_GRAVITY_CGS * generalConversionFactor(us, dimension);
+void initPhysicalConstants(struct UnitSystem* us,
+                           struct phys_const* prog_const) {
+  float dimension[5] = {1, -3, 2, 0, 0};
+  prog_const->newton_gravity =
+      NEWTON_GRAVITY_CGS * generalConversionFactor(us, dimension);
 }

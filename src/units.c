@@ -443,4 +443,3 @@ void generalConversionString(char* buffer, struct UnitSystem* us,
 
   strncat(buffer, "]", 2);
 }
-
