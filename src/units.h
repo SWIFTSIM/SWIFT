@@ -94,7 +94,7 @@ void initUnitSystem(struct UnitSystem*);
 /**
  * @brief Returns the base unit conversion factor for a given unit system
  */
-double getBaseUnit(struct UnitSystem*, enum BaseUnits);
+double getBaseUnit(const struct UnitSystem*, enum BaseUnits);
 
 /**
  * @brief Returns the base unit symbol in the cgs system
@@ -110,49 +110,52 @@ const char* getBaseUnitCGSSymbol(enum BaseUnits);
  * @brief Returns the conversion factor for a given unit (expressed in terms of
  * the 5 fundamental units) in the chosen unit system
  */
-double generalConversionFactor(struct UnitSystem* us,
-                               float baseUnitsExponants[5]);
+double generalConversionFactor(const struct UnitSystem* us,
+                               const float baseUnitsExponants[5]);
 
 /**
  * @brief Returns the conversion factor for a given unit in the chosen unit
  * system
  */
-double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
+double conversionFactor(const struct UnitSystem* us,
+                        enum UnitConversionFactor unit);
 
 /**
  * @brief Returns the h factor for a given unit (expressed in terms of the 5
  * fundamental units) in the chosen unit system
  */
-float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
+float generalhFactor(const struct UnitSystem* us,
+                     const float baseUnitsExponants[5]);
 
 /**
  * @brief Returns the h factor for a given unit in the chosen unit system
  */
-float hFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
+float hFactor(const struct UnitSystem* us, enum UnitConversionFactor unit);
 
 /**
  * @brief Returns the scaling factor for a given unit (expressed in terms of the
  * 5 fundamental units) in the chosen unit system
  */
-float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
+float generalaFactor(const struct UnitSystem* us,
+                     const float baseUnitsExponants[5]);
 
 /**
  * @brief Returns the scaling factor for a given unit in the chosen unit system
  */
-float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
+float aFactor(const struct UnitSystem* us, enum UnitConversionFactor unit);
 
 /**
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors (expressed in terms of the 5 fundamental units)
  */
-void generalConversionString(char* buffer, struct UnitSystem* us,
-                             float baseUnitsExponants[5]);
+void generalConversionString(char* buffer, const struct UnitSystem* us,
+                             const float baseUnitsExponants[5]);
 
 /**
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors
  */
-void conversionString(char* buffer, struct UnitSystem* us,
+void conversionString(char* buffer, const struct UnitSystem* us,
                       enum UnitConversionFactor unit);
 
 #endif /* SWIFT_UNITS_H */
