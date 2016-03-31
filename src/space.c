@@ -162,7 +162,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
-  if (nr_parts) {
+  if (nr_parts > 0) {
     if (s->cells != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
         if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
@@ -176,7 +176,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   } else {
     /* It would be nice to replace this with something more physical or
      * meaningful */
-    h_max = s->dim[0] / 16.0;
+    h_max = s->dim[0] / 16.f;
     s->h_max = h_max;
   }
 
@@ -210,6 +210,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2])
     error("Root-level change of cell size not allowed.");
 #endif
+
   /* Do we need to re-build the upper-level cells? */
   // tic = getticks();
   if (s->cells == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
@@ -315,8 +316,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   const ticks tic = getticks();
 
   /* Be verbose about this. */
-  message("re)building space...");
-  fflush(stdout);
+  // message("re)building space..."); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
@@ -1301,10 +1301,6 @@ void space_init(struct space *s, double dim[3], struct part *parts,
   s->gparts = gparts;
   s->cell_min = h_max;
   s->nr_queues = 1;
-  /* Dark Matter */
-  s->nr_gparts = Ngpart;
-  s->size_gparts = Ngpart;
-  s->gparts = gparts;
 
   s->size_parts_foreign = 0;
 
