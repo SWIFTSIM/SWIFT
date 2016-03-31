@@ -18,13 +18,25 @@
  *
  ******************************************************************************/
 
-#include "physical_constants_cgs.h"
+/* Config parameters. */
+#include "../config.h"
 
+/* This object's header. */
 #include "physical_constants.h"
 
+/* Local headers. */
+#include "physical_constants_cgs.h"
+
+/**
+ * @brief Converts physical constants to the internal unit system
+ *
+ * @param us The current internal system of units.
+ * @param internal_const The physical constants to initialize.
+ */
 void initPhysicalConstants(struct UnitSystem* us,
-                           struct phys_const* prog_const) {
-  float dimension[5] = {1, -3, 2, 0, 0};
-  prog_const->newton_gravity =
+                           struct phys_const* internal_const) {
+
+  const float dimension[5] = {1, -3, 2, 0, 0};
+  internal_const->newton_gravity =
       NEWTON_GRAVITY_CGS * generalConversionFactor(us, dimension);
 }

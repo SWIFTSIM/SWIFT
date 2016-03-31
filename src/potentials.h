@@ -1,6 +1,30 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+
 #ifndef SWIFT_POTENTIALS_H
 #define SWIFT_POTENTIALS_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes. */
 #include "physical_constants_cgs.h"
 #include "physical_constants.h"
 #include "units.h"
@@ -21,7 +45,6 @@ struct external_potential {
 #define External_Potential_Z (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
 #define External_Potential_Mass \
   (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs)
-
 
 /**
  * @brief Computes the time-step due to the acceleration from a point mass
@@ -54,7 +77,6 @@ __attribute__((always_inline))
 
   return 0.03f * sqrtf(a_2 / dota_2);
 }
-
 
 /**
  * @brief Computes the gravitational acceleration of a particle due to a point
