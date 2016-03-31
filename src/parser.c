@@ -24,6 +24,7 @@
 /* Needs to be included so that strtok returns char * instead of a int *. */
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 /* This object's header. */
 #include "parser.h"
@@ -32,8 +33,9 @@
 #include "error.h"
 
 /* Private functions. */
-static int count_char(char *str, char val);
-static void parse_line(FILE *fp, struct swift_params *params);
+static int count_char(const char *str, char val);
+static int is_empty(const char *str);
+static void parse_line(char *line, struct swift_params *params);
 static void parse_param(char *line, struct swift_params *params);
 
 /**
@@ -47,6 +49,9 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
   /* Open file for reading */
   FILE *file = fopen(file_name, "r");
 
+  /* Line to parsed. */
+  char line[PARSER_MAX_LINE_SIZE];
+  
   /* Initialise parameter count. */
   params->count = 0;
 
@@ -57,7 +62,9 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
 
   /* Read until the end of the file is reached.*/
   while (!feof(file)) {
-    parse_line(file, params);
+    if (fgets(line, PARSER_MAX_LINE_SIZE, file) != NULL) {
+      parse_line(line, params);
+    }
   }
 
   fclose(file);
@@ -68,9 +75,11 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
  *
  * @param str String to be checked
  * @param val Character to be counted
+ *
+ * @return count Number of occurrences of val inside str
  */
 
-static int count_char(char *str, char val) {
+static int count_char(const char *str, char val) {
   int count = 0;
 
   /* Check if the line contains the character */
@@ -82,6 +91,28 @@ static int count_char(char *str, char val) {
 }
 
 /**
+ * @brief Checks if a string is empty.
+ *
+ * @param str String to be checked
+ *
+ * @return retParam Returns 1 if str is empty, 0 otherwise 
+ */
+
+static int is_empty(const char *str) {
+
+  int retParam = 1;
+  while (*str != '\0') {
+    if (!isspace(*str)) {
+      retParam = 0;
+      break;
+    }
+    str++;
+  }
+  
+  return retParam;
+}
+
+/**
  * @brief Parses a line from a file and stores any parameters in a structure.
  *
  * @param fp File pointer to file to be read
@@ -89,21 +120,38 @@ static int count_char(char *str, char val) {
  *
  */
 
-static void parse_line(FILE *fp, struct swift_params *params) {
-  char line[PARSER_MAX_LINE_SIZE];
-  char trim_line[PARSER_MAX_LINE_SIZE];
+static void parse_line(char *line, struct swift_params *params) {
 
-  /* Read a line of the file if it doesn't begin with a comment*/
-  if (fgets(line, PARSER_MAX_LINE_SIZE, fp) != NULL &&
-      (*line != PARSER_COMMENT_CHAR)) {
+  /* Parse line if it doesn't begin with a comment. */
+  if (*line != PARSER_COMMENT_CHAR) {
+    
+    char trim_line[PARSER_MAX_LINE_SIZE];
+    char tmp_str[PARSER_MAX_LINE_SIZE];
     char *token;
+    
     /* Remove comments at the end of a line. */
     token = strtok(line, PARSER_COMMENT_STRING);
     strcpy(trim_line, token);
 
-    /* Check if the line contains a value and parse it. */
-    if (strchr(trim_line, PARSER_VALUE_CHAR)) {
-      parse_param(trim_line, params);
+    /* Check if the line is just white space. */
+    if(!is_empty(trim_line)) {
+
+      /* Check if the line contains a value and parse it. */
+      if (strchr(trim_line, PARSER_VALUE_CHAR)) {
+        parse_param(trim_line, params);
+      }
+      else {
+
+        /* Trim '\n' characters from string. */
+        token = strtok(trim_line, "\n");
+        strcpy(tmp_str, token);
+
+        /* Check for invalid lines,not including the start and end of file. */
+        /* Note: strcmp returns 0 if both strings are the same.*/
+        if (strcmp(tmp_str,PARSER_START_OF_FILE) && strcmp(tmp_str,PARSER_END_OF_FILE)) {
+          error("Invalid line: `%s`.",trim_line);
+        }
+      }
     }
   }
 }
@@ -193,7 +241,7 @@ void parser_get_param_int(struct swift_params *params, char *name,
     }
   }
 
-  message("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure.", name);
 }
 
 /**
@@ -224,7 +272,7 @@ void parser_get_param_float(struct swift_params *params, char *name,
     }
   }
 
-  message("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure.", name);
 }
 
 /**
@@ -255,7 +303,7 @@ void parser_get_param_double(struct swift_params *params, char *name,
     }
   }
 
-  message("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure.", name);
 }
 
 /**
@@ -276,6 +324,8 @@ void parser_get_param_string(struct swift_params *params, char *name,
       return;
     }
   }
+
+  error("Cannot find '%s' in the structure.", name);
 }
 
 /**
