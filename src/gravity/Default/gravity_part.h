@@ -31,9 +31,6 @@ struct gpart {
   /* Particle acceleration. */
   float a_grav[3];
 
-  /* Gravity acceleration */
-  float a_grav_external[3];
-
   /* Particle mass. */
   float mass;
 

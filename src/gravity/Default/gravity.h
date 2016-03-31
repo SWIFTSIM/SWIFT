@@ -28,9 +28,12 @@
 
 __attribute__((always_inline))
     INLINE static float gravity_compute_timestep(struct gpart* gp) {
+  float dt = FLT_MAX;
 
-  /* Currently no limit is imposed */
-  return FLT_MAX;
+#ifdef EXTERNAL_POTENTIAL_POINTMASS
+  dt = fminf(dt, external_gravity_pointmass_timestep(gp));
+#endif
+  return dt;
 }
 
 /**
@@ -66,6 +69,7 @@ __attribute__((always_inline)) INLINE static void external_gravity(struct gpart 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
   external_gravity_pointmass(g);
 #endif
+}
 
 /**
  * @brief Kick the additional variables
@@ -76,3 +80,6 @@ __attribute__((always_inline)) INLINE static void external_gravity(struct gpart 
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
     struct gpart* gp, float dt, float half_dt) {}
+
+__attribute__((always_inline)) INLINE static void gravity_end_force(
+    struct gpart* gp) {}

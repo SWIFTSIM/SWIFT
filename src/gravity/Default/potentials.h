@@ -25,7 +25,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_pointmass_ti
   const float dota_y = const_G * External_Potential_Mass * rinv * rinv * rinv * (-g->v_full[1] + 3.f * rinv * rinv * drdv * dy);
   const float dota_z = const_G * External_Potential_Mass * rinv * rinv * rinv * (-g->v_full[2] + 3.f * rinv * rinv * drdv * dz);
   const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
-  const float a_2    = g->a_grav_external[0] * g->a_grav_external[0] + g->a_grav_external[1] * g->a_grav_external[1] + g->a_grav_external[2] * g->a_grav_external[2];
+  const float a_2    = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] + g->a_grav[2] * g->a_grav[2];
   
   return 0.03f * sqrtf(a_2/dota_2);
 }
@@ -38,9 +38,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(str
   const float rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
   
 
-  g->a_grav_external[0] += - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
-  g->a_grav_external[1] += - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
-  g->a_grav_external[2] += - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
+  g->a_grav[0] += - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
+  g->a_grav[1] += - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
+  g->a_grav[2] += - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
 }
 
 

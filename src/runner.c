@@ -139,16 +139,16 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
       const float rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
 
 		/* /\* current acceleration *\/ */
-      /* g->a_grav_external[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv; */
-      /* g->a_grav_external[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv; */
-      /* g->a_grav_external[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv; */
+      /* g->a_grav[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv; */
+      /* g->a_grav[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv; */
+      /* g->a_grav[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv; */
 
 
 		const int current_dti = g->ti_end - g->ti_begin;
 		const float dt = 0.5f * current_dti * r->e->timeBase;
-		const float vx = g->v_full[0] + dt * g->a_grav_external[0];
-		const float vy = g->v_full[1] + dt * g->a_grav_external[1];
-		const float vz = g->v_full[2] + dt * g->a_grav_external[2];
+		const float vx = g->v_full[0] + dt * g->a_grav[0];
+		const float vy = g->v_full[1] + dt * g->a_grav[1];
+		const float vz = g->v_full[2] + dt * g->a_grav[2];
 
 		/* E/L */
       E = 0.5 * ((vx*vx) + (vy*vy) + (vz*vz)) - const_G *  External_Potential_Mass * rinv;
@@ -158,7 +158,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
       if(abs(g->id) == 1) {
         float v2  = vx*vx + vy*vy + vz*vz;
         float fg  = const_G * External_Potential_Mass * rinv;
-		  float fga = sqrtf((g->a_grav_external[0]*g->a_grav_external[0]) + (g->a_grav_external[1]*g->a_grav_external[1]) + (g->a_grav_external[2]*g->a_grav_external[2])) * dr;
+		  float fga = sqrtf((g->a_grav[0]*g->a_grav[0]) + (g->a_grav[1]*g->a_grav[1]) + (g->a_grav[2]*g->a_grav[2])) * dr;
         //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], vx, vy);
         message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, dt, v2, fg, fga, E, L[2], g->x[0], g->x[1], vx, vy);
         // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
@@ -955,6 +955,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         const double dt = (ti_end - ti_start) * timeBase;
         const double half_dt = (ti_end - gp->ti_end) * timeBase;
 
+       /* Move particle forward in time */
+        gp->ti_begin = gp->ti_end;
+        gp->ti_end = gp->ti_begin + new_dti;
+
         /* Kick particles in momentum space */
         gp->v_full[0] += gp->a_grav[0] * dt;
         gp->v_full[1] += gp->a_grav[1] * dt;
@@ -966,6 +970,11 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         /* Number of updated g-particles */
         g_updated++;
       }
+
+		/* Minimal time for next end of time-step */
+		ti_end_min = min(gp->ti_end, ti_end_min);
+		ti_end_max = max(gp->ti_end, ti_end_max);
+
     }
 
     /* Now do the hydro ones... */
