@@ -62,3 +62,17 @@ __attribute__((always_inline)) INLINE static float external_gravity_compute_time
   
   return 0.03f * sqrtf(a_2/dota_2);
 }
+
+__attribute__((always_inline)) INLINE static void external_gravity_pointmass(struct gpart *g, float* agrav_x, float* agrav_y, float* agrav_z)
+{
+  const float dx   = g->x[0]-External_Potential_X;
+  const float dy   = g->x[1]-External_Potential_Y;
+  const float dz   = g->x[2]-External_Potential_Z;
+  const float rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
+
+
+  *agrav_x = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
+  *agrav_y = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
+  *agrav_z = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
+
+}

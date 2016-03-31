@@ -98,9 +98,7 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 void runner_dograv_external(struct runner *r, struct cell *c) {
 
   struct gpart *g, *gparts = c->gparts;
-  float rinv;
   float L[3], E;
-  float dx, dy, dz;
   int i, k, gcount = c->gcount;
   const int ti_current = r->e->ti_current;
 
@@ -131,19 +129,26 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
-      dx  = g->x[0]-External_Potential_X;
-      dy  = g->x[1]-External_Potential_Y;
-      dz  = g->x[2]-External_Potential_Z;
-
-      rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
-
-		/* current acceleration */
-      g->a_grav_external[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv;
-      g->a_grav_external[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv;
-      g->a_grav_external[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv;
-
+		float agrav_x, agrav_y, agrav_z;
+		external_gravity_pointmass(g, &agrav_x, &agrav_y, &agrav_z);
+		g->a_grav_external[0] += agrav_x;
+		g->a_grav_external[1] += agrav_y;
+		g->a_grav_external[2] += agrav_z;
+		  
 
       /* check for energy and angular momentum conservation - begin by synchronizing velocity*/
+      const float dx   = g->x[0]-External_Potential_X;
+      const float dy   = g->x[1]-External_Potential_Y;
+      const float dz   = g->x[2]-External_Potential_Z;
+		const float dr   = sqrtf((dx*dx) + (dy*dy) + (dz*dz));
+      const float rinv = 1.f / sqrtf(dx*dx + dy*dy + dz*dz);
+
+		/* /\* current acceleration *\/ */
+      /* g->a_grav_external[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv * rinv; */
+      /* g->a_grav_external[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv * rinv; */
+      /* g->a_grav_external[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv * rinv; */
+
+
 		const int current_dti = g->ti_end - g->ti_begin;
 		const float dt = 0.5f * current_dti * r->e->timeBase;
 		const float vx = g->v_full[0] + dt * g->a_grav_external[0];
@@ -156,10 +161,11 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
       L[1] = dz * vx - dx * vz;
       L[2] = dx * vy - dy * vx;
       if(abs(g->id) == 1) {
-        float v2 = vx*vx + vy*vy + vz*vz;
-        float fg = const_G * External_Potential_Mass * rinv;
+        float v2  = vx*vx + vy*vy + vz*vz;
+        float fg  = const_G * External_Potential_Mass * rinv;
+		  float fga = sqrtf((g->a_grav_external[0]*g->a_grav_external[0]) + (g->a_grav_external[1]*g->a_grav_external[1]) + (g->a_grav_external[2]*g->a_grav_external[2])) * dr;
         //message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], g->x[1], vx, vy);
-        message("%f\t %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, dt, v2, fg, E, L[2], g->x[0], g->x[1], vx, vy);
+        message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx, g->tv, dt, v2, fg, fga, E, L[2], g->x[0], g->x[1], vx, vy);
         // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
       }
 
