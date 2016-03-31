@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 #include <float.h>
-
+#include "potentials.h"
 /**
  * @brief Computes the gravity time-step of a given particle
  *

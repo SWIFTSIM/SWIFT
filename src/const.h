@@ -73,10 +73,8 @@
 #define NO_SPH
 
 /* Gravity properties */
-#define GRAVITY
-/* valid choices DEFAULT_GRAVITY || EXTERNAL_POTENTIAL */
-#define EXTERNAL_POTENTIAL
-//#define DEFAULT_GRAVITY
+/* valid choices EXTERNAL_POTENTIAL_POINTMASS */
+#define EXTERNAL_POTENTIAL_POINTMASS
 
 
 /* System of units */
@@ -87,11 +85,5 @@
 /* Derived constants */
 #define const_unit_time_in_cgs (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
 #define const_G ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs/(const_unit_velocity_in_cgs*const_unit_velocity_in_cgs*const_unit_length_in_cgs)))
-
-/* External Potential Constants */
-#define External_Potential_X  (50000 * PARSEC_IN_CGS /  const_unit_length_in_cgs)
-#define External_Potential_Y  (50000 * PARSEC_IN_CGS /  const_unit_length_in_cgs)
-#define External_Potential_Z  (50000 * PARSEC_IN_CGS /  const_unit_length_in_cgs)
-#define External_Potential_Mass (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs)
 
 #endif /* SWIFT_CONST_H */

@@ -51,9 +51,7 @@
 #error "Invalid choice of SPH variant"
 #endif
 
-#if defined(GRAVITY)
 #include "./gravity/Default/gravity_part.h"
-#endif
 
 #ifdef WITH_MPI
 void part_create_mpi_type(MPI_Datatype* part_type);
