@@ -35,6 +35,7 @@
 /* Private functions. */
 static int count_char(const char *str, char val);
 static int is_empty(const char *str);
+static int count_indentation(const char *str);
 static void parse_line(char *line, struct swift_params *params);
 static void parse_param(char *line, struct swift_params *params);
 
@@ -91,6 +92,24 @@ static int count_char(const char *str, char val) {
 }
 
 /**
+ * @brief Counts the number of white spaces that prefix a string.
+ *
+ * @param str String to be checked
+ *
+ * @return count Number of white spaces prefixing str
+ */
+
+static int count_indentation(const char *str) {
+  int count = 0;
+
+  /* Check if the line contains the character */
+  while (*(++str) == ' ') {
+    count++;
+  }
+  return count;
+}
+
+/**
  * @brief Checks if a string is empty.
  *
  * @param str String to be checked
@@ -122,6 +141,7 @@ static int is_empty(const char *str) {
 
 static void parse_line(char *line, struct swift_params *params) {
 
+
   /* Parse line if it doesn't begin with a comment. */
   if (*line != PARSER_COMMENT_CHAR) {
     
@@ -131,26 +151,24 @@ static void parse_line(char *line, struct swift_params *params) {
     
     /* Remove comments at the end of a line. */
     token = strtok(line, PARSER_COMMENT_STRING);
-    strcpy(trim_line, token);
+    strcpy(tmp_str, token);
 
     /* Check if the line is just white space. */
-    if(!is_empty(trim_line)) {
-
+    if(!is_empty(tmp_str)) {
+      
+      /* Trim '\n' characters from string. */
+      token = strtok(tmp_str, "\n");
+      strcpy(trim_line, token);
+      
       /* Check if the line contains a value and parse it. */
       if (strchr(trim_line, PARSER_VALUE_CHAR)) {
         parse_param(trim_line, params);
       }
-      else {
-
-        /* Trim '\n' characters from string. */
-        token = strtok(trim_line, "\n");
-        strcpy(tmp_str, token);
-
-        /* Check for invalid lines,not including the start and end of file. */
-        /* Note: strcmp returns 0 if both strings are the same.*/
-        if (strcmp(tmp_str,PARSER_START_OF_FILE) && strcmp(tmp_str,PARSER_END_OF_FILE)) {
-          error("Invalid line: `%s`.",trim_line);
-        }
+      /* Check for invalid lines,not including the start and end of file. */
+      /* Note: strcmp returns 0 if both strings are the same.*/
+      else if (strcmp(trim_line,PARSER_START_OF_FILE) && strcmp(trim_line,PARSER_END_OF_FILE)) {
+          error("Invalid line: '%s'.",trim_line);
+        
       }
     }
   }
@@ -165,8 +183,11 @@ static void parse_line(char *line, struct swift_params *params) {
  */
 
 static void parse_param(char *line, struct swift_params *params) {
+  static int in_section = 0;
   static char
       section[PARSER_MAX_LINE_SIZE]; /* Keeps track of current section name. */
+  static int is_first_param = 1;
+  static int section_indent = 0;
   char tmp_str[PARSER_MAX_LINE_SIZE];
   char param_name[PARSER_MAX_LINE_SIZE];
   char *token;
@@ -176,8 +197,23 @@ static void parse_param(char *line, struct swift_params *params) {
     error("Found more than one parameter in '%s', only one allowed.", line);
   }
 
+  if(!in_section && *line == ' ') {
+    error("Invalid line: '%s', standalone parameter defined with incorrect indentation.",line);
+  }
+
   /* Check that it is a parameter inside a section.*/
   if (*line == ' ' || *line == '\t') {
+   
+    /* Count indentation of each parameter and check that it 
+     * is consistent with the first parameter in the section. */ 
+    if(is_first_param) {
+      section_indent = count_indentation(line);
+      is_first_param = 0;
+    }
+    else if(count_indentation(line) != section_indent) {
+      error("Invalid line: '%s', parameter has incorrect indentation.",line);
+    }
+    
     /* Take first token as the parameter name and trim leading white space. */
     token = strtok(line, " :\t");
     strcpy(tmp_str, token);
@@ -204,11 +240,15 @@ static void parse_param(char *line, struct swift_params *params) {
     if (token == NULL) {
       strcat(tmp_str, PARSER_VALUE_STRING);
       strcpy(section, tmp_str);
+      in_section = 1;
+      is_first_param = 1;
     } else {
       /* Must be a standalone parameter so no need to prefix name with a
        * section. */
       strcpy(params->data[params->count].name, tmp_str);
       strcpy(params->data[params->count++].value, token);
+      in_section = 0;
+      is_first_param = 1;
     }
   }
 }
