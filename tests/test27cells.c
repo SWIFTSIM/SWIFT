@@ -32,14 +32,25 @@ enum velocity_types {
 };
 
 /**
- * @breif Returns a random number (uniformly distributed) in [a,b[
+ * @brief Returns a random number (uniformly distributed) in [a,b[
  */
 double random_uniform(double a, double b) {
   return (rand() / (double)RAND_MAX) * (b - a) + a;
 }
 
-/* n is both particles per axis and box size:
- * particles are generated on a mesh with unit spacing
+
+/**
+ * @brief Constructs a cell and all of its particle in a valid state prior to
+ * a DOPAIR or DOSELF calcuation.
+ *
+ * @param n The cube root of the number of particles.
+ * @param offset The position of the cell offset from (0,0,0).
+ * @param size The cell size.
+ * @param h The smoothing length of the particles in units of the inter-particle separation.
+ * @param density The density of the fluid.
+ * @param partId The running counter of IDs.
+ * @param pert The perturbation to apply to the particles in the cell in units of the inter-particle separation.
+ * @param vel The type of velocity field (0, random, divergent, rotating)
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
                        double density, long long *partId, double pert,
