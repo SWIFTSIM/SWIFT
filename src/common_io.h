@@ -24,6 +24,7 @@
 #include "../config.h"
 
 /* Includes. */
+#include "kernel_hydro.h"
 #include "part.h"
 #include "units.h"
 

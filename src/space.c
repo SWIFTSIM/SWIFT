@@ -39,7 +39,7 @@
 #include "atomic.h"
 #include "engine.h"
 #include "error.h"
-#include "kernel.h"
+#include "kernel_hydro.h"
 #include "lock.h"
 #include "minmax.h"
 #include "runner.h"

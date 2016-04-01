@@ -43,7 +43,7 @@
 #include "cycle.h"
 #include "error.h"
 #include "intrinsics.h"
-#include "kernel.h"
+#include "kernel_hydro.h"
 #include "timers.h"
 
 /**
