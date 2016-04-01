@@ -40,6 +40,8 @@ static void parse_line(char *line, struct swift_params *params);
 static void parse_value(char *line, struct swift_params *params);
 static void parse_section_param(char *line, int *isFirstParam, char *sectionName, struct swift_params *params);
 
+int lineNumber = 0;
+
 /**
  * @brief Reads an input file and stores each parameter in a structure.
  *
@@ -65,6 +67,7 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
   /* Read until the end of the file is reached.*/
   while (!feof(file)) {
     if (fgets(line, PARSER_MAX_LINE_SIZE, file) != NULL) {
+      lineNumber++;
       parse_line(line, params);
     }
   }
@@ -142,7 +145,6 @@ static int is_empty(const char *str) {
 
 static void parse_line(char *line, struct swift_params *params) {
 
-
   /* Parse line if it doesn't begin with a comment. */
   if (*line != PARSER_COMMENT_CHAR) {
     
@@ -168,7 +170,7 @@ static void parse_line(char *line, struct swift_params *params) {
       /* Check for invalid lines,not including the start and end of file. */
       /* Note: strcmp returns 0 if both strings are the same.*/
       else if (strcmp(trim_line,PARSER_START_OF_FILE) && strcmp(trim_line,PARSER_END_OF_FILE)) {
-          error("Invalid line: '%s'.",trim_line);
+          error("Invalid line:%d '%s'.",lineNumber,trim_line);
         
       }
     }
@@ -194,12 +196,12 @@ static void parse_value(char *line, struct swift_params *params) {
 
   /* Check for more than one value on the same line. */
   if (count_char(line, PARSER_VALUE_CHAR) > 1) {
-    error("Found more than one value in '%s', only one allowed.", line);
+    error("Inavlid line:%d '%s', only one value allowed per line.", lineNumber, line);
   }
 
   /* Check that standalone parameters have correct indentation. */
   if(!inSection && *line == ' ') {
-    error("Invalid line: '%s', standalone parameter defined with incorrect indentation.",line);
+    error("Invalid line:%d '%s', standalone parameter defined with incorrect indentation.", lineNumber, line);
   }
 
   /* Check that it is a parameter inside a section.*/
@@ -255,7 +257,7 @@ static void parse_section_param(char *line, int *isFirstParam, char *sectionName
     *isFirstParam = 0;
   }
   else if(count_indentation(line) != sectionIndent) {
-    error("Invalid line: '%s', parameter has incorrect indentation.",line);
+    error("Invalid line:%d '%s', parameter has incorrect indentation.",lineNumber,line);
   }
   
   /* Take first token as the parameter name and trim leading white space. */
