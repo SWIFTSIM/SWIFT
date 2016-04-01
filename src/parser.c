@@ -37,7 +37,8 @@ static int count_char(const char *str, char val);
 static int is_empty(const char *str);
 static int count_indentation(const char *str);
 static void parse_line(char *line, struct swift_params *params);
-static void parse_param(char *line, struct swift_params *params);
+static void parse_value(char *line, struct swift_params *params);
+static void parse_section_param(char *line, int *isFirstParam, char *sectionName, struct swift_params *params);
 
 /**
  * @brief Reads an input file and stores each parameter in a structure.
@@ -162,7 +163,7 @@ static void parse_line(char *line, struct swift_params *params) {
       
       /* Check if the line contains a value and parse it. */
       if (strchr(trim_line, PARSER_VALUE_CHAR)) {
-        parse_param(trim_line, params);
+        parse_value(trim_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
       /* Note: strcmp returns 0 if both strings are the same.*/
@@ -182,75 +183,94 @@ static void parse_line(char *line, struct swift_params *params) {
  *
  */
 
-static void parse_param(char *line, struct swift_params *params) {
-  static int in_section = 0;
+static void parse_value(char *line, struct swift_params *params) {
+  static int inSection = 0;
   static char
       section[PARSER_MAX_LINE_SIZE]; /* Keeps track of current section name. */
-  static int is_first_param = 1;
-  static int section_indent = 0;
-  char tmp_str[PARSER_MAX_LINE_SIZE];
-  char param_name[PARSER_MAX_LINE_SIZE];
+  static int isFirstParam = 1;
+  char tmpStr[PARSER_MAX_LINE_SIZE];
+
   char *token;
 
-  /* Check for more than one parameter on the same line. */
+  /* Check for more than one value on the same line. */
   if (count_char(line, PARSER_VALUE_CHAR) > 1) {
-    error("Found more than one parameter in '%s', only one allowed.", line);
+    error("Found more than one value in '%s', only one allowed.", line);
   }
 
-  if(!in_section && *line == ' ') {
+  /* Check that standalone parameters have correct indentation. */
+  if(!inSection && *line == ' ') {
     error("Invalid line: '%s', standalone parameter defined with incorrect indentation.",line);
   }
 
   /* Check that it is a parameter inside a section.*/
   if (*line == ' ' || *line == '\t') {
-   
-    /* Count indentation of each parameter and check that it 
-     * is consistent with the first parameter in the section. */ 
-    if(is_first_param) {
-      section_indent = count_indentation(line);
-      is_first_param = 0;
-    }
-    else if(count_indentation(line) != section_indent) {
-      error("Invalid line: '%s', parameter has incorrect indentation.",line);
-    }
-    
-    /* Take first token as the parameter name and trim leading white space. */
-    token = strtok(line, " :\t");
-    strcpy(tmp_str, token);
-
-    /* Take second token as the parameter value. */
-    token = strtok(NULL, " #\n");
-
-    /* Prefix the parameter name with its section name and
-     * copy it into the parameter structure. */
-    strcpy(param_name, section);
-    strcat(param_name, tmp_str);
-    strcpy(params->data[params->count].name, param_name);
-    strcpy(params->data[params->count++].value, token);
-
-  } else { /*Else it is the start of a new section or standalone parameter. */
+    parse_section_param(line,&isFirstParam,section,params);
+  } 
+  else { /*Else it is the start of a new section or standalone parameter. */
     /* Take first token as the parameter name. */
     token = strtok(line, " :\t");
-    strcpy(tmp_str, token);
+    strcpy(tmpStr, token);
 
     /* Take second token as the parameter value. */
     token = strtok(NULL, " #\n");
 
     /* If second token is NULL then the line must be a section heading. */
     if (token == NULL) {
-      strcat(tmp_str, PARSER_VALUE_STRING);
-      strcpy(section, tmp_str);
-      in_section = 1;
-      is_first_param = 1;
+      strcat(tmpStr, PARSER_VALUE_STRING);
+      strcpy(section, tmpStr);
+      inSection = 1;
+      isFirstParam = 1;
     } else {
       /* Must be a standalone parameter so no need to prefix name with a
        * section. */
-      strcpy(params->data[params->count].name, tmp_str);
+      strcpy(params->data[params->count].name, tmpStr);
       strcpy(params->data[params->count++].value, token);
-      in_section = 0;
-      is_first_param = 1;
+      inSection = 0;
+      isFirstParam = 1;
     }
   }
+}
+
+/**
+ * @brief Parses a parameter that appears in a section and stores it in a structure.
+ *
+ * @param line Line containing the parameter
+ * @param isFirstParam Shows if the first parameter of a section has been found
+ * @param sectionName String containing the current section name
+ * @param params Structure to be written to
+ *
+ */
+
+static void parse_section_param(char *line, int *isFirstParam, char *sectionName, struct swift_params *params) {
+
+  static int sectionIndent = 0;
+  char tmpStr[PARSER_MAX_LINE_SIZE];
+  char paramName[PARSER_MAX_LINE_SIZE];
+  char *token;
+  
+  /* Count indentation of each parameter and check that it 
+   * is consistent with the first parameter in the section. */ 
+  if(*isFirstParam) {
+    sectionIndent = count_indentation(line);
+    *isFirstParam = 0;
+  }
+  else if(count_indentation(line) != sectionIndent) {
+    error("Invalid line: '%s', parameter has incorrect indentation.",line);
+  }
+  
+  /* Take first token as the parameter name and trim leading white space. */
+  token = strtok(line, " :\t");
+  strcpy(tmpStr, token);
+
+  /* Take second token as the parameter value. */
+  token = strtok(NULL, " #\n");
+
+  /* Prefix the parameter name with its section name and
+   * copy it into the parameter structure. */
+  strcpy(paramName, sectionName);
+  strcat(paramName, tmpStr);
+  strcpy(params->data[params->count].name, paramName);
+  strcpy(params->data[params->count++].value, token);
 }
 
 /**
