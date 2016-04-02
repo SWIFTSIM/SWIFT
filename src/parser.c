@@ -32,6 +32,13 @@
 /* Local headers. */
 #include "error.h"
 
+#define PARSER_COMMENT_STRING "#"
+#define PARSER_COMMENT_CHAR '#'
+#define PARSER_VALUE_CHAR ':'
+#define PARSER_VALUE_STRING ":"
+#define PARSER_START_OF_FILE "---"
+#define PARSER_END_OF_FILE "..."
+
 /* Private functions. */
 static int count_char(const char *str, char val);
 static int is_empty(const char *str);
@@ -41,7 +48,7 @@ static void parse_value(char *line, struct swift_params *params);
 static void parse_section_param(char *line, int *isFirstParam,
                                 char *sectionName, struct swift_params *params);
 
-int lineNumber = 0;
+static int lineNumber = 0;
 
 /**
  * @brief Reads an input file and stores each parameter in a structure.
@@ -398,7 +405,6 @@ void parser_get_param_string(struct swift_params *params, char *name,
  * @param params Structure that holds the parameters
  *
  */
-
 void parser_print_params(struct swift_params *params) {
   printf("\n--------------------------\n");
   printf("|  SWIFT Parameter File  |\n");

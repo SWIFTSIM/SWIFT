@@ -19,23 +19,20 @@
 #ifndef SWIFT_PARSER_H
 #define SWIFT_PARSER_H
 
-#include <stdio.h>
+/* Config parameters. */
+#include "../config.h"
 
+/* Some constants. */
 #define PARSER_MAX_LINE_SIZE 128
 #define PARSER_MAX_NO_OF_PARAMS 512
 
-#define PARSER_COMMENT_STRING "#"
-#define PARSER_COMMENT_CHAR '#'
-#define PARSER_VALUE_CHAR ':'
-#define PARSER_VALUE_STRING ":"
-#define PARSER_START_OF_FILE "---"
-#define PARSER_END_OF_FILE "..."
-
+/* A parameter in the input file */
 struct parameter {
   char name[PARSER_MAX_LINE_SIZE];
   char value[PARSER_MAX_LINE_SIZE];
 };
 
+/* The array of parameters read from a file */
 struct swift_params {
   struct parameter data[PARSER_MAX_NO_OF_PARAMS];
   int count;
