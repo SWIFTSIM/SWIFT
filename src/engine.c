@@ -256,7 +256,7 @@ void engine_redistribute(struct engine *e) {
   }
 
   /* Sort the gparticles according to their cell index. */
-  space_gparts_sort(gparts, g_dest, s->nr_gparts, 0, nr_nodes - 1);
+  space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
