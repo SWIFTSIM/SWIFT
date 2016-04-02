@@ -23,20 +23,10 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <pthread.h>
-#include <math.h>
-#include <float.h>
-#include <limits.h>
-#include <fenv.h>
-
-/* Conditional headers. */
-#ifdef HAVE_LIBZ
-#include <zlib.h>
-#endif
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -80,6 +70,7 @@ int main(int argc, char *argv[]) {
   int with_outputs = 1;
   int with_external_gravity = 0;
   int with_self_gravity = 0;
+  int with_hydro = 0;
   int engine_policies = 0;
   int verbose = 0, talking = 0;
   unsigned long long cpufreq = 0;
@@ -153,9 +144,6 @@ int main(int argc, char *argv[]) {
     }
   }
 #endif
-
-  /* Init the space. */
-  bzero(&s, sizeof(struct space));
 
   /* Parse the options */
   while ((c = getopt(argc, argv, "a:c:d:e:f:gGh:m:oP:q:R:s:t:v:w:y:z:")) != -1)
@@ -300,6 +288,7 @@ int main(int argc, char *argv[]) {
         break;
     }
 
+/* Some initial information about domain decomposition */
 #ifdef WITH_MPI
   if (myrank == 0) {
     message("Running with %i thread(s) per node.", nr_threads);
@@ -322,11 +311,9 @@ int main(int argc, char *argv[]) {
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(struct part) is %li bytes.", (long int)sizeof(struct part));
-    message("sizeof(struct xpart) is %li bytes.",
-            (long int)sizeof(struct xpart));
-    message("sizeof(struct gpart) is %li bytes.",
-            (long int)sizeof(struct gpart));
+    message("sizeof(struct part) is %zi bytes.", sizeof(struct part));
+    message("sizeof(struct xpart) is %zi bytes.", sizeof(struct xpart));
+    message("sizeof(struct gpart) is %zi bytes.", sizeof(struct gpart));
   }
 
   /* Initialize unit system */
@@ -355,8 +342,7 @@ int main(int argc, char *argv[]) {
   if (strcmp(ICfileName, "") == 0)
     error("An IC file name must be provided via the option -f");
 
-  /* Read particles and space information from (GADGET) IC */
-
+  /* Read particles and space information from (GADGET) ICs */
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -369,7 +355,6 @@ int main(int argc, char *argv[]) {
 #else
   read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
 #endif
-
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("reading particle properties took %.3f %s.",
@@ -377,6 +362,7 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
+/* Get the total number of particles across all nodes. */
 #if defined(WITH_MPI)
   long long N_long[2] = {Ngas, Ngpart};
   MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -441,6 +427,7 @@ int main(int argc, char *argv[]) {
   talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
   /* Initialize the space with this data. */
+  bzero(&s, sizeof(struct space));
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max,
              myrank == 0);
@@ -461,7 +448,6 @@ int main(int argc, char *argv[]) {
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
-    // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
 
   /* Verify that each particle is in it's proper cell. */
@@ -471,6 +457,7 @@ int main(int argc, char *argv[]) {
     message("map_cellcheck picked up %i parts.", icount);
   }
 
+  /* Verify the maximal depth of cells. */
   if (myrank == 0) {
     data[0] = s.maxdepth;
     data[1] = 0;
@@ -479,7 +466,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Construct the engine policy */
-  engine_policies = ENGINE_POLICY | engine_policy_steal | engine_policy_hydro;
+  engine_policies = ENGINE_POLICY | engine_policy_steal;
+  if (with_hydro) engine_policies |= engine_policy_hydro;
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
   if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
 
@@ -502,8 +490,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   if (with_outputs) {
-    /* Write the state of the system as it is before starting time integration.
-     */
+    /* Write the state of the system before starting time integration. */
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -529,6 +516,7 @@ int main(int argc, char *argv[]) {
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
 #endif
 
+  /* Get some info to the user. */
   if (myrank == 0) {
     message(
         "Running on %lld gas particles and %lld DM particles until t=%.3e with "
@@ -650,26 +638,6 @@ int main(int argc, char *argv[]) {
       fclose(file_thread);
 #endif
     }
-
-    /* Dump a line of aggregate output. */
-    /*     if (myrank == 0) { */
-    /*       printf("%i %e %.16e %.16e %.16e %.3e %.3e %i %.3e %.3e", j, e.time,
-     */
-    /*              e.ekin + e.epot, e.ekin, e.epot, e.dt, e.dt_step,
-     * e.count_step, */
-    /*              e.dt_min, e.dt_max); */
-    /*       for (k = 0; k < timer_count; k++) */
-    /*         printf(" %.3f", clocks_from_ticks(timers[k]); */
-    /*       printf("\n"); */
-    /*       fflush(stdout); */
-    /*     } */
-
-    /* if (myrank == 0) { */
-    /*   printf("%i %e", j, e.time); */
-    /*   printf(" %.3f", clocks_from_ticks(timers[timer_count - 1]); */
-    /*   printf("\n"); */
-    /*   fflush(stdout); */
-    /* } */
   }
 
 /* Print the values of the runner histogram. */
