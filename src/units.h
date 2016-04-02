@@ -19,6 +19,12 @@
 #ifndef SWIFT_UNITS_H
 #define SWIFT_UNITS_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes. */
+#include "parser.h"
+
 /**
  * @brief The unit system used internally.
  *
@@ -90,7 +96,7 @@ enum UnitConversionFactor {
  * @brief Initialises the UnitSystem structure with the constants given in
  * const.h
  */
-void initUnitSystem(struct UnitSystem*);
+void initUnitSystem(struct UnitSystem*, const struct swift_params*);
 
 /**
  * @brief Returns the base unit conversion factor for a given unit system

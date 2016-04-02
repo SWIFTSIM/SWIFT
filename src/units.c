@@ -47,13 +47,20 @@
  * @param us The UnitSystem to initialize
  */
 
-void initUnitSystem(struct UnitSystem* us) {
-  us->UnitMass_in_cgs = const_unit_mass_in_cgs;
-  us->UnitLength_in_cgs = const_unit_length_in_cgs;
-  us->UnitTime_in_cgs = 1. / ((double)const_unit_velocity_in_cgs /
-                              ((double)const_unit_length_in_cgs));
-  us->UnitCurrent_in_cgs = 1.;
-  us->UnitTemperature_in_cgs = 1.;
+void initUnitSystem(struct UnitSystem* us, const struct swift_params* params) {
+
+  parser_get_param_double(params, "UnitSystem:UnitMass_in_cgs",
+                          &us->UnitMass_in_cgs);
+  parser_get_param_double(params, "UnitSystem:UnitLength_in_cgs",
+                          &us->UnitLength_in_cgs);
+  double unitVelocity;
+  parser_get_param_double(params, "UnitSystem:UnitVelocity_in_cgs",
+                          &unitVelocity);
+  us->UnitTime_in_cgs = us->UnitLength_in_cgs / unitVelocity;
+  parser_get_param_double(params, "UnitSystem:UnitCurrent_in_cgs",
+                          &us->UnitCurrent_in_cgs);
+  parser_get_param_double(params, "UnitSystem:UnitTemp_in_cgs",
+                          &us->UnitTemperature_in_cgs);
 }
 
 /**
