@@ -89,7 +89,7 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
  * @param str String to be checked
  * @param val Character to be counted
  *
- * @return count Number of occurrences of val inside str
+ * @return Number of occurrences of val inside str
  */
 
 static int count_char(const char *str, char val) {
@@ -108,7 +108,7 @@ static int count_char(const char *str, char val) {
  *
  * @param str String to be checked
  *
- * @return count Number of white spaces prefixing str
+ * @return Number of white spaces prefixing str
  */
 
 static int count_indentation(const char *str) {
@@ -126,7 +126,7 @@ static int count_indentation(const char *str) {
  *
  * @param str String to be checked
  *
- * @return retParam Returns 1 if str is empty, 0 otherwise
+ * @return Returns 1 if str is empty, 0 otherwise
  */
 
 static int is_empty(const char *str) {
