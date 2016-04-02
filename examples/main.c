@@ -23,6 +23,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <fenv.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +42,26 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+void print_help_message() {
+
+  printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
+  printf("Valid options are:\n");
+  printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
+  printf("  %2s %8s %s\n", "-f", "[value] ",
+         "Overwrites the CPU frequency (Hz) to be used for time measurements");
+  printf("  %2s %8s %s\n", "-g", "",
+         "Run with an external gravitational potential");
+  printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
+  printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
+  printf("  %2s %8s %s\n", "-v", "[12]   ",
+         "Increase the level of verbosity 1: MPI-rank 0 writes "
+         "2: All MPI ranks write");
+  printf("  %2s %8s %s\n", "-y", "",
+         "Time-step frequency at which task graphs are dumped");
+  printf("  %2s %8s %s\n", "-h", "", "Prints this help message and exits");
+  printf("\nSee the file example.yml for an example of parameter file.\n");
+}
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -49,31 +70,15 @@ int main(int argc, char *argv[]) {
 
   int c, icount, periodic = 1;
   size_t Ngas = 0, Ngpart = 0;
-  long long N_total[2] = {0, 0};
   int nr_threads = 1, nr_queues = -1;
-  int dump_tasks = 0;
-  int data[2];
   double dim[3] = {1.0, 1.0, 1.0}, shift[3] = {0.0, 0.0, 0.0};
   double h_max = -1.0, scaling = 1.0;
   double time_end = DBL_MAX;
-  struct part *parts = NULL;
-  struct gpart *gparts = NULL;
-  struct space s;
-  struct engine e;
-  struct UnitSystem us;
   struct clocks_time tic, toc;
   char ICfileName[200] = "";
-  char dumpfile[30];
   float dt_max = 0.0f, dt_min = 0.0f;
   int nr_nodes = 1, myrank = 0;
-  FILE *file_thread;
-  int with_outputs = 1;
-  int with_external_gravity = 0;
-  int with_self_gravity = 0;
-  int with_hydro = 0;
-  int engine_policies = 0;
-  int verbose = 0, talking = 0;
-  unsigned long long cpufreq = 0;
+  int with_outputs = 0;
 
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -90,11 +95,8 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-  /* Choke on FP-exceptions. */
-  // feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
-
-  /* Initialize CPU frequency, this also starts time. */
-  clocks_set_cpufreq(cpufreq);
+/* Choke on FP-exceptions. */
+// feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
@@ -113,7 +115,8 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN)) !=
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
-  if (myrank == 0) message("MPI is up and running with %i node(s).", nr_nodes);
+  if (myrank == 0)
+    printf("[00000.0] MPI is up and running with %i node(s).\n", nr_nodes);
   fflush(stdout);
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -138,42 +141,31 @@ int main(int argc, char *argv[]) {
     CPU_ZERO(&affinity);
     CPU_SET(sched_getcpu(), &affinity);
     if (sched_setaffinity(0, sizeof(cpu_set_t), &affinity) != 0) {
-      message("failed to set entry thread's affinity");
-    } else {
-      message("set entry thread's affinity");
+      error("failed to set entry thread's affinity");
     }
   }
 #endif
 
-  /* Parse the options */
-  while ((c = getopt(argc, argv, "a:c:d:e:f:gGh:m:oP:q:R:s:t:v:w:y:z:")) != -1)
-    switch (c) {
-      case 'a':
-        if (sscanf(optarg, "%lf", &scaling) != 1)
-          error("Error parsing cutoff scaling.");
-        if (myrank == 0) message("scaling cutoff by %.3f.", scaling);
-        fflush(stdout);
-        break;
+  int dump_tasks = 0;
+  int with_cosmology = 0;
+  int with_external_gravity = 0;
+  int with_self_gravity = 0;
+  int with_hydro = 0;
+  int verbose = 0;
+  char paramFileName[200] = "";
+  unsigned long long cpufreq = 0;
+
+  /* Parse the parameters */
+  while ((c = getopt(argc, argv, "cf:gGhsv:y")) != -1) switch (c) {
       case 'c':
-        if (sscanf(optarg, "%lf", &time_end) != 1)
-          error("Error parsing final time.");
-        if (myrank == 0) message("time_end set to %.3e.", time_end);
-        fflush(stdout);
-        break;
-      case 'd':
-        if (sscanf(optarg, "%f", &dt_min) != 1)
-          error("Error parsing minimal timestep.");
-        if (myrank == 0) message("dt_min set to %e.", dt_min);
-        fflush(stdout);
-        break;
-      case 'e':
-        if (sscanf(optarg, "%f", &dt_max) != 1)
-          error("Error parsing maximal timestep.");
-        if (myrank == 0) message("dt_max set to %e.", dt_max);
-        fflush(stdout);
+        with_cosmology = 1;
         break;
       case 'f':
-        if (!strcpy(ICfileName, optarg)) error("Error parsing IC file name.");
+        if (sscanf(optarg, "%llu", &cpufreq) != 1) {
+          if (myrank == 0) printf("Error parsing CPU frequency (-f).\n");
+          if (myrank == 0) print_help_message();
+          exit(1);
+        }
         break;
       case 'g':
         with_external_gravity = 1;
@@ -182,111 +174,83 @@ int main(int argc, char *argv[]) {
         with_self_gravity = 1;
         break;
       case 'h':
-        if (sscanf(optarg, "%llu", &cpufreq) != 1)
-          error("Error parsing CPU frequency.");
-        if (myrank == 0) message("CPU frequency set to %llu.", cpufreq);
-        fflush(stdout);
-        break;
-      case 'm':
-        if (sscanf(optarg, "%lf", &h_max) != 1) error("Error parsing h_max.");
-        if (myrank == 0) message("maximum h set to %e.", h_max);
-        fflush(stdout);
-        break;
-      case 'o':
-        with_outputs = 0;
-        break;
-      case 'P':
-/* Partition type is one of "g", "m", "w", or "v"; "g" can be
- * followed by three numbers defining the grid. */
-#ifdef WITH_MPI
-        switch (optarg[0]) {
-          case 'g':
-            initial_partition.type = INITPART_GRID;
-            if (strlen(optarg) > 2) {
-              if (sscanf(optarg, "g %i %i %i", &initial_partition.grid[0],
-                         &initial_partition.grid[1],
-                         &initial_partition.grid[2]) != 3)
-                error("Error parsing grid.");
-            }
-            break;
-#ifdef HAVE_METIS
-          case 'm':
-            initial_partition.type = INITPART_METIS_NOWEIGHT;
-            break;
-          case 'w':
-            initial_partition.type = INITPART_METIS_WEIGHT;
-            break;
-#endif
-          case 'v':
-            initial_partition.type = INITPART_VECTORIZE;
-            break;
-        }
-#endif
-        break;
-      case 'q':
-        if (sscanf(optarg, "%d", &nr_queues) != 1)
-          error("Error parsing number of queues.");
-        break;
-      case 'R':
-/* Repartition type "n", "b", "v", "e" or "x".
- * Note only none is available without METIS. */
-#ifdef WITH_MPI
-        switch (optarg[0]) {
-          case 'n':
-            reparttype = REPART_NONE;
-            break;
-#ifdef HAVE_METIS
-          case 'b':
-            reparttype = REPART_METIS_BOTH;
-            break;
-          case 'v':
-            reparttype = REPART_METIS_VERTEX;
-            break;
-          case 'e':
-            reparttype = REPART_METIS_EDGE;
-            break;
-          case 'x':
-            reparttype = REPART_METIS_VERTEX_EDGE;
-            break;
-#endif
-        }
-#endif
-        break;
+        if (myrank == 0) print_help_message();
+        exit(0);
       case 's':
-        if (sscanf(optarg, "%lf %lf %lf", &shift[0], &shift[1], &shift[2]) != 3)
-          error("Error parsing shift.");
-        if (myrank == 0)
-          message("will shift parts by [ %.3f %.3f %.3f ].", shift[0], shift[1],
-                  shift[2]);
-        break;
-      case 't':
-        if (sscanf(optarg, "%d", &nr_threads) != 1)
-          error("Error parsing number of threads.");
+        with_hydro = 1;
         break;
       case 'v':
-        /* verbose = 1: MPI rank 0 writes
-           verbose = 2: all MPI ranks write */
-        if (sscanf(optarg, "%d", &verbose) != 1)
-          error("Error parsing verbosity level.");
-        break;
-      case 'w':
-        if (sscanf(optarg, "%d", &space_subsize) != 1)
-          error("Error parsing sub size.");
-        if (myrank == 0) message("sub size set to %i.", space_subsize);
+        if (sscanf(optarg, "%d", &verbose) != 1) {
+          if (myrank == 0) printf("Error parsing verbosity level (-v).\n");
+          if (myrank == 0) print_help_message();
+          exit(1);
+        }
         break;
       case 'y':
-        if (sscanf(optarg, "%d", &dump_tasks) != 1)
-          error("Error parsing dump_tasks (-y)");
-        break;
-      case 'z':
-        if (sscanf(optarg, "%d", &space_splitsize) != 1)
-          error("Error parsing split size.");
-        if (myrank == 0) message("split size set to %i.", space_splitsize);
+        if (sscanf(optarg, "%d", &dump_tasks) != 1) {
+          if (myrank == 0) printf("Error parsing dump_tasks (-y). \n");
+          if (myrank == 0) print_help_message();
+          exit(1);
+        }
         break;
       case '?':
-        error("Unknown option.");
+        if (myrank == 0) print_help_message();
+        exit(1);
         break;
     }
+  if (optind == argc - 1) {
+    if (!strcpy(paramFileName, argv[optind++]))
+      error("Error reading parameter file name.");
+  } else if (optind > argc - 1) {
+    if (myrank == 0) printf("Error: A parameter file name must be provided\n");
+    if (myrank == 0) print_help_message();
+    exit(1);
+  } else {
+    if (myrank == 0) printf("Error: Too many parameters given\n");
+    if (myrank == 0) print_help_message();
+    exit(1);
+  }
+
+  /* And then, there was time ! */
+  clocks_set_cpufreq(cpufreq);
+
+  /* Report CPU frequency. */
+  if (myrank == 0) {
+    cpufreq = clocks_get_cpufreq();
+    message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
+  }
+
+  /* How large are the parts? */
+  if (myrank == 0) {
+    message("sizeof(struct part) is %zi bytes.", sizeof(struct part));
+    message("sizeof(struct xpart) is %zi bytes.", sizeof(struct xpart));
+    message("sizeof(struct gpart) is %zi bytes.", sizeof(struct gpart));
+  }
+
+  /* Read the parameter file */
+  struct swift_params params;
+  message("Reading parameter file '%s'", paramFileName);
+  parser_read_file(paramFileName, &params);
+  // parser_print_params(&params);
+
+  parser_write_params_to_file(&params, "used_parameters.yml");
+
+  /* Initialize unit system */
+  struct UnitSystem us;
+  initUnitSystem(&us, &params);
+  if (myrank == 0) {
+    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    message("Density units: %e a^%f h^%f.",
+            conversionFactor(&us, UNIT_CONV_DENSITY),
+            aFactor(&us, UNIT_CONV_DENSITY), hFactor(&us, UNIT_CONV_DENSITY));
+    message("Entropy units: %e a^%f h^%f.",
+            conversionFactor(&us, UNIT_CONV_ENTROPY),
+            aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
+  }
 
 /* Some initial information about domain decomposition */
 #ifdef WITH_MPI
@@ -309,40 +273,11 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) message("Running with %i thread(s).", nr_threads);
 #endif
 
-  /* How large are the parts? */
-  if (myrank == 0) {
-    message("sizeof(struct part) is %zi bytes.", sizeof(struct part));
-    message("sizeof(struct xpart) is %zi bytes.", sizeof(struct xpart));
-    message("sizeof(struct gpart) is %zi bytes.", sizeof(struct gpart));
-  }
-
-  /* Initialize unit system */
-  initUnitSystem(&us);
-  if (myrank == 0) {
-    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-    message("Density units: %e a^%f h^%f.",
-            conversionFactor(&us, UNIT_CONV_DENSITY),
-            aFactor(&us, UNIT_CONV_DENSITY), hFactor(&us, UNIT_CONV_DENSITY));
-    message("Entropy units: %e a^%f h^%f.",
-            conversionFactor(&us, UNIT_CONV_ENTROPY),
-            aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
-  }
-
-  /* Report CPU frequency. */
-  if (myrank == 0) {
-    cpufreq = clocks_get_cpufreq();
-    message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
-  }
-
-  /* Check whether an IC file has been provided */
-  if (strcmp(ICfileName, "") == 0)
-    error("An IC file name must be provided via the option -f");
+  return 0;
 
   /* Read particles and space information from (GADGET) ICs */
+  struct part *parts = NULL;
+  struct gpart *gparts = NULL;
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -362,7 +297,8 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-/* Get the total number of particles across all nodes. */
+  /* Get the total number of particles across all nodes. */
+  long long N_total[2] = {0, 0};
 #if defined(WITH_MPI)
   long long N_long[2] = {Ngas, Ngpart};
   MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -424,9 +360,10 @@ int main(int argc, char *argv[]) {
   if (nr_queues < 0) nr_queues = nr_threads;
 
   /* How vocal are we ? */
-  talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
   /* Initialize the space with this data. */
+  struct space s;
   bzero(&s, sizeof(struct space));
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max,
@@ -459,21 +396,23 @@ int main(int argc, char *argv[]) {
 
   /* Verify the maximal depth of cells. */
   if (myrank == 0) {
-    data[0] = s.maxdepth;
-    data[1] = 0;
+    int data[2] = {s.maxdepth, 0};
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
   /* Construct the engine policy */
-  engine_policies = ENGINE_POLICY | engine_policy_steal;
+  int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_hydro) engine_policies |= engine_policy_hydro;
-  if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
   if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
+  if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
+  if (with_cosmology) engine_policies |= engine_policy_cosmology;
 
   /* Initialize the engine with this space. */
   if (myrank == 0) clocks_gettime(&tic);
   if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
+  struct engine e;
+  bzero(&e, sizeof(struct engine));
   engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
               engine_policies, 0, time_end, dt_min, dt_max, talking);
   if (myrank == 0 && verbose) {
@@ -579,7 +518,9 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
 
       /* Make sure output file is empty, only on one rank. */
+      char dumpfile[30];
       sprintf(dumpfile, "thread_info_MPI-step%d.dat", j);
+      FILE *file_thread;
       if (myrank == 0) {
         file_thread = fopen(dumpfile, "w");
         fclose(file_thread);
@@ -624,7 +565,9 @@ int main(int argc, char *argv[]) {
       }
 
 #else
+      char dumpfile[30];
       sprintf(dumpfile, "thread_info-step%d.dat", j);
+      FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       for (int l = 0; l < e.sched.nr_tasks; l++)
         if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
