@@ -293,7 +293,7 @@ static void parse_section_param(char *line, int *isFirstParam,
  *
  */
 
-void parser_get_param_int(struct swift_params *params, char *name,
+void parser_get_param_int(const struct swift_params *params, char *name,
                           int *retParam) {
   char str[PARSER_MAX_LINE_SIZE];
 
@@ -324,7 +324,7 @@ void parser_get_param_int(struct swift_params *params, char *name,
  *
  */
 
-void parser_get_param_float(struct swift_params *params, char *name,
+void parser_get_param_float(const struct swift_params *params, char *name,
                             float *retParam) {
   char str[PARSER_MAX_LINE_SIZE];
 
@@ -355,7 +355,7 @@ void parser_get_param_float(struct swift_params *params, char *name,
  *
  */
 
-void parser_get_param_double(struct swift_params *params, char *name,
+void parser_get_param_double(const struct swift_params *params, char *name,
                              double *retParam) {
   char str[PARSER_MAX_LINE_SIZE];
 
@@ -386,7 +386,7 @@ void parser_get_param_double(struct swift_params *params, char *name,
  *
  */
 
-void parser_get_param_string(struct swift_params *params, char *name,
+void parser_get_param_string(const struct swift_params *params, char *name,
                              char *retParam) {
   for (int i = 0; i < params->count; i++) {
     /*strcmp returns 0 if both strings are the same.*/
@@ -405,7 +405,7 @@ void parser_get_param_string(struct swift_params *params, char *name,
  * @param params Structure that holds the parameters
  *
  */
-void parser_print_params(struct swift_params *params) {
+void parser_print_params(const struct swift_params *params) {
   printf("\n--------------------------\n");
   printf("|  SWIFT Parameter File  |\n");
   printf("--------------------------\n");
@@ -425,7 +425,7 @@ void parser_print_params(struct swift_params *params) {
  *
  */
 
-void parser_write_params_to_file(struct swift_params *params,
+void parser_write_params_to_file(const  struct swift_params *params,
                                  const char *file_name) {
   FILE *file = fopen(file_name, "w");
   char section[PARSER_MAX_LINE_SIZE];

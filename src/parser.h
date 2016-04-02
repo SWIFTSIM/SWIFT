@@ -40,16 +40,16 @@ struct swift_params {
 
 /* Public API. */
 void parser_read_file(const char *file_name, struct swift_params *params);
-void parser_print_params(struct swift_params *params);
-void parser_write_params_to_file(struct swift_params *params,
+void parser_print_params(const struct swift_params *params);
+void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name);
-void parser_get_param_int(struct swift_params *params, char *name,
+void parser_get_param_int(const struct swift_params *params, char *name,
                           int *retParam);
-void parser_get_param_float(struct swift_params *params, char *name,
+void parser_get_param_float(const struct swift_params *params, char *name,
                             float *retParam);
-void parser_get_param_double(struct swift_params *params, char *name,
+void parser_get_param_double(const struct swift_params *params, char *name,
                              double *retParam);
-void parser_get_param_string(struct swift_params *params, char *name,
+void parser_get_param_string(const struct swift_params *params, char *name,
                              char *retParam);
 
 #endif /* SWIFT_PARSER_H */
