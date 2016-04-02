@@ -184,8 +184,8 @@ static void parse_line(char *line, struct swift_params *params) {
 
 static void parse_value(char *line, struct swift_params *params) {
   static int inSection = 0;
-  static char
-      section[PARSER_MAX_LINE_SIZE]; /* Keeps track of current section name. */
+  static char section[PARSER_MAX_LINE_SIZE]; /* Keeps track of current section
+                                                name. */
   static int isFirstParam = 1;
   char tmpStr[PARSER_MAX_LINE_SIZE];
 
@@ -208,7 +208,7 @@ static void parse_value(char *line, struct swift_params *params) {
   /* Check that it is a parameter inside a section.*/
   if (*line == ' ' || *line == '\t') {
     parse_section_param(line, &isFirstParam, section, params);
-  } else { /*Else it is the start of a new section or standalone parameter. */
+  } else {/*Else it is the start of a new section or standalone parameter. */
     /* Take first token as the parameter name. */
     token = strtok(line, " :\t");
     strcpy(tmpStr, token);
