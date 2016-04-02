@@ -56,10 +56,11 @@
 #include "partition.h"
 #include "timers.h"
 
-const char *engine_policy_names[12] = {
+const char *engine_policy_names[13] = {
     "none",          "rand",   "steal",        "keep",
     "block",         "fix_dt", "cpu_tight",    "mpi",
-    "numa_affinity", "hydro",  "self_gravity", "external_gravity"};
+    "numa_affinity", "hydro",  "self_gravity", "external_gravity",
+    "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
