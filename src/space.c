@@ -1299,6 +1299,11 @@ void space_init(struct space *s, struct swift_params *params, double dim[3],
   s->nr_queues = 1; /* Temporary value until engine construction */
   s->size_parts_foreign = 0;
 
+  /* Get the constants for the scheduler */
+  space_maxsize = parser_get_param_int(params, "Scheduler:cell_max_size");
+  space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
+  space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
+
   /* Apply h scaling */
   const double scaling =
       parser_get_param_double(params, "InitialConditions:h_scaling");
