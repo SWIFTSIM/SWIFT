@@ -42,11 +42,16 @@
 #define ENGINE_POLICY engine_policy_none
 #endif
 
+/**
+ * @brief Help messages for the command line parameters.
+ */
 void print_help_message() {
 
   printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
+  printf("  %2s %8s %s\n", "-e", "",
+         "Enable floating-point exceptions (debugging mode)");
   printf("  %2s %8s %s\n", "-f", "[value] ",
          "Overwrites the CPU frequency (Hz) to be used for time measurements");
   printf("  %2s %8s %s\n", "-g", "",
@@ -68,13 +73,7 @@ void print_help_message() {
  */
 int main(int argc, char *argv[]) {
 
-  int c, icount;
-  double time_end = DBL_MAX;
   struct clocks_time tic, toc;
-  float dt_max = 0.0f, dt_min = 0.0f;
-  int nr_nodes = 1, myrank = 0;
-  int with_outputs = 0;
-  int nr_threads, nr_queues;
 
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -91,9 +90,7 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-/* Choke on FP-exceptions. */
-// feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-
+  int nr_nodes = 1, myrank = 0;
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res = 0, prov = 0;
@@ -147,14 +144,19 @@ int main(int argc, char *argv[]) {
   int with_external_gravity = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
+  int with_fp_exceptions = 0;
   int verbose = 0;
   char paramFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
-  while ((c = getopt(argc, argv, "cf:gGhsv:y")) != -1) switch (c) {
+  int c;
+  while ((c = getopt(argc, argv, "cef:gGhsv:y")) != -1) switch (c) {
       case 'c':
         with_cosmology = 1;
+        break;
+      case 'e':
+        with_fp_exceptions = 1;
         break;
       case 'f':
         if (sscanf(optarg, "%llu", &cpufreq) != 1) {
@@ -216,6 +218,12 @@ int main(int argc, char *argv[]) {
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
+  /* Do we choke on FP-exceptions ? */
+  if (with_fp_exceptions) {
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    if (myrank == 0) message("Floating point exceptions will be reported.");
+  }
+
   /* How large are the parts? */
   if (myrank == 0) {
     message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
@@ -223,12 +231,21 @@ int main(int argc, char *argv[]) {
     message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
   }
 
+  /* How vocal are we ? */
+  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
+
   /* Read the parameter file */
   struct swift_params params;
-  message("Reading parameters from file '%s'", paramFileName);
-  parser_read_file(paramFileName, &params);
-  // parser_print_params(&params);
-  if (myrank == 0) parser_write_params_to_file(&params, "used_parameters.yml");
+  if (myrank == 0) {
+    message("Reading parameters from file '%s'", paramFileName);
+    parser_read_file(paramFileName, &params);
+    // parser_print_params(&params);
+    parser_write_params_to_file(&params, "used_parameters.yml");
+  }
+#ifdef WITH_MPI
+  /* Broadcast the parameter file */
+  MPI_Bcast(&params, sizeof(struct swift_params), MPI_BYTE, MPI_COMM_WORLD);
+#endif
 
   /* Initialize unit system */
   struct UnitSystem us;
@@ -284,12 +301,13 @@ int main(int argc, char *argv[]) {
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
-    message("Reading particle properties took %.3f %s.",
-            clocks_diff(&tic, &toc), clocks_getunit());
+    message("Reading initial conditions took %.3f %s.", clocks_diff(&tic, &toc),
+            clocks_getunit());
     fflush(stdout);
   }
 
-  /* Discard gparts if we don't have gravity */
+  /* Discard gparts if we don't have gravity
+   * (Better implementation of i/o will come)*/
   if (!with_external_gravity && !with_self_gravity) {
     free(gparts);
     gparts = NULL;
@@ -300,18 +318,15 @@ int main(int argc, char *argv[]) {
   /* Get the total number of particles across all nodes. */
   long long N_total[2] = {0, 0};
 #if defined(WITH_MPI)
-  N_long[0] = Ngas;
-  N_long[1] = Ngpart;
+  long long N_long[2] = {Ngas, Ngpart};
   MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-  if (myrank == 0)
-    message("Read %lld gas particles and %lld gparts from the ICs", N_total[0],
-            N_total[1]);
 #else
   N_total[0] = Ngas;
   N_total[1] = Ngpart;
-  message("Read %lld gas particles and %lld gparts from the ICs", N_total[0],
-          N_total[1]);
 #endif
+  if (myrank == 0)
+    message("Read %lld gas particles and %lld gparts from the ICs.", N_total[0],
+            N_total[1]);
 
   /* Apply h scaling */
   const double scaling =
@@ -340,23 +355,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  return 0;
-
-  double h_max;
-
-  /* Set default number of queues. */
-  // if (nr_queues < 0) nr_queues = nr_threads;
-
-  /* How vocal are we ? */
-  const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
-
   /* Initialize the space with this data. */
   struct space s;
-  bzero(&s, sizeof(struct space));
+  const double h_max =
+      parser_get_param_double(&params, "SPH:max_smoothing_length");
   if (myrank == 0) clocks_gettime(&tic);
-  space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max,
-             myrank == 0);
-  if (myrank == 0 && verbose) {
+  space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max, talking);
+  if (talking) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
             clocks_getunit());
@@ -364,7 +369,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Say a few nice things about the space we just created. */
-  if (myrank == 0) {
+  if (talking) {
     message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
             s.dim[2]);
     message("space %s periodic.", s.periodic ? "is" : "isn't");
@@ -376,14 +381,14 @@ int main(int argc, char *argv[]) {
   }
 
   /* Verify that each particle is in it's proper cell. */
-  if (myrank == 0) {
-    icount = 0;
+  if (talking) {
+    int icount = 0;
     space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
     message("map_cellcheck picked up %i parts.", icount);
   }
 
   /* Verify the maximal depth of cells. */
-  if (myrank == 0) {
+  if (talking) {
     int data[2] = {s.maxdepth, 0};
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
@@ -396,14 +401,11 @@ int main(int argc, char *argv[]) {
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
 
-  /* Initialize the engine with this space. */
+  /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
-  if (myrank == 0) message("nr_nodes is %i.", nr_nodes);
   struct engine e;
-  bzero(&e, sizeof(struct engine));
-  engine_init(&e, &s, dt_max, nr_threads, nr_queues, nr_nodes, myrank,
-              engine_policies, 0, time_end, dt_min, dt_max, talking);
-  if (myrank == 0 && verbose) {
+  engine_init(&e, &s, &params, nr_nodes, myrank, engine_policies, talking);
+  if (talking) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
             clocks_getunit());
@@ -416,6 +418,7 @@ int main(int argc, char *argv[]) {
   engine_redistribute(&e);
 #endif
 
+  int with_outputs = 1;
   if (with_outputs) {
     /* Write the state of the system before starting time integration. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -448,7 +451,7 @@ int main(int argc, char *argv[]) {
     message(
         "Running on %lld gas particles and %lld DM particles until t=%.3e with "
         "%i threads and %i queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total[0], N_total[1], time_end, e.nr_threads, e.sched.nr_queues,
+        N_total[0], N_total[1], e.timeEnd, e.nr_threads, e.sched.nr_queues,
         e.dt_min, e.dt_max);
     fflush(stdout);
   }
@@ -459,10 +462,12 @@ int main(int argc, char *argv[]) {
   /* Legend */
   if (myrank == 0)
     printf(
-        "# Step  Time  time-step  Number of updates  Number of updates "
+        "# Step  Time  time-step  Number of updates  Number of g-updates "
         "CPU Wall-clock time [%s]\n",
         clocks_getunit());
 
+  return 0;
+   
   /* Let loose a runner on the space. */
   for (int j = 0; !engine_is_done(&e); j++) {
 

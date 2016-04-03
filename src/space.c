@@ -1281,6 +1281,9 @@ void space_init(struct space *s, double dim[3], struct part *parts,
                 struct gpart *gparts, size_t Ngas, size_t Ngpart, int periodic,
                 double h_max, int verbose) {
 
+  /* Clean-up everything */
+  bzero(s, sizeof(struct space));
+
   /* Store everything in the space. */
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
@@ -1293,7 +1296,7 @@ void space_init(struct space *s, double dim[3], struct part *parts,
   s->size_gparts = Ngpart;
   s->gparts = gparts;
   s->cell_min = h_max;
-  s->nr_queues = 1;
+  s->nr_queues = 1; /* Temporary value until engine construction */
   s->size_parts_foreign = 0;
 
   /* Check that all the gas particle positions are reasonable, wrap if periodic.

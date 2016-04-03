@@ -38,6 +38,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "parser.h"
 #include "partition.h"
 
 /* Some constants. */
@@ -127,7 +128,7 @@ struct engine {
   FILE *file_stats;
 
   /* The current step number. */
-  int step, nullstep;
+  int step;
 
   /* The number of particles updated in the previous step. */
   int count_step;
@@ -167,10 +168,8 @@ struct engine {
 
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
-void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max,
-                 int verbose);
+void engine_init(struct engine *e, struct space *s, struct swift_params *params,
+                 int nr_nodes, int nodeID, int policy, int verbose);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);
