@@ -314,6 +314,38 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
 }
 
 /**
+ * @brief Retrieve char parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @return Value of the parameter found
+ */
+char parser_get_param_char(const struct swift_params *params,
+                           const char *name) {
+
+  char str[PARSER_MAX_LINE_SIZE];
+  char retParam = 0;
+
+  for (int i = 0; i < params->count; i++) {
+    /*strcmp returns 0 if both strings are the same.*/
+    if (!strcmp(name, params->data[i].name)) {
+      /* Check that exactly one number is parsed. */
+      if (sscanf(params->data[i].value, "%c%s", &retParam, str) != 1) {
+        error(
+            "Tried parsing char '%s' but found '%s' with illegal char "
+            "characters '%s'.",
+            params->data[i].name, params->data[i].value, str);
+      }
+
+      return retParam;
+    }
+  }
+
+  error("Cannot find '%s' in the structure.", name);
+  return 0;
+}
+
+/**
  * @brief Retrieve float parameter from structure.
  *
  * @param params Structure that holds the parameters

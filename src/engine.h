@@ -168,8 +168,9 @@ struct engine {
 
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
-void engine_init(struct engine *e, struct space *s, struct swift_params *params,
-                 int nr_nodes, int nodeID, int policy, int verbose);
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, int nr_nodes, int nodeID,
+                 int policy, int verbose);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);

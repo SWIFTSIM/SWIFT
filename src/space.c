@@ -1277,9 +1277,9 @@ struct cell *space_getcell(struct space *s) {
  * recursively.
  */
 
-void space_init(struct space *s, struct swift_params *params, double dim[3],
-                struct part *parts, struct gpart *gparts, size_t Npart,
-                size_t Ngpart, int periodic, int verbose) {
+void space_init(struct space *s, const struct swift_params *params,
+                double dim[3], struct part *parts, struct gpart *gparts,
+                size_t Npart, size_t Ngpart, int periodic, int verbose) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));

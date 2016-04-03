@@ -43,6 +43,7 @@ void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(const struct swift_params *params);
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name);
+char parser_get_param_char(const struct swift_params *params, const char *name);
 int parser_get_param_int(const struct swift_params *params, const char *name);
 float parser_get_param_float(const struct swift_params *params,
                              const char *name);

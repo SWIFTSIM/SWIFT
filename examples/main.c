@@ -52,18 +52,18 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
   printf("  %2s %8s %s\n", "-e", "",
          "Enable floating-point exceptions (debugging mode)");
-  printf("  %2s %8s %s\n", "-f", "[value] ",
-         "Overwrites the CPU frequency (Hz) to be used for time measurements");
+  printf("  %2s %8s %s\n", "-f", "{int}",
+         "Overwrite the CPU frequency (Hz) to be used for time measurements");
   printf("  %2s %8s %s\n", "-g", "",
          "Run with an external gravitational potential");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
-  printf("  %2s %8s %s\n", "-v", "[12]   ",
+  printf("  %2s %8s %s\n", "-v", "[12]",
          "Increase the level of verbosity 1: MPI-rank 0 writes "
-         "2: All MPI ranks write");
-  printf("  %2s %8s %s\n", "-y", "",
+         "2: All MPI-ranks write");
+  printf("  %2s %8s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped");
-  printf("  %2s %8s %s\n", "-h", "", "Prints this help message and exits");
+  printf("  %2s %8s %s\n", "-h", "", "Print this help message and exit");
   printf("\nSee the file example.yml for an example of parameter file.\n");
 }
 
@@ -75,22 +75,8 @@ int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
 
-#ifdef WITH_MPI
-  struct partition initial_partition;
-  enum repartition_type reparttype = REPART_NONE;
-
-  initial_partition.type = INITPART_GRID;
-  initial_partition.grid[0] = 1;
-  initial_partition.grid[1] = 1;
-  initial_partition.grid[2] = 1;
-#ifdef HAVE_METIS
-  /* Defaults make use of METIS. */
-  reparttype = REPART_METIS_BOTH;
-  initial_partition.type = INITPART_METIS_NOWEIGHT;
-#endif
-#endif
-
   int nr_nodes = 1, myrank = 0;
+
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res = 0, prov = 0;
@@ -111,18 +97,12 @@ int main(int argc, char *argv[]) {
   if (myrank == 0)
     printf("[0000][00000.0] MPI is up and running with %i node(s).\n",
            nr_nodes);
+  if (nr_nodes == 1) {
+    message("WARNING: you are running with one MPI rank.");
+    message("WARNING: you should use the non-MPI version of this program.");
+  }
   fflush(stdout);
-
-  /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
-  factor(nr_nodes, &initial_partition.grid[0], &initial_partition.grid[1]);
-  factor(nr_nodes / initial_partition.grid[1], &initial_partition.grid[0],
-         &initial_partition.grid[2]);
-  factor(initial_partition.grid[0] * initial_partition.grid[1],
-         &initial_partition.grid[1], &initial_partition.grid[0]);
 #endif
-
-  /* Greeting message */
-  if (myrank == 0) greetings();
 
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   if ((ENGINE_POLICY) & engine_policy_setaffinity) {
@@ -138,6 +118,9 @@ int main(int argc, char *argv[]) {
     }
   }
 #endif
+
+  /* Welcome to SWIFT, you made the right choice */
+  if (myrank == 0) greetings();
 
   int dump_tasks = 0;
   int with_cosmology = 0;
@@ -209,7 +192,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  /* And then, there was time ! */
+  /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
 
   /* Report CPU frequency. */
@@ -244,7 +227,7 @@ int main(int argc, char *argv[]) {
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
-  MPI_Bcast(&params, sizeof(struct swift_params), MPI_BYTE, MPI_COMM_WORLD);
+  MPI_Bcast(&params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
   /* Initialize unit system */
@@ -258,25 +241,21 @@ int main(int argc, char *argv[]) {
     message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
   }
 
-/* Some initial information about domain decomposition */
+/* Prepare the domain decomposition scheme */
 #ifdef WITH_MPI
+  struct partition initial_partition;
+  enum repartition_type reparttype;
+  partition_init(&initial_partition, &reparttype, &params, nr_nodes);
+
+  /* Let's report what we did */
   if (myrank == 0) {
-    // message("Running with %i thread(s) per node.", nr_threads);
     message("Using initial partition %s",
             initial_partition_name[initial_partition.type]);
     if (initial_partition.type == INITPART_GRID)
       message("grid set to [ %i %i %i ].", initial_partition.grid[0],
               initial_partition.grid[1], initial_partition.grid[2]);
     message("Using %s repartitioning", repartition_name[reparttype]);
-
-    if (nr_nodes == 1) {
-      message("WARNING: you are running with one MPI rank.");
-      message("WARNING: you should use the non-MPI version of this program.");
-    }
-    fflush(stdout);
   }
-#else
-// if (myrank == 0) message("Running with %i thread(s).", nr_threads);
 #endif
 
   /* Read particles and space information from (GADGET) ICs */
@@ -432,11 +411,10 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0)
-    printf("# %6s %14s %14s %10s %10s %16s [%s]\n",
-	   "Step",  "Time",  "Time-step",  "Updates", "g-Updates",
-	   "Wall-clock time", clocks_getunit());
+    printf("# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",
+           "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
 
-  /* Let loose a runner on the space. */
+  /* Main simulation loop */
   for (int j = 0; !engine_is_done(&e); j++) {
 
 /* Repartition the space amongst the nodes? */

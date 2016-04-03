@@ -2325,8 +2325,9 @@ static bool hyperthreads_present(void) {
  * @param verbose Is this #engine talkative ?
  */
 
-void engine_init(struct engine *e, struct space *s, struct swift_params *params,
-                 int nr_nodes, int nodeID, int policy, int verbose) {
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, int nr_nodes, int nodeID,
+                 int policy, int verbose) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
