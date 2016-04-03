@@ -2318,16 +2318,10 @@ static bool hyperthreads_present(void) {
  *
  * @param e The #engine.
  * @param s The #space in which this #runner will run.
- * @param dt The initial time step to use.
- * @param nr_threads The number of threads to spawn.
- * @param nr_queues The number of task queues to create.
+ * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param policy The queuing policy to use.
- * @param timeBegin Time at the begininning of the simulation.
- * @param timeEnd Time at the end of the simulation.
- * @param dt_min Minimal allowed timestep (unsed with fixdt policy)
- * @param dt_max Maximal allowed timestep
  * @param verbose Is this #engine talkative ?
  */
 

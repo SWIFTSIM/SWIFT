@@ -328,39 +328,10 @@ int main(int argc, char *argv[]) {
     message("Read %lld gas particles and %lld gparts from the ICs.", N_total[0],
             N_total[1]);
 
-  /* Apply h scaling */
-  const double scaling =
-      parser_get_param_double(&params, "InitialConditions:h_scaling");
-  if (scaling != 1.0) {
-    message("Re-scaling smoothing lengths by a factor %e", scaling);
-    for (size_t k = 0; k < Ngas; k++) parts[k].h *= scaling;
-  }
-
-  /* Apply shift */
-  double shift[3] = {0.0, 0.0, 0.0};
-  shift[0] = parser_get_param_double(&params, "InitialConditions:shift_x");
-  shift[1] = parser_get_param_double(&params, "InitialConditions:shift_y");
-  shift[2] = parser_get_param_double(&params, "InitialConditions:shift_z");
-  if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
-    message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
-    for (size_t k = 0; k < Ngas; k++) {
-      parts[k].x[0] += shift[0];
-      parts[k].x[1] += shift[1];
-      parts[k].x[2] += shift[2];
-    }
-    for (size_t k = 0; k < Ngpart; k++) {
-      gparts[k].x[0] += shift[0];
-      gparts[k].x[1] += shift[1];
-      gparts[k].x[2] += shift[2];
-    }
-  }
-
-  /* Initialize the space with this data. */
-  struct space s;
-  const double h_max =
-      parser_get_param_double(&params, "SPH:max_smoothing_length");
+  /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
-  space_init(&s, dim, parts, gparts, Ngas, Ngpart, periodic, h_max, talking);
+  struct space s;
+  space_init(&s, &params, dim, parts, gparts, Ngas, Ngpart, periodic, talking);
   if (talking) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),

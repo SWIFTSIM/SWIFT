@@ -1262,13 +1262,13 @@ struct cell *space_getcell(struct space *s) {
  * @brief Split the space into cells given the array of particles.
  *
  * @param s The #space to initialize.
+ * @param params The parsed parameter file.
  * @param dim Spatial dimensions of the domain.
  * @param parts Array of Gas particles.
  * @param gparts Array of Gravity particles.
- * @param Ngas The number of Gas particles in the space.
+ * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
  * @param periodic flag whether the domain is periodic or not.
- * @param h_max The maximal interaction radius.
  * @param verbose Print messages to stdout or not
  *
  * Makes a grid of edge length > r_max and fills the particles
@@ -1277,9 +1277,9 @@ struct cell *space_getcell(struct space *s) {
  * recursively.
  */
 
-void space_init(struct space *s, double dim[3], struct part *parts,
-                struct gpart *gparts, size_t Ngas, size_t Ngpart, int periodic,
-                double h_max, int verbose) {
+void space_init(struct space *s, struct swift_params *params, double dim[3],
+                struct part *parts, struct gpart *gparts, size_t Npart,
+                size_t Ngpart, int periodic, int verbose) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1289,26 +1289,52 @@ void space_init(struct space *s, double dim[3], struct part *parts,
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
   s->periodic = periodic;
-  s->nr_parts = Ngas;
-  s->size_parts = Ngas;
+  s->nr_parts = Npart;
+  s->size_parts = Npart;
   s->parts = parts;
   s->nr_gparts = Ngpart;
   s->size_gparts = Ngpart;
   s->gparts = gparts;
-  s->cell_min = h_max;
+  s->cell_min = parser_get_param_double(params, "SPH:max_smoothing_length");
   s->nr_queues = 1; /* Temporary value until engine construction */
   s->size_parts_foreign = 0;
 
-  /* Check that all the gas particle positions are reasonable, wrap if periodic.
-   */
+  /* Apply h scaling */
+  const double scaling =
+      parser_get_param_double(params, "InitialConditions:h_scaling");
+  if (scaling != 1.0) {
+    message("Re-scaling smoothing lengths by a factor %e", scaling);
+    for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
+  }
+
+  /* Apply shift */
+  double shift[3] = {0.0, 0.0, 0.0};
+  shift[0] = parser_get_param_double(params, "InitialConditions:shift_x");
+  shift[1] = parser_get_param_double(params, "InitialConditions:shift_y");
+  shift[2] = parser_get_param_double(params, "InitialConditions:shift_z");
+  if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
+    message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
+    for (size_t k = 0; k < Npart; k++) {
+      parts[k].x[0] += shift[0];
+      parts[k].x[1] += shift[1];
+      parts[k].x[2] += shift[2];
+    }
+    for (size_t k = 0; k < Ngpart; k++) {
+      gparts[k].x[0] += shift[0];
+      gparts[k].x[1] += shift[1];
+      gparts[k].x[2] += shift[2];
+    }
+  }
+
+  /* Check that all the part positions are reasonable, wrap if periodic. */
   if (periodic) {
-    for (int k = 0; k < Ngas; k++)
+    for (int k = 0; k < Npart; k++)
       for (int j = 0; j < 3; j++) {
         while (parts[k].x[j] < 0) parts[k].x[j] += dim[j];
         while (parts[k].x[j] >= dim[j]) parts[k].x[j] -= dim[j];
       }
   } else {
-    for (int k = 0; k < Ngas; k++)
+    for (int k = 0; k < Npart; k++)
       for (int j = 0; j < 3; j++)
         if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j])
           error("Not all particles are within the specified domain.");
@@ -1325,20 +1351,20 @@ void space_init(struct space *s, double dim[3], struct part *parts,
     for (int k = 0; k < Ngpart; k++)
       for (int j = 0; j < 3; j++)
         if (gparts[k].x[j] < 0 || gparts[k].x[j] >= dim[j])
-          error("Not all particles are within the specified domain.");
+          error("Not all g-particles are within the specified domain.");
   }
 
   /* Allocate the extra parts array. */
   if (posix_memalign((void *)&s->xparts, xpart_align,
-                     Ngas * sizeof(struct xpart)) != 0)
+                     Npart * sizeof(struct xpart)) != 0)
     error("Failed to allocate xparts.");
-  bzero(s->xparts, Ngas * sizeof(struct xpart));
+  bzero(s->xparts, Npart * sizeof(struct xpart));
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
   /* Build the cells and the tasks. */
-  space_regrid(s, h_max, verbose);
+  space_regrid(s, s->cell_min, verbose);
 }
 
 /**
