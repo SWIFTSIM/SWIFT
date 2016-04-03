@@ -289,30 +289,30 @@ static void parse_section_param(char *line, int *isFirstParam,
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param retParam Value of the parameter found
- *
+ * @return Value of the parameter found
  */
+int parser_get_param_int(const struct swift_params *params, const char *name) {
 
-void parser_get_param_int(const struct swift_params *params, char *name,
-                          int *retParam) {
   char str[PARSER_MAX_LINE_SIZE];
+  int retParam = 0;
 
   for (int i = 0; i < params->count; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%d%s", retParam, str) != 1) {
+      if (sscanf(params->data[i].value, "%d%s", &retParam, str) != 1) {
         error(
             "Tried parsing int '%s' but found '%s' with illegal integer "
             "characters '%s'.",
             params->data[i].name, params->data[i].value, str);
       }
 
-      return;
+      return retParam;
     }
   }
 
   error("Cannot find '%s' in the structure.", name);
+  return 0;
 }
 
 /**
@@ -320,30 +320,31 @@ void parser_get_param_int(const struct swift_params *params, char *name,
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param retParam Value of the parameter found
- *
+ * @return Value of the parameter found
  */
+float parser_get_param_float(const struct swift_params *params,
+                             const char *name) {
 
-void parser_get_param_float(const struct swift_params *params, char *name,
-                            float *retParam) {
   char str[PARSER_MAX_LINE_SIZE];
+  float retParam = 0.f;
 
   for (int i = 0; i < params->count; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%f%s", retParam, str) != 1) {
+      if (sscanf(params->data[i].value, "%f%s", &retParam, str) != 1) {
         error(
             "Tried parsing float '%s' but found '%s' with illegal float "
             "characters '%s'.",
             params->data[i].name, params->data[i].value, str);
       }
 
-      return;
+      return retParam;
     }
   }
 
   error("Cannot find '%s' in the structure.", name);
+  return 0.f;
 }
 
 /**
@@ -351,30 +352,30 @@ void parser_get_param_float(const struct swift_params *params, char *name,
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param retParam Value of the parameter found
- *
+ * @return Value of the parameter found
  */
+double parser_get_param_double(const struct swift_params *params,
+                               const char *name) {
 
-void parser_get_param_double(const struct swift_params *params, char *name,
-                             double *retParam) {
   char str[PARSER_MAX_LINE_SIZE];
+  double retParam = 0.;
 
   for (int i = 0; i < params->count; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%lf", retParam) != 1) {
+      if (sscanf(params->data[i].value, "%lf", &retParam) != 1) {
         error(
             "Tried parsing double '%s' but found '%s' with illegal double "
             "characters '%s'.",
             params->data[i].name, params->data[i].value, str);
       }
-
-      return;
+      return retParam;
     }
   }
 
   error("Cannot find '%s' in the structure.", name);
+  return 0.;
 }
 
 /**
@@ -382,12 +383,10 @@ void parser_get_param_double(const struct swift_params *params, char *name,
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param retParam Value of the parameter found
- *
+ * @param retParam of the parameter found
  */
-
-void parser_get_param_string(const struct swift_params *params, char *name,
-                             char *retParam) {
+void parser_get_param_string(const struct swift_params *params,
+                             const char *name, char *retParam) {
   for (int i = 0; i < params->count; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
@@ -425,7 +424,7 @@ void parser_print_params(const struct swift_params *params) {
  *
  */
 
-void parser_write_params_to_file(const  struct swift_params *params,
+void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name) {
   FILE *file = fopen(file_name, "w");
   char section[PARSER_MAX_LINE_SIZE];
