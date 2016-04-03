@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialize unit system */
   struct UnitSystem us;
-  initUnitSystem(&us, &params);
+  units_init(&us, &params);
   if (myrank == 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
     message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);

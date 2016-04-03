@@ -237,11 +237,11 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile,
   writeXMFline(xmfFile, fileName, partTypeGroupName, name, N_total, dim, type);
 
   /* Write unit conversion factors for this data set */
-  conversionString(buffer, us, convFactor);
+  units_conversion_string(buffer, us, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
-                   conversionFactor(us, convFactor));
-  writeAttribute_f(h_data, "h-scale exponent", hFactor(us, convFactor));
-  writeAttribute_f(h_data, "a-scale exponent", aFactor(us, convFactor));
+                   units_conversion_factor(us, convFactor));
+  writeAttribute_f(h_data, "h-scale exponent", units_h_factor(us, convFactor));
+  writeAttribute_f(h_data, "a-scale exponent", units_a_factor(us, convFactor));
   writeAttribute_s(h_data, "Conversion factor", buffer);
 
   H5Pclose(h_prop);

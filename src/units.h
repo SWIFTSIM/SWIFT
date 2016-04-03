@@ -92,21 +92,25 @@ enum UnitConversionFactor {
   UNIT_CONV_TEMPERATURE
 };
 
-void initUnitSystem(struct UnitSystem*, const struct swift_params*);
-double getBaseUnit(const struct UnitSystem*, enum BaseUnits);
-const char* getBaseUnitSymbol(enum BaseUnits);
-const char* getBaseUnitCGSSymbol(enum BaseUnits);
-double generalConversionFactor(const struct UnitSystem* us,
-                               float baseUnitsExponants[5]);
-double conversionFactor(const struct UnitSystem* us,
-                        enum UnitConversionFactor unit);
-float generalhFactor(const struct UnitSystem* us, float baseUnitsExponants[5]);
-float hFactor(const struct UnitSystem* us, enum UnitConversionFactor unit);
-float generalaFactor(const struct UnitSystem* us, float baseUnitsExponants[5]);
-float aFactor(const struct UnitSystem* us, enum UnitConversionFactor unit);
-void generalConversionString(char* buffer, const struct UnitSystem* us,
+void units_init(struct UnitSystem*, const struct swift_params*);
+double units_get_base_unit(const struct UnitSystem*, enum BaseUnits);
+const char* units_get_base_unit_symbol(enum BaseUnits);
+const char* units_get_base_unit_CGS_symbol(enum BaseUnits);
+double units_general_conversion_factor(const struct UnitSystem* us,
+                                       float baseUnitsExponants[5]);
+double units_conversion_factor(const struct UnitSystem* us,
+                               enum UnitConversionFactor unit);
+float units_general_h_factor(const struct UnitSystem* us,
                              float baseUnitsExponants[5]);
-void conversionString(char* buffer, const struct UnitSystem* us,
-                      enum UnitConversionFactor unit);
+float units_h_factor(const struct UnitSystem* us,
+                     enum UnitConversionFactor unit);
+float units_general_a_factor(const struct UnitSystem* us,
+                             float baseUnitsExponants[5]);
+float units_a_factor(const struct UnitSystem* us,
+                     enum UnitConversionFactor unit);
+void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
+                                     float baseUnitsExponants[5]);
+void units_conversion_string(char* buffer, const struct UnitSystem* us,
+                             enum UnitConversionFactor unit);
 
 #endif /* SWIFT_UNITS_H */
