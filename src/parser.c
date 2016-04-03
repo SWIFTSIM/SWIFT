@@ -145,11 +145,9 @@ static int is_empty(const char *str) {
 /**
  * @brief Parses a line from a file and stores any parameters in a structure.
  *
- * @param fp File pointer to file to be read
- * @param params Structure to be populated from file
- *
+ * @param line Line to be parsed.
+ * @param params Structure to be populated from file.
  */
-
 static void parse_line(char *line, struct swift_params *params) {
   /* Parse line if it doesn't begin with a comment. */
   if (*line != PARSER_COMMENT_CHAR) {
@@ -383,7 +381,7 @@ double parser_get_param_double(const struct swift_params *params,
  *
  * @param params Structure that holds the parameters
  * @param name Name of the parameter to be found
- * @param retParam of the parameter found
+ * @param retParam (return) Value of the parameter found
  */
 void parser_get_param_string(const struct swift_params *params,
                              const char *name, char *retParam) {
@@ -402,7 +400,6 @@ void parser_get_param_string(const struct swift_params *params,
  * @brief Prints the contents of the parameter structure.
  *
  * @param params Structure that holds the parameters
- *
  */
 void parser_print_params(const struct swift_params *params) {
   printf("\n--------------------------\n");
@@ -421,9 +418,7 @@ void parser_print_params(const struct swift_params *params) {
  *
  * @param params Structure that holds the parameters
  * @param file_name Name of file to be written
- *
  */
-
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name) {
   FILE *file = fopen(file_name, "w");

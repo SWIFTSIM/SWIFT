@@ -43,10 +43,11 @@
 
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
- * const.h
- * @param us The UnitSystem to initialize
+ * rhe parameter file.
+ *
+ * @param us The UnitSystem to initialize.
+ * @param params The parsed parameter file.
  */
-
 void initUnitSystem(struct UnitSystem* us, const struct swift_params* params) {
 
   us->UnitMass_in_cgs =
@@ -67,7 +68,7 @@ void initUnitSystem(struct UnitSystem* us, const struct swift_params* params) {
  * @param us The UnitSystem used
  * @param baseUnit The base unit
  */
-double getBaseUnit(struct UnitSystem* us, enum BaseUnits baseUnit) {
+double getBaseUnit(const struct UnitSystem* us, enum BaseUnits baseUnit) {
   switch (baseUnit) {
     case UNIT_MASS:
       return us->UnitMass_in_cgs;
@@ -271,7 +272,8 @@ void getBaseUnitExponantsArray(float baseUnitsExp[5],
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit) {
+double conversionFactor(const struct UnitSystem* us,
+                        enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
   getBaseUnitExponantsArray(baseUnitsExp, unit);
@@ -284,7 +286,7 @@ double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit) {
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-float hFactor(struct UnitSystem* us, enum UnitConversionFactor unit) {
+float hFactor(const struct UnitSystem* us, enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
   getBaseUnitExponantsArray(baseUnitsExp, unit);
@@ -297,7 +299,7 @@ float hFactor(struct UnitSystem* us, enum UnitConversionFactor unit) {
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit) {
+float aFactor(const struct UnitSystem* us, enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
   getBaseUnitExponantsArray(baseUnitsExp, unit);
@@ -309,7 +311,7 @@ float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit) {
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors
  */
-void conversionString(char* buffer, struct UnitSystem* us,
+void conversionString(char* buffer, const struct UnitSystem* us,
                       enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
@@ -325,7 +327,7 @@ void conversionString(char* buffer, struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-double generalConversionFactor(struct UnitSystem* us,
+double generalConversionFactor(const struct UnitSystem* us,
                                float baseUnitsExponants[5]) {
   double factor = 1.;
   int i;
@@ -343,7 +345,7 @@ double generalConversionFactor(struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
+float generalhFactor(const struct UnitSystem* us, float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += -baseUnitsExponants[UNIT_MASS];
@@ -360,7 +362,7 @@ float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
+float generalaFactor(const struct UnitSystem* us, float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += baseUnitsExponants[UNIT_LENGTH];
@@ -377,7 +379,7 @@ float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]) {
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-void generalConversionString(char* buffer, struct UnitSystem* us,
+void generalConversionString(char* buffer, const struct UnitSystem* us,
                              float baseUnitsExponants[5]) {
   char temp[14];
   double a_exp = generalaFactor(us, baseUnitsExponants);
