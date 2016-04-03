@@ -49,5 +49,5 @@ testKernel_SOURCES = testKernel.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \
-	     test27cells.sh test27cellsPerturbed.sh tolerance.dat testParser.sh \ 
+	     test27cells.sh test27cellsPerturbed.sh tolerance.dat testParser.sh \
 	     testParserInput.yaml

@@ -858,6 +858,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         const double dt = (ti_end - ti_start) * timeBase;
         const double half_dt = (ti_end - gp->ti_end) * timeBase;
 
+        /* Move particle forward in time */
+        gp->ti_begin = gp->ti_end;
+        gp->ti_end = gp->ti_begin + new_dti;
+
         /* Kick particles in momentum space */
         gp->v_full[0] += gp->a_grav[0] * dt;
         gp->v_full[1] += gp->a_grav[1] * dt;
@@ -869,6 +873,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         /* Number of updated g-particles */
         g_updated++;
       }
+
+      /* Minimal time for next end of time-step */
+      ti_end_min = min(gp->ti_end, ti_end_min);
+      ti_end_max = max(gp->ti_end, ti_end_max);
     }
 
     /* Now do the hydro ones... */
@@ -947,6 +955,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         /* Move particle forward in time */
         p->ti_begin = p->ti_end;
         p->ti_end = p->ti_begin + new_dti;
+        if (p->gpart != NULL) {
+          p->gpart->ti_begin = p->ti_begin;
+          p->gpart->ti_end = p->ti_end;
+        }
 
         /* Get the acceleration */
         float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
