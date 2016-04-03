@@ -2024,8 +2024,8 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("%d %e %e %d %d %.3f\n", e->step, e->time, e->timeStep, updates,
-           g_updates, e->wallclock_time);
+    printf("  %6d %14e %14e %10d %10d %21.3f\n", e->step, e->time, e->timeStep,
+           updates, g_updates, e->wallclock_time);
     fflush(stdout);
 
     /* Write some energy statistics */

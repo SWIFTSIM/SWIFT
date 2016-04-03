@@ -432,13 +432,10 @@ int main(int argc, char *argv[]) {
 
   /* Legend */
   if (myrank == 0)
-    printf(
-        "# Step  Time  time-step  Number of updates  Number of g-updates "
-        "CPU Wall-clock time [%s]\n",
-        clocks_getunit());
+    printf("# %6s %14s %14s %10s %10s %16s [%s]\n",
+	   "Step",  "Time",  "Time-step",  "Updates", "g-Updates",
+	   "Wall-clock time", clocks_getunit());
 
-  return 0;
-   
   /* Let loose a runner on the space. */
   for (int j = 0; !engine_is_done(&e); j++) {
 
