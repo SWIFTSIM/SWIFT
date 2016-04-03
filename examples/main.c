@@ -68,17 +68,13 @@ void print_help_message() {
  */
 int main(int argc, char *argv[]) {
 
-  int c, icount, periodic = 1;
-  size_t Ngas = 0, Ngpart = 0;
-  int nr_threads = 1, nr_queues = -1;
-  double dim[3] = {1.0, 1.0, 1.0}, shift[3] = {0.0, 0.0, 0.0};
-  double h_max = -1.0, scaling = 1.0;
+  int c, icount;
   double time_end = DBL_MAX;
   struct clocks_time tic, toc;
-  char ICfileName[200] = "";
   float dt_max = 0.0f, dt_min = 0.0f;
   int nr_nodes = 1, myrank = 0;
   int with_outputs = 0;
+  int nr_threads, nr_queues;
 
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -116,7 +112,8 @@ int main(int argc, char *argv[]) {
       MPI_SUCCESS)
     error("Call to MPI_Comm_set_errhandler failed with error %i.", res);
   if (myrank == 0)
-    printf("[00000.0] MPI is up and running with %i node(s).\n", nr_nodes);
+    printf("[0000][00000.0] MPI is up and running with %i node(s).\n",
+           nr_nodes);
   fflush(stdout);
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -134,8 +131,7 @@ int main(int argc, char *argv[]) {
   if ((ENGINE_POLICY) & engine_policy_setaffinity) {
     /* Ensure the NUMA node on which we initialise (first touch) everything
      * doesn't change before engine_init allocates NUMA-local workers.
-     * Otherwise,
-     * we may be scheduled elsewhere between the two times.
+     * Otherwise, we may be scheduled elsewhere between the two times.
      */
     cpu_set_t affinity;
     CPU_ZERO(&affinity);
@@ -222,18 +218,17 @@ int main(int argc, char *argv[]) {
 
   /* How large are the parts? */
   if (myrank == 0) {
-    message("sizeof(struct part) is %zi bytes.", sizeof(struct part));
-    message("sizeof(struct xpart) is %zi bytes.", sizeof(struct xpart));
-    message("sizeof(struct gpart) is %zi bytes.", sizeof(struct gpart));
+    message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
+    message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
+    message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
   }
 
   /* Read the parameter file */
   struct swift_params params;
-  message("Reading parameter file '%s'", paramFileName);
+  message("Reading parameters from file '%s'", paramFileName);
   parser_read_file(paramFileName, &params);
   // parser_print_params(&params);
-
-  parser_write_params_to_file(&params, "used_parameters.yml");
+  if (myrank == 0) parser_write_params_to_file(&params, "used_parameters.yml");
 
   /* Initialize unit system */
   struct UnitSystem us;
@@ -244,18 +239,12 @@ int main(int argc, char *argv[]) {
     message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
     message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
     message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-    message("Density units: %e a^%f h^%f.",
-            conversionFactor(&us, UNIT_CONV_DENSITY),
-            aFactor(&us, UNIT_CONV_DENSITY), hFactor(&us, UNIT_CONV_DENSITY));
-    message("Entropy units: %e a^%f h^%f.",
-            conversionFactor(&us, UNIT_CONV_ENTROPY),
-            aFactor(&us, UNIT_CONV_ENTROPY), hFactor(&us, UNIT_CONV_ENTROPY));
   }
 
 /* Some initial information about domain decomposition */
 #ifdef WITH_MPI
   if (myrank == 0) {
-    message("Running with %i thread(s) per node.", nr_threads);
+    // message("Running with %i thread(s) per node.", nr_threads);
     message("Using initial partition %s",
             initial_partition_name[initial_partition.type]);
     if (initial_partition.type == INITPART_GRID)
@@ -270,14 +259,17 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 #else
-  if (myrank == 0) message("Running with %i thread(s).", nr_threads);
+// if (myrank == 0) message("Running with %i thread(s).", nr_threads);
 #endif
 
-  return 0;
-
   /* Read particles and space information from (GADGET) ICs */
+  char ICfileName[200] = "";
+  parser_get_param_string(&params, "InitialConditions:file_name", ICfileName);
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
+  size_t Ngas = 0, Ngpart = 0;
+  double dim[3] = {0., 0., 0.};
+  int periodic = 0;
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -292,58 +284,50 @@ int main(int argc, char *argv[]) {
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
-    message("reading particle properties took %.3f %s.",
+    message("Reading particle properties took %.3f %s.",
             clocks_diff(&tic, &toc), clocks_getunit());
     fflush(stdout);
   }
 
-  /* Get the total number of particles across all nodes. */
-  long long N_total[2] = {0, 0};
-#if defined(WITH_MPI)
-  long long N_long[2] = {Ngas, Ngpart};
-  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-  N_total[1] -= N_total[0];
-  if (myrank == 0)
-    message("Read %lld gas particles and %lld DM particles from the ICs",
-            N_total[0], N_total[1]);
-#else
-  N_total[0] = Ngas;
-  N_total[1] = Ngpart - Ngas;
-  message("Read %lld gas particles and %lld DM particles from the ICs",
-          N_total[0], N_total[1]);
-#endif
-
-  /* MATTHIEU: Temporary fix to preserve master */
+  /* Discard gparts if we don't have gravity */
   if (!with_external_gravity && !with_self_gravity) {
     free(gparts);
     gparts = NULL;
     for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
     Ngpart = 0;
-#if defined(WITH_MPI)
-    N_long[0] = Ngas;
-    N_long[1] = Ngpart;
-    MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (myrank == 0)
-      message(
-          "AFTER FIX: Read %lld gas particles and %lld DM particles from the "
-          "ICs",
-          N_total[0], N_total[1]);
-#else
-    N_total[0] = Ngas;
-    N_total[1] = Ngpart;
-    message(
-        "AFTER FIX: Read %lld gas particles and %lld DM particles from the ICs",
-        N_total[0], N_total[1]);
-#endif
   }
-  /* MATTHIEU: End temporary fix */
+
+  /* Get the total number of particles across all nodes. */
+  long long N_total[2] = {0, 0};
+#if defined(WITH_MPI)
+  N_long[0] = Ngas;
+  N_long[1] = Ngpart;
+  MPI_Reduce(&N_long, &N_total, 2, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (myrank == 0)
+    message("Read %lld gas particles and %lld gparts from the ICs", N_total[0],
+            N_total[1]);
+#else
+  N_total[0] = Ngas;
+  N_total[1] = Ngpart;
+  message("Read %lld gas particles and %lld gparts from the ICs", N_total[0],
+          N_total[1]);
+#endif
 
   /* Apply h scaling */
-  if (scaling != 1.0)
+  const double scaling =
+      parser_get_param_double(&params, "InitialConditions:h_scaling");
+  if (scaling != 1.0) {
+    message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Ngas; k++) parts[k].h *= scaling;
+  }
 
   /* Apply shift */
+  double shift[3] = {0.0, 0.0, 0.0};
+  shift[0] = parser_get_param_double(&params, "InitialConditions:shift_x");
+  shift[1] = parser_get_param_double(&params, "InitialConditions:shift_y");
+  shift[2] = parser_get_param_double(&params, "InitialConditions:shift_z");
   if (shift[0] != 0 || shift[1] != 0 || shift[2] != 0) {
+    message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Ngas; k++) {
       parts[k].x[0] += shift[0];
       parts[k].x[1] += shift[1];
@@ -356,8 +340,12 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  return 0;
+
+  double h_max;
+
   /* Set default number of queues. */
-  if (nr_queues < 0) nr_queues = nr_threads;
+  // if (nr_queues < 0) nr_queues = nr_threads;
 
   /* How vocal are we ? */
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
