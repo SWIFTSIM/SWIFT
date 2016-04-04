@@ -1,0 +1,42 @@
+
+# Define the system of units
+UnitSystem:
+  UnitMass_in_cgs:     1
+  UnitLength_in_cgs:   1
+  UnitVelocity_in_cgs: 1
+  UnitCurrent_in_cgs:  1
+  UnitTemp_in_cgs:     1  
+
+Scheduler:
+  nr_threads:       2
+  nr_queues:        0        # Let the system decide
+  cell_max_size:    8000000  # Maximal number of interactions per task
+  cell_sub_size:    8000000  # Maximal number of interactions per sub-task
+  cell_split_size:  400      # Maximal number of particles per cell
+
+TimeIntegration:
+  time_begin: 0.
+  time_end:   1.
+  dt_min:     1e-6
+  dt_max:     1e-2
+  
+SPH:
+  resolution_eta:        1.2349   # 48 neighbours with spline kernel
+  delta_neighbours:      1.
+  CFL_condition:         0.1
+  max_ghost_iterations:  30
+  max_smoothing_length:  3.
+
+InitialConditions:
+  file_name:  SedovBlast/sedov.hdf5
+  h_scaling:  1.
+  shift_x:    0.
+  shift_y:    0.
+  shift_z:    0.
+
+DomainDecomposition:
+  initial_type:       m
+  intitial_grid_x:    10
+  intitial_grid_y:    10
+  intitial_grid_z:    10
+  repartition_type:   b
