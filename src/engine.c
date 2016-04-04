@@ -2466,8 +2466,12 @@ void engine_init(struct engine *e, struct space *s,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
-  if (e->nodeID == 0) message("Hydrodynamic kernel: %s", kernel_name);
+  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+    if (e->nodeID == 0) message("Hydrodynamic scheme: %s.", SPH_IMPLEMENTATION);
+    if (e->nodeID == 0)
+      message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours.",
+              kernel_name, kernel_nwneigh, const_delta_nwneigh);
+  }
 
   /* Check we have sensible time bounds */
   if (e->timeBegin >= e->timeEnd)
@@ -2542,7 +2546,7 @@ void engine_init(struct engine *e, struct space *s,
   e->barrier_launchcount = 0;
 
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
-  const int nr_tasks = 2 * s->tot_cells + e->nr_threads;
+  const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
                  e->nodeID);
 
