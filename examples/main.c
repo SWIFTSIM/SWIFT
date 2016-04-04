@@ -50,6 +50,15 @@ void print_help_message() {
   printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
+  printf(
+      "  %2s %8s %s\n", "-d", "",
+      "Dry run. Read the parameter file, allocate memory but does not read ");
+  printf(
+      "  %2s %8s %s\n", "", "",
+      "the particles from ICs and exit before the start of time integration.");
+  printf("  %2s %8s %s\n", "", "",
+         "Allows user to check validy of parameter and IC files as well as "
+         "memory limits.");
   printf("  %2s %8s %s\n", "-e", "",
          "Enable floating-point exceptions (debugging mode)");
   printf("  %2s %8s %s\n", "-f", "{int}",
@@ -59,12 +68,14 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
   printf("  %2s %8s %s\n", "-v", "[12]",
-         "Increase the level of verbosity 1: MPI-rank 0 writes "
-         "2: All MPI-ranks write");
+         "Increase the level of verbosity 1: MPI-rank 0 writes ");
+  printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
   printf("  %2s %8s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped");
   printf("  %2s %8s %s\n", "-h", "", "Print this help message and exit");
-  printf("\nSee the file example.yml for an example of parameter file.\n");
+  printf(
+      "\nSee the file parameter_example.yml for an example of "
+      "parameter file.\n");
 }
 
 /**
@@ -122,6 +133,7 @@ int main(int argc, char *argv[]) {
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings();
 
+  int dry_run = 0;
   int dump_tasks = 0;
   int with_cosmology = 0;
   int with_external_gravity = 0;
@@ -134,9 +146,12 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cef:gGhsv:y")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "cdef:gGhsv:y")) != -1) switch (c) {
       case 'c':
         with_cosmology = 1;
+        break;
+      case 'd':
+        dry_run = 1;
         break;
       case 'e':
         with_fp_exceptions = 1;
@@ -145,7 +160,7 @@ int main(int argc, char *argv[]) {
         if (sscanf(optarg, "%llu", &cpufreq) != 1) {
           if (myrank == 0) printf("Error parsing CPU frequency (-f).\n");
           if (myrank == 0) print_help_message();
-          exit(1);
+          return 1;
         }
         break;
       case 'g':
@@ -156,7 +171,7 @@ int main(int argc, char *argv[]) {
         break;
       case 'h':
         if (myrank == 0) print_help_message();
-        exit(0);
+        return 0;
       case 's':
         with_hydro = 1;
         break;
@@ -164,19 +179,19 @@ int main(int argc, char *argv[]) {
         if (sscanf(optarg, "%d", &verbose) != 1) {
           if (myrank == 0) printf("Error parsing verbosity level (-v).\n");
           if (myrank == 0) print_help_message();
-          exit(1);
+          return 1;
         }
         break;
       case 'y':
         if (sscanf(optarg, "%d", &dump_tasks) != 1) {
           if (myrank == 0) printf("Error parsing dump_tasks (-y). \n");
           if (myrank == 0) print_help_message();
-          exit(1);
+          return 1;
         }
         break;
       case '?':
         if (myrank == 0) print_help_message();
-        exit(1);
+        return 1;
         break;
     }
   if (optind == argc - 1) {
@@ -194,6 +209,10 @@ int main(int argc, char *argv[]) {
 
   /* Genesis 1.1: And then, there was time ! */
   clocks_set_cpufreq(cpufreq);
+
+  if (myrank == 0 && dry_run)
+    message(
+        "Executing a dry run. No i/o or time integration will be performed.");
 
   /* Report CPU frequency. */
   if (myrank == 0) {
@@ -261,6 +280,7 @@ int main(int argc, char *argv[]) {
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(&params, "InitialConditions:file_name", ICfileName);
+  if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   size_t Ngas = 0, Ngpart = 0;
@@ -270,13 +290,14 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #else
   read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #endif
 #else
-  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
+  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
+                 dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -310,7 +331,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
-  space_init(&s, &params, dim, parts, gparts, Ngas, Ngpart, periodic, talking);
+  space_init(&s, &params, dim, parts, gparts, Ngas, Ngpart, periodic, talking,
+             dry_run);
   if (talking) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -331,14 +353,14 @@ int main(int argc, char *argv[]) {
   }
 
   /* Verify that each particle is in it's proper cell. */
-  if (talking) {
+  if (talking && !dry_run) {
     int icount = 0;
     space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
     message("map_cellcheck picked up %i parts.", icount);
   }
 
   /* Verify the maximal depth of cells. */
-  if (talking) {
+  if (talking && !dry_run) {
     int data[2] = {s.maxdepth, 0};
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
@@ -362,14 +384,8 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-#ifdef WITH_MPI
-  /* Split the space. */
-  engine_split(&e, &initial_partition);
-  engine_redistribute(&e);
-#endif
-
   int with_outputs = 1;
-  if (with_outputs) {
+  if (with_outputs && !dry_run) {
     /* Write the state of the system before starting time integration. */
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
@@ -405,6 +421,20 @@ int main(int argc, char *argv[]) {
         e.dt_min, e.dt_max);
     fflush(stdout);
   }
+
+  /* Time to say good-bye if this was not a serious run. */
+  if (dry_run) {
+    if (myrank == 0)
+      message(
+          "Time integration ready to start. Everything OK. End of dry-run.");
+    return 0;
+  }
+
+#ifdef WITH_MPI
+  /* Split the space. */
+  engine_split(&e, &initial_partition);
+  engine_redistribute(&e);
+#endif
 
   /* Initialise the particles */
   engine_init_particles(&e);
