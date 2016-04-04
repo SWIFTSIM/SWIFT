@@ -424,9 +424,12 @@ int main(int argc, char *argv[]) {
 
   /* Time to say good-bye if this was not a serious run. */
   if (dry_run) {
+#ifdef WITH_MPI
+    if ((res = MPI_Finalize()) != MPI_SUCCESS)
+      error("call to MPI_Finalize failed with error %i.", res);
+#endif
     if (myrank == 0)
-      message(
-          "Time integration ready to start. Everything OK. End of dry-run.");
+      message("Time integration ready to start. End of dry-run.");
     return 0;
   }
 
@@ -587,7 +590,7 @@ int main(int argc, char *argv[]) {
   }
 
 #ifdef WITH_MPI
-  if (MPI_Finalize() != MPI_SUCCESS)
+  if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
 
