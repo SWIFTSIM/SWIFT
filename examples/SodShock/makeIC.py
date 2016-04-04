@@ -43,14 +43,14 @@ vol = boxSize[0] * boxSize[1] * boxSize[2]
 glass1 = h5py.File("glass_001.hdf5")
 pos1 = glass1["/PartType0/Coordinates"][:,:]
 pos1 = pos1 / factor # Particles are in [0:0.25, 0:0.25, 0:0.25]
-
+glass_h1 = glass1["/PartType0/SmoothingLength"][:] / factor
 
 #Read in high density glass
 # glass2 = h5py.File("../Glass/glass_50000.hdf5")
 glass2 = h5py.File("glass_002.hdf5")
 pos2 = glass2["/PartType0/Coordinates"][:,:]
 pos2 = pos2 / factor # Particles are in [0:0.25, 0:0.25, 0:0.25]
-
+glass_h2 = glass2["/PartType0/SmoothingLength"][:] / factor
 
 #Generate high density region
 rho1 = 1.
@@ -61,9 +61,10 @@ coord1 = append(coord1, coord1 + [0.25, 0, 0], 0)
 # coord1 = append(coord1, pos1 + [0, 0.5, 0.5], 0)
 N1 = size(coord1)/3
 v1 = zeros((N1, 3))
-h1 = ones(N1) * 2.251 * 0.5 * vol / (size(pos1)/3)**(1./3.)
 u1 = ones(N1) * P1 / ((gamma - 1.) * rho1)
 m1 = ones(N1) * vol * 0.5 * rho1 / N1
+h1 = append(glass_h1, glass_h1, 0)
+h1 = append(h1, h1, 0)
 
 #Generate low density region
 rho2 = 0.25
@@ -74,9 +75,10 @@ coord2 = append(coord2, coord2 + [0.25, 0, 0], 0)
 # coord2 = append(coord2, pos2 + [0, 0.5, 0.5], 0)
 N2 = size(coord2)/3
 v2 = zeros((N2, 3))
-h2 = ones(N2) * 2.251 * 0.5 * vol / (size(pos2)/3)**(1./3.)
 u2 = ones(N2) * P2 / ((gamma - 1.) * rho2)
 m2 = ones(N2) * vol * 0.5 * rho2 / N2
+h2 = append(glass_h2, glass_h2, 0)
+h2 = append(h2, h2, 0)
 
 #Merge arrays
 numPart = N1 + N2
@@ -89,8 +91,8 @@ ids = zeros(numPart, dtype='L')
 for i in range(1, numPart+1):
     ids[i-1] = i
 
-#Final operations
-h /= 2
+#Final operation since we come from Gadget-2 cubic spline ICs
+h /= 1.825752
 
 #File
 file = h5py.File(fileName, 'w')
