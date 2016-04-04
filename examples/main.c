@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) {
   struct space s;
   space_init(&s, &params, dim, parts, gparts, Ngas, Ngpart, periodic, talking,
              dry_run);
-  if (talking) {
+  if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
             clocks_getunit());
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Say a few nice things about the space we just created. */
-  if (talking) {
+  if (myrank == 0) {
     message("space dimensions are [ %.3f %.3f %.3f ].", s.dim[0], s.dim[1],
             s.dim[2]);
     message("space %s periodic.", s.periodic ? "is" : "isn't");
@@ -377,7 +377,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, &params, nr_nodes, myrank, engine_policies, talking);
-  if (talking) {
+  if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
             clocks_getunit());
