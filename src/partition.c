@@ -35,7 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
-#include <values.h>
+#include <float.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI

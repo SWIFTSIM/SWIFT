@@ -42,7 +42,7 @@
 /* Local includes. */
 #include "const.h"
 #include "error.h"
-#include "kernel.h"
+#include "kernel_hydro.h"
 #include "version.h"
 
 const char* particle_type_names[NUM_PARTICLE_TYPES] = {

@@ -257,7 +257,7 @@ void engine_redistribute(struct engine *e) {
   }
 
   /* Sort the gparticles according to their cell index. */
-  space_gparts_sort(gparts, g_dest, s->nr_gparts, 0, nr_nodes - 1);
+  space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -1367,9 +1367,12 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
 
   /* Add the space sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
+  for (int i = 0; i < e->nr_threads; i++) {
+    scheduler_addtask(sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
+    scheduler_addtask(sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   /* Construct the firt hydro loop over neighbours */
   engine_make_hydroloop_tasks(e);
@@ -2464,6 +2467,7 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Print information about the hydro scheme */
   if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+  if (e->nodeID == 0) message("Hydrodynamic kernel: %s", kernel_name);
 
   /* Check we have sensible time bounds */
   if (e->timeBegin >= e->timeEnd)
@@ -2543,9 +2547,13 @@ void engine_init(struct engine *e, struct space *s,
                  e->nodeID);
 
   /* Create the sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
-                      NULL, 0);
+  for (int i = 0; i < e->nr_threads; i++) {
+    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+
+    scheduler_addtask(&e->sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   scheduler_ranktasks(&e->sched);
 

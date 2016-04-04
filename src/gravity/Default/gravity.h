@@ -23,6 +23,7 @@
  * @brief Computes the gravity time-step of a given particle
  *
  * @param gp Pointer to the g-particle data
+ *
  */
 
 __attribute__((always_inline))

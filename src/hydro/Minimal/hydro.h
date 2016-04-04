@@ -101,7 +101,12 @@ __attribute__((always_inline))
   p->rho *= ih * ih2;
   p->rho_dh *= ih4;
   p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
-  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma3);
+  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma4);
+
+  const float irho = 1.f / p->rho;
+
+  /* Compute the derivative term */
+  p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh * irho);
 }
 
 /**
