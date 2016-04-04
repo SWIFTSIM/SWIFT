@@ -496,7 +496,7 @@ int main(int argc, char *argv[]) {
 
       /* Make sure output file is empty, only on one rank. */
       char dumpfile[30];
-      sprintf(dumpfile, "thread_info_MPI-step%d.dat", j);
+      snprintf(dumpfile, 30, "thread_info_MPI-step%d.dat", j);
       FILE *file_thread;
       if (myrank == 0) {
         file_thread = fopen(dumpfile, "w");
@@ -543,7 +543,7 @@ int main(int argc, char *argv[]) {
 
 #else
       char dumpfile[30];
-      sprintf(dumpfile, "thread_info-step%d.dat", j);
+      snprintf(dumpfile, 30, "thread_info-step%d.dat", j);
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
       for (int l = 0; l < e.sched.nr_tasks; l++)
