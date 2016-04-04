@@ -237,21 +237,22 @@ int main(int argc, char *argv[]) {
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
   /* Read the parameter file */
-  struct swift_params params;
+  struct swift_params *params = malloc(sizeof(struct swift_params));
+  if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
     message("Reading parameters from file '%s'", paramFileName);
-    parser_read_file(paramFileName, &params);
+    parser_read_file(paramFileName, params);
     // parser_print_params(&params);
-    parser_write_params_to_file(&params, "used_parameters.yml");
+    parser_write_params_to_file(params, "used_parameters.yml");
   }
 #ifdef WITH_MPI
   /* Broadcast the parameter file */
-  MPI_Bcast(&params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
   /* Initialize unit system */
   struct UnitSystem us;
-  units_init(&us, &params);
+  units_init(&us, params);
   if (myrank == 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
     message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
@@ -264,7 +265,7 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   struct partition initial_partition;
   enum repartition_type reparttype;
-  partition_init(&initial_partition, &reparttype, &params, nr_nodes);
+  partition_init(&initial_partition, &reparttype, params, nr_nodes);
 
   /* Let's report what we did */
   if (myrank == 0) {
@@ -279,7 +280,7 @@ int main(int argc, char *argv[]) {
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
-  parser_get_param_string(&params, "InitialConditions:file_name", ICfileName);
+  parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
@@ -331,7 +332,7 @@ int main(int argc, char *argv[]) {
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
-  space_init(&s, &params, dim, parts, gparts, Ngas, Ngpart, periodic, talking,
+  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic, talking,
              dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -376,13 +377,17 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, &params, nr_nodes, myrank, engine_policies, talking);
+  engine_init(&e, &s, params, nr_nodes, myrank, engine_policies, talking);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
             clocks_getunit());
     fflush(stdout);
   }
+
+  /* Now that everything is ready, no need for the parameters any more */
+  free(params);
+  params = NULL;
 
   int with_outputs = 1;
   if (with_outputs && !dry_run) {
