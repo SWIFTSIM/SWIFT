@@ -659,6 +659,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
   split_metis(s, nr_nodes, celllist);
 
   /* Clean up. */
+  free(inds);
   if (bothweights) free(weights_v);
   free(weights_e);
   free(celllist);
