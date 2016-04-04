@@ -1339,6 +1339,14 @@ void space_init(struct space *s, const struct swift_params *params,
   space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
   space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
 
+  /* Check that we have enough cells */
+  if (s->cell_min * 3 > dim[0] || s->cell_min * 3 > dim[1] ||
+      s->cell_min * 3 > dim[2])
+    error(
+        "Maximal smoothing length (%e) too large. Needs to be "
+        "smaller than 1/3 the simulation box size [%e %e %e]",
+        s->cell_min, dim[0], dim[1], dim[2]);
+
   /* Apply h scaling */
   const double scaling =
       parser_get_param_double(params, "InitialConditions:h_scaling");
