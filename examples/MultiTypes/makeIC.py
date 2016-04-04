@@ -32,6 +32,7 @@ Lgas = int(sys.argv[1])  # Number of particles along one axis
 rhoGas = 2.              # Density
 P = 1.                   # Pressure
 gamma = 5./3.            # Gas adiabatic index
+eta = 1.2349             # 48 ngbs with cubic spline kernel
 rhoDM = 1.
 Ldm = int(sys.argv[2])  # Number of particles along one axis
 
@@ -87,7 +88,7 @@ ds = grp.create_dataset('Masses', (numGas,1), 'f')
 ds[()] = m
 m = zeros(1)
 
-h = full((numGas, 1), 1.1255 * boxSize / Lgas)
+h = full((numGas, 1), eta * boxSize / Lgas)
 ds = grp.create_dataset('SmoothingLength', (numGas,1), 'f')
 ds[()] = h
 h = zeros(1)

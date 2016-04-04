@@ -32,6 +32,7 @@ L = int(sys.argv[1])  # Number of particles along one axis
 rho = 2.              # Density
 P = 1.                # Pressure
 gamma = 5./3.         # Gas adiabatic index
+eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "uniformBox.hdf5" 
 
 #---------------------------------------------------
@@ -80,7 +81,7 @@ ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
 m = zeros(1)
 
-h = full((numPart, 1), 1.1255 * boxSize / L)
+h = full((numPart, 1), eta * boxSize / L)
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
 ds[()] = h
 h = zeros(1)

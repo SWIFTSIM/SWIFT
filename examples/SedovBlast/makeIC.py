@@ -33,6 +33,7 @@ P = 1.e-5         # Pressure
 E0= 1.e2          # Energy of the explosion
 pert = 0.1
 gamma = 5./3.     # Gas adiabatic index
+eta = 1.2349      # 48 ngbs with cubic spline kernel
 fileName = "sedov.hdf5" 
 
 
@@ -67,7 +68,7 @@ for i in range(L):
             v[index,1] = 0.
             v[index,2] = 0.
             m[index] = mass
-            h[index] = 1.1255 * boxSize / L
+            h[index] = eta * boxSize / L
             u[index] = internalEnergy
             ids[index] = index + 1
             if sqrt((x - boxSize/2.)**2 + (y - boxSize/2.)**2 + (z - boxSize/2.)**2) < 2.01 * boxSize/L:
