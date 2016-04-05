@@ -89,8 +89,8 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_constant 21. * M_1_PI / 2.
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
-        4.f, -15.f, 20.f, -10.f, 1.f,  /* 0 < u < 1 */
-        0.f, 0.f,   0.f,  0.f,   0.f}; /* 1 < u */
+        4.f, -15.f, 20.f, -10.f, 0.f, 1.f,  /* 0 < u < 1 */
+        0.f, 0.f,   0.f,  0.f,   0.f, 0.f}; /* 1 < u */
 
 /* ------------------------------------------------------------------------- */
 #elif defined(WENDLAND_C4_KERNEL)
