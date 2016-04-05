@@ -672,7 +672,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
  */
 void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
-  const int nr_gparts = c->gcount;
   const double timeBase = r->e->timeBase;
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
   const int ti_old = r->e->ti_old;
@@ -688,8 +687,9 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   if (!c->split) {
 
     /* Loop over all the g-particles in the cell */
-    const size_t nr_parts = c->count;
-    for (size_t k = 0; k < nr_parts; k++) {
+    const int nr_gparts = c->gcount;
+    for (size_t k = 0; k < nr_gparts; k++) {
+
       /* Get a handle on the gpart. */
       struct gpart *const gp = &gparts[k];
 
@@ -700,6 +700,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
     }
 
     /* Loop over all the particles in the cell (more work for these !) */
+    const size_t nr_parts = c->count;
+    for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
       struct part *const p = &parts[k];
