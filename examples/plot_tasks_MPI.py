@@ -66,7 +66,7 @@ pl.rcParams.update(PLOT_PARAMS)
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub", "init", "ghost", "drift", "kick",
              "send", "recv", "grav_pp", "grav_mm", "grav_up", "grav_down",
-             "psort", "split_cell", "rewait", "count"]
+             "part_sort", "gpart_sort", "split_cell", "rewait", "count"]
 
 TASKCOLOURS = {"none": "black",
                "sort": "lightblue",
@@ -83,7 +83,8 @@ TASKCOLOURS = {"none": "black",
                "grav_mm": "mediumturquoise",
                "grav_up": "mediumvioletred",
                "grav_down": "mediumnightblue",
-               "psort": "steelblue",
+               "part_sort": "steelblue",
+               "gpart_sort": "teal",
                "split_cell": "seagreen",
                "rewait": "olive",
                "count": "powerblue"}

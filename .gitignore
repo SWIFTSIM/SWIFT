@@ -41,8 +41,13 @@ tests/input.hdf5
 tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
+tests/testKernel
+tests/testParser
 
 theory/latex/swift.pdf
+theory/kernel/kernels.pdf
+theory/kernel/kernel_derivatives.pdf
+theory/kernel/kernel_definitions.pdf
 
 m4/libtool.m4
 m4/ltoptions.m4

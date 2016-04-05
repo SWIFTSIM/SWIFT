@@ -256,7 +256,7 @@ void engine_redistribute(struct engine *e) {
   }
 
   /* Sort the gparticles according to their cell index. */
-  space_gparts_sort(gparts, g_dest, s->nr_gparts, 0, nr_nodes - 1);
+  space_gparts_sort(s, g_dest, s->nr_gparts, 0, nr_nodes - 1, e->verbose);
 
   /* Get all the counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_nodes * nr_nodes, MPI_INT, MPI_SUM,
@@ -441,10 +441,10 @@ void engine_redistribute(struct engine *e) {
       if (gparts_new[k].part->gpart != &gparts_new[k])
         error("Linking problem !");
 
-      /* if (gparts_new[k].x[0] != gparts_new[k].part->x[0] || */
-      /*     gparts_new[k].x[1] != gparts_new[k].part->x[1] || */
-      /*     gparts_new[k].x[2] != gparts_new[k].part->x[2]) */
-      /*   error("Linked particles are not at the same position !"); */
+      if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
+          gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
+          gparts_new[k].x[2] != gparts_new[k].part->x[2])
+        error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < nr_parts; ++k) {
@@ -1365,9 +1365,12 @@ void engine_maketasks(struct engine *e) {
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
 
   /* Add the space sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(sched, task_type_psort, task_subtype_none, i, 0, NULL,
+  for (int i = 0; i < e->nr_threads; i++) {
+    scheduler_addtask(sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
                       NULL, 0);
+    scheduler_addtask(sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   /* Construct the firt hydro loop over neighbours */
   engine_make_hydroloop_tasks(e);
@@ -1557,6 +1560,7 @@ int engine_marktasks(struct engine *e) {
       else if (t->type == task_type_kick) {
         t->skip = (t->ci->ti_end_min > ti_end);
         t->ci->updated = 0;
+        t->ci->g_updated = 0;
       }
 
       /* Drift? */
@@ -1613,6 +1617,7 @@ void engine_print_task_counts(struct engine *e) {
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
   message("nr_parts = %zi.", e->s->nr_parts);
+  message("nr_gparts = %zi.", e->s->nr_gparts);
 }
 
 /**
@@ -1742,7 +1747,7 @@ void engine_collect_kick(struct cell *c) {
   if (c->kick != NULL) return;
 
   /* Counters for the different quantities. */
-  int updated = 0;
+  int updated = 0, g_updated = 0;
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
   float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -1765,6 +1770,7 @@ void engine_collect_kick(struct cell *c) {
         ti_end_min = min(ti_end_min, cp->ti_end_min);
         ti_end_max = max(ti_end_max, cp->ti_end_max);
         updated += cp->updated;
+        g_updated += cp->g_updated;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
@@ -1782,6 +1788,7 @@ void engine_collect_kick(struct cell *c) {
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
   c->updated = updated;
+  c->g_updated = g_updated;
   c->e_kin = e_kin;
   c->e_int = e_int;
   c->e_pot = e_pot;
@@ -1845,7 +1852,15 @@ void engine_init_particles(struct engine *e) {
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
-  space_map_cells_pre(s, 1, cell_init_parts, NULL);
+  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+    space_map_cells_pre(s, 1, cell_init_parts, NULL);
+  }
+  if (((e->policy & engine_policy_self_gravity) ==
+       engine_policy_self_gravity) ||
+      ((e->policy & engine_policy_external_gravity) ==
+       engine_policy_external_gravity)) {
+    space_map_cells_pre(s, 1, cell_init_gparts, NULL);
+  }
 
   engine_prepare(e);
 
@@ -1919,7 +1934,7 @@ void engine_init_particles(struct engine *e) {
  */
 void engine_step(struct engine *e) {
 
-  int updates = 0;
+  int updates = 0, g_updates = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
   double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
@@ -1946,6 +1961,7 @@ void engine_step(struct engine *e) {
       e_int += c->e_int;
       e_pot += c->e_pot;
       updates += c->updated;
+      g_updates += c->g_updated;
       mom[0] += c->mom[0];
       mom[1] += c->mom[1];
       mom[2] += c->mom[2];
@@ -1971,18 +1987,20 @@ void engine_step(struct engine *e) {
     ti_end_max = in_i[0];
   }
   {
-    double in_d[4], out_d[4];
+    double in_d[5], out_d[5];
     out_d[0] = updates;
-    out_d[1] = e_kin;
-    out_d[2] = e_int;
-    out_d[3] = e_pot;
-    if (MPI_Allreduce(out_d, in_d, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
+    out_d[1] = g_updates;
+    out_d[2] = e_kin;
+    out_d[3] = e_int;
+    out_d[4] = e_pot;
+    if (MPI_Allreduce(out_d, in_d, 5, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
       error("Failed to aggregate energies.");
     updates = in_d[0];
-    e_kin = in_d[1];
-    e_int = in_d[2];
-    e_pot = in_d[3];
+    g_updates = in_d[1];
+    e_kin = in_d[2];
+    e_int = in_d[3];
+    e_pot = in_d[4];
   }
 #endif
 
@@ -2007,8 +2025,8 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("%d %e %e %d %.3f\n", e->step, e->time, e->timeStep, updates,
-           e->wallclock_time);
+    printf("%d %e %e %d %d %.3f\n", e->step, e->time, e->timeStep, updates,
+           g_updates, e->wallclock_time);
     fflush(stdout);
 
     /* Write some energy statistics */
@@ -2250,6 +2268,28 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   for (size_t k = 0; k < s->nr_gparts; k++)
     if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
 
+  /* Verify that the links are correct */
+  /* MATTHIEU: To be commented out once we are happy */
+  for (size_t k = 0; k < s->nr_gparts; ++k) {
+
+    if (s->gparts[k].id > 0) {
+
+      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+
+      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
+          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
+          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+        error("Linked particles are not at the same position !");
+    }
+  }
+  for (size_t k = 0; k < s->nr_parts; ++k) {
+
+    if (s->parts[k].gpart != NULL) {
+
+      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
+    }
+  }
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -2425,6 +2465,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Print information about the hydro scheme */
   if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
+  if (e->nodeID == 0) message("Hydrodynamic kernel: %s", kernel_name);
 
   /* Check we have sensible time bounds */
   if (timeBegin >= timeEnd)
@@ -2433,10 +2474,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
         "(t_beg = %e)",
         timeEnd, timeBegin);
 
-  /* Check we have sensible time step bounds */
+  /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
     error(
-        "Minimal time step size must be smaller than maximal time step size ");
+        "Minimal time-step size (%e) must be smaller than maximal time-step "
+        "size (%e)",
+        e->dt_min, e->dt_max);
 
   /* Deal with timestep */
   e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
@@ -2503,9 +2546,13 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   s->nr_queues = nr_queues;
 
   /* Create the sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++)
-    scheduler_addtask(&e->sched, task_type_psort, task_subtype_none, i, 0, NULL,
-                      NULL, 0);
+  for (int i = 0; i < e->nr_threads; i++) {
+    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+
+    scheduler_addtask(&e->sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   scheduler_ranktasks(&e->sched);
 
