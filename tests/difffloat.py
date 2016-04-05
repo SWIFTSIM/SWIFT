@@ -28,12 +28,18 @@ rel_tol = 1e-7
 # Comparisons are done both in absolute and relative terms
 
 # Individual tolerances for each column can be provided in a file
+# The (cube root of) the number of lines to check is provided as
+# an optional 4th argument
 
 file1 = sys.argv[1]
 file2 = sys.argv[2]
-fileTol = ""
+number_to_check = -1
 
-if len(sys.argv) == 4:
+if len(sys.argv) == 5:
+    number_to_check = int(sys.argv[4])
+
+fileTol = ""
+if len(sys.argv) >= 4:
     fileTol = sys.argv[3]
 
 data1 = loadtxt(file1)
@@ -67,8 +73,17 @@ else:
     absTol = dataTol[0,:]
     relTol = dataTol[1,:]
 
+n_lines_to_check = 0
+if number_to_check > 0:
+    n_lines_to_check = number_to_check**3
+    n_lines_to_check = min(n_lines_to_check, n_lines)
+    print "Checking the first %d particles."%n_lines_to_check
+else:
+    n_lines_to_check = n_lines
+    print "Checking all particles in the file."
+
 error = False
-for i in range(n_lines):
+for i in range(n_lines_to_check):
     for j in range(n_columns):
 
         abs_diff = abs(data1[i,j] - data2[i,j])
@@ -80,7 +95,7 @@ for i in range(n_lines):
             rel_diff = 0.
 
         if( abs_diff > absTol[j]):
-            print "Absolute difference larger than tolerance (%e) on line %d, column %d:"%(absTol[j], i,j)
+            print "Absolute difference larger than tolerance (%e) for particle %d, column %d:"%(absTol[j], i,j)
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s:       |a-b| = %e"%("Difference", abs_diff)
@@ -88,7 +103,7 @@ for i in range(n_lines):
             error = True
 
         if( rel_diff > relTol[j]):
-            print "Relative difference larger than tolerance (%e) on line %d, column %d:"%(relTol[j], i,j)
+            print "Relative difference larger than tolerance (%e) for particle %d, column %d:"%(relTol[j], i,j)
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
             print "%10s: |a-b|/|a+b| = %e"%("Difference", rel_diff)
