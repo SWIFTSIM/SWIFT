@@ -29,14 +29,6 @@ int main(int argc, char *argv[]) {
   /* Create a structure to read file into. */
   struct swift_params param_file;
 
-  /* Create variables that will be set from the parameter file. */
-  int no_of_threads = 0;
-  int no_of_time_steps = 0;
-  int kernel = 0;
-  float max_h = 0.0f;
-  double start_time = 0.0;
-  char ic_file[PARSER_MAX_LINE_SIZE];
-
   /* Read the parameter file. */
   parser_read_file(input_file, &param_file);
 
@@ -49,14 +41,17 @@ int main(int argc, char *argv[]) {
   /* Retrieve parameters and store them in variables defined above.
    * Have to specify the name of the parameter as it appears in the
    * input file: testParserInput.yaml.*/
-  parser_get_param_int(&param_file, "Scheduler:no_of_threads", &no_of_threads);
-  parser_get_param_int(&param_file, "Simulation:no_of_time_steps",
-                       &no_of_time_steps);
-  parser_get_param_float(&param_file, "Simulation:max_h", &max_h);
-  parser_get_param_double(&param_file, "Simulation:start_time", &start_time);
-  parser_get_param_string(&param_file, "IO:ic_file", ic_file);
+  const int no_of_threads =
+      parser_get_param_int(&param_file, "Scheduler:no_of_threads");
+  const int no_of_time_steps =
+      parser_get_param_int(&param_file, "Simulation:no_of_time_steps");
+  const float max_h = parser_get_param_float(&param_file, "Simulation:max_h");
+  const double start_time =
+      parser_get_param_double(&param_file, "Simulation:start_time");
+  const int kernel = parser_get_param_int(&param_file, "kernel");
 
-  parser_get_param_int(&param_file, "kernel", &kernel);
+  char ic_file[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(&param_file, "IO:ic_file", ic_file);
 
   /* Print the variables to check their values are correct. */
   printf(
