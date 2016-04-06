@@ -70,9 +70,4 @@
 #define GADGET2_SPH
 //#define DEFAULT_SPH
 
-/* System of units */
-#define const_unit_length_in_cgs 1   /* 3.08567810e16  /\* 1Mpc *\/ */
-#define const_unit_mass_in_cgs 1     /* 1.9891e33      /\* 1 M_sun *\/ */
-#define const_unit_velocity_in_cgs 1 /* 1e5            /\* km s^-1 *\/ */
-
 #endif /* SWIFT_CONST_H */

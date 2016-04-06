@@ -287,11 +287,11 @@ AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
-# Check for zlib.
-AC_CHECK_LIB([z],[gzopen],[
-    AC_DEFINE([HAVE_LIBZ],[1],[Set to 1 if zlib is installed.])
-    LDFLAGS="$LDFLAGS -lz"
-    ],[])
+# # Check for zlib.
+# AC_CHECK_LIB([z],[gzopen],[
+#     AC_DEFINE([HAVE_LIBZ],[1],[Set to 1 if zlib is installed.])
+#     LDFLAGS="$LDFLAGS -lz"
+#     ],[])
 
 
 # Check for HDF5. This is required.

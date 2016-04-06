@@ -192,6 +192,8 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_guess_p(
  *
  * @param lower_limit Lower limit for the method (riemann_f(lower_limit) < 0)
  * @param upper_limit Upper limit for the method (riemann_f(upper_limit) > 0)
+ * @param lowf ??? Bert?
+ * @param upf  ??? Bert?
  * @param error_tol Tolerance used to decide if the solution is converged
  * @param WL Left state vector
  * @param WR Right state vector

@@ -30,6 +30,7 @@ factor = 3
 boxSize = [ 1.0 , 1.0, 1.0/factor ]
 L = 120           # Number of particles along one axis
 gamma = 5./3.     # Gas adiabatic index
+eta = 1.2349      # 48 ngbs with cubic spline kernel
 rho = 1           # Gas density
 P0 = 0.           # Constant additional pressure (should have no impact on the dynamics)
 fileName = "greshoVortex.hdf5" 
@@ -73,7 +74,7 @@ for i in range(L):
             v[index,1] =  v_phi * (x - boxSize[0] / 2) / r
             v[index,2] = 0.
             m[index] = mass
-            h[index] = 2.251 * boxSize[0] / L
+            h[index] = eta * boxSize[0] / L
             P = P0
             if r < 0.2:
                 P = P + 5. + 12.5*r2
@@ -104,6 +105,14 @@ grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 #Runtime parameters
 grp = file.create_group("/RuntimePars")
 grp.attrs["PeriodicBoundariesOn"] = periodic
+
+#Units
+grp = file.create_group("/Units")
+grp.attrs["Unit length in cgs (U_L)"] = 1.
+grp.attrs["Unit mass in cgs (U_M)"] = 1.
+grp.attrs["Unit time in cgs (U_t)"] = 1.
+grp.attrs["Unit current in cgs (U_I)"] = 1.
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
 grp = file.create_group("/PartType0")
