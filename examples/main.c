@@ -200,11 +200,17 @@ int main(int argc, char *argv[]) {
   } else if (optind > argc - 1) {
     if (myrank == 0) printf("Error: A parameter file name must be provided\n");
     if (myrank == 0) print_help_message();
-    exit(1);
+    return 1;
   } else {
     if (myrank == 0) printf("Error: Too many parameters given\n");
     if (myrank == 0) print_help_message();
-    exit(1);
+    return 1;
+  }
+  if (!with_self_gravity && !with_hydro && !with_external_gravity) {
+    if (myrank == 0)
+      printf("Error: At least one of -s, -g or -G must be chosen.\n");
+    if (myrank == 0) print_help_message();
+    return 1;
   }
 
   /* Genesis 1.1: And then, there was time ! */
