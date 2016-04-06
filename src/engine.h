@@ -189,5 +189,6 @@ void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
+void engine_pin();
 
 #endif /* SWIFT_ENGINE_H */

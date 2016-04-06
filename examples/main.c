@@ -117,7 +117,8 @@ int main(int argc, char *argv[]) {
 #endif
 
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if ((ENGINE_POLICY) & engine_policy_setaffinity) {
+  if ((ENGINE_POLICY) &
+      engine_policy_setaffinity == engine_policy_setaffinity) {
     /* Ensure the NUMA node on which we initialise (first touch) everything
      * doesn't change before engine_init allocates NUMA-local workers.
      * Otherwise, we may be scheduled elsewhere between the two times.
@@ -352,7 +353,8 @@ int main(int argc, char *argv[]) {
             s.cdim[1], s.cdim[2]);
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
-    message("maximum depth is %d.", s.maxdepth); fflush(stdout);
+    message("maximum depth is %d.", s.maxdepth);
+    fflush(stdout);
   }
 
   /* Verify that each particle is in it's proper cell. */

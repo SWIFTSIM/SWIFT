@@ -2315,7 +2315,8 @@ void engine_pin(void) {
   cpu_set_t *entry_affinity = engine_entry_affinity();
 
   int pin;
-  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin);
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
+    ;
 
   cpu_set_t affinity;
   CPU_ZERO(&affinity);
@@ -2397,7 +2398,7 @@ void engine_init(struct engine *e, struct space *s,
     error("must allocate dynamic cpu_set_t (too many cores per node)");
   }
 
-  char buf[nr_cores+1];
+  char buf[nr_cores + 1];
   buf[nr_cores] = '\0';
   for (int j = 0; j < nr_cores; ++j) {
     /* Reversed bit order from convention, but same as e.g. Intel MPI's
@@ -2407,7 +2408,6 @@ void engine_init(struct engine *e, struct space *s,
   }
 
   message("affinity at entry: %s", buf);
-#endif
 
   int cpuid[nr_affinity_cores];
   cpu_set_t cpuset;
@@ -2415,7 +2415,8 @@ void engine_init(struct engine *e, struct space *s,
   int skip = 0;
   for (int k = 0; k < nr_affinity_cores; k++) {
     int c;
-    for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c);
+    for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
+      ;
     cpuid[k] = c;
     skip = c + 1;
   }
@@ -2436,7 +2437,7 @@ void engine_init(struct engine *e, struct space *s,
           const int node_b = numa_node_of_cpu(cpuid[i]);
 
           const bool swap =
-            numa_distance(home, node_a) > numa_distance(home, node_b);
+              numa_distance(home, node_a) > numa_distance(home, node_b);
 
           if (swap) {
             const int t = cpuid[i - 1];
@@ -2456,6 +2457,7 @@ void engine_init(struct engine *e, struct space *s,
    * pinned.
    */
   engine_unpin();
+#endif
 
 #ifdef WITH_MPI
   printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
@@ -2598,13 +2600,15 @@ void engine_init(struct engine *e, struct space *s,
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
+
+    /* Try to pin the runner to a given core */
     if ((e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
       int coreid = k % nr_affinity_cores;
       e->runners[k].cpuid = cpuid[coreid];
-      if (nr_queues < nr_threads)
+      if (nr_queues < e->nr_threads)
         e->runners[k].qid = cpuid[coreid] * nr_queues / nr_affinity_cores;
       else
         e->runners[k].qid = k;
