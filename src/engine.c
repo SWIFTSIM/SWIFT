@@ -2388,28 +2388,26 @@ void engine_init(struct engine *e, struct space *s,
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   s->nr_queues = nr_queues;
 
+/* Deal with affinity. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   cpu_set_t *entry_affinity = engine_entry_affinity();
   const int nr_affinity_cores = CPU_COUNT(entry_affinity);
 
-  if (nr_cores > CPU_SETSIZE) {
-    // Unlikely, except on e.g. SGI UV.
+  if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
     error("must allocate dynamic cpu_set_t (too many cores per node)");
-  }
 
-  char buf[nr_cores + 1];
+  char *buf = malloc((nr_cores + 1) * sizeof(char));
   buf[nr_cores] = '\0';
   for (int j = 0; j < nr_cores; ++j) {
     /* Reversed bit order from convention, but same as e.g. Intel MPI's
-     * I_MPI_PIN_DOMAIN explicit mask: left-to-right, LSB-to-MSB.
-     */
+     * I_MPI_PIN_DOMAIN explicit mask: left-to-right, LSB-to-MSB. */
     buf[j] = CPU_ISSET(j, entry_affinity) ? '1' : '0';
   }
 
-  message("affinity at entry: %s", buf);
+  if (verbose) message("Affinity at entry: %s", buf);
 
-  int cpuid[nr_affinity_cores];
+  int *cpuid = malloc(nr_affinity_cores * sizeof(int));
   cpu_set_t cpuset;
 
   int skip = 0;
@@ -2421,29 +2419,29 @@ void engine_init(struct engine *e, struct space *s,
     skip = c + 1;
   }
 
-#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+#if defined(HAVE_LIBNUMA)
   if ((policy & engine_policy_cputight) != engine_policy_cputight) {
     /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
     if (numa_available() >= 0) {
       if (nodeID == 0) message("prefer NUMA-local CPUs");
 
       const int home = numa_node_of_cpu(sched_getcpu());
-      bool done = false;
+      int done = 0;
 
       while (!done) {
-        done = true;
+        done = 1;
         for (int i = 1; i < nr_affinity_cores; i++) {
           const int node_a = numa_node_of_cpu(cpuid[i - 1]);
           const int node_b = numa_node_of_cpu(cpuid[i]);
 
-          const bool swap =
+          const int swap =
               numa_distance(home, node_a) > numa_distance(home, node_b);
 
           if (swap) {
             const int t = cpuid[i - 1];
             cpuid[i - 1] = cpuid[i];
             cpuid[i] = t;
-            done = false;
+            done = 0;
           }
         }
       }
@@ -2454,8 +2452,7 @@ void engine_init(struct engine *e, struct space *s,
   /* Avoid (unexpected) interference between engine and runner threads. We can
    * do this once we've made at least one call to engine_entry_affinity and
    * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
-   * pinned.
-   */
+   * pinned. */
   engine_unpin();
 #endif
 
@@ -2632,6 +2629,12 @@ void engine_init(struct engine *e, struct space *s,
     // message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id ,
     // e->runners[k].cpuid , e->runners[k].qid );
   }
+
+/* Free the affinity stuff */
+#if defined(HAVE_SETAFFINITY)
+  free(cpuid);
+  free(buf);
+#endif
 
   /* Wait for the runner threads to be in place. */
   while (e->barrier_running || e->barrier_launch)
