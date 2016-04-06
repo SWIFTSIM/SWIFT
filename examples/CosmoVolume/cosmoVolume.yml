@@ -41,8 +41,8 @@ InitialConditions:
 # Parameters govering domain decomposition
 DomainDecomposition:
   initial_type:       m     # The initial strategy ("g", "m", "w", or "v"). See documentation for details.
-  intitial_grid_x:    10    # Grid size if the 'g' strategy is chosen.
-  intitial_grid_y:    10
-  intitial_grid_z:    10
+  initial_grid_x:    10     # Grid size if the 'g' strategy is chosen.
+  initial_grid_y:    10
+  initial_grid_z:    10
   repartition_type:   b     # The re-decomposition strategy ("n", "b", "v", "e" or "x"). See documentation for details.
  
