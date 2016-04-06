@@ -1338,6 +1338,9 @@ void space_init(struct space *s, const struct swift_params *params,
   space_maxsize = parser_get_param_int(params, "Scheduler:cell_max_size");
   space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
   space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
+  if(verbose)
+    message("max_size set to %d, sub_size set to %d, split_size set to %d",
+	    space_maxsize, space_subsize, space_splitsize);
 
   /* Check that we have enough cells */
   if (s->cell_min * 3 > dim[0] || s->cell_min * 3 > dim[1] ||
