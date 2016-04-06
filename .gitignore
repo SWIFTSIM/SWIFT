@@ -43,6 +43,7 @@ tests/testTimeIntegration
 tests/testSPHStep
 tests/testKernel
 tests/testParser
+tests/parser_output.yml
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf

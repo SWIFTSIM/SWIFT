@@ -19,6 +19,12 @@
 #ifndef SWIFT_UNITS_H
 #define SWIFT_UNITS_H
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes. */
+#include "parser.h"
+
 /**
  * @brief The unit system used internally.
  *
@@ -86,74 +92,25 @@ enum UnitConversionFactor {
   UNIT_CONV_TEMPERATURE
 };
 
-/**
- * @brief Initialises the UnitSystem structure with the constants given in
- * const.h
- */
-void initUnitSystem(struct UnitSystem*);
-
-/**
- * @brief Returns the base unit conversion factor for a given unit system
- */
-double getBaseUnit(struct UnitSystem*, enum BaseUnits);
-
-/**
- * @brief Returns the base unit symbol in the cgs system
- */
-const char* getBaseUnitSymbol(enum BaseUnits);
-
-/**
- * @brief Returns the base unit symbol in the cgs system
- */
-const char* getBaseUnitCGSSymbol(enum BaseUnits);
-
-/**
- * @brief Returns the conversion factor for a given unit (expressed in terms of
- * the 5 fundamental units) in the chosen unit system
- */
-double generalConversionFactor(struct UnitSystem* us,
-                               float baseUnitsExponants[5]);
-
-/**
- * @brief Returns the conversion factor for a given unit in the chosen unit
- * system
- */
-double conversionFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
-
-/**
- * @brief Returns the h factor for a given unit (expressed in terms of the 5
- * fundamental units) in the chosen unit system
- */
-float generalhFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
-
-/**
- * @brief Returns the h factor for a given unit in the chosen unit system
- */
-float hFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
-
-/**
- * @brief Returns the scaling factor for a given unit (expressed in terms of the
- * 5 fundamental units) in the chosen unit system
- */
-float generalaFactor(struct UnitSystem* us, float baseUnitsExponants[5]);
-
-/**
- * @brief Returns the scaling factor for a given unit in the chosen unit system
- */
-float aFactor(struct UnitSystem* us, enum UnitConversionFactor unit);
-
-/**
- * @brief Returns a string containing the exponents of the base units making up
- * the conversion factors (expressed in terms of the 5 fundamental units)
- */
-void generalConversionString(char* buffer, struct UnitSystem* us,
+void units_init(struct UnitSystem*, const struct swift_params*);
+double units_get_base_unit(const struct UnitSystem*, enum BaseUnits);
+const char* units_get_base_unit_symbol(enum BaseUnits);
+const char* units_get_base_unit_CGS_symbol(enum BaseUnits);
+double units_general_conversion_factor(const struct UnitSystem* us,
+                                       float baseUnitsExponants[5]);
+double units_conversion_factor(const struct UnitSystem* us,
+                               enum UnitConversionFactor unit);
+float units_general_h_factor(const struct UnitSystem* us,
                              float baseUnitsExponants[5]);
-
-/**
- * @brief Returns a string containing the exponents of the base units making up
- * the conversion factors
- */
-void conversionString(char* buffer, struct UnitSystem* us,
-                      enum UnitConversionFactor unit);
+float units_h_factor(const struct UnitSystem* us,
+                     enum UnitConversionFactor unit);
+float units_general_a_factor(const struct UnitSystem* us,
+                             float baseUnitsExponants[5]);
+float units_a_factor(const struct UnitSystem* us,
+                     enum UnitConversionFactor unit);
+void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
+                                     float baseUnitsExponants[5]);
+void units_conversion_string(char* buffer, const struct UnitSystem* us,
+                             enum UnitConversionFactor unit);
 
 #endif /* SWIFT_UNITS_H */

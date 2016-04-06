@@ -35,7 +35,8 @@ int main() {
   const double rho = 2.;
 
   /* Read data */
-  read_ic_single("input.hdf5", dim, &parts, &gparts, &Ngas, &Ngpart, &periodic);
+  read_ic_single("input.hdf5", dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
+                 0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);
