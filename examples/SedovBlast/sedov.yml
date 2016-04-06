@@ -9,17 +9,17 @@ UnitSystem:
 
 # Parameters for the task scheduling
 Scheduler:
-  nr_threads:       16        # The number of threads per MPI rank to use.
+  nr_threads:       16       # The number of threads per MPI rank to use.
   nr_queues:        0        # The number of task queues to use. Use 0  to let the system decide.
   cell_max_size:    8000000  # Maximal number of interactions per task (this is the default value).
-  cell_sub_size:    8000000  # Maximal number of interactions per sub-task  (this is the default value).
+  cell_sub_size:    5000     # Maximal number of interactions per sub-task  (this is the default value).
   cell_split_size:  400      # Maximal number of particles per cell (this is the default value).
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1.    # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters for the hydrodynamics scheme
