@@ -394,7 +394,7 @@ double parser_get_param_double(const struct swift_params *params,
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
-      if (sscanf(params->data[i].value, "%lf", &retParam) != 1) {
+      if (sscanf(params->data[i].value, "%lf%s", &retParam, str) != 1) {
         error(
             "Tried parsing double '%s' but found '%s' with illegal double "
             "characters '%s'.",
