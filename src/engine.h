@@ -38,6 +38,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "parser.h"
 #include "partition.h"
 
 /* Some constants. */
@@ -53,7 +54,8 @@ enum engine_policy {
   engine_policy_setaffinity = (1 << 7),
   engine_policy_hydro = (1 << 8),
   engine_policy_self_gravity = (1 << 9),
-  engine_policy_external_gravity = (1 << 10)
+  engine_policy_external_gravity = (1 << 10),
+  engine_policy_cosmology = (1 << 11)
 };
 
 extern const char *engine_policy_names[];
@@ -62,6 +64,8 @@ extern const char *engine_policy_names[];
 #define engine_maxtaskspercell 96
 #define engine_maxproxies 64
 #define engine_tasksreweight 10
+#define engine_parts_size_grow 1.05
+#define engine_redistribute_alloc_margin 1.2
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -124,7 +128,7 @@ struct engine {
   FILE *file_stats;
 
   /* The current step number. */
-  int step, nullstep;
+  int step;
 
   /* The number of particles updated in the previous step. */
   int count_step;
@@ -160,21 +164,13 @@ struct engine {
 
   /* Are we talkative ? */
   int verbose;
-
-#ifdef WITH_MPI
-  /* MPI data type for the particle transfers */
-  MPI_Datatype part_mpi_type;
-  MPI_Datatype xpart_mpi_type;
-#endif
 };
 
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
-void engine_pin(void);
-void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max,
-                 int verbose);
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, int nr_nodes, int nodeID,
+                 int policy, int verbose);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);
@@ -183,7 +179,9 @@ void engine_init_particles(struct engine *e);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
-int engine_exchange_strays(struct engine *e, int offset, size_t *ind, size_t N);
+void engine_exchange_strays(struct engine *e, size_t offset_parts,
+                            int *ind_part, size_t *Npart, size_t offset_gparts,
+                            int *ind_gpart, size_t *Ngpart);
 void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);

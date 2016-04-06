@@ -52,6 +52,7 @@
 #include "error.h"
 #include "partition.h"
 #include "space.h"
+#include "tools.h"
 
 /* Maximum weight used for METIS. */
 #define metis_maxweight 10000.0f
@@ -424,7 +425,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
    * assume the same graph structure as used in the part_ calls). */
   int nr_cells = s->nr_cells;
   struct cell *cells = s->cells;
-  float wscale = 1e-3, vscale = 1e-3, wscale_buff;
+  float wscale = 1e-3, vscale = 1e-3, wscale_buff = 0.0;
   int wtot = 0;
   int wmax = 1e9 / nr_nodes;
   int wmin;
@@ -659,6 +660,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
   split_metis(s, nr_nodes, celllist);
 
   /* Clean up. */
+  free(inds);
   if (bothweights) free(weights_v);
   free(weights_e);
   free(celllist);
@@ -905,6 +907,111 @@ void partition_initial_partition(struct partition *initial_partition,
     error("SWIFT was not compiled with MPI support");
 #endif
   }
+}
+
+/**
+ * @brief Initialises the partition and re-partition scheme from the parameter
+ *file
+ *
+ * @param partition The #partition scheme to initialise.
+ * @param reparttype The repartition scheme to initialise.
+ * @param params The parsed parameter file.
+ * @param nr_nodes The number of MPI nodes we are running on.
+ */
+void partition_init(struct partition *partition,
+                    enum repartition_type *reparttype,
+                    const struct swift_params *params, int nr_nodes) {
+
+#ifdef WITH_MPI
+
+/* Defaults make use of METIS if available */
+#ifdef HAVE_METIS
+  *reparttype = REPART_METIS_BOTH;
+  partition->type = INITPART_METIS_NOWEIGHT;
+#else
+  *reparttype = REPART_NONE;
+  partition->type = INITPART_GRID;
+#endif
+
+  /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
+  factor(nr_nodes, &partition->grid[0], &partition->grid[1]);
+  factor(nr_nodes / partition->grid[1], &partition->grid[0],
+         &partition->grid[2]);
+  factor(partition->grid[0] * partition->grid[1], &partition->grid[1],
+         &partition->grid[0]);
+
+  /* Now let's check what the user wants as an initial domain*/
+  const char part_type =
+      parser_get_param_char(params, "DomainDecomposition:initial_type");
+
+  switch (part_type) {
+    case 'g':
+      partition->type = INITPART_GRID;
+      break;
+    case 'v':
+      partition->type = INITPART_VECTORIZE;
+      break;
+#ifdef HAVE_METIS
+    case 'm':
+      partition->type = INITPART_METIS_NOWEIGHT;
+      break;
+    case 'w':
+      partition->type = INITPART_METIS_WEIGHT;
+      break;
+    default:
+      message("Invalid choice of initial partition type '%c'.", part_type);
+      error("Permitted values are: 'g','m','v' or 'w'.");
+#else
+    default:
+      message("Invalid choice of initial partition type '%c'.", part_type);
+      error("Permitted values are: 'g' or 'v' when compiled without metis.");
+#endif
+  }
+
+  /* In case of grid, read more parameters */
+  if (part_type == 'g') {
+    partition->grid[0] =
+        parser_get_param_int(params, "DomainDecomposition:initial_grid_x");
+    partition->grid[1] =
+        parser_get_param_int(params, "DomainDecomposition:initial_grid_y");
+    partition->grid[2] =
+        parser_get_param_int(params, "DomainDecomposition:initial_grid_z");
+  }
+
+  /* Now let's check what the user wants as a repartition strategy */
+  const char repart_type =
+      parser_get_param_char(params, "DomainDecomposition:repartition_type");
+
+  switch (repart_type) {
+    case 'n':
+      *reparttype = REPART_NONE;
+      break;
+#ifdef HAVE_METIS
+    case 'b':
+      *reparttype = REPART_METIS_BOTH;
+      break;
+    case 'e':
+      *reparttype = REPART_METIS_EDGE;
+      break;
+    case 'v':
+      *reparttype = REPART_METIS_VERTEX;
+      break;
+    case 'x':
+      *reparttype = REPART_METIS_VERTEX_EDGE;
+      break;
+    default:
+      message("Invalid choice of re-partition type '%c'.", repart_type);
+      error("Permitted values are: 'b','e','n', 'v' or 'x'.");
+#else
+    default:
+      message("Invalid choice of re-partition type '%c'.", repart_type);
+      error("Permitted values are: 'n' when compiled without metis.");
+#endif
+  }
+
+#else
+  error("SWIFT was not compiled with MPI support");
+#endif
 }
 
 /*  General support */

@@ -32,6 +32,7 @@ N = int(sys.argv[2])  # Write N particles at a time to avoid requiring a lot of 
 rho = 2.              # Density
 P = 1.                # Pressure
 gamma = 5./3.         # Gas adiabatic index
+eta = 1.2349      # 48 ngbs with cubic spline kernel
 fileName = "uniformBox_%d.hdf5"%L
 
 #---------------------------------------------------
@@ -62,10 +63,18 @@ grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 
-
 #Runtime parameters
 grp = file.create_group("/RuntimePars")
 grp.attrs["PeriodicBoundariesOn"] = periodic
+
+#Units
+grp = file.create_group("/Units")
+grp.attrs["Unit length in cgs (U_L)"] = 1.
+grp.attrs["Unit mass in cgs (U_M)"] = 1.
+grp.attrs["Unit time in cgs (U_t)"] = 1.
+grp.attrs["Unit current in cgs (U_I)"] = 1.
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+
 
 #Particle group
 grp = file.create_group("/PartType0")
@@ -89,7 +98,7 @@ for n in range(n_iterations):
     ds_m[offset:offset+N] = m
     m = zeros(1)
 
-    h = full((N, 1), 1.1255 * boxSize / L)
+    h = full((N, 1), eta * boxSize / L)
     ds_h[offset:offset+N] = h
     h = zeros(1)
 
@@ -122,7 +131,7 @@ m = full((remainder, 1), mass)
 ds_m[offset:offset+remainder] = m
 m = zeros(1)
 
-h = full((remainder, 1), 1.1255 * boxSize / L)
+h = full((remainder, 1), eta * boxSize / L)
 ds_h[offset:offset+remainder] = h
 h = zeros(1)
 
@@ -139,7 +148,7 @@ coords = zeros((remainder, 3))
 coords[:,0] = z[:,0] * boxSize / L + boxSize / (2*L)
 coords[:,1] = y[:,0] * boxSize / L + boxSize / (2*L)
 coords[:,2] = x[:,0] * boxSize / L + boxSize / (2*L)
-ds_x[offset:offset+remainder,:] = coords
+ods_x[offset:offset+remainder,:] = coords
 
 print "Done", offset+remainder,"/", numPart
 

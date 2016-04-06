@@ -43,9 +43,10 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",    "sort",    "self",      "pair",  "sub",        "init",
-    "ghost",   "drift",   "kick",      "send",  "recv",       "grav_pp",
-    "grav_mm", "grav_up", "grav_down", "psort", "split_cell", "rewait"};
+    "none",      "sort",       "self",       "pair",    "sub",
+    "init",      "ghost",      "drift",      "kick",    "send",
+    "recv",      "grav_pp",    "grav_mm",    "grav_up", "grav_down",
+    "part_sort", "gpart_sort", "split_cell", "rewait"};
 
 const char *subtaskID_names[task_type_count] = {"none",  "density",
                                                 "force", "grav"};
@@ -78,9 +79,10 @@ float task_overlap(const struct task *ta, const struct task *tb) {
   /* First check if any of the two tasks are of a type that don't
      use cells. */
   if (ta == NULL || tb == NULL || ta->type == task_type_none ||
-      ta->type == task_type_psort || ta->type == task_type_split_cell ||
-      ta->type == task_type_rewait || tb->type == task_type_none ||
-      tb->type == task_type_psort || tb->type == task_type_split_cell ||
+      ta->type == task_type_part_sort || ta->type == task_type_gpart_sort ||
+      ta->type == task_type_split_cell || ta->type == task_type_rewait ||
+      tb->type == task_type_none || tb->type == task_type_part_sort ||
+      tb->type == task_type_gpart_sort || tb->type == task_type_split_cell ||
       tb->type == task_type_rewait)
     return 0.0f;
 
@@ -145,7 +147,7 @@ int task_lock(struct task *t) {
 
 #ifdef WITH_MPI
     /* Check the status of the MPI request. */
-    int res, err;
+    int res = 0, err = 0;
     MPI_Status stat;
     if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
       char buff[MPI_MAX_ERROR_STRING];

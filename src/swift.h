@@ -27,7 +27,6 @@
 #include "cell.h"
 #include "clocks.h"
 #include "const.h"
-#include "const.h"
 #include "cycle.h"
 #include "debug.h"
 #include "engine.h"
@@ -38,7 +37,9 @@
 #include "map.h"
 #include "multipole.h"
 #include "parallel_io.h"
+#include "parser.h"
 #include "part.h"
+#include "partition.h"
 #include "queue.h"
 #include "runner.h"
 #include "scheduler.h"
@@ -47,9 +48,8 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
-#include "units.h"
 #include "tools.h"
-#include "partition.h"
+#include "units.h"
 #include "version.h"
 
 #endif /* SWIFT_SWIFT_H */
