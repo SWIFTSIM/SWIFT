@@ -61,7 +61,7 @@ __attribute__((always_inline))
         const struct phys_const* const phys_const,
         const struct gpart* const g) {
 
-  const float G_newton = phys_const->newton_gravity;
+  const float G_newton = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->point_mass.x;
   const float dy = g->x[1] - potential->point_mass.y;
   const float dz = g->x[2] - potential->point_mass.z;
@@ -94,7 +94,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
     const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
-  const float G_newton = phys_const->newton_gravity;
+  const float G_newton = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->point_mass.x;
   const float dy = g->x[1] - potential->point_mass.y;
   const float dz = g->x[2] - potential->point_mass.z;

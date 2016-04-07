@@ -2602,8 +2602,8 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
-     /* message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id , */
-     /* 	      e->runners[k].cpuid , e->runners[k].qid ); */
+    /* message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id , */
+    /* 	      e->runners[k].cpuid , e->runners[k].qid ); */
   }
 
   /* Wait for the runner threads to be in place. */

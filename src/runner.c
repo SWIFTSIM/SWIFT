@@ -78,9 +78,10 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 /* #define CELL_ID                                                  \ */
 /*   ((int)(c->loc[0] / DX) * NX *NX + (int)(c->loc[1] / DX) * NX + \ */
 /*    (int)(c->loc[2] / DX)) */
-/* #define OUT                                                                    \ */
-/*   if (CELL_ID == MY_CELL) {                                                    \ */
-/*     message(" cell= %d gcount=%d time=%f \n", CELL_ID, c->gcount, r->e->time); \ */
+/* #define OUT \ */
+/*   if (CELL_ID == MY_CELL) { \ */
+/*     message(" cell= %d gcount=%d time=%f \n", CELL_ID, c->gcount,
+ * r->e->time); \ */
 /*   } */
 /* #define OUT  message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time); */
 /* #define OUT  if(CELL_ID == MY_CELL) message("\n cell %f %f %f %d %d */
@@ -165,20 +166,24 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
       /*                     (g->a_grav[1] * g->a_grav[1]) + */
       /*                     (g->a_grav[2] * g->a_grav[2])) * */
       /*               dr; */
-      /*   // message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f */
-      /*   // x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0], */
+      /*   // message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]=
+       * %f */
+      /*   // x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2],
+       * g->x[0], */
       /*   // g->x[1], vx, vy); */
-      /*   message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, */
-      /*           g->tx, g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1], */
+      /*   message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time,
+       */
+      /*           g->tx, g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1],
+       */
       /*           vx, vy); */
-      /*   /\* message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity, */
+      /*   /\* message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity,
+       */
       /*    * r->e->potential->point_mass.mass); *\/ */
       /*   /\* exit(-1); *\/ */
       /* } */
-
     }
   }
-  if(timer) TIMER_TOC(timer_dograv_external);
+  if (timer) TIMER_TOC(timer_dograv_external);
 }
 
 /**

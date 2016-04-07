@@ -1,7 +1,7 @@
 
 # Define the system of units to use internally. 
 UnitSystem:
-  UnitMass_in_cgs:     1.989e33      # Grams
+  UnitMass_in_cgs:     1.9885e33     # Grams
   UnitLength_in_cgs:   3.0856776e21  # Centimeters
   UnitVelocity_in_cgs: 1e5           # Centimeters per second
   UnitCurrent_in_cgs:  1   # Amperes

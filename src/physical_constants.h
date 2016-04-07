@@ -28,16 +28,59 @@
 
 /* physical constants in in defined programme units */
 struct phys_const {
-  double newton_gravity;
+
+  /* Newton's gravitationl constant */
+  double const_newton_G;
+
+  /* Speed of light in vacuum */
+  double const_speed_light_c;
+
+  /* Planck's constant */
+  double const_planck_h;
+
+  /* Planck's reduced constant */
+  double const_planck_hbar;
+
+  /* Boltzmann's constant */
+  double const_boltzmann_k;
+
+  /* Thomson cross-section */
+  double const_thomson_cross_section;
+
+  /* Charge of the electron  */
+  double const_electron_charge;
+
+  /* Electron-Volt */
+  double const_electron_volt;
+
+  /* Mass of the electron */
+  double const_electron_mass;
+
+  /* Mass of the proton */
+  double const_proton_mass;
+
+  /* (Tropical) Year */
+  double const_year;
+
+  /* Astronomical unit */
+  double const_astronomical_unit;
+
+  /* Parsec */
+  double const_parsec;
+
+  /* Light-year */
+  double const_light_year;
+
+  /* Mass of the Sun */
+  double const_solar_mass;
+
+  /* Mass of the Earth */
+  double const_earth_mass;
 };
 
-/**
- * @brief Converts physical constants to the internal unit system
- *
- * @param us The current internal system of units.
- * @param internal_const The physical constants to initialize.
- */
-void initPhysicalConstants(struct UnitSystem* us,
-                           struct phys_const* internal_const);
+void init_physical_constants(struct UnitSystem* us,
+                             struct phys_const* internal_const);
+
+void print_physical_constants(struct phys_const* internal_const);
 
 #endif /* SWIFT_PHYSICAL_CONSTANTS_H */

@@ -280,28 +280,21 @@ int main(int argc, char *argv[]) {
   struct UnitSystem us;
   struct phys_const prog_const;
   units_init(&us, params);
-  initPhysicalConstants(&us, &prog_const);
+  init_physical_constants(&us, &prog_const);
   if (myrank == 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
     message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
     message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
     message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
     message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-    message("Density units: %e a^%f h^%f.",
-            units_conversion_factor(&us, UNIT_CONV_DENSITY),
-            units_a_factor(&us, UNIT_CONV_DENSITY),
-            units_h_factor(&us, UNIT_CONV_DENSITY));
-    message("Entropy units: %e a^%f h^%f.",
-            units_conversion_factor(&us, UNIT_CONV_ENTROPY),
-            units_a_factor(&us, UNIT_CONV_ENTROPY),
-            units_h_factor(&us, UNIT_CONV_ENTROPY));
-    message("Gravity constant = %e", prog_const.newton_gravity);
+    print_physical_constants(&prog_const);
   }
 
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity) initPotentialProperties(params, &us, &potential);
-  if (with_external_gravity && myrank == 0) printPotentialProperties(&potential);
+  if (with_external_gravity && myrank == 0)
+    printPotentialProperties(&potential);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
@@ -390,7 +383,7 @@ int main(int argc, char *argv[]) {
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
-  
+
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_hydro) engine_policies |= engine_policy_hydro;
