@@ -105,6 +105,9 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
                              struct cell *super) {
 
   struct scheduler *s = &e->sched;
+  const int is_with_external_gravity =
+      (e->policy & engine_policy_external_gravity) ==
+      engine_policy_external_gravity;
 
   /* Am I the super-cell? */
   if (super == NULL && (c->count > 0 || c->gcount > 0)) {
@@ -114,12 +117,6 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
-
-      if (c->count > 0) {
-        /* Generate the ghost task. */
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL, 0);
-      }
 
       /* Add the init task. */
       c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
@@ -133,16 +130,19 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
       c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
                                   NULL, 0);
 
+      if (c->count > 0) {
+
+        /* Generate the ghost task. */
+        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                                     0, c, NULL, 0);
+      }
+
       if (c->gcount > 0) {
-        /* Add the gravity tasks */
-        c->grav_external = scheduler_addtask(
-            s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
 
-        /* Enforce gravity calculated before kick  */
-        scheduler_addunlock(s, c->grav_external, c->kick);
-
-        /* Enforce gravity calculated after init */
-        scheduler_addunlock(s, c->init, c->grav_external);
+        /* Add the external gravity tasks */
+        if (is_with_external_gravity)
+          c->grav_external = scheduler_addtask(
+              s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
       }
     }
   }
@@ -1297,6 +1297,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* /\* Kick tasks should rely on the grav_down tasks of their cell. *\/ */
     /* else if (t->type == task_type_kick && t->ci->grav_down != NULL) */
     /*   scheduler_addunlock(sched, t->ci->grav_down, t); */
+
+    /* External gravity tasks should depend on init and unlock the kick */
+    else if (t->type == task_type_grav_external) {
+      scheduler_addunlock(sched, t->ci->init, t);
+      scheduler_addunlock(sched, t, t->ci->kick);
+    }
   }
 }
 
