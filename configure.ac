@@ -329,7 +329,7 @@ fi
 AM_CONDITIONAL([HAVEPARALLELHDF5],[test "$have_parallel_hdf5" = "yes"])
 
 # Check for setaffinity.
-AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[true],
+AC_CHECK_FUNC(pthread_setaffinity_np, AC_DEFINE([HAVE_SETAFFINITY],[1],
     [Defined if pthread_setaffinity_np exists.]) )
 AM_CONDITIONAL(HAVESETAFFINITY,
     [test "$ac_cv_func_pthread_setaffinity_np" = "yes"])

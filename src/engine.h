@@ -190,5 +190,6 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin();
+void engine_unpin();
 
 #endif /* SWIFT_ENGINE_H */

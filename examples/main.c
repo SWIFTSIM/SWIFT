@@ -116,15 +116,11 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 #endif
 
+/* Let's pin the main thread */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
-  if (((ENGINE_POLICY) &
-       engine_policy_setaffinity) == engine_policy_setaffinity) {
-    /* Ensure the NUMA node on which we initialise (first touch) everything
-     * doesn't change before engine_init allocates NUMA-local workers.
-     * Otherwise, we may be scheduled elsewhere between the two times.
-     */
+  if (((ENGINE_POLICY) & engine_policy_setaffinity) ==
+      engine_policy_setaffinity)
     engine_pin();
-  }
 #endif
 
   /* Welcome to SWIFT, you made the right choice */

@@ -65,6 +65,11 @@ const char *engine_policy_names[13] = {
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
+#ifdef HAVE_SETAFFINITY
+/** The initial affinity of the main thread (set by engin_pin()) */
+static cpu_set_t entry_affinity;
+#endif
+
 /**
  * @brief Link a density/force task to a cell.
  *
@@ -2298,20 +2303,30 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 }
 
 #ifdef HAVE_SETAFFINITY
-static cpu_set_t entry_affinity;
-static bool use_entry_affinity = false;
+/**
+ * @brief Returns the initial affinity the main thread is using.
+ */
+static cpu_set_t *engine_entry_affinity() {
 
-static cpu_set_t *engine_entry_affinity(void) {
+  static int use_entry_affinity = 0;
+
   if (!use_entry_affinity) {
     pthread_t engine = pthread_self();
-    pthread_getaffinity_np(engine, sizeof entry_affinity, &entry_affinity);
-    use_entry_affinity = true;
+    pthread_getaffinity_np(engine, sizeof(entry_affinity), &entry_affinity);
+    use_entry_affinity = 1;
   }
 
   return &entry_affinity;
 }
+#endif
 
-void engine_pin(void) {
+/**
+ * @brief  Ensure the NUMA node on which we initialise (first touch) everything
+ *  doesn't change before engine_init allocates NUMA-local workers.
+ */
+void engine_pin() {
+
+#ifdef HAVE_SETAFFINITY
   cpu_set_t *entry_affinity = engine_entry_affinity();
 
   int pin;
@@ -2321,16 +2336,25 @@ void engine_pin(void) {
   cpu_set_t affinity;
   CPU_ZERO(&affinity);
   CPU_SET(pin, &affinity);
-  if (sched_setaffinity(0, sizeof affinity, &affinity) != 0) {
+  if (sched_setaffinity(0, sizeof(affinity), &affinity) != 0) {
     error("failed to set engine's affinity");
   }
+#else
+  error("SWIFT was not compiled with support for pinning.");
+#endif
 }
 
-static void engine_unpin(void) {
+/**
+ * @brief Unpins the main thread.
+ */
+void engine_unpin() {
+#ifdef HAVE_SETAFFINITY
   pthread_t main_thread = pthread_self();
-  pthread_setaffinity_np(main_thread, sizeof entry_affinity, &entry_affinity);
-}
+  pthread_setaffinity_np(main_thread, sizeof(entry_affinity), &entry_affinity);
+#else
+  error("SWIFT was not compiled with support for pinning.");
 #endif
+}
 
 /**
  * @brief init an engine with the given number of threads, queues, and
@@ -2388,7 +2412,7 @@ void engine_init(struct engine *e, struct space *s,
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   s->nr_queues = nr_queues;
 
-/* Deal with affinity. */
+/* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   cpu_set_t *entry_affinity = engine_entry_affinity();
