@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 /* Let's pin the main thread */
-#if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA)
+#if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   if (((ENGINE_POLICY) & engine_policy_setaffinity) ==
       engine_policy_setaffinity)
     engine_pin();

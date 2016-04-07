@@ -2443,7 +2443,7 @@ void engine_init(struct engine *e, struct space *s,
     skip = c + 1;
   }
 
-#if defined(HAVE_LIBNUMA)
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   if ((policy & engine_policy_cputight) != engine_policy_cputight) {
     /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
     if (numa_available() >= 0) {
