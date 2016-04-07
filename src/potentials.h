@@ -52,8 +52,8 @@ struct external_potential {
  * @brief Computes the time-step due to the acceleration from a point mass
  *
  * @param potential The properties of the externa potential.
- * @param phys_cont The physical constants in internal units.
- * @param gp Pointer to the g-particle data.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline))
     INLINE static float external_gravity_pointmass_timestep(
@@ -87,8 +87,8 @@ __attribute__((always_inline))
  * mass
  *
  * @param potential The proerties of the external potential.
- * @param phys_cont The physical constants in internal units.
- * @param gp Pointer to the g-particle data.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
     const struct external_potential* potential,

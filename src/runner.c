@@ -101,10 +101,11 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 /**
  * @brief Calculate gravity acceleration from external potential
  *
- * @param runner task
- * @param cell
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
  */
-void runner_dograv_external(struct runner *r, struct cell *c) {
+void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
 
   struct gpart *g, *gparts = c->gparts;
   int i, k, gcount = c->gcount;
@@ -115,7 +116,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   /* Recurse? */
   if (c->split) {
     for (k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_dograv_external(r, c->progeny[k]);
+      if (c->progeny[k] != NULL) runner_dograv_external(r, c->progeny[k], 0);
     return;
   }
 
@@ -177,7 +178,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
     }
   }
-  TIMER_TOC(timer_dograv_external);
+  if(timer) TIMER_TOC(timer_dograv_external);
 }
 
 /**
@@ -566,7 +567,6 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
  * @param c The cell.
  * @param timer 1 if the time is to be recorded.
  */
-
 void runner_doinit(struct runner *r, struct cell *c, int timer) {
 
   struct part *const parts = c->parts;
@@ -1292,7 +1292,7 @@ void *runner_main(void *data) {
           runner_dograv_down(r, t->ci);
           break;
         case task_type_grav_external:
-          runner_dograv_external(r, t->ci);
+          runner_dograv_external(r, t->ci, 1);
           break;
         case task_type_part_sort:
           space_do_parts_sort();

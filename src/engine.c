@@ -2339,6 +2339,8 @@ static bool hyperthreads_present(void) {
  * @param nodeID The MPI rank of this node.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
+ * @param physical_constants The #phys_const used for this run.
+ * @param potential The properties of the external potential.
  */
 
 void engine_init(struct engine *e, struct space *s,

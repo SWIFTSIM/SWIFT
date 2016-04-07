@@ -27,7 +27,7 @@
  * This function only branches towards the potential chosen by the user.
  *
  * @param potential The properties of the external potential.
- * @param phys_cont The physical constants in internal units.
+ * @param phys_const The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float gravity_compute_timestep(
