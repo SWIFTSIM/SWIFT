@@ -264,7 +264,8 @@ int main(int argc, char *argv[]) {
   struct external_potential potential;
   units_init(&us, params);
   initPhysicalConstants(&us, &prog_const);
-  initPotentialProperties(params, &us, &potential);
+  if( with_external_gravity)
+	 initPotentialProperties(params, &us, &potential);
   if (myrank == 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
     message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
@@ -280,7 +281,6 @@ int main(int argc, char *argv[]) {
             units_a_factor(&us, UNIT_CONV_ENTROPY), 
             units_h_factor(&us, UNIT_CONV_ENTROPY));
     message("Gravity constant = %e", prog_const.newton_gravity);
-    message("Point mass properties are (x,y,z) = (%e, %e, %e), M = %e", potential.point_mass.x, potential.point_mass.y, potential.point_mass.z, potential.point_mass.mass);
   }
 
 /* Prepare the domain decomposition scheme */
@@ -373,7 +373,6 @@ int main(int argc, char *argv[]) {
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
-    message("gparts[10].id = %lld.", gparts[10].id);
     // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
   }
 

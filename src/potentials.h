@@ -38,15 +38,15 @@ struct external_potential {
   } point_mass;
 };
 
-/* Properties of Point Mass */
+/* Include exteral pointmass potential */
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-#define const_unit_length_in_cgs  (1e3 * PARSEC_IN_CGS)
-#define const_unit_mass_in_cgs    (SOLAR_MASS_IN_CGS)
-#define External_Potential_X (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
-#define External_Potential_Y (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
-#define External_Potential_Z (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
-#define External_Potential_Mass \
-  (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs)
+/* #define const_unit_length_in_cgs  (1e3 * PARSEC_IN_CGS) */
+/* #define const_unit_mass_in_cgs    (SOLAR_MASS_IN_CGS) */
+/* #define External_Potential_X (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs) */
+/* #define External_Potential_Y (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs) */
+/* #define External_Potential_Z (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs) */
+/* #define External_Potential_Mass \ */
+/*   (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs) */
 
 /**
  * @brief Computes the time-step due to the acceleration from a point mass
@@ -115,7 +115,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(con
  * @param us The current internal system of units
  * @param potential The external potential properties to initialize
  */
-void initPotentialProperties(const struct swift_params * paramter_file,
+void initPotentialProperties(const struct swift_params * parameter_file,
 									  struct UnitSystem* us,
                              struct external_potential* potential);
 
