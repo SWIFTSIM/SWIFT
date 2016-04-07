@@ -8,7 +8,7 @@
 # -d: minimum time step
 # -e: maximum time step
 # -c: end of simulation
- ./swift_fixdt -m .1 -s "50 50 50"  -t 1 -d 0.001 -e 0.001 -c 0.2 -f ExternalGravity/Sphere.hdf5
+../swift -g externalGravity.yml
 
+# ./swift -m .1 -s "50 50 50"  -t 1 -d 0.000001 -e 0.001 -g -c 8 -f ExternalGravity/Sphere.hdf5
 
- ./swift -m .1 -s "50 50 50"  -t 1 -d 0.000001 -e 0.001 -g -c 8 -f ExternalGravity/Sphere.hdf5
