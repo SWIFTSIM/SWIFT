@@ -1935,9 +1935,6 @@ void engine_init_particles(struct engine *e) {
   /* Apply some conversions (e.g. internal energy -> entropy) */
   space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
 
-  // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
-  // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
-
   /* Ready to go */
   e->step = -1;
 }
@@ -2019,8 +2016,6 @@ void engine_step(struct engine *e) {
   }
 #endif
 
-  // message("\nDRIFT\n");
-
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = ti_end_min;
@@ -2031,11 +2026,6 @@ void engine_step(struct engine *e) {
 
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
-
-  // printParticle(e->s->parts, e->s->xparts, 1000, e->s->nr_parts);
-  // printParticle(e->s->parts, e->s->xparts, 515050, e->s->nr_parts);
-
-  // if(e->step == 2)   exit(0);
 
   if (e->nodeID == 0) {
 
@@ -2050,8 +2040,6 @@ void engine_step(struct engine *e) {
             mom[2], ang[0], ang[1], ang[2]);
     fflush(e->file_stats);
   }
-
-  // message("\nACCELERATION AND KICK\n");
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart != REPART_NONE) engine_repartition(e);
@@ -2108,8 +2096,6 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
 
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
-  // printParticle(e->s->parts, e->s->xparts,1000, e->s->nr_parts);
-  // printParticle(e->s->parts, e->s->xparts,515050, e->s->nr_parts);
 }
 
 /**
@@ -2616,8 +2602,8 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
-    // message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id ,
-    // e->runners[k].cpuid , e->runners[k].qid );
+     /* message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id , */
+     /* 	      e->runners[k].cpuid , e->runners[k].qid ); */
   }
 
   /* Wait for the runner threads to be in place. */
