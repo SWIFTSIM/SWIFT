@@ -42,9 +42,12 @@ struct external_potential {
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
 /* #define const_unit_length_in_cgs  (1e3 * PARSEC_IN_CGS) */
 /* #define const_unit_mass_in_cgs    (SOLAR_MASS_IN_CGS) */
-/* #define External_Potential_X (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs) */
-/* #define External_Potential_Y (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs) */
-/* #define External_Potential_Z (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs) */
+/* #define External_Potential_X (50000 * PARSEC_IN_CGS /
+ * const_unit_length_in_cgs) */
+/* #define External_Potential_Y (50000 * PARSEC_IN_CGS /
+ * const_unit_length_in_cgs) */
+/* #define External_Potential_Z (50000 * PARSEC_IN_CGS /
+ * const_unit_length_in_cgs) */
 /* #define External_Potential_Mass \ */
 /*   (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs) */
 
@@ -56,7 +59,7 @@ struct external_potential {
  */
 __attribute__((always_inline))
     INLINE static float external_gravity_pointmass_timestep(
-		  const struct external_potential* potential,
+        const struct external_potential* potential,
         const struct phys_const* const phys_const,
         const struct gpart* const g) {
 
@@ -68,12 +71,12 @@ __attribute__((always_inline))
   const float drdv = (g->x[0] - potential->point_mass.x) * (g->v_full[0]) +
                      (g->x[1] - potential->point_mass.y) * (g->v_full[1]) +
                      (g->x[2] - potential->point_mass.z) * (g->v_full[2]);
-  const float dota_x = G_newton * potential->point_mass.mass * rinv * rinv * rinv *
-                       (-g->v_full[0] + 3.f * rinv * rinv * drdv * dx);
-  const float dota_y = G_newton * potential->point_mass.mass * rinv * rinv * rinv *
-                       (-g->v_full[1] + 3.f * rinv * rinv * drdv * dy);
-  const float dota_z = G_newton * potential->point_mass.mass * rinv * rinv * rinv *
-                       (-g->v_full[2] + 3.f * rinv * rinv * drdv * dz);
+  const float dota_x = G_newton * potential->point_mass.mass * rinv * rinv *
+                       rinv * (-g->v_full[0] + 3.f * rinv * rinv * drdv * dx);
+  const float dota_y = G_newton * potential->point_mass.mass * rinv * rinv *
+                       rinv * (-g->v_full[1] + 3.f * rinv * rinv * drdv * dy);
+  const float dota_z = G_newton * potential->point_mass.mass * rinv * rinv *
+                       rinv * (-g->v_full[2] + 3.f * rinv * rinv * drdv * dz);
   const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
@@ -88,8 +91,9 @@ __attribute__((always_inline))
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-__attribute__((always_inline)) INLINE static void external_gravity_pointmass(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
-
+__attribute__((always_inline)) INLINE static void external_gravity_pointmass(
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct gpart* g) {
 
   /* message(" (x,y,z) = (%e, %e, %e), M= %e", potential->point_mass.x, */
   /*         potential->point_mass.y, potential->point_mass.z, */
@@ -102,9 +106,12 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(con
   const float dz = g->x[2] - potential->point_mass.z;
   const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
 
-  g->a_grav[0] += -G_newton * potential->point_mass.mass * dx * rinv * rinv * rinv;
-  g->a_grav[1] += -G_newton * potential->point_mass.mass * dy * rinv * rinv * rinv;
-  g->a_grav[2] += -G_newton * potential->point_mass.mass * dz * rinv * rinv * rinv;
+  g->a_grav[0] +=
+      -G_newton * potential->point_mass.mass * dx * rinv * rinv * rinv;
+  g->a_grav[1] +=
+      -G_newton * potential->point_mass.mass * dy * rinv * rinv * rinv;
+  g->a_grav[2] +=
+      -G_newton * potential->point_mass.mass * dz * rinv * rinv * rinv;
 }
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
 
@@ -115,8 +122,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(con
  * @param us The current internal system of units
  * @param potential The external potential properties to initialize
  */
-void initPotentialProperties(const struct swift_params * parameter_file,
-									  struct UnitSystem* us,
+void initPotentialProperties(const struct swift_params* parameter_file,
+                             struct UnitSystem* us,
                              struct external_potential* potential);
 
 #endif /* SWIFT_POTENTIALS_H */

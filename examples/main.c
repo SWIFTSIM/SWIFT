@@ -88,8 +88,8 @@ void print_help_message() {
 int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
-  int nr_nodes = 1, myrank = 0;
 
+  int nr_nodes = 1, myrank = 0;
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res = 0, prov = 0;
@@ -258,31 +258,6 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Initialize unit system */
-  struct UnitSystem us;
-  struct phys_const prog_const;
-  struct external_potential potential;
-  units_init(&us, params);
-  initPhysicalConstants(&us, &prog_const);
-  if( with_external_gravity)
-	 initPotentialProperties(params, &us, &potential);
-  if (myrank == 0) {
-    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-    message("Density units: %e a^%f h^%f.",
-            units_conversion_factor(&us, UNIT_CONV_DENSITY),
-            units_a_factor(&us, UNIT_CONV_DENSITY), 
-            units_h_factor(&us, UNIT_CONV_DENSITY));
-    message("Entropy units: %e a^%f h^%f.",
-            units_conversion_factor(&us, UNIT_CONV_ENTROPY),
-            units_a_factor(&us, UNIT_CONV_ENTROPY), 
-            units_h_factor(&us, UNIT_CONV_ENTROPY));
-    message("Gravity constant = %e", prog_const.newton_gravity);
-  }
-
 /* Prepare the domain decomposition scheme */
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -299,6 +274,32 @@ int main(int argc, char *argv[]) {
     message("Using %s repartitioning", repartition_name[reparttype]);
   }
 #endif
+
+  /* Initialize unit system and constants */
+  struct UnitSystem us;
+  struct phys_const prog_const;
+  units_init(&us, params);
+  initPhysicalConstants(&us, &prog_const);
+  if (myrank == 0) {
+    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    message("Density units: %e a^%f h^%f.",
+            units_conversion_factor(&us, UNIT_CONV_DENSITY),
+            units_a_factor(&us, UNIT_CONV_DENSITY),
+            units_h_factor(&us, UNIT_CONV_DENSITY));
+    message("Entropy units: %e a^%f h^%f.",
+            units_conversion_factor(&us, UNIT_CONV_ENTROPY),
+            units_a_factor(&us, UNIT_CONV_ENTROPY),
+            units_h_factor(&us, UNIT_CONV_ENTROPY));
+    message("Gravity constant = %e", prog_const.newton_gravity);
+  }
+
+  /* Initialise the external potential properties */
+  struct external_potential potential;
+  if (with_external_gravity) initPotentialProperties(params, &us, &potential);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
@@ -475,16 +476,15 @@ int main(int argc, char *argv[]) {
     int icount = 0;
     space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
     message("map_cellcheck picked up %i parts.", icount);
-
   }
 
   if (myrank == 0) {
-    int data[2] = {s.maxdepth ,0};
+    int data[2] = {s.maxdepth, 0};
     space_map_cells_pre(&s, 0, &map_maxdepth, data);
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
-  //exit(-99);
+  // exit(-99);
   /* Legend */
   if (myrank == 0)
     printf("# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",

@@ -1895,7 +1895,7 @@ void engine_init_particles(struct engine *e) {
   /* We always have sort tasks */
   mask |= 1 << task_type_sort;
   mask |= 1 << task_type_init;
-	 
+
   /* Add the tasks corresponding to hydro operations to the masks */
   if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
 
@@ -2343,7 +2343,7 @@ static bool hyperthreads_present(void) {
 
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int policy, int verbose, 
+                 int policy, int verbose,
                  const struct phys_const *physical_constants,
                  const struct external_potential *potential) {
 

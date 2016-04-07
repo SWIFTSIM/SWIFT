@@ -120,7 +120,6 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   /* CentreOfPotential[1] = 0.5 * s->dim[1]; */
   /* CentreOfPotential[2] = 0.5 * s->dim[2]; */
 
-
   /* Recurse? */
   if (c->split) {
     for (k = 0; k < 8; k++)
@@ -151,7 +150,6 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
       const float dr = sqrtf((dx * dx) + (dy * dy) + (dz * dz));
       const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
 
-
       const int current_dti = g->ti_end - g->ti_begin;
       const float dt = 0.5f * current_dti * r->e->timeBase;
       const float vx = g->v_full[0] + dt * g->a_grav[0];
@@ -160,13 +158,15 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
       /* E/L */
       E = 0.5 * ((vx * vx) + (vy * vy) + (vz * vz)) -
-          r->e->physical_constants->newton_gravity * r->e->potential->point_mass.mass * rinv;
+          r->e->physical_constants->newton_gravity *
+              r->e->potential->point_mass.mass * rinv;
       L[0] = dy * vz - dz * vy;
       L[1] = dz * vx - dx * vz;
       L[2] = dx * vy - dy * vx;
       if (abs(g->id) == 1) {
         float v2 = vx * vx + vy * vy + vz * vz;
-        float fg = r->e->physical_constants->newton_gravity *  r->e->potential->point_mass.mass * rinv;
+        float fg = r->e->physical_constants->newton_gravity *
+                   r->e->potential->point_mass.mass * rinv;
         float fga = sqrtf((g->a_grav[0] * g->a_grav[0]) +
                           (g->a_grav[1] * g->a_grav[1]) +
                           (g->a_grav[2] * g->a_grav[2])) *
@@ -174,10 +174,12 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
         // message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f
         // x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0],
         // g->x[1], vx, vy);
-        message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx,
-                g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1], vx, vy);
-        /* message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity, r->e->potential->point_mass.mass); */
-		  /* exit(-1); */
+        message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time,
+                g->tx, g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1],
+                vx, vy);
+        /* message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity,
+         * r->e->potential->point_mass.mass); */
+        /* exit(-1); */
       }
     }
   }
@@ -940,7 +942,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Compute the next timestep (gravity condition) */
-          float new_dt = gravity_compute_timestep(r->e->potential, r->e->physical_constants, gp);
+          float new_dt = gravity_compute_timestep(r->e->potential,
+                                                  r->e->physical_constants, gp);
 
           /* Limit timestep within the allowed range */
           new_dt = fminf(new_dt, global_dt_max);
@@ -1025,8 +1028,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           /* Compute the next timestep (gravity condition) */
           float new_dt_grav = FLT_MAX;
           if (p->gpart != NULL)
-            new_dt_grav =
-				  gravity_compute_timestep(r->e->potential, r->e->physical_constants, p->gpart);
+            new_dt_grav = gravity_compute_timestep(
+                r->e->potential, r->e->physical_constants, p->gpart);
 
           float new_dt = fminf(new_dt_hydro, new_dt_grav);
 

@@ -23,7 +23,7 @@
 /* physical constants in cgs */
 #define NEWTON_GRAVITY_CGS 6.672e-8
 #define SOLAR_MASS_IN_CGS 1.989e33
-#define PARSEC_IN_CGS  3.0856776e18
+#define PARSEC_IN_CGS 3.0856776e18
 #define PROTON_MASS_IN_CGS 1.6726231e24
 #define YEAR_IN_CGS 3.154e+7
 
