@@ -672,8 +672,6 @@ void runner_doghost(struct runner *r, struct cell *c) {
  */
 void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 
-  const int nr_parts = c->count;
-  const int nr_gparts = c->gcount;
   const double timeBase = r->e->timeBase;
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
   const int ti_old = r->e->ti_old;
@@ -689,7 +687,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   if (!c->split) {
 
     /* Loop over all the g-particles in the cell */
-    for (int k = 0; k < nr_gparts; ++k) {
+    const int nr_gparts = c->gcount;
+    for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
       struct gpart *const gp = &gparts[k];
@@ -701,7 +700,8 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
     }
 
     /* Loop over all the particles in the cell (more work for these !) */
-    for (int k = 0; k < nr_parts; k++) {
+    const size_t nr_parts = c->count;
+    for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
       struct part *const p = &parts[k];
@@ -1084,10 +1084,6 @@ void *runner_main(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
-  struct task *t = NULL;
-  struct cell *ci, *cj;
-  struct part *parts;
-  int k, nr_parts;
 
   /* Main loop. */
   while (1) {
@@ -1096,6 +1092,7 @@ void *runner_main(void *data) {
     engine_barrier(e, r->id);
 
     /* Re-set the pointer to the previous task, as there is none. */
+    struct task *t = NULL;
     struct task *prev = NULL;
 
     /* Loop while there are tasks... */
@@ -1114,8 +1111,8 @@ void *runner_main(void *data) {
       }
 
       /* Get the cells. */
-      ci = t->ci;
-      cj = t->cj;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
       t->rid = r->cpuid;
 
       /* Different types of tasks... */
@@ -1163,12 +1160,14 @@ void *runner_main(void *data) {
           break;
         case task_type_send:
           break;
-        case task_type_recv:
-          parts = ci->parts;
-          nr_parts = ci->count;
+        case task_type_recv: {
+          struct part *parts = ci->parts;
+          size_t nr_parts = ci->count;
           ci->ti_end_min = ci->ti_end_max = max_nr_timesteps;
-          for (k = 0; k < nr_parts; k++) parts[k].ti_end = max_nr_timesteps;
+          for (size_t k = 0; k < nr_parts; k++)
+            parts[k].ti_end = max_nr_timesteps;
           break;
+        }
         case task_type_grav_pp:
           if (t->cj == NULL)
             runner_doself_grav(r, t->ci);

@@ -242,17 +242,12 @@ static void accumulate_counts(struct space *s, int *counts) {
 
   struct part *parts = s->parts;
   int *cdim = s->cdim;
-  double ih[3], dim[3];
-  ih[0] = s->ih[0];
-  ih[1] = s->ih[1];
-  ih[2] = s->ih[2];
-  dim[0] = s->dim[0];
-  dim[1] = s->dim[1];
-  dim[2] = s->dim[2];
+  double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   bzero(counts, sizeof(int) * s->nr_cells);
 
-  for (int k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < s->nr_parts; k++) {
     for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
         parts[k].x[j] += dim[j];
@@ -837,7 +832,7 @@ void partition_initial_partition(struct partition *initial_partition,
       dim[0] = s->dim[0];
       dim[1] = s->dim[1];
       dim[2] = s->dim[2];
-      for (int k = 0; k < s->nr_parts; k++) {
+      for (size_t k = 0; k < s->nr_parts; k++) {
         for (int j = 0; j < 3; j++) {
           if (parts[k].x[j] < 0.0)
             parts[k].x[j] += dim[j];

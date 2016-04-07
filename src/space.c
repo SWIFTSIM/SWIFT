@@ -155,19 +155,19 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
 
 void space_regrid(struct space *s, double cell_max, int verbose) {
 
-  float h_max = s->cell_min / kernel_gamma / space_stretch;
   const size_t nr_parts = s->nr_parts;
   struct cell *restrict c;
   ticks tic = getticks();
 
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
+  float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (s->cells != NULL) {
     for (int k = 0; k < s->nr_cells; k++) {
       if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
     }
   } else {
-    for (int k = 0; k < nr_parts; k++) {
+    for (size_t k = 0; k < nr_parts; k++) {
       if (s->parts[k].h > h_max) h_max = s->parts[k].h;
     }
     s->h_max = h_max;
@@ -314,8 +314,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
 
-  int nr_parts = s->nr_parts;
-  int nr_gparts = s->nr_gparts;
+  size_t nr_parts = s->nr_parts;
+  size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells = s->cells;
 
   const double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
@@ -328,7 +328,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   int *ind;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
-  for (int k = 0; k < nr_parts; k++) {
+  for (size_t k = 0; k < nr_parts; k++) {
     struct part *restrict p = &s->parts[k];
     for (int j = 0; j < 3; j++)
       if (p->x[j] < 0.0)
@@ -365,7 +365,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #ifdef WITH_MPI
   /* Move non-local parts to the end of the list. */
   const int local_nodeID = s->e->nodeID;
-  for (int k = 0; k < nr_parts; k++)
+  for (size_t k = 0; k < nr_parts; k++)
     if (cells[ind[k]].nodeID != local_nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
@@ -431,7 +431,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   }
 
   /* Assign each particle to its cell. */
-  for (int k = nr_parts; k < s->nr_parts; k++) {
+  for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
@@ -447,7 +447,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
-  for (int k = 0; k < nr_parts; k++)
+  for (size_t k = 0; k < nr_parts; k++)
     if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
 
   /* Verify space_sort_struct. */

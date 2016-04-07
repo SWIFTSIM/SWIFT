@@ -392,7 +392,6 @@ void engine_redistribute(struct engine *e) {
   if ((res = MPI_Waitall(6 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
     for (int k = 0; k < 6 * nr_nodes; k++) {
       char buff[MPI_MAX_ERROR_STRING];
-      int res;
       MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
       message("request %i has error '%s'.", k, buff);
     }
