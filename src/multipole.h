@@ -25,7 +25,7 @@
 /* Includes. */
 #include "const.h"
 #include "inline.h"
-#include "kernel.h"
+#include "kernel_gravity.h"
 #include "part.h"
 
 /* Some constants. */
