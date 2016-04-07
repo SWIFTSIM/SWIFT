@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
   struct external_potential potential;
   units_init(&us, params);
   initPhysicalConstants(&us, &prog_const);
-  initPotentialProperties(&us, &potential);
+  initPotentialProperties(params, &us, &potential);
   if (myrank == 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
     message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);

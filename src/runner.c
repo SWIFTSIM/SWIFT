@@ -176,7 +176,8 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
         // g->x[1], vx, vy);
         message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx,
                 g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1], vx, vy);
-        // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
+        message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity, r->e->potential->point_mass.mass);
+		  exit(-1);
       }
     }
   }

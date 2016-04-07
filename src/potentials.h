@@ -115,7 +115,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(con
  * @param us The current internal system of units
  * @param potential The external potential properties to initialize
  */
-void initPotentialProperties(struct UnitSystem* us,
+void initPotentialProperties(const struct swift_params * paramter_file,
+									  struct UnitSystem* us,
                              struct external_potential* potential);
 
 #endif /* SWIFT_POTENTIALS_H */

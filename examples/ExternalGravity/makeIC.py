@@ -38,6 +38,10 @@ const_unit_length_in_cgs   =   (1000*PARSEC_IN_CGS)
 const_unit_mass_in_cgs     =   (SOLAR_MASS_IN_CGS)
 const_unit_velocity_in_cgs =   (1e5)
 
+print "UnitMass_in_cgs:     ", const_unit_mass_in_cgs 
+print "UnitLength_in_cgs:   ", const_unit_length_in_cgs
+print "UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs
+
 # derived units
 const_unit_time_in_cgs = (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
 const_G                = ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/(const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs)))
