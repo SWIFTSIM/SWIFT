@@ -300,6 +300,7 @@ int main(int argc, char *argv[]) {
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity) initPotentialProperties(params, &us, &potential);
+  if (with_external_gravity && myrank == 0) printPotentialProperties(&potential);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";

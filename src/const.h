@@ -20,8 +20,6 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
-#include "physical_constants_cgs.h"
-
 /* Hydrodynamical constants. */
 #define const_hydro_gamma (5.0f / 3.0f)
 
@@ -73,7 +71,6 @@
 //#define DEFAULT_SPH
 
 /* Gravity properties */
-/* valid choices EXTERNAL_POTENTIAL_POINTMASS */
 #define EXTERNAL_POTENTIAL_POINTMASS
 
 #endif /* SWIFT_CONST_H */

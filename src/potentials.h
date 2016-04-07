@@ -24,36 +24,34 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Some standard headers. */
+#include <math.h>
+
 /* Local includes. */
+#include "const.h"
 #include "error.h"
-#include "physical_constants_cgs.h"
+#include "part.h"
 #include "physical_constants.h"
 #include "units.h"
 
-/* External Potential Constants */
+/* External Potential Properties */
 struct external_potential {
+
+#ifdef EXTERNAL_POTENTIAL_POINTMASS
   struct {
     double x, y, z;
     double mass;
   } point_mass;
+#endif
 };
 
 /* Include exteral pointmass potential */
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-/* #define const_unit_length_in_cgs  (1e3 * PARSEC_IN_CGS) */
-/* #define const_unit_mass_in_cgs    (SOLAR_MASS_IN_CGS) */
-/* #define External_Potential_X (50000 * PARSEC_IN_CGS /
- * const_unit_length_in_cgs) */
-/* #define External_Potential_Y (50000 * PARSEC_IN_CGS /
- * const_unit_length_in_cgs) */
-/* #define External_Potential_Z (50000 * PARSEC_IN_CGS /
- * const_unit_length_in_cgs) */
-/* #define External_Potential_Mass \ */
-/*   (1e10 * SOLAR_MASS_IN_CGS / const_unit_mass_in_cgs) */
 
 /**
  * @brief Computes the time-step due to the acceleration from a point mass
  *
+ * @param potential The properties of the externa potential.
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
@@ -63,7 +61,7 @@ __attribute__((always_inline))
         const struct phys_const* const phys_const,
         const struct gpart* const g) {
 
-  const double G_newton = phys_const->newton_gravity;
+  const float G_newton = phys_const->newton_gravity;
   const float dx = g->x[0] - potential->point_mass.x;
   const float dy = g->x[1] - potential->point_mass.y;
   const float dz = g->x[2] - potential->point_mass.z;
@@ -88,6 +86,7 @@ __attribute__((always_inline))
  * @brief Computes the gravitational acceleration of a particle due to a point
  * mass
  *
+ * @param potential The proerties of the external potential.
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
@@ -95,12 +94,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
     const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
-  /* message(" (x,y,z) = (%e, %e, %e), M= %e", potential->point_mass.x, */
-  /*         potential->point_mass.y, potential->point_mass.z, */
-  /*         potential->point_mass.mass); */
-  /* exit(-1); */
-
-  const double G_newton = phys_const->newton_gravity;
+  const float G_newton = phys_const->newton_gravity;
   const float dx = g->x[0] - potential->point_mass.x;
   const float dy = g->x[1] - potential->point_mass.y;
   const float dz = g->x[2] - potential->point_mass.z;
@@ -115,15 +109,12 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
 }
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
 
-/**
- * @brief Initialises the external potential properties in the internal system
- * of units.
- *
- * @param us The current internal system of units
- * @param potential The external potential properties to initialize
- */
+/* Now, some generic functions, defined in the source file */
+
 void initPotentialProperties(const struct swift_params* parameter_file,
                              struct UnitSystem* us,
                              struct external_potential* potential);
+
+void printPotentialProperties(const struct external_potential* potential);
 
 #endif /* SWIFT_POTENTIALS_H */
