@@ -1916,8 +1916,7 @@ void engine_init_particles(struct engine *e) {
   /* Add the tasks corresponding to external gravity to the masks */
   if ((e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity) {
-    printf("%s: JR: Excellent lets add the external gravity tasks here.....\n",
-           __FUNCTION__);
+
     mask |= 1 << task_type_grav_external;
   }
 

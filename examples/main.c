@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   struct clocks_time tic, toc;
 
   int nr_nodes = 1, myrank = 0;
+
 #ifdef WITH_MPI
   /* Start by initializing MPI. */
   int res = 0, prov = 0;
@@ -375,21 +376,6 @@ int main(int argc, char *argv[]) {
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
-    // message( "cutoffs in [ %g %g ]." , s.h_min , s.h_max ); fflush(stdout);
-  }
-
-  /* Verify that each particle is in it's proper cell. */
-  if (talking && !dry_run) {
-    int icount = 0;
-    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
-    message("map_cellcheck picked up %i parts.", icount);
-  }
-
-  /* Verify the maximal depth of cells. */
-  if (talking && !dry_run) {
-    int data[2] = {s.maxdepth, 0};
-    space_map_cells_pre(&s, 0, &map_maxdepth, data);
-    message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
   /* Construct the engine policy */
@@ -485,7 +471,6 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
-  // exit(-99);
   /* Legend */
   if (myrank == 0)
     printf("# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",
