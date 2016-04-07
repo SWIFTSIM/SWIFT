@@ -22,7 +22,8 @@
 #include "potentials.h"
 
 /**
- * @brief Computes the gravity time-step of a given particle.
+ * @brief Computes the gravity time-step of a given particle due to an external
+ *potential.
  *
  * This function only branches towards the potential chosen by the user.
  *
@@ -30,16 +31,36 @@
  * @param phys_const The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-__attribute__((always_inline)) INLINE static float gravity_compute_timestep(
-    const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* const gp) {
+__attribute__((always_inline))
+    INLINE static float gravity_compute_timestep_external(
+        const struct external_potential* potential,
+        const struct phys_const* const phys_const,
+        const struct gpart* const gp) {
 
   float dt = FLT_MAX;
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  dt =   
-      fminf(dt,  external_gravity_pointmass_timestep(potential, phys_const, gp));
+  dt =
+      fminf(dt, external_gravity_pointmass_timestep(potential, phys_const, gp));
 #endif
+
+  return dt;
+}
+
+/**
+ * @brief Computes the gravity time-step of a given particle due to self-gravity
+ *
+ * This function only branches towards the potential chosen by the user.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param gp Pointer to the g-particle data.
+ */
+__attribute__((always_inline))
+    INLINE static float gravity_compute_timestep_self(
+        const struct phys_const* const phys_const,
+        const struct gpart* const gp) {
+
+  float dt = FLT_MAX;
 
   return dt;
 }

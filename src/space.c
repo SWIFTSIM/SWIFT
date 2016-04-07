@@ -177,10 +177,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       }
       s->h_max = h_max;
     }
-  } else {
-    /* It would be nice to replace this with something more physical or
-     * meaningful */
-    h_max = s->dim[0] / 16.f;
   }
 
 /* If we are running in parallel, make sure everybody agrees on

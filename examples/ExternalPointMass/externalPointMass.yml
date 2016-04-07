@@ -28,7 +28,7 @@ SPH:
   delta_neighbours:      1.       # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   max_ghost_iterations:  30       # Maximal number of iterations allowed to converge towards the smoothing length.
-  max_smoothing_length:  3.       # Maximal smoothing length allowed (in internal units).
+  max_smoothing_length:  10.      # Maximal smoothing length allowed (in internal units).
 
 # Parameters related to the initial conditions
 InitialConditions:

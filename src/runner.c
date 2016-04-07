@@ -111,6 +111,8 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
   struct gpart *g, *gparts = c->gparts;
   int i, k, gcount = c->gcount;
   const int ti_current = r->e->ti_current;
+  const struct external_potential *potential = r->e->potential;
+  const struct phys_const *constants = r->e->physical_constants;
 
   TIMER_TIC;
 
@@ -134,7 +136,7 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
 
-      external_gravity(r->e->potential, r->e->physical_constants, g);
+      external_gravity(potential, constants, g);
 
       /* /\* check for energy and angular momentum conservation - begin by */
       /*  * synchronizing velocity*\/ */
@@ -900,6 +902,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
+  const struct external_potential *potential = r->e->potential;
+  const struct phys_const *constants = r->e->physical_constants;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
@@ -941,8 +945,12 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Compute the next timestep (gravity condition) */
-          float new_dt = gravity_compute_timestep(r->e->potential,
-                                                  r->e->physical_constants, gp);
+          const float new_dt_external =
+              gravity_compute_timestep_external(potential, constants, gp);
+          const float new_dt_self =
+              gravity_compute_timestep_self(constants, gp);
+
+          float new_dt = fminf(new_dt_external, new_dt_self);
 
           /* Limit timestep within the allowed range */
           new_dt = fminf(new_dt, global_dt_max);
@@ -1026,10 +1034,17 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
           /* Compute the next timestep (gravity condition) */
           float new_dt_grav = FLT_MAX;
-          if (p->gpart != NULL)
-            new_dt_grav = gravity_compute_timestep(
-                r->e->potential, r->e->physical_constants, p->gpart);
+          if (p->gpart != NULL) {
 
+            const float new_dt_external = gravity_compute_timestep_external(
+                potential, constants, p->gpart);
+            const float new_dt_self =
+                gravity_compute_timestep_self(constants, p->gpart);
+
+            new_dt_grav = fminf(new_dt_external, new_dt_self);
+          }
+
+          /* Final time-step is minimum of hydro and gravity */
           float new_dt = fminf(new_dt_hydro, new_dt_grav);
 
           /* Limit change in h */
