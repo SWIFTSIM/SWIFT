@@ -280,21 +280,20 @@ int main(int argc, char *argv[]) {
   struct UnitSystem us;
   struct phys_const prog_const;
   units_init(&us, params);
-  init_physical_constants(&us, &prog_const);
-  if (myrank == 0) {
+  phys_const_init(&us, &prog_const);
+  if (myrank == 0 && verbose > 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
     message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
     message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
     message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
     message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-    print_physical_constants(&prog_const);
+    phys_const_print(&prog_const);
   }
 
   /* Initialise the external potential properties */
   struct external_potential potential;
-  if (with_external_gravity) initPotentialProperties(params, &us, &potential);
-  if (with_external_gravity && myrank == 0)
-    printPotentialProperties(&potential);
+  if (with_external_gravity) potential_init(params, &us, &potential);
+  if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
@@ -378,6 +377,7 @@ int main(int argc, char *argv[]) {
     message("map_cellcheck picked up %i parts.", icount);
   }
 
+  /* Verify the maximal depth of cells. */
   if (talking && !dry_run) {
     int data[2] = {s.maxdepth, 0};
     space_map_cells_pre(&s, 0, &map_maxdepth, data);

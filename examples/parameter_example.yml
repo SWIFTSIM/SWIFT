@@ -52,5 +52,5 @@ DomainDecomposition:
 PointMass:
   position_x:      50.     # location of external point mass in internal units
   position_y:      50.
-  position_z:      50.	
+  position_z:      50.
   mass:            1e10     # mass of external point mass in internal units

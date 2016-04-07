@@ -32,9 +32,9 @@
  * @param us The current internal system of units
  * @param potential The external potential properties to initialize
  */
-void initPotentialProperties(const struct swift_params* parameter_file,
-                             struct UnitSystem* us,
-                             struct external_potential* potential) {
+void potential_init(const struct swift_params* parameter_file,
+		    struct UnitSystem* us,
+		    struct external_potential* potential) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
 
@@ -55,7 +55,7 @@ void initPotentialProperties(const struct swift_params* parameter_file,
  *
  * @param  potential The external potential properties.
  */
-void printPotentialProperties(const struct external_potential* potential) {
+void potential_print(const struct external_potential* potential) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
   message("Point mass properties are (x,y,z) = (%e, %e, %e), M = %e",

@@ -34,8 +34,7 @@
  * @param us The current internal system of units.
  * @param internal_const The physical constants to initialize.
  */
-void init_physical_constants(struct UnitSystem* us,
-                             struct phys_const* internal_const) {
+void phys_const_init(struct UnitSystem* us, struct phys_const* internal_const) {
 
   /* Units are declared as {U_M, U_L, U_t, U_I, U_T} */
 
@@ -102,18 +101,18 @@ void init_physical_constants(struct UnitSystem* us,
       units_general_conversion_factor(us, dimension_length);
 }
 
-void print_physical_constants(struct phys_const* internal_const) {
+void phys_const_print(struct phys_const* internal_const) {
 
-  message("%25s: %e", "Gravitational constant", internal_const->const_newton_G);
-  message("%25s: %e", "Speed of light", internal_const->const_speed_light_c);
-  message("%25s: %e", "Planck constant", internal_const->const_planck_h);
-  message("%25s: %e", "Boltzmann constant", internal_const->const_boltzmann_k);
-  message("%25s: %e", "Thomson cross-section",
+  message("%25s = %e", "Gravitational constant", internal_const->const_newton_G);
+  message("%25s = %e", "Speed of light", internal_const->const_speed_light_c);
+  message("%25s = %e", "Planck constant", internal_const->const_planck_h);
+  message("%25s = %e", "Boltzmann constant", internal_const->const_boltzmann_k);
+  message("%25s = %e", "Thomson cross-section",
           internal_const->const_thomson_cross_section);
-  message("%25s: %e", "Electron-Volt", internal_const->const_electron_volt);
-  message("%25s: %e", "Year", internal_const->const_year);
-  message("%25s: %e", "Astronomical Unit",
+  message("%25s = %e", "Electron-Volt", internal_const->const_electron_volt);
+  message("%25s = %e", "Year", internal_const->const_year);
+  message("%25s = %e", "Astronomical Unit",
           internal_const->const_astronomical_unit);
-  message("%25s: %e", "Parsec", internal_const->const_parsec);
-  message("%25s: %e", "Solar mass", internal_const->const_solar_mass);
+  message("%25s = %e", "Parsec", internal_const->const_parsec);
+  message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
 }

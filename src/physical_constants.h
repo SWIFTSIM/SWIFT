@@ -78,9 +78,8 @@ struct phys_const {
   double const_earth_mass;
 };
 
-void init_physical_constants(struct UnitSystem* us,
-                             struct phys_const* internal_const);
+void phys_const_init(struct UnitSystem* us, struct phys_const* internal_const);
 
-void print_physical_constants(struct phys_const* internal_const);
+void phys_const_print(struct phys_const* internal_const);
 
 #endif /* SWIFT_PHYSICAL_CONSTANTS_H */
