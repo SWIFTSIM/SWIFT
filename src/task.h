@@ -28,7 +28,6 @@
 #include "cycle.h"
 
 /* Some constants. */
-#define TASK_VERBOSE
 #define task_maxwait 3
 #define task_maxunlock 15
 

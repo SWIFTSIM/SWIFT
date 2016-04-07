@@ -20,19 +20,25 @@
 
 #include <float.h>
 #include "potentials.h"
+
 /**
  * @brief Computes the gravity time-step of a given particle.
  *
+ * This function only branches towards the potential chosen by the user.
+ *
+ * @param potential The properties of the external potential.
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float gravity_compute_timestep(
-	const struct external_potential* potential, const struct phys_const* const phys_const, const struct gpart* const gp) {
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, const struct gpart* const gp) {
 
   float dt = FLT_MAX;
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  dt = fminf(dt, external_gravity_pointmass_timestep(potential, phys_const, gp));
+  dt =   
+      fminf(dt,  external_gravity_pointmass_timestep(potential, phys_const, gp));
 #endif
 
   return dt;
@@ -79,10 +85,15 @@ __attribute__((always_inline))
 /**
  * @brief Computes the gravitational acceleration induced by external potentials
  *
+ * This function only branches towards the potential chosen by the user.
+ *
+ * @param potential The properties of the external potential.
  * @param phys_const The physical constants in internal units.
  * @param gp The particle to act upon.
  */
-__attribute__((always_inline)) INLINE static void external_gravity(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* gp) {
+__attribute__((always_inline)) INLINE static void external_gravity(
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct gpart* gp) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
   external_gravity_pointmass(potential, phys_const, gp);
