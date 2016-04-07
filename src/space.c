@@ -47,6 +47,7 @@
 #include "lock.h"
 #include "minmax.h"
 #include "runner.h"
+#include "tools.h"
 
 /* Shared sort structure. */
 struct parallel_sort space_sort_struct;
@@ -204,10 +205,37 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.");
 
-/* In MPI-Land, we're not allowed to change the top-level cell size. */
+  /* In MPI-Land, changing the top-level cell size requires that the
+   * global partition is recomputed and the particles redistributed.
+   * Be prepared to do that. */
 #ifdef WITH_MPI
-  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2])
-    error("Root-level change of cell size not allowed.");
+  double oldh[3];
+  double oldcdim[3];
+  int *oldnodeIDs = NULL;
+  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
+
+    /* Capture state of current space. */
+    oldcdim[0] = s->cdim[0];
+    oldcdim[1] = s->cdim[1];
+    oldcdim[2] = s->cdim[2];
+    oldh[0] = s->h[0];
+    oldh[1] = s->h[1];
+    oldh[2] = s->h[2];
+
+    if ((oldnodeIDs = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+      error("Failed to allocate temporary nodeIDs.");
+
+    int cid = 0;
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          cid = cell_getid(oldcdim, i, j, k);
+          oldnodeIDs[cid] = s->cells[cid].nodeID;
+        }
+      }
+    }
+  }
+
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -267,6 +295,39 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
               cdim[2]);
     fflush(stdout);
 
+#ifdef WITH_MPI
+    if (oldnodeIDs != NULL) {
+      /* We have changed the top-level cell dimension, so need to redistribute
+       * cells around the nodes. We repartition using the old space node
+       * positions as a grid to resample. */
+      if (s->e->nodeID == 0)
+        message("basic cell dimensions have increased - recalculating the "
+                "global partition.");
+
+      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s) ) {
+
+        /* Failed, try another technique that requires no settings. */
+        message("Failed to get a new partition, trying less optimal method");
+        struct partition initial_partition;
+#ifdef HAVE_METIS
+        initial_partition.type = INITPART_METIS_NOWEIGHT;
+#else
+        initial_partition.type = INITPART_VECTORIZE;
+#endif
+        partition_initial_partition(&initial_partition, s->e->nodeID,
+                                    s->e->nr_nodes, s);
+      }
+
+      /* Re-distribute the particles to their new nodes. */
+      engine_redistribute(s->e);
+
+      /* Make the proxies. */
+      engine_makeproxies(s->e);
+
+      /* Finished with these. */
+      free(oldnodeIDs);
+    }
+#endif
   } /* re-build upper-level cells? */
   // message( "rebuilding upper-level cells took %.3f %s." ,
   // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
@@ -1344,7 +1405,7 @@ void space_init(struct space *s, const struct swift_params *params,
   space_maxsize = parser_get_param_int(params, "Scheduler:cell_max_size");
   space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
   space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
-  if (verbose)
+  if(verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
             space_maxsize, space_subsize, space_splitsize);
 
