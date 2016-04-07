@@ -120,10 +120,6 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
   /* CentreOfPotential[1] = 0.5 * s->dim[1]; */
   /* CentreOfPotential[2] = 0.5 * s->dim[2]; */
 
-  message(" (x,y,z) = (%e, %e, %e), M= %e", r->e->potential->point_mass.x,
-          r->e->potential->point_mass.y, r->e->potential->point_mass.z,
-          r->e->potential->point_mass.mass);
-  exit(-1);
 
   /* Recurse? */
   if (c->split) {
@@ -145,7 +141,7 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
     if (g->ti_end <= ti_current) {
       //		external_gravity_pointmass(e->physical_constants,
       // potential_constants, g);
-      external_gravity_pointmass(r->e->physical_constants, g);
+      external_gravity(r->e->potential, r->e->physical_constants, g);
 
       /* check for energy and angular momentum conservation - begin by
        * synchronizing velocity*/

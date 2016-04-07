@@ -82,11 +82,10 @@ __attribute__((always_inline))
  * @param phys_const The physical constants in internal units.
  * @param gp The particle to act upon.
  */
-__attribute__((always_inline)) INLINE static void external_gravity(
-    const struct phys_const* const phys_const, struct gpart* gp) {
+__attribute__((always_inline)) INLINE static void external_gravity(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* gp) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  external_gravity_pointmass(phys_const, gp);
+  external_gravity_pointmass(potential, phys_const, gp);
 #endif
 }
 

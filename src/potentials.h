@@ -25,6 +25,7 @@
 #include "../config.h"
 
 /* Local includes. */
+#include "error.h"
 #include "physical_constants_cgs.h"
 #include "physical_constants.h"
 #include "units.h"
@@ -85,8 +86,13 @@ __attribute__((always_inline))
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-__attribute__((always_inline)) INLINE static void external_gravity_pointmass(
-    const struct phys_const* const phys_const, struct gpart* g) {
+__attribute__((always_inline)) INLINE static void external_gravity_pointmass(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
+
+
+  /* message(" (x,y,z) = (%e, %e, %e), M= %e", potential->point_mass.x, */
+  /*         potential->point_mass.y, potential->point_mass.z, */
+  /*         potential->point_mass.mass); */
+  /* exit(-1); */
 
   const double G_newton = phys_const->newton_gravity;
   const float dx = g->x[0] - External_Potential_X;
