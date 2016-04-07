@@ -378,6 +378,19 @@ int main(int argc, char *argv[]) {
     message("maximum depth is %d.", s.maxdepth);
   }
 
+  /* Verify that each particle is in it's proper cell. */
+  if (talking && !dry_run) {
+    int icount = 0;
+    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
+    message("map_cellcheck picked up %i parts.", icount);
+  }
+
+  if (talking && !dry_run) {
+    int data[2] = {s.maxdepth, 0};
+    space_map_cells_pre(&s, 0, &map_maxdepth, data);
+    message("nr of cells at depth %i is %i.", data[0], data[1]);
+  }
+  
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_hydro) engine_policies |= engine_policy_hydro;
@@ -458,18 +471,6 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the particles */
   engine_init_particles(&e);
-  /* Verify that each particle is in it's proper cell. */
-  if (myrank == 0) {
-    int icount = 0;
-    space_map_cells_pre(&s, 0, &map_cellcheck, &icount);
-    message("map_cellcheck picked up %i parts.", icount);
-  }
-
-  if (myrank == 0) {
-    int data[2] = {s.maxdepth, 0};
-    space_map_cells_pre(&s, 0, &map_maxdepth, data);
-    message("nr of cells at depth %i is %i.", data[0], data[1]);
-  }
 
   /* Legend */
   if (myrank == 0)
