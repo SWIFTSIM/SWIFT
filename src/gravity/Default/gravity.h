@@ -27,12 +27,12 @@
  * @param gp Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float gravity_compute_timestep(
-    const struct phys_const* const phys_const, const struct gpart* const gp) {
+	const struct external_potential* potential, const struct phys_const* const phys_const, const struct gpart* const gp) {
 
   float dt = FLT_MAX;
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  dt = fminf(dt, external_gravity_pointmass_timestep(phys_const, gp));
+  dt = fminf(dt, external_gravity_pointmass_timestep(potential, phys_const, gp));
 #endif
 
   return dt;

@@ -76,9 +76,4 @@
 /* valid choices EXTERNAL_POTENTIAL_POINTMASS */
 #define EXTERNAL_POTENTIAL_POINTMASS
 
-/* System of units */
-#define const_unit_length_in_cgs (1000. * PARSEC_IN_CGS) /* kpc */
-#define const_unit_mass_in_cgs (SOLAR_MASS_IN_CGS)       /* solar mass */
-#define const_unit_velocity_in_cgs (1e5)                 /* km/s */
-
 #endif /* SWIFT_CONST_H */

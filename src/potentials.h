@@ -40,7 +40,8 @@ struct external_potential {
 
 /* Properties of Point Mass */
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-
+#define const_unit_length_in_cgs  (1e3 * PARSEC_IN_CGS)
+#define const_unit_mass_in_cgs    (SOLAR_MASS_IN_CGS)
 #define External_Potential_X (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
 #define External_Potential_Y (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
 #define External_Potential_Z (50000 * PARSEC_IN_CGS / const_unit_length_in_cgs)
@@ -55,22 +56,23 @@ struct external_potential {
  */
 __attribute__((always_inline))
     INLINE static float external_gravity_pointmass_timestep(
+		  const struct external_potential* potential,
         const struct phys_const* const phys_const,
         const struct gpart* const g) {
 
   const double G_newton = phys_const->newton_gravity;
-  const float dx = g->x[0] - External_Potential_X;
-  const float dy = g->x[1] - External_Potential_Y;
-  const float dz = g->x[2] - External_Potential_Z;
+  const float dx = g->x[0] - potential->point_mass.x;
+  const float dy = g->x[1] - potential->point_mass.y;
+  const float dz = g->x[2] - potential->point_mass.z;
   const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
-  const float drdv = (g->x[0] - External_Potential_X) * (g->v_full[0]) +
-                     (g->x[1] - External_Potential_Y) * (g->v_full[1]) +
-                     (g->x[2] - External_Potential_Z) * (g->v_full[2]);
-  const float dota_x = G_newton * External_Potential_Mass * rinv * rinv * rinv *
+  const float drdv = (g->x[0] - potential->point_mass.x) * (g->v_full[0]) +
+                     (g->x[1] - potential->point_mass.y) * (g->v_full[1]) +
+                     (g->x[2] - potential->point_mass.z) * (g->v_full[2]);
+  const float dota_x = G_newton * potential->point_mass.mass * rinv * rinv * rinv *
                        (-g->v_full[0] + 3.f * rinv * rinv * drdv * dx);
-  const float dota_y = G_newton * External_Potential_Mass * rinv * rinv * rinv *
+  const float dota_y = G_newton * potential->point_mass.mass * rinv * rinv * rinv *
                        (-g->v_full[1] + 3.f * rinv * rinv * drdv * dy);
-  const float dota_z = G_newton * External_Potential_Mass * rinv * rinv * rinv *
+  const float dota_z = G_newton * potential->point_mass.mass * rinv * rinv * rinv *
                        (-g->v_full[2] + 3.f * rinv * rinv * drdv * dz);
   const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
@@ -95,14 +97,14 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(con
   /* exit(-1); */
 
   const double G_newton = phys_const->newton_gravity;
-  const float dx = g->x[0] - External_Potential_X;
-  const float dy = g->x[1] - External_Potential_Y;
-  const float dz = g->x[2] - External_Potential_Z;
+  const float dx = g->x[0] - potential->point_mass.x;
+  const float dy = g->x[1] - potential->point_mass.y;
+  const float dz = g->x[2] - potential->point_mass.z;
   const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
 
-  g->a_grav[0] += -G_newton * External_Potential_Mass * dx * rinv * rinv * rinv;
-  g->a_grav[1] += -G_newton * External_Potential_Mass * dy * rinv * rinv * rinv;
-  g->a_grav[2] += -G_newton * External_Potential_Mass * dz * rinv * rinv * rinv;
+  g->a_grav[0] += -G_newton * potential->point_mass.mass * dx * rinv * rinv * rinv;
+  g->a_grav[1] += -G_newton * potential->point_mass.mass * dy * rinv * rinv * rinv;
+  g->a_grav[2] += -G_newton * potential->point_mass.mass * dz * rinv * rinv * rinv;
 }
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
 

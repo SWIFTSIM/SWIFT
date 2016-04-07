@@ -145,19 +145,12 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
       /* check for energy and angular momentum conservation - begin by
        * synchronizing velocity*/
-      const float dx = g->x[0] - External_Potential_X;
-      const float dy = g->x[1] - External_Potential_Y;
-      const float dz = g->x[2] - External_Potential_Z;
+      const float dx = g->x[0] - r->e->potential->point_mass.x;
+      const float dy = g->x[1] - r->e->potential->point_mass.y;
+      const float dz = g->x[2] - r->e->potential->point_mass.z;
       const float dr = sqrtf((dx * dx) + (dy * dy) + (dz * dz));
       const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
 
-      /* /\* current acceleration *\/ */
-      /* g->a_grav[0] = - const_G *  External_Potential_Mass * dx * rinv * rinv
-       * * rinv; */
-      /* g->a_grav[1] = - const_G *  External_Potential_Mass * dy * rinv * rinv
-       * * rinv; */
-      /* g->a_grav[2] = - const_G *  External_Potential_Mass * dz * rinv * rinv
-       * * rinv; */
 
       const int current_dti = g->ti_end - g->ti_begin;
       const float dt = 0.5f * current_dti * r->e->timeBase;
@@ -167,13 +160,13 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
 
       /* E/L */
       E = 0.5 * ((vx * vx) + (vy * vy) + (vz * vz)) -
-          const_G * External_Potential_Mass * rinv;
+          r->e->physical_constants->newton_gravity * r->e->potential->point_mass.mass * rinv;
       L[0] = dy * vz - dz * vy;
       L[1] = dz * vx - dx * vz;
       L[2] = dx * vy - dy * vx;
       if (abs(g->id) == 1) {
         float v2 = vx * vx + vy * vy + vz * vz;
-        float fg = const_G * External_Potential_Mass * rinv;
+        float fg = r->e->physical_constants->newton_gravity *  r->e->potential->point_mass.mass * rinv;
         float fga = sqrtf((g->a_grav[0] * g->a_grav[0]) +
                           (g->a_grav[1] * g->a_grav[1]) +
                           (g->a_grav[2] * g->a_grav[2])) *
@@ -181,8 +174,8 @@ void runner_dograv_external(struct runner *r, struct cell *c) {
         // message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]= %f
         // x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2], g->x[0],
         // g->x[1], vx, vy);
-        message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx,
-                g->tv, dt, v2, fg, fga, E, L[2], g->x[0], g->x[1], vx, vy);
+        message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time, g->tx,
+                g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1], vx, vy);
         // message(" G=%e M=%e\n", const_G, External_Potential_Mass);
       }
     }
@@ -946,7 +939,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Compute the next timestep (gravity condition) */
-          float new_dt = gravity_compute_timestep(r->e->physical_constants, gp);
+          float new_dt = gravity_compute_timestep(r->e->potential, r->e->physical_constants, gp);
 
           /* Limit timestep within the allowed range */
           new_dt = fminf(new_dt, global_dt_max);
@@ -1032,7 +1025,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           float new_dt_grav = FLT_MAX;
           if (p->gpart != NULL)
             new_dt_grav =
-                gravity_compute_timestep(r->e->physical_constants, p->gpart);
+				  gravity_compute_timestep(r->e->potential, r->e->physical_constants, p->gpart);
 
           float new_dt = fminf(new_dt_hydro, new_dt_grav);
 

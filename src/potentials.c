@@ -33,6 +33,9 @@
  */
 void initPotentialProperties(struct UnitSystem* us,
                              struct external_potential* potential) {
+  message(" %e\t %e", PARSEC_IN_CGS, units_conversion_factor(us, UNIT_CONV_LENGTH));
+
+			 
   potential->point_mass.x =
       50000 * PARSEC_IN_CGS / units_conversion_factor(us, UNIT_CONV_LENGTH);
   potential->point_mass.y =

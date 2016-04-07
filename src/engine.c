@@ -1894,11 +1894,11 @@ void engine_init_particles(struct engine *e) {
 
   /* We always have sort tasks */
   mask |= 1 << task_type_sort;
-
+  mask |= 1 << task_type_init;
+	 
   /* Add the tasks corresponding to hydro operations to the masks */
   if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
 
-    mask |= 1 << task_type_init;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub;
@@ -2066,11 +2066,11 @@ void engine_step(struct engine *e) {
   /* We always have sort tasks and kick tasks */
   mask |= 1 << task_type_sort;
   mask |= 1 << task_type_kick;
+  mask |= 1 << task_type_init;
 
   /* Add the tasks corresponding to hydro operations to the masks */
   if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
 
-    mask |= 1 << task_type_init;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub;

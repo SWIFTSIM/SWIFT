@@ -21,11 +21,11 @@
 #define SWIFT_PHYSICAL_CONSTANTS_CGS_H
 
 /* physical constants in cgs */
-#define NEWTON_GRAVITY_CGS 6.672e-8f
-#define SOLAR_MASS_IN_CGS 1.989e33f
-#define PARSEC_IN_CGS 3.086e18f
-#define PROTON_MASS_IN_CGS 1.6726231e24f
-#define YEAR_IN_CGS 3.154e+7f
+#define NEWTON_GRAVITY_CGS 6.672e-8
+#define SOLAR_MASS_IN_CGS 1.989e33
+#define PARSEC_IN_CGS  3.0856776e18
+#define PROTON_MASS_IN_CGS 1.6726231e24
+#define YEAR_IN_CGS 3.154e+7
 
 /* Hydrodynamical constants. */
 #define const_hydro_gamma (5.0f / 3.0f)
