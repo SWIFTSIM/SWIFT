@@ -241,11 +241,11 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   writeXMFline(xmfFile, fileName, partTypeGroupName, name, N, dim, type);
 
   /* Write unit conversion factors for this data set */
-  conversionString(buffer, us, convFactor);
+  units_conversion_string(buffer, us, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
-                   conversionFactor(us, convFactor));
-  writeAttribute_f(h_data, "h-scale exponent", hFactor(us, convFactor));
-  writeAttribute_f(h_data, "a-scale exponent", aFactor(us, convFactor));
+                   units_conversion_factor(us, convFactor));
+  writeAttribute_f(h_data, "h-scale exponent", units_h_factor(us, convFactor));
+  writeAttribute_f(h_data, "a-scale exponent", units_a_factor(us, convFactor));
   writeAttribute_s(h_data, "Conversion factor", buffer);
 
   /* Free and close everything */
@@ -319,6 +319,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
+ * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  * Opens the HDF5 file fileName and reads the particles contained
  * in the parts array. N is the returned number of particles found
@@ -327,12 +328,10 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @warning Can not read snapshot distributed over more than 1 file !!!
  * @todo Read snapshots distributed in more than one file.
  *
- * Calls #error() if an error occurs.
- *
  */
 void read_ic_single(char* fileName, double dim[3], struct part** parts,
                     struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
-                    int* periodic) {
+                    int* periodic, int dry_run) {
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
@@ -426,11 +425,11 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
     switch (ptype) {
 
       case GAS:
-        hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts);
+        if (!dry_run) hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts);
         break;
 
       case DM:
-        darkmatter_read_particles(h_grp, Ndm, Ndm, 0, *gparts);
+        if (!dry_run) darkmatter_read_particles(h_grp, Ndm, Ndm, 0, *gparts);
         break;
 
       default:
@@ -442,10 +441,10 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
   }
 
   /* Prepare the DM particles */
-  prepare_dm_gparts(*gparts, Ndm);
+  if (!dry_run) prepare_dm_gparts(*gparts, Ndm);
 
   /* Now duplicate the hydro particle into gparts */
-  duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+  if (!dry_run) duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
 
   /* message("Done Reading particles..."); */
 

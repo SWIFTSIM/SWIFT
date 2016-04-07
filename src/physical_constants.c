@@ -36,7 +36,7 @@
 void initPhysicalConstants(struct UnitSystem* us,
                            struct phys_const* internal_const) {
 
-  const float dimension[5] = {1, -3, 2, 0, 0};
+  float dimension[5] = {1, -3, 2, 0, 0};
   internal_const->newton_gravity =
-      NEWTON_GRAVITY_CGS * generalConversionFactor(us, dimension);
+      NEWTON_GRAVITY_CGS * units_general_conversion_factor(us, dimension);
 }

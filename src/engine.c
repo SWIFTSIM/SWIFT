@@ -60,10 +60,11 @@
 #include "partition.h"
 #include "timers.h"
 
-const char *engine_policy_names[12] = {
-    "none",          "rand",   "steal",        "keep",
-    "block",         "fix_dt", "cpu_tight",    "mpi",
-    "numa_affinity", "hydro",  "self_gravity", "external_gravity"};
+const char *engine_policy_names[13] = {
+    "none",                 "rand",   "steal",        "keep",
+    "block",                "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
+    "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -412,7 +413,6 @@ void engine_redistribute(struct engine *e) {
   if ((res = MPI_Waitall(6 * nr_nodes, reqs, stats)) != MPI_SUCCESS) {
     for (int k = 0; k < 6 * nr_nodes; k++) {
       char buff[MPI_MAX_ERROR_STRING];
-      int res;
       MPI_Error_string(stats[k].MPI_ERROR, buff, &res);
       message("request %i has error '%s'.", k, buff);
     }
@@ -1671,7 +1671,7 @@ void engine_rebuild(struct engine *e) {
     error("engine_marktasks failed after space_rebuild.");
 
   /* Print the status of the system */
-  engine_print_task_counts(e);
+  if (e->verbose) engine_print_task_counts(e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2041,8 +2041,8 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("%d %e %e %d %d %.3f\n", e->step, e->time, e->timeStep, updates,
-           g_updates, e->wallclock_time);
+    printf("  %6d %14e %14e %10d %10d %21.3f\n", e->step, e->time, e->timeStep,
+           updates, g_updates, e->wallclock_time);
     fflush(stdout);
 
     /* Write some energy statistics */
@@ -2334,31 +2334,27 @@ static bool hyperthreads_present(void) {
  *
  * @param e The #engine.
  * @param s The #space in which this #runner will run.
- * @param dt The initial time step to use.
- * @param nr_threads The number of threads to spawn.
- * @param nr_queues The number of task queues to create.
+ * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param policy The queuing policy to use.
- * @param timeBegin Time at the begininning of the simulation.
- * @param timeEnd Time at the end of the simulation.
- * @param dt_min Minimal allowed timestep (unsed with fixdt policy)
- * @param dt_max Maximal allowed timestep
  * @param verbose Is this #engine talkative ?
  */
 
-void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max,
-                 int verbose, const struct phys_const *physical_constants,
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, int nr_nodes, int nodeID,
+                 int policy, int verbose, 
+                 const struct phys_const *physical_constants,
                  const struct external_potential *potential) {
+
+  /* Clean-up everything */
+  bzero(e, sizeof(struct engine));
 
   /* Store the values. */
   e->s = s;
-  e->nr_threads = nr_threads;
+  e->nr_threads = parser_get_param_int(params, "Scheduler:nr_threads");
   e->policy = policy;
   e->step = 0;
-  e->nullstep = 0;
   e->nr_nodes = nr_nodes;
   e->nodeID = nodeID;
   e->proxy_ind = NULL;
@@ -2367,15 +2363,15 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->forcerepart = REPART_NONE;
   e->links = NULL;
   e->nr_links = 0;
-  e->timeBegin = timeBegin;
-  e->timeEnd = timeEnd;
-  e->timeOld = timeBegin;
-  e->time = timeBegin;
+  e->timeBegin = parser_get_param_double(params, "TimeIntegration:time_begin");
+  e->timeEnd = parser_get_param_double(params, "TimeIntegration:time_end");
+  e->timeOld = e->timeBegin;
+  e->time = e->timeBegin;
   e->ti_old = 0;
   e->ti_current = 0;
   e->timeStep = 0.;
-  e->dt_min = dt_min;
-  e->dt_max = dt_max;
+  e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
+  e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
   e->verbose = verbose;
   e->count_step = 0;
@@ -2386,6 +2382,11 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
   /* Make the space link back to the engine. */
   s->e = e;
+
+  /* Get the number of queues */
+  int nr_queues = parser_get_param_int(params, "Scheduler:nr_queues");
+  if (nr_queues <= 0) nr_queues = e->nr_threads;
+  s->nr_queues = nr_queues;
 
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
@@ -2482,15 +2483,19 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if (e->nodeID == 0) message("Hydrodynamic scheme: %s", SPH_IMPLEMENTATION);
-  if (e->nodeID == 0) message("Hydrodynamic kernel: %s", kernel_name);
+  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+    if (e->nodeID == 0) message("Hydrodynamic scheme: %s.", SPH_IMPLEMENTATION);
+    if (e->nodeID == 0)
+      message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours.",
+              kernel_name, kernel_nwneigh, const_delta_nwneigh);
+  }
 
   /* Check we have sensible time bounds */
-  if (timeBegin >= timeEnd)
+  if (e->timeBegin >= e->timeEnd)
     error(
         "Final simulation time (t_end = %e) must be larger than the start time "
         "(t_beg = %e)",
-        timeEnd, timeBegin);
+        e->timeEnd, e->timeBegin);
 
   /* Check we have sensible time-step values */
   if (e->dt_min > e->dt_max)
@@ -2500,7 +2505,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
         e->dt_min, e->dt_max);
 
   /* Deal with timestep */
-  e->timeBase = (timeEnd - timeBegin) / max_nr_timesteps;
+  e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
   e->ti_current = 0;
 
   /* Fixed time-step case */
@@ -2519,12 +2524,12 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
     if (e->nodeID == 0) {
       message("Absolute minimal timestep size: %e", e->timeBase);
 
-      float dt_min = timeEnd - timeBegin;
+      float dt_min = e->timeEnd - e->timeBegin;
       while (dt_min > e->dt_min) dt_min /= 2.f;
 
       message("Minimal timestep size (on time-line): %e", dt_min);
 
-      float dt_max = timeEnd - timeBegin;
+      float dt_max = e->timeEnd - e->timeBegin;
       while (dt_max > e->dt_max) dt_max /= 2.f;
 
       message("Maximal timestep size (on time-line): %e", dt_max);
@@ -2558,10 +2563,9 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   e->barrier_launchcount = 0;
 
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
-  int nr_tasks = 2 * s->tot_cells + e->nr_threads;
+  const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
                  e->nodeID);
-  s->nr_queues = nr_queues;
 
   /* Create the sorting tasks. */
   for (int i = 0; i < e->nr_threads; i++) {
@@ -2575,10 +2579,10 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
   scheduler_ranktasks(&e->sched);
 
   /* Allocate and init the threads. */
-  if ((e->runners =
-           (struct runner *)malloc(sizeof(struct runner) * nr_threads)) == NULL)
+  if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *
+                                            e->nr_threads)) == NULL)
     error("Failed to allocate threads array.");
-  for (int k = 0; k < nr_threads; k++) {
+  for (int k = 0; k < e->nr_threads; k++) {
     e->runners[k].id = k;
     e->runners[k].e = e;
     e->barrier_running += 1;
@@ -2590,7 +2594,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 
       /* Set a reasonable queue ID. */
       e->runners[k].cpuid = cpuid[k % nr_cores];
-      if (nr_queues < nr_threads)
+      if (nr_queues < e->nr_threads)
         e->runners[k].qid = cpuid[k % nr_cores] * nr_queues / nr_cores;
       else
         e->runners[k].qid = k;
@@ -2609,7 +2613,7 @@ void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
 #endif
     } else {
       e->runners[k].cpuid = k;
-      e->runners[k].qid = k * nr_queues / nr_threads;
+      e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
     // message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id ,
     // e->runners[k].cpuid , e->runners[k].qid );

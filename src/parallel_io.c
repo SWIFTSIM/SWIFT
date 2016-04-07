@@ -274,11 +274,11 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
                  type);
 
   /* Write unit conversion factors for this data set */
-  conversionString(buffer, us, convFactor);
+  units_conversion_string(buffer, us, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
-                   conversionFactor(us, convFactor));
-  writeAttribute_f(h_data, "h-scale exponent", hFactor(us, convFactor));
-  writeAttribute_f(h_data, "a-scale exponent", aFactor(us, convFactor));
+                   units_conversion_factor(us, convFactor));
+  writeAttribute_f(h_data, "h-scale exponent", units_h_factor(us, convFactor));
+  writeAttribute_f(h_data, "a-scale exponent", units_a_factor(us, convFactor));
   writeAttribute_s(h_data, "Conversion factor", buffer);
 
   /* Free and close everything */
@@ -349,6 +349,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @param parts (output) The array of #part read from the file.
  * @param N (output) The number of particles read from the file.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
+ * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  * Opens the HDF5 file fileName and reads the particles contained
  * in the parts array. N is the returned number of particles found
@@ -363,7 +364,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
 void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
                       struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
                       int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
-                      MPI_Info info) {
+                      MPI_Info info, int dry_run) {
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
@@ -469,13 +470,15 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
     switch (ptype) {
 
       case GAS:
-        hydro_read_particles(h_grp, N[ptype], N_total[ptype], offset[ptype],
-                             *parts);
+        if (!dry_run)
+          hydro_read_particles(h_grp, N[ptype], N_total[ptype], offset[ptype],
+                               *parts);
         break;
 
       case DM:
-        darkmatter_read_particles(h_grp, N[ptype], N_total[ptype],
-                                  offset[ptype], *gparts);
+        if (!dry_run)
+          darkmatter_read_particles(h_grp, N[ptype], N_total[ptype],
+                                    offset[ptype], *gparts);
         break;
 
       default:
@@ -487,10 +490,10 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
   }
 
   /* Prepare the DM particles */
-  prepare_dm_gparts(*gparts, Ndm);
+  if (!dry_run) prepare_dm_gparts(*gparts, Ndm);
 
   /* Now duplicate the hydro particle into gparts */
-  duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
+  if (!dry_run) duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
 
   /* message("Done Reading particles..."); */
 

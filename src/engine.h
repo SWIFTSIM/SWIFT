@@ -43,6 +43,7 @@
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
+#include "parser.h"
 #include "partition.h"
 #include "physical_constants.h"
 #include "potentials.h"
@@ -60,7 +61,8 @@ enum engine_policy {
   engine_policy_setaffinity = (1 << 7),
   engine_policy_hydro = (1 << 8),
   engine_policy_self_gravity = (1 << 9),
-  engine_policy_external_gravity = (1 << 10)
+  engine_policy_external_gravity = (1 << 10),
+  engine_policy_cosmology = (1 << 11)
 };
 
 extern const char *engine_policy_names[];
@@ -133,7 +135,7 @@ struct engine {
   FILE *file_stats;
 
   /* The current step number. */
-  int step, nullstep;
+  int step;
 
   /* The number of particles updated in the previous step. */
   int count_step;
@@ -179,10 +181,10 @@ struct engine {
 
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
-void engine_init(struct engine *e, struct space *s, float dt, int nr_threads,
-                 int nr_queues, int nr_nodes, int nodeID, int policy,
-                 float timeBegin, float timeEnd, float dt_min, float dt_max,
-                 int verbose, const struct phys_const *physical_constants,
+void engine_init(struct engine *e, struct space *s,
+                 const struct swift_params *params, int nr_nodes, int nodeID,
+                 int policy, int verbose,
+                 const struct phys_const *physical_constants,
                  const struct external_potential *potential);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);

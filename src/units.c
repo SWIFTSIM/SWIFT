@@ -42,16 +42,24 @@
 
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
- * const.h
- * @param us The UnitSystem to initialize
+ * rhe parameter file.
+ *
+ * @param us The UnitSystem to initialize.
+ * @param params The parsed parameter file.
  */
-void initUnitSystem(struct UnitSystem* us) {
-  us->UnitMass_in_cgs = const_unit_mass_in_cgs;
-  us->UnitLength_in_cgs = const_unit_length_in_cgs;
-  us->UnitTime_in_cgs = 1. / ((double)const_unit_velocity_in_cgs /
-                              ((double)const_unit_length_in_cgs));
-  us->UnitCurrent_in_cgs = 1.;
-  us->UnitTemperature_in_cgs = 1.;
+void units_init(struct UnitSystem* us, const struct swift_params* params) {
+
+  us->UnitMass_in_cgs =
+      parser_get_param_double(params, "UnitSystem:UnitMass_in_cgs");
+  us->UnitLength_in_cgs =
+      parser_get_param_double(params, "UnitSystem:UnitLength_in_cgs");
+  const double unitVelocity =
+      parser_get_param_double(params, "UnitSystem:UnitVelocity_in_cgs");
+  us->UnitTime_in_cgs = us->UnitLength_in_cgs / unitVelocity;
+  us->UnitCurrent_in_cgs =
+      parser_get_param_double(params, "UnitSystem:UnitCurrent_in_cgs");
+  us->UnitTemperature_in_cgs =
+      parser_get_param_double(params, "UnitSystem:UnitTemp_in_cgs");
 }
 
 /**
@@ -59,7 +67,8 @@ void initUnitSystem(struct UnitSystem* us) {
  * @param us The UnitSystem used
  * @param baseUnit The base unit
  */
-double getBaseUnit(const struct UnitSystem* us, enum BaseUnits baseUnit) {
+double units_get_base_unit(const struct UnitSystem* us,
+                           enum BaseUnits baseUnit) {
   switch (baseUnit) {
     case UNIT_MASS:
       return us->UnitMass_in_cgs;
@@ -81,7 +90,7 @@ double getBaseUnit(const struct UnitSystem* us, enum BaseUnits baseUnit) {
  * @brief Returns the base unit symbol
  * @param baseUnit The base unit
  */
-const char* getBaseUnitSymbol(enum BaseUnits baseUnit) {
+const char* units_get_base_unit_symbol(enum BaseUnits baseUnit) {
   switch (baseUnit) {
     case UNIT_MASS:
       return "U_M";
@@ -103,7 +112,7 @@ const char* getBaseUnitSymbol(enum BaseUnits baseUnit) {
  * @brief Returns the base unit symbol in the cgs system
  * @param baseUnit The base unit
  */
-const char* getBaseUnitCGSSymbol(enum BaseUnits baseUnit) {
+const char* units_get_base_unit_CGS_symbol(enum BaseUnits baseUnit) {
   switch (baseUnit) {
     case UNIT_MASS:
       return "g";
@@ -121,8 +130,8 @@ const char* getBaseUnitCGSSymbol(enum BaseUnits baseUnit) {
   return "";
 }
 
-void getBaseUnitExponantsArray(float baseUnitsExp[5],
-                               enum UnitConversionFactor unit) {
+void units_get_base_unit_exponants_array(float baseUnitsExp[5],
+                                         enum UnitConversionFactor unit) {
   switch (unit) {
     case UNIT_CONV_NO_UNITS:
       break;
@@ -263,13 +272,13 @@ void getBaseUnitExponantsArray(float baseUnitsExp[5],
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-double conversionFactor(const struct UnitSystem* us,
-                        enum UnitConversionFactor unit) {
+double units_conversion_factor(const struct UnitSystem* us,
+                               enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
-  getBaseUnitExponantsArray(baseUnitsExp, unit);
+  units_get_base_unit_exponants_array(baseUnitsExp, unit);
 
-  return generalConversionFactor(us, baseUnitsExp);
+  return units_general_conversion_factor(us, baseUnitsExp);
 }
 
 /**
@@ -277,12 +286,13 @@ double conversionFactor(const struct UnitSystem* us,
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-float hFactor(const struct UnitSystem* us, enum UnitConversionFactor unit) {
+float units_h_factor(const struct UnitSystem* us,
+                     enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
-  getBaseUnitExponantsArray(baseUnitsExp, unit);
+  units_get_base_unit_exponants_array(baseUnitsExp, unit);
 
-  return generalhFactor(us, baseUnitsExp);
+  return units_general_h_factor(us, baseUnitsExp);
 }
 
 /**
@@ -290,25 +300,26 @@ float hFactor(const struct UnitSystem* us, enum UnitConversionFactor unit) {
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-float aFactor(const struct UnitSystem* us, enum UnitConversionFactor unit) {
+float units_a_factor(const struct UnitSystem* us,
+                     enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
-  getBaseUnitExponantsArray(baseUnitsExp, unit);
+  units_get_base_unit_exponants_array(baseUnitsExp, unit);
 
-  return generalaFactor(us, baseUnitsExp);
+  return units_general_a_factor(us, baseUnitsExp);
 }
 
 /**
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors
  */
-void conversionString(char* buffer, const struct UnitSystem* us,
-                      enum UnitConversionFactor unit) {
+void units_conversion_string(char* buffer, const struct UnitSystem* us,
+                             enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
-  getBaseUnitExponantsArray(baseUnitsExp, unit);
+  units_get_base_unit_exponants_array(baseUnitsExp, unit);
 
-  generalConversionString(buffer, us, baseUnitsExp);
+  units_general_conversion_string(buffer, us, baseUnitsExp);
 }
 
 /**
@@ -318,14 +329,14 @@ void conversionString(char* buffer, const struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-double generalConversionFactor(const struct UnitSystem* us,
-                               const float baseUnitsExponants[5]) {
+double units_general_conversion_factor(const struct UnitSystem* us,
+                                       float baseUnitsExponants[5]) {
   double factor = 1.;
   int i;
 
   for (i = 0; i < 5; ++i)
     if (baseUnitsExponants[i] != 0)
-      factor *= pow(getBaseUnit(us, i), baseUnitsExponants[i]);
+      factor *= pow(units_get_base_unit(us, i), baseUnitsExponants[i]);
   return factor;
 }
 
@@ -336,8 +347,8 @@ double generalConversionFactor(const struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-float generalhFactor(const struct UnitSystem* us,
-                     const float baseUnitsExponants[5]) {
+float units_general_h_factor(const struct UnitSystem* us,
+                             float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += -baseUnitsExponants[UNIT_MASS];
@@ -354,8 +365,8 @@ float generalhFactor(const struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-float generalaFactor(const struct UnitSystem* us,
-                     const float baseUnitsExponants[5]) {
+float units_general_a_factor(const struct UnitSystem* us,
+                             float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += baseUnitsExponants[UNIT_LENGTH];
@@ -372,11 +383,11 @@ float generalaFactor(const struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-void generalConversionString(char* buffer, const struct UnitSystem* us,
-                             const float baseUnitsExponants[5]) {
+void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
+                                     float baseUnitsExponants[5]) {
   char temp[14];
-  double a_exp = generalaFactor(us, baseUnitsExponants);
-  double h_exp = generalhFactor(us, baseUnitsExponants);
+  double a_exp = units_general_a_factor(us, baseUnitsExponants);
+  double h_exp = units_general_h_factor(us, baseUnitsExponants);
   int i;
 
   /* Check whether we are unitless or not */
@@ -416,12 +427,13 @@ void generalConversionString(char* buffer, const struct UnitSystem* us,
       if (baseUnitsExponants[i] == 0.)
         sprintf(temp, " ");
       else if (baseUnitsExponants[i] == 1.)
-        sprintf(temp, "%s ", getBaseUnitSymbol(i));
+        sprintf(temp, "%s ", units_get_base_unit_symbol(i));
       else if (remainder(baseUnitsExponants[i], 1.) == 0)
-        sprintf(temp, "%s^%d ", getBaseUnitSymbol(i),
+        sprintf(temp, "%s^%d ", units_get_base_unit_symbol(i),
                 (int)baseUnitsExponants[i]);
       else
-        sprintf(temp, "%s^%7.4f ", getBaseUnitSymbol(i), baseUnitsExponants[i]);
+        sprintf(temp, "%s^%7.4f ", units_get_base_unit_symbol(i),
+                baseUnitsExponants[i]);
       strncat(buffer, temp, 12);
     }
 
@@ -433,12 +445,12 @@ void generalConversionString(char* buffer, const struct UnitSystem* us,
       if (baseUnitsExponants[i] == 0.)
         continue;
       else if (baseUnitsExponants[i] == 1.)
-        sprintf(temp, "%s ", getBaseUnitCGSSymbol(i));
+        sprintf(temp, "%s ", units_get_base_unit_CGS_symbol(i));
       else if (remainder(baseUnitsExponants[i], 1.) == 0)
-        sprintf(temp, "%s^%d ", getBaseUnitCGSSymbol(i),
+        sprintf(temp, "%s^%d ", units_get_base_unit_CGS_symbol(i),
                 (int)baseUnitsExponants[i]);
       else
-        sprintf(temp, "%s^%7.4f ", getBaseUnitCGSSymbol(i),
+        sprintf(temp, "%s^%7.4f ", units_get_base_unit_CGS_symbol(i),
                 baseUnitsExponants[i]);
       strncat(buffer, temp, 12);
     }

@@ -180,7 +180,7 @@ void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 int main(int argc, char *argv[]) {
   size_t particles = 0, runs = 0, volume, type = 0;
   double offset[3] = {0, 0, 0}, h = 1.1255, size = 1., rho = 1.;
-  double perturbation = 0.1;
+  double perturbation = 0.;
   struct cell *ci, *cj;
   struct space space;
   struct engine engine;
