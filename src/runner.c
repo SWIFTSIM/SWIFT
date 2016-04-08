@@ -111,7 +111,7 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
   struct gpart *g, *gparts = c->gparts;
   int i, k, gcount = c->gcount;
   const int ti_current = r->e->ti_current;
-  const struct external_potential *potential = r->e->potential;
+  const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
 
   TIMER_TIC;
@@ -902,7 +902,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
-  const struct external_potential *potential = r->e->potential;
+  const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;

@@ -1404,7 +1404,7 @@ void engine_maketasks(struct engine *e) {
   engine_make_hydroloop_tasks(e);
 
   /* Add the gravity mm tasks. */
-  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity)
+  if (e->policy & engine_policy_self_gravity)
     engine_make_gravityinteraction_tasks(e);
 
   /* Split the tasks. */
@@ -1420,7 +1420,7 @@ void engine_maketasks(struct engine *e) {
   e->nr_links = 0;
 
   /* Add the gravity up/down tasks at the top-level cells and push them down. */
-  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity)
+  if (e->policy & engine_policy_self_gravity)
     engine_make_gravityrecursive_tasks(e);
 
   /* Count the number of tasks associated with each cell and
@@ -1439,7 +1439,7 @@ void engine_maketasks(struct engine *e) {
   engine_make_extra_hydroloop_tasks(e);
 
   /* Add the communication tasks if MPI is being used. */
-  if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+  if (e->policy & engine_policy_mpi) {
 
     /* Loop over the proxies. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {
@@ -1492,7 +1492,7 @@ int engine_marktasks(struct engine *e) {
   const ticks tic = getticks();
 
   /* Much less to do here if we're on a fixed time-step. */
-  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
+  if (e->policy & engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
     for (int k = 0; k < nr_tasks; k++) {
@@ -1880,13 +1880,11 @@ void engine_init_particles(struct engine *e) {
 
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
-  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+  if (e->policy & engine_policy_hydro) {
     space_map_cells_pre(s, 1, cell_init_parts, NULL);
   }
-  if (((e->policy & engine_policy_self_gravity) ==
-       engine_policy_self_gravity) ||
-      ((e->policy & engine_policy_external_gravity) ==
-       engine_policy_external_gravity)) {
+  if ((e->policy & engine_policy_self_gravity) ||
+      (e->policy & engine_policy_external_gravity)) {
     space_map_cells_pre(s, 1, cell_init_gparts, NULL);
   }
 
@@ -1903,7 +1901,7 @@ void engine_init_particles(struct engine *e) {
   mask |= 1 << task_type_init;
 
   /* Add the tasks corresponding to hydro operations to the masks */
-  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+  if (e->policy & engine_policy_hydro) {
 
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
@@ -1914,20 +1912,19 @@ void engine_init_particles(struct engine *e) {
   }
 
   /* Add the tasks corresponding to self-gravity to the masks */
-  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
+  if (e->policy & engine_policy_self_gravity) {
 
     /* Nothing here for now */
   }
 
   /* Add the tasks corresponding to external gravity to the masks */
-  if ((e->policy & engine_policy_external_gravity) ==
-      engine_policy_external_gravity) {
+  if (e->policy & engine_policy_external_gravity) {
 
     mask |= 1 << task_type_grav_external;
   }
 
   /* Add MPI tasks if need be */
-  if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+  if (e->policy & engine_policy_mpi) {
 
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
@@ -2062,7 +2059,7 @@ void engine_step(struct engine *e) {
   mask |= 1 << task_type_init;
 
   /* Add the tasks corresponding to hydro operations to the masks */
-  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+  if (e->policy & engine_policy_hydro) {
 
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
@@ -2074,19 +2071,18 @@ void engine_step(struct engine *e) {
   }
 
   /* Add the tasks corresponding to self-gravity to the masks */
-  if ((e->policy & engine_policy_self_gravity) == engine_policy_self_gravity) {
+  if (e->policy & engine_policy_self_gravity) {
 
     /* Nothing here for now */
   }
 
   /* Add the tasks corresponding to self-gravity to the masks */
-  if ((e->policy & engine_policy_external_gravity) ==
-      engine_policy_external_gravity) {
+  if (e->policy & engine_policy_external_gravity) {
     mask |= 1 << task_type_grav_external;
   }
 
   /* Add MPI tasks if need be */
-  if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+  if (e->policy & engine_policy_mpi) {
 
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
@@ -2370,7 +2366,7 @@ void engine_init(struct engine *e, struct space *s,
   e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
-  e->potential = potential;
+  e->external_potential = potential;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
@@ -2476,7 +2472,7 @@ void engine_init(struct engine *e, struct space *s,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if ((e->policy & engine_policy_hydro) == engine_policy_hydro) {
+  if (e->policy & engine_policy_hydro) {
     if (e->nodeID == 0) message("Hydrodynamic scheme: %s.", SPH_IMPLEMENTATION);
     if (e->nodeID == 0)
       message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours.",
@@ -2502,7 +2498,7 @@ void engine_init(struct engine *e, struct space *s,
   e->ti_current = 0;
 
   /* Fixed time-step case */
-  if ((e->policy & engine_policy_fixdt) == engine_policy_fixdt) {
+  if (e->policy & engine_policy_fixdt) {
     e->dt_min = e->dt_max;
 
     /* Find timestep on the timeline */
@@ -2582,7 +2578,7 @@ void engine_init(struct engine *e, struct space *s,
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
-    if ((e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
+    if (e->policy & engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */

@@ -176,7 +176,7 @@ struct engine {
   const struct phys_const *physical_constants;
 
   /* Properties of external gravitational potential */
-  const struct external_potential *potential;
+  const struct external_potential *external_potential;
 };
 
 /* Function prototypes. */
