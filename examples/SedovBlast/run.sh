@@ -7,4 +7,4 @@ then
     python makeIC_fcc.py
 fi
 
-../swift -s sedov.yml
+../swift -s -t 16 sedov.yml

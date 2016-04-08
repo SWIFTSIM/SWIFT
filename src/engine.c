@@ -2323,20 +2323,21 @@ static bool hyperthreads_present(void) {
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
+ * @param nr_threads The number of threads per MPI rank.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  */
 
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int policy, int verbose) {
+                 int nr_threads, int policy, int verbose) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
 
   /* Store the values. */
   e->s = s;
-  e->nr_threads = parser_get_param_int(params, "Scheduler:nr_threads");
+  e->nr_threads = nr_threads;
   e->policy = policy;
   e->step = 0;
   e->nr_nodes = nr_nodes;

@@ -67,6 +67,9 @@ void print_help_message() {
          "Run with an external gravitational potential");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
+  printf("  %2s %8s %s\n", "-t", "{int}",
+         "The number of threads to use on each MPI rank. Defaults to 1 if not "
+         "specified.");
   printf("  %2s %8s %s\n", "-v", "[12]",
          "Increase the level of verbosity 1: MPI-rank 0 writes ");
   printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
@@ -141,12 +144,13 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int with_fp_exceptions = 0;
   int verbose = 0;
+  int nr_threads = 1;
   char paramFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cdef:gGhsv:y")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "cdef:gGhst:v:y")) != -1) switch (c) {
       case 'c':
         with_cosmology = 1;
         break;
@@ -174,6 +178,14 @@ int main(int argc, char *argv[]) {
         return 0;
       case 's':
         with_hydro = 1;
+        break;
+      case 't':
+        if (sscanf(optarg, "%d", &nr_threads) != 1) {
+          if (myrank == 0)
+            printf("Error parsing the number of threads (-t).\n");
+          if (myrank == 0) print_help_message();
+          return 1;
+        }
         break;
       case 'v':
         if (sscanf(optarg, "%d", &verbose) != 1) {
@@ -383,7 +395,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, engine_policies, talking);
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
+              talking);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

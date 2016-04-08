@@ -9,7 +9,6 @@ UnitSystem:
 
 # Parameters for the task scheduling
 Scheduler:
-  nr_threads:       16       # The number of threads per MPI rank to use.
   nr_queues:        0        # The number of task queues to use. Use 0  to let the system decide.
   cell_max_size:    8000000  # Maximal number of interactions per task (this is the default value).
   cell_sub_size:    5000     # Maximal number of interactions per sub-task  (this is the default value).
