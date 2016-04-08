@@ -7,4 +7,4 @@ then
     python makeIC.py 10000
 fi
 
-../swift -g externalPointMass.yml
+../swift -g -t 2 externalPointMass.yml
