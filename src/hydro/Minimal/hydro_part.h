@@ -26,7 +26,8 @@
  */
 struct xpart {
 
-  double x_old[3]; /*!< Old position, at last tree rebuild. */
+  float x_diff[3]; /*!< Offset between current position and position at last
+                      tree rebuild. */
 
   float v_full[3]; /*!< Velocity at the last full step. */
 
