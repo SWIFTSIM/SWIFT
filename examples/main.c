@@ -186,7 +186,6 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
-        with_hydro = 1;
         break;
       case 'v':
         if (sscanf(optarg, "%d", &verbose) != 1) {
