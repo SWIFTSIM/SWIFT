@@ -1,0 +1,47 @@
+
+# Define the system of units to use internally. 
+UnitSystem:
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters for the task scheduling
+Scheduler:
+  nr_queues:        0        # The number of task queues to use. Use 0  to let the system decide.
+  cell_max_size:    8000000  # Maximal number of interactions per task (this is the default value).
+  cell_sub_size:    5000     # Maximal number of interactions per sub-task.
+  cell_split_size:  400      # Maximal number of particles per cell (this is the default value).
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   1.    # The end time of the simulation (in internal units).
+  dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
+  delta_neighbours:      1.       # The tolerance for the targetted number of neighbours.
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  max_ghost_iterations:  30       # Maximal number of iterations allowed to converge towards the smoothing length.
+  max_smoothing_length:  0.01     # Maximal smoothing length allowed (in internal units).
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./sodShock.hdf5       # The file to read
+  h_scaling:  1.                    # A scaling factor to apply to all smoothing lengths in the ICs.
+  shift_x:    0.                    # A shift to apply to all particles read from the ICs (in internal units).
+  shift_y:    0.
+  shift_z:    0.
+
+# Parameters govering domain decomposition
+DomainDecomposition:
+  initial_type:       m     # The initial strategy ("g", "m", "w", or "v"). See documentation for details.
+  initial_grid_x:    10     # Grid size if the 'g' strategy is chosen.
+  initial_grid_y:    10
+  initial_grid_z:    10
+  repartition_type:   b     # The re-decomposition strategy ("n", "b", "v", "e" or "x"). See documentation for details.
+ 

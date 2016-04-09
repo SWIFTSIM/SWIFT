@@ -35,7 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
-#include <values.h>
+#include <float.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -52,6 +52,7 @@
 #include "error.h"
 #include "partition.h"
 #include "space.h"
+#include "tools.h"
 
 /* Maximum weight used for METIS. */
 #define metis_maxweight 10000.0f
@@ -241,17 +242,12 @@ static void accumulate_counts(struct space *s, int *counts) {
 
   struct part *parts = s->parts;
   int *cdim = s->cdim;
-  double ih[3], dim[3];
-  ih[0] = s->ih[0];
-  ih[1] = s->ih[1];
-  ih[2] = s->ih[2];
-  dim[0] = s->dim[0];
-  dim[1] = s->dim[1];
-  dim[2] = s->dim[2];
+  double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   bzero(counts, sizeof(int) * s->nr_cells);
 
-  for (int k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < s->nr_parts; k++) {
     for (int j = 0; j < 3; j++) {
       if (parts[k].x[j] < 0.0)
         parts[k].x[j] += dim[j];
@@ -659,6 +655,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
   split_metis(s, nr_nodes, celllist);
 
   /* Clean up. */
+  free(inds);
   if (bothweights) free(weights_v);
   free(weights_e);
   free(celllist);
@@ -835,7 +832,7 @@ void partition_initial_partition(struct partition *initial_partition,
       dim[0] = s->dim[0];
       dim[1] = s->dim[1];
       dim[2] = s->dim[2];
-      for (int k = 0; k < s->nr_parts; k++) {
+      for (size_t k = 0; k < s->nr_parts; k++) {
         for (int j = 0; j < 3; j++) {
           if (parts[k].x[j] < 0.0)
             parts[k].x[j] += dim[j];
@@ -907,6 +904,111 @@ void partition_initial_partition(struct partition *initial_partition,
   }
 }
 
+/**
+ * @brief Initialises the partition and re-partition scheme from the parameter
+ *file
+ *
+ * @param partition The #partition scheme to initialise.
+ * @param reparttype The repartition scheme to initialise.
+ * @param params The parsed parameter file.
+ * @param nr_nodes The number of MPI nodes we are running on.
+ */
+void partition_init(struct partition *partition,
+                    enum repartition_type *reparttype,
+                    const struct swift_params *params, int nr_nodes) {
+
+#ifdef WITH_MPI
+
+/* Defaults make use of METIS if available */
+#ifdef HAVE_METIS
+  *reparttype = REPART_METIS_BOTH;
+  partition->type = INITPART_METIS_NOWEIGHT;
+#else
+  *reparttype = REPART_NONE;
+  partition->type = INITPART_GRID;
+#endif
+
+  /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
+  factor(nr_nodes, &partition->grid[0], &partition->grid[1]);
+  factor(nr_nodes / partition->grid[1], &partition->grid[0],
+         &partition->grid[2]);
+  factor(partition->grid[0] * partition->grid[1], &partition->grid[1],
+         &partition->grid[0]);
+
+  /* Now let's check what the user wants as an initial domain*/
+  const char part_type =
+      parser_get_param_char(params, "DomainDecomposition:initial_type");
+
+  switch (part_type) {
+    case 'g':
+      partition->type = INITPART_GRID;
+      break;
+    case 'v':
+      partition->type = INITPART_VECTORIZE;
+      break;
+#ifdef HAVE_METIS
+    case 'm':
+      partition->type = INITPART_METIS_NOWEIGHT;
+      break;
+    case 'w':
+      partition->type = INITPART_METIS_WEIGHT;
+      break;
+    default:
+      message("Invalid choice of initial partition type '%c'.", part_type);
+      error("Permitted values are: 'g','m','v' or 'w'.");
+#else
+    default:
+      message("Invalid choice of initial partition type '%c'.", part_type);
+      error("Permitted values are: 'g' or 'v' when compiled without metis.");
+#endif
+  }
+
+  /* In case of grid, read more parameters */
+  if (part_type == 'g') {
+    partition->grid[0] =
+        parser_get_param_int(params, "DomainDecomposition:initial_grid_x");
+    partition->grid[1] =
+        parser_get_param_int(params, "DomainDecomposition:initial_grid_y");
+    partition->grid[2] =
+        parser_get_param_int(params, "DomainDecomposition:initial_grid_z");
+  }
+
+  /* Now let's check what the user wants as a repartition strategy */
+  const char repart_type =
+      parser_get_param_char(params, "DomainDecomposition:repartition_type");
+
+  switch (repart_type) {
+    case 'n':
+      *reparttype = REPART_NONE;
+      break;
+#ifdef HAVE_METIS
+    case 'b':
+      *reparttype = REPART_METIS_BOTH;
+      break;
+    case 'e':
+      *reparttype = REPART_METIS_EDGE;
+      break;
+    case 'v':
+      *reparttype = REPART_METIS_VERTEX;
+      break;
+    case 'x':
+      *reparttype = REPART_METIS_VERTEX_EDGE;
+      break;
+    default:
+      message("Invalid choice of re-partition type '%c'.", repart_type);
+      error("Permitted values are: 'b','e','n', 'v' or 'x'.");
+#else
+    default:
+      message("Invalid choice of re-partition type '%c'.", repart_type);
+      error("Permitted values are: 'n' when compiled without metis.");
+#endif
+  }
+
+#else
+  error("SWIFT was not compiled with MPI support");
+#endif
+}
+
 /*  General support */
 /*  =============== */
 
@@ -927,7 +1029,10 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   int failed = 0;
   for (int i = 0; i < nregions; i++) present[i] = 0;
   for (int i = 0; i < s->nr_cells; i++) {
-    present[s->cells[i].nodeID]++;
+    if (s->cells[i].nodeID <= nregions)
+      present[s->cells[i].nodeID]++;
+    else
+      message("Bad nodeID: %d", s->cells[i].nodeID);
   }
   for (int i = 0; i < nregions; i++) {
     if (!present[i]) {
@@ -937,4 +1042,54 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   }
   free(present);
   return (!failed);
+}
+
+
+/**
+ * @brief Partition a space of cells based on another space of cells.
+ *
+ * The two spaces are expected to be at different cell sizes, so what we'd
+ * like to do is assign the second space to geometrically closest nodes
+ * of the first, with the effect of minimizing particle movement when
+ * rebuilding the second space from the first.
+ *
+ * Since two spaces cannot exist simultaneously the old space is actually
+ * required in a decomposed state. These are the old cells sizes and counts
+ * per dimension, along with a list of the old nodeIDs. The old nodeIDs are
+ * indexed by the cellid (see cell_getid()), so should be stored that way.
+ *
+ * On exit the new space cells will have their nodeIDs assigned.
+ *
+ * @param oldh the cell dimensions of old space.
+ * @param oldcdim number of cells per dimension in old space.
+ * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old cellid.
+ * @param s the space to be partitioned.
+ *
+ * @return 1 if the new space contains nodeIDs from all nodes, 0 otherwise.
+ */
+int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
+                             struct space *s) {
+
+  /* Loop over all the new cells. */
+  int nr_nodes = 0;
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+
+        /* Scale indices to old cell space. */
+        int ii = rint(i * s->ih[0] * oldh[0]);
+        int jj = rint(j * s->ih[1] * oldh[1]);
+        int kk = rint(k * s->ih[2] * oldh[2]);
+
+        int cid = cell_getid(s->cdim, i, j, k);
+        int oldcid = cell_getid(oldcdim, ii, jj, kk);
+        s->cells[cid].nodeID = oldnodeIDs[oldcid];
+
+        if (oldnodeIDs[oldcid] > nr_nodes) nr_nodes = oldnodeIDs[oldcid];
+      }
+    }
+  }
+
+  /* Check we have all nodeIDs present in the resample. */
+  return check_complete(s, 1, nr_nodes + 1);
 }

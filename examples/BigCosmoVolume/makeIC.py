@@ -77,7 +77,7 @@ indices = indices < numPart
 coords = coords[indices,:]
 v = v[indices,:]
 m = m[indices]
-h = h[indices]
+h = h[indices] / 1.825742 # Correct from Gadget defintion of h to physical definition
 u = u[indices]
 ids = ids[indices]
 

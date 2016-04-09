@@ -241,7 +241,7 @@ const char *metis_version(void) {
  */
 void greetings(void) {
 
-  printf(" Welcome to the cosmological code\n");
+  printf(" Welcome to the cosmological hydrodynamical code\n");
   printf("    ______       _________________\n");
   printf("   / ___/ |     / /  _/ ___/_  __/\n");
   printf("   \\__ \\| | /| / // // /_   / /   \n");

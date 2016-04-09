@@ -60,7 +60,7 @@ void printParticle(const struct part *parts, struct xpart *xparts,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf("## Particle[%zd]:\n id=%lld", i, parts[i].id);
+      printf("## Particle[%zd]:\n id=%lld ", i, parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
       found = 1;
       break;

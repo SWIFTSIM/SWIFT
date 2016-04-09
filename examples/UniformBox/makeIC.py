@@ -32,6 +32,7 @@ L = int(sys.argv[1])  # Number of particles along one axis
 rho = 2.              # Density
 P = 1.                # Pressure
 gamma = 5./3.         # Gas adiabatic index
+eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "uniformBox.hdf5" 
 
 #---------------------------------------------------
@@ -55,10 +56,17 @@ grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 
-
 #Runtime parameters
 grp = file.create_group("/RuntimePars")
 grp.attrs["PeriodicBoundariesOn"] = periodic
+
+#Units
+grp = file.create_group("/Units")
+grp.attrs["Unit length in cgs (U_L)"] = 1.
+grp.attrs["Unit mass in cgs (U_M)"] = 1.
+grp.attrs["Unit time in cgs (U_t)"] = 1.
+grp.attrs["Unit current in cgs (U_I)"] = 1.
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
 grp = file.create_group("/PartType0")
@@ -73,7 +81,7 @@ ds = grp.create_dataset('Masses', (numPart,1), 'f')
 ds[()] = m
 m = zeros(1)
 
-h = full((numPart, 1), 1.1255 * boxSize / L)
+h = full((numPart, 1), eta * boxSize / L)
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
 ds[()] = h
 h = zeros(1)

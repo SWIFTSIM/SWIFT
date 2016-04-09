@@ -21,7 +21,7 @@
 
 /* Includes. */
 #include "const.h"
-#include "kernel.h"
+#include "kernel_hydro.h"
 #include "part.h"
 #include "vector.h"
 

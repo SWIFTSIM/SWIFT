@@ -19,21 +19,20 @@
 #ifndef SWIFT_PARSER_H
 #define SWIFT_PARSER_H
 
-#include <stdio.h>
+/* Config parameters. */
+#include "../config.h"
 
-#define PARSER_MAX_LINE_SIZE 128
+/* Some constants. */
+#define PARSER_MAX_LINE_SIZE 256
 #define PARSER_MAX_NO_OF_PARAMS 512
 
-#define PARSER_COMMENT_CHAR "#"
-#define PARSER_VALUE_CHAR ':'
-#define PARSER_VALUE_STRING ":"
-#define PARSER_END_OF_FILE "..."
-
+/* A parameter in the input file */
 struct parameter {
   char name[PARSER_MAX_LINE_SIZE];
   char value[PARSER_MAX_LINE_SIZE];
 };
 
+/* The array of parameters read from a file */
 struct swift_params {
   struct parameter data[PARSER_MAX_NO_OF_PARAMS];
   int count;
@@ -41,14 +40,16 @@ struct swift_params {
 
 /* Public API. */
 void parser_read_file(const char *file_name, struct swift_params *params);
-void parser_print_params(struct swift_params *params);
-void parser_get_param_int(struct swift_params *params, char *name,
-                          int *retParam);
-void parser_get_param_float(struct swift_params *params, char *name,
-                            float *retParam);
-void parser_get_param_double(struct swift_params *params, char *name,
-                             double *retParam);
-void parser_get_param_string(struct swift_params *params, char *name,
-                             char *retParam);
+void parser_print_params(const struct swift_params *params);
+void parser_write_params_to_file(const struct swift_params *params,
+                                 const char *file_name);
+char parser_get_param_char(const struct swift_params *params, const char *name);
+int parser_get_param_int(const struct swift_params *params, const char *name);
+float parser_get_param_float(const struct swift_params *params,
+                             const char *name);
+double parser_get_param_double(const struct swift_params *params,
+                               const char *name);
+void parser_get_param_string(const struct swift_params *params,
+                             const char *name, char *retParam);
 
 #endif /* SWIFT_PARSER_H */

@@ -19,6 +19,7 @@
 #ifndef SWIFT_PARTITION_H
 #define SWIFT_PARTITION_H
 
+#include "parser.h"
 #include "space.h"
 #include "task.h"
 
@@ -55,5 +56,11 @@ void partition_repartition(enum repartition_type reparttype, int nodeID,
                            int nr_tasks);
 void partition_initial_partition(struct partition *initial_partition,
                                  int nodeID, int nr_nodes, struct space *s);
+
+int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeID,
+                             struct space *s);
+void partition_init(struct partition *partition,
+                    enum repartition_type *reparttypestruct,
+                    const struct swift_params *params, int nr_nodes);
 
 #endif /* SWIFT_PARTITION_H */

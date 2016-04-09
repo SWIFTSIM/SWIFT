@@ -1,4 +1,4 @@
- Welcome to the cosmological code
+ Welcome to the cosmological hydrodynamical code
     ______       _________________
    / ___/ |     / /  _/ ___/_  __/
    \__ \| | /| / // // /_   / /   
@@ -6,8 +6,27 @@
  /____/ |__/|__/___/_/    /_/     
  SPH With Inter-dependent Fine-grained Tasking
 
-Website: www.swiftsim.com
-Twitter: @SwiftSimulation
+ Website: www.swiftsim.com
+ Twitter: @SwiftSimulation
 
-See INSTALL.swift for instructions.
+See INSTALL.swift for install instructions.
 
+Usage: swift [OPTION] PARAMFILE
+
+Valid options are:
+  -c          Run with cosmological time integration
+  -d          Dry run. Read the parameter file, allocate memory but does not read 
+              the particles from ICs and exit before the start of time integration.
+              Allows user to check validy of parameter and IC files as well as memory limits.
+  -e          Enable floating-point exceptions (debugging mode)
+  -f    {int} Overwrite the CPU frequency (Hz) to be used for time measurements
+  -g          Run with an external gravitational potential
+  -G          Run with self-gravity
+  -s          Run with SPH
+  -t    {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
+  -v     [12] Increase the level of verbosity 1: MPI-rank 0 writes 
+              2: All MPI-ranks write
+  -y    {int} Time-step frequency at which task graphs are dumped
+  -h          Print this help message and exit
+
+See the file examples/parameter_example.yml for an example of parameter file.
