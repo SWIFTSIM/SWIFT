@@ -112,8 +112,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
 /* Now, some generic functions, defined in the source file */
 
 void potential_init(const struct swift_params* parameter_file,
-		    struct UnitSystem* us,
-		    struct external_potential* potential);
+                    struct UnitSystem* us,
+                    struct external_potential* potential);
 
 void potential_print(const struct external_potential* potential);
 

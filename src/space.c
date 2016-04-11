@@ -205,9 +205,9 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.");
 
-  /* In MPI-Land, changing the top-level cell size requires that the
-   * global partition is recomputed and the particles redistributed.
-   * Be prepared to do that. */
+/* In MPI-Land, changing the top-level cell size requires that the
+ * global partition is recomputed and the particles redistributed.
+ * Be prepared to do that. */
 #ifdef WITH_MPI
   double oldh[3];
   double oldcdim[3];
@@ -301,10 +301,11 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
        * cells around the nodes. We repartition using the old space node
        * positions as a grid to resample. */
       if (s->e->nodeID == 0)
-        message("basic cell dimensions have increased - recalculating the "
-                "global partition.");
+        message(
+            "basic cell dimensions have increased - recalculating the "
+            "global partition.");
 
-      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s) ) {
+      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s)) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
@@ -1407,7 +1408,7 @@ void space_init(struct space *s, const struct swift_params *params,
   space_maxsize = parser_get_param_int(params, "Scheduler:cell_max_size");
   space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
   space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
-  if(verbose)
+  if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
             space_maxsize, space_subsize, space_splitsize);
 
@@ -1478,9 +1479,9 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Allocate the extra parts array. */
-  if(Npart > 0) {
+  if (Npart > 0) {
     if (posix_memalign((void *)&s->xparts, xpart_align,
-		       Npart * sizeof(struct xpart)) != 0)
+                       Npart * sizeof(struct xpart)) != 0)
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
