@@ -344,6 +344,12 @@ int main(int argc, char *argv[]) {
     for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
     Ngpart = 0;
   }
+  if (!with_hydro) {
+    free(parts);
+    parts = NULL;
+    for (size_t k = 0; k < Ngpart; ++k) if(gparts[k].id > 0) error("Linking problem");
+    Ngas = 0;
+  }
 
   /* Get the total number of particles across all nodes. */
   long long N_total[2] = {0, 0};
