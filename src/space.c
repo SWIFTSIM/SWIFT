@@ -1281,9 +1281,11 @@ void space_do_split(struct space *s, struct cell *c) {
   if (s->nr_parts > 0)
     c->owner =
         ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
-  else
+  else if (s->nr_gparts > 0)
     c->owner =
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
+  else
+    c->owner = 0; /* Ok, there is really nothing on this rank... */
 }
 
 /**
@@ -1476,10 +1478,12 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Allocate the extra parts array. */
-  if (posix_memalign((void *)&s->xparts, xpart_align,
-                     Npart * sizeof(struct xpart)) != 0)
-    error("Failed to allocate xparts.");
-  bzero(s->xparts, Npart * sizeof(struct xpart));
+  if(Npart > 0) {
+    if (posix_memalign((void *)&s->xparts, xpart_align,
+		       Npart * sizeof(struct xpart)) != 0)
+      error("Failed to allocate xparts.");
+    bzero(s->xparts, Npart * sizeof(struct xpart));
+  }
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
