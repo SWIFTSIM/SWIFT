@@ -7,4 +7,4 @@ then
     python makeIC.py
 fi
 
-../swift -s sodShock.yml
+../swift -s -t 16 sodShock.yml

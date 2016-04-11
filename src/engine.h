@@ -183,7 +183,7 @@ struct engine {
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int policy, int verbose,
+                 int nr_threads, int policy, int verbose,
                  const struct phys_const *physical_constants,
                  const struct external_potential *potential);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
