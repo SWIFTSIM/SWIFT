@@ -347,7 +347,8 @@ techniques easier, we chose to implement our own task scheduler
 in \swift, which has since been back-ported as the general-purpose
 \qs task scheduler \cite{gonnet2013quicksched}.
 This also allowed us to extend the scheduler with the concept of
-task conflicts.
+task conflicts and integrate the asynchronous communication
+scheme described below.
 
 Despite its advantages, and the variety of implementations,
 task-based parallelism is rarely used in
@@ -360,9 +361,19 @@ which is usually not an option for large and complex codebases.
 
 Since we were re-implementing \swift from scratch, this was not an issue.
 The tree-based neighbour-finding described above was replaced with a more
-task-friendly approach as described in \cite{ref:Gonnet2015}.
+task-friendly approach as described in \cite{ref:Gonnet2015}, in which
+the domain is first decomposed into a grid of {\em cells} of edge length
+larger or equal to the largest particle radius.
+An initial set of interaction tasks is then defined over all neighbouring
+pairs of cells such that if two particles are close enough to interact,
+they are either in the same cell or they span a pair of neighbouring cells.
+These initial interaction tasks are then refined by recursively
+splitting cells that contain more than a certain number of particles
+and replacing tasks that span a pair of split cells with tasks
+spanning the neighboring sub-cells.
+
 Particle interactions are computed within, and between pairs, of
-hierarchical {\em cells} containing one or more particles.
+hierarchical cells containing one or more particles.
 The dependencies between the tasks are set following
 equations \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}, i.e.~such that for any cell,
 all the tasks computing the particle densities therein must have
