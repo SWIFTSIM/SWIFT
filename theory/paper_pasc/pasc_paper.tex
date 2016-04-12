@@ -364,16 +364,16 @@ The tree-based neighbour-finding described above was replaced with a more
 task-friendly approach as described in \cite{ref:Gonnet2015}, in which
 the domain is first decomposed into a grid of {\em cells} of edge length
 larger or equal to the largest particle radius.
-An initial set of interaction tasks is then defined over all neighbouring
-pairs of cells such that if two particles are close enough to interact,
+An initial set of interaction tasks is then defined over all cells and
+pairs of neighbouring cells, such that if two particles are close enough to interact,
 they are either in the same cell or they span a pair of neighbouring cells.
 These initial interaction tasks are then refined by recursively
 splitting cells that contain more than a certain number of particles
 and replacing tasks that span a pair of split cells with tasks
 spanning the neighboring sub-cells.
+The resulting refined set of tasks contains all the cells and pairs of cells
+over which particle interactions must be computed.
 
-Particle interactions are computed within, and between pairs, of
-hierarchical cells containing one or more particles.
 The dependencies between the tasks are set following
 equations \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}, i.e.~such that for any cell,
 all the tasks computing the particle densities therein must have
