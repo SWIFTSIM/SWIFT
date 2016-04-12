@@ -342,12 +342,18 @@ SMP~Superscalar \cite{ref:SMPSuperscalar}, OpenMP~3.0 \cite{ref:Duran2009},
 Intel's TBB \cite{ref:Reinders2007}, and, to some extent,
 Charm++ \cite{ref:Kale1993}.
 
-Since none of these existing taks-based libraries provide the flexibility
+Since none of these existing taks-based libraries provided the flexibility
 required to experiment with different scheduling and communication
-techniques, we chose to implement our own task scheduler
+techniques, (\swift is an interdisciplinary effort between
+Computer Science and Astrophysics to study not only cosmological
+phenomena, but also novel simulation algorithms and parallel computing techniques)
+we chose to implement our own task scheduler
 in \swift, which has since been back-ported as the general-purpose
 \qs task scheduler \cite{gonnet2013quicksched}.
-This allowed us to extend the scheduler with the concept of
+In \qs and \swift, task dependencies are specified explicitly,
+as opposed to being implicitly derived from data dependencies,
+allowing us to more easily build complex task hierarchies.
+This also allowed us to extend the scheduler with the concept of
 task conflicts and integrate the asynchronous communication
 scheme described further on.
 
