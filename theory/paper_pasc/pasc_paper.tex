@@ -42,51 +42,37 @@
 \title{{\ttlit SWIFT}: Using task-based parallelism, fully asynchronous
 communication, and graph partition-based domain decomposition for
 strong scaling on more than 100\,000 cores.}
-% \title{{\ttlit SWIFT}: A task-based hybrid-parallel strongly scalable code for
-%   particle-based cosmological simulations}
 
 \numberofauthors{6}
   
 \author{
 \alignauthor
-       Main~Author\\
-       \affaddr{Institute}\\
-       \affaddr{Department}\\
-       \affaddr{University}\\
-       \affaddr{City Postal code, Country}\\
-       \email{\footnotesize \url{main.author@university.country}}
-% \alignauthor
-%        Matthieu~Schaller\\
-%        \affaddr{Institute for Computational Cosmology (ICC)}\\
-%        \affaddr{Department of Physics}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-%        \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
-% \alignauthor
-%        Pedro~Gonnet\\
-%        \affaddr{School of Engineering and Computing Sciences}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-% \alignauthor
-%        Aidan~B.~G.~Chalk\\
-%        \affaddr{School of Engineering and Computing Sciences}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-% \and
-% \alignauthor
-%        Peter~W.~Draper\\
-%        \affaddr{Institute for Computational Cosmology (ICC)}\\
-%        \affaddr{Department of Physics}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-%        %% \alignauthor
-%        %% Tom Theuns\\
-%        %% \affaddr{Institute for Computational Cosmology}\\
-%        %% \affaddr{Department of Physics}\\
-%        %% \affaddr{Durham University}\\
-%        %% \affaddr{Durham DH1 3LE, UK}      
+       Matthieu~Schaller\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+       \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
+       \alignauthor
+      Pedro~Gonnet\\
+      \affaddr{School of Engineering and Computing Sciences}\\
+      \affaddr{Durham University}\\
+      \affaddr{Durham DH1 3LE, UK}\\ \vspace{1ex}
+      \affaddr{Google Switzerland GmbH}\\
+      \affaddr{8002 Z\"urich, Switzerland}\\
+\and
+\alignauthor
+       Aidan~B.~G.~Chalk\\
+       \affaddr{School of Engineering and Computing Sciences}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+\alignauthor
+       Peter~W.~Draper\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
 }
-
 
 \date{\today}
 
@@ -356,12 +342,20 @@ SMP~Superscalar \cite{ref:SMPSuperscalar}, OpenMP~3.0 \cite{ref:Duran2009},
 Intel's TBB \cite{ref:Reinders2007}, and, to some extent,
 Charm++ \cite{ref:Kale1993}.
 
-For convenience, and to make experimenting with different scheduling
-techniques easier, we chose to implement our own task scheduler
+Since none of these existing taks-based libraries provided the flexibility
+required to experiment with different scheduling and communication
+techniques, (\swift is an interdisciplinary effort between
+Computer Science and Astrophysics to study not only cosmological
+phenomena, but also novel simulation algorithms and parallel computing techniques)
+we chose to implement our own task scheduler
 in \swift, which has since been back-ported as the general-purpose
 \qs task scheduler \cite{gonnet2013quicksched}.
+In \qs and \swift, task dependencies are specified explicitly,
+as opposed to being implicitly derived from data dependencies,
+allowing us to more easily build complex task hierarchies.
 This also allowed us to extend the scheduler with the concept of
-task conflicts.
+task conflicts and integrate the asynchronous communication
+scheme described further on.
 
 Despite its advantages, and the variety of implementations,
 task-based parallelism is rarely used in
@@ -374,9 +368,19 @@ which is usually not an option for large and complex codebases.
 
 Since we were re-implementing \swift from scratch, this was not an issue.
 The tree-based neighbour-finding described above was replaced with a more
-task-friendly approach as described in \cite{ref:Gonnet2015}.
-Particle interactions are computed within, and between pairs, of
-hierarchical {\em cells} containing one or more particles.
+task-friendly approach as described in \cite{ref:Gonnet2015}, in which
+the domain is first decomposed into a grid of {\em cells} of edge length
+larger or equal to the largest particle radius.
+An initial set of interaction tasks is then defined over all cells and
+pairs of neighbouring cells, such that if two particles are close enough to interact,
+they are either in the same cell or they span a pair of neighbouring cells.
+These initial interaction tasks are then refined by recursively
+splitting cells that contain more than a certain number of particles
+and replacing tasks that span a pair of split cells with tasks
+spanning the neighboring sub-cells.
+The resulting refined set of tasks contains all the cells and pairs of cells
+over which particle interactions must be computed.
+
 The dependencies between the tasks are set following
 equations \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}, i.e.~such that for any cell,
 all the tasks computing the particle densities therein must have
@@ -416,7 +420,10 @@ cores of a shared-memory machine \cite{ref:Gonnet2015}.
   and purple. Although the data for the yellow cell resides on
   Node~2, it is required for some tasks on Node~1, and thus needs
   to be copied over  during
-  the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
+  the computation using {\tt send}/{\tt recv} tasks
+  (diamond-shaped). \newline 
+  Figure adapted from \cite{ref:Gonnet2015}.
+  }
 \label{tasks}
 \end{figure}  
 
