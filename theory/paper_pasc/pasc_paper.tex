@@ -42,51 +42,35 @@
 \title{{\ttlit SWIFT}: Using task-based parallelism, fully asynchronous
 communication, and graph partition-based domain decomposition for
 strong scaling on more than 100\,000 cores.}
-% \title{{\ttlit SWIFT}: A task-based hybrid-parallel strongly scalable code for
-%   particle-based cosmological simulations}
 
 \numberofauthors{6}
   
 \author{
 \alignauthor
-       Main~Author\\
-       \affaddr{Institute}\\
-       \affaddr{Department}\\
-       \affaddr{University}\\
-       \affaddr{City Postal code, Country}\\
-       \email{\footnotesize \url{main.author@university.country}}
-% \alignauthor
-%        Matthieu~Schaller\\
-%        \affaddr{Institute for Computational Cosmology (ICC)}\\
-%        \affaddr{Department of Physics}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-%        \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
-% \alignauthor
-%        Pedro~Gonnet\\
-%        \affaddr{School of Engineering and Computing Sciences}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-% \alignauthor
-%        Aidan~B.~G.~Chalk\\
-%        \affaddr{School of Engineering and Computing Sciences}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-% \and
-% \alignauthor
-%        Peter~W.~Draper\\
-%        \affaddr{Institute for Computational Cosmology (ICC)}\\
-%        \affaddr{Department of Physics}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-%        %% \alignauthor
-%        %% Tom Theuns\\
-%        %% \affaddr{Institute for Computational Cosmology}\\
-%        %% \affaddr{Department of Physics}\\
-%        %% \affaddr{Durham University}\\
-%        %% \affaddr{Durham DH1 3LE, UK}      
+       Matthieu~Schaller\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+       \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
+       \alignauthor
+      Pedro~Gonnet\\
+      \affaddr{School of Engineering and Computing Sciences}\\
+      \affaddr{Durham University}\\
+      \affaddr{Durham DH1 3LE, UK}\\
+\and
+\alignauthor
+       Aidan~B.~G.~Chalk\\
+       \affaddr{School of Engineering and Computing Sciences}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+\alignauthor
+       Peter~W.~Draper\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
 }
-
 
 \date{\today}
 
@@ -416,7 +400,10 @@ cores of a shared-memory machine \cite{ref:Gonnet2015}.
   and purple. Although the data for the yellow cell resides on
   Node~2, it is required for some tasks on Node~1, and thus needs
   to be copied over  during
-  the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
+  the computation using {\tt send}/{\tt recv} tasks
+  (diamond-shaped). \newline 
+  Figure adapted from \cite{ref:Gonnet2015}.
+  }
 \label{tasks}
 \end{figure}  
 
