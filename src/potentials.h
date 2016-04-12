@@ -48,6 +48,8 @@ struct external_potential {
 /* Include exteral pointmass potential */
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
 
+#define EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR 0.03f
+
 /**
  * @brief Computes the time-step due to the acceleration from a point mass
  *
@@ -79,7 +81,7 @@ __attribute__((always_inline))
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
 
-  return 0.03f * sqrtf(a_2 / dota_2);
+  return EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR * sqrtf(a_2 / dota_2);
 }
 
 /**
