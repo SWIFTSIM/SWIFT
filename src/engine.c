@@ -2076,7 +2076,7 @@ void engine_step(struct engine *e) {
     /* Nothing here for now */
   }
 
-  /* Add the tasks corresponding to self-gravity to the masks */
+  /* Add the tasks corresponding to external gravity to the masks */
   if (e->policy & engine_policy_external_gravity) {
     mask |= 1 << task_type_grav_external;
   }
