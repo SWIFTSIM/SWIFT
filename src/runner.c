@@ -931,75 +931,75 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id < 0) {
 
-	if (is_fixdt || gp->ti_end <= ti_current) {
-	  
-	  /* First, finish the force calculation */
-	  gravity_end_force(gp);
-	  
-	  /* Now we are ready to compute the next time-step size */
-	  int new_dti;
-	  
-	  if (is_fixdt) {
-	    
-	    /* Now we have a time step, proceed with the kick */
-	    new_dti = global_dt_max * timeBase_inv;
-	    
-	  } else {
-	    
-	    /* Compute the next timestep (gravity condition) */
-	    const float new_dt_external =
-              gravity_compute_timestep_external(potential, constants, gp);
-	    const float new_dt_self =
-              gravity_compute_timestep_self(constants, gp);
-	    
-	    float new_dt = fminf(new_dt_external, new_dt_self);
-	    
-	    /* Limit timestep within the allowed range */
-	    new_dt = fminf(new_dt, global_dt_max);
-	    new_dt = fmaxf(new_dt, global_dt_min);
-	    
-	    /* Convert to integer time */
-	    new_dti = new_dt * timeBase_inv;
-	    
-	    /* Recover the current timestep */
-	    const int current_dti = gp->ti_end - gp->ti_begin;
-	    
-	    /* Limit timestep increase */
-	    if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
-	    
-	    /* Put this timestep on the time line */
-	    int dti_timeline = max_nr_timesteps;
-	    while (new_dti < dti_timeline) dti_timeline /= 2;
-	    
-	    /* Now we have a time step, proceed with the kick */
-	    new_dti = dti_timeline;
-	  }
-	  
-	  /* Compute the time step for this kick */
-	  const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
-	  const int ti_end = gp->ti_end + new_dti / 2;
-	  const double dt = (ti_end - ti_start) * timeBase;
-	  const double half_dt = (ti_end - gp->ti_end) * timeBase;
-	  
-	  /* Move particle forward in time */
-	  gp->ti_begin = gp->ti_end;
-	  gp->ti_end = gp->ti_begin + new_dti;
-	  
-	  /* Kick particles in momentum space */
-	  gp->v_full[0] += gp->a_grav[0] * dt;
-	  gp->v_full[1] += gp->a_grav[1] * dt;
-	  gp->v_full[2] += gp->a_grav[2] * dt;
-	  
-	  /* Extra kick work */
-	  gravity_kick_extra(gp, dt, half_dt);
-	  
-	  /* Number of updated g-particles */
-	  g_updated++;
-	}
-	
-	/* Minimal time for next end of time-step */
-	ti_end_min = min(gp->ti_end, ti_end_min);
-	ti_end_max = max(gp->ti_end, ti_end_max);
+        if (is_fixdt || gp->ti_end <= ti_current) {
+
+          /* First, finish the force calculation */
+          gravity_end_force(gp);
+
+          /* Now we are ready to compute the next time-step size */
+          int new_dti;
+
+          if (is_fixdt) {
+
+            /* Now we have a time step, proceed with the kick */
+            new_dti = global_dt_max * timeBase_inv;
+
+          } else {
+
+            /* Compute the next timestep (gravity condition) */
+            const float new_dt_external =
+                gravity_compute_timestep_external(potential, constants, gp);
+            const float new_dt_self =
+                gravity_compute_timestep_self(constants, gp);
+
+            float new_dt = fminf(new_dt_external, new_dt_self);
+
+            /* Limit timestep within the allowed range */
+            new_dt = fminf(new_dt, global_dt_max);
+            new_dt = fmaxf(new_dt, global_dt_min);
+
+            /* Convert to integer time */
+            new_dti = new_dt * timeBase_inv;
+
+            /* Recover the current timestep */
+            const int current_dti = gp->ti_end - gp->ti_begin;
+
+            /* Limit timestep increase */
+            if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+
+            /* Put this timestep on the time line */
+            int dti_timeline = max_nr_timesteps;
+            while (new_dti < dti_timeline) dti_timeline /= 2;
+
+            /* Now we have a time step, proceed with the kick */
+            new_dti = dti_timeline;
+          }
+
+          /* Compute the time step for this kick */
+          const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
+          const int ti_end = gp->ti_end + new_dti / 2;
+          const double dt = (ti_end - ti_start) * timeBase;
+          const double half_dt = (ti_end - gp->ti_end) * timeBase;
+
+          /* Move particle forward in time */
+          gp->ti_begin = gp->ti_end;
+          gp->ti_end = gp->ti_begin + new_dti;
+
+          /* Kick particles in momentum space */
+          gp->v_full[0] += gp->a_grav[0] * dt;
+          gp->v_full[1] += gp->a_grav[1] * dt;
+          gp->v_full[2] += gp->a_grav[2] * dt;
+
+          /* Extra kick work */
+          gravity_kick_extra(gp, dt, half_dt);
+
+          /* Number of updated g-particles */
+          g_updated++;
+        }
+
+        /* Minimal time for next end of time-step */
+        ti_end_min = min(gp->ti_end, ti_end_min);
+        ti_end_max = max(gp->ti_end, ti_end_max);
       }
     }
 

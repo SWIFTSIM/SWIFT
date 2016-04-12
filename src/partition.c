@@ -1044,7 +1044,6 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   return (!failed);
 }
 
-
 /**
  * @brief Partition a space of cells based on another space of cells.
  *
@@ -1062,7 +1061,8 @@ static int check_complete(struct space *s, int verbose, int nregions) {
  *
  * @param oldh the cell dimensions of old space.
  * @param oldcdim number of cells per dimension in old space.
- * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old cellid.
+ * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old
+ *cellid.
  * @param s the space to be partitioned.
  *
  * @return 1 if the new space contains nodeIDs from all nodes, 0 otherwise.

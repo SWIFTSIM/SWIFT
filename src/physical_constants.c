@@ -103,7 +103,8 @@ void phys_const_init(struct UnitSystem* us, struct phys_const* internal_const) {
 
 void phys_const_print(struct phys_const* internal_const) {
 
-  message("%25s = %e", "Gravitational constant", internal_const->const_newton_G);
+  message("%25s = %e", "Gravitational constant",
+          internal_const->const_newton_G);
   message("%25s = %e", "Speed of light", internal_const->const_speed_light_c);
   message("%25s = %e", "Planck constant", internal_const->const_planck_h);
   message("%25s = %e", "Boltzmann constant", internal_const->const_boltzmann_k);

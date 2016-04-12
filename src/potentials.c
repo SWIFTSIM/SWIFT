@@ -33,8 +33,8 @@
  * @param potential The external potential properties to initialize
  */
 void potential_init(const struct swift_params* parameter_file,
-		    struct UnitSystem* us,
-		    struct external_potential* potential) {
+                    struct UnitSystem* us,
+                    struct external_potential* potential) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
 
