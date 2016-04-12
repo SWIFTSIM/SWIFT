@@ -114,7 +114,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       if (k & 1) temp->loc[2] += temp->h[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
-      temp->dx_max = 0.0;
+      temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;

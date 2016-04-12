@@ -200,9 +200,9 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.");
 
-  /* In MPI-Land, changing the top-level cell size requires that the
-   * global partition is recomputed and the particles redistributed.
-   * Be prepared to do that. */
+/* In MPI-Land, changing the top-level cell size requires that the
+ * global partition is recomputed and the particles redistributed.
+ * Be prepared to do that. */
 #ifdef WITH_MPI
   double oldh[3];
   double oldcdim[3];
@@ -296,10 +296,11 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
        * cells around the nodes. We repartition using the old space node
        * positions as a grid to resample. */
       if (s->e->nodeID == 0)
-        message("basic cell dimensions have increased - recalculating the "
-                "global partition.");
+        message(
+            "basic cell dimensions have increased - recalculating the "
+            "global partition.");
 
-      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s) ) {
+      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s)) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
@@ -1209,7 +1210,7 @@ void space_do_split(struct space *s, struct cell *c) {
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->h_max = 0.0;
-      temp->dx_max = 0.0;
+      temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -1254,16 +1255,19 @@ void space_do_split(struct space *s, struct cell *c) {
       struct xpart *xp = &xparts[k];
       const float h = p->h;
       const int ti_end = p->ti_end;
-      xp->x_old[0] = p->x[0];
-      xp->x_old[1] = p->x[1];
-      xp->x_old[2] = p->x[2];
+      xp->x_diff[0] = 0.f;
+      xp->x_diff[1] = 0.f;
+      xp->x_diff[2] = 0.f;
       if (h > h_max) h_max = h;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
     for (int k = 0; k < gcount; k++) {
-      struct gpart *p = &gparts[k];
-      const int ti_end = p->ti_end;
+      struct gpart *gp = &gparts[k];
+      const int ti_end = gp->ti_end;
+      gp->x_diff[0] = 0.f;
+      gp->x_diff[1] = 0.f;
+      gp->x_diff[2] = 0.f;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
@@ -1400,9 +1404,9 @@ void space_init(struct space *s, const struct swift_params *params,
   space_maxsize = parser_get_param_int(params, "Scheduler:cell_max_size");
   space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
   space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
-  if(verbose)
+  if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
-	    space_maxsize, space_subsize, space_splitsize);
+            space_maxsize, space_subsize, space_splitsize);
 
   /* Check that we have enough cells */
   if (s->cell_min * 3 > dim[0] || s->cell_min * 3 > dim[1] ||

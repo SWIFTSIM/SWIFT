@@ -697,6 +697,17 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       gp->x[0] += gp->v_full[0] * dt;
       gp->x[1] += gp->v_full[1] * dt;
       gp->x[2] += gp->v_full[2] * dt;
+
+      /* Compute offset since last cell construction */
+      gp->x_diff[0] -= gp->v_full[0] * dt;
+      gp->x_diff[1] -= gp->v_full[1] * dt;
+      gp->x_diff[2] -= gp->v_full[2] * dt;
+
+      /* Compute (square of) motion since last cell construction */
+      const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
+                        gp->x_diff[1] * gp->x_diff[1] +
+                        gp->x_diff[2] * gp->x_diff[2];
+      dx2_max = fmaxf(dx2_max, dx2);
     }
 
     /* Loop over all the particles in the cell (more work for these !) */
@@ -737,10 +748,15 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
       /* Predict the values of the extra fields */
       hydro_predict_extra(p, xp, ti_old, ti_current, timeBase);
 
+      /* Compute offset since last cell construction */
+      xp->x_diff[0] -= xp->v_full[0] * dt;
+      xp->x_diff[1] -= xp->v_full[1] * dt;
+      xp->x_diff[2] -= xp->v_full[2] * dt;
+
       /* Compute (square of) motion since last cell construction */
-      const float dx2 = (p->x[0] - xp->x_old[0]) * (p->x[0] - xp->x_old[0]) +
-                        (p->x[1] - xp->x_old[1]) * (p->x[1] - xp->x_old[1]) +
-                        (p->x[2] - xp->x_old[2]) * (p->x[2] - xp->x_old[2]);
+      const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
+                        xp->x_diff[1] * xp->x_diff[1] +
+                        xp->x_diff[2] * xp->x_diff[2];
       dx2_max = fmaxf(dx2_max, dx2);
 
       /* Maximal smoothing length */
