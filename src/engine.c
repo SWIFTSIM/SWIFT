@@ -1014,7 +1014,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       for (int k = 0; k < p->nr_gparts_in; k++) {
         struct gpart *gp = &s->gparts[offset_gparts + count_gparts + k];
         if (gp->id >= 0) {
-          struct part *p = &s->parts[offset_gparts + count_parts + gp->id];
+          struct part *p = &s->parts[offset_parts + count_parts + gp->id];
           gp->part = p;
           p->gpart = gp;
         }
