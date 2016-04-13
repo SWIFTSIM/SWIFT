@@ -997,7 +997,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
         reqs_in[pid + 1] == MPI_REQUEST_NULL &&
         reqs_in[pid + 2] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *p = &e->proxies[pid >> 1];
+      struct proxy *p = &e->proxies[pid / 3];
       memcpy(&s->parts[offset_parts + count_parts], p->parts_in,
              sizeof(struct part) * p->nr_parts_in);
       memcpy(&s->xparts[offset_parts + count_parts], p->xparts_in,
