@@ -840,7 +840,10 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
   ticks tic = getticks();
 
   /* Re-set the proxies. */
-  for (int k = 0; k < e->nr_proxies; k++) e->proxies[k].nr_parts_out = 0;
+  for (int k = 0; k < e->nr_proxies; k++) {
+    e->proxies[k].nr_parts_out = 0;
+    e->proxies[k].nr_gparts_out = 0;
+  }
 
   /* Put the parts and gparts into the corresponding proxies. */
   for (size_t k = 0; k < *Npart; k++) {
@@ -860,7 +863,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
     /* Re-link the associated gpart with the buffer offset of the part. */
     if (s->parts[offset_parts + k].gpart != NULL) {
-      s->parts[offset_parts + k].gpart->id = e->proxies[pid].nr_parts_in;
+      s->parts[offset_parts + k].gpart->id = e->proxies[pid].nr_parts_out;
     }
 
     /* Load the part and xpart into the proxy. */
@@ -919,6 +922,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
             count_parts_in, count_gparts_in);
   }
   if (offset_parts + count_parts_in > s->size_parts) {
+    message("re-allocating parts array.");
     s->size_parts = (offset_parts + count_parts_in) * engine_parts_size_grow;
     struct part *parts_new = NULL;
     struct xpart *xparts_new = NULL;
@@ -933,8 +937,14 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     free(s->xparts);
     s->parts = parts_new;
     s->xparts = xparts_new;
+    for (size_t k = 0; k < offset_parts; k++) {
+      if (s->parts[k].gpart != NULL) {
+        s->parts[k].gpart->part = &s->parts[k];
+      }
+    }
   }
   if (offset_gparts + count_gparts_in > s->size_gparts) {
+    message("re-allocating gparts array.");
     s->size_gparts = (offset_gparts + count_gparts_in) * engine_parts_size_grow;
     struct gpart *gparts_new = NULL;
     if (posix_memalign((void **)&gparts_new, gpart_align,
@@ -943,6 +953,11 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * offset_gparts);
     free(s->gparts);
     s->gparts = gparts_new;
+    for (size_t k = 0; k < offset_gparts; k++) {
+      if (s->gparts[k].id > 0) {
+        s->gparts[k].part->gpart = &s->gparts[k];
+      }
+    }
   }
 
   /* Collect the requests for the particle data from the proxies. */
@@ -1025,7 +1040,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       count_gparts += p->nr_gparts_in;
     }
   }
-
+  
   /* Wait for all the sends to have finished too. */
   if (nr_out > 0)
     if (MPI_Waitall(3 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
