@@ -1,22 +1,25 @@
 /*******************************************************************************
-* This file is part of SWIFT.
-* Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
-*               2016 Peter W. Draper (p.w.draper@durham.ac.uk)
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published
-* by the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-******************************************************************************/
+ * This file is part of SWIFT.
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 
 /* Config parameters. */
 #include "../config.h"
@@ -164,15 +167,17 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
-  if (s->cells != NULL) {
-    for (int k = 0; k < s->nr_cells; k++) {
-      if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+  if (nr_parts > 0) {
+    if (s->cells != NULL) {
+      for (int k = 0; k < s->nr_cells; k++) {
+        if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+      }
+    } else {
+      for (size_t k = 0; k < nr_parts; k++) {
+        if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+      }
+      s->h_max = h_max;
     }
-  } else {
-    for (size_t k = 0; k < nr_parts; k++) {
-      if (s->parts[k].h > h_max) h_max = s->parts[k].h;
-    }
-    s->h_max = h_max;
   }
 
 /* If we are running in parallel, make sure everybody agrees on
@@ -372,7 +377,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   const ticks tic = getticks();
 
   /* Be verbose about this. */
-  // message( "re)building space..." ); fflush(stdout);
+  // message("re)building space..."); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
@@ -1280,9 +1285,11 @@ void space_do_split(struct space *s, struct cell *c) {
   if (s->nr_parts > 0)
     c->owner =
         ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
-  else
+  else if (s->nr_gparts > 0)
     c->owner =
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
+  else
+    c->owner = 0; /* Ok, there is really nothing on this rank... */
 }
 
 /**
@@ -1475,10 +1482,12 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Allocate the extra parts array. */
-  if (posix_memalign((void *)&s->xparts, xpart_align,
-                     Npart * sizeof(struct xpart)) != 0)
-    error("Failed to allocate xparts.");
-  bzero(s->xparts, Npart * sizeof(struct xpart));
+  if (Npart > 0) {
+    if (posix_memalign((void *)&s->xparts, xpart_align,
+                       Npart * sizeof(struct xpart)) != 0)
+      error("Failed to allocate xparts.");
+    bzero(s->xparts, Npart * sizeof(struct xpart));
+  }
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

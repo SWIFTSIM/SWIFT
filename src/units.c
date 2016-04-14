@@ -39,7 +39,6 @@
 /* Includes. */
 #include "const.h"
 #include "error.h"
-#include "units.h"
 
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
@@ -331,7 +330,7 @@ void units_conversion_string(char* buffer, const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 double units_general_conversion_factor(const struct UnitSystem* us,
-                                       float baseUnitsExponants[5]) {
+                                       const float baseUnitsExponants[5]) {
   double factor = 1.;
   int i;
 
@@ -349,7 +348,7 @@ double units_general_conversion_factor(const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 float units_general_h_factor(const struct UnitSystem* us,
-                             float baseUnitsExponants[5]) {
+                             const float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += -baseUnitsExponants[UNIT_MASS];
@@ -367,7 +366,7 @@ float units_general_h_factor(const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 float units_general_a_factor(const struct UnitSystem* us,
-                             float baseUnitsExponants[5]) {
+                             const float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += baseUnitsExponants[UNIT_LENGTH];
@@ -385,7 +384,7 @@ float units_general_a_factor(const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
-                                     float baseUnitsExponants[5]) {
+                                     const float baseUnitsExponants[5]) {
   char temp[14];
   double a_exp = units_general_a_factor(us, baseUnitsExponants);
   double h_exp = units_general_h_factor(us, baseUnitsExponants);

@@ -70,4 +70,7 @@
 #define GADGET2_SPH
 //#define DEFAULT_SPH
 
+/* Gravity properties */
+#define EXTERNAL_POTENTIAL_POINTMASS
+
 #endif /* SWIFT_CONST_H */

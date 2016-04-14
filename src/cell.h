@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -121,6 +125,9 @@ struct cell {
 
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
+
+  /* Task for external gravity */
+  struct task *grav_external;
 
   /* Number of tasks that are associated with this cell. */
   int nr_tasks;

@@ -1,6 +1,11 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *                    Angus Lepper (angus.lepper@ed.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -40,6 +45,8 @@
 #include "task.h"
 #include "parser.h"
 #include "partition.h"
+#include "physical_constants.h"
+#include "potentials.h"
 
 /* Some constants. */
 enum engine_policy {
@@ -164,13 +171,21 @@ struct engine {
 
   /* Are we talkative ? */
   int verbose;
+
+  /* Physical constants definition */
+  const struct phys_const *physical_constants;
+
+  /* Properties of external gravitational potential */
+  const struct external_potential *external_potential;
 };
 
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int policy, int verbose);
+                 int nr_threads, int policy, int verbose,
+                 const struct phys_const *physical_constants,
+                 const struct external_potential *potential);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);

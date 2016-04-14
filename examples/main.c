@@ -3,6 +3,9 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *                    Angus Lepper (angus.lepper@ed.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -268,17 +271,6 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Initialize unit system */
-  struct UnitSystem us;
-  units_init(&us, params);
-  if (myrank == 0) {
-    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-  }
-
 /* Prepare the domain decomposition scheme */
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -295,6 +287,25 @@ int main(int argc, char *argv[]) {
     message("Using %s repartitioning", repartition_name[reparttype]);
   }
 #endif
+
+  /* Initialize unit system and constants */
+  struct UnitSystem us;
+  struct phys_const prog_const;
+  units_init(&us, params);
+  phys_const_init(&us, &prog_const);
+  if (myrank == 0 && verbose > 0) {
+    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    phys_const_print(&prog_const);
+  }
+
+  /* Initialise the external potential properties */
+  struct external_potential potential;
+  if (with_external_gravity) potential_init(params, &us, &potential);
+  if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
@@ -332,6 +343,12 @@ int main(int argc, char *argv[]) {
     gparts = NULL;
     for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
     Ngpart = 0;
+  }
+  if (!with_hydro) {
+    free(parts);
+    parts = NULL;
+    for (size_t k = 0; k < Ngpart; ++k) if(gparts[k].id > 0) error("Linking problem");
+    Ngas = 0;
   }
 
   /* Get the total number of particles across all nodes. */
@@ -396,7 +413,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
-              talking);
+              talking, &prog_const, &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
