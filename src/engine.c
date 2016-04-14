@@ -232,27 +232,29 @@ void engine_redistribute(struct engine *e) {
   space_parts_sort(s, dest, s->nr_parts, 0, nr_nodes - 1, e->verbose);
 
   /* We need to re-link the gpart partners of parts. */
-  int current_dest = dest[0];
-  size_t count_this_dest = 0;
-  for (size_t k = 0; k < s->nr_parts; ++k) {
-    if (s->parts[k].gpart != NULL) {
+  if (s->nr_parts > 0) {
+    int current_dest = dest[0];
+    size_t count_this_dest = 0;
+    for (size_t k = 0; k < s->nr_parts; ++k) {
+      if (s->parts[k].gpart != NULL) {
 
-      /* As the addresses will be invalidated by the communications, we will */
-      /* instead store the absolute index from the start of the sub-array */
-      /* of particles to be sent to a given node. */
-      /* Recall that gparts without partners have a negative id. */
-      /* We will restore the pointers on the receiving node later on. */
-      if (dest[k] != current_dest) {
-        current_dest = dest[k];
-        count_this_dest = 0;
+        /* As the addresses will be invalidated by the communications, we will */
+        /* instead store the absolute index from the start of the sub-array */
+        /* of particles to be sent to a given node. */
+        /* Recall that gparts without partners have a negative id. */
+        /* We will restore the pointers on the receiving node later on. */
+        if (dest[k] != current_dest) {
+          current_dest = dest[k];
+          count_this_dest = 0;
+        }
+
+        /* Debug */
+        /* if(s->parts[k].gpart->id < 0) */
+        /*   error("Trying to link a partnerless gpart !"); */
+
+        s->parts[k].gpart->id = count_this_dest;
+        count_this_dest++;
       }
-
-      /* Debug */
-      /* if(s->parts[k].gpart->id < 0) */
-      /* 	error("Trying to link a partnerless gpart !"); */
-
-      s->parts[k].gpart->id = count_this_dest;
-      count_this_dest++;
     }
   }
 
