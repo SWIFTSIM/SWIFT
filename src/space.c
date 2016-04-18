@@ -475,14 +475,10 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
-  /* TODO: This function also exchanges gparts, but this is shorted-out
-     until they are fully implemented. */
   size_t nr_parts_exchanged = s->nr_parts - nr_parts;
   size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
   engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
                          nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged);
-
-  /* Add post-processing, i.e. re-linking/creating of gparts here. */
 
   /* Set the new particle counts. */
   s->nr_parts = nr_parts + nr_parts_exchanged;

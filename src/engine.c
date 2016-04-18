@@ -1042,7 +1042,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       count_gparts += p->nr_gparts_in;
     }
   }
-  
+
   /* Wait for all the sends to have finished too. */
   if (nr_out > 0)
     if (MPI_Waitall(3 * e->nr_proxies, reqs_out, MPI_STATUSES_IGNORE) !=
@@ -1953,7 +1953,7 @@ void engine_init_particles(struct engine *e) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  space_map_cells_pre(s, 1, cell_convert_hydro, NULL);
+  space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
   /* Ready to go */
   e->step = -1;
