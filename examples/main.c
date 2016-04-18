@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cdef:gGhst:v:y")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "cdef:gGhst:v:y:")) != -1) switch (c) {
       case 'c':
         with_cosmology = 1;
         break;
