@@ -17,14 +17,18 @@
  *
  ******************************************************************************/
 
+#define NO__AVX__
+#include "vector.h"
+
 #include "swift.h"
+#include "kernel_hydro.h"
 
 int main() {
 
   const float h = const_eta_kernel;
-  const int numPoints = 16;
+  const int numPoints = 32;
 
-  printf("Serial Output\n");
+  printf("\nSerial Output\n");
   printf("-------------\n");
 
   for (int i = 0; i <= numPoints; ++i) {
@@ -36,7 +40,7 @@ int main() {
     printf("h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", h, h * kernel_gamma, x, W, dW);
   }
 
-  printf("Vector Output for VEC_SIZE=%d\n",VEC_SIZE);
+  printf("\nVector Output for VEC_SIZE=%d\n",VEC_SIZE);
   printf("-------------\n");
   for (int i = 0; i < numPoints + 1; i+=VEC_SIZE) {
 
