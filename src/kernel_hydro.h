@@ -212,8 +212,6 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float u,
   *W = w * (float)kernel_constant * (float)kernel_igamma3;
 }
 
-#define VECTORIZE
-
 #ifdef VECTORIZE
 
 /**
@@ -252,6 +250,11 @@ __attribute__((always_inline))
     dw_dx->v = (dw_dx->v * x.v) + w->v;
     w->v = (x.v * w->v) + c[k].v;
   }
+
+  /* Return everything */
+  w->v = w->v * vec_set1((float)kernel_constant) * vec_set1((float)kernel_igamma3);
+  dw_dx->v = dw_dx->v * vec_set1((float)kernel_constant) * vec_set1((float)kernel_igamma4);
+
 }
 
 #endif
