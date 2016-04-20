@@ -22,16 +22,39 @@
 int main() {
 
   const float h = const_eta_kernel;
-  const int numPoints = 30;
+  const int numPoints = 16;
 
-  for (int i = 0; i < numPoints; ++i) {
+  printf("Serial Output\n");
+  printf("-------------\n");
 
-    const float x = i * 3.f / numPoints;
+  for (int i = 0; i <= numPoints; ++i) {
+
+    const float x = i * 1.f / numPoints;
     float W, dW;
     kernel_deval(x / h, &W, &dW);
 
-    printf("h= %f H= %f x=%f W(x,h)=%f\n", h, h * kernel_gamma, x, W);
+    printf("h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", h, h * kernel_gamma, x, W, dW);
   }
 
+  printf("Vector Output for VEC_SIZE=%d\n",VEC_SIZE);
+  printf("-------------\n");
+  for (int i = 0; i < numPoints + 1; i+=VEC_SIZE) {
+
+    vector vx, vx_h;
+    vector W, dW;
+
+    for (int j = 0; j< VEC_SIZE; j++) {
+      vx.f[j] = (i + j) * 1.f / numPoints;
+    }
+    
+    vx_h.v = vx.v / vec_set1(h);
+
+    kernel_deval_vec(&vx_h, &W, &dW);
+
+    for (int j = 0; j< VEC_SIZE; j++) {
+      printf("h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", h, h * kernel_gamma, vx.f[j], W.f[j], dW.f[j]);
+    }
+
+  }
   return 0;
 }
