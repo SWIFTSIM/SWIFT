@@ -1205,6 +1205,26 @@ void engine_count_and_link_tasks(struct engine *e) {
 }
 
 /**
+ * @brief Creates the dependency network for the hydro tasks of a given cell.
+ *
+ * @param sched The #scheduler.
+ * @param density The density task to link.
+ * @param force The force task to link.
+ * @param c The cell.
+ */
+static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
+                                                        struct task *density,
+                                                        struct task *force,
+                                                        struct cell *c) {
+
+  /* init --> density loop --> ghost --> force loop --> kick */
+  scheduler_addunlock(sched, c->super->init, density);
+  scheduler_addunlock(sched, density, c->super->ghost);
+  scheduler_addunlock(sched, c->super->ghost, force);
+  scheduler_addunlock(sched, force, c->super->kick);
+}
+
+/**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
  *
@@ -1242,11 +1262,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       atomic_inc(&t->ci->nr_force);
 
       /* Now, build all the dependencies for the hydro */
-      /* init --> t (density loop) --> ghost --> t2 (force loop) --> kick */
-      scheduler_addunlock(sched, t->ci->super->init, t);
-      scheduler_addunlock(sched, t, t->ci->super->ghost);
-      scheduler_addunlock(sched, t->ci->super->ghost, t2);
-      scheduler_addunlock(sched, t2, t->ci->super->kick);
+      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
     }
 
     /* Otherwise, pair interaction? */
@@ -1264,18 +1280,11 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
-      /* init --> t (density loop) --> ghost --> t2 (force loop) --> kick */
       if (t->ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t->ci->super->init, t);
-        scheduler_addunlock(sched, t, t->ci->super->ghost);
-        scheduler_addunlock(sched, t->ci->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->ci->super->kick);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        scheduler_addunlock(sched, t->cj->super->init, t);
-        scheduler_addunlock(sched, t, t->cj->super->ghost);
-        scheduler_addunlock(sched, t->cj->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->cj->super->kick);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
     }
 
@@ -1297,19 +1306,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
-      /* init --> t (density loop) --> ghost --> t2 (force loop) --> kick */
       if (t->ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, t->ci->super->init, t);
-        scheduler_addunlock(sched, t, t->ci->super->ghost);
-        scheduler_addunlock(sched, t->ci->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->ci->super->kick);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
       }
       if (t->cj != NULL && t->cj->nodeID == nodeID &&
           t->ci->super != t->cj->super) {
-        scheduler_addunlock(sched, t->cj->super->init, t);
-        scheduler_addunlock(sched, t, t->cj->super->ghost);
-        scheduler_addunlock(sched, t->cj->super->ghost, t2);
-        scheduler_addunlock(sched, t2, t->cj->super->kick);
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
     }
 
