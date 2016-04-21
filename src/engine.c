@@ -238,11 +238,11 @@ void engine_redistribute(struct engine *e) {
     for (size_t k = 0; k < s->nr_parts; ++k) {
       if (s->parts[k].gpart != NULL) {
 
-        /* As the addresses will be invalidated by the communications, we will */
-        /* instead store the absolute index from the start of the sub-array */
-        /* of particles to be sent to a given node. */
-        /* Recall that gparts without partners have a negative id. */
-        /* We will restore the pointers on the receiving node later on. */
+        /* As the addresses will be invalidated by the communications, we will
+         * instead store the absolute index from the start of the sub-array of
+         * particles to be sent to a given node.
+         * Recall that gparts without partners have a negative id.
+         * We will restore the pointers on the receiving node later on. */
         if (dest[k] != current_dest) {
           current_dest = dest[k];
           count_this_dest = 0;
@@ -1299,12 +1299,14 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       /* that are local and are not descendant of the same super-cells */
       /* init --> t (density loop) --> ghost --> t2 (force loop) --> kick */
       if (t->ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, t->ci->super->init, t);
         scheduler_addunlock(sched, t, t->ci->super->ghost);
         scheduler_addunlock(sched, t->ci->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->ci->super->kick);
       }
       if (t->cj != NULL && t->cj->nodeID == nodeID &&
           t->ci->super != t->cj->super) {
+        scheduler_addunlock(sched, t->cj->super->init, t);
         scheduler_addunlock(sched, t, t->cj->super->ghost);
         scheduler_addunlock(sched, t->cj->super->ghost, t2);
         scheduler_addunlock(sched, t2, t->cj->super->kick);
