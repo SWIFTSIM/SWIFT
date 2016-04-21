@@ -220,10 +220,34 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float u,
  * Return 0 if $u > \\gamma = H/h$
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
- * @param W (return) The value of the kernel function $W(x,h)$.
- * @param dW_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ * @param w (return) The value of the kernel function $W(x,h)$.
+ * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
+  
+  static const vector kernel_igamma_vec =   {.f[0] = (float)kernel_igamma, .f[1] = (float)kernel_igamma, 
+                                             .f[2] = (float)kernel_igamma, .f[3] = (float)kernel_igamma,
+                                             .f[4] = (float)kernel_igamma, .f[5] = (float)kernel_igamma,
+                                             .f[6] = (float)kernel_igamma, .f[7] = (float)kernel_igamma};
+  
+  static const vector kernel_ivals_vec =    {.f[0] = (float)kernel_ivals, .f[1] = (float)kernel_ivals, 
+                                             .f[2] = (float)kernel_ivals, .f[3] = (float)kernel_ivals,
+                                             .f[4] = (float)kernel_ivals, .f[5] = (float)kernel_ivals,
+                                             .f[6] = (float)kernel_ivals, .f[7] = (float)kernel_ivals};
+  
+  static const vector kernel_constant_vec = {.f[0] = (float)kernel_constant, .f[1] = (float)kernel_constant, 
+                                             .f[2] = (float)kernel_constant, .f[3] = (float)kernel_constant,
+                                             .f[4] = (float)kernel_constant, .f[5] = (float)kernel_constant,
+                                             .f[6] = (float)kernel_constant, .f[7] = (float)kernel_constant};
 
+  static const vector kernel_igamma3_vec =  {.f[0] = (float)kernel_igamma3, .f[1] = (float)kernel_igamma3, 
+                                             .f[2] = (float)kernel_igamma3, .f[3] = (float)kernel_igamma3,
+                                             .f[4] = (float)kernel_igamma3, .f[5] = (float)kernel_igamma3,
+                                             .f[6] = (float)kernel_igamma3, .f[7] = (float)kernel_igamma3};
+  
+  static const vector kernel_igamma4_vec =  {.f[0] = (float)kernel_igamma4, .f[1] = (float)kernel_igamma4, 
+                                             .f[2] = (float)kernel_igamma4, .f[3] = (float)kernel_igamma4,
+                                             .f[4] = (float)kernel_igamma4, .f[5] = (float)kernel_igamma4,
+                                             .f[6] = (float)kernel_igamma4, .f[7] = (float)kernel_igamma4};
 __attribute__((always_inline))
     INLINE static void kernel_deval_vec(vector *u, vector *w, vector *dw_dx) {
 
@@ -231,10 +255,10 @@ __attribute__((always_inline))
   int j, k;
 
   /* Go to the range [0,1[ from [0,H[ */
-  x.v = u->v * vec_set1((float)kernel_igamma);
+  x.v = u->v * kernel_igamma_vec.v;
 
   /* Load x and get the interval id. */
-  ind.m = vec_ftoi(vec_fmin(x.v * vec_set1((float)kernel_ivals), vec_set1((float)kernel_ivals)));
+  ind.m = vec_ftoi(vec_fmin(x.v * kernel_ivals_vec.v, kernel_ivals_vec.v));
 
   /* load the coefficients. */
   for (k = 0; k < VEC_SIZE; k++)
@@ -252,8 +276,8 @@ __attribute__((always_inline))
   }
 
   /* Return everything */
-  w->v = w->v * vec_set1((float)kernel_constant) * vec_set1((float)kernel_igamma3);
-  dw_dx->v = dw_dx->v * vec_set1((float)kernel_constant) * vec_set1((float)kernel_igamma4);
+  w->v = w->v * kernel_constant_vec.v * kernel_igamma3_vec.v;
+  dw_dx->v = dw_dx->v * kernel_constant_vec.v * kernel_igamma4_vec.v;
 
 }
 
