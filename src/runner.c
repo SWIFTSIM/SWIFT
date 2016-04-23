@@ -1239,6 +1239,7 @@ void runner_dorecv_cell(struct runner *r, struct cell *c, int timer) {
   int ti_end_max = 0;
   float h_max = 0.f;
 
+  /* Collect everything... */
   for (size_t k = 0; k < nr_parts; k++) {
     ti_end_min = min(ti_end_min, parts[k].ti_end);
     ti_end_max = max(ti_end_max, parts[k].ti_end);
@@ -1249,6 +1250,7 @@ void runner_dorecv_cell(struct runner *r, struct cell *c, int timer) {
     ti_end_max = max(ti_end_max, gparts[k].ti_end);
   }
 
+  /* ... and store. */
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
   c->h_max = h_max;
