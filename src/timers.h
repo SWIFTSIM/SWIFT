@@ -46,6 +46,7 @@ enum {
   timer_dosub_grav,
   timer_dopair_subset,
   timer_doghost,
+  timer_dorecv_cell,
   timer_gettask,
   timer_qget,
   timer_qsteal,
