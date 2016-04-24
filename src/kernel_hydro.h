@@ -223,31 +223,51 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float u,
  * @param w (return) The value of the kernel function $W(x,h)$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
-  
-  static const vector kernel_igamma_vec =   {.f[0] = (float)kernel_igamma, .f[1] = (float)kernel_igamma, 
-                                             .f[2] = (float)kernel_igamma, .f[3] = (float)kernel_igamma,
-                                             .f[4] = (float)kernel_igamma, .f[5] = (float)kernel_igamma,
-                                             .f[6] = (float)kernel_igamma, .f[7] = (float)kernel_igamma};
-  
-  static const vector kernel_ivals_vec =    {.f[0] = (float)kernel_ivals, .f[1] = (float)kernel_ivals, 
-                                             .f[2] = (float)kernel_ivals, .f[3] = (float)kernel_ivals,
-                                             .f[4] = (float)kernel_ivals, .f[5] = (float)kernel_ivals,
-                                             .f[6] = (float)kernel_ivals, .f[7] = (float)kernel_ivals};
-  
-  static const vector kernel_constant_vec = {.f[0] = (float)kernel_constant, .f[1] = (float)kernel_constant, 
-                                             .f[2] = (float)kernel_constant, .f[3] = (float)kernel_constant,
-                                             .f[4] = (float)kernel_constant, .f[5] = (float)kernel_constant,
-                                             .f[6] = (float)kernel_constant, .f[7] = (float)kernel_constant};
 
-  static const vector kernel_igamma3_vec =  {.f[0] = (float)kernel_igamma3, .f[1] = (float)kernel_igamma3, 
-                                             .f[2] = (float)kernel_igamma3, .f[3] = (float)kernel_igamma3,
-                                             .f[4] = (float)kernel_igamma3, .f[5] = (float)kernel_igamma3,
-                                             .f[6] = (float)kernel_igamma3, .f[7] = (float)kernel_igamma3};
-  
-  static const vector kernel_igamma4_vec =  {.f[0] = (float)kernel_igamma4, .f[1] = (float)kernel_igamma4, 
-                                             .f[2] = (float)kernel_igamma4, .f[3] = (float)kernel_igamma4,
-                                             .f[4] = (float)kernel_igamma4, .f[5] = (float)kernel_igamma4,
-                                             .f[6] = (float)kernel_igamma4, .f[7] = (float)kernel_igamma4};
+static const vector kernel_igamma_vec = {.f[0] = (float)kernel_igamma,
+                                         .f[1] = (float)kernel_igamma,
+                                         .f[2] = (float)kernel_igamma,
+                                         .f[3] = (float)kernel_igamma,
+                                         .f[4] = (float)kernel_igamma,
+                                         .f[5] = (float)kernel_igamma,
+                                         .f[6] = (float)kernel_igamma,
+                                         .f[7] = (float)kernel_igamma};
+
+static const vector kernel_ivals_vec = {.f[0] = (float)kernel_ivals,
+                                        .f[1] = (float)kernel_ivals,
+                                        .f[2] = (float)kernel_ivals,
+                                        .f[3] = (float)kernel_ivals,
+                                        .f[4] = (float)kernel_ivals,
+                                        .f[5] = (float)kernel_ivals,
+                                        .f[6] = (float)kernel_ivals,
+                                        .f[7] = (float)kernel_ivals};
+
+static const vector kernel_constant_vec = {.f[0] = (float)kernel_constant,
+                                           .f[1] = (float)kernel_constant,
+                                           .f[2] = (float)kernel_constant,
+                                           .f[3] = (float)kernel_constant,
+                                           .f[4] = (float)kernel_constant,
+                                           .f[5] = (float)kernel_constant,
+                                           .f[6] = (float)kernel_constant,
+                                           .f[7] = (float)kernel_constant};
+
+static const vector kernel_igamma3_vec = {.f[0] = (float)kernel_igamma3,
+                                          .f[1] = (float)kernel_igamma3,
+                                          .f[2] = (float)kernel_igamma3,
+                                          .f[3] = (float)kernel_igamma3,
+                                          .f[4] = (float)kernel_igamma3,
+                                          .f[5] = (float)kernel_igamma3,
+                                          .f[6] = (float)kernel_igamma3,
+                                          .f[7] = (float)kernel_igamma3};
+
+static const vector kernel_igamma4_vec = {.f[0] = (float)kernel_igamma4,
+                                          .f[1] = (float)kernel_igamma4,
+                                          .f[2] = (float)kernel_igamma4,
+                                          .f[3] = (float)kernel_igamma4,
+                                          .f[4] = (float)kernel_igamma4,
+                                          .f[5] = (float)kernel_igamma4,
+                                          .f[6] = (float)kernel_igamma4,
+                                          .f[7] = (float)kernel_igamma4};
 __attribute__((always_inline))
     INLINE static void kernel_deval_vec(vector *u, vector *w, vector *dw_dx) {
 
@@ -278,7 +298,6 @@ __attribute__((always_inline))
   /* Return everything */
   w->v = w->v * kernel_constant_vec.v * kernel_igamma3_vec.v;
   dw_dx->v = dw_dx->v * kernel_constant_vec.v * kernel_igamma4_vec.v;
-
 }
 
 #endif
