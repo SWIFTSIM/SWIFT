@@ -97,8 +97,8 @@ void writeAttribute_i(hid_t grp, char* name, int data);
 void writeAttribute_l(hid_t grp, char* name, long data);
 void writeAttribute_s(hid_t grp, char* name, const char* str);
 
-void createXMFfile();
-FILE* prepareXMFfile();
+void createXMFfile(const char* baseName);
+FILE* prepareXMFfile(const char* baseName);
 void writeXMFoutputheader(FILE* xmfFile, char* hdfFileName, float time);
 void writeXMFoutputfooter(FILE* xmfFile, int outputCount, float time);
 void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,

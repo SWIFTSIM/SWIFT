@@ -2387,6 +2387,11 @@ void engine_init(struct engine *e, struct space *s,
   e->ti_old = 0;
   e->ti_current = 0;
   e->timeStep = 0.;
+  e->timeBase = 0.;
+  e->timeFirstSnapshot =
+      parser_get_param_double(params, "Snapshots:time_first");
+  e->deltaTimeSnapshot =
+      parser_get_param_double(params, "Snapshots:delta_time");
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
@@ -2562,6 +2567,16 @@ void engine_init(struct engine *e, struct space *s,
   if (e->dt_max > (e->timeEnd - e->timeBegin) && e->nodeID == 0)
     error("Maximal time-step size larger than the simulation run time t=%e",
           e->timeEnd - e->timeBegin);
+
+  /* Deal with outputs */
+  if (e->deltaTimeSnapshot < 0.)
+    error("Time between snapshots (%e) must be positive.",
+          e->deltaTimeSnapshot);
+
+  if (e->timeFirstSnapshot < e->timeBegin)
+    error(
+        "Time of first snapshot (%e) must be after the simulation start t=%e.",
+        e->timeFirstSnapshot, e->timeBegin);
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI

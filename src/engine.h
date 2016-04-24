@@ -131,6 +131,10 @@ struct engine {
   /* Time base */
   double timeBase;
 
+  /* Snapshot times */
+  double timeFirstSnapshot;
+  double deltaTimeSnapshot;
+
   /* File for statistics */
   FILE *file_stats;
 
