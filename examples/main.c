@@ -347,7 +347,8 @@ int main(int argc, char *argv[]) {
   if (!with_hydro) {
     free(parts);
     parts = NULL;
-    for (size_t k = 0; k < Ngpart; ++k) if(gparts[k].id > 0) error("Linking problem");
+    for (size_t k = 0; k < Ngpart; ++k)
+      if (gparts[k].id > 0) error("Linking problem");
     Ngas = 0;
   }
 
@@ -456,10 +457,10 @@ int main(int argc, char *argv[]) {
   /* Get some info to the user. */
   if (myrank == 0) {
     message(
-        "Running on %lld gas particles and %lld DM particles until t=%.3e with "
-        "%i threads and %i queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total[0], N_total[1], e.timeEnd, e.nr_threads, e.sched.nr_queues,
-        e.dt_min, e.dt_max);
+        "Running on %lld gas particles and %lld DM particles from t=%.3e until "
+        "t=%.3e with %d threads and %d queues (dt_min=%.3e, dt_max=%.3e)...",
+        N_total[0], N_total[1], e.timeBegin, e.timeEnd, e.nr_threads,
+        e.sched.nr_queues, e.dt_min, e.dt_max);
     fflush(stdout);
   }
 
