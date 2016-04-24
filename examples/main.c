@@ -422,24 +422,22 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-  /* Now that everything is ready, no need for the parameters any more */
-  free(params);
-  params = NULL;
-
   int with_outputs = 1;
+  char baseName[200];
+  parser_get_param_string(params, "Snapshots:basename", baseName);
   if (with_outputs && !dry_run) {
     /* Write the state of the system before starting time integration. */
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
+    write_output_parallel(&e, baseName, &us, myrank, nr_nodes, MPI_COMM_WORLD,
                           MPI_INFO_NULL);
 #else
-    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
+    write_output_serial(&e, baseName, &us, myrank, nr_nodes, MPI_COMM_WORLD,
                         MPI_INFO_NULL);
 #endif
 #else
-    write_output_single(&e, &us);
+    write_output_single(&e, baseName, &us);
 #endif
     if (myrank == 0 && verbose) {
       clocks_gettime(&toc);
@@ -448,6 +446,10 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
   }
+
+  /* Now that everything is ready, no need for the parameters any more */
+  free(params);
+  params = NULL;
 
 /* Init the runner history. */
 #ifdef HIST
@@ -505,7 +507,7 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-    if (with_outputs && j % 100 == 0) {
+    if (with_outputs && j % 10 == 0) {
 
       if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
@@ -517,7 +519,7 @@ int main(int argc, char *argv[]) {
                           MPI_INFO_NULL);
 #endif
 #else
-      write_output_single(&e, &us);
+      write_output_single(&e, baseName, &us);
 #endif
       if (myrank == 0 && verbose) {
         clocks_gettime(&toc);
@@ -621,7 +623,7 @@ int main(int argc, char *argv[]) {
                         MPI_INFO_NULL);
 #endif
 #else
-    write_output_single(&e, &us);
+    write_output_single(&e, baseName, &us);
 #endif
     if (myrank == 0 && verbose) {
       clocks_gettime(&toc);
