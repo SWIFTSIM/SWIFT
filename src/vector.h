@@ -79,6 +79,22 @@
                             _mm512_set1_epi64(ptrs[0])),                    \
       1)
 #define vec_gather(base, offsets) _mm512_i32gather_ps(offsets.m, base, 1)
+#define FILL_VEC(constant) {.f[0] = constant, \
+                           .f[1] = constant, \
+                           .f[2] = constant, \
+                           .f[3] = constant, \
+                           .f[4] = constant, \
+                           .f[5] = constant, \
+                           .f[6] = constant, \
+                           .f[7] = constant, \
+                           .f[8] = constant, \
+                           .f[9] = constant, \
+                           .f[10] = constant, \
+                           .f[11] = constant, \
+                           .f[12] = constant, \
+                           .f[13] = constant, \
+                           .f[14] = constant, \
+                           .f[15] = constant}
 #elif defined(NO__AVX__)
 #define VECTORIZE
 #define VEC_SIZE 8
@@ -107,6 +123,14 @@
 #define vec_dbl_ftoi(a) _mm256_cvttpd_epi32(a)
 #define vec_dbl_fmin(a, b) _mm256_min_pd(a, b)
 #define vec_dbl_fmax(a, b) _mm256_max_pd(a, b)
+#define FILL_VEC(constant) {.f[0] = constant, \
+                           .f[1] = constant, \
+                           .f[2] = constant, \
+                           .f[3] = constant, \
+                           .f[4] = constant, \
+                           .f[5] = constant, \
+                           .f[6] = constant, \
+                           .f[7] = constant}
 #ifdef __AVX2__
 #define VEC_HAVE_GATHER
 #define vec_gather(base, offsets) _mm256_i32gather_ps(base, offsets.m, 1)
@@ -139,6 +163,10 @@
 #define vec_dbl_ftoi(a) _mm_cvttpd_epi32(a)
 #define vec_dbl_fmin(a, b) _mm_min_pd(a, b)
 #define vec_dbl_fmax(a, b) _mm_max_pd(a, b)
+#define FILL_VEC(constant) {.f[0] = constant, \
+                           .f[1] = constant, \
+                           .f[2] = constant, \
+                           .f[3] = constant}
 #else
 #define VEC_SIZE 4
 #endif
