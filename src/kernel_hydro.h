@@ -214,38 +214,15 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float u,
 
 #ifdef VECTORIZE
 
-#ifdef __MIC__ 
-#define FILL_VEC(constant) .f[0] = constant, \
-                           .f[1] = constant, \
-                           .f[2] = constant, \
-                           .f[3] = constant, \
-                           .f[4] = constant, \
-                           .f[5] = constant, \
-                           .f[6] = constant, \
-                           .f[7] = constant, \
-                           .f[8] = constant, \
-                           .f[9] = constant, \
-                           .f[10] = constant, \
-                           .f[11] = constant, \
-                           .f[12] = constant, \
-                           .f[13] = constant, \
-                           .f[14] = constant, \
-                           .f[15] = constant
-#elif defined(__AVX__) || defined (__AVX2__) 
-#define FILL_VEC(constant) .f[0] = constant, \
-                           .f[1] = constant, \
-                           .f[2] = constant, \
-                           .f[3] = constant, \
-                           .f[4] = constant, \
-                           .f[5] = constant, \
-                           .f[6] = constant, \
-                           .f[7] = constant
-#elif defined(__SSE2__)
-#define FILL_VEC(constant) .f[0] = constant, \
-                           .f[1] = constant, \
-                           .f[2] = constant, \
-                           .f[3] = constant
-#endif
+static const vector kernel_igamma_vec = FILL_VEC((float)kernel_igamma);
+
+static const vector kernel_ivals_vec = FILL_VEC((float)kernel_ivals);
+
+static const vector kernel_constant_vec = FILL_VEC((float)kernel_constant);
+
+static const vector kernel_igamma3_vec = FILL_VEC((float)kernel_igamma3);
+
+static const vector kernel_igamma4_vec = FILL_VEC((float)kernel_igamma4);
 
 /**
  * @brief Computes the kernel function and its derivative (Vectorised version).
@@ -256,17 +233,6 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float u,
  * @param w (return) The value of the kernel function $W(x,h)$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
-
-static const vector kernel_igamma_vec = {FILL_VEC((float)kernel_igamma)};
-
-static const vector kernel_ivals_vec = {FILL_VEC((float)kernel_ivals)};
-
-static const vector kernel_constant_vec = {FILL_VEC((float)kernel_constant)};
-
-static const vector kernel_igamma3_vec = {FILL_VEC((float)kernel_igamma3)};
-
-static const vector kernel_igamma4_vec = {FILL_VEC((float)kernel_igamma4)};
-
 __attribute__((always_inline))
     INLINE static void kernel_deval_vec(vector *u, vector *w, vector *dw_dx) {
 
