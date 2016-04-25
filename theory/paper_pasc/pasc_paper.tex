@@ -36,14 +36,18 @@
 
 \begin{document}
 
-%Conference
-\conferenceinfo{PASC '16}{June 8--10, 2016, Lausanne, Switzerland}
+\CopyrightYear{2016}
+\setcopyright{acmlicensed}
+\conferenceinfo{PASC '16,}{June 08 - 10, 2016, Lausanne, Switzerland}
+\isbn{978-1-4503-4126-4/16/06}\acmPrice{\$15.00}
+\doi{http://dx.doi.org/10.1145/2929908.2929916}
+
 
 \title{{\ttlit SWIFT}: Using task-based parallelism, fully asynchronous
 communication, and graph partition-based domain decomposition for
 strong scaling on more than 100\,000 cores.}
 
-\numberofauthors{6}
+\numberofauthors{4}
   
 \author{
 \alignauthor
@@ -110,28 +114,12 @@ strong scaling on more than 100\,000 cores.}
 
   \end{itemize}
   
-  %% These three main aspects alongside improved cache-efficient
-  %% algorithms for neighbour finding allow the code to be 40x faster on
-  %% the same architecture than the standard code Gadget-2 widely used by
-  %% researchers.
-
   In order to use these approaches, the code had to be re-written from
   scratch, and the algorithms therein adapted to the task-based paradigm.
   As a result, we can show upwards of 60\% parallel efficiency for 
   moderate-sized problems when increasing the number of cores 512-fold,
   on both x86-based and Power8-based architectures.
-  
-  %% As a result, our code present excellent \emph{strong}
-  %% scaling on a variety of architectures, ranging from x86 Tier-2 systems to the
-  %% largest Tier-0 machines currently available. It displays, for instance, a
-  %% \emph{strong} scaling parallel efficiency of more than 60\% when going from
-  %% 512 to 131072 cores on a Blue Gene architecture. Similar results are obtained
-  %% on standard clusters of x86 CPUs.
-  
-  %% The task-based library, \qs, used as the backbone of the code is
-  %% itself also freely available and can be used in a wide variety of
-  %% other numerical problems.
-  
+    
 \end{abstract}
 
 
@@ -878,7 +866,6 @@ Union's ERC Grant agreements 267291 ``Cosmiway'', and by {\sc intel}
 through establishment of the ICC as an {\sc intel} parallel computing
 centre (IPCC).
 
-\nocite{*}
 \bibliographystyle{abbrv}
 \bibliography{biblio}
 
