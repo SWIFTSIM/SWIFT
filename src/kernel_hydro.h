@@ -212,6 +212,61 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float u,
   *W = w * (float)kernel_constant * (float)kernel_igamma3;
 }
 
+#ifdef VECTORIZE
+
+static const vector kernel_igamma_vec = FILL_VEC((float)kernel_igamma);
+
+static const vector kernel_ivals_vec = FILL_VEC((float)kernel_ivals);
+
+static const vector kernel_constant_vec = FILL_VEC((float)kernel_constant);
+
+static const vector kernel_igamma3_vec = FILL_VEC((float)kernel_igamma3);
+
+static const vector kernel_igamma4_vec = FILL_VEC((float)kernel_igamma4);
+
+/**
+ * @brief Computes the kernel function and its derivative (Vectorised version).
+ *
+ * Return 0 if $u > \\gamma = H/h$
+ *
+ * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param w (return) The value of the kernel function $W(x,h)$.
+ * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ */
+__attribute__((always_inline))
+    INLINE static void kernel_deval_vec(vector *u, vector *w, vector *dw_dx) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  vector x;
+  x.v = u->v * kernel_igamma_vec.v;
+
+  /* Load x and get the interval id. */
+  vector ind;
+  ind.m = vec_ftoi(vec_fmin(x.v * kernel_ivals_vec.v, kernel_ivals_vec.v));
+
+  /* load the coefficients. */
+  vector c[kernel_degree + 1];
+  for (int k = 0; k < VEC_SIZE; k++)
+    for (int j = 0; j < kernel_degree + 1; j++)
+      c[j].f[k] = kernel_coeffs[ind.i[k] * (kernel_degree + 1) + j];
+
+  /* Init the iteration for Horner's scheme. */
+  w->v = (c[0].v * x.v) + c[1].v;
+  dw_dx->v = c[0].v;
+
+  /* And we're off! */
+  for (int k = 2; k <= kernel_degree; k++) {
+    dw_dx->v = (dw_dx->v * x.v) + w->v;
+    w->v = (x.v * w->v) + c[k].v;
+  }
+
+  /* Return everything */
+  w->v = w->v * kernel_constant_vec.v * kernel_igamma3_vec.v;
+  dw_dx->v = dw_dx->v * kernel_constant_vec.v * kernel_igamma4_vec.v;
+}
+
+#endif
+
 /* Some cross-check functions */
 void hydro_kernel_dump(int N);
 
