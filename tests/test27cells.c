@@ -32,14 +32,6 @@ enum velocity_types {
 };
 
 /**
- * @brief Returns a random number (uniformly distributed) in [a,b[
- */
-double random_uniform(double a, double b) {
-  return (rand() / (double)RAND_MAX) * (b - a) + a;
-}
-
-
-/**
  * @brief Constructs a cell and all of its particle in a valid state prior to
  * a DOPAIR or DOSELF calcuation.
  *
@@ -126,6 +118,8 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
+
+  shuffle_particles(cell->parts,cell->count);
 
   cell->sorted = 0;
   cell->sort = NULL;
