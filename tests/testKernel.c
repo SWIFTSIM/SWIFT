@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    James Willis (james.s.willis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -23,10 +24,13 @@
 #include "swift.h"
 #include "kernel_hydro.h"
 
+#define numPoints 64
+
 int main() {
 
   const float h = const_eta_kernel;
-  const int numPoints = 32;
+  float W[numPoints] = {0.f};
+  float dW[numPoints] = {0.f};
 
   printf("\nSerial Output\n");
   printf("-------------\n");
@@ -34,11 +38,10 @@ int main() {
   for (int i = 0; i < numPoints; ++i) {
 
     const float x = i * 2.5f / numPoints;
-    float W, dW;
-    kernel_deval(x / h, &W, &dW);
+    kernel_deval(x / h, &W[i], &dW[i]);
 
     printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i, h,
-           h * kernel_gamma, x, W, dW);
+           h * kernel_gamma, x, W[i], dW[i]);
   }
 
   printf("\nVector Output for VEC_SIZE=%d\n", VEC_SIZE);
@@ -46,7 +49,7 @@ int main() {
   for (int i = 0; i < numPoints; i += VEC_SIZE) {
 
     vector vx, vx_h;
-    vector W, dW;
+    vector W_vec, dW_vec;
 
     for (int j = 0; j < VEC_SIZE; j++) {
       vx.f[j] = (i + j) * 2.5f / numPoints;
@@ -54,12 +57,25 @@ int main() {
 
     vx_h.v = vx.v / vec_set1(h);
 
-    kernel_deval_vec(&vx_h, &W, &dW);
+    kernel_deval_vec(&vx_h, &W_vec, &dW_vec);
 
     for (int j = 0; j < VEC_SIZE; j++) {
       printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i + j, h,
-             h * kernel_gamma, vx.f[j], W.f[j], dW.f[j]);
+             h * kernel_gamma, vx.f[j], W_vec.f[j], dW_vec.f[j]);
+
+      if (fabsf(W_vec.f[j] - W[i + j]) > 2e-7) {
+        printf("Invalid value ! scalar= %e, vector= %e\n", W[i + j],
+               W_vec.f[j]);
+        return 1;
+      }
+      if (fabsf(dW_vec.f[j] - dW[i + j]) > 2e-7) {
+        printf("Invalid value ! scalar= %e, vector= %e\n", dW[i + j],
+               dW_vec.f[j]);
+        return 1;
+      }
     }
   }
+
+  printf("\nAll values are consistent\n");
   return 0;
 }
