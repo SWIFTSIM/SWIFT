@@ -236,18 +236,18 @@ static const vector kernel_igamma4_vec = FILL_VEC((float)kernel_igamma4);
 __attribute__((always_inline))
     INLINE static void kernel_deval_vec(vector *u, vector *w, vector *dw_dx) {
 
-  vector ind, c[kernel_degree + 1], x;
-  int j, k;
-
   /* Go to the range [0,1[ from [0,H[ */
+  vector x;
   x.v = u->v * kernel_igamma_vec.v;
 
   /* Load x and get the interval id. */
+  vector ind;
   ind.m = vec_ftoi(vec_fmin(x.v * kernel_ivals_vec.v, kernel_ivals_vec.v));
 
   /* load the coefficients. */
-  for (k = 0; k < VEC_SIZE; k++)
-    for (j = 0; j < kernel_degree + 1; j++)
+  vector c[kernel_degree + 1];
+  for (int k = 0; k < VEC_SIZE; k++)
+    for (int j = 0; j < kernel_degree + 1; j++)
       c[j].f[k] = kernel_coeffs[ind.i[k] * (kernel_degree + 1) + j];
 
   /* Init the iteration for Horner's scheme. */
