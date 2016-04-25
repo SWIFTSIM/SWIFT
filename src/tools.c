@@ -471,3 +471,33 @@ void engine_single_force(double *dim, long long int pid,
           p.a_hydro[1], p.a_hydro[2]);
   fflush(stdout);
 }
+
+/**
+ * Returns a random number (uniformly distributed) in [a,b[
+ */
+double random_uniform(double a, double b) {
+  return (rand() / (double)RAND_MAX) * (b - a) + a;
+}
+
+/**
+ * @brief Randomly shuffle an array of particles.
+ */
+void shuffle_particles(struct part *parts, const int count) {
+
+  if(count > 1) {
+    
+    for(int i=0; i<count - 1; i++) {
+      
+      int j = i + random_uniform(0.,(double)(count - 1 - i));
+      
+      struct part particle = parts[j];
+
+      parts[j] = parts[i];
+
+      parts[i] = particle;
+    }
+
+  }
+  else error("Array not big enough to shuffle!");
+
+}
