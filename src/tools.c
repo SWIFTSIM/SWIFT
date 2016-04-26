@@ -59,7 +59,6 @@ void factor(int value, int *f1, int *f2) {
 
 void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
               int periodic) {
-
   int i, j, k, count = 0;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -124,7 +123,6 @@ void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
 void pairs_single_density(double *dim, long long int pid,
                           struct part *__restrict__ parts, int N,
                           int periodic) {
-
   int i, k;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -177,19 +175,16 @@ void pairs_single_density(double *dim, long long int pid,
 }
 
 void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
-
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
-
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
 
     for (int j = 0; j < cj->count; ++j) {
-
       pj = &cj->parts[j];
 
       /* Pairwise distance */
@@ -201,7 +196,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Hit or miss? */
       if (r2 < hig2) {
-
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
       }
@@ -210,13 +204,11 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Reverse double-for loop and checks every interaction */
   for (int j = 0; j < cj->count; ++j) {
-
     pj = &cj->parts[j];
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
 
     for (int i = 0; i < ci->count; ++i) {
-
       pi = &ci->parts[i];
 
       /* Pairwise distance */
@@ -228,7 +220,6 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Hit or miss? */
       if (r2 < hjg2) {
-
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi);
       }
@@ -242,13 +233,11 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
-
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
 
     for (int j = i + 1; j < ci->count; ++j) {
-
       pj = &ci->parts[j];
       hj = pj->h;
       hjg2 = hj * hj * kernel_gamma2;
@@ -264,14 +253,12 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
       /* Hit or miss? */
       if (r2 < hig2) {
-
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
       }
 
       /* Hit or miss? */
       if (r2 < hjg2) {
-
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];
         dxi[2] = -dxi[2];
@@ -285,7 +272,6 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
 void pairs_single_grav(double *dim, long long int pid,
                        struct gpart *__restrict__ parts, int N, int periodic) {
-
   int i, k;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -344,7 +330,6 @@ void pairs_single_grav(double *dim, long long int pid,
  */
 
 void density_dump(int N) {
-
   int k;
   float r2[4] = {0.0f, 0.0f, 0.0f, 0.0f}, hi[4], hj[4];
   struct part /**pi[4],  *pj[4],*/ Pi[4], Pj[4];
@@ -382,7 +367,6 @@ void density_dump(int N) {
 void engine_single_density(double *dim, long long int pid,
                            struct part *__restrict__ parts, int N,
                            int periodic) {
-
   int i, k;
   double r2, dx[3];
   float fdx[3], ih;
@@ -429,7 +413,6 @@ void engine_single_density(double *dim, long long int pid,
 
 void engine_single_force(double *dim, long long int pid,
                          struct part *__restrict__ parts, int N, int periodic) {
-
   int i, k;
   double r2, dx[3];
   float fdx[3];
@@ -483,13 +466,10 @@ double random_uniform(double a, double b) {
  * @brief Randomly shuffle an array of particles.
  */
 void shuffle_particles(struct part *parts, const int count) {
+  if (count > 1) {
+    for (int i = 0; i < count - 1; i++) {
+      int j = i + random_uniform(0., (double)(count - 1 - i));
 
-  if(count > 1) {
-    
-    for(int i=0; i<count - 1; i++) {
-      
-      int j = i + random_uniform(0.,(double)(count - 1 - i));
-      
       struct part particle = parts[j];
 
       parts[j] = parts[i];
@@ -497,7 +477,6 @@ void shuffle_particles(struct part *parts, const int count) {
       parts[i] = particle;
     }
 
-  }
-  else error("Array not big enough to shuffle!");
-
+  } else
+    error("Array not big enough to shuffle!");
 }

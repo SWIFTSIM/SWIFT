@@ -86,7 +86,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
 
-  shuffle_particles(cell->parts,cell->count);
+  shuffle_particles(cell->parts, cell->count);
 
   cell->sorted = 0;
   cell->sort = NULL;
@@ -106,7 +106,6 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-
   for (size_t pid = 0; pid < c->count; pid++) {
     c->parts[pid].rho = 0.f;
     c->parts[pid].rho_dh = 0.f;
@@ -118,7 +117,6 @@ void zero_particle_fields(struct cell *c) {
  * @brief Dump all the particles to a file
  */
 void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
-
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
@@ -249,7 +247,6 @@ int main(int argc, char *argv[]) {
 
   time = 0;
   for (size_t i = 0; i < runs; ++i) {
-
     /* Zero the fields */
     zero_particle_fields(ci);
     zero_particle_fields(cj);
