@@ -489,7 +489,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     int *ind_new;
     if ((ind_new = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
       error("Failed to allocate temporary particle indices.");
-    memcpy(ind_new, ind, sizeof(size_t) * nr_parts);
+    memcpy(ind_new, ind, sizeof(int) * nr_parts);
     free(ind);
     ind = ind_new;
   }
