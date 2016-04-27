@@ -77,6 +77,3 @@ EXTRA_DIST = UniformBox/makeIC.py \
 # Scripts to plot task graphs
 EXTRA_DIST += plot_tasks_MPI.py plot_tasks.py \
 	      process_plot_tasks_MPI process_plot_tasks
-
-# Simple run scripts
-EXTRA_DIST += runs.sh
