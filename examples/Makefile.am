@@ -71,8 +71,8 @@ EXTRA_DIST = UniformBox/makeIC.py UniformBox/run.sh UniformBox/uniformBox.yml \
 	     BigCosmoVolume/makeIC.py \
 	     BigPerturbedBox/makeIC_fcc.py \
              GreshoVortex/makeIC.py GreshoVortex/solution.py \
-             MultiTypes/makeIC.py
-
+             MultiTypes/makeIC.py \
+             parameter_example.yml
 
 # Scripts to plot task graphs
 EXTRA_DIST += plot_tasks_MPI.py plot_tasks.py \
