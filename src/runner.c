@@ -1243,14 +1243,14 @@ void runner_dorecv_cell(struct runner *r, struct cell *c, int timer) {
   /* Collect everything... */
   for (size_t k = 0; k < nr_parts; k++) {
     const int ti_end = parts[k].ti_end;
-    if(ti_end < ti_current) error("Received invalid particle !");
+    //if(ti_end < ti_current) error("Received invalid particle !");
     ti_end_min = min(ti_end_min, ti_end);
     ti_end_max = max(ti_end_max, ti_end);
     h_max = fmaxf(h_max, parts[k].h);
   }
   for (size_t k = 0; k < nr_gparts; k++) {
     const int ti_end = gparts[k].ti_end;
-    if(ti_end < ti_current) error("Received invalid particle !");
+    //if(ti_end < ti_current) error("Received invalid particle !");
     ti_end_min = min(ti_end_min, ti_end);
     ti_end_max = max(ti_end_max, ti_end);
   }
