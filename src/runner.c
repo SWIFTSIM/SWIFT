@@ -899,13 +899,12 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Combined second and first kick for fixed dt.
+ * @brief Kick particles in momentum space and collect statistics
  *
  * @param r The runner thread.
  * @param c The cell.
- * @param timer The timer
+ * @param timer Are we timing this ?
  */
-
 void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   const float global_dt_min = r->e->dt_min;
@@ -1221,11 +1220,54 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Construct the cell properties from the received particles
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_dorecv_cell(struct runner *r, struct cell *c, int timer) {
+
+  const struct part *const parts = c->parts;
+  const struct gpart *const gparts = c->gparts;
+  const size_t nr_parts = c->count;
+  const size_t nr_gparts = c->gcount;
+  const int ti_current = r->e->ti_current;
+
+  TIMER_TIC;
+
+  int ti_end_min = max_nr_timesteps;
+  int ti_end_max = 0;
+  float h_max = 0.f;
+
+  /* Collect everything... */
+  for (size_t k = 0; k < nr_parts; k++) {
+    const int ti_end = parts[k].ti_end;
+    //if(ti_end < ti_current) error("Received invalid particle !");
+    ti_end_min = min(ti_end_min, ti_end);
+    ti_end_max = max(ti_end_max, ti_end);
+    h_max = fmaxf(h_max, parts[k].h);
+  }
+  for (size_t k = 0; k < nr_gparts; k++) {
+    const int ti_end = gparts[k].ti_end;
+    //if(ti_end < ti_current) error("Received invalid particle !");
+    ti_end_min = min(ti_end_min, ti_end);
+    ti_end_max = max(ti_end_max, ti_end);
+  }
+
+  /* ... and store. */
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+  c->h_max = h_max;
+
+  if (timer) TIMER_TOC(timer_dorecv_cell);
+}
+
+/**
  * @brief The #runner main thread routine.
  *
  * @param data A pointer to this thread's data.
  */
-
 void *runner_main(void *data) {
 
   struct runner *r = (struct runner *)data;
@@ -1307,14 +1349,9 @@ void *runner_main(void *data) {
           break;
         case task_type_send:
           break;
-        case task_type_recv: {
-          struct part *parts = ci->parts;
-          size_t nr_parts = ci->count;
-          ci->ti_end_min = ci->ti_end_max = max_nr_timesteps;
-          for (size_t k = 0; k < nr_parts; k++)
-            parts[k].ti_end = max_nr_timesteps;
+        case task_type_recv:
+          runner_dorecv_cell(r, ci, 1);
           break;
-        }
         case task_type_grav_pp:
           if (t->cj == NULL)
             runner_doself_grav(r, t->ci);
