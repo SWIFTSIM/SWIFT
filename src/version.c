@@ -40,6 +40,9 @@
 /* This object's header. */
 #include "version.h"
 
+/* Local headers. */
+#include "version_string.h"
+
 /**
  * @brief Return the source code git revision
  *
