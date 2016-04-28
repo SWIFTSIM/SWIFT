@@ -1897,6 +1897,9 @@ void engine_init_particles(struct engine *e) {
 
   struct space *s = e->s;
 
+  struct clocks_time time1, time2;
+  clocks_gettime(&time1);
+
   if (e->nodeID == 0) message("Initialising particles");
 
   /* Make sure all particles are ready to go */
@@ -1959,8 +1962,11 @@ void engine_init_particles(struct engine *e) {
   /* Apply some conversions (e.g. internal energy -> entropy) */
   space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
+  clocks_gettime(&time2);
+
   /* Ready to go */
   e->step = -1;
+  e->wallclock_time = (float)clocks_diff(&time1, &time2);
 }
 
 /**
