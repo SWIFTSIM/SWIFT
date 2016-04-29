@@ -185,6 +185,8 @@ struct engine {
 
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
+void engine_dump_snapshot(struct engine *e, struct UnitSystem *us,
+                          const char *baseName);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int policy, int verbose,

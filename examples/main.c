@@ -422,30 +422,10 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-  int with_outputs = 1;
+  /* Write the state of the system before starting time integration. */
   char baseName[200];
   parser_get_param_string(params, "Snapshots:basename", baseName);
-  if (with_outputs && !dry_run) {
-    /* Write the state of the system before starting time integration. */
-    if (myrank == 0) clocks_gettime(&tic);
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(&e, baseName, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#else
-    write_output_serial(&e, baseName, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                        MPI_INFO_NULL);
-#endif
-#else
-    write_output_single(&e, baseName, &us);
-#endif
-    if (myrank == 0 && verbose) {
-      clocks_gettime(&toc);
-      message("writing particle properties took %.3f %s.",
-              clocks_diff(&tic, &toc), clocks_getunit());
-      fflush(stdout);
-    }
-  }
+  if (!dry_run) engine_dump_snapshot(&e, &us, baseName);
 
   /* Now that everything is ready, no need for the parameters any more */
   free(params);
@@ -507,27 +487,8 @@ int main(int argc, char *argv[]) {
     /* Take a step. */
     engine_step(&e);
 
-    if (with_outputs && j % 10 == 0) {
-
-      if (myrank == 0) clocks_gettime(&tic);
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-      write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                            MPI_INFO_NULL);
-#else
-      write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#endif
-#else
-      write_output_single(&e, baseName, &us);
-#endif
-      if (myrank == 0 && verbose) {
-        clocks_gettime(&toc);
-        message("writing particle properties took %.3f %s.",
-                clocks_diff(&tic, &toc), clocks_getunit());
-        fflush(stdout);
-      }
-    }
+    /* Snapshot if need be */
+    if (j % 10 == 0) engine_dump_snapshot(&e, &us, baseName);
 
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
@@ -610,28 +571,8 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-  if (with_outputs) {
-
-    if (myrank == 0) clocks_gettime(&tic);
-/* Write final output. */
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#else
-    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                        MPI_INFO_NULL);
-#endif
-#else
-    write_output_single(&e, baseName, &us);
-#endif
-    if (myrank == 0 && verbose) {
-      clocks_gettime(&toc);
-      message("writing particle properties took %.3f %s.",
-              clocks_diff(&tic, &toc), clocks_getunit());
-      fflush(stdout);
-    }
-  }
+  /* Write final output. */
+  engine_dump_snapshot(&e, &us, baseName);
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

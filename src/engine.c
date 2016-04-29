@@ -58,6 +58,9 @@
 #include "minmax.h"
 #include "part.h"
 #include "partition.h"
+#include "parallel_io.h"
+#include "serial_io.h"
+#include "single_io.h"
 #include "timers.h"
 
 const char *engine_policy_names[13] = {
@@ -2322,6 +2325,37 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
+}
+
+/**
+ * @brief Writes a snapshot with the current state of the engine
+ *
+ * @param e The #engine.
+ * @param us The unit system to use for the snapshots.
+ * @param baseName The common part of the snapshot file names.
+ */
+void engine_dump_snapshot(struct engine *e, struct UnitSystem *us,
+                          const char *baseName) {
+
+  struct clocks_time time1, time2;
+  clocks_gettime(&time1);
+
+#if defined(WITH_MPI)
+#if defined(HAVE_PARALLEL_HDF5)
+  write_output_parallel(e, baseName, us, myrank, nr_nodes, MPI_COMM_WORLD,
+                        MPI_INFO_NULL);
+#else
+  write_output_serial(e, baseName, us, myrank, nr_nodes, MPI_COMM_WORLD,
+                      MPI_INFO_NULL);
+#endif
+#else
+  write_output_single(e, baseName, us);
+#endif
+
+  clocks_gettime(&time2);
+  if (e->verbose)
+    message("writing particle properties took %.3f %s.",
+            (float)clocks_diff(&time1, &time2), clocks_getunit());
 }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
