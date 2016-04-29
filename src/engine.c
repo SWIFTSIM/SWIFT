@@ -2340,6 +2340,7 @@ void engine_dump_snapshot(struct engine *e, struct UnitSystem *us,
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+/* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   write_output_parallel(e, baseName, us, myrank, nr_nodes, MPI_COMM_WORLD,
@@ -2356,6 +2357,9 @@ void engine_dump_snapshot(struct engine *e, struct UnitSystem *us,
   if (e->verbose)
     message("writing particle properties took %.3f %s.",
             (float)clocks_diff(&time1, &time2), clocks_getunit());
+
+  /* ... and find the next output time */
+  engine_compute_next_snapshot_time(e);
 }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
@@ -2426,6 +2430,7 @@ void engine_init(struct engine *e, struct space *s,
       parser_get_param_double(params, "Snapshots:time_first");
   e->deltaTimeSnapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
+  e->ti_nextSnapshot = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
@@ -2715,4 +2720,26 @@ void engine_print_policy(struct engine *e) {
   printf(" ]\n");
   fflush(stdout);
 #endif
+}
+
+/**
+ * @brief Computes the next time (on the time line) for a dump
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_snapshot_time(struct engine *e) {
+
+  for (double time = e->timeFirstSnapshot; time < e->timeEnd;
+       time += e->deltaTimeSnapshot) {
+
+    /* Output time on the integer timeline */
+    e->ti_nextSnapshot = (time - e->timeBegin) / e->timeBase;
+
+    if (e->ti_nextSnapshot > e->ti_current) break;
+  }
+
+  /* Be nice, talk... */
+  const float next_snapshot_time =
+      e->ti_nextSnapshot * e->timeBase + e->timeBegin;
+  if (e->verbose) message("Next output time set to t=%f", next_snapshot_time);
 }

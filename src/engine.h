@@ -134,6 +134,7 @@ struct engine {
   /* Snapshot times */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
+  int ti_nextSnapshot;
 
   /* File for statistics */
   FILE *file_stats;
@@ -185,6 +186,7 @@ struct engine {
 
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
+void engine_compute_next_snapshot_time(struct engine *e);
 void engine_dump_snapshot(struct engine *e, struct UnitSystem *us,
                           const char *baseName);
 void engine_init(struct engine *e, struct space *s,
