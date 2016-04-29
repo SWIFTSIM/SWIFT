@@ -2049,6 +2049,25 @@ void engine_step(struct engine *e) {
   }
 #endif
 
+  /* Check for output */
+  while (ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) {
+
+    e->ti_old = e->ti_current;
+    e->ti_current = e->ti_nextSnapshot;
+    e->time = e->ti_current * e->timeBase + e->timeBegin;
+    e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
+    e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+
+    /* Drift everybody to the snapshot position */
+    engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
+
+    /* Dump... */
+    engine_dump_snapshot(e);
+
+    /* ... and find the next output time */
+    engine_compute_next_snapshot_time(e);
+  }
+
   /* Move forward in time */
   e->ti_old = e->ti_current;
   e->ti_current = ti_end_min;
@@ -2331,35 +2350,32 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
  * @brief Writes a snapshot with the current state of the engine
  *
  * @param e The #engine.
- * @param us The unit system to use for the snapshots.
- * @param baseName The common part of the snapshot file names.
  */
-void engine_dump_snapshot(struct engine *e, struct UnitSystem *us,
-                          const char *baseName) {
+void engine_dump_snapshot(struct engine *e) {
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  if (e->verbose)
+    message("writing snapshot at t=%f", e->time);
+  
 /* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, baseName, us, myrank, nr_nodes, MPI_COMM_WORLD,
-                        MPI_INFO_NULL);
+  write_output_parallel(e, e->snapshotBaseName, e->snapshotUnits, e->nodeID,
+                        e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  write_output_serial(e, baseName, us, myrank, nr_nodes, MPI_COMM_WORLD,
-                      MPI_INFO_NULL);
+  write_output_serial(e, e->snapshotBaseName, e->snapshotUnits, e->nodeID,
+                      e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(e, baseName, us);
+  write_output_single(e, e->snapshotBaseName, e->snapshotUnits);
 #endif
 
   clocks_gettime(&time2);
   if (e->verbose)
     message("writing particle properties took %.3f %s.",
             (float)clocks_diff(&time1, &time2), clocks_getunit());
-
-  /* ... and find the next output time */
-  engine_compute_next_snapshot_time(e);
 }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
@@ -2431,6 +2447,9 @@ void engine_init(struct engine *e, struct space *s,
   e->deltaTimeSnapshot =
       parser_get_param_double(params, "Snapshots:delta_time");
   e->ti_nextSnapshot = 0;
+  parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
+  e->snapshotUnits = malloc(sizeof(struct UnitSystem));
+  units_init(e->snapshotUnits, params, "Snapshots");
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
@@ -2616,6 +2635,9 @@ void engine_init(struct engine *e, struct space *s,
     error(
         "Time of first snapshot (%e) must be after the simulation start t=%e.",
         e->timeFirstSnapshot, e->timeBegin);
+
+  /* Find the time of the first output */
+  engine_compute_next_snapshot_time(e);
 
 /* Construct types for MPI communications */
 #ifdef WITH_MPI

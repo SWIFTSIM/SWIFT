@@ -1,6 +1,6 @@
 
 # Define the system of units to use internally. 
-UnitSystem:
+InternalUnitSystem:
   UnitMass_in_cgs:     1   # Grams
   UnitLength_in_cgs:   1   # Centimeters
   UnitVelocity_in_cgs: 1   # Centimeters per second
@@ -23,10 +23,16 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   uniformBox # Common part of the name of output files
-  time_first: 0.         # Time of the frist output (in internal units)
-  delta_time: 0.01       # Time difference between consecutive outputs (in internal units)
+  basename:            uniformBox # Common part of the name of output files
+  time_first:          0.         # Time of the frist output (in internal units)
+  delta_time:          0.01       # Time difference between consecutive outputs (in internal units)
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
 
+  
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).

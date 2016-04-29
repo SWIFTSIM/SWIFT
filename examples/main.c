@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
   /* Initialize unit system and constants */
   struct UnitSystem us;
   struct phys_const prog_const;
-  units_init(&us, params);
+  units_init(&us, params, "InternalUnitSystem");
   phys_const_init(&us, &prog_const);
   if (myrank == 0 && verbose > 0) {
     message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
@@ -423,9 +423,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Write the state of the system before starting time integration. */
-  char baseName[200];
-  parser_get_param_string(params, "Snapshots:basename", baseName);
-  if (!dry_run) engine_dump_snapshot(&e, &us, baseName);
+  if (!dry_run) engine_dump_snapshot(&e);
 
   /* Now that everything is ready, no need for the parameters any more */
   free(params);
@@ -486,9 +484,6 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
-
-    /* Snapshot if need be */
-    if (j % 10 == 0) engine_dump_snapshot(&e, &us, baseName);
 
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
@@ -572,7 +567,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Write final output. */
-  engine_dump_snapshot(&e, &us, baseName);
+  engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

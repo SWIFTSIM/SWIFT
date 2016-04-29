@@ -47,6 +47,7 @@
 #include "partition.h"
 #include "physical_constants.h"
 #include "potentials.h"
+#include "units.h"
 
 /* Some constants. */
 enum engine_policy {
@@ -131,10 +132,12 @@ struct engine {
   /* Time base */
   double timeBase;
 
-  /* Snapshot times */
+  /* Snapshot information */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
   int ti_nextSnapshot;
+  char snapshotBaseName[200];
+  struct UnitSystem *snapshotUnits;
 
   /* File for statistics */
   FILE *file_stats;
@@ -187,8 +190,7 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_compute_next_snapshot_time(struct engine *e);
-void engine_dump_snapshot(struct engine *e, struct UnitSystem *us,
-                          const char *baseName);
+void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int policy, int verbose,
