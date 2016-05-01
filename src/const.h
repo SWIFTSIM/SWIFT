@@ -40,18 +40,9 @@
 #define const_max_u_change 0.1f
 
 /* Gravity stuff. */
-#define const_theta_max                                   \
-  0.57735f /* Opening criteria, which is the ratio of the \
-              cell distance over the cell width. */
-
-#define const_G 6.672e-8f             /* Gravitational constant. */
-#define const_epsilon 0.0014f         /* Gravity blending distance. */
-#define const_iepsilon 714.285714286f /* Inverse gravity blending distance. */
-#define const_iepsilon2 (const_iepsilon* const_iepsilon)
-#define const_iepsilon3 (const_iepsilon2* const_iepsilon)
-#define const_iepsilon4 (const_iepsilon2* const_iepsilon2)
-#define const_iepsilon5 (const_iepsilon3* const_iepsilon2)
-#define const_iepsilon6 (const_iepsilon3* const_iepsilon3)
+#define const_theta_max 0.57735f
+#define const_G 6.672e-8f     /* Gravitational constant. */
+#define const_epsilon 0.0014f /* Gravity blending distance. */
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL
@@ -67,6 +58,6 @@
 //#define DEFAULT_SPH
 
 /* Gravity properties */
-//#define EXTERNAL_POTENTIAL_POINTMASS
+#define EXTERNAL_POTENTIAL_POINTMASS
 
 #endif /* SWIFT_CONST_H */
