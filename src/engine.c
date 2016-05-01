@@ -2356,9 +2356,8 @@ void engine_dump_snapshot(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  if (e->verbose)
-    message("writing snapshot at t=%f", e->time);
-  
+  if (e->verbose) message("writing snapshot at t=%f", e->time);
+
 /* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
@@ -2409,6 +2408,7 @@ static bool hyperthreads_present(void) {
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param physical_constants The #phys_const used for this run.
+ * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
  */
 
@@ -2416,6 +2416,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int policy, int verbose,
                  const struct phys_const *physical_constants,
+                 const struct hydro_props *hydro,
                  const struct external_potential *potential) {
 
   /* Clean-up everything */
@@ -2457,6 +2458,7 @@ void engine_init(struct engine *e, struct space *s,
   e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
+  e->hydro_properties = hydro;
   e->external_potential = potential;
   engine_rank = nodeID;
 
@@ -2563,12 +2565,8 @@ void engine_init(struct engine *e, struct space *s,
   engine_print_policy(e);
 
   /* Print information about the hydro scheme */
-  if (e->policy & engine_policy_hydro) {
-    if (e->nodeID == 0) message("Hydrodynamic scheme: %s.", SPH_IMPLEMENTATION);
-    if (e->nodeID == 0)
-      message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours.",
-              kernel_name, kernel_nwneigh, const_delta_nwneigh);
-  }
+  if (e->policy & engine_policy_hydro)
+    if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
 
   /* Check we have sensible time bounds */
   if (e->timeBegin >= e->timeEnd)

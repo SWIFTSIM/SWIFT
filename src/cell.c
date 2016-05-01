@@ -50,6 +50,7 @@
 #include "atomic.h"
 #include "error.h"
 #include "gravity.h"
+#include "hydro_properties.h"
 #include "hydro.h"
 #include "space.h"
 #include "timers.h"

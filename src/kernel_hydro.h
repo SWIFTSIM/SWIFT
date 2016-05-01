@@ -20,6 +20,8 @@
 #ifndef SWIFT_KERNEL_HYDRO_H
 #define SWIFT_KERNEL_HYDRO_H
 
+#include <math.h>
+
 /* Includes. */
 #include "const.h"
 #include "error.h"
@@ -142,12 +144,6 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_igamma2 kernel_igamma *kernel_igamma
 #define kernel_igamma3 kernel_igamma2 *kernel_igamma
 #define kernel_igamma4 kernel_igamma3 *kernel_igamma
-
-/* Some powers of eta */
-#define kernel_eta3 const_eta_kernel *const_eta_kernel *const_eta_kernel
-
-/* The number of neighbours (i.e. N_ngb) */
-#define kernel_nwneigh 4.0 * M_PI *kernel_gamma3 *kernel_eta3 / 3.0
 
 /* Kernel self contribution (i.e. W(0,h)) */
 #define kernel_root \

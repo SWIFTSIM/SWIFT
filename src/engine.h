@@ -37,6 +37,7 @@
 #include <stdio.h>
 
 /* Includes. */
+#include "hydro_properties.h"
 #include "lock.h"
 #include "proxy.h"
 #include "runner.h"
@@ -183,6 +184,9 @@ struct engine {
   /* Physical constants definition */
   const struct phys_const *physical_constants;
 
+  /* Properties of the hydro scheme */
+  const struct hydro_props *hydro_properties;
+
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 };
@@ -195,6 +199,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int policy, int verbose,
                  const struct phys_const *physical_constants,
+                 const struct hydro_props *hydro,
                  const struct external_potential *potential);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
