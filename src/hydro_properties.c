@@ -45,7 +45,7 @@ void hydro_props_init(struct hydro_props *p,
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
   const float max_volume_change =
       parser_get_param_float(params, "SPH:max_volume_change");
-  p->log_max_h_change = log(powf(max_volume_change, 0.33333333333f));
+  p->log_max_h_change = logf(powf(max_volume_change, 0.33333333333f));
 }
 
 void hydro_props_print(const struct hydro_props *p) {
@@ -56,6 +56,7 @@ void hydro_props_print(const struct hydro_props *p) {
           p->eta_neighbours);
   message("Hydrodynamic integration: CFL parmeter: %.4f.", p->CFL_condition);
   message(
-      "Hydrodynamic integration: Max change of volume: %.2f (dlog(h)/dt=%f).",
+      "Hydrodynamic integration: Max change of volume: %.2f"
+      "(max |dlog(h)/dt|=%f).",
       powf(expf(p->log_max_h_change), 3.f), p->log_max_h_change);
 }
