@@ -21,6 +21,7 @@
 #include "hydro_properties.h"
 
 /* Standard headers */
+#include <float.h>
 #include <math.h>
 
 /* Local headers. */
