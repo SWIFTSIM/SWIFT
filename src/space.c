@@ -459,7 +459,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     }
   }
 
-  /* Check that all parts are in the correct pl
+  /* Check that all parts are in the correct places. */
   /*  for (size_t k = 0; k < nr_parts; k++) {
     if (cells[ind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local parts to send list");
