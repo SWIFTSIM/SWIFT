@@ -459,6 +459,18 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     }
   }
 
+  /* Check that all parts are in the correct pl
+  /*  for (size_t k = 0; k < nr_parts; k++) {
+    if (cells[ind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local parts to send list");
+    }
+  }
+  for (size_t k = nr_parts; k < s->nr_parts; k++) {
+    if (cells[ind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local parts from send list");
+    }
+  }*/
+
   /* Move non-local gparts to the end of the list. */
   for (int k = 0; k < nr_gparts;) {
     if (cells[gind[k]].nodeID != local_nodeID) {
@@ -482,6 +494,20 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       k++;
     }
   }
+
+  /* Check that all gparts are in the correct place (untested). */
+  /*
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (cells[gind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local gparts to send list");
+    }
+  }
+  for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
+    if (cells[gind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local gparts from send list");
+    }
+  }*/
+
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
