@@ -45,7 +45,7 @@ enum {
   timer_dosub_force,
   timer_dosub_grav,
   timer_dopair_subset,
-  timer_doghost,
+  timer_do_cellhierarchy,
   timer_dorecv_cell,
   timer_gettask,
   timer_qget,
