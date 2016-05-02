@@ -22,7 +22,7 @@
  *
  * This structure contains the particle fields that are not used in the
  * density or force loops. Quantities should be used in the kick, drift and
- * potentially ghost tasks only.
+ * potentially hierarchical tasks only.
  */
 struct xpart {
 
@@ -76,7 +76,7 @@ struct part {
      * neighbours.
      *
      * Quantities in this sub-structure should only be accessed in the density
-     * loop over neighbours and the ghost task.
+     * loop over neighbours and the hierarchy task.
      */
     struct {
 
@@ -91,7 +91,7 @@ struct part {
      * neighbours.
      *
      * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost and kick tasks.
+     * loop over neighbours and the hierarchy and kick tasks.
      */
     struct {
 

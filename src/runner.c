@@ -629,7 +629,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  */
 
-void runner_doghost(struct runner *r, struct cell *c) {
+void runner_do_cellhierarchy(struct runner *r, struct cell *c) {
 
   struct part *p, *parts = c->parts;
   struct xpart *xp, *xparts = c->xparts;
@@ -652,7 +652,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_doghost(r, c->progeny[k]);
+      if (c->progeny[k] != NULL) runner_do_cellhierarchy(r, c->progeny[k]);
     return;
   }
 
@@ -774,7 +774,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   if (count)
     message("Smoothing length failed to converge on %i particles.", count);
 
-  TIMER_TOC(timer_doghost);
+  TIMER_TOC(timer_do_cellhierarchy);
 }
 
 /**
@@ -1348,8 +1348,8 @@ void *runner_main(void *data) {
         case task_type_init:
           runner_doinit(r, ci, 1);
           break;
-        case task_type_ghost:
-          runner_doghost(r, ci);
+        case task_type_hierarchy:
+          runner_do_cellhierarchy(r, ci);
           break;
         case task_type_drift:
           runner_dodrift(r, ci, 1);
