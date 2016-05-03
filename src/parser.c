@@ -49,7 +49,8 @@ static void parse_section_param(char *line, int *isFirstParam,
                                 char *sectionName, struct swift_params *params);
 static void find_duplicate_params(const struct swift_params *params,
                                   const char *param_name);
-
+static void find_duplicate_section(const struct swift_params *params,
+                                   const char *section_name);
 static int lineNumber = 0;
 
 /**
@@ -164,6 +165,23 @@ static void find_duplicate_params(const struct swift_params *params,
 }
 
 /**
+ * @brief Look for duplicate sections.
+ *
+ * @param params Structure that holds the parameters
+ * @param param_name Name of section to be searched for
+ */
+
+static void find_duplicate_section(const struct swift_params *params,
+                                  const char *section_name) {
+  for (int i = 0; i < params->sectionCount; i++) {
+    /*strcmp returns 0 if both strings are the same.*/
+    if (!strcmp(section_name, params->section[i].name)) {
+      error("Invalid line:%d '%s', section is a duplicate.",
+            lineNumber, section_name);
+    }
+  }
+}
+/**
  * @brief Parses a line from a file and stores any parameters in a structure.
  *
  * @param line Line to be parsed.
@@ -215,6 +233,7 @@ static void parse_value(char *line, struct swift_params *params) {
                                                 name. */
   static int isFirstParam = 1;
   char tmpStr[PARSER_MAX_LINE_SIZE];
+  char tmpSectionName[PARSER_MAX_LINE_SIZE];
 
   char *token;
 
@@ -245,24 +264,30 @@ static void parse_value(char *line, struct swift_params *params) {
 
     /* If second token is NULL then the line must be a section heading. */
     if (token == NULL) {
-      strcat(tmpStr, PARSER_VALUE_STRING);
+      strcpy(tmpSectionName, tmpStr);
+      strcat(tmpSectionName, PARSER_VALUE_STRING);
       
       /* Check for duplicate section name. */
-      for (int i = 0; i < params->sectionCount; i++) {
-        /*strcmp returns 0 if both strings are the same.*/
-        if (!strcmp(tmpStr, params->section[i].name)) {
-          error("Invalid line:%d '%s', section is a duplicate.",
-                lineNumber, line);
-        }
-      }
-
-      strcpy(section, tmpStr);
-      strcpy(params->section[params->sectionCount++].name, tmpStr);
+      find_duplicate_section(params,tmpSectionName);
+      
+      /* Check for duplicate standalone parameter name used as a section name. */
+      find_duplicate_params(params,tmpStr);
+      
+      strcpy(section, tmpSectionName);
+      strcpy(params->section[params->sectionCount++].name, tmpSectionName);
       inSection = 1;
       isFirstParam = 1;
     } else {
+      /* Create string with standalone parameter name appended with ":" to aid 
+       * duplicate search as section names are stored with ":" at the end.*/
+      strcpy(tmpSectionName, tmpStr);
+      strcat(tmpSectionName, PARSER_VALUE_STRING);
+
       /* Check for duplicate parameter name. */
       find_duplicate_params(params,tmpStr);
+      
+      /* Check for duplicate section name used as standalone parameter name. */
+      find_duplicate_section(params,tmpSectionName);
       
       /* Must be a standalone parameter so no need to prefix name with a
        * section. */
@@ -531,5 +556,3 @@ void parser_write_params_to_file(const struct swift_params *params,
 
   fclose(file);
 }
-
-
