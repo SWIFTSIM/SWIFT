@@ -1,6 +1,6 @@
 
 # Define the system of units to use internally. 
-UnitSystem:
+InternalUnitSystem:
   UnitMass_in_cgs:     1   # Grams
   UnitLength_in_cgs:   1   # Centimeters
   UnitVelocity_in_cgs: 1   # Centimeters per second
@@ -20,6 +20,17 @@ TimeIntegration:
   time_end:   1.    # The end time of the simulation (in internal units).
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            sedov # Common part of the name of output files
+  time_first:          0.    # Time of the first output (in internal units)
+  delta_time:          0.1   # Time difference between consecutive outputs (in internal units)
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
 
 # Parameters for the hydrodynamics scheme
 SPH:

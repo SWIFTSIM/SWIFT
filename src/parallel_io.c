@@ -509,8 +509,12 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
  *its XMF descriptor
  *
  * @param e The engine containing all the system.
- * @param us The UnitSystem used for the conversion of units
- *in the output
+ * @param baseName The common part of the snapshot file name.
+ * @param us The UnitSystem used for the conversion of units in the output.
+ * @param mpi_rank The MPI rank of this node.
+ * @param mpi_size The number of MPI ranks.
+ * @param comm The MPI communicator.
+ * @param info The MPI information object
  *
  * Creates an HDF5 output file and writes the particles
  *contained
@@ -522,9 +526,9 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
  * Calls #error() if an error occurs.
  *
  */
-void write_output_parallel(struct engine* e, struct UnitSystem* us,
-                           int mpi_rank, int mpi_size, MPI_Comm comm,
-                           MPI_Info info) {
+void write_output_parallel(struct engine* e, const char* baseName,
+                           struct UnitSystem* us, int mpi_rank, int mpi_size,
+                           MPI_Comm comm, MPI_Info info) {
   hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
   const size_t Ngas = e->s->nr_parts;
   const size_t Ntot = e->s->nr_gparts;
@@ -536,22 +540,19 @@ void write_output_parallel(struct engine* e, struct UnitSystem* us,
   static int outputCount = 0;
   FILE* xmfFile = 0;
 
-  /* Number of particles of each type */
-  // const size_t Ndm = Ntot - Ngas;
-
-  /* MATTHIEU: Temporary fix to preserve master */
+  /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - Ngas : 0;
-  /* MATTHIEU: End temporary fix */
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "output_%03i.hdf5", outputCount);
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%03i.hdf5", baseName,
+           outputCount);
 
   /* First time, we need to create the XMF file */
-  if (outputCount == 0 && mpi_rank == 0) createXMFfile();
+  if (outputCount == 0 && mpi_rank == 0) createXMFfile(baseName);
 
   /* Prepare the XMF file for the new entry */
-  if (mpi_rank == 0) xmfFile = prepareXMFfile();
+  if (mpi_rank == 0) xmfFile = prepareXMFfile(baseName);
 
   /* Open HDF5 file */
   hid_t plist_id = H5Pcreate(H5P_FILE_ACCESS);

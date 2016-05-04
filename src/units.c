@@ -46,20 +46,23 @@
  *
  * @param us The UnitSystem to initialize.
  * @param params The parsed parameter file.
+ * @param category The section of the parameter file to read from.
  */
-void units_init(struct UnitSystem* us, const struct swift_params* params) {
+void units_init(struct UnitSystem* us, const struct swift_params* params,
+                const char* category) {
 
-  us->UnitMass_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitMass_in_cgs");
-  us->UnitLength_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitLength_in_cgs");
-  const double unitVelocity =
-      parser_get_param_double(params, "UnitSystem:UnitVelocity_in_cgs");
+  char buffer[200];
+  sprintf(buffer, "%s:UnitMass_in_cgs", category);
+  us->UnitMass_in_cgs = parser_get_param_double(params, buffer);
+  sprintf(buffer, "%s:UnitLength_in_cgs", category);
+  us->UnitLength_in_cgs = parser_get_param_double(params, buffer);
+  sprintf(buffer, "%s:UnitVelocity_in_cgs", category);
+  const double unitVelocity = parser_get_param_double(params, buffer);
   us->UnitTime_in_cgs = us->UnitLength_in_cgs / unitVelocity;
-  us->UnitCurrent_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitCurrent_in_cgs");
-  us->UnitTemperature_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitTemp_in_cgs");
+  sprintf(buffer, "%s:UnitCurrent_in_cgs", category);
+  us->UnitCurrent_in_cgs = parser_get_param_double(params, buffer);
+  sprintf(buffer, "%s:UnitTemp_in_cgs", category);
+  us->UnitTemperature_in_cgs = parser_get_param_double(params, buffer);
 }
 
 /**

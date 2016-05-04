@@ -92,7 +92,8 @@ enum UnitConversionFactor {
   UNIT_CONV_TEMPERATURE
 };
 
-void units_init(struct UnitSystem*, const struct swift_params*);
+void units_init(struct UnitSystem*, const struct swift_params*,
+                const char* category);
 double units_get_base_unit(const struct UnitSystem*, enum BaseUnits);
 const char* units_get_base_unit_symbol(enum BaseUnits);
 const char* units_get_base_unit_CGS_symbol(enum BaseUnits);
