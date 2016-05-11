@@ -47,7 +47,10 @@ static void parse_line(char *line, struct swift_params *params);
 static void parse_value(char *line, struct swift_params *params);
 static void parse_section_param(char *line, int *isFirstParam,
                                 char *sectionName, struct swift_params *params);
-
+static void find_duplicate_params(const struct swift_params *params,
+                                  const char *param_name);
+static void find_duplicate_section(const struct swift_params *params,
+                                   const char *section_name);
 static int lineNumber = 0;
 
 /**
@@ -65,7 +68,8 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
   char line[PARSER_MAX_LINE_SIZE];
 
   /* Initialise parameter count. */
-  params->count = 0;
+  params->paramCount = 0;
+  params->sectionCount = 0;
 
   /* Check if parameter file exits. */
   if (file == NULL) {
@@ -143,11 +147,47 @@ static int is_empty(const char *str) {
 }
 
 /**
+ * @brief Look for duplicate parameters.
+ *
+ * @param params Structure that holds the parameters
+ * @param param_name Name of parameter to be searched for
+ */
+
+static void find_duplicate_params(const struct swift_params *params,
+                                  const char *param_name) {
+  for (int i = 0; i < params->paramCount; i++) {
+    /*strcmp returns 0 if both strings are the same.*/
+    if (!strcmp(param_name, params->data[i].name)) {
+      error("Invalid line:%d '%s', parameter is a duplicate.", lineNumber,
+            param_name);
+    }
+  }
+}
+
+/**
+ * @brief Look for duplicate sections.
+ *
+ * @param params Structure that holds the parameters
+ * @param section_name Name of section to be searched for
+ */
+
+static void find_duplicate_section(const struct swift_params *params,
+                                   const char *section_name) {
+  for (int i = 0; i < params->sectionCount; i++) {
+    /*strcmp returns 0 if both strings are the same.*/
+    if (!strcmp(section_name, params->section[i].name)) {
+      error("Invalid line:%d '%s', section is a duplicate.", lineNumber,
+            section_name);
+    }
+  }
+}
+/**
  * @brief Parses a line from a file and stores any parameters in a structure.
  *
  * @param line Line to be parsed.
  * @param params Structure to be populated from file.
  */
+
 static void parse_line(char *line, struct swift_params *params) {
   /* Parse line if it doesn't begin with a comment. */
   if (*line != PARSER_COMMENT_CHAR) {
@@ -193,6 +233,7 @@ static void parse_value(char *line, struct swift_params *params) {
                                                 name. */
   static int isFirstParam = 1;
   char tmpStr[PARSER_MAX_LINE_SIZE];
+  char tmpSectionName[PARSER_MAX_LINE_SIZE];
 
   char *token;
 
@@ -223,15 +264,36 @@ static void parse_value(char *line, struct swift_params *params) {
 
     /* If second token is NULL then the line must be a section heading. */
     if (token == NULL) {
-      strcat(tmpStr, PARSER_VALUE_STRING);
-      strcpy(section, tmpStr);
+      strcpy(tmpSectionName, tmpStr);
+      strcat(tmpSectionName, PARSER_VALUE_STRING);
+
+      /* Check for duplicate section name. */
+      find_duplicate_section(params, tmpSectionName);
+
+      /* Check for duplicate standalone parameter name used as a section name.
+       */
+      find_duplicate_params(params, tmpStr);
+
+      strcpy(section, tmpSectionName);
+      strcpy(params->section[params->sectionCount++].name, tmpSectionName);
       inSection = 1;
       isFirstParam = 1;
     } else {
+      /* Create string with standalone parameter name appended with ":" to aid
+       * duplicate search as section names are stored with ":" at the end.*/
+      strcpy(tmpSectionName, tmpStr);
+      strcat(tmpSectionName, PARSER_VALUE_STRING);
+
+      /* Check for duplicate parameter name. */
+      find_duplicate_params(params, tmpStr);
+
+      /* Check for duplicate section name used as standalone parameter name. */
+      find_duplicate_section(params, tmpSectionName);
+
       /* Must be a standalone parameter so no need to prefix name with a
        * section. */
-      strcpy(params->data[params->count].name, tmpStr);
-      strcpy(params->data[params->count++].value, token);
+      strcpy(params->data[params->paramCount].name, tmpStr);
+      strcpy(params->data[params->paramCount++].value, token);
       inSection = 0;
       isFirstParam = 1;
     }
@@ -278,8 +340,12 @@ static void parse_section_param(char *line, int *isFirstParam,
    * copy it into the parameter structure. */
   strcpy(paramName, sectionName);
   strcat(paramName, tmpStr);
-  strcpy(params->data[params->count].name, paramName);
-  strcpy(params->data[params->count++].value, token);
+
+  /* Check for duplicate parameter name. */
+  find_duplicate_params(params, paramName);
+
+  strcpy(params->data[params->paramCount].name, paramName);
+  strcpy(params->data[params->paramCount++].value, token);
 }
 
 /**
@@ -294,7 +360,7 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
   char str[PARSER_MAX_LINE_SIZE];
   int retParam = 0;
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
@@ -326,7 +392,7 @@ char parser_get_param_char(const struct swift_params *params,
   char str[PARSER_MAX_LINE_SIZE];
   char retParam = 0;
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
@@ -358,7 +424,7 @@ float parser_get_param_float(const struct swift_params *params,
   char str[PARSER_MAX_LINE_SIZE];
   float retParam = 0.f;
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
@@ -390,7 +456,7 @@ double parser_get_param_double(const struct swift_params *params,
   char str[PARSER_MAX_LINE_SIZE];
   double retParam = 0.;
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
@@ -417,7 +483,7 @@ double parser_get_param_double(const struct swift_params *params,
  */
 void parser_get_param_string(const struct swift_params *params,
                              const char *name, char *retParam) {
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     /*strcmp returns 0 if both strings are the same.*/
     if (!strcmp(name, params->data[i].name)) {
       strcpy(retParam, params->data[i].value);
@@ -438,7 +504,7 @@ void parser_print_params(const struct swift_params *params) {
   printf("|  SWIFT Parameter File  |\n");
   printf("--------------------------\n");
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     printf("Parameter name: %s\n", params->data[i].name);
     printf("Parameter value: %s\n", params->data[i].value);
   }
@@ -461,7 +527,7 @@ void parser_write_params_to_file(const struct swift_params *params,
   /* Start of file identifier in YAML. */
   fprintf(file, "%s\n", PARSER_START_OF_FILE);
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     /* Check that the parameter name contains a section name. */
     if (strchr(params->data[i].name, PARSER_VALUE_CHAR)) {
       /* Copy the parameter name into a temporary string and find the section
@@ -478,7 +544,7 @@ void parser_write_params_to_file(const struct swift_params *params,
       /* Remove white space from parameter name and write it to the file. */
       token = strtok(NULL, " #\n");
 
-      fprintf(file, "\t%s%c %s\n", token, PARSER_VALUE_CHAR,
+      fprintf(file, "  %s%c %s\n", token, PARSER_VALUE_CHAR,
               params->data[i].value);
     } else {
       fprintf(file, "\n%s%c %s\n", params->data[i].name, PARSER_VALUE_CHAR,

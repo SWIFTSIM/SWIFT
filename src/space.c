@@ -433,7 +433,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #ifdef WITH_MPI
   /* Move non-local parts to the end of the list. */
   const int local_nodeID = s->e->nodeID;
-  for (size_t k = 0; k < nr_parts; k++)
+  for (size_t k = 0; k < nr_parts;) {
     if (cells[ind[k]].nodeID != local_nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
@@ -453,9 +453,26 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       ind[k] = ind[nr_parts];
       ind[nr_parts] = t;
     }
+    else {
+      /* Increment when not exchanging otherwise we need to retest "k".*/
+      k++;
+    }
+  }
+
+  /* Check that all parts are in the correct places. */
+  /*  for (size_t k = 0; k < nr_parts; k++) {
+    if (cells[ind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local parts to send list");
+    }
+  }
+  for (size_t k = nr_parts; k < s->nr_parts; k++) {
+    if (cells[ind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local parts from send list");
+    }
+  }*/
 
   /* Move non-local gparts to the end of the list. */
-  for (int k = 0; k < nr_gparts; k++)
+  for (int k = 0; k < nr_gparts;) {
     if (cells[gind[k]].nodeID != local_nodeID) {
       cells[gind[k]].gcount -= 1;
       nr_gparts -= 1;
@@ -472,6 +489,25 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       gind[k] = gind[nr_gparts];
       gind[nr_gparts] = t;
     }
+    else {
+      /* Increment when not exchanging otherwise we need to retest "k".*/
+      k++;
+    }
+  }
+
+  /* Check that all gparts are in the correct place (untested). */
+  /*
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (cells[gind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local gparts to send list");
+    }
+  }
+  for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
+    if (cells[gind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local gparts from send list");
+    }
+  }*/
+
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */

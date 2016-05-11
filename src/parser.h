@@ -32,10 +32,16 @@ struct parameter {
   char value[PARSER_MAX_LINE_SIZE];
 };
 
+struct section {
+  char name[PARSER_MAX_LINE_SIZE];
+};
+
 /* The array of parameters read from a file */
 struct swift_params {
+  struct section section[PARSER_MAX_NO_OF_PARAMS];
   struct parameter data[PARSER_MAX_NO_OF_PARAMS];
-  int count;
+  int sectionCount;
+  int paramCount;
 };
 
 /* Public API. */

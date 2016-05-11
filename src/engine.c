@@ -2356,7 +2356,7 @@ void engine_dump_snapshot(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  if (e->verbose) message("writing snapshot at t=%f", e->time);
+  if (e->verbose) message("writing snapshot at t=%f.", e->time);
 
 /* Dump... */
 #if defined(WITH_MPI)
@@ -2749,8 +2749,8 @@ void engine_print_policy(struct engine *e) {
  */
 void engine_compute_next_snapshot_time(struct engine *e) {
 
-  for (double time = e->timeFirstSnapshot; time < e->timeEnd;
-       time += e->deltaTimeSnapshot) {
+  for (double time = e->timeFirstSnapshot;
+       time < e->timeEnd + e->deltaTimeSnapshot; time += e->deltaTimeSnapshot) {
 
     /* Output time on the integer timeline */
     e->ti_nextSnapshot = (time - e->timeBegin) / e->timeBase;
@@ -2758,8 +2758,16 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     if (e->ti_nextSnapshot > e->ti_current) break;
   }
 
-  /* Be nice, talk... */
-  const float next_snapshot_time =
-      e->ti_nextSnapshot * e->timeBase + e->timeBegin;
-  if (e->verbose) message("Next output time set to t=%f", next_snapshot_time);
+  /* Deal with last snapshot */
+  if (e->ti_nextSnapshot >= max_nr_timesteps) {
+    e->ti_nextSnapshot = -1;
+    if (e->verbose) message("No further output time.");
+  } else {
+
+    /* Be nice, talk... */
+    const float next_snapshot_time =
+        e->ti_nextSnapshot * e->timeBase + e->timeBegin;
+    if (e->verbose)
+      message("Next output time set to t=%f.", next_snapshot_time);
+  }
 }
