@@ -45,6 +45,7 @@
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
+#include "hydro_properties.h"
 #include "hydro.h"
 #include "minmax.h"
 #include "scheduler.h"
@@ -638,6 +639,13 @@ void runner_doghost(struct runner *r, struct cell *c) {
   float h_corr;
   const int ti_current = r->e->ti_current;
   const double timeBase = r->e->timeBase;
+  const float target_wcount = r->e->hydro_properties->target_neighbours;
+  const float max_wcount =
+      target_wcount + r->e->hydro_properties->delta_neighbours;
+  const float min_wcount =
+      target_wcount - r->e->hydro_properties->delta_neighbours;
+  const int max_smoothing_iter =
+      r->e->hydro_properties->max_smoothing_iterations;
 
   TIMER_TIC;
 
@@ -654,7 +662,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   for (int k = 0; k < count; k++) pid[k] = k;
 
   /* While there are particles that need to be updated... */
-  for (int num_reruns = 0; count > 0 && num_reruns < const_smoothing_max_iter;
+  for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
        num_reruns++) {
 
     /* Reset the redo-count. */
@@ -678,7 +686,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
         /* Otherwise, compute the smoothing length update (Newton step). */
         else {
-          h_corr = (kernel_nwneigh - p->density.wcount) / p->density.wcount_dh;
+          h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
 
           /* Truncate to the range [ -p->h/2 , p->h ]. */
           h_corr = fminf(h_corr, p->h);
@@ -686,8 +694,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
         }
 
         /* Did we get the right number density? */
-        if (p->density.wcount > kernel_nwneigh + const_delta_nwneigh ||
-            p->density.wcount < kernel_nwneigh - const_delta_nwneigh) {
+        if (p->density.wcount > max_wcount || p->density.wcount < min_wcount) {
 
           /* Ok, correct then */
           p->h += h_corr;
@@ -918,7 +925,9 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
   const struct external_potential *potential = r->e->external_potential;
+  const struct hydro_props *hydro_properties = r->e->hydro_properties;
   const struct phys_const *constants = r->e->physical_constants;
+  const float ln_max_h_change = hydro_properties->log_max_h_change;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
@@ -1048,7 +1057,8 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Compute the next timestep (hydro condition) */
-          const float new_dt_hydro = hydro_compute_timestep(p, xp);
+          const float new_dt_hydro =
+              hydro_compute_timestep(p, xp, hydro_properties);
 
           /* Compute the next timestep (gravity condition) */
           float new_dt_grav = FLT_MAX;
@@ -1067,7 +1077,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
           /* Limit change in h */
           const float dt_h_change =
-              (p->h_dt != 0.0f) ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
+              (p->h_dt != 0.0f) ? fabsf(ln_max_h_change * p->h / p->h_dt)
                                 : FLT_MAX;
 
           new_dt = fminf(new_dt, dt_h_change);

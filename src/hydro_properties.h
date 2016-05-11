@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,43 +16,41 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
+
+#ifndef SWIFT_HYDRO_PROPERTIES
+#define SWIFT_HYDRO_PROPERTIES
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "atomic.h"
-#include "cell.h"
-#include "clocks.h"
+/* Local includes. */
 #include "const.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
-#include "error.h"
-#include "gravity.h"
-#include "hydro.h"
-#include "hydro_properties.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
 #include "parser.h"
-#include "part.h"
-#include "partition.h"
-#include "physical_constants.h"
-#include "potentials.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "tools.h"
-#include "units.h"
-#include "version.h"
 
-#endif /* SWIFT_SWIFT_H */
+/**
+ * @brief Contains all the constants and parameters of the hydro scheme
+ */
+struct hydro_props {
+
+  /* Kernel properties */
+  float eta_neighbours;
+  float target_neighbours;
+  float delta_neighbours;
+
+  /* Kernel properties */
+  int max_smoothing_iterations;
+
+  /* Time integration properties */
+  float CFL_condition;
+  float log_max_h_change;
+
+/* Viscosity parameters */
+#ifdef GADGET_SPH
+  float const_viscosity_alpha;
+#endif
+};
+
+void hydro_props_print(const struct hydro_props *p);
+void hydro_props_init(struct hydro_props *p, const struct swift_params *params);
+
+#endif /* SWIFT_HYDRO_PROPERTIES */

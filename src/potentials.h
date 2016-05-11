@@ -31,6 +31,7 @@
 #include "const.h"
 #include "error.h"
 #include "part.h"
+#include "parser.h"
 #include "physical_constants.h"
 #include "units.h"
 

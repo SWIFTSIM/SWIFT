@@ -24,8 +24,7 @@
 #define const_hydro_gamma (5.0f / 3.0f)
 
 /* SPH Viscosity constants. */
-#define const_viscosity_alpha \
-  0.8f /* Used in the legacy gadget-2 SPH mode only */
+#define const_viscosity_alpha 0.8f
 #define const_viscosity_alpha_min \
   0.1f /* Values taken from (Price,2004), not used in legacy gadget mode */
 #define const_viscosity_alpha_max \
@@ -38,32 +37,20 @@
   1.f /* Value taken from (Price,2008), not used in legacy gadget mode */
 
 /* Time integration constants. */
-#define const_cfl 0.1f
-#define const_ln_max_h_change                                           \
-  0.231111721f /* Particle can't change volume by more than a factor of \
-                  2=1.26^3 over one time step */
 #define const_max_u_change 0.1f
 
-/* Neighbour search constants. */
-#define const_eta_kernel \
-  1.2349f /* Corresponds to 48 ngbs with the cubic spline kernel */
-#define const_delta_nwneigh 0.1f
-#define const_smoothing_max_iter 30
-#define CUBIC_SPLINE_KERNEL
-
 /* Gravity stuff. */
-#define const_theta_max                                   \
-  0.57735f /* Opening criteria, which is the ratio of the \
-              cell distance over the cell width. */
+#define const_theta_max 0.57735f
+#define const_G 6.672e-8f     /* Gravitational constant. */
+#define const_epsilon 0.0014f /* Gravity blending distance. */
 
-#define const_G 6.672e-8f             /* Gravitational constant. */
-#define const_epsilon 0.0014f         /* Gravity blending distance. */
-#define const_iepsilon 714.285714286f /* Inverse gravity blending distance. */
-#define const_iepsilon2 (const_iepsilon* const_iepsilon)
-#define const_iepsilon3 (const_iepsilon2* const_iepsilon)
-#define const_iepsilon4 (const_iepsilon2* const_iepsilon2)
-#define const_iepsilon5 (const_iepsilon3* const_iepsilon2)
-#define const_iepsilon6 (const_iepsilon3* const_iepsilon3)
+/* Kernel function to use */
+#define CUBIC_SPLINE_KERNEL
+//#define QUARTIC_SPLINE_KERNEL
+//#define QUINTIC_SPLINE_KERNEL
+//#define WENDLAND_C2_KERNEL
+//#define WENDLAND_C4_KERNEL
+//#define WENDLAND_C6_KERNEL
 
 /* SPH variant to use */
 //#define MINIMAL_SPH

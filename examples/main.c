@@ -302,6 +302,10 @@ int main(int argc, char *argv[]) {
     phys_const_print(&prog_const);
   }
 
+  /* Initialise the hydro properties */
+  struct hydro_props hydro_properties;
+  hydro_props_init(&hydro_properties, params);
+
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity) potential_init(params, &us, &potential);
@@ -414,7 +418,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
-              talking, &prog_const, &potential);
+              talking, &prog_const, &hydro_properties, &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
