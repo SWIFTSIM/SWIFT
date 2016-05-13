@@ -1,9 +1,9 @@
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1   # Grams
-  UnitLength_in_cgs:   1   # Centimeters
-  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitMass_in_cgs:     1.9885e33     # Grams
+  UnitLength_in_cgs:   3.0856776e21  # Centimeters
+  UnitVelocity_in_cgs: 1e5           # Centimeters per second
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
@@ -19,35 +19,35 @@ TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1.    # The end time of the simulation (in internal units).
   dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:   output      # Common part of the name of output files
-  time_first: 0.          # Time of the first output (in internal units)
-  delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
-  UnitMass_in_cgs:     1  # Unit system for the outputs (Grams)
-  UnitLength_in_cgs:   1  # Unit system for the outputs (Centimeters)
-  UnitVelocity_in_cgs: 1  # Unit system for the outputs (Centimeters per second)
-  UnitCurrent_in_cgs:  1  # Unit system for the outputs (Amperes)
-  UnitTemp_in_cgs:     1  # Unit system for the outputs (Kelvin)
+  basename:            pointMass # Common part of the name of output files
+  time_first:          0.        # Time of the first output (in internal units)
+  delta_time:          0.02      # Time difference between consecutive outputs (in internal units)
+  UnitMass_in_cgs:     1.9885e33     # Grams
+  UnitLength_in_cgs:   3.0856776e21  # Centimeters
+  UnitVelocity_in_cgs: 1e5           # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
 
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   max_ghost_iterations:  30       # Maximal number of iterations allowed to converge towards the smoothing length.
-  max_smoothing_length:  0.1      # Maximal smoothing length allowed (in internal units).
+  max_smoothing_length:  10.      # Maximal smoothing length allowed (in internal units).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   max_volume_change:     2.       # Maximal allowed change of volume over one time-step
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  SedovBlast/sedov.hdf5 # The file to read
+  file_name:  Sphere.hdf5           # The file to read
   h_scaling:  1.                    # A scaling factor to apply to all smoothing lengths in the ICs.
-  shift_x:    0.                    # A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    0.
-  shift_z:    0.
+  shift_x:    50.                   # A shift to apply to all particles read from the ICs (in internal units).
+  shift_y:    50.
+  shift_z:    50.
 
 # Parameters govering domain decomposition
 DomainDecomposition:
@@ -57,11 +57,11 @@ DomainDecomposition:
   initial_grid_z:    10
   repartition_type:   b     # The re-decomposition strategy ("n", "b", "v", "e" or "x"). See documentation for details.
  
-# Parameters related to external potentials
-  
-# Point mass external potential
+
+# External potential parameters
 PointMass:
   position_x:      50.     # location of external point mass in internal units
   position_y:      50.
-  position_z:      50.
+  position_z:      50.	
   mass:            1e10     # mass of external point mass in internal units
+

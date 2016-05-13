@@ -65,7 +65,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * kernel_igamma * (3.f * wi + ui * wi_dx);
+  pi->rho_dh -= mj * (3.f * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * kernel_igamma * (3.f * wj + uj * wj_dx);
+  pj->rho_dh -= mi * (3.f * wj + uj * wj_dx);
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
@@ -134,7 +134,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * kernel_igamma * (3.f * wi + u * wi_dx);
+  pi->rho_dh -= mj * (3.f * wi + u * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;

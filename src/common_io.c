@@ -335,11 +335,15 @@ void writeCodeDescription(hid_t h_file) {
  *
  * @todo Use a proper XML library to avoid stupid copies.
  */
-FILE* prepareXMFfile() {
+FILE* prepareXMFfile(const char* baseName) {
   char buffer[1024];
 
-  FILE* xmfFile = fopen("output.xmf", "r");
-  FILE* tempFile = fopen("output_temp.xmf", "w");
+  char fileName[FILENAME_BUFFER_SIZE];
+  char tempFileName[FILENAME_BUFFER_SIZE];
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
+  snprintf(tempFileName, FILENAME_BUFFER_SIZE, "%s_temp.xmf", baseName);
+  FILE* xmfFile = fopen(fileName, "r");
+  FILE* tempFile = fopen(tempFileName, "w");
 
   if (xmfFile == NULL) error("Unable to open current XMF file.");
 
@@ -355,8 +359,8 @@ FILE* prepareXMFfile() {
   fclose(xmfFile);
 
   /* We then copy the XMF file back up to the closing lines */
-  xmfFile = fopen("output.xmf", "w");
-  tempFile = fopen("output_temp.xmf", "r");
+  xmfFile = fopen(fileName, "w");
+  tempFile = fopen(tempFileName, "r");
 
   if (xmfFile == NULL) error("Unable to open current XMF file.");
 
@@ -369,7 +373,7 @@ FILE* prepareXMFfile() {
   }
   fprintf(xmfFile, "\n");
   fclose(tempFile);
-  remove("output_temp.xmf");
+  remove(tempFileName);
 
   return xmfFile;
 }
@@ -380,8 +384,11 @@ FILE* prepareXMFfile() {
  * @todo Exploit the XML nature of the XMF format to write a proper XML writer
  *and simplify all the XMF-related stuff.
  */
-void createXMFfile() {
-  FILE* xmfFile = fopen("output.xmf", "w");
+void createXMFfile(const char* baseName) {
+
+  char fileName[FILENAME_BUFFER_SIZE];
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
+  FILE* xmfFile = fopen(fileName, "w");
 
   fprintf(xmfFile, "<?xml version=\"1.0\" ?> \n");
   fprintf(xmfFile, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []> \n");

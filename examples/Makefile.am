@@ -62,21 +62,19 @@ swift_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="e
 swift_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(MPI_LIBS)
 
 # Scripts to generate ICs
-EXTRA_DIST = UniformBox/makeIC.py \
+EXTRA_DIST = UniformBox/makeIC.py UniformBox/run.sh UniformBox/uniformBox.yml \
 	     UniformDMBox/makeIC.py \
 	     PerturbedBox/makeIC.py \
-	     SedovBlast/makeIC.py SedovBlast/makeIC_fcc.py SedovBlast/solution.py \
-	     SodShock/makeIC.py SodShock/solution.py SodShock/glass_001.hdf5 SodShock/glass_002.hdf5 SodShock/rhox.py \
-	     CosmoVolume/getIC.sh \
+	     SedovBlast/makeIC.py SedovBlast/makeIC_fcc.py SedovBlast/solution.py SedovBlast/run.sh SedovBlast/sedov.yml \
+	     SodShock/makeIC.py SodShock/solution.py SodShock/glass_001.hdf5 SodShock/glass_002.hdf5 SodShock/rhox.py SodShock/run.sh SodShock/sodShock.yml \
+	     CosmoVolume/getIC.sh CosmoVolume/run.sh CosmoVolume/cosmoVolume.yml \
 	     BigCosmoVolume/makeIC.py \
 	     BigPerturbedBox/makeIC_fcc.py \
              GreshoVortex/makeIC.py GreshoVortex/solution.py \
-             MultiTypes/makeIC.py
-
+             MultiTypes/makeIC.py \
+             parameter_example.yml
 
 # Scripts to plot task graphs
 EXTRA_DIST += plot_tasks_MPI.py plot_tasks.py \
 	      process_plot_tasks_MPI process_plot_tasks
 
-# Simple run scripts
-EXTRA_DIST += runs.sh

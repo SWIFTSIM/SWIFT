@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2015 Peter W. Draper (p.w.draper@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,14 +17,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_VERSION_H
+#define SWIFT_VERSION_H
 
-__attribute__((always_inline))
-    INLINE static void gravity_debug_particle(struct gpart* p) {
-  printf(
-      "x=[%.3e,%.3e,%.3e], "
-      "v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
-      "mass=%.3e t_begin=%d, t_end=%d\n",
-      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
-      p->a_grav[0], p->a_grav[1], p->a_grav[2], p->mass, p->ti_begin,
-      p->ti_end);
-}
+const char* package_description(void);
+const char* package_version(void);
+const char* git_revision(void);
+const char* git_branch(void);
+const char* compiler_name(void);
+const char* compiler_version(void);
+const char* mpi_version(void);
+const char* hdf5_version(void);
+const char* metis_version(void);
+void greetings(void);
+
+#endif /* SWIFT_VERSION_H */

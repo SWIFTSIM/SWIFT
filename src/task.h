@@ -2,6 +2,9 @@
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -45,6 +48,7 @@ enum task_types {
   task_type_grav_mm,
   task_type_grav_up,
   task_type_grav_down,
+  task_type_grav_external,
   task_type_part_sort,
   task_type_gpart_sort,
   task_type_split_cell,

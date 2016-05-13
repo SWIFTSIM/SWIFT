@@ -20,8 +20,8 @@
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
-  /* Old position, at last tree rebuild. */
-  double x_old[3];
+  /* Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
 
   /* Velocity at the last full step. */
   float v_full[3];

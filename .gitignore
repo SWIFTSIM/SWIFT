@@ -11,7 +11,7 @@ config.sub
 ltmain.sh
 libtool
 
-src/version.h
+src/version_string.h
 swift*.tar.gz
 doc/doxyfile.stamp
 doc/html/
@@ -49,6 +49,7 @@ theory/latex/swift.pdf
 theory/kernel/kernels.pdf
 theory/kernel/kernel_derivatives.pdf
 theory/kernel/kernel_definitions.pdf
+theory/paper_pasc/pasc_paper.pdf
 
 m4/libtool.m4
 m4/ltoptions.m4

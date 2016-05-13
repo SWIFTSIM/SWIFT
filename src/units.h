@@ -92,24 +92,25 @@ enum UnitConversionFactor {
   UNIT_CONV_TEMPERATURE
 };
 
-void units_init(struct UnitSystem*, const struct swift_params*);
+void units_init(struct UnitSystem*, const struct swift_params*,
+                const char* category);
 double units_get_base_unit(const struct UnitSystem*, enum BaseUnits);
 const char* units_get_base_unit_symbol(enum BaseUnits);
 const char* units_get_base_unit_CGS_symbol(enum BaseUnits);
 double units_general_conversion_factor(const struct UnitSystem* us,
-                                       float baseUnitsExponants[5]);
+                                       const float baseUnitsExponants[5]);
 double units_conversion_factor(const struct UnitSystem* us,
                                enum UnitConversionFactor unit);
 float units_general_h_factor(const struct UnitSystem* us,
-                             float baseUnitsExponants[5]);
+                             const float baseUnitsExponants[5]);
 float units_h_factor(const struct UnitSystem* us,
                      enum UnitConversionFactor unit);
 float units_general_a_factor(const struct UnitSystem* us,
-                             float baseUnitsExponants[5]);
+                             const float baseUnitsExponants[5]);
 float units_a_factor(const struct UnitSystem* us,
                      enum UnitConversionFactor unit);
 void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
-                                     float baseUnitsExponants[5]);
+                                     const float baseUnitsExponants[5]);
 void units_conversion_string(char* buffer, const struct UnitSystem* us,
                              enum UnitConversionFactor unit);
 

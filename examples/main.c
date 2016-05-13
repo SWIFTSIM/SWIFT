@@ -3,6 +3,9 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *                    Angus Lepper (angus.lepper@ed.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -67,6 +70,9 @@ void print_help_message() {
          "Run with an external gravitational potential");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
+  printf("  %2s %8s %s\n", "-t", "{int}",
+         "The number of threads to use on each MPI rank. Defaults to 1 if not "
+         "specified.");
   printf("  %2s %8s %s\n", "-v", "[12]",
          "Increase the level of verbosity 1: MPI-rank 0 writes ");
   printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
@@ -134,12 +140,13 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int with_fp_exceptions = 0;
   int verbose = 0;
+  int nr_threads = 1;
   char paramFileName[200] = "";
   unsigned long long cpufreq = 0;
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cdef:gGhsv:y")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "cdef:gGhst:v:y:")) != -1) switch (c) {
       case 'c':
         with_cosmology = 1;
         break;
@@ -167,6 +174,14 @@ int main(int argc, char *argv[]) {
         return 0;
       case 's':
         with_hydro = 1;
+        break;
+      case 't':
+        if (sscanf(optarg, "%d", &nr_threads) != 1) {
+          if (myrank == 0)
+            printf("Error parsing the number of threads (-t).\n");
+          if (myrank == 0) print_help_message();
+          return 1;
+        }
         break;
       case 'v':
         if (sscanf(optarg, "%d", &verbose) != 1) {
@@ -249,17 +264,6 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Initialize unit system */
-  struct UnitSystem us;
-  units_init(&us, params);
-  if (myrank == 0) {
-    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-  }
-
 /* Prepare the domain decomposition scheme */
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -276,6 +280,29 @@ int main(int argc, char *argv[]) {
     message("Using %s repartitioning", repartition_name[reparttype]);
   }
 #endif
+
+  /* Initialize unit system and constants */
+  struct UnitSystem us;
+  struct phys_const prog_const;
+  units_init(&us, params, "InternalUnitSystem");
+  phys_const_init(&us, &prog_const);
+  if (myrank == 0 && verbose > 0) {
+    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    phys_const_print(&prog_const);
+  }
+
+  /* Initialise the hydro properties */
+  struct hydro_props hydro_properties;
+  hydro_props_init(&hydro_properties, params);
+
+  /* Initialise the external potential properties */
+  struct external_potential potential;
+  if (with_external_gravity) potential_init(params, &us, &potential);
+  if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
@@ -313,6 +340,13 @@ int main(int argc, char *argv[]) {
     gparts = NULL;
     for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
     Ngpart = 0;
+  }
+  if (!with_hydro) {
+    free(parts);
+    parts = NULL;
+    for (size_t k = 0; k < Ngpart; ++k)
+      if (gparts[k].id > 0) error("Linking problem");
+    Ngas = 0;
   }
 
   /* Get the total number of particles across all nodes. */
@@ -377,7 +411,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, engine_policies, talking);
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
+              talking, &prog_const, &hydro_properties, &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -385,32 +420,12 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
+  /* Write the state of the system before starting time integration. */
+  if (!dry_run) engine_dump_snapshot(&e);
+
   /* Now that everything is ready, no need for the parameters any more */
   free(params);
   params = NULL;
-
-  int with_outputs = 1;
-  if (with_outputs && !dry_run) {
-    /* Write the state of the system before starting time integration. */
-    if (myrank == 0) clocks_gettime(&tic);
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#else
-    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                        MPI_INFO_NULL);
-#endif
-#else
-    write_output_single(&e, &us);
-#endif
-    if (myrank == 0 && verbose) {
-      clocks_gettime(&toc);
-      message("writing particle properties took %.3f %s.",
-              clocks_diff(&tic, &toc), clocks_getunit());
-      fflush(stdout);
-    }
-  }
 
 /* Init the runner history. */
 #ifdef HIST
@@ -420,10 +435,10 @@ int main(int argc, char *argv[]) {
   /* Get some info to the user. */
   if (myrank == 0) {
     message(
-        "Running on %lld gas particles and %lld DM particles until t=%.3e with "
-        "%i threads and %i queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total[0], N_total[1], e.timeEnd, e.nr_threads, e.sched.nr_queues,
-        e.dt_min, e.dt_max);
+        "Running on %lld gas particles and %lld DM particles from t=%.3e until "
+        "t=%.3e with %d threads and %d queues (dt_min=%.3e, dt_max=%.3e)...",
+        N_total[0], N_total[1], e.timeBegin, e.timeEnd, e.nr_threads,
+        e.sched.nr_queues, e.dt_min, e.dt_max);
     fflush(stdout);
   }
 
@@ -467,28 +482,6 @@ int main(int argc, char *argv[]) {
 
     /* Take a step. */
     engine_step(&e);
-
-    if (with_outputs && j % 100 == 0) {
-
-      if (myrank == 0) clocks_gettime(&tic);
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-      write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                            MPI_INFO_NULL);
-#else
-      write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#endif
-#else
-      write_output_single(&e, &us);
-#endif
-      if (myrank == 0 && verbose) {
-        clocks_gettime(&toc);
-        message("writing particle properties took %.3f %s.",
-                clocks_diff(&tic, &toc), clocks_getunit());
-        fflush(stdout);
-      }
-    }
 
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
@@ -571,28 +564,8 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-  if (with_outputs) {
-
-    if (myrank == 0) clocks_gettime(&tic);
-/* Write final output. */
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#else
-    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                        MPI_INFO_NULL);
-#endif
-#else
-    write_output_single(&e, &us);
-#endif
-    if (myrank == 0 && verbose) {
-      clocks_gettime(&toc);
-      message("writing particle properties took %.3f %s.",
-              clocks_diff(&tic, &toc), clocks_getunit());
-      fflush(stdout);
-    }
-  }
+  /* Write final output. */
+  engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

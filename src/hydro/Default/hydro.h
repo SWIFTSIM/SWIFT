@@ -27,10 +27,14 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp) {
+    struct part* p, struct xpart* xp,
+    const struct hydro_props* hydro_properties) {
+
+  const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
+  const float dt_cfl =
+      2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
 
   /* Limit change in u */
   const float dt_u_change =
@@ -93,7 +97,7 @@ __attribute__((always_inline))
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= 3.0f * p->mass * kernel_root * kernel_igamma;
+  p->rho_dh -= 3.0f * p->mass * kernel_root;
   p->density.wcount += kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
@@ -101,6 +105,11 @@ __attribute__((always_inline))
   p->rho_dh *= ih4;
   p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
   p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma4);
+
+  const float irho = 1.f / p->rho;
+
+  /* Compute the derivative term */
+  p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh * irho);
 }
 
 /**

@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -46,6 +50,7 @@
 #include "atomic.h"
 #include "error.h"
 #include "gravity.h"
+#include "hydro_properties.h"
 #include "hydro.h"
 #include "space.h"
 #include "timers.h"
@@ -114,7 +119,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       if (k & 1) temp->loc[2] += temp->h[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
-      temp->dx_max = 0.0;
+      temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
