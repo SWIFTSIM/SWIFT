@@ -995,8 +995,15 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
             int dti_timeline = max_nr_timesteps;
             while (new_dti < dti_timeline) dti_timeline /= 2;
 
-            /* Now we have a time step, proceed with the kick */
             new_dti = dti_timeline;
+
+            /* Make sure we are allowed to increase the timestep size */
+            if (new_dti > current_dti) {
+              if ((max_nr_timesteps - gp->ti_end) % new_dti > 0)
+                new_dti = current_dti;
+            }
+
+            /* Now we have a time step, proceed with the kick */
           }
 
           /* Compute the time step for this kick */
@@ -1099,8 +1106,15 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           int dti_timeline = max_nr_timesteps;
           while (new_dti < dti_timeline) dti_timeline /= 2;
 
-          /* Now we have a time step, proceed with the kick */
           new_dti = dti_timeline;
+
+          /* Make sure we are allowed to increase the timestep size */
+          if (new_dti > current_dti) {
+            if ((max_nr_timesteps - p->ti_end) % new_dti > 0)
+              new_dti = current_dti;
+          }
+
+          /* Now we have a time step, proceed with the kick */
         }
 
         /* Compute the time step for this kick */
