@@ -107,7 +107,7 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
+void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
   struct gpart *g, *gparts = c->gparts;
   int i, k, gcount = c->gcount;
@@ -120,7 +120,7 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_dograv_external(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
     return;
   }
 
@@ -196,7 +196,7 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
  * @param N The number of entries.
  */
 
-void runner_dosort_ascending(struct entry *sort, int N) {
+void runner_do_sort_ascending(struct entry *sort, int N) {
 
   struct {
     short int lo, hi;
@@ -278,7 +278,7 @@ void runner_dosort_ascending(struct entry *sort, int N) {
  *      for recursive calls.
  */
 
-void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
+void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   struct entry *finger;
   struct entry *fingers[8];
@@ -312,7 +312,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
     for (k = 0; k < 8; k++) {
       if (c->progeny[k] == NULL) continue;
       missing = flags & ~c->progeny[k]->sorted;
-      if (missing) runner_dosort(r, c->progeny[k], missing, 0);
+      if (missing) runner_do_sort(r, c->progeny[k], missing, 0);
     }
 
     /* Loop over the 13 different sort arrays. */
@@ -402,7 +402,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
       if (flags & (1 << j)) {
         sort[j * (count + 1) + count].d = FLT_MAX;
         sort[j * (count + 1) + count].i = 0;
-        runner_dosort_ascending(&sort[j * (count + 1)], count);
+        runner_do_sort_ascending(&sort[j * (count + 1)], count);
         c->sorted |= (1 << j);
       }
   }
@@ -423,7 +423,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
   if (clock) TIMER_TOC(timer_dosort);
 }
 
-void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
+void runner_do_gsort(struct runner *r, struct cell *c, int flags, int clock) {
 
   struct entry *finger;
   struct entry *fingers[8];
@@ -457,7 +457,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
     for (k = 0; k < 8; k++) {
       if (c->progeny[k] == NULL) continue;
       missing = flags & ~c->progeny[k]->gsorted;
-      if (missing) runner_dogsort(r, c->progeny[k], missing, 0);
+      if (missing) runner_do_gsort(r, c->progeny[k], missing, 0);
     }
 
     /* Loop over the 13 different sort arrays. */
@@ -547,7 +547,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
       if (flags & (1 << j)) {
         gsort[j * (count + 1) + count].d = FLT_MAX;
         gsort[j * (count + 1) + count].i = 0;
-        runner_dosort_ascending(&gsort[j * (count + 1)], count);
+        runner_do_sort_ascending(&gsort[j * (count + 1)], count);
         c->gsorted |= (1 << j);
       }
   }
@@ -1333,7 +1333,7 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_sort:
-          runner_dosort(r, ci, t->flags, 1);
+          runner_do_sort(r, ci, t->flags, 1);
           break;
         case task_type_sub:
           if (t->subtype == task_subtype_density)
@@ -1378,7 +1378,7 @@ void *runner_main(void *data) {
           runner_dograv_down(r, t->ci);
           break;
         case task_type_grav_external:
-          runner_dograv_external(r, t->ci, 1);
+          runner_do_grav_external(r, t->ci, 1);
           break;
         case task_type_part_sort:
           space_do_parts_sort();

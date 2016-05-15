@@ -48,11 +48,11 @@ struct runner {
 
 /* Function prototypes. */
 void runner_do_cellhierarchy(struct runner *r, struct cell *c);
-void runner_dosort(struct runner *r, struct cell *c, int flag, int clock);
-void runner_dogsort(struct runner *r, struct cell *c, int flag, int clock);
-void runner_dokick(struct runner *r, struct cell *c, int timer);
-void runner_dodrift(struct runner *r, struct cell *c, int timer);
-void runner_doinit(struct runner *r, struct cell *c, int timer);
+void runner_do_sort(struct runner *r, struct cell *c, int flag, int clock);
+void runner_do_gsort(struct runner *r, struct cell *c, int flag, int clock);
+void runner_do_kick(struct runner *r, struct cell *c, int timer);
+void runner_do_drift(struct runner *r, struct cell *c, int timer);
+void runner_do_init(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
 
 #endif /* SWIFT_RUNNER_H */
