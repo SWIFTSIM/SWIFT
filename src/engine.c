@@ -158,7 +158,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_ghost_tasks(e, c->progeny[k], super);
+        engine_make_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -1453,8 +1453,7 @@ void engine_maketasks(struct engine *e) {
      depend on the sorts of its progeny. */
   engine_count_and_link_tasks(e);
 
-  /* Append a hierarchical task to each cell, and add kick tasks to the
-     super cells. */
+  /* Append hierarchical tasks to each cells */
   for (int k = 0; k < nr_cells; k++)
     engine_make_hierarchical_tasks(e, &cells[k], NULL);
 

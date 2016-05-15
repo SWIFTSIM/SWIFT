@@ -117,7 +117,7 @@ __attribute__((always_inline))
 /**
  * @brief Prepare a particle for the force calculation.
  *
- * This function is called in the hierarchy task to convert some quantities coming
+ * This function is called in the ghost task to convert some quantities coming
  * from the density loop over neighbours into quantities ready to be used in the
  * force loop over neighbours. Quantities are typically read from the density
  * sub-structure and written to the force sub-structure.
