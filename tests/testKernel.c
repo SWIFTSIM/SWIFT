@@ -28,7 +28,7 @@
 
 int main() {
 
-  const float h = const_eta_kernel;
+  const float h = 1.2348;
   float W[numPoints] = {0.f};
   float dW[numPoints] = {0.f};
 
