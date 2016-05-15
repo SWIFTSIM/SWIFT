@@ -95,10 +95,9 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 }
 
 /**
- * @brief Generate the hierarchical tasks for a hierarchy of cells - all the O(Npart) tasks.
+ * @brief Generate the hierarchical tasks for a hierarchy of cells - i.e. all
+ * the O(Npart) tasks.
  *
- * Previously this was called the ghost task but has since been renamed to reflect
- * it's new more general usage.
  * Tasks are only created here. The dependencies will be added later on.
  *
  * @param e The #engine.
@@ -107,7 +106,7 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  */
 
 void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
-                             struct cell *super) {
+                                    struct cell *super) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -137,8 +136,8 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
 
       if (c->count > 0) {
 
-        /* Generate the hierarchy task i.e. ghost task. */
-        c->hierarchy = scheduler_addtask(s, task_type_hierarchy, task_subtype_none, 0,
+        /* Generate the ghost task. */
+        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
                                      0, c, NULL, 0);
       }
 
@@ -617,14 +616,14 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
     struct task *t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
                                            2 * ci->tag + 1, 0, ci, cj, 0);
 
-    /* The send_rho task depends on the cell's hierarchy task. */
-    scheduler_addunlock(s, ci->super->hierarchy, t_rho);
+    /* The send_rho task depends on the cell's ghost task. */
+    scheduler_addunlock(s, ci->super->ghost, t_rho);
 
     /* The send_rho task should unlock the super-cell's kick task. */
     scheduler_addunlock(s, t_rho, ci->super->kick);
 
-    /* The send_xv task should unlock the super-cell's hierarchy task. */
-    scheduler_addunlock(s, t_xv, ci->super->hierarchy);
+    /* The send_xv task should unlock the super-cell's ghost task. */
+    scheduler_addunlock(s, t_xv, ci->super->ghost);
 
   }
 
@@ -1222,10 +1221,10 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *force,
                                                         struct cell *c) {
 
-  /* init --> density loop --> hierarchy (ghost) --> force loop --> kick */
+  /* init --> density loop --> ghost --> force loop --> kick */
   scheduler_addunlock(sched, c->super->init, density);
-  scheduler_addunlock(sched, density, c->super->hierarchy);
-  scheduler_addunlock(sched, c->super->hierarchy, force);
+  scheduler_addunlock(sched, density, c->super->ghost);
+  scheduler_addunlock(sched, c->super->ghost, force);
   scheduler_addunlock(sched, force, c->super->kick);
 }
 
@@ -1460,7 +1459,8 @@ void engine_maketasks(struct engine *e) {
     engine_make_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
-     Each force task depends on the cell hierarchy tasks and unlocks the kick task
+     Each force task depends on the cell hierarchy tasks and unlocks the kick
+     task
      of its super-cell. */
   engine_make_extra_hydroloop_tasks(e);
 
@@ -1571,7 +1571,7 @@ int engine_marktasks(struct engine *e) {
       }
 
       /* Single-cell task? */
-      else if (t->type == task_type_self || t->type == task_type_hierarchy ||
+      else if (t->type == task_type_self || t->type == task_type_ghost ||
                (t->type == task_type_sub && t->cj == NULL)) {
 
         /* Set this task's skip. */
@@ -1935,7 +1935,7 @@ void engine_init_particles(struct engine *e) {
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub;
-    mask |= 1 << task_type_hierarchy;
+    mask |= 1 << task_type_ghost;
 
     submask |= 1 << task_subtype_density;
   }
@@ -2115,7 +2115,7 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub;
-    mask |= 1 << task_type_hierarchy;
+    mask |= 1 << task_type_ghost;
 
     submask |= 1 << task_subtype_density;
     submask |= 1 << task_subtype_force;

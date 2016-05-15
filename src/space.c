@@ -350,7 +350,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells[k].count = 0;
       s->cells[k].gcount = 0;
       s->cells[k].init = NULL;
-      s->cells[k].hierarchy = NULL;
+      s->cells[k].ghost = NULL;
       s->cells[k].drift = NULL;
       s->cells[k].kick = NULL;
       s->cells[k].super = &s->cells[k];
@@ -452,8 +452,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const int t = ind[k];
       ind[k] = ind[nr_parts];
       ind[nr_parts] = t;
-    }
-    else {
+    } else {
       /* Increment when not exchanging otherwise we need to retest "k".*/
       k++;
     }
@@ -488,8 +487,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const int t = gind[k];
       gind[k] = gind[nr_gparts];
       gind[nr_gparts] = t;
-    }
-    else {
+    } else {
       /* Increment when not exchanging otherwise we need to retest "k".*/
       k++;
     }
@@ -507,7 +505,6 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       error("Failed to remove local gparts from send list");
     }
   }*/
-
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
