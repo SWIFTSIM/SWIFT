@@ -158,7 +158,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks(e, c->progeny[k], super);
+        engine_make_ghost_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -1459,8 +1459,7 @@ void engine_maketasks(struct engine *e) {
     engine_make_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
-     Each force task depends on the cell hierarchy tasks and unlocks the kick
-     task
+     Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
   engine_make_extra_hydroloop_tasks(e);
 
