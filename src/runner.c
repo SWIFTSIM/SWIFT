@@ -575,7 +575,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
  * @param c The cell.
  * @param timer 1 if the time is to be recorded.
  */
-void runner_doinit(struct runner *r, struct cell *c, int timer) {
+void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   struct part *const parts = c->parts;
   struct gpart *const gparts = c->gparts;
@@ -588,7 +588,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_doinit(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_init(r, c->progeny[k], 0);
     return;
   } else {
 
@@ -784,7 +784,7 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_dodrift(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift(struct runner *r, struct cell *c, int timer) {
 
   const double timeBase = r->e->timeBase;
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
@@ -891,7 +891,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        runner_dodrift(r, cp, 0);
+        runner_do_drift(r, cp, 0);
 
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
@@ -912,7 +912,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_dokick(struct runner *r, struct cell *c, int timer) {
+void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
   const float global_dt_min = r->e->dt_min;
   const float global_dt_max = r->e->dt_max;
@@ -1190,7 +1190,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         struct cell *const cp = c->progeny[k];
 
         /* Recurse */
-        runner_dokick(r, cp, 0);
+        runner_do_kick(r, cp, 0);
 
         /* And aggregate */
         updated += cp->updated;
@@ -1236,7 +1236,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_dorecv_cell(struct runner *r, struct cell *c, int timer) {
+void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
   const struct part *const parts = c->parts;
   const struct gpart *const gparts = c->gparts;
@@ -1346,21 +1346,21 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_init:
-          runner_doinit(r, ci, 1);
+          runner_do_init(r, ci, 1);
           break;
         case task_type_ghost:
           runner_do_ghost(r, ci);
           break;
         case task_type_drift:
-          runner_dodrift(r, ci, 1);
+          runner_do_drift(r, ci, 1);
           break;
         case task_type_kick:
-          runner_dokick(r, ci, 1);
+          runner_do_kick(r, ci, 1);
           break;
         case task_type_send:
           break;
         case task_type_recv:
-          runner_dorecv_cell(r, ci, 1);
+          runner_do_recv_cell(r, ci, 1);
           break;
         case task_type_grav_pp:
           if (t->cj == NULL)
