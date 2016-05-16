@@ -44,10 +44,10 @@ enum task_types {
   task_type_kick,
   task_type_send,
   task_type_recv,
-  task_type_grav_pp,
-  task_type_grav_mm,
+  /* task_type_grav_pp, */
+  /* task_type_grav_mm, */
   task_type_grav_up,
-  task_type_grav_down,
+  /* task_type_grav_down, */
   task_type_grav_external,
   task_type_part_sort,
   task_type_gpart_sort,

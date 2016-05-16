@@ -47,10 +47,10 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",          "sort",      "self",       "pair",       "sub",
-    "init",          "ghost",     "drift",      "kick",       "send",
-    "recv",          "grav_pp",   "grav_mm",    "grav_up",    "grav_down",
-    "grav_external", "part_sort", "gpart_sort", "split_cell", "rewait"};
+    "none",       "sort",    "self",          "pair",      "sub",
+    "init",       "ghost",   "drift",         "kick",      "send",
+    "recv",       "grav_up", "grav_external", "part_sort", "gpart_sort",
+    "split_cell", "rewait"};
 
 const char *subtaskID_names[task_type_count] = {"none",  "density",
                                                 "force", "grav"};
@@ -124,12 +124,12 @@ void task_unlock(struct task *t) {
       cell_unlocktree(t->ci);
       if (t->cj != NULL) cell_unlocktree(t->cj);
       break;
-    case task_type_grav_pp:
-    case task_type_grav_mm:
-    case task_type_grav_down:
-      cell_gunlocktree(t->ci);
-      if (t->cj != NULL) cell_gunlocktree(t->cj);
-      break;
+    /*   case task_type_grav_pp: */
+    /*   case task_type_grav_mm: */
+    /*   case task_type_grav_down: */
+    /*     cell_gunlocktree(t->ci); */
+    /*     if (t->cj != NULL) cell_gunlocktree(t->cj); */
+    /*     break; */
     default:
       break;
   }
@@ -184,15 +184,15 @@ int task_lock(struct task *t) {
   }
 
   /* Gravity tasks? */
-  else if (type == task_type_grav_mm || type == task_type_grav_pp ||
-           type == task_type_grav_down) {
-    if (ci->ghold || (cj != NULL && cj->ghold)) return 0;
-    if (cell_glocktree(ci) != 0) return 0;
-    if (cj != NULL && cell_glocktree(cj) != 0) {
-      cell_gunlocktree(ci);
-      return 0;
-    }
-  }
+  /* else if (type == task_type_grav_mm || type == task_type_grav_pp || */
+  /*          type == task_type_grav_down) { */
+  /*   if (ci->ghold || (cj != NULL && cj->ghold)) return 0; */
+  /*   if (cell_glocktree(ci) != 0) return 0; */
+  /*   if (cj != NULL && cell_glocktree(cj) != 0) { */
+  /*     cell_gunlocktree(ci); */
+  /*     return 0; */
+  /*   } */
+  /* } */
 
   /* If we made it this far, we've got a lock. */
   return 1;

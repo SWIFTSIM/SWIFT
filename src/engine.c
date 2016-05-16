@@ -1340,28 +1340,31 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 void engine_make_gravityinteraction_tasks(struct engine *e) {
 
   struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
+  /* struct scheduler *sched = &e->sched; */
   const int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells;
+  /* struct cell *cells = s->cells; */
 
   /* Loop over all cells. */
   for (int i = 0; i < nr_cells; i++) {
 
-    /* If it has gravity particles, add a self-task */
-    if (cells[i].gcount > 0) {
-      scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                        &cells[i], NULL, 0);
+    /* /\* If it has gravity particles, add a self-task *\/ */
+    /* if (cells[i].gcount > 0) { */
+    /*   scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
+     */
+    /*                     &cells[i], NULL, 0); */
 
-      /* Loop over all remainding cells */
-      for (int j = i + 1; j < nr_cells; j++) {
+    /*   /\* Loop over all remainding cells *\/ */
+    /*   for (int j = i + 1; j < nr_cells; j++) { */
 
-        /* If that other cell has gravity parts, add a pair interaction */
-        if (cells[j].gcount > 0) {
-          scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-                            &cells[i], &cells[j], 0);
-        }
-      }
-    }
+    /*     /\* If that other cell has gravity parts, add a pair interaction *\/
+     */
+    /*     if (cells[j].gcount > 0) { */
+    /*       scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1,
+     * 0, */
+    /*                         &cells[i], &cells[j], 0); */
+    /*     } */
+    /*   } */
+    /* } */
   }
 }
 
@@ -1390,9 +1393,12 @@ void engine_make_gravityrecursive_tasks(struct engine *e) {
       struct task *up =
           scheduler_addtask(sched, task_type_grav_up, task_subtype_none, 0, 0,
                             &cells[k], NULL, 0);
-      struct task *down =
-          scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0, 0,
-                            &cells[k], NULL, 0);
+
+      struct task *down = NULL;
+      /* struct task *down = */
+      /*     scheduler_addtask(sched, task_type_grav_down, task_subtype_none, 0,
+       * 0, */
+      /*                       &cells[k], NULL, 0); */
 
       /* Push tasks down the cell hierarchy. */
       engine_addtasks_grav(e, &cells[k], up, down);
@@ -1428,8 +1434,8 @@ void engine_maketasks(struct engine *e) {
   engine_make_hydroloop_tasks(e);
 
   /* Add the gravity mm tasks. */
-  if (e->policy & engine_policy_self_gravity)
-    engine_make_gravityinteraction_tasks(e);
+  /* if (e->policy & engine_policy_self_gravity) */
+  /*   engine_make_gravityinteraction_tasks(e); */
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
