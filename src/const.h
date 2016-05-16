@@ -40,7 +40,7 @@
 #define const_max_u_change 0.1f
 
 /* Gravity stuff. */
-#define multipole_order 1
+#define multipole_order 2
 #define const_theta_max 0.57735f
 #define const_G 6.672e-8f     /* Gravitational constant. */
 #define const_epsilon 0.0014f /* Gravity blending distance. */

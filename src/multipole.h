@@ -38,11 +38,11 @@ struct multipole {
   /* Multipole mass */
   float mass;
 
-  /* /\* Acceleration on this multipole. *\/ */
-  /* float a[3]; */
-
-  /* /\* Multipole coefficients. *\/ */
-  /* float coeffs[multipole_order * multipole_order]; */
+#if multipole_order >= 2
+  /* Quadrupole terms */
+  float I_xx, I_yy, I_zz;
+  float I_xy, I_xz, I_yz;
+#endif
 };
 
 /* Multipole function prototypes. */
