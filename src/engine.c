@@ -1947,7 +1947,7 @@ void engine_init_particles(struct engine *e) {
   /* Add the tasks corresponding to self-gravity to the masks */
   if (e->policy & engine_policy_self_gravity) {
 
-    /* Nothing here for now */
+    mask |= 1 << task_type_grav_up;
   }
 
   /* Add the tasks corresponding to external gravity to the masks */
@@ -2128,7 +2128,7 @@ void engine_step(struct engine *e) {
   /* Add the tasks corresponding to self-gravity to the masks */
   if (e->policy & engine_policy_self_gravity) {
 
-    /* Nothing here for now */
+    mask |= 1 << task_type_grav_up;
   }
 
   /* Add the tasks corresponding to external gravity to the masks */

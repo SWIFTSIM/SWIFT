@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -37,27 +38,28 @@
 #include "multipole.h"
 
 /**
- * @brief Merge two multipoles.
+ * @brief Add the second multipole to the first one.
  *
- * @param ma The #multipole which will contain the merged result.
- * @param mb The other #multipole.
+ * @param m_sum The #multipole which will contain the sum.
+ * @param m_other The #multipole to add.
  */
 
-void multipole_merge(struct multipole *ma, struct multipole *mb) {
+void multipole_add(struct multipole *m_sum, const struct multipole *m_other) {
 
-#if multipole_order == 1
+#if multipole_order != 1
+#error "Multipoles of order >1 not yet implemented."
+#endif
 
   /* Correct the position. */
-  float mma = ma->coeffs[0], mmb = mb->coeffs[0];
-  float w = 1.0f / (mma + mmb);
-  for (int k = 0; k < 3; k++) ma->x[k] = (ma->x[k] * mma + mb->x[k] * mmb) * w;
+  const float M_tot = m_sum->mass + m_other->mass;
+  const float M_tot_inv = 1.f / M_tot;
+  for (int k = 0; k < 3; k++)
+    m_sum->CoM[k] =
+        (m_sum->CoM[k] * m_sum->mass + m_other->CoM[k] * m_other->mass) *
+        M_tot_inv;
 
   /* Add the particle to the moments. */
-  ma->coeffs[0] = mma + mmb;
-
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
+  m_sum->mass = M_tot;
 }
 
 /**
@@ -69,19 +71,21 @@ void multipole_merge(struct multipole *ma, struct multipole *mb) {
 
 void multipole_addpart(struct multipole *m, struct gpart *p) {
 
-#if multipole_order == 1
+  /* #if multipole_order == 1 */
 
-  /* Correct the position. */
-  float mm = m->coeffs[0], mp = p->mass;
-  float w = 1.0f / (mm + mp);
-  for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + p->x[k] * mp) * w;
+  /*   /\* Correct the position. *\/ */
+  /*   float mm = m->coeffs[0], mp = p->mass; */
+  /*   float w = 1.0f / (mm + mp); */
+  /*   for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + p->x[k] * mp) * w;
+   */
 
-  /* Add the particle to the moments. */
-  m->coeffs[0] = mm + mp;
+  /*   /\* Add the particle to the moments. *\/ */
+  /*   m->coeffs[0] = mm + mp; */
 
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
+  /* #else */
+  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+   */
+  /* #endif */
 }
 
 /**
@@ -94,76 +98,76 @@ void multipole_addpart(struct multipole *m, struct gpart *p) {
 
 void multipole_addparts(struct multipole *m, struct gpart *p, int N) {
 
-#if multipole_order == 1
+  /* #if multipole_order == 1 */
 
-  /* Get the combined mass and positions. */
-  double xp[3] = {0.0, 0.0, 0.0};
-  float mp = 0.0f, w;
-  for (int k = 0; k < N; k++) {
-    w = p[k].mass;
-    mp += w;
-    xp[0] += p[k].x[0] * w;
-    xp[1] += p[k].x[1] * w;
-    xp[2] += p[k].x[2] * w;
-  }
+  /*   /\* Get the combined mass and positions. *\/ */
+  /*   double xp[3] = {0.0, 0.0, 0.0}; */
+  /*   float mp = 0.0f, w; */
+  /*   for (int k = 0; k < N; k++) { */
+  /*     w = p[k].mass; */
+  /*     mp += w; */
+  /*     xp[0] += p[k].x[0] * w; */
+  /*     xp[1] += p[k].x[1] * w; */
+  /*     xp[2] += p[k].x[2] * w; */
+  /*   } */
 
-  /* Correct the position. */
-  float mm = m->coeffs[0];
-  w = 1.0f / (mm + mp);
-  for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + xp[k]) * w;
+  /*   /\* Correct the position. *\/ */
+  /*   float mm = m->coeffs[0]; */
+  /*   w = 1.0f / (mm + mp); */
+  /*   for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + xp[k]) * w; */
 
-  /* Add the particle to the moments. */
-  m->coeffs[0] = mm + mp;
+  /*   /\* Add the particle to the moments. *\/ */
+  /*   m->coeffs[0] = mm + mp; */
 
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
+  /* #else */
+  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+   */
+  /* #endif */
 }
 
 /**
- * @brief Init a multipole from a set of particles.
- *
- * @param m The #multipole.
- * @param parts The #gpart.
- * @param N The number of particles.
- */
-
-void multipole_init(struct multipole *m, struct gpart *parts, int N) {
-
-#if multipole_order == 1
-
-  float mass = 0.0f, w;
-  double x[3] = {0.0, 0.0, 0.0};
-  int k;
-
-  /* Collect the particle data. */
-  for (k = 0; k < N; k++) {
-    w = parts[k].mass;
-    mass += w;
-    x[0] += parts[k].x[0] * w;
-    x[1] += parts[k].x[1] * w;
-    x[2] += parts[k].x[2] * w;
-  }
-
-  /* Store the data on the multipole. */
-  m->coeffs[0] = mass;
-  m->x[0] = x[0] / mass;
-  m->x[1] = x[1] / mass;
-  m->x[2] = x[2] / mass;
-
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
-}
-
-/**
- * @brief Reset the data of a #multipole.
- *
- * @param m The #multipole.
- */
-
+* @brief Reset the data of a #multipole.
+*
+* @param m The #multipole.
+*/
 void multipole_reset(struct multipole *m) {
 
   /* Just bzero the struct. */
   bzero(m, sizeof(struct multipole));
+}
+
+/**
+* @brief Init a multipole from a set of particles.
+*
+* @param m The #multipole.
+* @param parts The #gpart.
+* @param N The number of particles.
+*/
+void multipole_init(struct multipole *m, const struct gpart *gparts,
+                    int gcount) {
+
+#if multipole_order != 1
+#error "Multipoles of order >1 not yet implemented."
+#endif
+
+  /* Zero everything */
+  multipole_reset(m);
+
+  float mass = 0.0f;
+  double x[3] = {0.0, 0.0, 0.0};
+
+  /* Collect the particle data. */
+  for (int k = 0; k < gcount; k++) {
+    const float w = gparts[k].mass;
+    mass += w;
+    x[0] += gparts[k].x[0] * w;
+    x[1] += gparts[k].x[1] * w;
+    x[2] += gparts[k].x[2] * w;
+  }
+
+  /* Store the data on the multipole. */
+  m->mass = mass;
+  m->CoM[0] = x[0] / mass;
+  m->CoM[1] = x[1] / mass;
+  m->CoM[2] = x[2] / mass;
 }
