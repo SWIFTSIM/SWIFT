@@ -1212,6 +1212,8 @@ void *runner_main(void *data) {
           scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj,
                               t->flags, t->rank);
           break;
+        case task_type_comm_root:
+          break;
         default:
           error("Unknown task type.");
       }

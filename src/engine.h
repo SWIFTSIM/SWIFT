@@ -162,6 +162,9 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
+  /* Root task for all send and recv tasks. */
+  struct task *send_root, *recv_root;
+
   /* Are we talkative ? */
   int verbose;
 };

@@ -589,6 +589,9 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
     struct task *t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
                                            2 * ci->tag + 1, 0, ci, cj, 0);
 
+    /* The first send should depend on the engine's send_root. */
+    scheduler_addunlock(s, e->send_root, t_xv);
+
     /* The send_rho task depends on the cell's ghost task. */
     scheduler_addunlock(s, ci->super->ghost, t_rho);
 
@@ -633,6 +636,9 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                                           2 * c->tag, 0, c, NULL, 0);
     t_rho = c->recv_rho = scheduler_addtask(
         s, task_type_recv, task_subtype_none, 2 * c->tag + 1, 0, c, NULL, 0);
+
+    /* The first recv should depend on the engine's recv_root. */
+    scheduler_addunlock(s, e->recv_root, t_xv);
   }
 
   /* Add dependencies. */
@@ -1413,6 +1419,12 @@ void engine_maketasks(struct engine *e) {
 
   /* Add the communication tasks if MPI is being used. */
   if ((e->policy & engine_policy_mpi) == engine_policy_mpi) {
+
+    /* Create root tasks for send/recv. */
+    e->send_root = scheduler_addtask(&e->sched, task_type_comm_root,
+                                     task_subtype_none, 0, 0, NULL, NULL, 0);
+    e->recv_root = scheduler_addtask(&e->sched, task_type_comm_root,
+                                     task_subtype_none, 0, 0, NULL, NULL, 0);
 
     /* Loop over the proxies. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {

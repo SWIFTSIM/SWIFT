@@ -1066,7 +1066,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->implicit) {
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
-
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
   }

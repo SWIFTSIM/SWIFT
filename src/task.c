@@ -46,7 +46,7 @@ const char *taskID_names[task_type_count] = {
     "none",      "sort",       "self",       "pair",    "sub",
     "init",      "ghost",      "drift",      "kick",    "send",
     "recv",      "grav_pp",    "grav_mm",    "grav_up", "grav_down",
-    "part_sort", "gpart_sort", "split_cell", "rewait"};
+    "part_sort", "gpart_sort", "split_cell", "rewait",  "comm_root"};
 
 const char *subtaskID_names[task_type_count] = {"none",  "density",
                                                 "force", "grav"};
