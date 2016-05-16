@@ -1468,26 +1468,27 @@ void engine_maketasks(struct engine *e) {
      of its super-cell. */
   engine_make_extra_hydroloop_tasks(e);
 
+#ifdef WITH_MPI
+
   /* Add the communication tasks if MPI is being used. */
-  if (e->policy & engine_policy_mpi) {
 
-    /* Loop over the proxies. */
-    for (int pid = 0; pid < e->nr_proxies; pid++) {
+  /* Loop over the proxies. */
+  for (int pid = 0; pid < e->nr_proxies; pid++) {
 
-      /* Get a handle on the proxy. */
-      struct proxy *p = &e->proxies[pid];
+    /* Get a handle on the proxy. */
+    struct proxy *p = &e->proxies[pid];
 
-      /* Loop through the proxy's incoming cells and add the
-         recv tasks. */
-      for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL);
+    /* Loop through the proxy's incoming cells and add the
+       recv tasks. */
+    for (int k = 0; k < p->nr_cells_in; k++)
+      engine_addtasks_recv(e, p->cells_in[k], NULL, NULL);
 
-      /* Loop through the proxy's outgoing cells and add the
-         send tasks. */
-      for (int k = 0; k < p->nr_cells_out; k++)
-        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0]);
-    }
+    /* Loop through the proxy's outgoing cells and add the
+       send tasks. */
+    for (int k = 0; k < p->nr_cells_out; k++)
+      engine_addtasks_send(e, p->cells_out[k], p->cells_in[0]);
   }
+#endif
 
   /* Set the unlocks per task. */
   scheduler_set_unlocks(sched);
