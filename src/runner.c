@@ -1354,8 +1354,8 @@ void *runner_main(void *data) {
             runner_dosub1_density(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_force)
             runner_dosub2_force(r, ci, cj, t->flags, 1);
-          else if (t->subtype == task_subtype_grav)
-            runner_dosub_grav(r, ci, cj, 1);
+          /* else if (t->subtype == task_subtype_grav) */
+          /*   runner_dosub_grav(r, ci, cj, 1); */
           else
             error("Unknown task subtype.");
           break;
@@ -1376,21 +1376,21 @@ void *runner_main(void *data) {
         case task_type_recv:
           runner_dorecv_cell(r, ci, 1);
           break;
-        case task_type_grav_pp:
-          if (t->cj == NULL)
-            runner_doself_grav(r, t->ci);
-          else
-            runner_dopair_grav(r, t->ci, t->cj);
-          break;
-        case task_type_grav_mm:
-          runner_dograv_mm(r, t->ci, t->cj);
-          break;
+        /* case task_type_grav_pp: */
+        /*   if (t->cj == NULL) */
+        /*     runner_doself_grav(r, t->ci); */
+        /*   else */
+        /*     runner_dopair_grav(r, t->ci, t->cj); */
+        /*   break; */
+        /* case task_type_grav_mm: */
+        /*   runner_dograv_mm(r, t->ci, t->cj); */
+        /*   break; */
         case task_type_grav_up:
           runner_dograv_up(r, t->ci);
           break;
-        case task_type_grav_down:
-          runner_dograv_down(r, t->ci);
-          break;
+        /* case task_type_grav_down: */
+        /*   runner_dograv_down(r, t->ci); */
+        /*   break; */
         case task_type_grav_external:
           runner_dograv_external(r, t->ci, 1);
           break;
