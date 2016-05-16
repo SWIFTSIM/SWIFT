@@ -57,7 +57,7 @@ void hydro_props_print(const struct hydro_props *p) {
           p->eta_neighbours);
   message("Hydrodynamic integration: CFL parmeter: %.4f.", p->CFL_condition);
   message(
-      "Hydrodynamic integration: Max change of volume: %.2f"
-      "(max |dlog(h)/dt|=%f).",
+      "Hydrodynamic integration: Max change of volume: %.2f "
+      "(max|dlog(h)/dt|=%f).",
       powf(expf(p->log_max_h_change), 3.f), p->log_max_h_change);
 }
