@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -39,7 +40,8 @@
 /*   int pid, pjd, k, sid; */
 /*   double rshift, shift[3] = {0.0, 0.0, 0.0}, nshift[3]; */
 /*   struct entry *restrict sort_i, *restrict sort_j; */
-/*   struct gpart *restrict pi, *restrict pj, *restrict parts_i, *restrict parts_j; */
+/*   struct gpart *restrict pi, *restrict pj, *restrict parts_i, *restrict
+ * parts_j; */
 /*   double pix[3]; */
 /*   float dx[3], r2, h_max, di, dj; */
 /*   int count_i, count_j, cnj, cnj_new; */
@@ -77,7 +79,8 @@
 
 /*   /\* Get some other useful values. *\/ */
 /*   h_max = */
-/*       sqrtf(ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]) * */
+/*       sqrtf(ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2])
+ * * */
 /*       const_theta_max; */
 /*   count_i = ci->gcount; */
 /*   count_j = cj->gcount; */
@@ -114,9 +117,12 @@
 
 /* #ifndef VECTORIZE */
 
-/*       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525 ) */
-/*       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e in */
-/*       // cells %lli/%lli." , pi->part->id , pj->part->id , sqrtf(r2) , ((long */
+/*       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525
+ * ) */
+/*       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e
+ * in */
+/*       // cells %lli/%lli." , pi->part->id , pj->part->id , sqrtf(r2) , ((long
+ */
 /*       // long int)ci) / sizeof(struct cell) , ((long long int)cj) / */
 /*       // sizeof(struct cell) ); */
 
@@ -206,11 +212,7 @@
 
 void runner_dograv_up(struct runner *r, struct cell *c) {
 
-  /* Re-set this cell's multipole. */
-  multipole_reset(&c->multipole);
-
-  /* Split? */
-  if (c->split) {
+  if (c->split) {/* Regular node */
 
     /* Recurse. */
     for (int k = 0; k < 8; k++)
@@ -218,17 +220,16 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 
     /* Collect the multipoles from the progeny. */
     multipole_reset(&c->multipole);
-    for (int k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL)
-        multipole_merge(&c->multipole, &c->progeny[k]->multipole);
+        multipole_add(&c->multipole, &c->progeny[k]->multipole);
+    }
 
-  }
+  } else {/* Leaf node. */
 
-  /* No, leaf node. */
-  else
-
-    /* Just collect the multipole. */
+    /* Just construct the multipole from the gparts. */
     multipole_init(&c->multipole, c->gparts, c->gcount);
+  }
 }
 
 /* /\** */
@@ -303,7 +304,8 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 /*   } */
 /*   theta = */
 /*       sqrt((dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) / */
-/*            (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2])); */
+/*            (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] *
+ * ci->h[2])); */
 
 /*   /\* Do an MM or an MP/PM? *\/ */
 /*   if (theta > const_theta_max * 4) { */
@@ -335,7 +337,8 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 /*   struct engine *e = r->e; */
 /*   int pid, pjd, k, count_i = ci->gcount, count_j = cj->gcount; */
 /*   double shift[3] = {0.0, 0.0, 0.0}; */
-/*   struct gpart *restrict parts_i = ci->gparts, *restrict parts_j = cj->gparts; */
+/*   struct gpart *restrict parts_i = ci->gparts, *restrict parts_j =
+ * cj->gparts; */
 /*   struct gpart *restrict pi, *restrict pj; */
 /*   double pix[3]; */
 /*   float dx[3], r2; */
@@ -383,9 +386,12 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 /* /\* Compute the interaction. *\/ */
 /* #ifndef VECTORIZE */
 
-/*       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525 ) */
-/*       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e in */
-/*       // cells %lli/%lli." , pi->part->id , pj->part->id , sqrtf(r2) , ((long */
+/*       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525
+ * ) */
+/*       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e
+ * in */
+/*       // cells %lli/%lli." , pi->part->id , pj->part->id , sqrtf(r2) , ((long
+ */
 /*       // long int)ci) / sizeof(struct cell) , ((long long int)cj) / */
 /*       // sizeof(struct cell) ); */
 
@@ -473,8 +479,10 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 /* /\* Compute the interaction. *\/ */
 /* #ifndef VECTORIZE */
 
-/*       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525 ) */
-/*       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e." , */
+/*       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525
+ * ) */
+/*       //     message( "interacting particles pi=%lli and pj=%lli with
+ * r=%.3e." , */
 /*       // pi->part->id , pj->part->id , sqrtf(r2) ); */
 
 /*       runner_iact_grav(r2, dx, pi, pj); */
@@ -563,7 +571,8 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 /*       if (dx[k] > 0.0f) dx[k] -= ci->h[k]; */
 /*     } */
 /*     theta = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) / */
-/*             (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]); */
+/*             (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] *
+ * ci->h[2]); */
 
 /*     /\* Split the interaction? *\/ */
 /*     if (theta < const_theta_max * const_theta_max) { */

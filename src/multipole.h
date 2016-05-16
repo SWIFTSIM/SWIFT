@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -28,30 +29,32 @@
 #include "kernel_gravity.h"
 #include "part.h"
 
-/* Some constants. */
-#define multipole_order 1
-
 /* Multipole struct. */
 struct multipole {
 
   /* Multipole location. */
-  double x[3];
+  double CoM[3];
 
-  /* Acceleration on this multipole. */
-  float a[3];
+  /* Multipole mass */
+  float mass;
 
-  /* Multipole coefficients. */
-  float coeffs[multipole_order * multipole_order];
+  /* /\* Acceleration on this multipole. *\/ */
+  /* float a[3]; */
+
+  /* /\* Multipole coefficients. *\/ */
+  /* float coeffs[multipole_order * multipole_order]; */
 };
 
 /* Multipole function prototypes. */
-static void multipole_iact_mm(struct multipole *ma, struct multipole *mb,
-                              double *shift);
-void multipole_merge(struct multipole *ma, struct multipole *mb);
-void multipole_addpart(struct multipole *m, struct gpart *p);
-void multipole_addparts(struct multipole *m, struct gpart *p, int N);
-void multipole_init(struct multipole *m, struct gpart *parts, int N);
+void multipole_add(struct multipole *m_sum, const struct multipole *m_term);
+void multipole_init(struct multipole *m, const struct gpart *gparts,
+                    int gcount);
 void multipole_reset(struct multipole *m);
+
+/* static void multipole_iact_mm(struct multipole *ma, struct multipole *mb, */
+/*                               double *shift); */
+/* void multipole_addpart(struct multipole *m, struct gpart *p); */
+/* void multipole_addparts(struct multipole *m, struct gpart *p, int N); */
 
 /**
  * @brief Compute the pairwise interaction between two multipoles.
@@ -60,39 +63,38 @@ void multipole_reset(struct multipole *m);
  * @param mb The second #multipole.
  * @param shift The periodicity correction.
  */
-
 __attribute__((always_inline)) INLINE static void multipole_iact_mm(
     struct multipole *ma, struct multipole *mb, double *shift) {
+  /*   float dx[3], ir, r, r2 = 0.0f, acc; */
+  /*   int k; */
 
-  float dx[3], ir, r, r2 = 0.0f, acc;
-  int k;
+  /*   /\* Compute the multipole distance. *\/ */
+  /*   for (k = 0; k < 3; k++) { */
+  /*     dx[k] = ma->x[k] - mb->x[k] - shift[k]; */
+  /*     r2 += dx[k] * dx[k]; */
+  /*   } */
 
-  /* Compute the multipole distance. */
-  for (k = 0; k < 3; k++) {
-    dx[k] = ma->x[k] - mb->x[k] - shift[k];
-    r2 += dx[k] * dx[k];
-  }
+  /*   /\* Compute the normalized distance vector. *\/ */
+  /*   ir = 1.0f / sqrtf(r2); */
+  /*   r = r2 * ir; */
 
-  /* Compute the normalized distance vector. */
-  ir = 1.0f / sqrtf(r2);
-  r = r2 * ir;
+  /*   /\* Evaluate the gravity kernel. *\/ */
+  /*   kernel_grav_eval(r, &acc); */
 
-  /* Evaluate the gravity kernel. */
-  kernel_grav_eval(r, &acc);
+  /*   /\* Scale the acceleration. *\/ */
+  /*   acc *= const_G * ir * ir * ir; */
 
-  /* Scale the acceleration. */
-  acc *= const_G * ir * ir * ir;
-
-/* Compute the forces on both multipoles. */
-#if multipole_order == 1
-  float mma = ma->coeffs[0], mmb = mb->coeffs[0];
-  for (k = 0; k < 3; k++) {
-    ma->a[k] -= dx[k] * acc * mmb;
-    mb->a[k] += dx[k] * acc * mma;
-  }
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
+  /* /\* Compute the forces on both multipoles. *\/ */
+  /* #if multipole_order == 1 */
+  /*   float mma = ma->coeffs[0], mmb = mb->coeffs[0]; */
+  /*   for (k = 0; k < 3; k++) { */
+  /*     ma->a[k] -= dx[k] * acc * mmb; */
+  /*     mb->a[k] += dx[k] * acc * mma; */
+  /*   } */
+  /* #else */
+  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+   */
+  /* #endif */
 }
 
 /**
@@ -102,35 +104,35 @@ __attribute__((always_inline)) INLINE static void multipole_iact_mm(
  * @param p The #gpart.
  * @param shift The periodicity correction.
  */
-
 __attribute__((always_inline)) INLINE static void multipole_iact_mp(
     struct multipole *m, struct gpart *p, double *shift) {
 
-  float dx[3], ir, r, r2 = 0.0f, acc;
-  int k;
+  /*   float dx[3], ir, r, r2 = 0.0f, acc; */
+  /*   int k; */
 
-  /* Compute the multipole distance. */
-  for (k = 0; k < 3; k++) {
-    dx[k] = m->x[k] - p->x[k] - shift[k];
-    r2 += dx[k] * dx[k];
-  }
+  /*   /\* Compute the multipole distance. *\/ */
+  /*   for (k = 0; k < 3; k++) { */
+  /*     dx[k] = m->x[k] - p->x[k] - shift[k]; */
+  /*     r2 += dx[k] * dx[k]; */
+  /*   } */
 
-  /* Compute the normalized distance vector. */
-  ir = 1.0f / sqrtf(r2);
-  r = r2 * ir;
+  /*   /\* Compute the normalized distance vector. *\/ */
+  /*   ir = 1.0f / sqrtf(r2); */
+  /*   r = r2 * ir; */
 
-  /* Evaluate the gravity kernel. */
-  kernel_grav_eval(r, &acc);
+  /*   /\* Evaluate the gravity kernel. *\/ */
+  /*   kernel_grav_eval(r, &acc); */
 
-  /* Scale the acceleration. */
-  acc *= const_G * ir * ir * ir * m->coeffs[0];
+  /*   /\* Scale the acceleration. *\/ */
+  /*   acc *= const_G * ir * ir * ir * m->coeffs[0]; */
 
-/* Compute the forces on both multipoles. */
-#if multipole_order == 1
-  for (k = 0; k < 3; k++) p->a_grav[k] += dx[k] * acc;
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
+  /* /\* Compute the forces on both multipoles. *\/ */
+  /* #if multipole_order == 1 */
+  /*   for (k = 0; k < 3; k++) p->a_grav[k] += dx[k] * acc; */
+  /* #else */
+  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+   */
+  /* #endif */
 }
 
 #endif /* SWIFT_MULTIPOLE_H */
