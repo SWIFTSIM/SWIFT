@@ -661,3 +661,58 @@ void cell_clean_links(struct cell *c, void *data) {
   c->force = NULL;
   c->nr_force = 0;
 }
+
+/**
+ * @brief Computes the multi-pole brutally and compare to the
+ * recursively computed one.
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_check_multipole(struct cell *c, void *data) {
+
+  struct multipole ma;
+
+  if (c->gcount > 0) {
+
+    /* Brute-force calculation */
+    multipole_init(&ma, c->gparts, c->gcount);
+
+    /* Compare with recursive one */
+    struct multipole mb = c->multipole;
+
+    if (fabsf(ma.mass - mb.mass) / fabsf(ma.mass + mb.mass) > 1e-5)
+      error("Multipole masses are different (%12.15e vs. %12.15e)", ma.mass,
+            mb.mass);
+
+    for (int k = 0; k < 3; ++k)
+      if (fabsf(ma.CoM[k] - mb.CoM[k]) / fabsf(ma.CoM[k] + mb.CoM[k]) > 1e-5)
+        error("Multipole CoM are different (%12.15e vs. %12.15e", ma.CoM[k],
+              mb.CoM[k]);
+
+    if (fabsf(ma.I_xx - mb.I_xx) / fabsf(ma.I_xx + mb.I_xx) > 1e-5 &&
+        ma.I_xx > 1e-9)
+      error("Multipole I_xx are different (%12.15e vs. %12.15e)", ma.I_xx,
+            mb.I_xx);
+    if (fabsf(ma.I_yy - mb.I_yy) / fabsf(ma.I_yy + mb.I_yy) > 1e-5 &&
+        ma.I_yy > 1e-9)
+      error("Multipole I_yy are different (%12.15e vs. %12.15e)", ma.I_yy,
+            mb.I_yy);
+    if (fabsf(ma.I_zz - mb.I_zz) / fabsf(ma.I_zz + mb.I_zz) > 1e-5 &&
+        ma.I_zz > 1e-9)
+      error("Multipole I_zz are different (%12.15e vs. %12.15e)", ma.I_zz,
+            mb.I_zz);
+    if (fabsf(ma.I_xy - mb.I_xy) / fabsf(ma.I_xy + mb.I_xy) > 1e-5 &&
+        ma.I_xy > 1e-9)
+      error("Multipole I_xy are different (%12.15e vs. %12.15e)", ma.I_xy,
+            mb.I_xy);
+    if (fabsf(ma.I_xz - mb.I_xz) / fabsf(ma.I_xz + mb.I_xz) > 1e-5 &&
+        ma.I_xz > 1e-9)
+      error("Multipole I_xz are different (%12.15e vs. %12.15e)", ma.I_xz,
+            mb.I_xz);
+    if (fabsf(ma.I_yz - mb.I_yz) / fabsf(ma.I_yz + mb.I_yz) > 1e-5 &&
+        ma.I_yz > 1e-9)
+      error("Multipole I_yz are different (%12.15e vs. %12.15e)", ma.I_yz,
+            mb.I_yz);
+  }
+}

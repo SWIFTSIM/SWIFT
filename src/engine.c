@@ -2150,6 +2150,9 @@ void engine_step(struct engine *e) {
 
   TIMER_TOC2(timer_step);
 
+  /* Check that the multipoles are correct */
+  space_map_cells_pre(s, 1, cell_check_multipole, NULL);
+
   clocks_gettime(&time2);
 
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
