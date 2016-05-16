@@ -73,21 +73,6 @@ const float runner_shift[13 * 3] = {
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-/* #define MY_CELL 428428428 */
-/* #define DX 0.1 */
-/* #define NX 1000 */
-/* #define CELL_ID                                                  \ */
-/*   ((int)(c->loc[0] / DX) * NX *NX + (int)(c->loc[1] / DX) * NX + \ */
-/*    (int)(c->loc[2] / DX)) */
-/* #define OUT \ */
-/*   if (CELL_ID == MY_CELL) { \ */
-/*     message(" cell= %d gcount=%d time=%f \n", CELL_ID, c->gcount,
- * r->e->time); \ */
-/*   } */
-/* #define OUT  message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time); */
-/* #define OUT  if(CELL_ID == MY_CELL) message("\n cell %f %f %f %d %d */
-/* %f\n",c->loc[0],c->loc[1],c->loc[2], CELL_ID, c->count, r->e->time); */
-
 /* Import the density loop functions. */
 #define FUNCTION density
 #include "runner_doiact.h"
@@ -128,7 +113,7 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
   OUT;
 #endif
 
-  /* Loop over the parts in this cell. */
+  /* Loop over the gparts in this cell. */
   for (i = 0; i < gcount; i++) {
 
     /* Get a direct pointer on the part. */
@@ -138,52 +123,6 @@ void runner_dograv_external(struct runner *r, struct cell *c, int timer) {
     if (g->ti_end <= ti_current) {
 
       external_gravity(potential, constants, g);
-
-      /* /\* check for energy and angular momentum conservation - begin by */
-      /*  * synchronizing velocity*\/ */
-      /* const float dx = g->x[0] - r->e->potential->point_mass.x; */
-      /* const float dy = g->x[1] - r->e->potential->point_mass.y; */
-      /* const float dz = g->x[2] - r->e->potential->point_mass.z; */
-      /* const float dr = sqrtf((dx * dx) + (dy * dy) + (dz * dz)); */
-      /* const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz); */
-
-      /* const int current_dti = g->ti_end - g->ti_begin; */
-      /* const float dt = 0.5f * current_dti * r->e->timeBase; */
-      /* const float vx = g->v_full[0] + dt * g->a_grav[0]; */
-      /* const float vy = g->v_full[1] + dt * g->a_grav[1]; */
-      /* const float vz = g->v_full[2] + dt * g->a_grav[2]; */
-
-      /* /\* E/L *\/ */
-      /* float L[3], E; */
-      /* E = 0.5 * ((vx * vx) + (vy * vy) + (vz * vz)) - */
-      /*     r->e->physical_constants->newton_gravity * */
-      /*         r->e->potential->point_mass.mass * rinv; */
-      /* L[0] = dy * vz - dz * vy; */
-      /* L[1] = dz * vx - dx * vz; */
-      /* L[2] = dx * vy - dy * vx; */
-      /* if (abs(g->id) == 1) { */
-      /*   float v2 = vx * vx + vy * vy + vz * vz; */
-      /*   float fg = r->e->physical_constants->newton_gravity * */
-      /*              r->e->potential->point_mass.mass * rinv; */
-      /*   float fga = sqrtf((g->a_grav[0] * g->a_grav[0]) + */
-      /*                     (g->a_grav[1] * g->a_grav[1]) + */
-      /*                     (g->a_grav[2] * g->a_grav[2])) * */
-      /*               dr; */
-      /*   // message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]=
-       * %f */
-      /*   // x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2],
-       * g->x[0], */
-      /*   // g->x[1], vx, vy); */
-      /*   message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time,
-       */
-      /*           g->tx, g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1],
-       */
-      /*           vx, vy); */
-      /*   /\* message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity,
-       */
-      /*    * r->e->potential->point_mass.mass); *\/ */
-      /*   /\* exit(-1); *\/ */
-      /* } */
     }
   }
   if (timer) TIMER_TOC(timer_dograv_external);
@@ -422,151 +361,6 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
 
   if (clock) TIMER_TOC(timer_dosort);
 }
-
-/* void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) { */
-
-/*   struct entry *finger; */
-/*   struct entry *fingers[8]; */
-/*   struct gpart *gparts = c->gparts; */
-/*   struct entry *gsort; */
-/*   int j, k, count = c->gcount; */
-/*   int i, ind, off[8], inds[8], temp_i, missing; */
-/*   // float shift[3]; */
-/*   float buff[8], px[3]; */
-
-/*   TIMER_TIC */
-
-/*   /\* Clean-up the flags, i.e. filter out what's already been sorted. *\/ */
-/*   flags &= ~c->gsorted; */
-/*   if (flags == 0) return; */
-
-/*   /\* start by allocating the entry arrays. *\/ */
-/*   if (c->gsort == NULL || c->gsortsize < count) { */
-/*     if (c->gsort != NULL) free(c->gsort); */
-/*     c->gsortsize = count * 1.1; */
-/*     if ((c->gsort = (struct entry *)malloc(sizeof(struct entry) * */
-/*                                            (c->gsortsize + 1) * 13)) == NULL) */
-/*       error("Failed to allocate sort memory."); */
-/*   } */
-/*   gsort = c->gsort; */
-
-/*   /\* Does this cell have any progeny? *\/ */
-/*   if (c->split) { */
-
-/*     /\* Fill in the gaps within the progeny. *\/ */
-/*     for (k = 0; k < 8; k++) { */
-/*       if (c->progeny[k] == NULL) continue; */
-/*       missing = flags & ~c->progeny[k]->gsorted; */
-/*       if (missing) runner_dogsort(r, c->progeny[k], missing, 0); */
-/*     } */
-
-/*     /\* Loop over the 13 different sort arrays. *\/ */
-/*     for (j = 0; j < 13; j++) { */
-
-/*       /\* Has this sort array been flagged? *\/ */
-/*       if (!(flags & (1 << j))) continue; */
-
-/*       /\* Init the particle index offsets. *\/ */
-/*       for (off[0] = 0, k = 1; k < 8; k++) */
-/*         if (c->progeny[k - 1] != NULL) */
-/*           off[k] = off[k - 1] + c->progeny[k - 1]->gcount; */
-/*         else */
-/*           off[k] = off[k - 1]; */
-
-/*       /\* Init the entries and indices. *\/ */
-/*       for (k = 0; k < 8; k++) { */
-/*         inds[k] = k; */
-/*         if (c->progeny[k] != NULL && c->progeny[k]->gcount > 0) { */
-/*           fingers[k] = &c->progeny[k]->gsort[j * (c->progeny[k]->gcount + 1)]; */
-/*           buff[k] = fingers[k]->d; */
-/*           off[k] = off[k]; */
-/*         } else */
-/*           buff[k] = FLT_MAX; */
-/*       } */
-
-/*       /\* Sort the buffer. *\/ */
-/*       for (i = 0; i < 7; i++) */
-/*         for (k = i + 1; k < 8; k++) */
-/*           if (buff[inds[k]] < buff[inds[i]]) { */
-/*             temp_i = inds[i]; */
-/*             inds[i] = inds[k]; */
-/*             inds[k] = temp_i; */
-/*           } */
-
-/*       /\* For each entry in the new sort list. *\/ */
-/*       finger = &gsort[j * (count + 1)]; */
-/*       for (ind = 0; ind < count; ind++) { */
-
-/*         /\* Copy the minimum into the new sort array. *\/ */
-/*         finger[ind].d = buff[inds[0]]; */
-/*         finger[ind].i = fingers[inds[0]]->i + off[inds[0]]; */
-
-/*         /\* Update the buffer. *\/ */
-/*         fingers[inds[0]] += 1; */
-/*         buff[inds[0]] = fingers[inds[0]]->d; */
-
-/*         /\* Find the smallest entry. *\/ */
-/*         for (k = 1; k < 8 && buff[inds[k]] < buff[inds[k - 1]]; k++) { */
-/*           temp_i = inds[k - 1]; */
-/*           inds[k - 1] = inds[k]; */
-/*           inds[k] = temp_i; */
-/*         } */
-
-/*       } /\* Merge. *\/ */
-
-/*       /\* Add a sentinel. *\/ */
-/*       gsort[j * (count + 1) + count].d = FLT_MAX; */
-/*       gsort[j * (count + 1) + count].i = 0; */
-
-/*       /\* Mark as sorted. *\/ */
-/*       c->gsorted |= (1 << j); */
-
-/*     } /\* loop over sort arrays. *\/ */
-
-/*   } /\* progeny? *\/ */
-
-/*   /\* Otherwise, just sort. *\/ */
-/*   else { */
-
-/*     /\* Fill the sort array. *\/ */
-/*     for (k = 0; k < count; k++) { */
-/*       px[0] = gparts[k].x[0]; */
-/*       px[1] = gparts[k].x[1]; */
-/*       px[2] = gparts[k].x[2]; */
-/*       for (j = 0; j < 13; j++) */
-/*         if (flags & (1 << j)) { */
-/*           gsort[j * (count + 1) + k].i = k; */
-/*           gsort[j * (count + 1) + k].d = px[0] * runner_shift[3 * j + 0] + */
-/*                                          px[1] * runner_shift[3 * j + 1] + */
-/*                                          px[2] * runner_shift[3 * j + 2]; */
-/*         } */
-/*     } */
-
-/*     /\* Add the sentinel and sort. *\/ */
-/*     for (j = 0; j < 13; j++) */
-/*       if (flags & (1 << j)) { */
-/*         gsort[j * (count + 1) + count].d = FLT_MAX; */
-/*         gsort[j * (count + 1) + count].i = 0; */
-/*         runner_dosort_ascending(&gsort[j * (count + 1)], count); */
-/*         c->gsorted |= (1 << j); */
-/*       } */
-/*   } */
-
-/*   /\* Verify the sorting. *\/ */
-/*   /\* for ( j = 0 ; j < 13 ; j++ ) { */
-/*       if ( !( flags & (1 << j) ) ) */
-/*           continue; */
-/*       finger = &c->gsort[ j*(count + 1) ]; */
-/*       for ( k = 1 ; k < count ; k++ ) { */
-/*           if ( finger[k].d < finger[k-1].d ) */
-/*               error( "Sorting failed, ascending array." ); */
-/*           if ( finger[k].i < 0 || finger[k].i >= count ) */
-/*               error( "Sorting failed, indices borked." ); */
-/*           } */
-/*       } *\/ */
-
-/*   if (clock) TIMER_TOC(timer_dosort); */
-/* } */
 
 /**
  * @brief Initialize the particles before the density calculation
