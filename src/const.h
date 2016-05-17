@@ -61,4 +61,6 @@
 /* Gravity properties */
 #define EXTERNAL_POTENTIAL_POINTMASS
 
+#define SANITY_CHECK
+
 #endif /* SWIFT_CONST_H */

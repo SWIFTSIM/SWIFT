@@ -62,7 +62,8 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
  * @param ci The #cell with particles to interct.
  * @param cj The #cell with the multipole.
  */
-void runner_dograv_pm(struct runner *r, struct cell *ci, struct cell *cj) {
+__attribute__((always_inline)) INLINE static void runner_dograv_pair_pm(
+    struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *e = r->e;
   const int gcount = ci->gcount;
@@ -72,14 +73,16 @@ void runner_dograv_pm(struct runner *r, struct cell *ci, struct cell *cj) {
 
   TIMER_TIC;
 
+#ifdef SANITY_CHECK
+  if (gcount == 0) error("Empty cell!");  // MATTHIEU sanity check
+
+  if (multi.mass == 0.0)  // MATTHIEU sanity check
+    error("Multipole does not seem to have been set.");
+#endif
+
   /* Anything to do here? */
   if (ci->ti_end_min > ti_current) return;
 
-  if (gcount == 0) error("Empty cell!"); // MATTHIEU sanity check
-
-  if (multi.mass == 0.0) // MATTHIEU sanity check
-      error("Multipole does not seem to have been set.");
-  
   /* Loop over every particle in leaf. */
   for (int pid = 0; pid < gcount; pid++) {
 
@@ -87,7 +90,7 @@ void runner_dograv_pm(struct runner *r, struct cell *ci, struct cell *cj) {
     struct gpart *restrict gp = &gparts[pid];
 
     if (gp->ti_end > ti_current) continue;
-    
+
     /* Compute the pairwise distance. */
     const float dx[3] = {multi.CoM[0] - gp->x[0],   // x
                          multi.CoM[1] - gp->x[1],   // y
@@ -146,8 +149,11 @@ void runner_dograv_pm(struct runner *r, struct cell *ci, struct cell *cj) {
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The other #cell.
+ *
+ * @todo Use a local cache for the particles.
  */
-void runner_dograv_pp(struct runner *r, struct cell *ci, struct cell *cj) {
+__attribute__((always_inline)) INLINE static void runner_dograv_pair_pp(
+    struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *e = r->e;
   const int gcount_i = ci->gcount;
@@ -158,55 +164,120 @@ void runner_dograv_pp(struct runner *r, struct cell *ci, struct cell *cj) {
 
   TIMER_TIC;
 
+#ifdef SANITY_CHECK
+  if (ci->h[0] != cj->h[0])  // MATTHIEU sanity check
+    error("Non matching cell sizes !! h_i=%f h_j=%f\n", ci->h[0], cj->h[0]);
+#endif
+
   /* Anything to do here? */
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
-  if(ci->h[0] != cj->h[0]) // MATTHIEU sanity check
-    error("Non matching cell sizes !! h_i=%f h_j=%f\n", ci->h[0], cj->h[0]);
-  
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gpi = &gparts_i[pid];
     const float mi = gpi->mass;
-    
+
     /* Loop over every particle in the other cell. */
     for (int pjd = 0; pjd < gcount_j; pjd++) {
 
-      /* Get a hold of the ith part in ci. */
+      /* Get a hold of the jth part in cj. */
       struct gpart *restrict gpj = &gparts_j[pjd];
       const float mj = gpj->mass;
-      
+
       /* Compute the pairwise distance. */
       const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-			   gpi->x[1] - gpj->x[1],   // y
-			   gpi->x[2] - gpj->x[2]};  // z
+                           gpi->x[1] - gpj->x[1],   // y
+                           gpi->x[2] - gpj->x[2]};  // z
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-      
+
       /* Apply the gravitational acceleration. */
       const float ir = 1.0f / sqrtf(r2);
       const float w = ir * ir * ir;
-      const float wdx[3] = {w*dx[0], w*dx[1], w*dx[2]};
-      
-      if(gpi->ti_end <= ti_current) {
-	gpi->a_grav[0] -=  wdx[0] * mj;
-	gpi->a_grav[1] -=  wdx[1] * mj;
-	gpi->a_grav[2] -=  wdx[2] * mj;
-      }
-      if(gpj->ti_end <= ti_current) {
-	gpj->a_grav[0] +=  wdx[0] * mi;
-	gpj->a_grav[1] +=  wdx[1] * mi;
-	gpj->a_grav[2] +=  wdx[2] * mi;	
-      }
-      
-    }
+      const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
 
+      if (gpi->ti_end <= ti_current) {
+        gpi->a_grav[0] -= wdx[0] * mj;
+        gpi->a_grav[1] -= wdx[1] * mj;
+        gpi->a_grav[2] -= wdx[2] * mj;
+      }
+      if (gpj->ti_end <= ti_current) {
+        gpj->a_grav[0] += wdx[0] * mi;
+        gpj->a_grav[1] += wdx[1] * mi;
+        gpj->a_grav[2] += wdx[2] * mi;
+      }
+    }
   }
-      
-  
 
   TIMER_TOC(TIMER_DOPAIR);  // MATTHIEU
+}
+
+/**
+ * @brief Computes the interaction of all the particles in a cell directly
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ *
+ * @todo Use a local cache for the particles.
+ */
+__attribute__((always_inline))
+    INLINE static void runner_dograv_self_pp(struct runner *r, struct cell *c) {
+
+  const struct engine *e = r->e;
+  const int gcount = c->gcount;
+  struct gpart *restrict gparts = c->gparts;
+  const int ti_current = e->ti_current;
+
+  TIMER_TIC;
+
+#ifdef SANITY_CHECK
+  if (c->gcount == 0)  // MATTHIEU sanity check
+    error("Empty cell !");
+#endif
+
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
+
+  /* Loop over all particles in ci... */
+  for (int pid = 0; pid < gcount; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gpi = &gparts[pid];
+    const float mi = gpi->mass;
+
+    /* Loop over every particle in the other cell. */
+    for (int pjd = pid + 1; pjd < gcount; pjd++) {
+
+      /* Get a hold of the jth part in ci. */
+      struct gpart *restrict gpj = &gparts[pjd];
+      const float mj = gpj->mass;
+
+      /* Compute the pairwise distance. */
+      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                           gpi->x[1] - gpj->x[1],   // y
+                           gpi->x[2] - gpj->x[2]};  // z
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      /* Apply the gravitational acceleration. */
+      const float ir = 1.0f / sqrtf(r2);
+      const float w = ir * ir * ir;
+      const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
+
+      if (gpi->ti_end <= ti_current) {
+        gpi->a_grav[0] -= wdx[0] * mj;
+        gpi->a_grav[1] -= wdx[1] * mj;
+        gpi->a_grav[2] -= wdx[2] * mj;
+      }
+      if (gpj->ti_end <= ti_current) {
+        gpj->a_grav[0] += wdx[0] * mi;
+        gpj->a_grav[1] += wdx[1] * mi;
+        gpj->a_grav[2] += wdx[2] * mi;
+      }
+    }
+  }
+
+  TIMER_TOC(TIMER_DOSELF);  // MATTHIEU
 }
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */
