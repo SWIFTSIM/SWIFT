@@ -480,3 +480,58 @@ void shuffle_particles(struct part *parts, const int count) {
   } else
     error("Array not big enough to shuffle!");
 }
+
+/**
+ * @brief Computes the forces between all g-particles using the N^2 algorithm
+ *
+ * Overwrites the accelerations of the gparts with the values.
+ * Do not use for actual runs.
+ *
+ * @brief gparts The array of particles.
+ * @brief gcount The number of particles.
+ */
+void gravity_n2(struct gpart *gparts, const int gcount) {
+
+  /* Reset everything */
+  for (int pid = 0; pid < gcount; pid++) {
+    struct gpart *restrict gpi = &gparts[pid];
+    gpi->a_grav[0] = 0.f;
+    gpi->a_grav[1] = 0.f;
+    gpi->a_grav[2] = 0.f;
+  }
+
+  /* Loop over all particles in ci... */
+  for (int pid = 0; pid < gcount; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gpi = &gparts[pid];
+    const float mi = gpi->mass;
+
+    /* Loop over every particle in the other cell. */
+    for (int pjd = pid + 1; pjd < gcount; pjd++) {
+
+      /* Get a hold of the jth part in ci. */
+      struct gpart *restrict gpj = &gparts[pjd];
+      const float mj = gpj->mass;
+
+      /* Compute the pairwise distance. */
+      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                           gpi->x[1] - gpj->x[1],   // y
+                           gpi->x[2] - gpj->x[2]};  // z
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      /* Apply the gravitational acceleration. */
+      const float ir = 1.0f / sqrtf(r2);
+      const float w = ir * ir * ir;
+      const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
+
+      gpi->a_grav[0] -= wdx[0] * mj;
+      gpi->a_grav[1] -= wdx[1] * mj;
+      gpi->a_grav[2] -= wdx[2] * mj;
+
+      gpj->a_grav[0] += wdx[0] * mi;
+      gpj->a_grav[1] += wdx[1] * mi;
+      gpj->a_grav[2] += wdx[2] * mi;
+    }
+  }
+}

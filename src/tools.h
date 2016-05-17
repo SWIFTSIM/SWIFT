@@ -40,5 +40,6 @@ void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
 
 double random_uniform(double a, double b);
 void shuffle_particles(struct part *parts, const int count);
+void gravity_n2(struct gpart *gparts, const int gcount);
 
 #endif /* SWIFT_TOOL_H */
