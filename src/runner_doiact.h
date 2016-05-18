@@ -1982,8 +1982,8 @@ void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
 
       /* Do any of the cells need to be sorted first? */
-      if (!(ci->sorted & (1 << sid))) runner_dosort(r, ci, (1 << sid), 1);
-      if (!(cj->sorted & (1 << sid))) runner_dosort(r, cj, (1 << sid), 1);
+      if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
+      if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
 
       /* Compute the interactions. */
       DOPAIR1(r, ci, cj);
@@ -2251,8 +2251,8 @@ void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
     else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
 
       /* Do any of the cells need to be sorted first? */
-      if (!(ci->sorted & (1 << sid))) runner_dosort(r, ci, (1 << sid), 1);
-      if (!(cj->sorted & (1 << sid))) runner_dosort(r, cj, (1 << sid), 1);
+      if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
+      if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
 
       /* Compute the interactions. */
       DOPAIR2(r, ci, cj);
@@ -2850,7 +2850,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       sid = sortlistID[sid];
 
       /* Do any of the cells need to be sorted first? */
-      if (!(cj->sorted & (1 << sid))) runner_dosort(r, cj, (1 << sid), 1);
+      if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
 
       /* Compute the interactions. */
       DOPAIR_SUBSET(r, ci, parts, ind, count, cj);

@@ -117,7 +117,7 @@ struct cell {
   struct link *density, *force, *grav;
   int nr_density, nr_force, nr_grav;
 
-  /* The ghost task to link density to interactions. */
+  /* The hierarchical tasks. */
   struct task *ghost, *init, *drift, *kick;
 
   /* Task receiving data. */
