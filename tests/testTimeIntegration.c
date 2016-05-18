@@ -115,10 +115,10 @@ int main() {
     c.parts[0].a_hydro[1] = -(G * M_sun * c.parts[0].x[1] / r * r * r);
 
     /* Kick... */
-    runner_dokick(&run, &c, 0);
+    runner_do_kick(&run, &c, 0);
 
     /* Drift... */
-    runner_dodrift(&run, &c, 0);
+    runner_do_drift(&run, &c, 0);
   }
 
   /* Clean-up */

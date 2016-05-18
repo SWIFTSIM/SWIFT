@@ -95,7 +95,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 }
 
 /**
- * @brief Generate the ghosts all the O(Npart) tasks for a hierarchy of cells.
+ * @brief Generate the hierarchical tasks for a hierarchy of cells - i.e. all
+ * the O(Npart) tasks.
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -104,8 +105,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  * @param super The super #cell.
  */
 
-void engine_make_ghost_tasks(struct engine *e, struct cell *c,
-                             struct cell *super) {
+void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
+                                    struct cell *super) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -157,7 +158,7 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_ghost_tasks(e, c->progeny[k], super);
+        engine_make_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -1452,10 +1453,9 @@ void engine_maketasks(struct engine *e) {
      depend on the sorts of its progeny. */
   engine_count_and_link_tasks(e);
 
-  /* Append a ghost task to each cell, and add kick tasks to the
-     super cells. */
+  /* Append hierarchical tasks to each cells */
   for (int k = 0; k < nr_cells; k++)
-    engine_make_ghost_tasks(e, &cells[k], NULL);
+    engine_make_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task

@@ -126,7 +126,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_dosort(NULL, cell, 0x1FFF, 0);
+  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
