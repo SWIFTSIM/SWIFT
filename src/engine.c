@@ -2445,6 +2445,7 @@ void engine_unpin() {
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param nr_threads The number of threads per MPI rank.
+ * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param physical_constants The #phys_const used for this run.
@@ -2454,7 +2455,7 @@ void engine_unpin() {
 
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int policy, int verbose,
+                 int nr_threads, int with_aff, int policy, int verbose,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential) {
@@ -2527,7 +2528,7 @@ void engine_init(struct engine *e, struct space *s,
     buf[j] = CPU_ISSET(j, entry_affinity) ? '1' : '0';
   }
 
-  if (verbose) message("Affinity at entry: %s", buf);
+  if (verbose && with_aff) message("Affinity at entry: %s", buf);
 
   int *cpuid = malloc(nr_affinity_cores * sizeof(int));
   cpu_set_t cpuset;
@@ -2541,51 +2542,87 @@ void engine_init(struct engine *e, struct space *s,
     skip = c + 1;
   }
 
+  if (with_aff) {
+
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if ((policy & engine_policy_cputight) != engine_policy_cputight) {
-    /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
-    if (numa_available() >= 0) {
-      if (nodeID == 0) message("prefer NUMA-local CPUs");
+    if ((policy & engine_policy_cputight) != engine_policy_cputight) {
 
-      const int home = numa_node_of_cpu(sched_getcpu());
-      int done = 0;
+      if (numa_available() >= 0) {
+        if (nodeID == 0) message("prefer NUMA-distant CPUs");
 
-      while (!done) {
-        done = 1;
-        for (int i = 1; i < nr_affinity_cores; i++) {
-          const int node_a = numa_node_of_cpu(cpuid[i - 1]);
-          const int node_b = numa_node_of_cpu(cpuid[i]);
+        /* Get list of numa nodes of all available cores. */
+        int *nodes = malloc( nr_affinity_cores * sizeof(int));
+        int nnodes = 0;
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          nodes[i] = numa_node_of_cpu(cpuid[i]);
+          if (nodes[i] > nnodes) nnodes = nodes[i];
+        }
+        nnodes += 1;
 
-          const int swap =
-              numa_distance(home, node_a) > numa_distance(home, node_b);
+        /* Count cores per node. */
+        int *core_counts = malloc( nnodes * sizeof(int));
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          core_counts[nodes[i]] = 0;
+        }
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          core_counts[nodes[i]] += 1;
+        }
 
-          if (swap) {
-            const int t = cpuid[i - 1];
-            cpuid[i - 1] = cpuid[i];
-            cpuid[i] = t;
-            done = 0;
+        /* Index cores within each node. */
+        int *core_indices = malloc( nr_affinity_cores * sizeof(int));
+        for (int i = nr_affinity_cores - 1; i >= 0; i--) {
+          core_indices[i] = core_counts[nodes[i]];
+          core_counts[nodes[i]] -= 1;
+        }
+
+        /* Now sort so that we pick adjacent cpuids from different nodes
+         * by sorting internal node core indices. */
+        int done = 0;
+        while (!done) {
+          done = 1;
+          for (int i = 1; i < nr_affinity_cores; i++) {
+            if ( core_indices[i] < core_indices[i-1] ) {
+              int t = cpuid[i-1];
+              cpuid[i-1] = cpuid[i];
+              cpuid[i] = t;
+
+              t = core_indices[i-1];
+              core_indices[i-1] = core_indices[i];
+              core_indices[i] = t;
+              done = 0;
+            }
           }
         }
+
+        free(nodes);
+        free(core_counts);
+        free(core_indices);
       }
     }
-  }
 #endif
+  }
+  else {
+    if (nodeID == 0) message("no processor affinity used");
+
+  }/* with_aff */
 
   /* Avoid (unexpected) interference between engine and runner threads. We can
    * do this once we've made at least one call to engine_entry_affinity and
    * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
-   * pinned. */
+   * pinned. Also unpin this when asked to not pin at all (!with_aff). */
   engine_unpin();
 #endif
 
+  if (with_aff) {
 #ifdef WITH_MPI
-  printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
-         clocks_get_timesincestart());
+    printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
+           clocks_get_timesincestart());
 #else
-  printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
+    printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
 #endif
-  for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
-  printf("].\n");
+    for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
+    printf("].\n");
+  }
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
@@ -2730,12 +2767,13 @@ void engine_init(struct engine *e, struct space *s,
       error("Failed to create runner thread.");
 
     /* Try to pin the runner to a given core */
-    if ((e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
+    if (with_aff && (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
       int coreid = k % nr_affinity_cores;
       e->runners[k].cpuid = cpuid[coreid];
+
       if (nr_queues < e->nr_threads)
         e->runners[k].qid = cpuid[coreid] * nr_queues / nr_affinity_cores;
       else
@@ -2757,15 +2795,22 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
-    if (verbose)
-      message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
-              e->runners[k].cpuid, e->runners[k].qid);
+    if (verbose) {
+      if (with_aff) 
+        message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
+                e->runners[k].cpuid, e->runners[k].qid);
+      else
+        message("runner %i using qid=%i no cpuid.", e->runners[k].id,
+                e->runners[k].qid);
+    }
   }
 
 /* Free the affinity stuff */
 #if defined(HAVE_SETAFFINITY)
-  free(cpuid);
-  free(buf);
+  if (with_aff) {
+    free(cpuid);
+    free(buf);
+  }
 #endif
 
   /* Wait for the runner threads to be in place. */

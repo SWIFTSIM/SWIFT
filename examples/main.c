@@ -52,6 +52,7 @@ void print_help_message() {
 
   printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
   printf("Valid options are:\n");
+  printf("  %2s %8s %s\n", "-a", "[01]", "Use processor affinity");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
   printf(
       "  %2s %8s %s\n", "-d", "",
@@ -132,6 +133,7 @@ int main(int argc, char *argv[]) {
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings();
 
+  int with_aff = 1;
   int dry_run = 0;
   int dump_tasks = 0;
   int with_cosmology = 0;
@@ -146,7 +148,14 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cdef:gGhst:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "a:cdef:gGhst:v:y:")) != -1) switch (c) {
+      case 'a':
+        if (sscanf(optarg, "%d", &with_aff) != 1) {
+          if (myrank == 0) printf("Error parsing affinity switch (-a).\n");
+          if (myrank == 0) print_help_message();
+          return 1;
+        }
+        break;
       case 'c':
         with_cosmology = 1;
         break;
@@ -411,8 +420,9 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
-              talking, &prog_const, &hydro_properties, &potential);
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
+              engine_policies, talking, &prog_const, &hydro_properties,
+              &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
