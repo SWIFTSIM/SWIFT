@@ -41,9 +41,6 @@ import pylab as pl
 import numpy as np
 import sys
 
-#  CPU ticks per second.
-CPU_CLOCK = 2.7e9
-
 #  Basic plot configuration.
 PLOT_PARAMS = {"axes.labelsize": 10,
                "axes.titlesize": 10,
@@ -115,10 +112,19 @@ infile = sys.argv[1]
 outbase = sys.argv[2]
 delta_t = 0
 if len( sys.argv ) == 4:
-    delta_t = int(sys.argv[3]) * CPU_CLOCK / 1000
-
+    delta_t = int(sys.argv[3])
+    
 #  Read input.
 data = pl.loadtxt( infile )
+
+# Recover the start and end time
+full_step = data[0,:]
+tic_step = int(full_step[4])
+toc_step = int(full_step[5])
+CPU_CLOCK = float(full_step[-1])
+data = data[1:,:]
+
+print "CPU frequency:", CPU_CLOCK / 1.e9
 
 nranks = int(max(data[:,0])) + 1
 print "Number of ranks:", nranks
@@ -132,6 +138,7 @@ sdata = sdata[sdata[:,6] != 0]
 # Each rank can have different clock (compute node), but we want to use the
 # same delta times range for comparisons, so we suck it up and take the hit of
 # precalculating this, unless the user knows better.
+delta_t = delta_t * CPU_CLOCK / 1000
 if delta_t == 0:
     for rank in range(nranks):
         data = sdata[sdata[:,0] == rank]
@@ -146,6 +153,7 @@ for rank in range(nranks):
     start_t = min(data[:,5])
     data[:,5] -= start_t
     data[:,6] -= start_t
+    end_t = (toc_step - start_t) / CPU_CLOCK * 1000
 
     tasks = {}
     tasks[-1] = []
@@ -193,7 +201,7 @@ for rank in range(nranks):
     typesseen = []
     fig = pl.figure()
     ax = fig.add_subplot(1,1,1)
-    ax.set_xlim(0, delta_t * 1.03 * 1000 / CPU_CLOCK)
+    ax.set_xlim(-delta_t * 0.03 * 1000 / CPU_CLOCK, delta_t * 1.03 * 1000 / CPU_CLOCK)
     ax.set_ylim(0, nthread)
     tictoc = np.zeros(2)
     for i in range(nthread):
@@ -237,6 +245,10 @@ for rank in range(nranks):
     ax.fill_between([0, 0], nthread+0.5, nthread + nrow + 0.5, facecolor="white")
     ax.set_ylim(0, nthread + nrow + 1)
     ax.legend(loc=1, shadow=True, mode="expand", ncol=5)
+
+    # Start and end of time-step
+    ax.plot([0, 0], [0, nthread + nrow + 1], 'k--', linewidth=1)
+    ax.plot([end_t, end_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
 
     ax.set_xlabel("Wall clock time [ms]")
     ax.set_ylabel("Thread ID for MPI Rank " + str(rank) )

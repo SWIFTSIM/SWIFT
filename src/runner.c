@@ -1327,6 +1327,7 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
+      t->last_rid = r->cpuid;
 
       /* Different types of tasks... */
       switch (t->type) {
