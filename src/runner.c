@@ -53,6 +53,7 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
+#include "timestep.h"
 
 /* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
@@ -1122,38 +1123,10 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
           /* First, finish the force calculation */
           gravity_end_force(gp);
 
-          /* Compute the next timestep (gravity condition) */
-          const float new_dt_external =
-              gravity_compute_timestep_external(potential, constants, gp);
-          const float new_dt_self =
-              gravity_compute_timestep_self(constants, gp);
-
-          float new_dt = fminf(new_dt_external, new_dt_self);
-
-          /* Limit timestep within the allowed range */
-          new_dt = fminf(new_dt, global_dt_max);
-          new_dt = fmaxf(new_dt, global_dt_min);
-
-          /* Convert to integer time */
-          int new_dti = new_dt * timeBase_inv;
-
-          /* Recover the current timestep */
-          const int current_dti = gp->ti_end - gp->ti_begin;
-
-          /* Limit timestep increase */
-          if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
-
-          /* Put this timestep on the time line */
-          int dti_timeline = max_nr_timesteps;
-          while (new_dti < dti_timeline) dti_timeline /= 2;
-
-          new_dti = dti_timeline;
-
-          /* Make sure we are allowed to increase the timestep size */
-          if (new_dti > current_dti) {
-            if ((max_nr_timesteps - gp->ti_end) % new_dti > 0)
-              new_dti = current_dti;
-          }
+          /* Compute the next timestep */
+          const int new_dti =
+              get_gpart_timestep(gp, potential, constants, global_dt_min,
+                                 global_dt_max, timeBase_inv);
 
           /* Now we have a time step, proceed with the kick */
           kick_gpart(gp, new_dti, timeBase);
@@ -1188,55 +1161,9 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         if (p->gpart != NULL) gravity_end_force(p->gpart);
 
         /* Compute the next timestep (hydro condition) */
-        const float new_dt_hydro =
-            hydro_compute_timestep(p, xp, hydro_properties);
-
-        /* Compute the next timestep (gravity condition) */
-        float new_dt_grav = FLT_MAX;
-        if (p->gpart != NULL) {
-
-          const float new_dt_external =
-              gravity_compute_timestep_external(potential, constants, p->gpart);
-          const float new_dt_self =
-              gravity_compute_timestep_self(constants, p->gpart);
-
-          new_dt_grav = fminf(new_dt_external, new_dt_self);
-        }
-
-        /* Final time-step is minimum of hydro and gravity */
-        float new_dt = fminf(new_dt_hydro, new_dt_grav);
-
-        /* Limit change in h */
-        const float dt_h_change = (p->h_dt != 0.0f)
-                                      ? fabsf(ln_max_h_change * p->h / p->h_dt)
-                                      : FLT_MAX;
-
-        new_dt = fminf(new_dt, dt_h_change);
-
-        /* Limit timestep within the allowed range */
-        new_dt = fminf(new_dt, global_dt_max);
-        new_dt = fmaxf(new_dt, global_dt_min);
-
-        /* Convert to integer time */
-        int new_dti = new_dt * timeBase_inv;
-
-        /* Recover the current timestep */
-        const int current_dti = p->ti_end - p->ti_begin;
-
-        /* Limit timestep increase */
-        if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
-
-        /* Put this timestep on the time line */
-        int dti_timeline = max_nr_timesteps;
-        while (new_dti < dti_timeline) dti_timeline /= 2;
-
-        new_dti = dti_timeline;
-
-        /* Make sure we are allowed to increase the timestep size */
-        if (new_dti > current_dti) {
-          if ((max_nr_timesteps - p->ti_end) % new_dti > 0)
-            new_dti = current_dti;
-        }
+        const int new_dti = get_part_timestep(
+            p, xp, hydro_properties, potential, constants, global_dt_min,
+            global_dt_max, timeBase_inv, ln_max_h_change);
 
         /* Now we have a time step, proceed with the kick */
         kick_part(p, xp, new_dti, timeBase);
