@@ -119,12 +119,12 @@ data = pl.loadtxt( infile )
 
 # Recover the start and end time
 full_step = data[0,:]
-tic_step = int(full_step[4])
-toc_step = int(full_step[5])
+tic_step = int(full_step[5])
+toc_step = int(full_step[6])
 CPU_CLOCK = float(full_step[-1])
-data = data[1:,:]
 
 print "CPU frequency:", CPU_CLOCK / 1.e9
+
 
 nranks = int(max(data[:,0])) + 1
 print "Number of ranks:", nranks
@@ -150,7 +150,12 @@ if delta_t == 0:
 for rank in range(nranks):
     data = sdata[sdata[:,0] == rank]
 
-    start_t = min(data[:,5])
+    full_step = data[0,:]
+    tic_step = int(full_step[5])
+    toc_step = int(full_step[6])
+    data = data[1:,:]
+
+    start_t = tic_step
     data[:,5] -= start_t
     data[:,6] -= start_t
     end_t = (toc_step - start_t) / CPU_CLOCK * 1000
@@ -160,7 +165,7 @@ for rank in range(nranks):
     for i in range(nthread):
         tasks[i] = []
 
-    num_lines = pl.size(data) / 10
+    num_lines = pl.shape(data)[0]
     for line in range(num_lines):
         thread = int(data[line,1])
         tasks[thread].append({})

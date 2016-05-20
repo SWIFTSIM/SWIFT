@@ -236,8 +236,8 @@ int main(int argc, char *argv[]) {
         "Executing a dry run. No i/o or time integration will be performed.");
 
   /* Report CPU frequency. */
+  cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
-    cpufreq = clocks_get_cpufreq();
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
