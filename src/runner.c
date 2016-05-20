@@ -47,6 +47,7 @@
 #include "gravity.h"
 #include "hydro_properties.h"
 #include "hydro.h"
+#include "kick.h"
 #include "minmax.h"
 #include "scheduler.h"
 #include "space.h"
@@ -941,35 +942,20 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
   /* No children? */
   if (!c->split) {
 
-    /* Loop over the g-particles and kick the active ones. */
+    /* Loop over the g-particles and kick everyone. */
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
       struct gpart *const gp = &gparts[k];
 
-      /* If the g-particle has no counterpart and needs to be kicked */
+      /* If the g-particle has no counterpart */
       if (gp->id < 0) {
 
         /* First, finish the force calculation */
         gravity_end_force(gp);
 
-        /* Compute the time step for this kick */
-        const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
-        const int ti_end = gp->ti_end + new_dti / 2;
-        const double dt = (ti_end - ti_start) * timeBase;
-        const double half_dt = (ti_end - gp->ti_end) * timeBase;
-
-        /* Move particle forward in time */
-        gp->ti_begin = gp->ti_end;
-        gp->ti_end = gp->ti_begin + new_dti;
-
-        /* Kick particles in momentum space */
-        gp->v_full[0] += gp->a_grav[0] * dt;
-        gp->v_full[1] += gp->a_grav[1] * dt;
-        gp->v_full[2] += gp->a_grav[2] * dt;
-
-        /* Extra kick work */
-        gravity_kick_extra(gp, dt, half_dt);
+        /* Kick the g-particle forward */
+        kick_gpart(gp, new_dti, timeBase);
 
         /* Number of updated g-particles */
         g_updated++;
@@ -982,7 +968,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
 
     /* Now do the hydro ones... */
 
-    /* Loop over the particles and kick the active ones. */
+    /* Loop over the particles and kick everyone. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
@@ -996,47 +982,8 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
       hydro_end_force(p);
       if (p->gpart != NULL) gravity_end_force(p->gpart);
 
-      /* Compute the time step for this kick */
-      const int ti_start = (p->ti_begin + p->ti_end) / 2;
-      const int ti_end = p->ti_end + new_dti / 2;
-      const double dt = (ti_end - ti_start) * timeBase;
-      const double half_dt = (ti_end - p->ti_end) * timeBase;
-
-      /* Move particle forward in time */
-      p->ti_begin = p->ti_end;
-      p->ti_end = p->ti_begin + new_dti;
-      if (p->gpart != NULL) {
-        p->gpart->ti_begin = p->ti_begin;
-        p->gpart->ti_end = p->ti_end;
-      }
-
-      /* Get the acceleration */
-      float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
-      if (p->gpart != NULL) {
-        a_tot[0] += p->gpart->a_grav[0];
-        a_tot[1] += p->gpart->a_grav[1];
-        a_tot[1] += p->gpart->a_grav[2];
-      }
-
-      /* Kick particles in momentum space */
-      xp->v_full[0] += a_tot[0] * dt;
-      xp->v_full[1] += a_tot[1] * dt;
-      xp->v_full[2] += a_tot[2] * dt;
-
-      if (p->gpart != NULL) {
-        p->gpart->v_full[0] = xp->v_full[0];
-        p->gpart->v_full[1] = xp->v_full[1];
-        p->gpart->v_full[2] = xp->v_full[2];
-      }
-
-      /* Go back by half-step for the hydro velocity */
-      p->v[0] = xp->v_full[0] - half_dt * a_tot[0];
-      p->v[1] = xp->v_full[1] - half_dt * a_tot[1];
-      p->v[2] = xp->v_full[2] - half_dt * a_tot[2];
-
-      /* Extra kick work */
-      hydro_kick_extra(p, xp, dt, half_dt);
-      if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt, half_dt);
+      /* Kick the particle forward */
+      kick_part(p, xp, new_dti, timeBase);
 
       /* Number of updated particles */
       updated++;
@@ -1209,24 +1156,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
           }
 
           /* Now we have a time step, proceed with the kick */
-
-          /* Compute the time step for this kick */
-          const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
-          const int ti_end = gp->ti_end + new_dti / 2;
-          const double dt = (ti_end - ti_start) * timeBase;
-          const double half_dt = (ti_end - gp->ti_end) * timeBase;
-
-          /* Move particle forward in time */
-          gp->ti_begin = gp->ti_end;
-          gp->ti_end = gp->ti_begin + new_dti;
-
-          /* Kick particles in momentum space */
-          gp->v_full[0] += gp->a_grav[0] * dt;
-          gp->v_full[1] += gp->a_grav[1] * dt;
-          gp->v_full[2] += gp->a_grav[2] * dt;
-
-          /* Extra kick work */
-          gravity_kick_extra(gp, dt, half_dt);
+          kick_gpart(gp, new_dti, timeBase);
 
           /* Number of updated g-particles */
           g_updated++;
@@ -1309,48 +1239,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Now we have a time step, proceed with the kick */
-
-        /* Compute the time step for this kick */
-        const int ti_start = (p->ti_begin + p->ti_end) / 2;
-        const int ti_end = p->ti_end + new_dti / 2;
-        const double dt = (ti_end - ti_start) * timeBase;
-        const double half_dt = (ti_end - p->ti_end) * timeBase;
-
-        /* Move particle forward in time */
-        p->ti_begin = p->ti_end;
-        p->ti_end = p->ti_begin + new_dti;
-        if (p->gpart != NULL) {
-          p->gpart->ti_begin = p->ti_begin;
-          p->gpart->ti_end = p->ti_end;
-        }
-
-        /* Get the acceleration */
-        float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
-        if (p->gpart != NULL) {
-          a_tot[0] += p->gpart->a_grav[0];
-          a_tot[1] += p->gpart->a_grav[1];
-          a_tot[1] += p->gpart->a_grav[2];
-        }
-
-        /* Kick particles in momentum space */
-        xp->v_full[0] += a_tot[0] * dt;
-        xp->v_full[1] += a_tot[1] * dt;
-        xp->v_full[2] += a_tot[2] * dt;
-
-        if (p->gpart != NULL) {
-          p->gpart->v_full[0] = xp->v_full[0];
-          p->gpart->v_full[1] = xp->v_full[1];
-          p->gpart->v_full[2] = xp->v_full[2];
-        }
-
-        /* Go back by half-step for the hydro velocity */
-        p->v[0] = xp->v_full[0] - half_dt * a_tot[0];
-        p->v[1] = xp->v_full[1] - half_dt * a_tot[1];
-        p->v[2] = xp->v_full[2] - half_dt * a_tot[2];
-
-        /* Extra kick work */
-        hydro_kick_extra(p, xp, dt, half_dt);
-        if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt, half_dt);
+        kick_part(p, xp, new_dti, timeBase);
 
         /* Number of updated particles */
         updated++;
