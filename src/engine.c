@@ -112,6 +112,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_with_external_gravity =
       (e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity;
+  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Am I the super-cell? */
   if (super == NULL && (c->count > 0 || c->gcount > 0)) {
@@ -130,9 +131,14 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
-      /* Add the kick task. */
-      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      /* Add the kick task that matches the policy. */
+      if (is_fixdt) {
+        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
+                                    0, 0, c, NULL, 0);
+      } else {
+        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
+      }
 
       if (c->count > 0) {
 
@@ -2102,10 +2108,16 @@ void engine_step(struct engine *e) {
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0, submask = 0;
 
-  /* We always have sort tasks and kick tasks */
+  /* We always have sort tasks and init tasks */
   mask |= 1 << task_type_sort;
-  mask |= 1 << task_type_kick;
   mask |= 1 << task_type_init;
+
+  /* Add the correct kick task */
+  if (e->policy & engine_policy_fixdt) {
+    mask |= 1 << task_type_kick_fixdt;
+  } else {
+    mask |= 1 << task_type_kick;
+  }
 
   /* Add the tasks corresponding to hydro operations to the masks */
   if (e->policy & engine_policy_hydro) {

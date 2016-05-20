@@ -1371,6 +1371,9 @@ void *runner_main(void *data) {
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;
+        case task_type_kick_fixdt:
+          runner_do_kick(r, ci, 1);
+          break;
         case task_type_send:
           break;
         case task_type_recv:
