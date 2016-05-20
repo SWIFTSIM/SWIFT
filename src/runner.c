@@ -989,6 +989,10 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
       updated++;
       if (p->gpart != NULL) g_updated++;
 
+      /* Minimal time for next end of time-step */
+      ti_end_min = min(p->ti_end, ti_end_min);
+      ti_end_max = max(p->ti_end, ti_end_max);
+
       /* Now collect quantities for statistics */
 
       const double x[3] = {p->x[0], p->x[1], p->x[2]};
@@ -1013,10 +1017,6 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
                           v_full[2] * v_full[2]);
       e_pot += 0.f; /* No gravitational potential thus far */
       e_int += hydro_get_internal_energy(p);
-
-      /* Minimal time for next end of time-step */
-      ti_end_min = min(p->ti_end, ti_end_min);
-      ti_end_max = max(p->ti_end, ti_end_max);
     }
   }
 
@@ -1246,6 +1246,10 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         if (p->gpart != NULL) g_updated++;
       }
 
+      /* Minimal time for next end of time-step */
+      ti_end_min = min(p->ti_end, ti_end_min);
+      ti_end_max = max(p->ti_end, ti_end_max);
+
       /* Now collect quantities for statistics */
 
       const double x[3] = {p->x[0], p->x[1], p->x[2]};
@@ -1270,10 +1274,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
                           v_full[2] * v_full[2]);
       e_pot += 0.f; /* No gravitational potential thus far */
       e_int += hydro_get_internal_energy(p);
-
-      /* Minimal time for next end of time-step */
-      ti_end_min = min(p->ti_end, ti_end_min);
-      ti_end_max = max(p->ti_end, ti_end_max);
     }
   }
 

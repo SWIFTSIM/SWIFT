@@ -22,6 +22,10 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Local headers. */
+#include "const.h"
+#include "debug.h"
+
 /**
  * @brief Perform the 'kick' operation on a #gpart
  *
