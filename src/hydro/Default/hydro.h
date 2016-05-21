@@ -27,7 +27,7 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp,
+    const struct part* p, const struct xpart* xp,
     const struct hydro_props* hydro_properties) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
