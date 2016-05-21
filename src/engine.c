@@ -1735,7 +1735,6 @@ void engine_prepare(struct engine *e) {
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
 #endif
-  e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
@@ -1990,6 +1989,7 @@ void engine_step(struct engine *e) {
   double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
+  double snapshot_drift_time = 0.;
   struct space *s = e->s;
 
   TIMER_TIC2;
@@ -1997,6 +1997,8 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  e->tic_step = getticks();
+    
   /* Collect the cell data. */
   for (int k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
@@ -2063,6 +2065,7 @@ void engine_step(struct engine *e) {
     e->time = e->ti_current * e->timeBase + e->timeBegin;
     e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
     e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+    snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
     engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -2080,7 +2083,7 @@ void engine_step(struct engine *e) {
   e->step += 1;
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
 
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -2159,6 +2162,7 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
 
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
+  e->toc_step = getticks();
 }
 
 /**
