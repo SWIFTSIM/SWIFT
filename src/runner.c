@@ -75,21 +75,6 @@ const float runner_shift[13 * 3] = {
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-/* #define MY_CELL 428428428 */
-/* #define DX 0.1 */
-/* #define NX 1000 */
-/* #define CELL_ID                                                  \ */
-/*   ((int)(c->loc[0] / DX) * NX *NX + (int)(c->loc[1] / DX) * NX + \ */
-/*    (int)(c->loc[2] / DX)) */
-/* #define OUT \ */
-/*   if (CELL_ID == MY_CELL) { \ */
-/*     message(" cell= %d gcount=%d time=%f \n", CELL_ID, c->gcount,
- * r->e->time); \ */
-/*   } */
-/* #define OUT  message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time); */
-/* #define OUT  if(CELL_ID == MY_CELL) message("\n cell %f %f %f %d %d */
-/* %f\n",c->loc[0],c->loc[1],c->loc[2], CELL_ID, c->count, r->e->time); */
-
 /* Import the density loop functions. */
 #define FUNCTION density
 #include "runner_doiact.h"
@@ -140,52 +125,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     if (g->ti_end <= ti_current) {
 
       external_gravity(potential, constants, g);
-
-      /* /\* check for energy and angular momentum conservation - begin by */
-      /*  * synchronizing velocity*\/ */
-      /* const float dx = g->x[0] - r->e->potential->point_mass.x; */
-      /* const float dy = g->x[1] - r->e->potential->point_mass.y; */
-      /* const float dz = g->x[2] - r->e->potential->point_mass.z; */
-      /* const float dr = sqrtf((dx * dx) + (dy * dy) + (dz * dz)); */
-      /* const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz); */
-
-      /* const int current_dti = g->ti_end - g->ti_begin; */
-      /* const float dt = 0.5f * current_dti * r->e->timeBase; */
-      /* const float vx = g->v_full[0] + dt * g->a_grav[0]; */
-      /* const float vy = g->v_full[1] + dt * g->a_grav[1]; */
-      /* const float vz = g->v_full[2] + dt * g->a_grav[2]; */
-
-      /* /\* E/L *\/ */
-      /* float L[3], E; */
-      /* E = 0.5 * ((vx * vx) + (vy * vy) + (vz * vz)) - */
-      /*     r->e->physical_constants->newton_gravity * */
-      /*         r->e->potential->point_mass.mass * rinv; */
-      /* L[0] = dy * vz - dz * vy; */
-      /* L[1] = dz * vx - dx * vz; */
-      /* L[2] = dx * vy - dy * vx; */
-      /* if (abs(g->id) == 1) { */
-      /*   float v2 = vx * vx + vy * vy + vz * vz; */
-      /*   float fg = r->e->physical_constants->newton_gravity * */
-      /*              r->e->potential->point_mass.mass * rinv; */
-      /*   float fga = sqrtf((g->a_grav[0] * g->a_grav[0]) + */
-      /*                     (g->a_grav[1] * g->a_grav[1]) + */
-      /*                     (g->a_grav[2] * g->a_grav[2])) * */
-      /*               dr; */
-      /*   // message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]=
-       * %f */
-      /*   // x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2],
-       * g->x[0], */
-      /*   // g->x[1], vx, vy); */
-      /*   message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time,
-       */
-      /*           g->tx, g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1],
-       */
-      /*           vx, vy); */
-      /*   /\* message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity,
-       */
-      /*    * r->e->potential->point_mass.mass); *\/ */
-      /*   /\* exit(-1); *\/ */
-      /* } */
     }
   }
   if (timer) TIMER_TOC(timer_dograv_external);
