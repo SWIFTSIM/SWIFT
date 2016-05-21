@@ -736,7 +736,12 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   struct gpart *const gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double mom[3] = {0.0, 0.0, 0.0};
+  double ang_mom[3] = {0.0, 0.0, 0.0};
+
   TIMER_TIC
+
 #ifdef TASK_VERBOSE
   OUT;
 #endif
@@ -819,6 +824,34 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
 
       /* Maximal smoothing length */
       h_max = fmaxf(p->h, h_max);
+
+      /* Now collect quantities for statistics */
+
+      const float half_dt =
+          (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+      const double x[3] = {p->x[0], p->x[1], p->x[2]};
+      const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
+                          xp->v_full[1] + p->a_hydro[1] * half_dt,
+                          xp->v_full[2] + p->a_hydro[2] * half_dt};
+      const float m = p->mass;
+
+      /* Collect mass */
+      mass += m;
+
+      /* Collect momentum */
+      mom[0] += m * v[0];
+      mom[1] += m * v[1];
+      mom[2] += m * v[2];
+
+      /* Collect angular momentum */
+      ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
+      ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
+      ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
+
+      /* Collect energies. */
+      e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+      e_pot += 0.;
+      e_int += 0.;
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -831,9 +864,12 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
+
+        /* Recurse */
         struct cell *cp = c->progeny[k];
         runner_do_drift(r, cp, 0);
 
+        /* Collect */
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
       }
@@ -866,9 +902,6 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f};
-  float ang[3] = {0.0f, 0.0f, 0.0f};
 
   TIMER_TIC
 
@@ -932,31 +965,6 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
       /* Minimal time for next end of time-step */
       ti_end_min = min(p->ti_end, ti_end_min);
       ti_end_max = max(p->ti_end, ti_end_max);
-
-      /* Now collect quantities for statistics */
-
-      const double x[3] = {p->x[0], p->x[1], p->x[2]};
-      const float v_full[3] = {xp->v_full[0], xp->v_full[1], xp->v_full[2]};
-      const float m = p->mass;
-
-      /* Collect mass */
-      mass += m;
-
-      /* Collect momentum */
-      mom[0] += m * v_full[0];
-      mom[1] += m * v_full[1];
-      mom[2] += m * v_full[2];
-
-      /* Collect angular momentum */
-      ang[0] += m * (x[1] * v_full[2] - x[2] * v_full[1]);
-      ang[1] += m * (x[2] * v_full[0] - x[0] * v_full[2]);
-      ang[2] += m * (x[0] * v_full[1] - x[1] * v_full[0]);
-
-      /* Collect total energy. */
-      e_kin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
-                          v_full[2] * v_full[2]);
-      e_pot += 0.f; /* No gravitational potential thus far */
-      e_int += hydro_get_internal_energy(p);
     }
   }
 
@@ -974,16 +982,6 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
         /* And aggregate */
         updated += cp->updated;
         g_updated += cp->g_updated;
-        e_kin += cp->e_kin;
-        e_int += cp->e_int;
-        e_pot += cp->e_pot;
-        mass += cp->mass;
-        mom[0] += cp->mom[0];
-        mom[1] += cp->mom[1];
-        mom[2] += cp->mom[2];
-        ang[0] += cp->ang[0];
-        ang[1] += cp->ang[1];
-        ang[2] += cp->ang[2];
         ti_end_min = min(cp->ti_end_min, ti_end_min);
         ti_end_max = max(cp->ti_end_max, ti_end_max);
       }
@@ -992,16 +990,6 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
   /* Store the values. */
   c->updated = updated;
   c->g_updated = g_updated;
-  c->e_kin = e_kin;
-  c->e_int = e_int;
-  c->e_pot = e_pot;
-  c->mass = mass;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang[0] = ang[0];
-  c->ang[1] = ang[1];
-  c->ang[2] = ang[2];
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
@@ -1029,9 +1017,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f};
-  float ang[3] = {0.0f, 0.0f, 0.0f};
 
   TIMER_TIC
 
@@ -1105,31 +1090,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       /* Minimal time for next end of time-step */
       ti_end_min = min(p->ti_end, ti_end_min);
       ti_end_max = max(p->ti_end, ti_end_max);
-
-      /* Now collect quantities for statistics */
-
-      const double x[3] = {p->x[0], p->x[1], p->x[2]};
-      const float v_full[3] = {xp->v_full[0], xp->v_full[1], xp->v_full[2]};
-      const float m = p->mass;
-
-      /* Collect mass */
-      mass += m;
-
-      /* Collect momentum */
-      mom[0] += m * v_full[0];
-      mom[1] += m * v_full[1];
-      mom[2] += m * v_full[2];
-
-      /* Collect angular momentum */
-      ang[0] += m * (x[1] * v_full[2] - x[2] * v_full[1]);
-      ang[1] += m * (x[2] * v_full[0] - x[0] * v_full[2]);
-      ang[2] += m * (x[0] * v_full[1] - x[1] * v_full[0]);
-
-      /* Collect total energy. */
-      e_kin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
-                          v_full[2] * v_full[2]);
-      e_pot += 0.f; /* No gravitational potential thus far */
-      e_int += hydro_get_internal_energy(p);
     }
   }
 
@@ -1147,16 +1107,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         /* And aggregate */
         updated += cp->updated;
         g_updated += cp->g_updated;
-        e_kin += cp->e_kin;
-        e_int += cp->e_int;
-        e_pot += cp->e_pot;
-        mass += cp->mass;
-        mom[0] += cp->mom[0];
-        mom[1] += cp->mom[1];
-        mom[2] += cp->mom[2];
-        ang[0] += cp->ang[0];
-        ang[1] += cp->ang[1];
-        ang[2] += cp->ang[2];
         ti_end_min = min(cp->ti_end_min, ti_end_min);
         ti_end_max = max(cp->ti_end_max, ti_end_max);
       }
@@ -1165,16 +1115,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   /* Store the values. */
   c->updated = updated;
   c->g_updated = g_updated;
-  c->e_kin = e_kin;
-  c->e_int = e_int;
-  c->e_pot = e_pot;
-  c->mass = mass;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang[0] = ang[0];
-  c->ang[1] = ang[1];
-  c->ang[2] = ang[2];
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
