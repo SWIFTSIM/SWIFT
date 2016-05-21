@@ -26,26 +26,14 @@
 #include "const.h"
 #include "debug.h"
 
-__attribute__((always_inline)) INLINE static int get_gpart_timestep(
-    const struct gpart *gp, const struct external_potential *potential,
-    const struct phys_const *constants, double global_dt_min,
-    double global_dt_max, double timeBase_inv) {
-
-  const float new_dt_external =
-      gravity_compute_timestep_external(potential, constants, gp);
-  const float new_dt_self = gravity_compute_timestep_self(constants, gp);
-
-  float new_dt = fminf(new_dt_external, new_dt_self);
-
-  /* Limit timestep within the allowed range */
-  new_dt = fminf(new_dt, global_dt_max);
-  new_dt = fmaxf(new_dt, global_dt_min);
+__attribute__((always_inline)) INLINE static int get_integer_timestep(
+    float new_dt, int ti_begin, int ti_end, double timeBase_inv) {
 
   /* Convert to integer time */
-  int new_dti = new_dt * timeBase_inv;
+  int new_dti = (int)(new_dt * timeBase_inv);
 
   /* Recover the current timestep */
-  const int current_dti = gp->ti_end - gp->ti_begin;
+  const int current_dti = ti_end - ti_begin;
 
   /* Limit timestep increase */
   if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
@@ -58,30 +46,47 @@ __attribute__((always_inline)) INLINE static int get_gpart_timestep(
 
   /* Make sure we are allowed to increase the timestep size */
   if (new_dti > current_dti) {
-    if ((max_nr_timesteps - gp->ti_end) % new_dti > 0) new_dti = current_dti;
+    if ((max_nr_timesteps - ti_end) % new_dti > 0) new_dti = current_dti;
   }
 
   return new_dti;
 }
 
+__attribute__((always_inline)) INLINE static int get_gpart_timestep(
+    const struct gpart *gp, const struct engine *e) {
+
+  const float new_dt_external = gravity_compute_timestep_external(
+      e->external_potential, e->physical_constants, gp);
+  const float new_dt_self =
+      gravity_compute_timestep_self(e->physical_constants, gp);
+
+  float new_dt = fminf(new_dt_external, new_dt_self);
+
+  /* Limit timestep within the allowed range */
+  new_dt = fminf(new_dt, e->dt_max);
+  new_dt = fmaxf(new_dt, e->dt_min);
+
+  /* Convert to integer time */
+  const int new_dti =
+      get_integer_timestep(new_dt, gp->ti_begin, gp->ti_end, e->timeBase_inv);
+
+  return new_dti;
+}
+
 __attribute__((always_inline)) INLINE static int get_part_timestep(
-    const struct part *p, const struct xpart *xp,
-    const struct hydro_props *hydro_properties,
-    const struct external_potential *potential,
-    const struct phys_const *constants, double global_dt_min,
-    double global_dt_max, double timeBase_inv, double ln_max_h_change) {
+    const struct part *p, const struct xpart *xp, const struct engine *e) {
 
   /* Compute the next timestep (hydro condition) */
-  const float new_dt_hydro = hydro_compute_timestep(p, xp, hydro_properties);
+  const float new_dt_hydro = hydro_compute_timestep(p, xp, e->hydro_properties);
 
   /* Compute the next timestep (gravity condition) */
   float new_dt_grav = FLT_MAX;
   if (p->gpart != NULL) {
 
-    const float new_dt_external =
-        gravity_compute_timestep_external(potential, constants, p->gpart);
+    const float new_dt_external = gravity_compute_timestep_external(
+        e->external_potential, e->physical_constants, p->gpart);
     const float new_dt_self =
-        gravity_compute_timestep_self(constants, p->gpart);
+        gravity_compute_timestep_self(e->physical_constants, p->gpart);
 
     new_dt_grav = fminf(new_dt_external, new_dt_self);
   }
@@ -91,33 +96,19 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
 
   /* Limit change in h */
   const float dt_h_change =
-      (p->h_dt != 0.0f) ? fabsf(ln_max_h_change * p->h / p->h_dt) : FLT_MAX;
+      (p->h_dt != 0.0f)
+          ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->h_dt)
+          : FLT_MAX;
 
   new_dt = fminf(new_dt, dt_h_change);
 
   /* Limit timestep within the allowed range */
-  new_dt = fminf(new_dt, global_dt_max);
-  new_dt = fmaxf(new_dt, global_dt_min);
+  new_dt = fminf(new_dt, e->dt_max);
+  new_dt = fmaxf(new_dt, e->dt_min);
 
   /* Convert to integer time */
-  int new_dti = new_dt * timeBase_inv;
-
-  /* Recover the current timestep */
-  const int current_dti = p->ti_end - p->ti_begin;
-
-  /* Limit timestep increase */
-  if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
-
-  /* Put this timestep on the time line */
-  int dti_timeline = max_nr_timesteps;
-  while (new_dti < dti_timeline) dti_timeline /= 2;
-
-  new_dti = dti_timeline;
-
-  /* Make sure we are allowed to increase the timestep size */
-  if (new_dti > current_dti) {
-    if ((max_nr_timesteps - p->ti_end) % new_dti > 0) new_dti = current_dti;
-  }
+  const int new_dti =
+      get_integer_timestep(new_dt, p->ti_begin, p->ti_end, e->timeBase_inv);
 
   return new_dti;
 }

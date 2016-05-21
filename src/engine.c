@@ -2455,6 +2455,7 @@ void engine_init(struct engine *e, struct space *s,
   e->ti_current = 0;
   e->timeStep = 0.;
   e->timeBase = 0.;
+  e->timeBase_inv = 0.;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
   e->deltaTimeSnapshot =
@@ -2596,6 +2597,7 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Deal with timestep */
   e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
+  e->timeBase_inv = 1.0 / e->timeBase;
   e->ti_current = 0;
 
   /* Fixed time-step case */

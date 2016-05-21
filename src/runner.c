@@ -1079,20 +1079,14 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
-  const double global_dt_min = r->e->dt_min;
-  const double global_dt_max = r->e->dt_max;
+  const struct engine *e = r->e;
+  const double timeBase = e->timeBase;
   const int ti_current = r->e->ti_current;
-  const double timeBase = r->e->timeBase;
-  const double timeBase_inv = 1.0 / r->e->timeBase;
   const int count = c->count;
   const int gcount = c->gcount;
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
-  const struct external_potential *potential = r->e->external_potential;
-  const struct hydro_props *hydro_properties = r->e->hydro_properties;
-  const struct phys_const *constants = r->e->physical_constants;
-  const float ln_max_h_change = hydro_properties->log_max_h_change;
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -1124,9 +1118,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
           gravity_end_force(gp);
 
           /* Compute the next timestep */
-          const int new_dti =
-              get_gpart_timestep(gp, potential, constants, global_dt_min,
-                                 global_dt_max, timeBase_inv);
+          const int new_dti = get_gpart_timestep(gp, e);
 
           /* Now we have a time step, proceed with the kick */
           kick_gpart(gp, new_dti, timeBase);
@@ -1161,9 +1153,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         if (p->gpart != NULL) gravity_end_force(p->gpart);
 
         /* Compute the next timestep (hydro condition) */
-        const int new_dti = get_part_timestep(
-            p, xp, hydro_properties, potential, constants, global_dt_min,
-            global_dt_max, timeBase_inv, ln_max_h_change);
+        const int new_dti = get_part_timestep(p, xp, e);
 
         /* Now we have a time step, proceed with the kick */
         kick_part(p, xp, new_dti, timeBase);

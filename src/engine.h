@@ -132,6 +132,7 @@ struct engine {
 
   /* Time base */
   double timeBase;
+  double timeBase_inv;
 
   /* Snapshot information */
   double timeFirstSnapshot;
