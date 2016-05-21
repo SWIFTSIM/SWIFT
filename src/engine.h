@@ -161,8 +161,8 @@ struct engine {
   struct proxy *proxies;
   int nr_proxies, *proxy_ind;
 
-  /* Tic at the start of a step. */
-  ticks tic_step;
+  /* Tic/toc at the start/end of a step. */
+  ticks tic_step, toc_step;
 
   /* Wallclock time of the last time-step */
   float wallclock_time;

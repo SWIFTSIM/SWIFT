@@ -35,9 +35,6 @@ import pylab as pl
 import numpy as np
 import sys
 
-#  CPU ticks per second.
-CPU_CLOCK = 2.7e9
-
 #  Basic plot configuration.
 PLOT_PARAMS = {"axes.labelsize": 10,
                "axes.titlesize": 10,
@@ -108,7 +105,7 @@ infile = sys.argv[1]
 outpng = sys.argv[2]
 delta_t = 0
 if len( sys.argv ) == 4:
-    delta_t = int(sys.argv[3]) * CPU_CLOCK / 1000
+    delta_t = int(sys.argv[3])
 
 #  Read input.
 data = pl.loadtxt( infile )
@@ -116,20 +113,31 @@ data = pl.loadtxt( infile )
 nthread = int(max(data[:,0])) + 1
 print "Number of threads:", nthread
 
+# Recover the start and end time
+full_step = data[0,:]
+tic_step = int(full_step[4])
+toc_step = int(full_step[5])
+CPU_CLOCK = float(full_step[-1])
+data = data[1:,:]
+
+print "CPU frequency:", CPU_CLOCK / 1.e9
+
 # Avoid start and end times of zero.
 data = data[data[:,4] != 0]
 data = data[data[:,5] != 0]
 
-# Calculate the time range, it not given.
+# Calculate the time range, if not given.
+delta_t = delta_t * CPU_CLOCK / 1000
 if delta_t == 0:
     dt = max(data[:,5]) - min(data[:,4])
     if dt > delta_t:
         delta_t = dt
 
 # Once more doing the real gather and plots this time.
-start_t = min(data[:,4])
+start_t = tic_step 
 data[:,4] -= start_t
 data[:,5] -= start_t
+end_t = (toc_step - start_t) / CPU_CLOCK * 1000
 
 tasks = {}
 tasks[-1] = []
@@ -147,7 +155,7 @@ for line in range(num_lines):
     tasks[thread][-1]["tic"] = tic
     tasks[thread][-1]["toc"] = toc
     tasks[thread][-1]["t"] = (toc + tic)/ 2
-
+    
 combtasks = {}
 combtasks[-1] = []
 for i in range(nthread):
@@ -173,11 +181,11 @@ for thread in range(nthread):
             lasttype = task["type"]
         else:
             combtasks[thread][-1]["toc"] = task["toc"]
-
+            
 typesseen = []
 fig = pl.figure()
 ax = fig.add_subplot(1,1,1)
-ax.set_xlim(0, delta_t * 1.03 * 1000 / CPU_CLOCK)
+ax.set_xlim(-delta_t * 0.03 * 1000 / CPU_CLOCK, delta_t * 1.03 * 1000 / CPU_CLOCK)
 ax.set_ylim(0, nthread)
 tictoc = np.zeros(2)
 for i in range(nthread):
@@ -221,6 +229,10 @@ if len(typesseen) * 5 < nrow:
 ax.fill_between([0, 0], nthread+0.5, nthread + nrow + 0.5, facecolor="white")
 ax.set_ylim(0, nthread + nrow + 1)
 ax.legend(loc=1, shadow=True, mode="expand", ncol=5)
+
+# Start and end of time-step
+ax.plot([0, 0], [0, nthread + nrow + 1], 'k--', linewidth=1)
+ax.plot([end_t, end_t], [0, nthread + nrow + 1], 'k--', linewidth=1)
 
 ax.set_xlabel("Wall clock time [ms]")
 ax.set_ylabel("Thread ID" )

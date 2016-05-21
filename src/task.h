@@ -85,7 +85,7 @@ struct task {
   MPI_Request req;
 #endif
 
-  int rid;
+  int rid, last_rid;
   ticks tic, toc;
 
   int nr_unlock_tasks;
