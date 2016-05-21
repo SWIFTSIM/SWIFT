@@ -26,6 +26,14 @@
 #include "const.h"
 #include "debug.h"
 
+/**
+ * @brief Compute a valid integer time-step form a given time-step
+ *
+ * @param new_dt The time-step to convert.
+ * @param ti_begin The (integer) start of the previous time-step.
+ * @param ti_end The (integer) end of the previous time-step.
+ * @param timeBase_inv The inverse of the system's minimal time-step.
+ */
 __attribute__((always_inline)) INLINE static int get_integer_timestep(
     float new_dt, int ti_begin, int ti_end, double timeBase_inv) {
 
@@ -41,7 +49,6 @@ __attribute__((always_inline)) INLINE static int get_integer_timestep(
   /* Put this timestep on the time line */
   int dti_timeline = max_nr_timesteps;
   while (new_dti < dti_timeline) dti_timeline /= 2;
-
   new_dti = dti_timeline;
 
   /* Make sure we are allowed to increase the timestep size */
@@ -52,6 +59,12 @@ __attribute__((always_inline)) INLINE static int get_integer_timestep(
   return new_dti;
 }
 
+/**
+ * @brief Compute the new (integer) time-step of a given #gpart
+ *
+ * @param gp The #gpart.
+ * @param e The #engine (used to get some constants).
+ */
 __attribute__((always_inline)) INLINE static int get_gpart_timestep(
     const struct gpart *gp, const struct engine *e) {
 
@@ -73,6 +86,13 @@ __attribute__((always_inline)) INLINE static int get_gpart_timestep(
   return new_dti;
 }
 
+/**
+ * @brief Compute the new (integer) time-step of a given #part
+ *
+ * @param p The #part.
+ * @param xp The #xpart partner of p.
+ * @param e The #engine (used to get some constants).
+ */
 __attribute__((always_inline)) INLINE static int get_part_timestep(
     const struct part *p, const struct xpart *xp, const struct engine *e) {
 
