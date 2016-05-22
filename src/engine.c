@@ -1919,7 +1919,7 @@ void engine_collect_drift(struct cell *c) {
         engine_collect_drift(cp);
 
         /* And update */
-	mass += cp->mass;
+        mass += cp->mass;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
@@ -2008,11 +2008,14 @@ void engine_print_stats(struct engine *e) {
   const double e_tot = e_kin + e_int + e_pot;
 
   /* Print info */
-  fprintf(e->file_stats,
-          "  %6d %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
-          e->step, e->time, mass, e_tot, e_kin, e_int, e_pot, mom[0], mom[1], mom[2],
-          ang_mom[0], ang_mom[1], ang_mom[2]);
-  fflush(e->file_stats);
+  if (e->nodeID == 0) {
+    fprintf(
+        e->file_stats,
+        "  %6d %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+        e->step, e->time, mass, e_tot, e_kin, e_int, e_pot, mom[0], mom[1],
+        mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
+    fflush(e->file_stats);
+  }
 }
 
 /**
@@ -2193,7 +2196,10 @@ void engine_step(struct engine *e) {
   }
 
   /* Save some statistics */
-  engine_print_stats(e);
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    engine_print_stats(e);
+    e->timeLastStatistics += e->deltaTimeStatistics;
+  }
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart != REPART_NONE) engine_repartition(e);
@@ -2564,6 +2570,9 @@ void engine_init(struct engine *e, struct space *s,
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
+  e->deltaTimeStatistics =
+      parser_get_param_double(params, "Statistics:delta_time");
+  e->timeLastStatistics = e->timeBegin - e->deltaTimeStatistics;
   e->verbose = verbose;
   e->count_step = 0;
   e->wallclock_time = 0.f;
@@ -2666,10 +2675,11 @@ void engine_init(struct engine *e, struct space *s,
   /* Open some files */
   if (e->nodeID == 0) {
     e->file_stats = fopen("energy.txt", "w");
-    fprintf(e->file_stats,
-	    "# %6s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
-	    "Step", "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x", "p_y", "p_z",
-	    "ang_x", "ang_y", "ang_z");
+    fprintf(
+        e->file_stats,
+        "# %6s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+        "Step", "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x",
+        "p_y", "p_z", "ang_x", "ang_y", "ang_z");
     fflush(e->file_stats);
   }
 

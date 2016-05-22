@@ -147,8 +147,10 @@ struct engine {
   char snapshotBaseName[200];
   struct UnitSystem *snapshotUnits;
 
-  /* File for statistics */
+  /* Statistics information */
   FILE *file_stats;
+  double timeLastStatistics;
+  double deltaTimeStatistics;
 
   /* The current step number. */
   int step;
