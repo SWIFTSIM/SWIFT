@@ -2009,11 +2009,10 @@ void engine_print_stats(struct engine *e) {
 
   /* Print info */
   if (e->nodeID == 0) {
-    fprintf(
-        e->file_stats,
-        "  %6d %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
-        e->step, e->time, mass, e_tot, e_kin, e_int, e_pot, mom[0], mom[1],
-        mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
+    fprintf(e->file_stats,
+            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+            e->time, mass, e_tot, e_kin, e_int, e_pot, mom[0], mom[1], mom[2],
+            ang_mom[0], ang_mom[1], ang_mom[2]);
     fflush(e->file_stats);
   }
 }
@@ -2675,11 +2674,10 @@ void engine_init(struct engine *e, struct space *s,
   /* Open some files */
   if (e->nodeID == 0) {
     e->file_stats = fopen("energy.txt", "w");
-    fprintf(
-        e->file_stats,
-        "# %6s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
-        "Step", "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x",
-        "p_y", "p_z", "ang_x", "ang_y", "ang_z");
+    fprintf(e->file_stats,
+            "# %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x", "p_y",
+            "p_z", "ang_x", "ang_y", "ang_z");
     fflush(e->file_stats);
   }
 
