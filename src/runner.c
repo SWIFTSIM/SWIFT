@@ -851,7 +851,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       /* Collect energies. */
       e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
       e_pot += 0.;
-      e_int += 0.;
+      e_int += m * hydro_get_internal_energy(p, half_dt);
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -872,16 +872,16 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
         /* Collect */
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
-	mass += cp->mass;
-	e_kin += cp->e_kin;
-	e_int += cp->e_int;
-	e_pot += cp->e_pot;
-	mom[0] += cp->mom[0];
-	mom[1] += cp->mom[1];
-	mom[2] += cp->mom[2];
-	ang_mom[0] += cp->ang_mom[0];
-	ang_mom[1] += cp->ang_mom[1];
-	ang_mom[2] += cp->ang_mom[2];
+        mass += cp->mass;
+        e_kin += cp->e_kin;
+        e_int += cp->e_int;
+        e_pot += cp->e_pot;
+        mom[0] += cp->mom[0];
+        mom[1] += cp->mom[1];
+        mom[2] += cp->mom[2];
+        ang_mom[0] += cp->ang_mom[0];
+        ang_mom[1] += cp->ang_mom[1];
+        ang_mom[2] += cp->ang_mom[2];
       }
   }
 
@@ -898,7 +898,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   c->ang_mom[0] = ang_mom[0];
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
-  
+
   if (timer) TIMER_TOC(timer_drift);
 }
 
