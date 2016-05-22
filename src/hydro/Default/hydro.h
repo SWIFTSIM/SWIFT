@@ -246,9 +246,10 @@ __attribute__((always_inline))
  * @brief Returns the internal energy of a particle
  *
  * @param p The particle of interest
+ * @param dt Time since the last kick
  */
-__attribute__((always_inline))
-    INLINE static float hydro_get_internal_energy(struct part* p) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    const struct part* p, float dt) {
 
   return p->u;
 }
