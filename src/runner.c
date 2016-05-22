@@ -872,13 +872,33 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
         /* Collect */
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
+	mass += cp->mass;
+	e_kin += cp->e_kin;
+	e_int += cp->e_int;
+	e_pot += cp->e_pot;
+	mom[0] += cp->mom[0];
+	mom[1] += cp->mom[1];
+	mom[2] += cp->mom[2];
+	ang_mom[0] += cp->ang_mom[0];
+	ang_mom[1] += cp->ang_mom[1];
+	ang_mom[2] += cp->ang_mom[2];
       }
   }
 
   /* Store the values */
   c->h_max = h_max;
   c->dx_max = dx_max;
-
+  c->mass = mass;
+  c->e_kin = e_kin;
+  c->e_int = e_int;
+  c->e_pot = e_pot;
+  c->mom[0] = mom[0];
+  c->mom[1] = mom[1];
+  c->mom[2] = mom[2];
+  c->ang_mom[0] = ang_mom[0];
+  c->ang_mom[1] = ang_mom[1];
+  c->ang_mom[2] = ang_mom[2];
+  
   if (timer) TIMER_TOC(timer_drift);
 }
 

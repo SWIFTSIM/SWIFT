@@ -134,6 +134,12 @@ struct engine {
   double timeBase;
   double timeBase_inv;
 
+  /* Minimal ti_end for the next time-step */
+  int ti_end_min;
+
+  /* Number of particles updated */
+  size_t updates, g_updates;
+
   /* Snapshot information */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
