@@ -47,6 +47,7 @@
 #include "gravity.h"
 #include "hydro_properties.h"
 #include "hydro.h"
+#include "drift.h"
 #include "kick.h"
 #include "minmax.h"
 #include "scheduler.h"
@@ -757,14 +758,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       struct gpart *const gp = &gparts[k];
 
       /* Drift... */
-      gp->x[0] += gp->v_full[0] * dt;
-      gp->x[1] += gp->v_full[1] * dt;
-      gp->x[2] += gp->v_full[2] * dt;
-
-      /* Compute offset since last cell construction */
-      gp->x_diff[0] -= gp->v_full[0] * dt;
-      gp->x_diff[1] -= gp->v_full[1] * dt;
-      gp->x_diff[2] -= gp->v_full[2] * dt;
+      drift_gpart(gp, dt, timeBase, ti_old, ti_current);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
@@ -781,40 +775,8 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
 
-      /* Useful quantity */
-      const float h_inv = 1.0f / p->h;
-
       /* Drift... */
-      p->x[0] += xp->v_full[0] * dt;
-      p->x[1] += xp->v_full[1] * dt;
-      p->x[2] += xp->v_full[2] * dt;
-
-      /* Predict velocities (for hydro terms) */
-      p->v[0] += p->a_hydro[0] * dt;
-      p->v[1] += p->a_hydro[1] * dt;
-      p->v[2] += p->a_hydro[2] * dt;
-
-      /* Predict smoothing length */
-      const float w1 = p->h_dt * h_inv * dt;
-      if (fabsf(w1) < 0.2f)
-        p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-      else
-        p->h *= expf(w1);
-
-      /* Predict density */
-      const float w2 = -3.0f * p->h_dt * h_inv * dt;
-      if (fabsf(w2) < 0.2f)
-        p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-      else
-        p->rho *= expf(w2);
-
-      /* Predict the values of the extra fields */
-      hydro_predict_extra(p, xp, ti_old, ti_current, timeBase);
-
-      /* Compute offset since last cell construction */
-      xp->x_diff[0] -= xp->v_full[0] * dt;
-      xp->x_diff[1] -= xp->v_full[1] * dt;
-      xp->x_diff[2] -= xp->v_full[2] * dt;
+      drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
