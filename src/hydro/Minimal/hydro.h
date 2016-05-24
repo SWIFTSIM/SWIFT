@@ -27,13 +27,18 @@
  *
  * @param p Pointer to the particle data
  * @param xp Pointer to the extended particle data
+ * @param hydro_properties The SPH parameters
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp) {
+    struct part* p, struct xpart* xp,
+    const struct hydro_props* hydro_properties) {
+
+  const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
+  const float dt_cfl =
+      2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
 
   return dt_cfl;
 }
@@ -94,7 +99,7 @@ __attribute__((always_inline))
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= 3.0f * p->mass * kernel_root * kernel_igamma;
+  p->rho_dh -= 3.0f * p->mass * kernel_root;
   p->density.wcount += kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */

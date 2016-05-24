@@ -687,6 +687,8 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
   t->tic = 0;
   t->toc = 0;
   t->nr_unlock_tasks = 0;
+  t->rid = -1;
+  t->last_rid = -1;
 
   /* Init the lock. */
   lock_init(&t->lock);

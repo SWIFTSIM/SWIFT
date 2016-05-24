@@ -25,20 +25,16 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp) {
+    struct part* p, struct xpart* xp,
+    const struct hydro_props* hydro_properties) {
 
-  /* Acceleration */
-  float ac =
-      sqrtf(p->a_hydro[0] * p->a_hydro[0] + p->a_hydro[1] * p->a_hydro[1] +
-            p->a_hydro[2] * p->a_hydro[2]);
-  ac = fmaxf(ac, 1e-30);
-
-  const float dt_accel = sqrtf(2.f);  // MATTHIEU
+  const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
+  const float dt_cfl =
+      2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
 
-  return fminf(dt_cfl, dt_accel);
+  return dt_cfl;
 }
 
 /**
@@ -94,7 +90,7 @@ __attribute__((always_inline))
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= 3.0f * p->mass * kernel_root * kernel_igamma;
+  p->rho_dh -= 3.0f * p->mass * kernel_root;
   p->density.wcount += kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */

@@ -32,24 +32,18 @@ enum velocity_types {
 };
 
 /**
- * @brief Returns a random number (uniformly distributed) in [a,b[
- */
-double random_uniform(double a, double b) {
-  return (rand() / (double)RAND_MAX) * (b - a) + a;
-}
-
-
-/**
  * @brief Constructs a cell and all of its particle in a valid state prior to
  * a DOPAIR or DOSELF calcuation.
  *
  * @param n The cube root of the number of particles.
  * @param offset The position of the cell offset from (0,0,0).
  * @param size The cell size.
- * @param h The smoothing length of the particles in units of the inter-particle separation.
+ * @param h The smoothing length of the particles in units of the inter-particle
+ *separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
- * @param pert The perturbation to apply to the particles in the cell in units of the inter-particle separation.
+ * @param pert The perturbation to apply to the particles in the cell in units
+ *of the inter-particle separation.
  * @param vel The type of velocity field (0, random, divergent, rotating)
  */
 struct cell *make_cell(size_t n, double *offset, double size, double h,
@@ -127,10 +121,12 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
 
+  shuffle_particles(cell->parts, cell->count);
+
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_dosort(NULL, cell, 0x1FFF, 0);
+  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
@@ -145,7 +141,6 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-
   for (size_t pid = 0; pid < c->count; pid++) {
     c->parts[pid].rho = 0.f;
     c->parts[pid].rho_dh = 0.f;
@@ -157,7 +152,6 @@ void zero_particle_fields(struct cell *c) {
  * @brief Ends the loop by adding the appropriate coefficients
  */
 void end_calculation(struct cell *c) {
-
   for (size_t pid = 0; pid < c->count; pid++) {
     hydro_end_density(&c->parts[pid], 1);
   }
@@ -168,7 +162,6 @@ void end_calculation(struct cell *c) {
  */
 void dump_particle_fields(char *fileName, struct cell *main_cell,
                           struct cell **cells) {
-
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
@@ -205,7 +198,6 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
-
         struct cell *cj = cells[i * 9 + j * 3 + k];
         if (cj == main_cell) continue;
 
@@ -242,7 +234,6 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
-
   size_t runs = 0, particles = 0;
   double h = 1.2348, size = 1., rho = 1.;
   double perturbation = 0.;
@@ -310,7 +301,7 @@ int main(int argc, char *argv[]) {
   /* Help users... */
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f", h * h * h * kernel_nwneigh / 1.88273);
+  message("Neighbour target: N = %f", h * h * h * 4.0 * M_PI * kernel_gamma3 / 3.0);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
@@ -336,7 +327,6 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
       for (int k = 0; k < 3; ++k) {
-
         double offset[3] = {i * size, j * size, k * size};
         cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
                                              &partId, perturbation, vel);
@@ -349,7 +339,6 @@ int main(int argc, char *argv[]) {
 
   ticks time = 0;
   for (size_t i = 0; i < runs; ++i) {
-
     /* Zero the fields */
     for (int j = 0; j < 27; ++j) zero_particle_fields(cells[j]);
 

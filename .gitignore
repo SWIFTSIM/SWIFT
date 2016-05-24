@@ -11,19 +11,25 @@ config.sub
 ltmain.sh
 libtool
 
-src/version.h
+src/version_string.h
 swift*.tar.gz
+
 doc/doxyfile.stamp
 doc/html/
 doc/latex/
 doc/man/
 doc/Doxyfile
+
 examples/swift
+examples/swift_mpi
 examples/swift_fixdt
 examples/swift_fixdt_mpi
-examples/swift_mindt
-examples/swift_mindt_mpi
-examples/swift_mpi
+examples/*.xmf
+examples/used_parameters.yml
+examples/energy.txt
+examples/*/*.xmf
+examples/*/used_parameters.yml
+examples/*/energy.txt
 
 tests/testPair
 tests/brute_force_standard.dat

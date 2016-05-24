@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -41,6 +45,7 @@
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
+#include "hydro_properties.h"
 #include "hydro.h"
 #include "minmax.h"
 #include "scheduler.h"
@@ -68,6 +73,21 @@ const float runner_shift[13 * 3] = {
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
                               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+/* #define MY_CELL 428428428 */
+/* #define DX 0.1 */
+/* #define NX 1000 */
+/* #define CELL_ID                                                  \ */
+/*   ((int)(c->loc[0] / DX) * NX *NX + (int)(c->loc[1] / DX) * NX + \ */
+/*    (int)(c->loc[2] / DX)) */
+/* #define OUT \ */
+/*   if (CELL_ID == MY_CELL) { \ */
+/*     message(" cell= %d gcount=%d time=%f \n", CELL_ID, c->gcount,
+ * r->e->time); \ */
+/*   } */
+/* #define OUT  message(" cell %d %d %f \n",CELL_ID, c->count, r->e->time); */
+/* #define OUT  if(CELL_ID == MY_CELL) message("\n cell %f %f %f %d %d */
+/* %f\n",c->loc[0],c->loc[1],c->loc[2], CELL_ID, c->count, r->e->time); */
+
 /* Import the density loop functions. */
 #define FUNCTION density
 #include "runner_doiact.h"
@@ -81,13 +101,102 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #include "runner_doiact_grav.h"
 
 /**
+ * @brief Calculate gravity acceleration from external potential
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
+
+  struct gpart *g, *gparts = c->gparts;
+  int i, k, gcount = c->gcount;
+  const int ti_current = r->e->ti_current;
+  const struct external_potential *potential = r->e->external_potential;
+  const struct phys_const *constants = r->e->physical_constants;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
+    return;
+  }
+
+#ifdef TASK_VERBOSE
+  OUT;
+#endif
+
+  /* Loop over the parts in this cell. */
+  for (i = 0; i < gcount; i++) {
+
+    /* Get a direct pointer on the part. */
+    g = &gparts[i];
+
+    /* Is this part within the time step? */
+    if (g->ti_end <= ti_current) {
+
+      external_gravity(potential, constants, g);
+
+      /* /\* check for energy and angular momentum conservation - begin by */
+      /*  * synchronizing velocity*\/ */
+      /* const float dx = g->x[0] - r->e->potential->point_mass.x; */
+      /* const float dy = g->x[1] - r->e->potential->point_mass.y; */
+      /* const float dz = g->x[2] - r->e->potential->point_mass.z; */
+      /* const float dr = sqrtf((dx * dx) + (dy * dy) + (dz * dz)); */
+      /* const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz); */
+
+      /* const int current_dti = g->ti_end - g->ti_begin; */
+      /* const float dt = 0.5f * current_dti * r->e->timeBase; */
+      /* const float vx = g->v_full[0] + dt * g->a_grav[0]; */
+      /* const float vy = g->v_full[1] + dt * g->a_grav[1]; */
+      /* const float vz = g->v_full[2] + dt * g->a_grav[2]; */
+
+      /* /\* E/L *\/ */
+      /* float L[3], E; */
+      /* E = 0.5 * ((vx * vx) + (vy * vy) + (vz * vz)) - */
+      /*     r->e->physical_constants->newton_gravity * */
+      /*         r->e->potential->point_mass.mass * rinv; */
+      /* L[0] = dy * vz - dz * vy; */
+      /* L[1] = dz * vx - dx * vz; */
+      /* L[2] = dx * vy - dy * vx; */
+      /* if (abs(g->id) == 1) { */
+      /*   float v2 = vx * vx + vy * vy + vz * vz; */
+      /*   float fg = r->e->physical_constants->newton_gravity * */
+      /*              r->e->potential->point_mass.mass * rinv; */
+      /*   float fga = sqrtf((g->a_grav[0] * g->a_grav[0]) + */
+      /*                     (g->a_grav[1] * g->a_grav[1]) + */
+      /*                     (g->a_grav[2] * g->a_grav[2])) * */
+      /*               dr; */
+      /*   // message("grav_external time= %f\t V_c^2= %f GM/r= %f E= %f L[2]=
+       * %f */
+      /*   // x= %f y= %f vx= %f vy= %f\n", r->e->time, v2, fg, E, L[2],
+       * g->x[0], */
+      /*   // g->x[1], vx, vy); */
+      /*   message("%f\t %f %f %f %f %f %f %f %f %f %f %f %f %f\n", r->e->time,
+       */
+      /*           g->tx, g->tv, dt, v2, fg, fga, dr, E, L[2], g->x[0], g->x[1],
+       */
+      /*           vx, vy); */
+      /*   /\* message(" G=%e M=%e\n", r->e->physical_constants->newton_gravity,
+       */
+      /*    * r->e->potential->point_mass.mass); *\/ */
+      /*   /\* exit(-1); *\/ */
+      /* } */
+    }
+  }
+  if (timer) TIMER_TOC(timer_dograv_external);
+}
+
+/**
  * @brief Sort the entries in ascending order using QuickSort.
  *
  * @param sort The entries
  * @param N The number of entries.
  */
 
-void runner_dosort_ascending(struct entry *sort, int N) {
+void runner_do_sort_ascending(struct entry *sort, int N) {
 
   struct {
     short int lo, hi;
@@ -169,7 +278,7 @@ void runner_dosort_ascending(struct entry *sort, int N) {
  *      for recursive calls.
  */
 
-void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
+void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   struct entry *finger;
   struct entry *fingers[8];
@@ -203,7 +312,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
     for (k = 0; k < 8; k++) {
       if (c->progeny[k] == NULL) continue;
       missing = flags & ~c->progeny[k]->sorted;
-      if (missing) runner_dosort(r, c->progeny[k], missing, 0);
+      if (missing) runner_do_sort(r, c->progeny[k], missing, 0);
     }
 
     /* Loop over the 13 different sort arrays. */
@@ -293,7 +402,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
       if (flags & (1 << j)) {
         sort[j * (count + 1) + count].d = FLT_MAX;
         sort[j * (count + 1) + count].i = 0;
-        runner_dosort_ascending(&sort[j * (count + 1)], count);
+        runner_do_sort_ascending(&sort[j * (count + 1)], count);
         c->sorted |= (1 << j);
       }
   }
@@ -314,7 +423,7 @@ void runner_dosort(struct runner *r, struct cell *c, int flags, int clock) {
   if (clock) TIMER_TOC(timer_dosort);
 }
 
-void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
+void runner_do_gsort(struct runner *r, struct cell *c, int flags, int clock) {
 
   struct entry *finger;
   struct entry *fingers[8];
@@ -348,7 +457,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
     for (k = 0; k < 8; k++) {
       if (c->progeny[k] == NULL) continue;
       missing = flags & ~c->progeny[k]->gsorted;
-      if (missing) runner_dogsort(r, c->progeny[k], missing, 0);
+      if (missing) runner_do_gsort(r, c->progeny[k], missing, 0);
     }
 
     /* Loop over the 13 different sort arrays. */
@@ -438,7 +547,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
       if (flags & (1 << j)) {
         gsort[j * (count + 1) + count].d = FLT_MAX;
         gsort[j * (count + 1) + count].i = 0;
-        runner_dosort_ascending(&gsort[j * (count + 1)], count);
+        runner_do_sort_ascending(&gsort[j * (count + 1)], count);
         c->gsorted |= (1 << j);
       }
   }
@@ -466,8 +575,7 @@ void runner_dogsort(struct runner *r, struct cell *c, int flags, int clock) {
  * @param c The cell.
  * @param timer 1 if the time is to be recorded.
  */
-
-void runner_doinit(struct runner *r, struct cell *c, int timer) {
+void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   struct part *const parts = c->parts;
   struct gpart *const gparts = c->gparts;
@@ -480,7 +588,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_doinit(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL) runner_do_init(r, c->progeny[k], 0);
     return;
   } else {
 
@@ -521,7 +629,7 @@ void runner_doinit(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  */
 
-void runner_doghost(struct runner *r, struct cell *c) {
+void runner_do_ghost(struct runner *r, struct cell *c) {
 
   struct part *p, *parts = c->parts;
   struct xpart *xp, *xparts = c->xparts;
@@ -531,13 +639,20 @@ void runner_doghost(struct runner *r, struct cell *c) {
   float h_corr;
   const int ti_current = r->e->ti_current;
   const double timeBase = r->e->timeBase;
+  const float target_wcount = r->e->hydro_properties->target_neighbours;
+  const float max_wcount =
+      target_wcount + r->e->hydro_properties->delta_neighbours;
+  const float min_wcount =
+      target_wcount - r->e->hydro_properties->delta_neighbours;
+  const int max_smoothing_iter =
+      r->e->hydro_properties->max_smoothing_iterations;
 
   TIMER_TIC;
 
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_doghost(r, c->progeny[k]);
+      if (c->progeny[k] != NULL) runner_do_ghost(r, c->progeny[k]);
     return;
   }
 
@@ -547,7 +662,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   for (int k = 0; k < count; k++) pid[k] = k;
 
   /* While there are particles that need to be updated... */
-  for (int num_reruns = 0; count > 0 && num_reruns < const_smoothing_max_iter;
+  for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
        num_reruns++) {
 
     /* Reset the redo-count. */
@@ -571,7 +686,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
 
         /* Otherwise, compute the smoothing length update (Newton step). */
         else {
-          h_corr = (kernel_nwneigh - p->density.wcount) / p->density.wcount_dh;
+          h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
 
           /* Truncate to the range [ -p->h/2 , p->h ]. */
           h_corr = fminf(h_corr, p->h);
@@ -579,8 +694,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
         }
 
         /* Did we get the right number density? */
-        if (p->density.wcount > kernel_nwneigh + const_delta_nwneigh ||
-            p->density.wcount < kernel_nwneigh - const_delta_nwneigh) {
+        if (p->density.wcount > max_wcount || p->density.wcount < min_wcount) {
 
           /* Ok, correct then */
           p->h += h_corr;
@@ -660,7 +774,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
   if (count)
     message("Smoothing length failed to converge on %i particles.", count);
 
-  TIMER_TOC(timer_doghost);
+  TIMER_TOC(timer_do_ghost);
 }
 
 /**
@@ -670,7 +784,7 @@ void runner_doghost(struct runner *r, struct cell *c) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_dodrift(struct runner *r, struct cell *c, int timer) {
+void runner_do_drift(struct runner *r, struct cell *c, int timer) {
 
   const double timeBase = r->e->timeBase;
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
@@ -682,6 +796,9 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
   TIMER_TIC
+#ifdef TASK_VERBOSE
+  OUT;
+#endif
 
   /* No children? */
   if (!c->split) {
@@ -774,7 +891,7 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        runner_dodrift(r, cp, 0);
+        runner_do_drift(r, cp, 0);
 
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
@@ -789,14 +906,13 @@ void runner_dodrift(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Combined second and first kick for fixed dt.
+ * @brief Kick particles in momentum space and collect statistics
  *
  * @param r The runner thread.
  * @param c The cell.
- * @param timer The timer
+ * @param timer Are we timing this ?
  */
-
-void runner_dokick(struct runner *r, struct cell *c, int timer) {
+void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
   const float global_dt_min = r->e->dt_min;
   const float global_dt_max = r->e->dt_max;
@@ -808,6 +924,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
+  const struct external_potential *potential = r->e->external_potential;
+  const struct hydro_props *hydro_properties = r->e->hydro_properties;
+  const struct phys_const *constants = r->e->physical_constants;
+  const float ln_max_h_change = hydro_properties->log_max_h_change;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
@@ -819,6 +939,10 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC
 
+#ifdef TASK_VERBOSE
+  OUT;
+#endif
+
   /* No children? */
   if (!c->split) {
 
@@ -829,70 +953,85 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       struct gpart *const gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id < 0 && (is_fixdt || gp->ti_end <= ti_current)) {
+      if (gp->id < 0) {
 
-        /* First, finish the force calculation */
-        gravity_end_force(gp);
+        if (is_fixdt || gp->ti_end <= ti_current) {
 
-        /* Now we are ready to compute the next time-step size */
-        int new_dti;
+          /* First, finish the force calculation */
+          gravity_end_force(gp);
 
-        if (is_fixdt) {
+          /* Now we are ready to compute the next time-step size */
+          int new_dti;
 
-          /* Now we have a time step, proceed with the kick */
-          new_dti = global_dt_max * timeBase_inv;
+          if (is_fixdt) {
 
-        } else {
+            /* Now we have a time step, proceed with the kick */
+            new_dti = global_dt_max * timeBase_inv;
 
-          /* Compute the next timestep (gravity condition) */
-          float new_dt = gravity_compute_timestep(gp);
+          } else {
 
-          /* Limit timestep within the allowed range */
-          new_dt = fminf(new_dt, global_dt_max);
-          new_dt = fmaxf(new_dt, global_dt_min);
+            /* Compute the next timestep (gravity condition) */
+            const float new_dt_external =
+                gravity_compute_timestep_external(potential, constants, gp);
+            const float new_dt_self =
+                gravity_compute_timestep_self(constants, gp);
 
-          /* Convert to integer time */
-          new_dti = new_dt * timeBase_inv;
+            float new_dt = fminf(new_dt_external, new_dt_self);
 
-          /* Recover the current timestep */
-          const int current_dti = gp->ti_end - gp->ti_begin;
+            /* Limit timestep within the allowed range */
+            new_dt = fminf(new_dt, global_dt_max);
+            new_dt = fmaxf(new_dt, global_dt_min);
 
-          /* Limit timestep increase */
-          if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+            /* Convert to integer time */
+            new_dti = new_dt * timeBase_inv;
 
-          /* Put this timestep on the time line */
-          int dti_timeline = max_nr_timesteps;
-          while (new_dti < dti_timeline) dti_timeline /= 2;
+            /* Recover the current timestep */
+            const int current_dti = gp->ti_end - gp->ti_begin;
 
-          /* Now we have a time step, proceed with the kick */
-          new_dti = dti_timeline;
+            /* Limit timestep increase */
+            if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
+
+            /* Put this timestep on the time line */
+            int dti_timeline = max_nr_timesteps;
+            while (new_dti < dti_timeline) dti_timeline /= 2;
+
+            new_dti = dti_timeline;
+
+            /* Make sure we are allowed to increase the timestep size */
+            if (new_dti > current_dti) {
+              if ((max_nr_timesteps - gp->ti_end) % new_dti > 0)
+                new_dti = current_dti;
+            }
+
+            /* Now we have a time step, proceed with the kick */
+          }
+
+          /* Compute the time step for this kick */
+          const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
+          const int ti_end = gp->ti_end + new_dti / 2;
+          const double dt = (ti_end - ti_start) * timeBase;
+          const double half_dt = (ti_end - gp->ti_end) * timeBase;
+
+          /* Move particle forward in time */
+          gp->ti_begin = gp->ti_end;
+          gp->ti_end = gp->ti_begin + new_dti;
+
+          /* Kick particles in momentum space */
+          gp->v_full[0] += gp->a_grav[0] * dt;
+          gp->v_full[1] += gp->a_grav[1] * dt;
+          gp->v_full[2] += gp->a_grav[2] * dt;
+
+          /* Extra kick work */
+          gravity_kick_extra(gp, dt, half_dt);
+
+          /* Number of updated g-particles */
+          g_updated++;
         }
 
-        /* Compute the time step for this kick */
-        const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
-        const int ti_end = gp->ti_end + new_dti / 2;
-        const double dt = (ti_end - ti_start) * timeBase;
-        const double half_dt = (ti_end - gp->ti_end) * timeBase;
-
-        /* Move particle forward in time */
-        gp->ti_begin = gp->ti_end;
-        gp->ti_end = gp->ti_begin + new_dti;
-
-        /* Kick particles in momentum space */
-        gp->v_full[0] += gp->a_grav[0] * dt;
-        gp->v_full[1] += gp->a_grav[1] * dt;
-        gp->v_full[2] += gp->a_grav[2] * dt;
-
-        /* Extra kick work */
-        gravity_kick_extra(gp, dt, half_dt);
-
-        /* Number of updated g-particles */
-        g_updated++;
+        /* Minimal time for next end of time-step */
+        ti_end_min = min(gp->ti_end, ti_end_min);
+        ti_end_max = max(gp->ti_end, ti_end_max);
       }
-
-      /* Minimal time for next end of time-step */
-      ti_end_min = min(gp->ti_end, ti_end_min);
-      ti_end_max = max(gp->ti_end, ti_end_max);
     }
 
     /* Now do the hydro ones... */
@@ -925,18 +1064,27 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         } else {
 
           /* Compute the next timestep (hydro condition) */
-          const float new_dt_hydro = hydro_compute_timestep(p, xp);
+          const float new_dt_hydro =
+              hydro_compute_timestep(p, xp, hydro_properties);
 
           /* Compute the next timestep (gravity condition) */
           float new_dt_grav = FLT_MAX;
-          if (p->gpart != NULL)
-            new_dt_grav = gravity_compute_timestep(p->gpart);
+          if (p->gpart != NULL) {
 
+            const float new_dt_external = gravity_compute_timestep_external(
+                potential, constants, p->gpart);
+            const float new_dt_self =
+                gravity_compute_timestep_self(constants, p->gpart);
+
+            new_dt_grav = fminf(new_dt_external, new_dt_self);
+          }
+
+          /* Final time-step is minimum of hydro and gravity */
           float new_dt = fminf(new_dt_hydro, new_dt_grav);
 
           /* Limit change in h */
           const float dt_h_change =
-              (p->h_dt != 0.0f) ? fabsf(const_ln_max_h_change * p->h / p->h_dt)
+              (p->h_dt != 0.0f) ? fabsf(ln_max_h_change * p->h / p->h_dt)
                                 : FLT_MAX;
 
           new_dt = fminf(new_dt, dt_h_change);
@@ -958,8 +1106,15 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
           int dti_timeline = max_nr_timesteps;
           while (new_dti < dti_timeline) dti_timeline /= 2;
 
-          /* Now we have a time step, proceed with the kick */
           new_dti = dti_timeline;
+
+          /* Make sure we are allowed to increase the timestep size */
+          if (new_dti > current_dti) {
+            if ((max_nr_timesteps - p->ti_end) % new_dti > 0)
+              new_dti = current_dti;
+          }
+
+          /* Now we have a time step, proceed with the kick */
         }
 
         /* Compute the time step for this kick */
@@ -1038,7 +1193,6 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
       ti_end_min = min(p->ti_end, ti_end_min);
       ti_end_max = max(p->ti_end, ti_end_max);
     }
-
   }
 
   /* Otherwise, aggregate data from children. */
@@ -1050,7 +1204,7 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
         struct cell *const cp = c->progeny[k];
 
         /* Recurse */
-        runner_dokick(r, cp, 0);
+        runner_do_kick(r, cp, 0);
 
         /* And aggregate */
         updated += cp->updated;
@@ -1090,11 +1244,54 @@ void runner_dokick(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Construct the cell properties from the received particles
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
+
+  const struct part *const parts = c->parts;
+  const struct gpart *const gparts = c->gparts;
+  const size_t nr_parts = c->count;
+  const size_t nr_gparts = c->gcount;
+  // const int ti_current = r->e->ti_current;
+
+  TIMER_TIC;
+
+  int ti_end_min = max_nr_timesteps;
+  int ti_end_max = 0;
+  float h_max = 0.f;
+
+  /* Collect everything... */
+  for (size_t k = 0; k < nr_parts; k++) {
+    const int ti_end = parts[k].ti_end;
+    // if(ti_end < ti_current) error("Received invalid particle !");
+    ti_end_min = min(ti_end_min, ti_end);
+    ti_end_max = max(ti_end_max, ti_end);
+    h_max = fmaxf(h_max, parts[k].h);
+  }
+  for (size_t k = 0; k < nr_gparts; k++) {
+    const int ti_end = gparts[k].ti_end;
+    // if(ti_end < ti_current) error("Received invalid particle !");
+    ti_end_min = min(ti_end_min, ti_end);
+    ti_end_max = max(ti_end_max, ti_end);
+  }
+
+  /* ... and store. */
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+  c->h_max = h_max;
+
+  if (timer) TIMER_TOC(timer_dorecv_cell);
+}
+
+/**
  * @brief The #runner main thread routine.
  *
  * @param data A pointer to this thread's data.
  */
-
 void *runner_main(void *data) {
 
   struct runner *r = (struct runner *)data;
@@ -1130,6 +1327,7 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
+      t->last_rid = r->cpuid;
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1150,7 +1348,7 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_sort:
-          runner_dosort(r, ci, t->flags, 1);
+          runner_do_sort(r, ci, t->flags, 1);
           break;
         case task_type_sub:
           if (t->subtype == task_subtype_density)
@@ -1163,27 +1361,22 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_init:
-          runner_doinit(r, ci, 1);
+          runner_do_init(r, ci, 1);
           break;
         case task_type_ghost:
-          runner_doghost(r, ci);
+          runner_do_ghost(r, ci);
           break;
         case task_type_drift:
-          runner_dodrift(r, ci, 1);
+          runner_do_drift(r, ci, 1);
           break;
         case task_type_kick:
-          runner_dokick(r, ci, 1);
+          runner_do_kick(r, ci, 1);
           break;
         case task_type_send:
           break;
-        case task_type_recv: {
-          struct part *parts = ci->parts;
-          size_t nr_parts = ci->count;
-          ci->ti_end_min = ci->ti_end_max = max_nr_timesteps;
-          for (size_t k = 0; k < nr_parts; k++)
-            parts[k].ti_end = max_nr_timesteps;
+        case task_type_recv:
+          runner_do_recv_cell(r, ci, 1);
           break;
-        }
         case task_type_grav_pp:
           if (t->cj == NULL)
             runner_doself_grav(r, t->ci);
@@ -1198,6 +1391,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_down:
           runner_dograv_down(r, t->ci);
+          break;
+        case task_type_grav_external:
+          runner_do_grav_external(r, t->ci, 1);
           break;
         case task_type_part_sort:
           space_do_parts_sort();

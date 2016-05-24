@@ -1,22 +1,25 @@
 /*******************************************************************************
-* This file is part of SWIFT.
-* Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
-*               2016 Peter W. Draper (p.w.draper@durham.ac.uk)
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published
-* by the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-******************************************************************************/
+ * This file is part of SWIFT.
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 
 /* Config parameters. */
 #include "../config.h"
@@ -164,15 +167,17 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
-  if (s->cells != NULL) {
-    for (int k = 0; k < s->nr_cells; k++) {
-      if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+  if (nr_parts > 0) {
+    if (s->cells != NULL) {
+      for (int k = 0; k < s->nr_cells; k++) {
+        if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+      }
+    } else {
+      for (size_t k = 0; k < nr_parts; k++) {
+        if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+      }
+      s->h_max = h_max;
     }
-  } else {
-    for (size_t k = 0; k < nr_parts; k++) {
-      if (s->parts[k].h > h_max) h_max = s->parts[k].h;
-    }
-    s->h_max = h_max;
   }
 
 /* If we are running in parallel, make sure everybody agrees on
@@ -372,7 +377,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   const ticks tic = getticks();
 
   /* Be verbose about this. */
-  // message( "re)building space..." ); fflush(stdout);
+  // message("re)building space..."); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
@@ -428,7 +433,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #ifdef WITH_MPI
   /* Move non-local parts to the end of the list. */
   const int local_nodeID = s->e->nodeID;
-  for (size_t k = 0; k < nr_parts; k++)
+  for (size_t k = 0; k < nr_parts;) {
     if (cells[ind[k]].nodeID != local_nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
@@ -447,10 +452,26 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const int t = ind[k];
       ind[k] = ind[nr_parts];
       ind[nr_parts] = t;
+    } else {
+      /* Increment when not exchanging otherwise we need to retest "k".*/
+      k++;
     }
+  }
+
+  /* Check that all parts are in the correct places. */
+  /*  for (size_t k = 0; k < nr_parts; k++) {
+    if (cells[ind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local parts to send list");
+    }
+  }
+  for (size_t k = nr_parts; k < s->nr_parts; k++) {
+    if (cells[ind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local parts from send list");
+    }
+  }*/
 
   /* Move non-local gparts to the end of the list. */
-  for (int k = 0; k < nr_gparts; k++)
+  for (int k = 0; k < nr_gparts;) {
     if (cells[gind[k]].nodeID != local_nodeID) {
       cells[gind[k]].gcount -= 1;
       nr_gparts -= 1;
@@ -466,18 +487,31 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const int t = gind[k];
       gind[k] = gind[nr_gparts];
       gind[nr_gparts] = t;
+    } else {
+      /* Increment when not exchanging otherwise we need to retest "k".*/
+      k++;
     }
+  }
+
+  /* Check that all gparts are in the correct place (untested). */
+  /*
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (cells[gind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local gparts to send list");
+    }
+  }
+  for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
+    if (cells[gind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local gparts from send list");
+    }
+  }*/
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
-  /* TODO: This function also exchanges gparts, but this is shorted-out
-     until they are fully implemented. */
   size_t nr_parts_exchanged = s->nr_parts - nr_parts;
   size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
   engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
                          nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged);
-
-  /* Add post-processing, i.e. re-linking/creating of gparts here. */
 
   /* Set the new particle counts. */
   s->nr_parts = nr_parts + nr_parts_exchanged;
@@ -488,7 +522,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     int *ind_new;
     if ((ind_new = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
       error("Failed to allocate temporary particle indices.");
-    memcpy(ind_new, ind, sizeof(size_t) * nr_parts);
+    memcpy(ind_new, ind, sizeof(int) * nr_parts);
     free(ind);
     ind = ind_new;
   }
@@ -1280,9 +1314,11 @@ void space_do_split(struct space *s, struct cell *c) {
   if (s->nr_parts > 0)
     c->owner =
         ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
-  else
+  else if (s->nr_gparts > 0)
     c->owner =
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
+  else
+    c->owner = 0; /* Ok, there is really nothing on this rank... */
 }
 
 /**
@@ -1475,10 +1511,12 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Allocate the extra parts array. */
-  if (posix_memalign((void *)&s->xparts, xpart_align,
-                     Npart * sizeof(struct xpart)) != 0)
-    error("Failed to allocate xparts.");
-  bzero(s->xparts, Npart * sizeof(struct xpart));
+  if (Npart > 0) {
+    if (posix_memalign((void *)&s->xparts, xpart_align,
+                       Npart * sizeof(struct xpart)) != 0)
+      error("Failed to allocate xparts.");
+    bzero(s->xparts, Npart * sizeof(struct xpart));
+  }
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

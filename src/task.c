@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -43,10 +47,11 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",      "sort",       "self",       "pair",    "sub",
-    "init",      "ghost",      "drift",      "kick",    "send",
-    "recv",      "grav_pp",    "grav_mm",    "grav_up", "grav_down",
-    "part_sort", "gpart_sort", "split_cell", "rewait",  "comm_root"};
+    "none",          "sort",      "self",       "pair",       "sub",
+    "init",          "ghost",     "drift",      "kick",       "send",
+    "recv",          "grav_pp",   "grav_mm",    "grav_up",    "grav_down",
+    "grav_external", "part_sort", "gpart_sort", "split_cell", "rewait",
+    "comm_root"};
 
 const char *subtaskID_names[task_type_count] = {"none",  "density",
                                                 "force", "grav"};

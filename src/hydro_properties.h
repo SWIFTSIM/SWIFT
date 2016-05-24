@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,13 +17,40 @@
  *
  ******************************************************************************/
 
-__attribute__((always_inline))
-    INLINE static void gravity_debug_particle(struct gpart* p) {
-  printf(
-      "x=[%.3e,%.3e,%.3e], "
-      "v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
-      "mass=%.3e t_begin=%d, t_end=%d\n",
-      p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
-      p->a_grav[0], p->a_grav[1], p->a_grav[2], p->mass, p->ti_begin,
-      p->ti_end);
-}
+#ifndef SWIFT_HYDRO_PROPERTIES
+#define SWIFT_HYDRO_PROPERTIES
+
+/* Config parameters. */
+#include "../config.h"
+
+/* Local includes. */
+#include "const.h"
+#include "parser.h"
+
+/**
+ * @brief Contains all the constants and parameters of the hydro scheme
+ */
+struct hydro_props {
+
+  /* Kernel properties */
+  float eta_neighbours;
+  float target_neighbours;
+  float delta_neighbours;
+
+  /* Kernel properties */
+  int max_smoothing_iterations;
+
+  /* Time integration properties */
+  float CFL_condition;
+  float log_max_h_change;
+
+/* Viscosity parameters */
+#ifdef GADGET_SPH
+  float const_viscosity_alpha;
+#endif
+};
+
+void hydro_props_print(const struct hydro_props *p);
+void hydro_props_init(struct hydro_props *p, const struct swift_params *params);
+
+#endif /* SWIFT_HYDRO_PROPERTIES */
