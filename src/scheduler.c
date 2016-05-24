@@ -965,7 +965,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   // ticks tic;
 
   /* Store the masks */
-  s->mask = mask | (1 << task_type_rewait);
+  s->mask = mask | (1 << task_type_rewait) | (1 << task_type_comm_root);
   s->submask = submask | (1 << task_subtype_none);
 
   /* Clear all the waits and rids. */
@@ -1020,7 +1020,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* message("waiting tasks took %.3f %s.",
      clocks_from_ticks(getticks() - tic), clocks_getunit());*/
 
-  s->mask = mask;
+  s->mask = mask | (1 << task_type_comm_root);
   s->submask = submask | (1 << task_subtype_none);
 
   /* Loop over the tasks and enqueue whoever is ready. */
@@ -1054,6 +1054,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* The target queue for this task. */
   int qid = -1;
+  
+  if (t->type == task_type_comm_root)
+    message("enqueueing comm_root task.");
 
   /* Fail if this task has already been enqueued before. */
   if (t->rid >= 0) error("Task has already been enqueued.");
