@@ -1054,9 +1054,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* The target queue for this task. */
   int qid = -1;
-  
-  if (t->type == task_type_comm_root)
-    message("enqueueing comm_root task.");
 
   /* Fail if this task has already been enqueued before. */
   if (t->rid >= 0) error("Task has already been enqueued.");
