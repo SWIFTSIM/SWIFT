@@ -1840,7 +1840,7 @@ void engine_collect_kick(struct cell *c) {
  * @brief Collects the next time-step by making each super-cell recurse
  * to collect the minimal of ti_end and the number of updated particles.
  *
- * @param The #engine.
+ * @param e The #engine.
  */
 void engine_collect_timestep(struct engine *e) {
 

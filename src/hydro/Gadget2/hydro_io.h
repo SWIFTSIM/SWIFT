@@ -83,8 +83,8 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
              FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, us,
              UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy",
-             FLOAT, N, 1, parts, N_total, mpi_rank, offset, entropy, us,
+  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy", FLOAT, N,
+             1, parts, N_total, mpi_rank, offset, entropy, us,
              UNIT_CONV_ENTROPY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
              ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, us,

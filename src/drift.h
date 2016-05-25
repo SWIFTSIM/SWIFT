@@ -35,11 +35,8 @@
  * @param ti_old Integer start of time-step
  * @param ti_current Integer end of time-step
  */
-__attribute__((always_inline)) INLINE static void drift_gpart(struct gpart* gp,
-                                                              float dt,
-							      double timeBase,
-							      int ti_old,
-							      int ti_current) {
+__attribute__((always_inline)) INLINE static void drift_gpart(
+    struct gpart* gp, float dt, double timeBase, int ti_old, int ti_current) {
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt;
   gp->x[1] += gp->v_full[1] * dt;
@@ -61,12 +58,9 @@ __attribute__((always_inline)) INLINE static void drift_gpart(struct gpart* gp,
  * @param ti_old Integer start of time-step
  * @param ti_current Integer end of time-step
  */
-__attribute__((always_inline)) INLINE static void drift_part(struct part* p,
-                                                             struct xpart* xp,
-                                                             float dt,
-                                                             double timeBase,
-							     int ti_old,
-							     int ti_current) {
+__attribute__((always_inline))
+    INLINE static void drift_part(struct part* p, struct xpart* xp, float dt,
+                                  double timeBase, int ti_old, int ti_current) {
   /* Useful quantity */
   const float h_inv = 1.0f / p->h;
 
