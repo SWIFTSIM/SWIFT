@@ -25,6 +25,9 @@
 /* Some standard headers. */
 #include <pthread.h>
 
+/* Function type for mappings. */
+typedef void (*threadpool_map_function)(void *map_data, void *extra_data);
+
 /* Data of a threadpool. */
 struct threadpool {
 
@@ -35,17 +38,21 @@ struct threadpool {
   pthread_t *threads;
 
   /* This is where threads go to rest. */
-  pthread_mutex_t sleep_mutex;
-  pthread_cond_t sleep_cond;
-  
+  pthread_mutex_t control_mutex, thread_mutex;
+  pthread_cond_t control_cond, thread_cond;
+
   /* Current map data and count. */
   void *map_data;
   size_t map_data_count, map_data_size, map_data_stride;
+  threadpool_map_function map_function;
+  
+  /* Counter for the number of threads that are done. */
+  int num_threads_done;
 };
 
 /* Function prototypes. */
 void threadpool_init(struct threadpool *tp, int num_threads);
-void threadpool_map(struct threadpool *tp, void *map_data, size_t N, int stride,
-                    void *extra_data);
+void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
+                    void *map_data, size_t N, int stride, void *extra_data);
 
 #endif /* SWIFT_THREADPOOL_H */
