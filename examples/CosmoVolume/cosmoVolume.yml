@@ -56,4 +56,11 @@ DomainDecomposition:
   initial_grid_y:    10
   initial_grid_z:    10
   repartition_type:   b     # The re-decomposition strategy ("n", "b", "v", "e" or "x"). See documentation for details.
+
+# External potential parameters
+PointMass:
+  position_x:      5.     # location of external point mass in internal units
+  position_y:      5.
+  position_z:      5.
+  mass:            1.     # mass of external point mass in internal units
  
