@@ -82,7 +82,7 @@ __attribute__((always_inline))
     p->h *= expf(w1);
 
   /* Predict density */
-  const float w2 = -3.0f * p->h_dt * h_inv * dt;
+  const float w2 = -3.0f * w1;
   if (fabsf(w2) < 0.2f)
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
   else
