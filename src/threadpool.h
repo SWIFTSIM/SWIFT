@@ -42,7 +42,7 @@ struct threadpool {
   pthread_cond_t control_cond, thread_cond;
 
   /* Current map data and count. */
-  void *map_data;
+  void *map_data, *map_extra_data;
   size_t map_data_count, map_data_size, map_data_stride;
   threadpool_map_function map_function;
   
