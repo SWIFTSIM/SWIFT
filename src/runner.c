@@ -1183,9 +1183,9 @@ void *runner_main(void *data) {
         case task_type_grav_up:
           runner_dograv_up(r, t->ci);
           break;
-        case task_type_grav_down:
-          runner_dograv_down(r, t->ci);
-          break;
+        /* case task_type_grav_down: */
+        /*   runner_dograv_down(r, t->ci); */
+        /*   break; */
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
           break;
