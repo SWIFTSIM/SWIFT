@@ -174,7 +174,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   const float *const coeffs = &kernel_coeffs[0];
 #else
   /* Pick the correct branch of the kernel */
-  const int temp = (int) (x * kernel_ivals_f);
+  const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
 #endif
@@ -200,8 +200,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_eval(float u,
-                                                              float *restrict W) {
+__attribute__((always_inline))
+    INLINE static void kernel_eval(float u, float *restrict W) {
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_igamma;
 
@@ -210,7 +210,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval(float u,
   const float *const coeffs = &kernel_coeffs[0];
 #else
   /* Pick the correct branch of the kernel */
-  const int temp = (int) (x * kernel_ivals_f);
+  const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
 #endif

@@ -1,4 +1,4 @@
- /*******************************************************************************
+/*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *                    James Willis (james.s.willis@durham.ac.uk)
@@ -25,50 +25,30 @@
 #include <stdlib.h>
 #include <strings.h>
 
-#define numPoints (1<<19)
-//#undef VEC_SIZE
-//#define VEC_SIZE 4 
+#define numPoints (1 << 4)
 
 int main() {
 
   const float h = 1.2348f;
-  /* float *u, *W, *dW;  */
-  /* posix_memalign((void**) &u, VEC_SIZE*sizeof(float), numPoints*sizeof(float)); */
-  /* posix_memalign((void**) &W, VEC_SIZE*sizeof(float), numPoints*sizeof(float)); */
-  /* posix_memalign((void**) &dW, VEC_SIZE*sizeof(float), numPoints*sizeof(float)); */
-  /* bzero(u, numPoints*sizeof(float)); */
-  /* bzero(W, numPoints*sizeof(float)); */
-  /* bzero(dW, numPoints*sizeof(float)); */
-
-  /* __assume_aligned(&u, VEC_SIZE*sizeof(float)); */
-  /* __assume_aligned(&W, VEC_SIZE*sizeof(float)); */
-  /* __assume_aligned(&dW, VEC_SIZE*sizeof(float)); */
 
   float u[numPoints] = {0.f};
   float W[numPoints] = {0.f};
   float dW[numPoints] = {0.f};
 
-
   printf("\nSerial Output\n");
   printf("-------------\n");
-  printf("ivals= %d", kernel_ivals);
-
   const float numPoints_inv = 1. / numPoints;
-  
+
   for (int i = 0; i < numPoints; ++i) {
     u[i] = i * 2.5f * numPoints_inv / h;
   }
 
-  u[rand() % numPoints] = 0.f;
+  for (int i = 0; i < numPoints; ++i) {
 
-  for (int j = 0 ; j< 100; ++j) {
-    for (int i = 0; i < numPoints; ++i) {
-      
-      kernel_deval(u[i], &W[i], &dW[i]);
-      
-      //    printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i, h,
-      //       h * kernel_gamma, x, W[i], dW[i]);
-    }
+    kernel_deval(u[i], &W[i], &dW[i]);
+
+    printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i, h,
+           h * kernel_gamma, u[i] * h, W[i], dW[i]);
   }
 
   printf("\nVector Output for VEC_SIZE=%d\n", VEC_SIZE);
@@ -87,8 +67,8 @@ int main() {
     kernel_deval_vec(&vx_h, &W_vec, &dW_vec);
 
     for (int j = 0; j < VEC_SIZE; j++) {
-      /* printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i + j, h, */
-      /*        h * kernel_gamma, vx.f[j], W_vec.f[j], dW_vec.f[j]); */
+      printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i + j, h,
+             h * kernel_gamma, vx.f[j], W_vec.f[j], dW_vec.f[j]);
 
       if (fabsf(W_vec.f[j] - W[i + j]) > 2e-7) {
         printf("Invalid value ! scalar= %e, vector= %e\n", W[i + j],
