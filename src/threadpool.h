@@ -43,11 +43,11 @@ struct threadpool {
 
   /* Current map data and count. */
   void *map_data, *map_extra_data;
-  size_t map_data_count, map_data_size, map_data_stride;
-  threadpool_map_function map_function;
+  volatile size_t map_data_count, map_data_size, map_data_stride;
+  volatile threadpool_map_function map_function;
   
   /* Counter for the number of threads that are done. */
-  int num_threads_done;
+  volatile int num_threads_done;
 };
 
 /* Function prototypes. */
