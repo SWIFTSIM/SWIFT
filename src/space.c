@@ -47,6 +47,7 @@
 #include "lock.h"
 #include "minmax.h"
 #include "runner.h"
+#include "threadpool.h"
 #include "tools.h"
 
 /* Shared sort structure. */
@@ -655,10 +656,8 @@ void space_split(struct space *s, struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
 
-  for (int k = 0; k < s->nr_cells; k++)
-    scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none, k,
-                      0, &cells[k], NULL, 0);
-  engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell, 0);
+  threadpool_map(&s->e->threadpool, space_split_mapper, cells, s->nr_cells,
+                 sizeof(struct cell), s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1199,13 +1198,15 @@ void space_map_cells_pre(struct space *s, int full,
 }
 
 /**
- * @brief Split cells that contain too many particles.
- *
- * @param s The #space we are working in.
- * @param c The #cell under consideration.
+ * @brief #threadpool mapper function to split cells if they contain
+ *        too many particles.
  */
 
-void space_do_split(struct space *s, struct cell *c) {
+void space_split_mapper(void *map_data, void *extra_data) {
+
+  /* Unpack the inputs. */
+  struct space *s = (struct space *)extra_data;
+  struct cell *c = (struct cell *)map_data;
 
   const int count = c->count;
   const int gcount = c->gcount;
@@ -1259,7 +1260,7 @@ void space_do_split(struct space *s, struct cell *c) {
         space_recycle(s, c->progeny[k]);
         c->progeny[k] = NULL;
       } else {
-        space_do_split(s, c->progeny[k]);
+        space_split_mapper(c->progeny[k], s);
         h_max = fmaxf(h_max, c->progeny[k]->h_max);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);

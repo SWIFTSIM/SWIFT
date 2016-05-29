@@ -154,7 +154,7 @@ void space_map_cells_post(struct space *s, int full,
 void space_rebuild(struct space *s, double h_max, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_split(struct space *s, struct cell *cells, int verbose);
-void space_do_split(struct space *s, struct cell *c);
+void space_split_mapper(void *map_data, void *extra_data);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_link_cleanup(struct space *s);

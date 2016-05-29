@@ -952,6 +952,7 @@ void scheduler_reweight(struct scheduler *s) {
  * @brief #threadpool_map function which runs through the task
  *        graph and re-computes the task wait counters.
  */
+
 void scheduler_rewait_mapper(void *map_data, void *extra_data) {
 
   struct scheduler *s = (struct scheduler *)extra_data;
@@ -960,8 +961,7 @@ void scheduler_rewait_mapper(void *map_data, void *extra_data) {
   if (t->skip) return;
 
   /* Skip tasks not in the mask */
-  if (!((1 << t->type) & s->mask) || !((1 << t->subtype) & s->submask))
-    return;
+  if (!((1 << t->type) & s->mask) || !((1 << t->subtype) & s->submask)) return;
 
   /* Skip sort tasks that have already been performed */
   if (t->type == task_type_sort && t->flags == 0) return;
