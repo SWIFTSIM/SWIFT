@@ -48,6 +48,7 @@
 #include "partition.h"
 #include "physical_constants.h"
 #include "potentials.h"
+#include "threadpool.h"
 #include "units.h"
 
 /* Some constants. */
@@ -192,6 +193,9 @@ struct engine {
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
+  
+  /* Common threadpool for all the engine's tasks. */
+  struct threadpool threadpool;
 };
 
 /* Function prototypes. */

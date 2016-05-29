@@ -2730,6 +2730,9 @@ void engine_init(struct engine *e, struct space *s,
   while (e->barrier_running || e->barrier_launch)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for runner threads to get in place.");
+      
+  /* Initialize the threadpool. */
+  threadpool_init(&e->threadpool, e->nr_threads);
 }
 
 /**
