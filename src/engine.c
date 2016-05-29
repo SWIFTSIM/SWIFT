@@ -1244,96 +1244,93 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * With all the relevant tasks for a given cell available, we construct
  * all the dependencies for that cell.
  *
+ * This function is a mapper function to be used via the #threadpool_map
+ * function.
+ *
  * @param e The #engine.
  */
-void engine_make_extra_hydroloop_tasks(struct engine *e) {
+void engine_make_extra_hydroloop_tasks_mapper(void *map_data, void *extra_data) {
 
+  struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int nr_tasks = sched->nr_tasks;
+  struct task *t = (struct task *)map_data;
 
-  for (int k = 0; k < nr_tasks; k++) {
+  /* Skip? */
+  if (t->skip) return;
 
-    /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
+  /* Self-interaction? */
+  if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
-    /* Skip? */
-    if (t->skip) continue;
+    /* Start by constructing the task for the second hydro loop */
+    struct task *t2 = scheduler_addtask(
+        sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
 
-    /* Self-interaction? */
-    if (t->type == task_type_self && t->subtype == task_subtype_density) {
+    /* Add the link between the new loop and the cell */
+    t->ci->force = engine_addlink(e, t->ci->force, t2);
+    atomic_inc(&t->ci->nr_force);
 
-      /* Start by constructing the task for the second hydro loop */
-      struct task *t2 = scheduler_addtask(
-          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
+    /* Now, build all the dependencies for the hydro */
+    engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+  }
 
-      /* Add the link between the new loop and the cell */
-      t->ci->force = engine_addlink(e, t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
+  /* Otherwise, pair interaction? */
+  else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
 
-      /* Now, build all the dependencies for the hydro */
+    /* Start by constructing the task for the second hydro loop */
+    struct task *t2 = scheduler_addtask(
+        sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
+
+    /* Add the link between the new loop and both cells */
+    t->ci->force = engine_addlink(e, t->ci->force, t2);
+    atomic_inc(&t->ci->nr_force);
+    t->cj->force = engine_addlink(e, t->cj->force, t2);
+    atomic_inc(&t->cj->nr_force);
+
+    /* Now, build all the dependencies for the hydro for the cells */
+    /* that are local and are not descendant of the same super-cells */
+    if (t->ci->nodeID == nodeID) {
       engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
     }
+    if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+      engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
+    }
+  }
 
-    /* Otherwise, pair interaction? */
-    else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+  /* Otherwise, sub interaction? */
+  else if (t->type == task_type_sub && t->subtype == task_subtype_density) {
 
-      /* Start by constructing the task for the second hydro loop */
-      struct task *t2 = scheduler_addtask(
-          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
+    /* Start by constructing the task for the second hydro loop */
+    struct task *t2 = scheduler_addtask(
+        sched, task_type_sub, task_subtype_force, t->flags, 0, t->ci, t->cj, 0);
 
-      /* Add the link between the new loop and both cells */
-      t->ci->force = engine_addlink(e, t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
+    /* Add the link between the new loop and both cells */
+    t->ci->force = engine_addlink(e, t->ci->force, t2);
+    atomic_inc(&t->ci->nr_force);
+    if (t->cj != NULL) {
       t->cj->force = engine_addlink(e, t->cj->force, t2);
       atomic_inc(&t->cj->nr_force);
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super-cells */
-      if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
-      }
-      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
-      }
     }
 
-    /* Otherwise, sub interaction? */
-    else if (t->type == task_type_sub && t->subtype == task_subtype_density) {
-
-      /* Start by constructing the task for the second hydro loop */
-      struct task *t2 =
-          scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
-                            0, t->ci, t->cj, 0);
-
-      /* Add the link between the new loop and both cells */
-      t->ci->force = engine_addlink(e, t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
-      if (t->cj != NULL) {
-        t->cj->force = engine_addlink(e, t->cj->force, t2);
-        atomic_inc(&t->cj->nr_force);
-      }
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super-cells */
-      if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
-      }
-      if (t->cj != NULL && t->cj->nodeID == nodeID &&
-          t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
-      }
+    /* Now, build all the dependencies for the hydro for the cells */
+    /* that are local and are not descendant of the same super-cells */
+    if (t->ci->nodeID == nodeID) {
+      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
     }
-
-    /* /\* Kick tasks should rely on the grav_down tasks of their cell. *\/ */
-    /* else if (t->type == task_type_kick && t->ci->grav_down != NULL) */
-    /*   scheduler_addunlock(sched, t->ci->grav_down, t); */
-
-    /* External gravity tasks should depend on init and unlock the kick */
-    else if (t->type == task_type_grav_external) {
-      scheduler_addunlock(sched, t->ci->init, t);
-      scheduler_addunlock(sched, t, t->ci->kick);
+    if (t->cj != NULL && t->cj->nodeID == nodeID &&
+        t->ci->super != t->cj->super) {
+      engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
     }
+  }
+
+  /* /\* Kick tasks should rely on the grav_down tasks of their cell. *\/ */
+  /* else if (t->type == task_type_kick && t->ci->grav_down != NULL) */
+  /*   scheduler_addunlock(sched, t->ci->grav_down, t); */
+
+  /* External gravity tasks should depend on init and unlock the kick */
+  else if (t->type == task_type_grav_external) {
+    scheduler_addunlock(sched, t->ci->init, t);
+    scheduler_addunlock(sched, t, t->ci->kick);
   }
 }
 
@@ -1466,7 +1463,9 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  engine_make_extra_hydroloop_tasks(e);
+  threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
+    sched->tasks, sched->nr_tasks, sizeof(struct task), e);
+  // engine_make_extra_hydroloop_tasks(e);
 
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
@@ -2004,7 +2003,7 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time1);
 
   e->tic_step = getticks();
-    
+
   /* Collect the cell data. */
   for (int k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
@@ -2730,7 +2729,7 @@ void engine_init(struct engine *e, struct space *s,
   while (e->barrier_running || e->barrier_launch)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for runner threads to get in place.");
-      
+
   /* Initialize the threadpool. */
   threadpool_init(&e->threadpool, e->nr_threads);
 }
