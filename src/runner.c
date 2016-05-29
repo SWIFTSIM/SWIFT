@@ -1404,10 +1404,6 @@ void *runner_main(void *data) {
         case task_type_split_cell:
           space_do_split(e->s, t->ci);
           break;
-        case task_type_rewait:
-          scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj,
-                              t->flags, t->rank);
-          break;
         case task_type_comm_root:
           break;
         default:

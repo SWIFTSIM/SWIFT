@@ -52,7 +52,6 @@ enum task_types {
   task_type_part_sort,
   task_type_gpart_sort,
   task_type_split_cell,
-  task_type_rewait,
   task_type_comm_root,
   task_type_count
 };

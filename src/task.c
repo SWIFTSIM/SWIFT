@@ -50,8 +50,7 @@ const char *taskID_names[task_type_count] = {
     "none",          "sort",      "self",       "pair",       "sub",
     "init",          "ghost",     "drift",      "kick",       "send",
     "recv",          "grav_pp",   "grav_mm",    "grav_up",    "grav_down",
-    "grav_external", "part_sort", "gpart_sort", "split_cell", "rewait",
-    "comm_root"};
+    "grav_external", "part_sort", "gpart_sort", "split_cell", "comm_root "};
 
 const char *subtaskID_names[task_type_count] = {"none",  "density",
                                                 "force", "grav"};
@@ -85,10 +84,9 @@ float task_overlap(const struct task *ta, const struct task *tb) {
      use cells. */
   if (ta == NULL || tb == NULL || ta->type == task_type_none ||
       ta->type == task_type_part_sort || ta->type == task_type_gpart_sort ||
-      ta->type == task_type_split_cell || ta->type == task_type_rewait ||
-      tb->type == task_type_none || tb->type == task_type_part_sort ||
-      tb->type == task_type_gpart_sort || tb->type == task_type_split_cell ||
-      tb->type == task_type_rewait)
+      ta->type == task_type_split_cell || tb->type == task_type_none ||
+      tb->type == task_type_part_sort || tb->type == task_type_gpart_sort ||
+      tb->type == task_type_split_cell)
     return 0.0f;
 
   /* Compute the union of the cell data. */

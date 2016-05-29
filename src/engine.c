@@ -2657,6 +2657,9 @@ void engine_init(struct engine *e, struct space *s,
   part_create_mpi_types();
 #endif
 
+  /* Initialize the threadpool. */
+  threadpool_init(&e->threadpool, e->nr_threads);
+
   /* First of all, init the barrier and lock it. */
   if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)
     error("Failed to initialize barrier mutex.");
@@ -2671,7 +2674,7 @@ void engine_init(struct engine *e, struct space *s,
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
   const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
-                 e->nodeID);
+                 e->nodeID, &e->threadpool);
 
   /* Create the sorting tasks. */
   for (int i = 0; i < e->nr_threads; i++) {
@@ -2729,9 +2732,6 @@ void engine_init(struct engine *e, struct space *s,
   while (e->barrier_running || e->barrier_launch)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for runner threads to get in place.");
-
-  /* Initialize the threadpool. */
-  threadpool_init(&e->threadpool, e->nr_threads);
 }
 
 /**
