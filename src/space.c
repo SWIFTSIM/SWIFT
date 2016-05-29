@@ -50,9 +50,6 @@
 #include "threadpool.h"
 #include "tools.h"
 
-/* Shared sort structure. */
-struct parallel_sort space_sort_struct;
-
 /* Split size. */
 int space_splitsize = space_splitsize_default;
 int space_subsize = space_subsize_default;
@@ -548,7 +545,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   for (size_t k = 0; k < nr_parts; k++)
     if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
 
-  /* Verify space_sort_struct. */
+  /* Verify sort_struct. */
   /* for ( k = 1 ; k < nr_parts ; k++ ) {
       if ( ind[k-1] > ind[k] ) {
           error( "Sort failed!" );
@@ -681,31 +678,34 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
 
   const ticks tic = getticks();
 
-  /*Populate the global parallel_sort structure with the input data */
-  space_sort_struct.parts = s->parts;
-  space_sort_struct.xparts = s->xparts;
-  space_sort_struct.ind = ind;
-  space_sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((space_sort_struct.stack = malloc(sizeof(struct qstack) *
-                                        space_sort_struct.stack_size)) == NULL)
+  /* Populate a parallel_sort structure with the input data */
+  struct parallel_sort sort_struct;
+  sort_struct.parts = s->parts;
+  sort_struct.xparts = s->xparts;
+  sort_struct.ind = ind;
+  sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
+  if ((sort_struct.stack = malloc(sizeof(struct qstack) *
+                                        sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < space_sort_struct.stack_size; i++)
-    space_sort_struct.stack[i].ready = 0;
+  for (int i = 0; i < sort_struct.stack_size; i++)
+    sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */
-  space_sort_struct.stack[0].i = 0;
-  space_sort_struct.stack[0].j = N - 1;
-  space_sort_struct.stack[0].min = min;
-  space_sort_struct.stack[0].max = max;
-  space_sort_struct.stack[0].ready = 1;
-  space_sort_struct.first = 0;
-  space_sort_struct.last = 1;
-  space_sort_struct.waiting = 1;
+  sort_struct.stack[0].i = 0;
+  sort_struct.stack[0].j = N - 1;
+  sort_struct.stack[0].min = min;
+  sort_struct.stack[0].max = max;
+  sort_struct.stack[0].ready = 1;
+  sort_struct.first = 0;
+  sort_struct.last = 1;
+  sort_struct.waiting = 1;
 
-  /* Launch the sorting tasks. */
-  engine_launch(s->e, s->e->nr_threads, (1 << task_type_part_sort), 0);
+  /* Launch the sorting tasks with a stride of zero such that the same
+     map data is passed to each thread. */
+  threadpool_map(&s->e->threadpool, space_parts_sort_mapper,
+    &sort_struct, s->e->threadpool.num_threads, 0, NULL);
 
-  /* Verify space_sort_struct. */
+  /* Verify sort_struct. */
   /* for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1,
@@ -714,37 +714,40 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   message("Sorting succeeded."); */
 
   /* Clean up. */
-  free(space_sort_struct.stack);
+  free(sort_struct.stack);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
 
-void space_do_parts_sort() {
+void space_parts_sort_mapper(void *map_data, void *extra_data) {
+
+  /* Unpack the mapping data. */
+  struct parallel_sort *sort_struct = (struct parallel_sort *)map_data;
 
   /* Pointers to the sorting data. */
-  int *ind = space_sort_struct.ind;
-  struct part *parts = space_sort_struct.parts;
-  struct xpart *xparts = space_sort_struct.xparts;
+  int *ind = sort_struct->ind;
+  struct part *parts = sort_struct->parts;
+  struct xpart *xparts = sort_struct->xparts;
 
   /* Main loop. */
-  while (space_sort_struct.waiting) {
+  while (sort_struct->waiting) {
 
     /* Grab an interval off the queue. */
     int qid =
-        atomic_inc(&space_sort_struct.first) % space_sort_struct.stack_size;
+        atomic_inc(&sort_struct->first) % sort_struct->stack_size;
 
     /* Wait for the entry to be ready, or for the sorting do be done. */
-    while (!space_sort_struct.stack[qid].ready)
-      if (!space_sort_struct.waiting) return;
+    while (!sort_struct->stack[qid].ready)
+      if (!sort_struct->waiting) return;
 
     /* Get the stack entry. */
-    ptrdiff_t i = space_sort_struct.stack[qid].i;
-    ptrdiff_t j = space_sort_struct.stack[qid].j;
-    int min = space_sort_struct.stack[qid].min;
-    int max = space_sort_struct.stack[qid].max;
-    space_sort_struct.stack[qid].ready = 0;
+    ptrdiff_t i = sort_struct->stack[qid].i;
+    ptrdiff_t j = sort_struct->stack[qid].j;
+    int min = sort_struct->stack[qid].min;
+    int max = sort_struct->stack[qid].max;
+    sort_struct->stack[qid].ready = 0;
 
     /* Loop over sub-intervals. */
     while (1) {
@@ -773,7 +776,7 @@ void space_do_parts_sort() {
         }
       }
 
-      /* Verify space_sort_struct. */
+      /* Verify sort_struct. */
       /* for (int k = i; k <= jj; k++)
         if (ind[k] > pivot) {
           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
@@ -792,18 +795,18 @@ void space_do_parts_sort() {
 
         /* Recurse on the left? */
         if (jj > i && pivot > min) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) %
+                sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = i;
-          space_sort_struct.stack[qid].j = jj;
-          space_sort_struct.stack[qid].min = min;
-          space_sort_struct.stack[qid].max = pivot;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = i;
+          sort_struct->stack[qid].j = jj;
+          sort_struct->stack[qid].min = min;
+          sort_struct->stack[qid].max = pivot;
+          if (atomic_inc(&sort_struct->waiting) >=
+              sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the right? */
@@ -817,18 +820,18 @@ void space_do_parts_sort() {
 
         /* Recurse on the right? */
         if (pivot + 1 < max) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) %
+                sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = jj + 1;
-          space_sort_struct.stack[qid].j = j;
-          space_sort_struct.stack[qid].min = pivot + 1;
-          space_sort_struct.stack[qid].max = max;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = jj + 1;
+          sort_struct->stack[qid].j = j;
+          sort_struct->stack[qid].min = pivot + 1;
+          sort_struct->stack[qid].max = max;
+          if (atomic_inc(&sort_struct->waiting) >=
+              sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the left? */
@@ -841,7 +844,7 @@ void space_do_parts_sort() {
 
     } /* loop over sub-intervals. */
 
-    atomic_dec(&space_sort_struct.waiting);
+    atomic_dec(&sort_struct->waiting);
 
   } /* main loop. */
 }
@@ -862,30 +865,33 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
 
   const ticks tic = getticks();
 
-  /*Populate the global parallel_sort structure with the input data */
-  space_sort_struct.gparts = s->gparts;
-  space_sort_struct.ind = ind;
-  space_sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((space_sort_struct.stack = malloc(sizeof(struct qstack) *
-                                        space_sort_struct.stack_size)) == NULL)
+  /*Populate a global parallel_sort structure with the input data */
+  struct parallel_sort sort_struct;
+  sort_struct.gparts = s->gparts;
+  sort_struct.ind = ind;
+  sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
+  if ((sort_struct.stack = malloc(sizeof(struct qstack) *
+                                        sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < space_sort_struct.stack_size; i++)
-    space_sort_struct.stack[i].ready = 0;
+  for (int i = 0; i < sort_struct.stack_size; i++)
+    sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */
-  space_sort_struct.stack[0].i = 0;
-  space_sort_struct.stack[0].j = N - 1;
-  space_sort_struct.stack[0].min = min;
-  space_sort_struct.stack[0].max = max;
-  space_sort_struct.stack[0].ready = 1;
-  space_sort_struct.first = 0;
-  space_sort_struct.last = 1;
-  space_sort_struct.waiting = 1;
+  sort_struct.stack[0].i = 0;
+  sort_struct.stack[0].j = N - 1;
+  sort_struct.stack[0].min = min;
+  sort_struct.stack[0].max = max;
+  sort_struct.stack[0].ready = 1;
+  sort_struct.first = 0;
+  sort_struct.last = 1;
+  sort_struct.waiting = 1;
 
-  /* Launch the sorting tasks. */
-  engine_launch(s->e, s->e->nr_threads, (1 << task_type_gpart_sort), 0);
+  /* Launch the sorting tasks with a stride of zero such that the same
+     map data is passed to each thread. */
+  threadpool_map(&s->e->threadpool, space_gparts_sort_mapper,
+    &sort_struct, s->e->threadpool.num_threads, 0, NULL);
 
-  /* Verify space_sort_struct. */
+  /* Verify sort_struct. */
   /* for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1,
@@ -894,36 +900,39 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   message("Sorting succeeded."); */
 
   /* Clean up. */
-  free(space_sort_struct.stack);
+  free(sort_struct.stack);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
 
-void space_do_gparts_sort() {
+void space_gparts_sort_mapper(void *map_data, void *extra_data) {
+
+  /* Unpack the mapping data. */
+  struct parallel_sort *sort_struct = (struct parallel_sort *)map_data;
 
   /* Pointers to the sorting data. */
-  int *ind = space_sort_struct.ind;
-  struct gpart *gparts = space_sort_struct.gparts;
+  int *ind = sort_struct->ind;
+  struct gpart *gparts = sort_struct->gparts;
 
   /* Main loop. */
-  while (space_sort_struct.waiting) {
+  while (sort_struct->waiting) {
 
     /* Grab an interval off the queue. */
     int qid =
-        atomic_inc(&space_sort_struct.first) % space_sort_struct.stack_size;
+        atomic_inc(&sort_struct->first) % sort_struct->stack_size;
 
     /* Wait for the entry to be ready, or for the sorting do be done. */
-    while (!space_sort_struct.stack[qid].ready)
-      if (!space_sort_struct.waiting) return;
+    while (!sort_struct->stack[qid].ready)
+      if (!sort_struct->waiting) return;
 
     /* Get the stack entry. */
-    ptrdiff_t i = space_sort_struct.stack[qid].i;
-    ptrdiff_t j = space_sort_struct.stack[qid].j;
-    int min = space_sort_struct.stack[qid].min;
-    int max = space_sort_struct.stack[qid].max;
-    space_sort_struct.stack[qid].ready = 0;
+    ptrdiff_t i = sort_struct->stack[qid].i;
+    ptrdiff_t j = sort_struct->stack[qid].j;
+    int min = sort_struct->stack[qid].min;
+    int max = sort_struct->stack[qid].max;
+    sort_struct->stack[qid].ready = 0;
 
     /* Loop over sub-intervals. */
     while (1) {
@@ -949,7 +958,7 @@ void space_do_gparts_sort() {
         }
       }
 
-      /* Verify space_sort_struct. */
+      /* Verify sort_struct. */
       /* for (int k = i; k <= jj; k++)
         if (ind[k] > pivot) {
           message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
@@ -968,18 +977,18 @@ void space_do_gparts_sort() {
 
         /* Recurse on the left? */
         if (jj > i && pivot > min) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) %
+                sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = i;
-          space_sort_struct.stack[qid].j = jj;
-          space_sort_struct.stack[qid].min = min;
-          space_sort_struct.stack[qid].max = pivot;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = i;
+          sort_struct->stack[qid].j = jj;
+          sort_struct->stack[qid].min = min;
+          sort_struct->stack[qid].max = pivot;
+          if (atomic_inc(&sort_struct->waiting) >=
+              sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the right? */
@@ -993,18 +1002,18 @@ void space_do_gparts_sort() {
 
         /* Recurse on the right? */
         if (pivot + 1 < max) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) %
+                sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = jj + 1;
-          space_sort_struct.stack[qid].j = j;
-          space_sort_struct.stack[qid].min = pivot + 1;
-          space_sort_struct.stack[qid].max = max;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = jj + 1;
+          sort_struct->stack[qid].j = j;
+          sort_struct->stack[qid].min = pivot + 1;
+          sort_struct->stack[qid].max = max;
+          if (atomic_inc(&sort_struct->waiting) >=
+              sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the left? */
@@ -1017,7 +1026,7 @@ void space_do_gparts_sort() {
 
     } /* loop over sub-intervals. */
 
-    atomic_dec(&space_sort_struct.waiting);
+    atomic_dec(&sort_struct->waiting);
 
   } /* main loop. */
 }

@@ -1420,14 +1420,6 @@ void engine_maketasks(struct engine *e) {
   /* Re-set the scheduler. */
   scheduler_reset(sched, s->tot_cells * engine_maxtaskspercell);
 
-  /* Add the space sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++) {
-    scheduler_addtask(sched, task_type_part_sort, task_subtype_none, i, 0, NULL,
-                      NULL, 0);
-    scheduler_addtask(sched, task_type_gpart_sort, task_subtype_none, i, 0,
-                      NULL, NULL, 0);
-  }
-
   /* Construct the firt hydro loop over neighbours */
   engine_make_hydroloop_tasks(e);
 
@@ -2675,15 +2667,6 @@ void engine_init(struct engine *e, struct space *s,
   const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
                  e->nodeID, &e->threadpool);
-
-  /* Create the sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++) {
-    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0,
-                      NULL, NULL, 0);
-
-    scheduler_addtask(&e->sched, task_type_gpart_sort, task_subtype_none, i, 0,
-                      NULL, NULL, 0);
-  }
 
   scheduler_ranktasks(&e->sched);
 

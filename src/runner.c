@@ -1395,12 +1395,6 @@ void *runner_main(void *data) {
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
           break;
-        case task_type_part_sort:
-          space_do_parts_sort();
-          break;
-        case task_type_gpart_sort:
-          space_do_gparts_sort();
-          break;
         case task_type_comm_root:
           break;
         default:
