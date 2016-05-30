@@ -768,47 +768,49 @@ void scheduler_ranktasks(struct scheduler *s) {
 
   /* Run through the tasks and get all the waits right. */
   for (int k = 0; k < nr_tasks; k++) {
-    tid[k] = k;
     for (int j = 0; j < tasks[k].nr_unlock_tasks; j++)
       tasks[k].unlock_tasks[j]->wait += 1;
   }
 
-  /* Main loop. */
-  for (int j = 0, rank = 0, left = 0; left < nr_tasks; rank++) {
+  /* Load the tids of tasks with no waits. */
+  int left = 0;
+  for (int k = 0; k < nr_tasks; k++)
+    if (tasks[k].wait == 0) {
+      tid[left] = k;
+      left += 1;
+    }
 
-    /* Load the tids of tasks with no waits. */
-    for (int k = left; k < nr_tasks; k++)
-      if (tasks[tid[k]].wait == 0) {
-        int temp = tid[j];
-        tid[j] = tid[k];
-        tid[k] = temp;
-        j += 1;
-      }
+  /* Main loop. */
+  for (int j = 0, rank = 0; left < nr_tasks; rank++) {
 
     /* Did we get anything? */
     if (j == left) error("Unsatisfiable task dependencies detected.");
+    const int left_old = left;
 
     /* Unlock the next layer of tasks. */
-    for (int i = left; i < j; i++) {
-      struct task *t = &tasks[tid[i]];
+    for (; j < left_old; j++) {
+      struct task *t = &tasks[tid[j]];
       t->rank = rank;
-      tid[i] = t - tasks;
-      if (tid[i] >= nr_tasks) error("Task index overshoot.");
       /* message( "task %i of type %s has rank %i." , i ,
           (t->type == task_type_self) ? "self" : (t->type == task_type_pair) ?
          "pair" : "sort" , rank ); */
-      for (int k = 0; k < t->nr_unlock_tasks; k++)
-        t->unlock_tasks[k]->wait -= 1;
+      for (int k = 0; k < t->nr_unlock_tasks; k++) {
+        struct task *u = t->unlock_tasks[k];
+        if (--u->wait == 0) {
+          tid[left] = u - tasks;
+          left += 1;
+        }
+      }
     }
 
-    /* The new left (no, not tony). */
-    left = j;
+    /* Move back to the old left (like Sanders). */
+    j = left_old;
   }
 
   /* Verify that the tasks were ranked correctly. */
-  /* for ( k = 1 ; k < s->nr_tasks ; k++ )
-      if ( tasks[ tid[k-1] ].rank > tasks[ tid[k-1] ].rank )
-          error( "Task ranking failed." ); */
+  for (int k = 1; k < s->nr_tasks; k++)
+    if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
+      error("Task ranking failed.");
 }
 
 /**
