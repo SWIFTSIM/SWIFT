@@ -853,9 +853,6 @@ void scheduler_reset(struct scheduler *s, int size) {
       error("Failed to allocate task lists.");
   }
 
-  /* Reset the task data. */
-  bzero(s->tasks, sizeof(struct task) * size);
-
   /* Reset the counters. */
   s->size = size;
   s->nr_tasks = 0;
