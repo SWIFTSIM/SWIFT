@@ -57,10 +57,10 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 /**
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
  * to be of the same size
- * 
+ *
  */
-__attribute__((always_inline)) INLINE static
-int are_neighbours(const struct cell *restrict ci, const struct cell *restrict cj) {
+__attribute__((always_inline)) INLINE static int are_neighbours(
+    const struct cell *restrict ci, const struct cell *restrict cj) {
 
 #ifdef SANITY_CHECKS
   if (ci->h[0] != cj->h[0])
@@ -80,8 +80,6 @@ int are_neighbours(const struct cell *restrict ci, const struct cell *restrict c
   return 1;
 }
 
-
-
 /**
  * @brief Computes the interaction of all the particles in a cell with the
  * multipole of another cell.
@@ -90,8 +88,9 @@ int are_neighbours(const struct cell *restrict ci, const struct cell *restrict c
  * @param ci The #cell with particles to interct.
  * @param cj The #cell with the multipole.
  */
-__attribute__((always_inline)) INLINE static void runner_dograv_pair_pm(
-	  const struct runner *r, const struct cell *restrict ci, const struct cell *restrict cj) {
+__attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
+    const struct runner *r, const struct cell *restrict ci,
+    const struct cell *restrict cj) {
 
   const struct engine *e = r->e;
   const int gcount = ci->gcount;
@@ -101,7 +100,7 @@ __attribute__((always_inline)) INLINE static void runner_dograv_pair_pm(
 
   TIMER_TIC;
 
-#ifdef SANITY_CHECK
+#ifdef SANITY_CHECKS
   if (gcount == 0) error("Empty cell!");  // MATTHIEU sanity check
 
   if (multi.mass == 0.0)  // MATTHIEU sanity check
@@ -180,7 +179,7 @@ __attribute__((always_inline)) INLINE static void runner_dograv_pair_pm(
  *
  * @todo Use a local cache for the particles.
  */
-__attribute__((always_inline)) INLINE static void runner_dograv_pair_pp(
+__attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     struct runner *r, struct cell *ci, struct cell *cj) {
 
   const struct engine *e = r->e;
@@ -192,7 +191,7 @@ __attribute__((always_inline)) INLINE static void runner_dograv_pair_pp(
 
   TIMER_TIC;
 
-#ifdef SANITY_CHECK
+#ifdef SANITY_CHECKS
   if (ci->h[0] != cj->h[0])  // MATTHIEU sanity check
     error("Non matching cell sizes !! h_i=%f h_j=%f\n", ci->h[0], cj->h[0]);
 #endif
@@ -250,7 +249,7 @@ __attribute__((always_inline)) INLINE static void runner_dograv_pair_pp(
  * @todo Use a local cache for the particles.
  */
 __attribute__((always_inline))
-    INLINE static void runner_dograv_self_pp(struct runner *r, struct cell *c) {
+    INLINE static void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
   const struct engine *e = r->e;
   const int gcount = c->gcount;
@@ -259,7 +258,7 @@ __attribute__((always_inline))
 
   TIMER_TIC;
 
-#ifdef SANITY_CHECK
+#ifdef SANITY_CHECKS
   if (c->gcount == 0)  // MATTHIEU sanity check
     error("Empty cell !");
 #endif
@@ -306,6 +305,111 @@ __attribute__((always_inline))
   }
 
   TIMER_TOC(TIMER_DOSELF);  // MATTHIEU
+}
+
+/**
+ * @brief Computes the interaction of all the particles in a cell with all the
+ * particles of another cell.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The other #cell.
+ *
+ * @todo Use a local cache for the particles.
+ */
+static void runner_dopair_grav(struct runner *r, struct cell *ci,
+                               struct cell *cj) {
+
+  const int gcount_i = ci->gcount;
+  const int gcount_j = cj->gcount;
+
+#ifdef SANITY_CHECKS
+
+  /* Early abort? */
+  if (gcount_i == 0 || gcount_j == 0) error("Empty cell !");
+
+  /* Bad stuff will happen if cell sizes are different */
+  if (ci->h[0] != cj->h[0])
+    error("Non matching cell sizes !! h_i=%f h_j=%f\n", ci->h[0], cj->h[0]);
+
+  /* Sanity check */
+  if (ci == cj)
+    error(
+        "The impossible has happened: pair interaction between a cell and "
+        "itself.");
+
+  /* Are the cells direct neighbours? */
+  if (!are_neighbours(ci, cj)) error("Non-neighbouring cells !");
+
+#endif
+
+  /* Are both cells split ? */
+  if (ci->split && cj->split) {
+
+    for (int j = 0; j < 8; j++) {
+      if (ci->progeny[j] != NULL) {
+
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL) {
+
+            if (are_neighbours(ci->progeny[j], cj->progeny[k])) {
+
+              /* Recurse */
+              runner_dopair_grav(r, ci->progeny[j], cj->progeny[k]);
+
+            } else {
+
+              /* Ok, here we can go for particle-multipole interactions */
+              runner_dopair_grav_pm(r, ci->progeny[j], cj->progeny[k]);
+              runner_dopair_grav_pm(r, cj->progeny[k], ci->progeny[j]);
+            }
+          }
+        }
+      }
+    }
+  } else {/* Not split */
+
+    /* Compute the interactions at this level directly. */
+    runner_dopair_grav_pp(r, ci, cj);
+  }
+}
+
+static void runner_doself_grav(struct runner *r, struct cell *c) {
+
+  const int gcount = c->gcount;
+
+#ifdef SANITY_CHECKS
+
+  /* Early abort? */
+  if (gcount == 0) error("Empty cell !");
+#endif
+
+  message("aa");
+
+  /* If the cell is split, interact each progeny with itself, and with
+     each of its siblings. */
+  if (c->split) {
+
+    for (int j = 0; j < 8; j++) {
+      if (c->progeny[j] != NULL) {
+
+        runner_doself_grav(r, c->progeny[j]);
+
+        for (int k = j + 1; k < 8; k++) {
+          if (c->progeny[k] != NULL) {
+
+            runner_dopair_grav(r, c->progeny[j], c->progeny[k]);
+          }
+        }
+      }
+    }
+  }
+
+  /* If the cell is not split, then just go for it... */
+  else {
+
+    runner_doself_grav_pp(r, c);
+  }
 }
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */

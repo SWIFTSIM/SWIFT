@@ -123,7 +123,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     if (g->ti_end <= ti_current) {
 
       external_gravity(potential, constants, g);
-
     }
   }
   if (timer) TIMER_TOC(timer_dograv_external);
@@ -1130,14 +1129,19 @@ void *runner_main(void *data) {
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
+          else if (t->subtype == task_subtype_grav)
+            runner_doself_grav(r, ci);
           else
             error("Unknown task subtype.");
           break;
         case task_type_pair:
+          message("bb");
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
+          else if (t->subtype == task_subtype_grav)
+            runner_dopair_grav(r, ci, cj);
           else
             error("Unknown task subtype.");
           break;
