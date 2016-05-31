@@ -54,39 +54,6 @@
  * @param tb The #task that will be unlocked.
  */
 
-void scheduler_addunlock_old(struct scheduler *s, struct task *ta,
-                         struct task *tb) {
-
-  /* Lock the scheduler since re-allocating the unlocks is not
-     thread-safe. */
-  if (lock_lock(&s->lock) != 0) error("Unable to lock scheduler.");
-
-  /* Does the buffer need to be grown? */
-  if (s->nr_unlocks == s->size_unlocks) {
-    struct task **unlocks_new;
-    int *unlock_ind_new;
-    s->size_unlocks *= 2;
-    if ((unlocks_new = (struct task **)malloc(
-             sizeof(struct task *) *s->size_unlocks)) == NULL ||
-        (unlock_ind_new = (int *)malloc(sizeof(int) * s->size_unlocks)) == NULL)
-      error("Failed to re-allocate unlocks.");
-    memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->nr_unlocks);
-    memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * s->nr_unlocks);
-    free(s->unlocks);
-    free(s->unlock_ind);
-    s->unlocks = unlocks_new;
-    s->unlock_ind = unlock_ind_new;
-  }
-
-  /* Write the unlock to the scheduler. */
-  const int ind = atomic_inc(&s->nr_unlocks);
-  s->unlocks[ind] = tb;
-  s->unlock_ind[ind] = ta - s->tasks;
-
-  /* Release the scheduler. */
-  if (lock_unlock(&s->lock) != 0) error("Unable to unlock scheduler.");
-}
-
 void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
   /* Get an index at which to store this unlock. */
@@ -94,6 +61,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
   /* Does the buffer need to be grown? */
   if (ind == s->size_unlocks) {
+    /* Allocate the new buffer. */
     struct task **unlocks_new;
     int *unlock_ind_new;
     const int size_unlocks_new = s->size_unlocks * 2;
@@ -101,12 +69,19 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
              sizeof(struct task *) * size_unlocks_new)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) == NULL)
       error("Failed to re-allocate unlocks.");
+      
+    /* Wait for all writes to the old buffer to complete. */
+    while (s->completed_unlock_writes < ind);
+    
+    /* Copy the buffers. */
     memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * ind);
     memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * ind);
     free(s->unlocks);
     free(s->unlock_ind);
     s->unlocks = unlocks_new;
     s->unlock_ind = unlock_ind_new;
+    
+    /* Publish the new buffer size. */
     s->size_unlocks = size_unlocks_new;
   }
   
@@ -116,6 +91,7 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   /* Write the unlock to the scheduler. */
   s->unlocks[ind] = tb;
   s->unlock_ind[ind] = ta - s->tasks;
+  atomic_inc(&s->completed_unlock_writes);
 }
 
 /**
@@ -888,6 +864,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->mask = 0;
   s->submask = 0;
   s->nr_unlocks = 0;
+  s->completed_unlock_writes = 0;
 
   /* Set the task pointers in the queues. */
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
