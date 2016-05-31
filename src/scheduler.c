@@ -54,7 +54,7 @@
  * @param tb The #task that will be unlocked.
  */
 
-void scheduler_addunlock(struct scheduler *s, struct task *ta,
+void scheduler_addunlock_old(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 
   /* Lock the scheduler since re-allocating the unlocks is not
@@ -85,6 +85,37 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
   /* Release the scheduler. */
   if (lock_unlock(&s->lock) != 0) error("Unable to unlock scheduler.");
+}
+
+void scheduler_addunlock(struct scheduler *s, struct task *ta,
+                         struct task *tb) {
+  /* Get an index at which to store this unlock. */
+  const int ind = atomic_inc(&s->nr_unlocks);
+
+  /* Does the buffer need to be grown? */
+  if (ind == s->size_unlocks) {
+    struct task **unlocks_new;
+    int *unlock_ind_new;
+    const int size_unlocks_new = s->size_unlocks * 2;
+    if ((unlocks_new = (struct task **)malloc(
+             sizeof(struct task *) * size_unlocks_new)) == NULL ||
+        (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) == NULL)
+      error("Failed to re-allocate unlocks.");
+    memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * ind);
+    memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * ind);
+    free(s->unlocks);
+    free(s->unlock_ind);
+    s->unlocks = unlocks_new;
+    s->unlock_ind = unlock_ind_new;
+    s->size_unlocks = size_unlocks_new;
+  }
+  
+  /* Wait for there to actually be space at my index. */
+  while (ind > s->size_unlocks);
+
+  /* Write the unlock to the scheduler. */
+  s->unlocks[ind] = tb;
+  s->unlock_ind[ind] = ta - s->tasks;
 }
 
 /**
@@ -748,6 +779,17 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->unlock_tasks = &s->unlocks[offsets[k]];
     for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
   }
+  
+  /* Verify that there are no duplicate unlocks. */
+  /* for (int k = 0; k < s->nr_tasks; k++) {
+    struct task *t = &s->tasks[k];
+    for (int i = 0; i < t->nr_unlock_tasks; i++) {
+      for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
+        if (t->unlock_tasks[i] == t->unlock_tasks[j])
+          error("duplicate unlock!");
+      }
+    }
+  } */
 
   /* Clean up. */
   free(counts);

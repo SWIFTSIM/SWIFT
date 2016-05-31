@@ -85,9 +85,9 @@ struct scheduler {
   int *tasks_ind;
 
   /* The task unlocks. */
-  struct task **unlocks;
-  int *unlock_ind;
-  int nr_unlocks, size_unlocks;
+  struct task **volatile unlocks;
+  int *volatile unlock_ind;
+  volatile int nr_unlocks, size_unlocks;
 
   /* Lock for this scheduler. */
   lock_type lock;
@@ -98,7 +98,7 @@ struct scheduler {
 
   /* The space associated with this scheduler. */
   struct space *space;
-  
+
   /* Threadpool to use internally for mundane parallel work. */
   struct threadpool *threadpool;
 
