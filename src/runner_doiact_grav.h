@@ -55,6 +55,34 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
 }
 
 /**
+ * @brief Checks whether the cells are direct neighbours ot not. Both cells have
+ * to be of the same size
+ * 
+ */
+__attribute__((always_inline)) INLINE static
+int are_neighbours(const struct cell *restrict ci, const struct cell *restrict cj) {
+
+#ifdef SANITY_CHECKS
+  if (ci->h[0] != cj->h[0])
+    error(" Cells of different size in distance calculation.");
+#endif
+
+  /* Maximum allowed distance */
+  const float min_dist = ci->h[0];
+
+  /* (Manhattan) Distance between the cells */
+  for (int k = 0; k < 3; k++) {
+    const float center_i = ci->loc[k];
+    const float center_j = cj->loc[k];
+    if (fabsf(center_i - center_j) > min_dist) return 0;
+  }
+
+  return 1;
+}
+
+
+
+/**
  * @brief Computes the interaction of all the particles in a cell with the
  * multipole of another cell.
  *
@@ -63,7 +91,7 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
  * @param cj The #cell with the multipole.
  */
 __attribute__((always_inline)) INLINE static void runner_dograv_pair_pm(
-    struct runner *r, struct cell *ci, struct cell *cj) {
+	  const struct runner *r, const struct cell *restrict ci, const struct cell *restrict cj) {
 
   const struct engine *e = r->e;
   const int gcount = ci->gcount;
