@@ -42,6 +42,7 @@ struct swift_params {
   struct parameter data[PARSER_MAX_NO_OF_PARAMS];
   int sectionCount;
   int paramCount;
+  char fileName[PARSER_MAX_LINE_SIZE];
 };
 
 /* Public API. */
