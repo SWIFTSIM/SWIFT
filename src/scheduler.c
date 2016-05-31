@@ -66,13 +66,15 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     int *unlock_ind_new;
     const int size_unlocks_new = s->size_unlocks * 2;
     if ((unlocks_new = (struct task **)malloc(
-             sizeof(struct task *) * size_unlocks_new)) == NULL ||
-        (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) == NULL)
+             sizeof(struct task *) *size_unlocks_new)) == NULL ||
+        (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) ==
+            NULL)
       error("Failed to re-allocate unlocks.");
-      
+
     /* Wait for all writes to the old buffer to complete. */
-    while (s->completed_unlock_writes < ind);
-    
+    while (s->completed_unlock_writes < ind)
+      ;
+
     /* Copy the buffers. */
     memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * ind);
     memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * ind);
@@ -80,13 +82,14 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     free(s->unlock_ind);
     s->unlocks = unlocks_new;
     s->unlock_ind = unlock_ind_new;
-    
+
     /* Publish the new buffer size. */
     s->size_unlocks = size_unlocks_new;
   }
-  
+
   /* Wait for there to actually be space at my index. */
-  while (ind > s->size_unlocks);
+  while (ind > s->size_unlocks)
+    ;
 
   /* Write the unlock to the scheduler. */
   s->unlocks[ind] = tb;
@@ -755,7 +758,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->unlock_tasks = &s->unlocks[offsets[k]];
     for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
   }
-  
+
   /* Verify that there are no duplicate unlocks. */
   /* for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
@@ -773,6 +776,21 @@ void scheduler_set_unlocks(struct scheduler *s) {
 }
 
 /**
+ * @brief #threadpool_map function which runs through the task
+ *        graph and re-computes the task wait counters.
+ */
+
+void scheduler_simple_rewait_mapper(void *map_data, void *extra_data) {
+
+  struct task *t = (struct task *)map_data;
+
+  /* Increment the waits of the dependances */
+  for (int k = 0; k < t->nr_unlock_tasks; k++) {
+    struct task *u = t->unlock_tasks[k];
+    atomic_inc(&u->wait);
+  }
+}
+/**
  * @brief Sort the tasks in topological order over all queues.
  *
  * @param s The #scheduler.
@@ -785,10 +803,8 @@ void scheduler_ranktasks(struct scheduler *s) {
   const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
-  for (int k = 0; k < nr_tasks; k++) {
-    for (int j = 0; j < tasks[k].nr_unlock_tasks; j++)
-      tasks[k].unlock_tasks[j]->wait += 1;
-  }
+  threadpool_map(s->threadpool, scheduler_simple_rewait_mapper, tasks, nr_tasks,
+                 sizeof(struct task), NULL);
 
   /* Load the tids of tasks with no waits. */
   int left = 0;
