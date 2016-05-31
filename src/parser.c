@@ -70,6 +70,7 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
   /* Initialise parameter count. */
   params->paramCount = 0;
   params->sectionCount = 0;
+  strcpy(params->fileName, file_name);
 
   /* Check if parameter file exits. */
   if (file == NULL) {
@@ -375,7 +376,7 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
   return 0;
 }
 
@@ -407,7 +408,7 @@ char parser_get_param_char(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
   return 0;
 }
 
@@ -439,7 +440,7 @@ float parser_get_param_float(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
   return 0.f;
 }
 
@@ -470,7 +471,7 @@ double parser_get_param_double(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
   return 0.;
 }
 

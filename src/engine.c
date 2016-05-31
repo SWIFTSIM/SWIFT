@@ -100,7 +100,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 }
 
 /**
- * @brief Generate the ghosts all the O(Npart) tasks for a hierarchy of cells.
+ * @brief Generate the hierarchical tasks for a hierarchy of cells - i.e. all
+ * the O(Npart) tasks.
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -109,8 +110,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  * @param super The super #cell.
  */
 
-void engine_make_ghost_tasks(struct engine *e, struct cell *c,
-                             struct cell *super) {
+void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
+                                    struct cell *super) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -162,7 +163,7 @@ void engine_make_ghost_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_ghost_tasks(e, c->progeny[k], super);
+        engine_make_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -1457,10 +1458,9 @@ void engine_maketasks(struct engine *e) {
      depend on the sorts of its progeny. */
   engine_count_and_link_tasks(e);
 
-  /* Append a ghost task to each cell, and add kick tasks to the
-     super cells. */
+  /* Append hierarchical tasks to each cells */
   for (int k = 0; k < nr_cells; k++)
-    engine_make_ghost_tasks(e, &cells[k], NULL);
+    engine_make_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -1734,7 +1734,6 @@ void engine_prepare(struct engine *e) {
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
 #endif
-  e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
@@ -1989,6 +1988,7 @@ void engine_step(struct engine *e) {
   double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
   float mom[3] = {0.0, 0.0, 0.0};
   float ang[3] = {0.0, 0.0, 0.0};
+  double snapshot_drift_time = 0.;
   struct space *s = e->s;
 
   TIMER_TIC2;
@@ -1996,6 +1996,8 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  e->tic_step = getticks();
+    
   /* Collect the cell data. */
   for (int k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
@@ -2062,6 +2064,7 @@ void engine_step(struct engine *e) {
     e->time = e->ti_current * e->timeBase + e->timeBegin;
     e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
     e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+    snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
     engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -2079,7 +2082,7 @@ void engine_step(struct engine *e) {
   e->step += 1;
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
 
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -2152,6 +2155,7 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
 
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
+  e->toc_step = getticks();
 }
 
 /**

@@ -126,7 +126,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_dosort(NULL, cell, 0x1FFF, 0);
+  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
@@ -301,7 +301,7 @@ int main(int argc, char *argv[]) {
   /* Help users... */
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f", h * h * h * kernel_nwneigh / 1.88273);
+  message("Neighbour target: N = %f", h * h * h * 4.0 * M_PI * kernel_gamma3 / 3.0);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);

@@ -20,28 +20,35 @@
 
 #define NO__AVX__
 #include "vector.h"
-
-#include "swift.h"
 #include "kernel_hydro.h"
 
-#define numPoints 64
+#include <stdlib.h>
+#include <strings.h>
+
+#define numPoints (1 << 4)
 
 int main() {
 
-  const float h = const_eta_kernel;
+  const float h = 1.2348f;
+
+  float u[numPoints] = {0.f};
   float W[numPoints] = {0.f};
   float dW[numPoints] = {0.f};
 
   printf("\nSerial Output\n");
   printf("-------------\n");
+  const float numPoints_inv = 1. / numPoints;
+
+  for (int i = 0; i < numPoints; ++i) {
+    u[i] = i * 2.5f * numPoints_inv / h;
+  }
 
   for (int i = 0; i < numPoints; ++i) {
 
-    const float x = i * 2.5f / numPoints;
-    kernel_deval(x / h, &W[i], &dW[i]);
+    kernel_deval(u[i], &W[i], &dW[i]);
 
     printf("%2d: h= %f H= %f x=%f W(x,h)=%f dW(x,h)=%f\n", i, h,
-           h * kernel_gamma, x, W[i], dW[i]);
+           h * kernel_gamma, u[i] * h, W[i], dW[i]);
   }
 
   printf("\nVector Output for VEC_SIZE=%d\n", VEC_SIZE);
