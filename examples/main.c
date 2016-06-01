@@ -52,6 +52,7 @@ void print_help_message() {
 
   printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
   printf("Valid options are:\n");
+  printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
   printf(
       "  %2s %8s %s\n", "-d", "",
@@ -88,6 +89,7 @@ void print_help_message() {
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
+
 int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
@@ -121,24 +123,17 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 #endif
 
+/* Let's pin the main thread */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if ((ENGINE_POLICY) & engine_policy_setaffinity) {
-    /* Ensure the NUMA node on which we initialise (first touch) everything
-     * doesn't change before engine_init allocates NUMA-local workers.
-     * Otherwise, we may be scheduled elsewhere between the two times.
-     */
-    cpu_set_t affinity;
-    CPU_ZERO(&affinity);
-    CPU_SET(sched_getcpu(), &affinity);
-    if (sched_setaffinity(0, sizeof(cpu_set_t), &affinity) != 0) {
-      error("failed to set entry thread's affinity");
-    }
-  }
+  if (((ENGINE_POLICY) & engine_policy_setaffinity) ==
+      engine_policy_setaffinity)
+    engine_pin();
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings();
 
+  int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
   int with_cosmology = 0;
@@ -153,7 +148,10 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cdef:gGhst:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acdef:gGhst:v:y:")) != -1) switch (c) {
+      case 'a':
+        with_aff = 1;
+        break;
       case 'c':
         with_cosmology = 1;
         break;
@@ -393,6 +391,7 @@ int main(int argc, char *argv[]) {
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
+    fflush(stdout);
   }
 
   /* Verify that each particle is in it's proper cell. */
@@ -419,8 +418,9 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
-              talking, &prog_const, &hydro_properties, &potential);
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
+              engine_policies, talking, &prog_const, &hydro_properties,
+              &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

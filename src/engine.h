@@ -197,7 +197,7 @@ void engine_compute_next_snapshot_time(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int policy, int verbose,
+                 int nr_threads, int with_aff, int policy, int verbose, 
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential);
@@ -219,5 +219,7 @@ void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
+void engine_pin();
+void engine_unpin();
 
 #endif /* SWIFT_ENGINE_H */

@@ -72,6 +72,11 @@ const char *engine_policy_names[13] = {
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
+#ifdef HAVE_SETAFFINITY
+/** The initial affinity of the main thread (set by engin_pin()) */
+static cpu_set_t entry_affinity;
+#endif
+
 /**
  * @brief Link a density/force task to a cell.
  *
@@ -2381,23 +2386,58 @@ void engine_dump_snapshot(struct engine *e) {
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 }
 
-#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-static bool hyperthreads_present(void) {
-#ifdef __linux__
-  FILE *f =
-      fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
+#ifdef HAVE_SETAFFINITY
+/**
+ * @brief Returns the initial affinity the main thread is using.
+ */
+static cpu_set_t *engine_entry_affinity() {
 
-  int c;
-  while ((c = fgetc(f)) != EOF && c != ',')
-    ;
-  fclose(f);
+  static int use_entry_affinity = 0;
 
-  return c == ',';
-#else
-  return true;  // just guess
-#endif
+  if (!use_entry_affinity) {
+    pthread_t engine = pthread_self();
+    pthread_getaffinity_np(engine, sizeof(entry_affinity), &entry_affinity);
+    use_entry_affinity = 1;
+  }
+
+  return &entry_affinity;
 }
 #endif
+
+/**
+ * @brief  Ensure the NUMA node on which we initialise (first touch) everything
+ *  doesn't change before engine_init allocates NUMA-local workers.
+ */
+void engine_pin() {
+
+#ifdef HAVE_SETAFFINITY
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+  int pin;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
+    ;
+
+  cpu_set_t affinity;
+  CPU_ZERO(&affinity);
+  CPU_SET(pin, &affinity);
+  if (sched_setaffinity(0, sizeof(affinity), &affinity) != 0) {
+    error("failed to set engine's affinity");
+  }
+#else
+  error("SWIFT was not compiled with support for pinning.");
+#endif
+}
+
+/**
+ * @brief Unpins the main thread.
+ */
+void engine_unpin() {
+#ifdef HAVE_SETAFFINITY
+  pthread_t main_thread = pthread_self();
+  pthread_setaffinity_np(main_thread, sizeof(entry_affinity), &entry_affinity);
+#else
+  error("SWIFT was not compiled with support for pinning.");
+#endif
+}
 
 /**
  * @brief init an engine with the given number of threads, queues, and
@@ -2409,6 +2449,7 @@ static bool hyperthreads_present(void) {
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param nr_threads The number of threads per MPI rank.
+ * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param physical_constants The #phys_const used for this run.
@@ -2418,7 +2459,7 @@ static bool hyperthreads_present(void) {
 
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int policy, int verbose,
+                 int nr_threads, int with_aff, int policy, int verbose,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential) {
@@ -2474,74 +2515,118 @@ void engine_init(struct engine *e, struct space *s,
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   s->nr_queues = nr_queues;
 
+/* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int cpuid[nr_cores];
-  cpu_set_t cpuset;
-  if ((policy & engine_policy_cputight) == engine_policy_cputight) {
-    for (int k = 0; k < nr_cores; k++) cpuid[k] = k;
-  } else {
-    /*  Get next highest power of 2. */
-    int maxint = 1;
-    while (maxint < nr_cores) maxint *= 2;
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+  const int nr_affinity_cores = CPU_COUNT(entry_affinity);
 
-    cpuid[0] = 0;
-    int k = 1;
-    for (int i = 1; i < maxint; i *= 2)
-      for (int j = maxint / i / 2; j < maxint; j += maxint / i)
-        if (j < nr_cores && j != 0) cpuid[k++] = j;
+  if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
+    error("must allocate dynamic cpu_set_t (too many cores per node)");
+
+  char *buf = malloc((nr_cores + 1) * sizeof(char));
+  buf[nr_cores] = '\0';
+  for (int j = 0; j < nr_cores; ++j) {
+    /* Reversed bit order from convention, but same as e.g. Intel MPI's
+     * I_MPI_PIN_DOMAIN explicit mask: left-to-right, LSB-to-MSB. */
+    buf[j] = CPU_ISSET(j, entry_affinity) ? '1' : '0';
+  }
+
+  if (verbose && with_aff) message("Affinity at entry: %s", buf);
+
+  int *cpuid = malloc(nr_affinity_cores * sizeof(int));
+  cpu_set_t cpuset;
+
+  int skip = 0;
+  for (int k = 0; k < nr_affinity_cores; k++) {
+    int c;
+    for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
+      ;
+    cpuid[k] = c;
+    skip = c + 1;
+  }
+
+  if (with_aff) {
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-    /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
-    if (numa_available() >= 0) {
-      if (nodeID == 0) message("prefer NUMA-local CPUs");
+    if ((policy & engine_policy_cputight) != engine_policy_cputight) {
 
-      const int home = numa_node_of_cpu(sched_getcpu());
-      const int half = nr_cores / 2;
-      const bool swap_hyperthreads = hyperthreads_present();
-      bool done = false;
-      if (swap_hyperthreads && nodeID == 0)
-        message("prefer physical cores to hyperthreads");
+      if (numa_available() >= 0) {
+        if (nodeID == 0) message("prefer NUMA-distant CPUs");
 
-      while (!done) {
-        done = true;
-        for (int i = 1; i < nr_cores; i++) {
-          const int node_a = numa_node_of_cpu(cpuid[i - 1]);
-          const int node_b = numa_node_of_cpu(cpuid[i]);
+        /* Get list of numa nodes of all available cores. */
+        int *nodes = malloc( nr_affinity_cores * sizeof(int));
+        int nnodes = 0;
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          nodes[i] = numa_node_of_cpu(cpuid[i]);
+          if (nodes[i] > nnodes) nnodes = nodes[i];
+        }
+        nnodes += 1;
 
-          /* Avoid using local hyperthreads over unused remote physical cores.
-           * Assume two hyperthreads, and that cpuid >= half partitions them.
-           */
-          const int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
-          const int thread_b = swap_hyperthreads && cpuid[i] >= half;
+        /* Count cores per node. */
+        int *core_counts = malloc( nnodes * sizeof(int));
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          core_counts[nodes[i]] = 0;
+        }
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          core_counts[nodes[i]] += 1;
+        }
 
-          bool swap = thread_a > thread_b;
-          if (thread_a == thread_b)
-            swap = numa_distance(home, node_a) > numa_distance(home, node_b);
+        /* Index cores within each node. */
+        int *core_indices = malloc( nr_affinity_cores * sizeof(int));
+        for (int i = nr_affinity_cores - 1; i >= 0; i--) {
+          core_indices[i] = core_counts[nodes[i]];
+          core_counts[nodes[i]] -= 1;
+        }
 
-          if (swap) {
-            const int t = cpuid[i - 1];
-            cpuid[i - 1] = cpuid[i];
-            cpuid[i] = t;
-            done = false;
+        /* Now sort so that we pick adjacent cpuids from different nodes
+         * by sorting internal node core indices. */
+        int done = 0;
+        while (!done) {
+          done = 1;
+          for (int i = 1; i < nr_affinity_cores; i++) {
+            if ( core_indices[i] < core_indices[i-1] ) {
+              int t = cpuid[i-1];
+              cpuid[i-1] = cpuid[i];
+              cpuid[i] = t;
+
+              t = core_indices[i-1];
+              core_indices[i-1] = core_indices[i];
+              core_indices[i] = t;
+              done = 0;
+            }
           }
         }
+
+        free(nodes);
+        free(core_counts);
+        free(core_indices);
       }
     }
 #endif
-
-    if (nodeID == 0) {
-#ifdef WITH_MPI
-      printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
-             clocks_get_timesincestart());
-#else
-      printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
-#endif
-      for (int i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
-      printf("].\n");
-    }
   }
+  else {
+    if (nodeID == 0) message("no processor affinity used");
+
+  }/* with_aff */
+
+  /* Avoid (unexpected) interference between engine and runner threads. We can
+   * do this once we've made at least one call to engine_entry_affinity and
+   * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
+   * pinned. Also unpin this when asked to not pin at all (!with_aff). */
+  engine_unpin();
 #endif
+
+  if (with_aff) {
+#ifdef WITH_MPI
+    printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
+           clocks_get_timesincestart());
+#else
+    printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
+#endif
+    for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
+    printf("].\n");
+  }
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
@@ -2684,19 +2769,23 @@ void engine_init(struct engine *e, struct space *s,
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
-    if (e->policy & engine_policy_setaffinity) {
+
+    /* Try to pin the runner to a given core */
+    if (with_aff && (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
-      e->runners[k].cpuid = cpuid[k % nr_cores];
+      int coreid = k % nr_affinity_cores;
+      e->runners[k].cpuid = cpuid[coreid];
+
       if (nr_queues < e->nr_threads)
-        e->runners[k].qid = cpuid[k % nr_cores] * nr_queues / nr_cores;
+        e->runners[k].qid = cpuid[coreid] * nr_queues / nr_affinity_cores;
       else
         e->runners[k].qid = k;
 
       /* Set the cpu mask to zero | e->id. */
       CPU_ZERO(&cpuset);
-      CPU_SET(cpuid[k % nr_cores], &cpuset);
+      CPU_SET(cpuid[coreid], &cpuset);
 
       /* Apply this mask to the runner's pthread. */
       if (pthread_setaffinity_np(e->runners[k].thread, sizeof(cpu_set_t),
@@ -2710,9 +2799,23 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
-    /* message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id , */
-    /* 	      e->runners[k].cpuid , e->runners[k].qid ); */
+    if (verbose) {
+      if (with_aff) 
+        message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
+                e->runners[k].cpuid, e->runners[k].qid);
+      else
+        message("runner %i using qid=%i no cpuid.", e->runners[k].id,
+                e->runners[k].qid);
+    }
   }
+
+/* Free the affinity stuff */
+#if defined(HAVE_SETAFFINITY)
+  if (with_aff) {
+    free(cpuid);
+    free(buf);
+  }
+#endif
 
   /* Wait for the runner threads to be in place. */
   while (e->barrier_running || e->barrier_launch)
