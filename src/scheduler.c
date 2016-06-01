@@ -172,8 +172,8 @@ void scheduler_splittasks(struct scheduler *s) {
       if (ci->split) {
 
         /* Make a sub? */
-        if (scheduler_dosub && (ci->count * ci->count < space_subsize ||
-                                ci->gcount * ci->gcount < space_subsize)) {
+        if (scheduler_dosub && (ci->count * ci->count < space_subsize)) {
+	  //                                ci->gcount * ci->gcount < space_subsize)) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub;
@@ -238,8 +238,8 @@ void scheduler_splittasks(struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
-            (ci->count * cj->count * sid_scale[sid] < space_subsize ||
-             ci->gcount * cj->gcount * sid_scale[sid] < space_subsize) &&
+            (ci->count * cj->count * sid_scale[sid] < space_subsize) &&// ||
+	    //ci->gcount * cj->gcount * sid_scale[sid] < space_subsize) &&
             sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
           /* Make this task a sub task. */

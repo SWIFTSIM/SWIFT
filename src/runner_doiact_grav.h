@@ -25,7 +25,7 @@
 #include "clocks.h"
 #include "part.h"
 
-#define ICHECK 4934
+#define ICHECK 1
 
 /**
  * @brief Compute the recursive upward sweep, i.e. construct the
@@ -125,8 +125,9 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     if (gp->ti_end > ti_current) continue;
 
     if (gp->id == -ICHECK)
-      message("id=%lld mass=%f CoM=[%f %f %f]\n", gp->id, multi.mass,
-              multi.CoM[0], multi.CoM[1], multi.CoM[2]);
+      message("id=%lld x=[%f %f %f] mass=%f CoM=[ %f %f %f ] size= %f\n", gp->id,
+	      gp->x[0], gp->x[1], gp->x[2], multi.mass,
+              multi.CoM[0], multi.CoM[1], multi.CoM[2], cj->h[0]);
 
     /* Compute the pairwise distance. */
     const float dx[3] = {multi.CoM[0] - gp->x[0],   // x
@@ -210,6 +211,23 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
   /* Anything to do here? */
   // if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
+  for (int pid = 0; pid < gcount_i; pid++) {
+
+    struct gpart *restrict gp = &gparts_i[pid];
+  if (gp->id == -ICHECK)
+    message("id=%lld size=%f\n", gp->id, cj->h[0]);
+
+  }
+
+  for (int pid = 0; pid < gcount_j; pid++) {
+
+    struct gpart *restrict gp = &gparts_j[pid];
+  if (gp->id == -ICHECK)
+    message("id=%lld size=%f\n", gp->id, ci->h[0]);
+
+  }
+
+  
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -371,23 +389,23 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
     /*     cj->loc[2], cj->h[0]); */
   }
 
-  for (int i = 0; i < gcount_i; i++) {
+  /* for (int i = 0; i < gcount_i; i++) { */
 
-    struct gpart *const gp = &ci->gparts[i];
+  /*   struct gpart *const gp = &ci->gparts[i]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0], gp->a_grav[1],
-              gp->a_grav[2]);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0], gp->a_grav[1], */
+  /*             gp->a_grav[2]); */
+  /* } */
 
-  for (int i = 0; i < gcount_j; i++) {
+  /* for (int i = 0; i < gcount_j; i++) { */
 
-    struct gpart *const gp = &cj->gparts[i];
+  /*   struct gpart *const gp = &cj->gparts[i]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0], gp->a_grav[1],
-              gp->a_grav[2]);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0], gp->a_grav[1], */
+  /*             gp->a_grav[2]); */
+  /* } */
 
   /* Are both cells split ? */
   if (ci->split && cj->split) {

@@ -2110,11 +2110,11 @@ void engine_init_particles(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
 
     mask |= 1 << task_type_grav_up;
-    mask |= 1 << task_type_self;
-    mask |= 1 << task_type_pair;
-    mask |= 1 << task_type_sub;
+    /* mask |= 1 << task_type_self; */
+    /* mask |= 1 << task_type_pair; */
+    /* mask |= 1 << task_type_sub; */
 
-    submask |= 1 << task_subtype_grav;
+    /* submask |= 1 << task_subtype_grav; */
   }
 
   /* Add the tasks corresponding to external gravity to the masks */
@@ -2335,20 +2335,20 @@ void engine_step(struct engine *e) {
   fclose(file);
 
   /* Check the gravity accelerations */
-  /* struct gpart *temp = malloc(s->nr_gparts * sizeof(struct gpart)); */
-  /* memcpy(temp, s->gparts, s->nr_gparts * sizeof(struct gpart)); */
-  /* gravity_n2(temp, s->nr_gparts); */
-  /* file = fopen("grav_brute.dat", "w"); */
-  /* for(size_t k = 0; k < s->nr_gparts; ++k) { */
-  /*   fprintf(file, "%lld %f %f %f %f %f %f\n", temp[k].id, */
-  /* 	    temp[k].x[0], temp[k].x[1], temp[k].x[2], */
-  /* 	    temp[k].a_grav[0], temp[k].a_grav[1], temp[k].a_grav[2]); */
-  /* } */
-  /* fclose(file); */
+  struct gpart *temp = malloc(s->nr_gparts * sizeof(struct gpart));
+  memcpy(temp, s->gparts, s->nr_gparts * sizeof(struct gpart));
+  gravity_n2(temp, s->nr_gparts);
+  file = fopen("grav_brute.dat", "w");
+  for(size_t k = 0; k < s->nr_gparts; ++k) {
+    fprintf(file, "%lld %f %f %f %f %f %f\n", temp[k].id,
+  	    temp[k].x[0], temp[k].x[1], temp[k].x[2],
+  	    temp[k].a_grav[0], temp[k].a_grav[1], temp[k].a_grav[2]);
+  }
+  fclose(file);
 
-  /* free(temp); */
+  free(temp);
 
-  float mass = 0.f;
+  double mass = 0.f;
   for (int i = 0; i < s->nr_cells; ++i) mass += s->cells[i].multipole.mass;
   message("Total mass: %f", mass);
 
