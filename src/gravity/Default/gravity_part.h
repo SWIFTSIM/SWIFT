@@ -47,6 +47,8 @@ struct gpart {
   /* float tx; */
   /* float tv; */
 
+  float mass_interacted;
+  
   /* Anonymous union for id/part. */
   union {
 

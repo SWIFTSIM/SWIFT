@@ -1072,60 +1072,96 @@ void engine_make_gravity_tasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
   struct cell *cells = s->cells;
+  const int nr_cells = s->nr_cells;
 
-  /* Run through the highest level of cells and add pairs. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
+  int counter = 0;
 
-        /* Get the cell */
-        const int cid = cell_getid(cdim, i, j, k);
-        struct cell *ci = &cells[cid];
+  for (int cid = 0; cid < nr_cells; ++cid) {
 
-        /* Skip cells without gravity particles */
-        if (ci->gcount == 0) continue;
+    struct cell *ci = &cells[cid];
 
-        /* If the cells is local build a self-interaction */
-        if (ci->nodeID == nodeID)
-          scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
-                            NULL, 0);
+    /* Skip cells without gravity particles */
+    if (ci->gcount == 0) continue;
 
-        /* Now loop over all the neighbours of this cell */
-        for (int ii = -1; ii < 2; ii++) {
-          int iii = i + ii;
-          if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + cdim[0]) % cdim[0];
-          for (int jj = -1; jj < 2; jj++) {
-            int jjj = j + jj;
-            if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + cdim[1]) % cdim[1];
-            for (int kk = -1; kk < 2; kk++) {
-              int kkk = k + kk;
-              if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + cdim[2]) % cdim[2];
+    /* Is that neighbour local ? */
+    if (ci->nodeID != nodeID) continue;
 
-              /* Get the neighbouring cell */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk);
-              struct cell *cj = &cells[cjd];
+    /* If the cells is local build a self-interaction */
+    scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL,
+                      0);
 
-              /* Is that neighbour local and does it have particles ? */
-              if (cid >= cjd || cj->gcount == 0 ||
-                  (ci->nodeID != nodeID && cj->nodeID != nodeID))
-                continue;
+    for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
-              /* Construct the pair task */
-              const int sid =
-                  sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-              scheduler_addtask(sched, task_type_pair, task_subtype_grav, sid,
-                                0, ci, cj, 1);
-            }
-          }
-        }
-      }
+      struct cell *cj = &cells[cjd];
+
+      /* Skip cells without gravity particles */
+      if (cj->gcount == 0) continue;
+
+      /* Is that neighbour local ? */
+      if (cj->nodeID != nodeID) continue;
+
+      scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci, cj,
+                        1);
+      ++counter;
     }
   }
+
+  message("counter= %d nr_cells=%d", counter, nr_cells);
+
+  /* /\* Run through the highest level of cells and add pairs. *\/ */
+  /* for (int i = 0; i < cdim[0]; i++) { */
+  /*   for (int j = 0; j < cdim[1]; j++) { */
+  /*     for (int k = 0; k < cdim[2]; k++) { */
+
+  /*       /\* Get the cell *\/ */
+  /*       const int cid = cell_getid(cdim, i, j, k); */
+  /*       struct cell *ci = &cells[cid]; */
+
+  /*       /\* Skip cells without gravity particles *\/ */
+  /*       if (ci->gcount == 0) continue; */
+
+  /*       /\* If the cells is local build a self-interaction *\/ */
+  /*       if (ci->nodeID == nodeID) */
+  /*         scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0,
+   * ci, */
+  /*                           NULL, 0); */
+
+  /*       /\* Now loop over all the neighbours of this cell *\/ */
+  /*       for (int ii = -1; ii < 2; ii++) { */
+  /*         int iii = i + ii; */
+  /*         if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue; */
+  /*         iii = (iii + cdim[0]) % cdim[0]; */
+  /*         for (int jj = -1; jj < 2; jj++) { */
+  /*           int jjj = j + jj; */
+  /*           if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue; */
+  /*           jjj = (jjj + cdim[1]) % cdim[1]; */
+  /*           for (int kk = -1; kk < 2; kk++) { */
+  /*             int kkk = k + kk; */
+  /*             if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue; */
+  /*             kkk = (kkk + cdim[2]) % cdim[2]; */
+
+  /*             /\* Get the neighbouring cell *\/ */
+  /*             const int cjd = cell_getid(cdim, iii, jjj, kkk); */
+  /*             struct cell *cj = &cells[cjd]; */
+
+  /*             /\* Is that neighbour local and does it have particles ? *\/ */
+  /*             if (cid >= cjd || cj->gcount == 0 || */
+  /*                 (ci->nodeID != nodeID && cj->nodeID != nodeID)) */
+  /*               continue; */
+
+  /*             /\* Construct the pair task *\/ */
+  /*             const int sid = */
+  /*                 sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))]; */
+  /*             scheduler_addtask(sched, task_type_pair, task_subtype_grav,
+   * sid, */
+  /*                               0, ci, cj, 1); */
+  /*           } */
+  /*         } */
+  /*       } */
+  /*     } */
+  /*   } */
+  /* } */
 }
 
 /**
@@ -2049,6 +2085,8 @@ void engine_init_particles(struct engine *e) {
 
   engine_marktasks(e);
 
+  // error("");
+
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0;
   unsigned int submask = 0;
@@ -2309,6 +2347,10 @@ void engine_step(struct engine *e) {
   /* fclose(file); */
 
   /* free(temp); */
+
+  float mass = 0.f;
+  for (int i = 0; i < s->nr_cells; ++i) mass += s->cells[i].multipole.mass;
+  message("Total mass: %f", mass);
 
   error("done");
 

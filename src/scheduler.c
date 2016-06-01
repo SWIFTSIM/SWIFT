@@ -178,6 +178,8 @@ void scheduler_splittasks(struct scheduler *s) {
           /* convert to a self-subtask. */
           t->type = task_type_sub;
 
+          // message("TASK type=%s subtype=%s", taskID_names[t->type],
+          // subtaskID_names[t->subtype]);
         }
 
         /* Otherwise, make tasks explicitly. */
@@ -185,6 +187,8 @@ void scheduler_splittasks(struct scheduler *s) {
 
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
+
+          // message("aa");
 
           /* Add the self task. */
           int first_child = 0;

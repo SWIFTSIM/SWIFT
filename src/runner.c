@@ -409,6 +409,10 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
         /* Get ready for a density calculation */
         gravity_init_part(gp);
+
+        if (gp->id == -ICHECK)
+          message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0],
+                  gp->a_grav[1], gp->a_grav[2]);
       }
     }
   }
@@ -753,6 +757,10 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
           /* First, finish the force calculation */
           gravity_end_force(gp);
+
+          if (gp->id == -ICHECK)
+            message("id=%lld a=[%f %f %f] M=%f\n", gp->id, gp->a_grav[0],
+                    gp->a_grav[1], gp->a_grav[2], gp->mass_interacted);
 
           /* Now we are ready to compute the next time-step size */
           int new_dti;
@@ -1152,8 +1160,8 @@ void *runner_main(void *data) {
             runner_dosub1_density(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_force)
             runner_dosub2_force(r, ci, cj, t->flags, 1);
-          /* else if (t->subtype == task_subtype_grav) */
-          /*   runner_dosub_grav(r, ci, cj, 1); */
+          else if (t->subtype == task_subtype_grav)
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;

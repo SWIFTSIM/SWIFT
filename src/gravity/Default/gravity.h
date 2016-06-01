@@ -91,6 +91,8 @@ __attribute__((always_inline))
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
+
+  gp->mass_interacted = 0.f;
 }
 
 /**
