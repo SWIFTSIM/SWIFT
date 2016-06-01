@@ -62,6 +62,7 @@
 #include "serial_io.h"
 #include "single_io.h"
 #include "timers.h"
+#include "tools.h"
 
 const char *engine_policy_names[13] = {
     "none",                 "rand",   "steal",        "keep",
@@ -1271,6 +1272,68 @@ void engine_count_and_link_tasks(struct engine *e) {
   }
 }
 
+void engine_make_gravity_dependencies(struct engine *e) {
+
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int nr_tasks = sched->nr_tasks;
+
+  for (int k = 0; k < nr_tasks; k++) {
+
+    /* Get a pointer to the task. */
+    struct task *t = &sched->tasks[k];
+
+    /* Skip? */
+    if (t->skip) continue;
+
+    /* Self-interaction? */
+    if (t->type == task_type_self && t->subtype == task_subtype_grav) {
+
+      scheduler_addunlock(sched, t->ci->super->init, t);
+      scheduler_addunlock(sched, t->ci->super->grav_up, t);
+      scheduler_addunlock(sched, t, t->ci->super->kick);
+
+    }
+
+    /* Otherwise, pair interaction? */
+    else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
+
+      if (t->ci->nodeID == nodeID) {
+
+        scheduler_addunlock(sched, t->ci->super->init, t);
+        scheduler_addunlock(sched, t->ci->super->grav_up, t);
+        scheduler_addunlock(sched, t, t->ci->super->kick);
+      }
+
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+
+        scheduler_addunlock(sched, t->cj->super->init, t);
+        scheduler_addunlock(sched, t->cj->super->grav_up, t);
+        scheduler_addunlock(sched, t, t->cj->super->kick);
+      }
+
+    }
+
+    /* Otherwise, sub interaction? */
+    else if (t->type == task_type_sub && t->subtype == task_subtype_grav) {
+
+      if (t->ci->nodeID == nodeID) {
+
+        scheduler_addunlock(sched, t->ci->super->init, t);
+        scheduler_addunlock(sched, t->ci->super->grav_up, t);
+        scheduler_addunlock(sched, t, t->ci->super->kick);
+      }
+      if (t->cj != NULL && t->cj->nodeID == nodeID &&
+          t->ci->super != t->cj->super) {
+
+        scheduler_addunlock(sched, t->cj->super->init, t);
+        scheduler_addunlock(sched, t->cj->super->grav_up, t);
+        scheduler_addunlock(sched, t, t->cj->super->kick);
+      }
+    }
+  }
+}
+
 /**
  * @brief Creates the dependency network for the hydro tasks of a given cell.
  *
@@ -1381,10 +1444,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
     }
-
-    /* /\* Kick tasks should rely on the grav_down tasks of their cell. *\/ */
-    /* else if (t->type == task_type_kick && t->ci->grav_down != NULL) */
-    /*   scheduler_addunlock(sched, t->ci->grav_down, t); */
 
     /* External gravity tasks should depend on init and unlock the kick */
     else if (t->type == task_type_grav_external) {
@@ -1529,6 +1588,10 @@ void engine_maketasks(struct engine *e) {
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
   engine_make_extra_hydroloop_tasks(e);
+
+  /* Add the dependencies for the self-gravity stuff */
+  if (e->policy & engine_policy_self_gravity)
+    engine_make_gravity_dependencies(e);
 
 #ifdef WITH_MPI
 
@@ -2011,6 +2074,10 @@ void engine_init_particles(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
 
     mask |= 1 << task_type_grav_up;
+    mask |= 1 << task_type_self;
+    mask |= 1 << task_type_pair;
+
+    submask |= 1 << task_subtype_grav;
   }
 
   /* Add the tasks corresponding to external gravity to the masks */
@@ -2192,6 +2259,10 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
 
     mask |= 1 << task_type_grav_up;
+    mask |= 1 << task_type_self;
+    mask |= 1 << task_type_pair;
+
+    submask |= 1 << task_subtype_grav;
   }
 
   /* Add the tasks corresponding to external gravity to the masks */
@@ -2215,6 +2286,31 @@ void engine_step(struct engine *e) {
 
   /* Check that the multipoles are correct */
   space_map_cells_pre(s, 1, cell_check_multipole, NULL);
+
+  FILE *file = fopen("grav_swift.dat", "w");
+  for (size_t k = 0; k < s->nr_gparts; ++k) {
+    fprintf(file, "%lld %f %f %f %f %f %f\n", s->gparts[k].id,
+            s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2],
+            s->gparts[k].a_grav[0], s->gparts[k].a_grav[1],
+            s->gparts[k].a_grav[2]);
+  }
+  fclose(file);
+
+  /* Check the gravity accelerations */
+  /* struct gpart *temp = malloc(s->nr_gparts * sizeof(struct gpart)); */
+  /* memcpy(temp, s->gparts, s->nr_gparts * sizeof(struct gpart)); */
+  /* gravity_n2(temp, s->nr_gparts); */
+  /* file = fopen("grav_brute.dat", "w"); */
+  /* for(size_t k = 0; k < s->nr_gparts; ++k) { */
+  /*   fprintf(file, "%lld %f %f %f %f %f %f\n", temp[k].id, */
+  /* 	    temp[k].x[0], temp[k].x[1], temp[k].x[2], */
+  /* 	    temp[k].a_grav[0], temp[k].a_grav[1], temp[k].a_grav[2]); */
+  /* } */
+  /* fclose(file); */
+
+  /* free(temp); */
+
+  error("done");
 
   clocks_gettime(&time2);
 

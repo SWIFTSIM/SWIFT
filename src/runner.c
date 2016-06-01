@@ -1135,7 +1135,6 @@ void *runner_main(void *data) {
             error("Unknown task subtype.");
           break;
         case task_type_pair:
-          message("bb");
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)

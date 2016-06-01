@@ -507,7 +507,6 @@ void gravity_n2(struct gpart *gparts, const int gcount) {
     struct gpart *restrict gpi = &gparts[pid];
     const float mi = gpi->mass;
 
-    /* Loop over every particle in the other cell. */
     for (int pjd = pid + 1; pjd < gcount; pjd++) {
 
       /* Get a hold of the jth part in ci. */

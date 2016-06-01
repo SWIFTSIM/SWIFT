@@ -58,6 +58,10 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
  * to be of the same size
  *
+ * @param ci First #cell.
+ * @param cj Second #cell.
+ *
+ * @todo Deal with periodicity.
  */
 __attribute__((always_inline)) INLINE static int are_neighbours(
     const struct cell *restrict ci, const struct cell *restrict cj) {
@@ -68,12 +72,12 @@ __attribute__((always_inline)) INLINE static int are_neighbours(
 #endif
 
   /* Maximum allowed distance */
-  const float min_dist = ci->h[0];
+  const double min_dist = 1.2 * ci->h[0]; /* 1.2 accounts for rounding errors */
 
   /* (Manhattan) Distance between the cells */
   for (int k = 0; k < 3; k++) {
-    const float center_i = ci->loc[k];
-    const float center_j = cj->loc[k];
+    const double center_i = ci->loc[k];
+    const double center_j = cj->loc[k];
     if (fabsf(center_i - center_j) > min_dist) return 0;
   }
 
@@ -339,7 +343,12 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
         "itself.");
 
   /* Are the cells direct neighbours? */
-  if (!are_neighbours(ci, cj)) error("Non-neighbouring cells !");
+  if (!are_neighbours(ci, cj))
+    error(
+        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->h=%f cj->loc=[%f %f %f] "
+        "cj->h=%f",
+        ci->loc[0], ci->loc[1], ci->loc[2], ci->h[0], cj->loc[0], cj->loc[1],
+        cj->loc[2], cj->h[0]);
 
 #endif
 
