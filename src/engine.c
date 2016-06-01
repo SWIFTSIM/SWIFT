@@ -1075,8 +1075,6 @@ void engine_make_gravity_tasks(struct engine *e) {
   const int *cdim = s->cdim;
   struct cell *cells = s->cells;
 
-  message("aa");
-
   /* Run through the highest level of cells and add pairs. */
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
@@ -2076,6 +2074,7 @@ void engine_init_particles(struct engine *e) {
     mask |= 1 << task_type_grav_up;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
+    mask |= 1 << task_type_sub;
 
     submask |= 1 << task_subtype_grav;
   }
@@ -2261,6 +2260,7 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_grav_up;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
+    mask |= 1 << task_type_sub;
 
     submask |= 1 << task_subtype_grav;
   }
