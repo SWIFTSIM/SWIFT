@@ -1152,65 +1152,62 @@ void engine_make_hydroloop_tasks(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_count_and_link_tasks(struct engine *e) {
+void engine_count_and_link_tasks_mapper(void *map_data, void *extra_data) {
 
+  struct engine *e = (struct engine *)extra_data;
+  struct task *t = (struct task *)map_data;
   struct scheduler *sched = &e->sched;
-  const int nr_tasks = sched->nr_tasks;
 
-  for (int k = 0; k < nr_tasks; k++) {
+  if (t->skip) return;
 
-    /* Get the current task. */
-    struct task *t = &sched->tasks[k];
-    if (t->skip) continue;
-
-    /* Link sort tasks together. */
-    if (t->type == task_type_sort && t->ci->split)
-      for (int j = 0; j < 8; j++)
-        if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
-          t->ci->progeny[j]->sorts->skip = 0;
-          scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
-        }
-
-    /* Link density tasks to cells. */
-    if (t->type == task_type_self) {
-      atomic_inc(&t->ci->nr_tasks);
-      if (t->subtype == task_subtype_density) {
-        t->ci->density = engine_addlink(e, t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+  /* Link sort tasks together. */
+  if (t->type == task_type_sort && t->ci->split)
+    for (int j = 0; j < 8; j++)
+      if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
+        t->ci->progeny[j]->sorts->skip = 0;
+        scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
       }
-    } else if (t->type == task_type_pair) {
-      atomic_inc(&t->ci->nr_tasks);
-      atomic_inc(&t->cj->nr_tasks);
-      if (t->subtype == task_subtype_density) {
-        t->ci->density = engine_addlink(e, t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+
+  /* Link density tasks to cells. */
+  /* TODO(pedro): Instead of locking the cell, re-write engine_addlink to
+     directly modify the second argument using the __atomic_exchange_n
+     intrinsic. */
+  if (t->type == task_type_self) {
+    atomic_inc(&t->ci->nr_tasks);
+    if (t->subtype == task_subtype_density) {
+      lock_lock(&t->ci->lock);
+      t->ci->density = engine_addlink(e, t->ci->density, t);
+      atomic_inc(&t->ci->nr_density);
+      lock_unlock_blind(&t->ci->lock);
+    }
+  } else if (t->type == task_type_pair) {
+    atomic_inc(&t->ci->nr_tasks);
+    atomic_inc(&t->cj->nr_tasks);
+    if (t->subtype == task_subtype_density) {
+      lock_lock(&t->ci->lock);
+      t->ci->density = engine_addlink(e, t->ci->density, t);
+      atomic_inc(&t->ci->nr_density);
+      lock_unlock_blind(&t->ci->lock);
+      lock_lock(&t->cj->lock);
+      t->cj->density = engine_addlink(e, t->cj->density, t);
+      atomic_inc(&t->cj->nr_density);
+      lock_unlock_blind(&t->cj->lock);
+    }
+  } else if (t->type == task_type_sub) {
+    atomic_inc(&t->ci->nr_tasks);
+    if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
+    if (t->subtype == task_subtype_density) {
+      lock_lock(&t->ci->lock);
+      t->ci->density = engine_addlink(e, t->ci->density, t);
+      atomic_inc(&t->ci->nr_density);
+      lock_unlock_blind(&t->ci->lock);
+      if (t->cj != NULL) {
+        lock_lock(&t->cj->lock);
         t->cj->density = engine_addlink(e, t->cj->density, t);
         atomic_inc(&t->cj->nr_density);
-      }
-    } else if (t->type == task_type_sub) {
-      atomic_inc(&t->ci->nr_tasks);
-      if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
-      if (t->subtype == task_subtype_density) {
-        t->ci->density = engine_addlink(e, t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        if (t->cj != NULL) {
-          t->cj->density = engine_addlink(e, t->cj->density, t);
-          atomic_inc(&t->cj->nr_density);
-        }
+        lock_unlock_blind(&t->cj->lock);
       }
     }
-
-    /* /\* Link gravity multipole tasks to the up/down tasks. *\/ */
-    /* if (t->type == task_type_grav_mm || */
-    /*     (t->type == task_type_sub && t->subtype == task_subtype_grav)) { */
-    /*   atomic_inc(&t->ci->nr_tasks); */
-    /*   scheduler_addunlock(sched, t->ci->grav_up, t); */
-    /*   scheduler_addunlock(sched, t, t->ci->grav_down); */
-    /*   if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) { */
-    /*     scheduler_addunlock(sched, t->cj->grav_up, t); */
-    /*     scheduler_addunlock(sched, t, t->cj->grav_down); */
-    /*   } */
-    /* } */
   }
 }
 
@@ -1249,7 +1246,8 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  *
  * @param e The #engine.
  */
-void engine_make_extra_hydroloop_tasks_mapper(void *map_data, void *extra_data) {
+void engine_make_extra_hydroloop_tasks_mapper(void *map_data,
+                                              void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
@@ -1446,7 +1444,8 @@ void engine_maketasks(struct engine *e) {
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
-  engine_count_and_link_tasks(e);
+  threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
+                 sched->tasks, sched->nr_tasks, sizeof(struct task), e);
 
   /* Append hierarchical tasks to each cells */
   for (int k = 0; k < nr_cells; k++)
@@ -1456,7 +1455,7 @@ void engine_maketasks(struct engine *e) {
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
   threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-    sched->tasks, sched->nr_tasks, sizeof(struct task), e);
+                 sched->tasks, sched->nr_tasks, sizeof(struct task), e);
   // engine_make_extra_hydroloop_tasks(e);
 
   /* Add the communication tasks if MPI is being used. */
