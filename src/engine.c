@@ -1287,6 +1287,10 @@ void engine_make_gravity_dependencies(struct engine *e) {
       scheduler_addunlock(sched, t->ci->super->init, t);
       scheduler_addunlock(sched, t->ci->super->grav_up, t);
       scheduler_addunlock(sched, t, t->ci->super->kick);
+
+      scheduler_addunlock(sched, t->cj->super->init, t);
+      scheduler_addunlock(sched, t->cj->super->grav_up, t);
+      scheduler_addunlock(sched, t, t->cj->super->kick);
     }
 
     /* Self-interaction? */
