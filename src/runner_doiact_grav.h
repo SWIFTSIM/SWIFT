@@ -218,25 +218,27 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
   /* Anything to do here? */
   // if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
-  for (int pid = 0; pid < gcount_i; pid++) {
+  /* for (int pid = 0; pid < gcount_i; pid++) { */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &gparts_i[pid];
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &gparts_i[pid]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
-              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
+   * cj->loc[0], */
+  /*             cj->loc[1], cj->loc[2], cj->h[0], cj->gcount); */
+  /* } */
 
-  for (int pid = 0; pid < gcount_j; pid++) {
+  /* for (int pid = 0; pid < gcount_j; pid++) { */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &gparts_j[pid];
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &gparts_j[pid]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count=%d", gp->id, ci->loc[0],
-              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count=%d", gp->id,
+   * ci->loc[0], */
+  /*             ci->loc[1], ci->loc[2], ci->h[0], ci->gcount); */
+  /* } */
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -307,15 +309,16 @@ __attribute__((always_inline))
   /* Anything to do here? */
   // if (c->ti_end_min > ti_current) return;
 
-  for (int pid = 0; pid < gcount; pid++) {
+  /* for (int pid = 0; pid < gcount; pid++) { */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &gparts[pid];
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &gparts[pid]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, c->loc[0],
-              c->loc[1], c->loc[2], c->h[0], c->gcount);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
+   * c->loc[0], */
+  /*             c->loc[1], c->loc[2], c->h[0], c->gcount); */
+  /* } */
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
@@ -373,10 +376,10 @@ __attribute__((always_inline))
 static void runner_dopair_grav(struct runner *r, struct cell *ci,
                                struct cell *cj) {
 
+#ifdef SANITY_CHECKS
+
   const int gcount_i = ci->gcount;
   const int gcount_j = cj->gcount;
-
-#ifdef SANITY_CHECKS
 
   /* Early abort? */
   if (gcount_i == 0 || gcount_j == 0) error("Empty cell !");
@@ -393,38 +396,37 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 
 #endif
 
-  for (int pid = 0; pid < gcount_i; pid++) {
+  /* for (int pid = 0; pid < gcount_i; pid++) { */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &ci->gparts[pid];
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &ci->gparts[pid]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
-              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
+   * cj->loc[0], */
+  /*             cj->loc[1], cj->loc[2], cj->h[0], cj->gcount); */
+  /* } */
 
-  for (int pid = 0; pid < gcount_j; pid++) {
+  /* for (int pid = 0; pid < gcount_j; pid++) { */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &cj->gparts[pid];
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &cj->gparts[pid]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
-              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
+   * ci->loc[0], */
+  /*             ci->loc[1], ci->loc[2], ci->h[0], ci->gcount); */
+  /* } */
 
   /* Are the cells direct neighbours? */
   if (!are_neighbours(ci, cj)) {
-
-    /* Ok, here we can go for particle-multipole interactions */
-    // runner_dopair_grav_pm(r, ci, cj);
-    // runner_dopair_grav_pm(r, cj, ci);
 
     error(
         "Non-neighbouring cells ! ci->x=[%f %f %f] ci->h=%f cj->loc=[%f %f %f] "
         "cj->h=%f",
         ci->loc[0], ci->loc[1], ci->loc[2], ci->h[0], cj->loc[0], cj->loc[1],
         cj->loc[2], cj->h[0]);
+
   } else {
 
     /* Are both cells split ? */
@@ -461,23 +463,11 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 
 static void runner_doself_grav(struct runner *r, struct cell *c) {
 
-  const int gcount = c->gcount;
-
 #ifdef SANITY_CHECKS
 
   /* Early abort? */
-  if (gcount == 0) error("Empty cell !");
+  if (c->gcount == 0) error("Empty cell !");
 #endif
-
-  /*  for (int i = 0; i < gcount; i++) { */
-
-  /*   struct gpart *const gp = &c->gparts[i]; */
-
-  /*   if (gp->id == -ICHECK) */
-  /*     message("id=%lld a=[%f %f %f]", gp->id, gp->a_grav[0], gp->a_grav[1],
-   */
-  /*             gp->a_grav[2]); */
-  /* } */
 
   /* If the cell is split, interact each progeny with itself, and with
      each of its siblings. */
@@ -515,45 +505,36 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
 
   } else {
 
-    if (!are_neighbours(ci, cj)) {
-
-      error("Non-neighbouring cells in pair task !");
-    }
-    /*   /\* Ok, here we can go for particle-multipole interactions *\/ */
-    /*   runner_dopair_grav_pm(r, ci, cj); */
-    /*   runner_dopair_grav_pm(r, cj, ci); */
-
-    /* } */
-    /* else { */
+    if (!are_neighbours(ci, cj)) error("Non-neighbouring cells in pair task !");
 
     runner_dopair_grav(r, ci, cj);
-
-    /* } */
   }
 }
 
 static void runner_do_grav_mm(struct runner *r, struct cell *ci,
                               struct cell *cj) {
 
-  for (int pid = 0; pid < ci->gcount; pid++) {
+  /* for (int pid = 0; pid < ci->gcount; pid++) { */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &ci->gparts[pid];
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &ci->gparts[pid]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
-              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
+   * cj->loc[0], */
+  /*             cj->loc[1], cj->loc[2], cj->h[0], cj->gcount); */
+  /* } */
 
-  for (int pid = 0; pid < cj->gcount; pid++) {
+  /* for (int pid = 0; pid < cj->gcount; pid++) { */
 
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &cj->gparts[pid];
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &cj->gparts[pid]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
-              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
+   * ci->loc[0], */
+  /*             ci->loc[1], ci->loc[2], ci->h[0], ci->gcount); */
+  /* } */
 
   if (are_neighbours(ci, cj)) {
 
