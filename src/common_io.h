@@ -108,7 +108,6 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
                   char* name, size_t N, int dim, enum DATA_TYPE type);
 
 void writeCodeDescription(hid_t h_file);
-void writeSPHflavour(hid_t h_file);
 void writeUnitSystem(hid_t h_file, struct UnitSystem* us);
 
 #endif
