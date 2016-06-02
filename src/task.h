@@ -45,7 +45,7 @@ enum task_types {
   task_type_send,
   task_type_recv,
   /* task_type_grav_pp, */
-  /* task_type_grav_mm, */
+  task_type_grav_mm,
   task_type_grav_up,
   /* task_type_grav_down, */
   task_type_grav_external,

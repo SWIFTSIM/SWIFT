@@ -172,14 +172,12 @@ void scheduler_splittasks(struct scheduler *s) {
       if (ci->split) {
 
         /* Make a sub? */
-        if (scheduler_dosub && (ci->count * ci->count < space_subsize)) {
-	  //                                ci->gcount * ci->gcount < space_subsize)) {
+        if (scheduler_dosub && (ci->count * ci->count < space_subsize ||  //) {
+                                ci->gcount * ci->gcount < space_subsize)) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub;
 
-          // message("TASK type=%s subtype=%s", taskID_names[t->type],
-          // subtaskID_names[t->subtype]);
         }
 
         /* Otherwise, make tasks explicitly. */
@@ -187,8 +185,6 @@ void scheduler_splittasks(struct scheduler *s) {
 
           /* Take a step back (we're going to recycle the current task)... */
           redo = 1;
-
-          // message("aa");
 
           /* Add the self task. */
           int first_child = 0;
@@ -210,9 +206,39 @@ void scheduler_splittasks(struct scheduler *s) {
       }
 
     }
+    /* /\* Hydro Pair interaction? *\/ */
+    /* else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
+       */
 
-    /* Pair interaction? */
-    else if (t->type == task_type_pair) {
+    /*   /\* Get a handle on the cells involved. *\/ */
+    /*   struct cell *ci = t->ci; */
+    /*   struct cell *cj = t->cj; */
+
+    /*   /\* Foreign task? *\/ */
+    /*   if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) { */
+    /*     t->skip = 1; */
+    /*     continue; */
+    /*   } */
+
+    /*   if (ci->split && cj->split ) { */
+
+    /*     /\* Replace by a single sub-task? *\/ */
+    /*     if (scheduler_dosub && ci->gcount * cj->gcount  < space_subsize) { */
+
+    /* 	    /\* Make this task a sub task. *\/ */
+    /* 	    t->type = task_type_sub; */
+    /* 	  } */
+
+    /* 	  else { */
+    /* 	    message("oO"); */
+    /* 	  } */
+
+    /*   } */
+
+    /* } */
+
+    /* Hydro Pair interaction? */
+    else if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
 
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
@@ -238,8 +264,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
-            (ci->count * cj->count * sid_scale[sid] < space_subsize) &&// ||
-	    //ci->gcount * cj->gcount * sid_scale[sid] < space_subsize) &&
+            ci->count * cj->count * sid_scale[sid] < space_subsize &&
             sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
           /* Make this task a sub task. */
@@ -523,139 +548,17 @@ void scheduler_splittasks(struct scheduler *s) {
 
     } /* pair interaction? */
 
-    /* Gravity interaction? */
-    /* else if (t->type == task_type_grav_mm) { */
+    /* Long-range gravity interaction ? */
+    else if (t->type == task_type_grav_mm) {
 
-    /*   /\* Get a handle on the cells involved. *\/ */
-    /*   struct cell *ci = t->ci; */
-    /*   struct cell *cj = t->cj; */
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
 
-    /*   /\* Self-interaction? *\/ */
-    /*   if (cj == NULL) { */
+      /* Safety thing */
+      if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
 
-    /*     /\* Ignore this task if the cell has no gparts. *\/ */
-    /*     if (ci->gcount == 0) t->type = task_type_none; */
-
-    /*     /\* If the cell is split, recurse. *\/ */
-    /*     else if (ci->split) { */
-
-    /*       /\* Make a single sub-task? *\/ */
-    /*       if (scheduler_dosub && ci->gcount < space_subsize / ci->gcount) {
-     */
-
-    /*         t->type = task_type_sub; */
-    /*         t->subtype = task_subtype_grav; */
-
-    /*       } */
-
-    /*       /\* Otherwise, just split the task. *\/ */
-    /*       else { */
-
-    /*         /\* Split this task into tasks on its progeny. *\/ */
-    /*         t->type = task_type_none; */
-    /*         for (int j = 0; j < 8; j++) */
-    /*           if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) { */
-    /*             if (t->type == task_type_none) { */
-    /*               t->type = task_type_grav_mm; */
-    /*               t->ci = ci->progeny[j]; */
-    /*               t->cj = NULL; */
-    /*             } else */
-    /*               t = scheduler_addtask(s, task_type_grav_mm,
-     * task_subtype_none, */
-    /*                                     0, 0, ci->progeny[j], NULL, 0); */
-    /*             for (int k = j + 1; k < 8; k++) */
-    /*               if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) {
-     */
-    /*                 if (t->type == task_type_none) { */
-    /*                   t->type = task_type_grav_mm; */
-    /*                   t->ci = ci->progeny[j]; */
-    /*                   t->cj = ci->progeny[k]; */
-    /*                 } else */
-    /*                   t = scheduler_addtask(s, task_type_grav_mm, */
-    /*                                         task_subtype_none, 0, 0, */
-    /*                                         ci->progeny[j], ci->progeny[k],
-     * 0); */
-    /*               } */
-    /*           } */
-    /*         redo = (t->type != task_type_none); */
-    /*       } */
-
-    /*     } */
-
-    /*     /\* Otherwise, just make a pp task out of it. *\/ */
-    /*     else */
-    /*       t->type = task_type_grav_pp; */
-
-    /*   } */
-
-    /*   /\* Nope, pair. *\/ */
-    /*   else { */
-
-    /*     /\* Make a sub-task? *\/ */
-    /*     if (scheduler_dosub && ci->gcount < space_subsize / cj->gcount) { */
-
-    /*       t->type = task_type_sub; */
-    /*       t->subtype = task_subtype_grav; */
-
-    /*     } */
-
-    /*     /\* Otherwise, split the task. *\/ */
-    /*     else { */
-
-    /*       /\* Get the opening angle theta. *\/ */
-    /*       float dx[3], theta; */
-    /*       for (int k = 0; k < 3; k++) { */
-    /*         dx[k] = fabs(ci->loc[k] - cj->loc[k]); */
-    /*         if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k]) */
-    /*           dx[k] = -dx[k] + s->space->dim[k]; */
-    /*         if (dx[k] > 0.0f) dx[k] -= ci->h[k]; */
-    /*       } */
-    /*       theta = */
-    /*           (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) / */
-    /*           (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] *
-     * ci->h[2]); */
-
-    /*       /\* Ignore this task if the cell has no gparts. *\/ */
-    /*       if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
-     */
-
-    /*       /\* Split the interaction? *\/ */
-    /*       else if (theta < const_theta_max * const_theta_max) { */
-
-    /*         /\* Are both ci and cj split? *\/ */
-    /*         if (ci->split && cj->split) { */
-
-    /*           /\* Split this task into tasks on its progeny. *\/ */
-    /*           t->type = task_type_none; */
-    /*           for (int j = 0; j < 8; j++) */
-    /*             if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-     */
-    /*               for (int k = 0; k < 8; k++) */
-    /*                 if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0)
-     * { */
-    /*                   if (t->type == task_type_none) { */
-    /*                     t->type = task_type_grav_mm; */
-    /*                     t->ci = ci->progeny[j]; */
-    /*                     t->cj = cj->progeny[k]; */
-    /*                   } else */
-    /*                     t = scheduler_addtask( */
-    /*                         s, task_type_grav_mm, task_subtype_none, 0, 0, */
-    /*                         ci->progeny[j], cj->progeny[k], 0); */
-    /*                 } */
-    /*             } */
-    /*           redo = (t->type != task_type_none); */
-
-    /*         } */
-
-    /*         /\* Otherwise, make a pp task out of it. *\/ */
-    /*         else */
-    /*           t->type = task_type_grav_pp; */
-    /*       } */
-    /*     } */
-
-    /*   } /\* gravity pair interaction? *\/ */
-
-    /* } /\* gravity interaction? *\/ */
+    } /* gravity interaction? */
 
   } /* loop over all tasks. */
 }

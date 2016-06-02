@@ -1067,6 +1067,27 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 #endif
 }
 
+__attribute__((always_inline)) INLINE static int are_neighbours(
+    const struct cell *restrict ci, const struct cell *restrict cj) {
+
+#ifdef SANITY_CHECKS
+  if (ci->h[0] != cj->h[0])
+    error(" Cells of different size in distance calculation.");
+#endif
+
+  /* Maximum allowed distance */
+  const double min_dist = 1.2 * ci->h[0]; /* 1.2 accounts for rounding errors */
+
+  /* (Manhattan) Distance between the cells */
+  for (int k = 0; k < 3; k++) {
+    const double center_i = ci->loc[k];
+    const double center_j = cj->loc[k];
+    if (fabsf(center_i - center_j) > min_dist) return 0;
+  }
+
+  return 1;
+}
+
 void engine_make_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
@@ -1101,8 +1122,20 @@ void engine_make_gravity_tasks(struct engine *e) {
       /* Is that neighbour local ? */
       if (cj->nodeID != nodeID) continue;
 
-      scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci, cj,
-                        1);
+#ifdef SANITY_CHECKS
+      if (ci == cj) {
+        message("oO");
+        continue;
+      }
+#endif
+
+      if (are_neighbours(ci, cj))
+        scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
+                          cj, 1);
+      else
+        scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, 0, 0, ci,
+                          cj, 1);
+
       ++counter;
     }
   }
@@ -1319,6 +1352,14 @@ void engine_make_gravity_dependencies(struct engine *e) {
 
     /* Skip? */
     if (t->skip) continue;
+
+    /* Long-range interaction */
+    if (t->type == task_type_grav_mm) {
+
+      scheduler_addunlock(sched, t->ci->super->init, t);
+      scheduler_addunlock(sched, t->ci->super->grav_up, t);
+      scheduler_addunlock(sched, t, t->ci->super->kick);
+    }
 
     /* Self-interaction? */
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
@@ -2296,6 +2337,7 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
 
     mask |= 1 << task_type_grav_up;
+    mask |= 1 << task_type_grav_mm;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub;
@@ -2331,6 +2373,9 @@ void engine_step(struct engine *e) {
             s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2],
             s->gparts[k].a_grav[0], s->gparts[k].a_grav[1],
             s->gparts[k].a_grav[2]);
+    if (s->gparts[k].id == -1)
+      message("interacting mass= %f (%f)", s->gparts[k].mass_interacted,
+              s->gparts[k].mass_interacted + s->gparts[k].mass);
   }
   fclose(file);
 
@@ -2339,10 +2384,10 @@ void engine_step(struct engine *e) {
   memcpy(temp, s->gparts, s->nr_gparts * sizeof(struct gpart));
   gravity_n2(temp, s->nr_gparts);
   file = fopen("grav_brute.dat", "w");
-  for(size_t k = 0; k < s->nr_gparts; ++k) {
-    fprintf(file, "%lld %f %f %f %f %f %f\n", temp[k].id,
-  	    temp[k].x[0], temp[k].x[1], temp[k].x[2],
-  	    temp[k].a_grav[0], temp[k].a_grav[1], temp[k].a_grav[2]);
+  for (size_t k = 0; k < s->nr_gparts; ++k) {
+    fprintf(file, "%lld %f %f %f %f %f %f\n", temp[k].id, temp[k].x[0],
+            temp[k].x[1], temp[k].x[2], temp[k].a_grav[0], temp[k].a_grav[1],
+            temp[k].a_grav[2]);
   }
   fclose(file);
 

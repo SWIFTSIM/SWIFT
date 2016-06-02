@@ -1188,11 +1188,11 @@ void *runner_main(void *data) {
         /*   else */
         /*     runner_dopair_grav(r, t->ci, t->cj); */
         /*   break; */
-        /* case task_type_grav_mm: */
-        /*   runner_dograv_mm(r, t->ci, t->cj); */
-        /*   break; */
+        case task_type_grav_mm:
+          runner_do_grav_mm(r, t->ci, t->cj);
+          break;
         case task_type_grav_up:
-          runner_dograv_up(r, t->ci);
+          runner_do_grav_up(r, t->ci);
           break;
         /* case task_type_grav_down: */
         /*   runner_dograv_down(r, t->ci); */

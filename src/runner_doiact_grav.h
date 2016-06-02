@@ -25,7 +25,7 @@
 #include "clocks.h"
 #include "part.h"
 
-#define ICHECK 1
+#define ICHECK -1
 
 /**
  * @brief Compute the recursive upward sweep, i.e. construct the
@@ -34,13 +34,13 @@
  * @param r The #runner.
  * @param c The top-level #cell.
  */
-void runner_dograv_up(struct runner *r, struct cell *c) {
+void runner_do_grav_up(struct runner *r, struct cell *c) {
 
   if (c->split) {/* Regular node */
 
     /* Recurse. */
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_dograv_up(r, c->progeny[k]);
+      if (c->progeny[k] != NULL) runner_do_grav_up(r, c->progeny[k]);
 
     /* Collect the multipoles from the progeny. */
     multipole_reset(&c->multipole);
@@ -98,11 +98,11 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     const struct runner *r, const struct cell *restrict ci,
     const struct cell *restrict cj) {
 
-  const struct engine *e = r->e;
+  // const struct engine *e = r->e;
   const int gcount = ci->gcount;
   struct gpart *restrict gparts = ci->gparts;
   const struct multipole multi = cj->multipole;
-  const int ti_current = e->ti_current;
+  // const int ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -115,6 +115,17 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
 
   /* Anything to do here? */
   // if (ci->ti_end_min > ti_current) return;
+  /* Loop over every particle in leaf. */
+  /* for (int pid = 0; pid < gcount; pid++) { */
+
+  /*   /\* Get a hold of the ith part in ci. *\/ */
+  /*   struct gpart *restrict gp = &gparts[pid]; */
+
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
+   * cj->loc[0], */
+  /*             cj->loc[1], cj->loc[2], cj->h[0], cj->gcount); */
+  /* } */
 
   /* Loop over every particle in leaf. */
   for (int pid = 0; pid < gcount; pid++) {
@@ -122,12 +133,9 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts[pid];
 
-    if (gp->ti_end > ti_current) continue;
+    if (gp->id == -ICHECK) message("id=%lld mass= %f", gp->id, multi.mass);
 
-    if (gp->id == -ICHECK)
-      message("id=%lld x=[%f %f %f] mass=%f CoM=[ %f %f %f ] size= %f\n", gp->id,
-	      gp->x[0], gp->x[1], gp->x[2], multi.mass,
-              multi.CoM[0], multi.CoM[1], multi.CoM[2], cj->h[0]);
+    // if (gp->ti_end > ti_current) continue;
 
     /* Compute the pairwise distance. */
     const float dx[3] = {multi.CoM[0] - gp->x[0],   // x
@@ -147,7 +155,6 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     gp->a_grav[2] += mrinv3 * dx[2];
 
 #elif multipole_order == 2
-
     /* Terms up to 2nd order (quadrupole) */
 
     /* Follows the notation in Bonsai */
@@ -194,18 +201,18 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
 __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     struct runner *r, struct cell *ci, struct cell *cj) {
 
-  const struct engine *e = r->e;
+  // const struct engine *e = r->e;
   const int gcount_i = ci->gcount;
   const int gcount_j = cj->gcount;
   struct gpart *restrict gparts_i = ci->gparts;
   struct gpart *restrict gparts_j = cj->gparts;
-  const int ti_current = e->ti_current;
+  // const int ti_current = e->ti_current;
 
   TIMER_TIC;
 
 #ifdef SANITY_CHECKS
   if (ci->h[0] != cj->h[0])  // MATTHIEU sanity check
-    error("Non matching cell sizes !! h_i=%f h_j=%f\n", ci->h[0], cj->h[0]);
+    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->h[0], cj->h[0]);
 #endif
 
   /* Anything to do here? */
@@ -213,21 +220,24 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
 
   for (int pid = 0; pid < gcount_i; pid++) {
 
+    /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts_i[pid];
-  if (gp->id == -ICHECK)
-    message("id=%lld size=%f\n", gp->id, cj->h[0]);
 
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
+              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
   }
 
   for (int pid = 0; pid < gcount_j; pid++) {
 
+    /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts_j[pid];
-  if (gp->id == -ICHECK)
-    message("id=%lld size=%f\n", gp->id, ci->h[0]);
 
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count=%d", gp->id, ci->loc[0],
+              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
   }
 
-  
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount_i; pid++) {
 
@@ -253,18 +263,18 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
       const float w = ir * ir * ir;
       const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
 
-      if (gpi->ti_end <= ti_current) {
-        gpi->a_grav[0] -= wdx[0] * mj;
-        gpi->a_grav[1] -= wdx[1] * mj;
-        gpi->a_grav[2] -= wdx[2] * mj;
-        gpi->mass_interacted += mj;
-      }
-      if (gpj->ti_end <= ti_current) {
-        gpj->a_grav[0] += wdx[0] * mi;
-        gpj->a_grav[1] += wdx[1] * mi;
-        gpj->a_grav[2] += wdx[2] * mi;
-        gpj->mass_interacted += mi;
-      }
+      // if (gpi->ti_end <= ti_current) {
+      gpi->a_grav[0] -= wdx[0] * mj;
+      gpi->a_grav[1] -= wdx[1] * mj;
+      gpi->a_grav[2] -= wdx[2] * mj;
+      gpi->mass_interacted += mj;
+      //}
+      // if (gpj->ti_end <= ti_current) {
+      gpj->a_grav[0] += wdx[0] * mi;
+      gpj->a_grav[1] += wdx[1] * mi;
+      gpj->a_grav[2] += wdx[2] * mi;
+      gpj->mass_interacted += mi;
+      // }
     }
   }
 
@@ -282,10 +292,10 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
 __attribute__((always_inline))
     INLINE static void runner_doself_grav_pp(struct runner *r, struct cell *c) {
 
-  const struct engine *e = r->e;
+  // const struct engine *e = r->e;
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
-  const int ti_current = e->ti_current;
+  // const int ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -296,6 +306,16 @@ __attribute__((always_inline))
 
   /* Anything to do here? */
   // if (c->ti_end_min > ti_current) return;
+
+  for (int pid = 0; pid < gcount; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gp = &gparts[pid];
+
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, c->loc[0],
+              c->loc[1], c->loc[2], c->h[0], c->gcount);
+  }
 
   /* Loop over all particles in ci... */
   for (int pid = 0; pid < gcount; pid++) {
@@ -322,18 +342,18 @@ __attribute__((always_inline))
       const float w = ir * ir * ir;
       const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
 
-      if (gpi->ti_end <= ti_current) {
-        gpi->a_grav[0] -= wdx[0] * mj;
-        gpi->a_grav[1] -= wdx[1] * mj;
-        gpi->a_grav[2] -= wdx[2] * mj;
-        gpi->mass_interacted += mj;
-      }
-      if (gpj->ti_end <= ti_current) {
-        gpj->a_grav[0] += wdx[0] * mi;
-        gpj->a_grav[1] += wdx[1] * mi;
-        gpj->a_grav[2] += wdx[2] * mi;
-        gpj->mass_interacted += mi;
-      }
+      // if (gpi->ti_end <= ti_current) {
+      gpi->a_grav[0] -= wdx[0] * mj;
+      gpi->a_grav[1] -= wdx[1] * mj;
+      gpi->a_grav[2] -= wdx[2] * mj;
+      gpi->mass_interacted += mj;
+      //}
+      // if (gpj->ti_end <= ti_current) {
+      gpj->a_grav[0] += wdx[0] * mi;
+      gpj->a_grav[1] += wdx[1] * mi;
+      gpj->a_grav[2] += wdx[2] * mi;
+      gpj->mass_interacted += mi;
+      //}
     }
   }
 
@@ -363,7 +383,7 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 
   /* Bad stuff will happen if cell sizes are different */
   if (ci->h[0] != cj->h[0])
-    error("Non matching cell sizes !! h_i=%f h_j=%f\n", ci->h[0], cj->h[0]);
+    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->h[0], cj->h[0]);
 
   /* Sanity check */
   if (ci == cj)
@@ -373,68 +393,69 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 
 #endif
 
+  for (int pid = 0; pid < gcount_i; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gp = &ci->gparts[pid];
+
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
+              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
+  }
+
+  for (int pid = 0; pid < gcount_j; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gp = &cj->gparts[pid];
+
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
+              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
+  }
+
   /* Are the cells direct neighbours? */
   if (!are_neighbours(ci, cj)) {
 
     /* Ok, here we can go for particle-multipole interactions */
-    runner_dopair_grav_pm(r, ci, cj);
-    runner_dopair_grav_pm(r, cj, ci);
+    // runner_dopair_grav_pm(r, ci, cj);
+    // runner_dopair_grav_pm(r, cj, ci);
 
-    /* error( */
-    /*     "Non-neighbouring cells ! ci->x=[%f %f %f] ci->h=%f cj->loc=[%f %f
-     * %f] " */
-    /*     "cj->h=%f", */
-    /*     ci->loc[0], ci->loc[1], ci->loc[2], ci->h[0], cj->loc[0], cj->loc[1],
-     */
-    /*     cj->loc[2], cj->h[0]); */
-  }
+    error(
+        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->h=%f cj->loc=[%f %f %f] "
+        "cj->h=%f",
+        ci->loc[0], ci->loc[1], ci->loc[2], ci->h[0], cj->loc[0], cj->loc[1],
+        cj->loc[2], cj->h[0]);
+  } else {
 
-  /* for (int i = 0; i < gcount_i; i++) { */
+    /* Are both cells split ? */
+    if (ci->split && cj->split) {
 
-  /*   struct gpart *const gp = &ci->gparts[i]; */
+      for (int j = 0; j < 8; j++) {
+        if (ci->progeny[j] != NULL) {
 
-  /*   if (gp->id == -ICHECK) */
-  /*     message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0], gp->a_grav[1], */
-  /*             gp->a_grav[2]); */
-  /* } */
+          for (int k = 0; k < 8; k++) {
+            if (cj->progeny[k] != NULL) {
 
-  /* for (int i = 0; i < gcount_j; i++) { */
+              if (are_neighbours(ci->progeny[j], cj->progeny[k])) {
 
-  /*   struct gpart *const gp = &cj->gparts[i]; */
+                /* Recurse */
+                runner_dopair_grav(r, ci->progeny[j], cj->progeny[k]);
 
-  /*   if (gp->id == -ICHECK) */
-  /*     message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0], gp->a_grav[1], */
-  /*             gp->a_grav[2]); */
-  /* } */
+              } else {
 
-  /* Are both cells split ? */
-  if (ci->split && cj->split) {
-
-    for (int j = 0; j < 8; j++) {
-      if (ci->progeny[j] != NULL) {
-
-        for (int k = 0; k < 8; k++) {
-          if (cj->progeny[k] != NULL) {
-
-            if (are_neighbours(ci->progeny[j], cj->progeny[k])) {
-
-              /* Recurse */
-              runner_dopair_grav(r, ci->progeny[j], cj->progeny[k]);
-
-            } else {
-
-              /* Ok, here we can go for particle-multipole interactions */
-              runner_dopair_grav_pm(r, ci->progeny[j], cj->progeny[k]);
-              runner_dopair_grav_pm(r, cj->progeny[k], ci->progeny[j]);
+                /* Ok, here we can go for particle-multipole interactions */
+                runner_dopair_grav_pm(r, ci->progeny[j], cj->progeny[k]);
+                runner_dopair_grav_pm(r, cj->progeny[k], ci->progeny[j]);
+              }
             }
           }
         }
       }
-    }
-  } else {/* Not split */
+    } else {/* Not split */
 
-    /* Compute the interactions at this level directly. */
-    runner_dopair_grav_pp(r, ci, cj);
+      /* Compute the interactions at this level directly. */
+      runner_dopair_grav_pp(r, ci, cj);
+    }
   }
 }
 
@@ -448,14 +469,15 @@ static void runner_doself_grav(struct runner *r, struct cell *c) {
   if (gcount == 0) error("Empty cell !");
 #endif
 
-  for (int i = 0; i < gcount; i++) {
+  /*  for (int i = 0; i < gcount; i++) { */
 
-    struct gpart *const gp = &c->gparts[i];
+  /*   struct gpart *const gp = &c->gparts[i]; */
 
-    if (gp->id == -ICHECK)
-      message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0], gp->a_grav[1],
-              gp->a_grav[2]);
-  }
+  /*   if (gp->id == -ICHECK) */
+  /*     message("id=%lld a=[%f %f %f]", gp->id, gp->a_grav[0], gp->a_grav[1],
+   */
+  /*             gp->a_grav[2]); */
+  /* } */
 
   /* If the cell is split, interact each progeny with itself, and with
      each of its siblings. */
@@ -493,8 +515,10 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
 
   } else {
 
-    /* if (!are_neighbours(ci, cj)) { */
+    if (!are_neighbours(ci, cj)) {
 
+      error("Non-neighbouring cells in pair task !");
+    }
     /*   /\* Ok, here we can go for particle-multipole interactions *\/ */
     /*   runner_dopair_grav_pm(r, ci, cj); */
     /*   runner_dopair_grav_pm(r, cj, ci); */
@@ -506,6 +530,38 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
 
     /* } */
   }
+}
+
+static void runner_do_grav_mm(struct runner *r, struct cell *ci,
+                              struct cell *cj) {
+
+  for (int pid = 0; pid < ci->gcount; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gp = &ci->gparts[pid];
+
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
+              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
+  }
+
+  for (int pid = 0; pid < cj->gcount; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gp = &cj->gparts[pid];
+
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
+              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
+  }
+
+  if (are_neighbours(ci, cj)) {
+
+    error("Non-neighbouring cells in mm task !");
+  }
+
+  runner_dopair_grav_pm(r, ci, cj);
+  runner_dopair_grav_pm(r, cj, ci);
 }
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */
