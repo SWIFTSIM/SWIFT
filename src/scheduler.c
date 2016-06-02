@@ -820,9 +820,9 @@ void scheduler_ranktasks(struct scheduler *s) {
   }
 
   /* Verify that the tasks were ranked correctly. */
-  for (int k = 1; k < s->nr_tasks; k++)
+  /* for (int k = 1; k < s->nr_tasks; k++)
     if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
-      error("Task ranking failed.");
+      error("Task ranking failed."); */
 }
 
 /**
