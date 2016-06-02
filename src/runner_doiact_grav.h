@@ -394,6 +394,14 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
         "The impossible has happened: pair interaction between a cell and "
         "itself.");
 
+  /* Are the cells direct neighbours? */
+  if (!are_neighbours(ci, cj))
+    error(
+        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->h=%f cj->loc=[%f %f %f] "
+        "cj->h=%f",
+        ci->loc[0], ci->loc[1], ci->loc[2], ci->h[0], cj->loc[0], cj->loc[1],
+        cj->loc[2], cj->h[0]);
+
 #endif
 
   /* for (int pid = 0; pid < gcount_i; pid++) { */
@@ -418,46 +426,34 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
   /*             ci->loc[1], ci->loc[2], ci->h[0], ci->gcount); */
   /* } */
 
-  /* Are the cells direct neighbours? */
-  if (!are_neighbours(ci, cj)) {
+  /* Are both cells split ? */
+  if (ci->split && cj->split) {
 
-    error(
-        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->h=%f cj->loc=[%f %f %f] "
-        "cj->h=%f",
-        ci->loc[0], ci->loc[1], ci->loc[2], ci->h[0], cj->loc[0], cj->loc[1],
-        cj->loc[2], cj->h[0]);
+    for (int j = 0; j < 8; j++) {
+      if (ci->progeny[j] != NULL) {
 
-  } else {
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL) {
 
-    /* Are both cells split ? */
-    if (ci->split && cj->split) {
+            if (are_neighbours(ci->progeny[j], cj->progeny[k])) {
 
-      for (int j = 0; j < 8; j++) {
-        if (ci->progeny[j] != NULL) {
+              /* Recurse */
+              runner_dopair_grav(r, ci->progeny[j], cj->progeny[k]);
 
-          for (int k = 0; k < 8; k++) {
-            if (cj->progeny[k] != NULL) {
+            } else {
 
-              if (are_neighbours(ci->progeny[j], cj->progeny[k])) {
-
-                /* Recurse */
-                runner_dopair_grav(r, ci->progeny[j], cj->progeny[k]);
-
-              } else {
-
-                /* Ok, here we can go for particle-multipole interactions */
-                runner_dopair_grav_pm(r, ci->progeny[j], cj->progeny[k]);
-                runner_dopair_grav_pm(r, cj->progeny[k], ci->progeny[j]);
-              }
+              /* Ok, here we can go for particle-multipole interactions */
+              runner_dopair_grav_pm(r, ci->progeny[j], cj->progeny[k]);
+              runner_dopair_grav_pm(r, cj->progeny[k], ci->progeny[j]);
             }
           }
         }
       }
-    } else {/* Not split */
-
-      /* Compute the interactions at this level directly. */
-      runner_dopair_grav_pp(r, ci, cj);
     }
+  } else {/* Not split */
+
+    /* Compute the interactions at this level directly. */
+    runner_dopair_grav_pp(r, ci, cj);
   }
 }
 
