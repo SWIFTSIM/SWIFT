@@ -180,8 +180,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     }
   }
 
-  message("h_max: %f", s->h_max);
-
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */
 #ifdef WITH_MPI

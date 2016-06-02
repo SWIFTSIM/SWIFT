@@ -172,7 +172,7 @@ void scheduler_splittasks(struct scheduler *s) {
       if (ci->split) {
 
         /* Make a sub? */
-        if (scheduler_dosub && (ci->count * ci->count < space_subsize ||  //) {
+        if (scheduler_dosub && (ci->count * ci->count < space_subsize ||
                                 ci->gcount * ci->gcount < space_subsize)) {
 
           /* convert to a self-subtask. */
@@ -204,38 +204,7 @@ void scheduler_splittasks(struct scheduler *s) {
                                     ci->progeny[j], ci->progeny[k], 0);
         }
       }
-
     }
-    /* /\* Hydro Pair interaction? *\/ */
-    /* else if (t->type == task_type_pair && t->subtype == task_subtype_grav) {
-       */
-
-    /*   /\* Get a handle on the cells involved. *\/ */
-    /*   struct cell *ci = t->ci; */
-    /*   struct cell *cj = t->cj; */
-
-    /*   /\* Foreign task? *\/ */
-    /*   if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) { */
-    /*     t->skip = 1; */
-    /*     continue; */
-    /*   } */
-
-    /*   if (ci->split && cj->split ) { */
-
-    /*     /\* Replace by a single sub-task? *\/ */
-    /*     if (scheduler_dosub && ci->gcount * cj->gcount  < space_subsize) { */
-
-    /* 	    /\* Make this task a sub task. *\/ */
-    /* 	    t->type = task_type_sub; */
-    /* 	  } */
-
-    /* 	  else { */
-    /* 	    message("oO"); */
-    /* 	  } */
-
-    /*   } */
-
-    /* } */
 
     /* Hydro Pair interaction? */
     else if (t->type == task_type_pair && t->subtype != task_subtype_grav) {

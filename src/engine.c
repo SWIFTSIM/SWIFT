@@ -1088,6 +1088,13 @@ __attribute__((always_inline)) INLINE static int are_neighbours(
   return 1;
 }
 
+/**
+ * @brief Constructs the top-level pair tasks for the gravity M-M interactions
+ *
+ * Correct implementation is still lacking here.
+ *
+ * @param e The #engine.
+ */
 void engine_make_gravity_tasks(struct engine *e) {
 
   struct space *s = e->s;
@@ -1095,8 +1102,6 @@ void engine_make_gravity_tasks(struct engine *e) {
   const int nodeID = e->nodeID;
   struct cell *cells = s->cells;
   const int nr_cells = s->nr_cells;
-
-  int counter = 0;
 
   for (int cid = 0; cid < nr_cells; ++cid) {
 
@@ -1122,79 +1127,14 @@ void engine_make_gravity_tasks(struct engine *e) {
       /* Is that neighbour local ? */
       if (cj->nodeID != nodeID) continue;
 
-#ifdef SANITY_CHECKS
-      if (ci == cj) {
-        message("oO");
-        continue;
-      }
-#endif
-
       if (are_neighbours(ci, cj))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj, 1);
       else
         scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, 0, 0, ci,
                           cj, 1);
-
-      ++counter;
     }
   }
-
-  message("counter= %d nr_cells=%d", counter, nr_cells);
-
-  /* /\* Run through the highest level of cells and add pairs. *\/ */
-  /* for (int i = 0; i < cdim[0]; i++) { */
-  /*   for (int j = 0; j < cdim[1]; j++) { */
-  /*     for (int k = 0; k < cdim[2]; k++) { */
-
-  /*       /\* Get the cell *\/ */
-  /*       const int cid = cell_getid(cdim, i, j, k); */
-  /*       struct cell *ci = &cells[cid]; */
-
-  /*       /\* Skip cells without gravity particles *\/ */
-  /*       if (ci->gcount == 0) continue; */
-
-  /*       /\* If the cells is local build a self-interaction *\/ */
-  /*       if (ci->nodeID == nodeID) */
-  /*         scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0,
-   * ci, */
-  /*                           NULL, 0); */
-
-  /*       /\* Now loop over all the neighbours of this cell *\/ */
-  /*       for (int ii = -1; ii < 2; ii++) { */
-  /*         int iii = i + ii; */
-  /*         if (!s->periodic && (iii < 0 || iii >= cdim[0])) continue; */
-  /*         iii = (iii + cdim[0]) % cdim[0]; */
-  /*         for (int jj = -1; jj < 2; jj++) { */
-  /*           int jjj = j + jj; */
-  /*           if (!s->periodic && (jjj < 0 || jjj >= cdim[1])) continue; */
-  /*           jjj = (jjj + cdim[1]) % cdim[1]; */
-  /*           for (int kk = -1; kk < 2; kk++) { */
-  /*             int kkk = k + kk; */
-  /*             if (!s->periodic && (kkk < 0 || kkk >= cdim[2])) continue; */
-  /*             kkk = (kkk + cdim[2]) % cdim[2]; */
-
-  /*             /\* Get the neighbouring cell *\/ */
-  /*             const int cjd = cell_getid(cdim, iii, jjj, kkk); */
-  /*             struct cell *cj = &cells[cjd]; */
-
-  /*             /\* Is that neighbour local and does it have particles ? *\/ */
-  /*             if (cid >= cjd || cj->gcount == 0 || */
-  /*                 (ci->nodeID != nodeID && cj->nodeID != nodeID)) */
-  /*               continue; */
-
-  /*             /\* Construct the pair task *\/ */
-  /*             const int sid = */
-  /*                 sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))]; */
-  /*             scheduler_addtask(sched, task_type_pair, task_subtype_grav,
-   * sid, */
-  /*                               0, ci, cj, 1); */
-  /*           } */
-  /*         } */
-  /*       } */
-  /*     } */
-  /*   } */
-  /* } */
 }
 
 /**
@@ -1324,18 +1264,6 @@ void engine_count_and_link_tasks(struct engine *e) {
         }
       }
     }
-
-    /* /\* Link gravity multipole tasks to the up/down tasks. *\/ */
-    /* if (t->type == task_type_grav_mm || */
-    /*     (t->type == task_type_sub && t->subtype == task_subtype_grav)) { */
-    /*   atomic_inc(&t->ci->nr_tasks); */
-    /*   scheduler_addunlock(sched, t->ci->grav_up, t); */
-    /*   scheduler_addunlock(sched, t, t->ci->grav_down); */
-    /*   if (t->cj != NULL && t->ci->grav_up != t->cj->grav_up) { */
-    /*     scheduler_addunlock(sched, t->cj->grav_up, t); */
-    /*     scheduler_addunlock(sched, t, t->cj->grav_down); */
-    /*   } */
-    /* } */
   }
 }
 
@@ -1529,44 +1457,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 }
 
 /**
- * @brief Constructs the top-level pair tasks for the gravity M-M interactions
- *
- * Correct implementation is still lacking here.
- *
- * @param e The #engine.
- */
-void engine_make_gravityinteraction_tasks(struct engine *e) {
-
-  struct space *s = e->s;
-  /* struct scheduler *sched = &e->sched; */
-  const int nr_cells = s->nr_cells;
-  /* struct cell *cells = s->cells; */
-
-  /* Loop over all cells. */
-  for (int i = 0; i < nr_cells; i++) {
-
-    /* /\* If it has gravity particles, add a self-task *\/ */
-    /* if (cells[i].gcount > 0) { */
-    /*   scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1, 0,
-     */
-    /*                     &cells[i], NULL, 0); */
-
-    /*   /\* Loop over all remainding cells *\/ */
-    /*   for (int j = i + 1; j < nr_cells; j++) { */
-
-    /*     /\* If that other cell has gravity parts, add a pair interaction *\/
-     */
-    /*     if (cells[j].gcount > 0) { */
-    /*       scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, -1,
-     * 0, */
-    /*                         &cells[i], &cells[j], 0); */
-    /*     } */
-    /*   } */
-    /* } */
-  }
-}
-
-/**
  * @brief Constructs the gravity tasks building the multipoles and propagating
  *them to the children
  *
@@ -1629,7 +1519,7 @@ void engine_maketasks(struct engine *e) {
   }
 
   /* Construct the firt hydro loop over neighbours */
-  engine_make_hydroloop_tasks(e);
+  if (e->policy & engine_policy_hydro) engine_make_hydroloop_tasks(e);
 
   /* Add the gravity mm tasks. */
   if (e->policy & engine_policy_self_gravity) engine_make_gravity_tasks(e);
@@ -1653,7 +1543,7 @@ void engine_maketasks(struct engine *e) {
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
-  engine_count_and_link_tasks(e);
+  if (e->policy & engine_policy_hydro) engine_count_and_link_tasks(e);
 
   /* Append hierarchical tasks to each cells */
   for (int k = 0; k < nr_cells; k++)
@@ -1662,7 +1552,7 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  engine_make_extra_hydroloop_tasks(e);
+  if (e->policy & engine_policy_hydro) engine_make_extra_hydroloop_tasks(e);
 
   /* Add the dependencies for the self-gravity stuff */
   if (e->policy & engine_policy_self_gravity)
@@ -2126,8 +2016,6 @@ void engine_init_particles(struct engine *e) {
 
   engine_marktasks(e);
 
-  // error("");
-
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0;
   unsigned int submask = 0;
@@ -2151,11 +2039,12 @@ void engine_init_particles(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
 
     mask |= 1 << task_type_grav_up;
-    /* mask |= 1 << task_type_self; */
-    /* mask |= 1 << task_type_pair; */
-    /* mask |= 1 << task_type_sub; */
+    mask |= 1 << task_type_grav_mm;
+    mask |= 1 << task_type_self;
+    mask |= 1 << task_type_pair;
+    mask |= 1 << task_type_sub;
 
-    /* submask |= 1 << task_subtype_grav; */
+    submask |= 1 << task_subtype_grav;
   }
 
   /* Add the tasks corresponding to external gravity to the masks */
