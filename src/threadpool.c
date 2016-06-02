@@ -50,9 +50,7 @@ void *threadpool_runner(void *data) {
 
     /* Wait for a signal. */
     pthread_mutex_lock(&tp->thread_mutex);
-    do {
-      pthread_cond_wait(&tp->thread_cond, &tp->thread_mutex);
-    } while (tp->map_function == NULL);
+    pthread_cond_wait(&tp->thread_cond, &tp->thread_mutex);
     pthread_mutex_unlock(&tp->thread_mutex);
 
     /* The index of the mapping task we will work on next. */

@@ -729,15 +729,12 @@ void scheduler_set_unlocks(struct scheduler *s) {
   offsets[0] = 0;
   for (int k = 1; k < s->nr_tasks; k++)
     offsets[k] = offsets[k - 1] + counts[k - 1];
-  for (int k = 0; k < s->nr_tasks; k++)
-    for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
 
   /* Set the unlocks in the tasks. */
   for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
     t->nr_unlock_tasks = counts[k];
     t->unlock_tasks = &s->unlocks[offsets[k]];
-    for (int j = offsets[k]; j < offsets[k + 1]; j++) s->unlock_ind[j] = k;
   }
 
   /* Verify that there are no duplicate unlocks. */

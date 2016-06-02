@@ -1456,7 +1456,6 @@ void engine_maketasks(struct engine *e) {
      of its super-cell. */
   threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task), e);
-  // engine_make_extra_hydroloop_tasks(e);
 
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
