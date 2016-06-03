@@ -562,6 +562,12 @@ void write_output_single(struct engine* e, const char* baseName,
   writeSPHflavour(h_grp);
   H5Gclose(h_grp);
 
+  /* Print the runtime parameters */
+  h_grp = H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp);
+  H5Gclose(h_grp);
+
   /* Print the system of Units */
   writeUnitSystem(h_file, us);
 

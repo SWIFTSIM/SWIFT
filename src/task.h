@@ -77,7 +77,7 @@ struct task {
   char skip, tight, implicit;
   int flags, wait, rank, weight;
 
-  lock_type lock;
+  swift_lock_type lock;
 
   struct cell *ci, *cj;
 

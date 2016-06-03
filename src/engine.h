@@ -189,6 +189,9 @@ struct engine {
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
+
+  /* The (parsed) parameter file */
+  const struct swift_params *parameter_file;
 };
 
 /* Function prototypes. */
@@ -197,7 +200,7 @@ void engine_compute_next_snapshot_time(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int with_aff, int policy, int verbose, 
+                 int nr_threads, int with_aff, int policy, int verbose,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential);

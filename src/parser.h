@@ -22,6 +22,10 @@
 /* Config parameters. */
 #include "../config.h"
 
+#if defined(HAVE_HDF5)
+#include <hdf5.h>
+#endif
+
 /* Some constants. */
 #define PARSER_MAX_LINE_SIZE 256
 #define PARSER_MAX_NO_OF_PARAMS 256
@@ -59,5 +63,9 @@ double parser_get_param_double(const struct swift_params *params,
                                const char *name);
 void parser_get_param_string(const struct swift_params *params,
                              const char *name, char *retParam);
+
+#if defined(HAVE_HDF5)
+void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp);
+#endif
 
 #endif /* SWIFT_PARSER_H */

@@ -303,7 +303,7 @@ static void parse_value(char *line, struct swift_params *params) {
       strcpy(params->data[params->paramCount].value, token);
       if (params->paramCount == PARSER_MAX_NO_OF_PARAMS - 1) {
         error(
-            "MMaximal number of parameters in parameter file reached. Aborting "
+            "Maximal number of parameters in parameter file reached. Aborting "
             "!");
       } else {
         params->paramCount++;
@@ -361,8 +361,7 @@ static void parse_section_param(char *line, int *isFirstParam,
   strcpy(params->data[params->paramCount].name, paramName);
   strcpy(params->data[params->paramCount].value, token);
   if (params->paramCount == PARSER_MAX_NO_OF_PARAMS - 1) {
-    error(
-        "MMaximal number of parameters in parameter file reached. Aborting !");
+    error("Maximal number of parameters in parameter file reached. Aborting !");
   } else {
     params->paramCount++;
   }

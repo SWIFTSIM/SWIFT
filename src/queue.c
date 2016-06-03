@@ -133,7 +133,7 @@ void queue_init(struct queue *q, struct task *tasks) {
 struct task *queue_gettask(struct queue *q, const struct task *prev,
                            int blocking) {
 
-  lock_type *qlock = &q->lock;
+  swift_lock_type *qlock = &q->lock;
   struct task *res = NULL;
 
   /* Grab the task lock. */
