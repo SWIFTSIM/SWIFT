@@ -39,10 +39,6 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
-/* Gravity stuff. */
-#define multipole_order 2
-#define const_gravity_eta 0.025f
-
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL
 //#define QUARTIC_SPLINE_KERNEL
@@ -56,7 +52,11 @@
 #define GADGET2_SPH
 //#define DEFAULT_SPH
 
-/* Gravity properties */
+/* Self gravity stuff. */
+#define multipole_order 2
+#define const_gravity_eta 0.025f
+
+/* External gravity properties */
 #define EXTERNAL_POTENTIAL_POINTMASS
 
 //#define SANITY_CHECKS
