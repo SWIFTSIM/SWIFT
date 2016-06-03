@@ -31,7 +31,7 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp,
+    const struct part* p, const struct xpart* xp,
     const struct hydro_props* hydro_properties) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
@@ -239,9 +239,10 @@ __attribute__((always_inline))
  * energy from the thermodynamic variable.
  *
  * @param p The particle of interest
+ * @param dt Time since the last kick
  */
-__attribute__((always_inline))
-    INLINE static float hydro_get_internal_energy(struct part* p) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    const struct part* p, float dt) {
 
   return p->u;
 }
