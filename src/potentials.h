@@ -89,6 +89,8 @@ __attribute__((always_inline))
  * @brief Computes the gravitational acceleration of a particle due to a point
  * mass
  *
+ * Note that the accelerations are multiplied by Newton's G constant later on.
+ *
  * @param potential The proerties of the external potential.
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
@@ -97,18 +99,15 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
     const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
-  const float G_newton = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->point_mass.x;
   const float dy = g->x[1] - potential->point_mass.y;
   const float dz = g->x[2] - potential->point_mass.z;
   const float rinv = 1.f / sqrtf(dx * dx + dy * dy + dz * dz);
+  const float rinv3 = rinv * rinv * rinv;
 
-  g->a_grav[0] +=
-      -G_newton * potential->point_mass.mass * dx * rinv * rinv * rinv;
-  g->a_grav[1] +=
-      -G_newton * potential->point_mass.mass * dy * rinv * rinv * rinv;
-  g->a_grav[2] +=
-      -G_newton * potential->point_mass.mass * dz * rinv * rinv * rinv;
+  g->a_grav[0] += -potential->point_mass.mass * dx * rinv3;
+  g->a_grav[1] += -potential->point_mass.mass * dy * rinv3;
+  g->a_grav[2] += -potential->point_mass.mass * dz * rinv3;
 }
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
 
