@@ -172,14 +172,7 @@ __attribute__((always_inline))
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
 
-  const float dt = t1 - t0;
-
-  /* Predict internal energy */
-  const float w = p->u_dt / p->u * dt;
-  if (fabsf(w) < 0.2f)
-    p->u *= approx_expf(w); /* 4th order expansion of exp(w) */
-  else
-    p->u *= expf(w);
+  p->u = xp->u_full;
 
   /* Need to recompute the pressure as well */
   p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);

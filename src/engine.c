@@ -2074,17 +2074,17 @@ void engine_init_particles(struct engine *e) {
 
   if (e->nodeID == 0) message("Initialising particles");
 
+  engine_prepare(e);
+
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
   if (e->policy & engine_policy_hydro) {
-    space_map_cells_pre(s, 1, cell_init_parts, NULL);
+    space_map_cells_pre(s, 0, cell_init_parts, NULL);
   }
   if ((e->policy & engine_policy_self_gravity) ||
       (e->policy & engine_policy_external_gravity)) {
-    space_map_cells_pre(s, 1, cell_init_gparts, NULL);
+    space_map_cells_pre(s, 0, cell_init_gparts, NULL);
   }
-
-  engine_prepare(e);
 
   engine_marktasks(e);
 
