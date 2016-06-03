@@ -24,7 +24,8 @@
 
 /* Some constants. */
 #define PARSER_MAX_LINE_SIZE 256
-#define PARSER_MAX_NO_OF_PARAMS 512
+#define PARSER_MAX_NO_OF_PARAMS 256
+#define PARSER_MAX_NO_OF_SECTIONS 64
 
 /* A parameter in the input file */
 struct parameter {
@@ -38,7 +39,7 @@ struct section {
 
 /* The array of parameters read from a file */
 struct swift_params {
-  struct section section[PARSER_MAX_NO_OF_PARAMS];
+  struct section section[PARSER_MAX_NO_OF_SECTIONS];
   struct parameter data[PARSER_MAX_NO_OF_PARAMS];
   int sectionCount;
   int paramCount;
