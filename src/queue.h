@@ -41,7 +41,7 @@ extern int queue_counter[queue_counter_count];
 struct queue {
 
   /* The lock to access this queue. */
-  lock_type lock;
+  swift_lock_type lock;
 
   /* Size, count and next element. */
   int size, count;

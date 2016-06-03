@@ -2619,6 +2619,7 @@ void engine_init(struct engine *e, struct space *s,
   e->physical_constants = physical_constants;
   e->hydro_properties = hydro;
   e->external_potential = potential;
+  e->parameter_file = params;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
@@ -2669,7 +2670,7 @@ void engine_init(struct engine *e, struct space *s,
         if (nodeID == 0) message("prefer NUMA-distant CPUs");
 
         /* Get list of numa nodes of all available cores. */
-        int *nodes = malloc( nr_affinity_cores * sizeof(int));
+        int *nodes = malloc(nr_affinity_cores * sizeof(int));
         int nnodes = 0;
         for (int i = 0; i < nr_affinity_cores; i++) {
           nodes[i] = numa_node_of_cpu(cpuid[i]);
@@ -2678,7 +2679,7 @@ void engine_init(struct engine *e, struct space *s,
         nnodes += 1;
 
         /* Count cores per node. */
-        int *core_counts = malloc( nnodes * sizeof(int));
+        int *core_counts = malloc(nnodes * sizeof(int));
         for (int i = 0; i < nr_affinity_cores; i++) {
           core_counts[nodes[i]] = 0;
         }
@@ -2687,7 +2688,7 @@ void engine_init(struct engine *e, struct space *s,
         }
 
         /* Index cores within each node. */
-        int *core_indices = malloc( nr_affinity_cores * sizeof(int));
+        int *core_indices = malloc(nr_affinity_cores * sizeof(int));
         for (int i = nr_affinity_cores - 1; i >= 0; i--) {
           core_indices[i] = core_counts[nodes[i]];
           core_counts[nodes[i]] -= 1;
@@ -2699,13 +2700,13 @@ void engine_init(struct engine *e, struct space *s,
         while (!done) {
           done = 1;
           for (int i = 1; i < nr_affinity_cores; i++) {
-            if ( core_indices[i] < core_indices[i-1] ) {
-              int t = cpuid[i-1];
-              cpuid[i-1] = cpuid[i];
+            if (core_indices[i] < core_indices[i - 1]) {
+              int t = cpuid[i - 1];
+              cpuid[i - 1] = cpuid[i];
               cpuid[i] = t;
 
-              t = core_indices[i-1];
-              core_indices[i-1] = core_indices[i];
+              t = core_indices[i - 1];
+              core_indices[i - 1] = core_indices[i];
               core_indices[i] = t;
               done = 0;
             }
@@ -2718,11 +2719,10 @@ void engine_init(struct engine *e, struct space *s,
       }
     }
 #endif
-  }
-  else {
+  } else {
     if (nodeID == 0) message("no processor affinity used");
 
-  }/* with_aff */
+  } /* with_aff */
 
   /* Avoid (unexpected) interference between engine and runner threads. We can
    * do this once we've made at least one call to engine_entry_affinity and
@@ -2888,7 +2888,8 @@ void engine_init(struct engine *e, struct space *s,
       error("Failed to create runner thread.");
 
     /* Try to pin the runner to a given core */
-    if (with_aff && (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
+    if (with_aff &&
+        (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
@@ -2917,7 +2918,7 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
     if (verbose) {
-      if (with_aff) 
+      if (with_aff)
         message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
                 e->runners[k].cpuid, e->runners[k].qid);
       else

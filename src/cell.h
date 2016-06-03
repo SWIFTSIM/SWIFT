@@ -136,7 +136,7 @@ struct cell {
   int hold, ghold;
 
   /* Spin lock for various uses. */
-  lock_type lock, glock;
+  swift_lock_type lock, glock;
 
   /* ID of the previous owner, e.g. runner. */
   int owner;

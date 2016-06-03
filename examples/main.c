@@ -431,10 +431,6 @@ int main(int argc, char *argv[]) {
   /* Write the state of the system before starting time integration. */
   if (!dry_run) engine_dump_snapshot(&e);
 
-  /* Now that everything is ready, no need for the parameters any more */
-  free(params);
-  params = NULL;
-
 /* Init the runner history. */
 #ifdef HIST
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
