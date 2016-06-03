@@ -725,6 +725,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   const struct external_potential *potential = r->e->external_potential;
   const struct hydro_props *hydro_properties = r->e->hydro_properties;
   const struct phys_const *constants = r->e->physical_constants;
+  const double const_G = constants->const_newton_G;
   const float ln_max_h_change = hydro_properties->log_max_h_change;
   const int is_fixdt =
       (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
@@ -756,7 +757,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         if (is_fixdt || gp->ti_end <= ti_current) {
 
           /* First, finish the force calculation */
-          gravity_end_force(gp);
+          gravity_end_force(gp, const_G);
 
           if (gp->id == -ICHECK)
             message("id=%lld a=[%f %f %f] M=%f\n", gp->id, gp->a_grav[0],
@@ -853,7 +854,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
         /* And do the same of the extra variable */
         hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart);
+        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
 
         /* Now we are ready to compute the next time-step size */
         int new_dti;

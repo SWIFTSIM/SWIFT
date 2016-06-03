@@ -42,7 +42,7 @@ float gadget(float r) {
             (21.333333333333 - 48.0 * u + 38.4 * u * u -
              10.666666666667 * u * u * u - 0.066666666667 / (u * u * u));
   }
-  return const_G * fac;
+  return fac;
 }
 
 /**
@@ -66,7 +66,7 @@ void gravity_kernel_dump(float r_max, int N) {
     x4[1] = x4[0];
     x4[0] = x;
     kernel_grav_eval(x, &w);
-    w *= const_G / (x * x * x);
+    w *= 1.f / (x * x * x);
     // blender_deval_vec( (vector *)x4 , (vector *)w4 , (vector *)dw_dx4 );
     printf(" %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n", x, w * x, w4[0],
            w4[1], w4[2], w4[3], gadget(x) * x);

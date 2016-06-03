@@ -490,7 +490,7 @@ void shuffle_particles(struct part *parts, const int count) {
  * @brief gparts The array of particles.
  * @brief gcount The number of particles.
  */
-void gravity_n2(struct gpart *gparts, const int gcount) {
+void gravity_n2(struct gpart *gparts, const int gcount, const struct phys_const *constants) {
 
   /* Reset everything */
   for (int pid = 0; pid < gcount; pid++) {
@@ -532,5 +532,14 @@ void gravity_n2(struct gpart *gparts, const int gcount) {
       gpj->a_grav[1] += wdx[1] * mi;
       gpj->a_grav[2] += wdx[2] * mi;
     }
+  }
+
+  /* Multiply by Newton's constant */
+  const double const_G = constants->const_newton_G;
+  for (int pid = 0; pid < gcount; pid++) {
+    struct gpart *restrict gpi = &gparts[pid];
+    gpi->a_grav[0] *= const_G;
+    gpi->a_grav[1] *= const_G;
+    gpi->a_grav[2] *= const_G;
   }
 }

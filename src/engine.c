@@ -2262,7 +2262,7 @@ void engine_step(struct engine *e) {
 
   FILE *file = fopen("grav_swift.dat", "w");
   for (size_t k = 0; k < s->nr_gparts; ++k) {
-    fprintf(file, "%lld %f %f %f %f %f %f\n", s->gparts[k].id,
+    fprintf(file, "%lld %f %f %f %e %e %e\n", s->gparts[k].id,
             s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2],
             s->gparts[k].a_grav[0], s->gparts[k].a_grav[1],
             s->gparts[k].a_grav[2]);
@@ -2275,10 +2275,10 @@ void engine_step(struct engine *e) {
   /* Check the gravity accelerations */
   struct gpart *temp = malloc(s->nr_gparts * sizeof(struct gpart));
   memcpy(temp, s->gparts, s->nr_gparts * sizeof(struct gpart));
-  gravity_n2(temp, s->nr_gparts);
+  gravity_n2(temp, s->nr_gparts, e->physical_constants);
   file = fopen("grav_brute.dat", "w");
   for (size_t k = 0; k < s->nr_gparts; ++k) {
-    fprintf(file, "%lld %f %f %f %f %f %f\n", temp[k].id, temp[k].x[0],
+    fprintf(file, "%lld %f %f %f %e %e %e\n", temp[k].id, temp[k].x[0],
             temp[k].x[1], temp[k].x[2], temp[k].a_grav[0], temp[k].a_grav[1],
             temp[k].a_grav[2]);
   }

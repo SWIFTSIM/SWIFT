@@ -25,6 +25,7 @@
 #include "inline.h"
 #include "vector.h"
 
+#define const_epsilon 1.
 #define const_iepsilon (1. / const_epsilon)
 #define const_iepsilon2 (const_iepsilon *const_iepsilon)
 #define const_iepsilon3 (const_iepsilon2 *const_iepsilon)

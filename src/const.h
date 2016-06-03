@@ -41,9 +41,7 @@
 
 /* Gravity stuff. */
 #define multipole_order 2
-#define const_theta_max 0.57735f
-#define const_G 6.672e-8f     /* Gravitational constant. */
-#define const_epsilon 0.0014f /* Gravity blending distance. */
+#define const_gravity_eta 0.025f
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL
