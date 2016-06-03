@@ -117,6 +117,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_with_external_gravity =
       (e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity;
+  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Am I the super-cell? */
   if (super == NULL && (c->count > 0 || c->gcount > 0)) {
@@ -135,9 +136,14 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
-      /* Add the kick task. */
-      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      /* Add the kick task that matches the policy. */
+      if (is_fixdt) {
+        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
+                                    0, 0, c, NULL, 0);
+      } else {
+        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
+      }
 
       if (c->count > 0) {
 
@@ -1795,8 +1801,9 @@ void engine_barrier(struct engine *e, int tid) {
 
 /**
  * @brief Mapping function to collect the data from the kick.
+ *
+ * @param c A super-cell.
  */
-
 void engine_collect_kick(struct cell *c) {
 
   /* Skip super-cells (Their values are already set) */
@@ -1804,9 +1811,103 @@ void engine_collect_kick(struct cell *c) {
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  int ti_end_min = max_nr_timesteps;
+
+  /* Only do something is the cell is non-empty */
+  if (c->count != 0 || c->gcount != 0) {
+
+    /* If this cell is not split, I'm in trouble. */
+    if (!c->split) error("Cell is not split.");
+
+    /* Collect the values from the progeny. */
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL) {
+
+        /* Recurse */
+        engine_collect_kick(cp);
+
+        /* And update */
+        ti_end_min = min(ti_end_min, cp->ti_end_min);
+        updated += cp->updated;
+        g_updated += cp->g_updated;
+      }
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->ti_end_min = ti_end_min;
+  c->updated = updated;
+  c->g_updated = g_updated;
+}
+
+/**
+ * @brief Collects the next time-step by making each super-cell recurse
+ * to collect the minimal of ti_end and the number of updated particles.
+ *
+ * @param e The #engine.
+ */
+void engine_collect_timestep(struct engine *e) {
+
+  int updates = 0, g_updates = 0;
+  int ti_end_min = max_nr_timesteps;
+  const struct space *s = e->s;
+
+  /* Collect the cell data. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (s->cells[k].nodeID == e->nodeID) {
+      struct cell *c = &s->cells[k];
+
+      /* Make the top-cells recurse */
+      engine_collect_kick(c);
+
+      /* And aggregate */
+      ti_end_min = min(ti_end_min, c->ti_end_min);
+      updates += c->updated;
+      g_updates += c->g_updated;
+    }
+
+/* Aggregate the data from the different nodes. */
+#ifdef WITH_MPI
+  {
+    int in_i[1], out_i[1];
+    in_i[0] = 0;
+    out_i[0] = ti_end_min;
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate t_end_min.");
+    ti_end_min = in_i[0];
+  }
+  {
+    unsigned long long in_ll[2], out_ll[2];
+    out_ll[0] = updates;
+    out_ll[1] = g_updates;
+    if (MPI_Allreduce(out_ll, in_ll, 2, MPI_LONG_LONG_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate energies.");
+    updates = in_ll[0];
+    g_updates = in_ll[1];
+  }
+#endif
+
+  e->ti_end_min = ti_end_min;
+  e->updates = updates;
+  e->g_updates = g_updates;
+}
+
+/**
+ * @brief Mapping function to collect the data from the drift.
+ *
+ * @param c A super-cell.
+ */
+void engine_collect_drift(struct cell *c) {
+
+  /* Skip super-cells (Their values are already set) */
+  if (c->drift != NULL) return;
+
+  /* Counters for the different quantities. */
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
 
   /* Only do something is the cell is non-empty */
   if (c->count != 0 || c->gcount != 0) {
@@ -1820,40 +1921,105 @@ void engine_collect_kick(struct cell *c) {
       if (cp != NULL) {
 
         /* Recurse */
-        engine_collect_kick(cp);
+        engine_collect_drift(cp);
 
         /* And update */
-        ti_end_min = min(ti_end_min, cp->ti_end_min);
-        ti_end_max = max(ti_end_max, cp->ti_end_max);
-        updated += cp->updated;
-        g_updated += cp->g_updated;
+        mass += cp->mass;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
         mom[2] += cp->mom[2];
-        ang[0] += cp->ang[0];
-        ang[1] += cp->ang[1];
-        ang[2] += cp->ang[2];
+        ang_mom[0] += cp->ang_mom[0];
+        ang_mom[1] += cp->ang_mom[1];
+        ang_mom[2] += cp->ang_mom[2];
       }
     }
   }
 
   /* Store the collected values in the cell. */
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
-  c->updated = updated;
-  c->g_updated = g_updated;
+  c->mass = mass;
   c->e_kin = e_kin;
   c->e_int = e_int;
   c->e_pot = e_pot;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];
-  c->ang[0] = ang[0];
-  c->ang[1] = ang[1];
-  c->ang[2] = ang[2];
+  c->ang_mom[0] = ang_mom[0];
+  c->ang_mom[1] = ang_mom[1];
+  c->ang_mom[2] = ang_mom[2];
+}
+
+void engine_print_stats(struct engine *e) {
+
+  const struct space *s = e->s;
+
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
+
+  /* Collect the cell data. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (s->cells[k].nodeID == e->nodeID) {
+      struct cell *c = &s->cells[k];
+
+      /* Make the top-cells recurse */
+      engine_collect_drift(c);
+
+      /* And aggregate */
+      mass += c->mass;
+      e_kin += c->e_kin;
+      e_int += c->e_int;
+      e_pot += c->e_pot;
+      mom[0] += c->mom[0];
+      mom[1] += c->mom[1];
+      mom[2] += c->mom[2];
+      ang_mom[0] += c->ang_mom[0];
+      ang_mom[1] += c->ang_mom[1];
+      ang_mom[2] += c->ang_mom[2];
+    }
+
+/* Aggregate the data from the different nodes. */
+#ifdef WITH_MPI
+  {
+    double in[10] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
+    double out[10];
+    out[0] = e_kin;
+    out[1] = e_int;
+    out[2] = e_pot;
+    out[3] = mom[0];
+    out[4] = mom[1];
+    out[5] = mom[2];
+    out[6] = ang_mom[0];
+    out[7] = ang_mom[1];
+    out[8] = ang_mom[2];
+    out[9] = mass;
+    if (MPI_Allreduce(out, in, 10, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate stats.");
+    e_kin = out[0];
+    e_int = out[1];
+    e_pot = out[2];
+    mom[0] = out[3];
+    mom[1] = out[4];
+    mom[2] = out[5];
+    ang_mom[0] = out[6];
+    ang_mom[1] = out[7];
+    ang_mom[2] = out[8];
+    mass = out[9];
+  }
+#endif
+
+  const double e_tot = e_kin + e_int + e_pot;
+
+  /* Print info */
+  if (e->nodeID == 0) {
+    fprintf(e->file_stats,
+            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+            e->time, mass, e_tot, e_kin, e_int, e_pot, mom[0], mom[1], mom[2],
+            ang_mom[0], ang_mom[1], ang_mom[2]);
+    fflush(e->file_stats);
+  }
 }
 
 /**
@@ -1864,7 +2030,6 @@ void engine_collect_kick(struct cell *c) {
  * @param mask The task mask to launch.
  * @param submask The sub-task mask to launch.
  */
-
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask) {
 
@@ -1909,17 +2074,17 @@ void engine_init_particles(struct engine *e) {
 
   if (e->nodeID == 0) message("Initialising particles");
 
+  engine_prepare(e);
+
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
   if (e->policy & engine_policy_hydro) {
-    space_map_cells_pre(s, 1, cell_init_parts, NULL);
+    space_map_cells_pre(s, 0, cell_init_parts, NULL);
   }
   if ((e->policy & engine_policy_self_gravity) ||
       (e->policy & engine_policy_external_gravity)) {
-    space_map_cells_pre(s, 1, cell_init_gparts, NULL);
+    space_map_cells_pre(s, 0, cell_init_gparts, NULL);
   }
-
-  engine_prepare(e);
 
   engine_marktasks(e);
 
@@ -1983,13 +2148,7 @@ void engine_init_particles(struct engine *e) {
  */
 void engine_step(struct engine *e) {
 
-  int updates = 0, g_updates = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
-  float mom[3] = {0.0, 0.0, 0.0};
-  float ang[3] = {0.0, 0.0, 0.0};
   double snapshot_drift_time = 0.;
-  struct space *s = e->s;
 
   TIMER_TIC2;
 
@@ -1998,66 +2157,11 @@ void engine_step(struct engine *e) {
 
   e->tic_step = getticks();
 
-  /* Collect the cell data. */
-  for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells[k];
-
-      /* Recurse */
-      engine_collect_kick(c);
-
-      /* And aggregate */
-      ti_end_min = min(ti_end_min, c->ti_end_min);
-      ti_end_max = max(ti_end_max, c->ti_end_max);
-      e_kin += c->e_kin;
-      e_int += c->e_int;
-      e_pot += c->e_pot;
-      updates += c->updated;
-      g_updates += c->g_updated;
-      mom[0] += c->mom[0];
-      mom[1] += c->mom[1];
-      mom[2] += c->mom[2];
-      ang[0] += c->ang[0];
-      ang[1] += c->ang[1];
-      ang[2] += c->ang[2];
-    }
-
-/* Aggregate the data from the different nodes. */
-#ifdef WITH_MPI
-  {
-    int in_i[1], out_i[1];
-    in_i[0] = 0;
-    out_i[0] = ti_end_min;
-    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate t_end_min.");
-    ti_end_min = in_i[0];
-    out_i[0] = ti_end_max;
-    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate t_end_max.");
-    ti_end_max = in_i[0];
-  }
-  {
-    double in_d[5], out_d[5];
-    out_d[0] = updates;
-    out_d[1] = g_updates;
-    out_d[2] = e_kin;
-    out_d[3] = e_int;
-    out_d[4] = e_pot;
-    if (MPI_Allreduce(out_d, in_d, 5, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate energies.");
-    updates = in_d[0];
-    g_updates = in_d[1];
-    e_kin = in_d[2];
-    e_int = in_d[3];
-    e_pot = in_d[4];
-  }
-#endif
+  /* Recover the (integer) end of the next time-step */
+  engine_collect_timestep(e);
 
   /* Check for output */
-  while (ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) {
+  while (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) {
 
     e->ti_old = e->ti_current;
     e->ti_current = e->ti_nextSnapshot;
@@ -2078,7 +2182,7 @@ void engine_step(struct engine *e) {
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
-  e->ti_current = ti_end_min;
+  e->ti_current = e->ti_end_min;
   e->step += 1;
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
@@ -2090,15 +2194,15 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10d %10d %21.3f\n", e->step, e->time, e->timeStep,
-           updates, g_updates, e->wallclock_time);
+    printf("  %6d %14e %14e %10zd %10zd %21.3f\n", e->step, e->time,
+           e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(stdout);
+  }
 
-    /* Write some energy statistics */
-    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f %f\n", e->step,
-            e->time, e_kin, e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1],
-            mom[2], ang[0], ang[1], ang[2]);
-    fflush(e->file_stats);
+  /* Save some statistics */
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    engine_print_stats(e);
+    e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
   /* Re-distribute the particles amongst the nodes? */
@@ -2110,10 +2214,16 @@ void engine_step(struct engine *e) {
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0, submask = 0;
 
-  /* We always have sort tasks and kick tasks */
+  /* We always have sort tasks and init tasks */
   mask |= 1 << task_type_sort;
-  mask |= 1 << task_type_kick;
   mask |= 1 << task_type_init;
+
+  /* Add the correct kick task */
+  if (e->policy & engine_policy_fixdt) {
+    mask |= 1 << task_type_kick_fixdt;
+  } else {
+    mask |= 1 << task_type_kick;
+  }
 
   /* Add the tasks corresponding to hydro operations to the masks */
   if (e->policy & engine_policy_hydro) {
@@ -2488,6 +2598,7 @@ void engine_init(struct engine *e, struct space *s,
   e->ti_current = 0;
   e->timeStep = 0.;
   e->timeBase = 0.;
+  e->timeBase_inv = 0.;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
   e->deltaTimeSnapshot =
@@ -2499,6 +2610,9 @@ void engine_init(struct engine *e, struct space *s,
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
+  e->deltaTimeStatistics =
+      parser_get_param_double(params, "Statistics:delta_time");
+  e->timeLastStatistics = e->timeBegin - e->deltaTimeStatistics;
   e->verbose = verbose;
   e->count_step = 0;
   e->wallclock_time = 0.f;
@@ -2646,8 +2760,10 @@ void engine_init(struct engine *e, struct space *s,
   if (e->nodeID == 0) {
     e->file_stats = fopen("energy.txt", "w");
     fprintf(e->file_stats,
-            "# Step Time E_kin E_int E_pot E_tot "
-            "p_x p_y p_z ang_x ang_y ang_z\n");
+            "# %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x", "p_y",
+            "p_z", "ang_x", "ang_y", "ang_z");
+    fflush(e->file_stats);
   }
 
   /* Print policy */
@@ -2673,6 +2789,7 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Deal with timestep */
   e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
+  e->timeBase_inv = 1.0 / e->timeBase;
   e->ti_current = 0;
 
   /* Fixed time-step case */

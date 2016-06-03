@@ -132,6 +132,13 @@ struct engine {
 
   /* Time base */
   double timeBase;
+  double timeBase_inv;
+
+  /* Minimal ti_end for the next time-step */
+  int ti_end_min;
+
+  /* Number of particles updated */
+  size_t updates, g_updates;
 
   /* Snapshot information */
   double timeFirstSnapshot;
@@ -140,8 +147,10 @@ struct engine {
   char snapshotBaseName[200];
   struct UnitSystem *snapshotUnits;
 
-  /* File for statistics */
+  /* Statistics information */
   FILE *file_stats;
+  double timeLastStatistics;
+  double deltaTimeStatistics;
 
   /* The current step number. */
   int step;

@@ -51,6 +51,7 @@ void runner_do_ghost(struct runner *r, struct cell *c);
 void runner_do_sort(struct runner *r, struct cell *c, int flag, int clock);
 void runner_do_gsort(struct runner *r, struct cell *c, int flag, int clock);
 void runner_do_kick(struct runner *r, struct cell *c, int timer);
+void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer);
 void runner_do_drift(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);

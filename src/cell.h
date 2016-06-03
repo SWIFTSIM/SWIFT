@@ -142,7 +142,7 @@ struct cell {
   int owner;
 
   /* Momentum of particles in cell. */
-  float mom[3], ang[3];
+  double mom[3], ang_mom[3];
 
   /* Mass, potential, internal  and kinetic energy of particles in this cell. */
   double mass, e_pot, e_int, e_kin;
