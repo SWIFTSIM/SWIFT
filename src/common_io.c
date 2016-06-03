@@ -147,8 +147,8 @@ void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data) {
  *
  * Calls #error() if an error occurs.
  */
-void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data,
-                    int num) {
+void writeAttribute(hid_t grp, const char* name, enum DATA_TYPE type,
+                    void* data, int num) {
   hid_t h_space = 0, h_attr = 0, h_err = 0;
   hsize_t dim[1] = {num};
 
@@ -186,7 +186,8 @@ void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data,
  *
  * Calls #error() if an error occurs.
  */
-void writeStringAttribute(hid_t grp, char* name, const char* str, int length) {
+void writeStringAttribute(hid_t grp, const char* name, const char* str,
+                          int length) {
   hid_t h_space = 0, h_attr = 0, h_err = 0, h_type = 0;
 
   h_space = H5Screate(H5S_SCALAR);
@@ -225,7 +226,7 @@ void writeStringAttribute(hid_t grp, char* name, const char* str, int length) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_d(hid_t grp, char* name, double data) {
+void writeAttribute_d(hid_t grp, const char* name, double data) {
   writeAttribute(grp, name, DOUBLE, &data, 1);
 }
 
@@ -235,7 +236,7 @@ void writeAttribute_d(hid_t grp, char* name, double data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_f(hid_t grp, char* name, float data) {
+void writeAttribute_f(hid_t grp, const char* name, float data) {
   writeAttribute(grp, name, FLOAT, &data, 1);
 }
 
@@ -246,7 +247,7 @@ void writeAttribute_f(hid_t grp, char* name, float data) {
  * @param data The value to write
  */
 
-void writeAttribute_i(hid_t grp, char* name, int data) {
+void writeAttribute_i(hid_t grp, const char* name, int data) {
   writeAttribute(grp, name, INT, &data, 1);
 }
 
@@ -256,7 +257,7 @@ void writeAttribute_i(hid_t grp, char* name, int data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_l(hid_t grp, char* name, long data) {
+void writeAttribute_l(hid_t grp, const char* name, long data) {
   writeAttribute(grp, name, LONG, &data, 1);
 }
 
@@ -266,7 +267,7 @@ void writeAttribute_l(hid_t grp, char* name, long data) {
  * @param name The name of the attribute
  * @param str The string to write
  */
-void writeAttribute_s(hid_t grp, char* name, const char* str) {
+void writeAttribute_s(hid_t grp, const char* name, const char* str) {
   writeStringAttribute(grp, name, str, strlen(str));
 }
 
