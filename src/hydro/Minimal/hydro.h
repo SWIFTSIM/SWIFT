@@ -31,7 +31,7 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp,
+    const struct part* p, const struct xpart* xp,
     const struct hydro_props* hydro_properties) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
@@ -172,14 +172,7 @@ __attribute__((always_inline))
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
 
-  const float dt = t1 - t0;
-
-  /* Predict internal energy */
-  const float w = p->u_dt / p->u * dt;
-  if (fabsf(w) < 0.2f)
-    p->u *= approx_expf(w); /* 4th order expansion of exp(w) */
-  else
-    p->u *= expf(w);
+  p->u = xp->u_full;
 
   /* Need to recompute the pressure as well */
   p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);
@@ -239,9 +232,10 @@ __attribute__((always_inline))
  * energy from the thermodynamic variable.
  *
  * @param p The particle of interest
+ * @param dt Time since the last kick
  */
-__attribute__((always_inline))
-    INLINE static float hydro_get_internal_energy(struct part* p) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    const struct part* p, float dt) {
 
   return p->u;
 }

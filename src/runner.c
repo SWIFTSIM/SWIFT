@@ -47,11 +47,14 @@
 #include "gravity.h"
 #include "hydro_properties.h"
 #include "hydro.h"
+#include "drift.h"
+#include "kick.h"
 #include "minmax.h"
 #include "scheduler.h"
 #include "space.h"
 #include "task.h"
 #include "timers.h"
+#include "timestep.h"
 
 /* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
@@ -593,7 +596,12 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   struct gpart *const gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double mom[3] = {0.0, 0.0, 0.0};
+  double ang_mom[3] = {0.0, 0.0, 0.0};
+
   TIMER_TIC
+
 #ifdef TASK_VERBOSE
   OUT;
 #endif
@@ -609,14 +617,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       struct gpart *const gp = &gparts[k];
 
       /* Drift... */
-      gp->x[0] += gp->v_full[0] * dt;
-      gp->x[1] += gp->v_full[1] * dt;
-      gp->x[2] += gp->v_full[2] * dt;
-
-      /* Compute offset since last cell construction */
-      gp->x_diff[0] -= gp->v_full[0] * dt;
-      gp->x_diff[1] -= gp->v_full[1] * dt;
-      gp->x_diff[2] -= gp->v_full[2] * dt;
+      drift_gpart(gp, dt, timeBase, ti_old, ti_current);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
@@ -633,40 +634,9 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
 
-      /* Useful quantity */
-      const float h_inv = 1.0f / p->h;
 
       /* Drift... */
-      p->x[0] += xp->v_full[0] * dt;
-      p->x[1] += xp->v_full[1] * dt;
-      p->x[2] += xp->v_full[2] * dt;
-
-      /* Predict velocities (for hydro terms) */
-      p->v[0] += p->a_hydro[0] * dt;
-      p->v[1] += p->a_hydro[1] * dt;
-      p->v[2] += p->a_hydro[2] * dt;
-
-      /* Predict smoothing length */
-      const float w1 = p->h_dt * h_inv * dt;
-      if (fabsf(w1) < 0.2f)
-        p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-      else
-        p->h *= expf(w1);
-
-      /* Predict density */
-      const float w2 = -3.0f * p->h_dt * h_inv * dt;
-      if (fabsf(w2) < 0.2f)
-        p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-      else
-        p->rho *= expf(w2);
-
-      /* Predict the values of the extra fields */
-      hydro_predict_extra(p, xp, ti_old, ti_current, timeBase);
-
-      /* Compute offset since last cell construction */
-      xp->x_diff[0] -= xp->v_full[0] * dt;
-      xp->x_diff[1] -= xp->v_full[1] * dt;
-      xp->x_diff[2] -= xp->v_full[2] * dt;
+      drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
       /* Compute (square of) motion since last cell construction */
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
@@ -676,6 +646,34 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
 
       /* Maximal smoothing length */
       h_max = fmaxf(p->h, h_max);
+
+      /* Now collect quantities for statistics */
+
+      const float half_dt =
+          (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+      const double x[3] = {p->x[0], p->x[1], p->x[2]};
+      const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
+                          xp->v_full[1] + p->a_hydro[1] * half_dt,
+                          xp->v_full[2] + p->a_hydro[2] * half_dt};
+      const float m = p->mass;
+
+      /* Collect mass */
+      mass += m;
+
+      /* Collect momentum */
+      mom[0] += m * v[0];
+      mom[1] += m * v[1];
+      mom[2] += m * v[2];
+
+      /* Collect angular momentum */
+      ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
+      ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
+      ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
+
+      /* Collect energies. */
+      e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+      e_pot += 0.;
+      e_int += m * hydro_get_internal_energy(p, half_dt);
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -688,33 +686,55 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
+
+        /* Recurse */
         struct cell *cp = c->progeny[k];
         runner_do_drift(r, cp, 0);
 
+        /* Collect */
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
+        mass += cp->mass;
+        e_kin += cp->e_kin;
+        e_int += cp->e_int;
+        e_pot += cp->e_pot;
+        mom[0] += cp->mom[0];
+        mom[1] += cp->mom[1];
+        mom[2] += cp->mom[2];
+        ang_mom[0] += cp->ang_mom[0];
+        ang_mom[1] += cp->ang_mom[1];
+        ang_mom[2] += cp->ang_mom[2];
       }
   }
 
   /* Store the values */
   c->h_max = h_max;
   c->dx_max = dx_max;
+  c->mass = mass;
+  c->e_kin = e_kin;
+  c->e_int = e_int;
+  c->e_pot = e_pot;
+  c->mom[0] = mom[0];
+  c->mom[1] = mom[1];
+  c->mom[2] = mom[2];
+  c->ang_mom[0] = ang_mom[0];
+  c->ang_mom[1] = ang_mom[1];
+  c->ang_mom[2] = ang_mom[2];
 
   if (timer) TIMER_TOC(timer_drift);
 }
 
 /**
- * @brief Kick particles in momentum space and collect statistics
+ * @brief Kick particles in momentum space and collect statistics (fixed
+ * time-step case)
  *
  * @param r The runner thread.
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_kick(struct runner *r, struct cell *c, int timer) {
+void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
 
-  const float global_dt_min = r->e->dt_min;
-  const float global_dt_max = r->e->dt_max;
-  const int ti_current = r->e->ti_current;
+  const double global_dt = r->e->dt_max;
   const double timeBase = r->e->timeBase;
   const double timeBase_inv = 1.0 / r->e->timeBase;
   const int count = c->count;
@@ -722,19 +742,125 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
-  const struct external_potential *potential = r->e->external_potential;
-  const struct hydro_props *hydro_properties = r->e->hydro_properties;
-  const struct phys_const *constants = r->e->physical_constants;
   const double const_G = constants->const_newton_G;
-  const float ln_max_h_change = hydro_properties->log_max_h_change;
-  const int is_fixdt =
-      (r->e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f};
-  float ang[3] = {0.0f, 0.0f, 0.0f};
+
+  TIMER_TIC
+
+#ifdef TASK_VERBOSE
+  OUT;
+#endif
+
+  /* The new time-step */
+  const int new_dti = global_dt / timeBase;
+
+  /* No children? */
+  if (!c->split) {
+
+    /* Loop over the g-particles and kick everyone. */
+    for (int k = 0; k < gcount; k++) {
+
+      /* Get a handle on the part. */
+      struct gpart *const gp = &gparts[k];
+
+      /* If the g-particle has no counterpart */
+      if (gp->id < 0) {
+
+        /* First, finish the force calculation */
+        gravity_end_force(gp, const_G);
+
+        /* Kick the g-particle forward */
+        kick_gpart(gp, new_dti, timeBase);
+
+        /* Number of updated g-particles */
+        g_updated++;
+
+        /* Minimal time for next end of time-step */
+        ti_end_min = min(gp->ti_end, ti_end_min);
+        ti_end_max = max(gp->ti_end, ti_end_max);
+      }
+    }
+
+    /* Now do the hydro ones... */
+
+    /* Loop over the particles and kick everyone. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
+
+      /* First, finish the force loop */
+      p->h_dt *= p->h * 0.333333333f;
+
+      /* And do the same of the extra variable */
+      hydro_end_force(p);
+      if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
+
+      /* Kick the particle forward */
+      kick_part(p, xp, new_dti, timeBase);
+
+      /* Number of updated particles */
+      updated++;
+      if (p->gpart != NULL) g_updated++;
+
+      /* Minimal time for next end of time-step */
+      ti_end_min = min(p->ti_end, ti_end_min);
+      ti_end_max = max(p->ti_end, ti_end_max);
+    }
+  }
+
+  /* Otherwise, aggregate data from children. */
+  else {
+
+    /* Loop over the progeny. */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        struct cell *const cp = c->progeny[k];
+
+        /* Recurse */
+        runner_do_kick_fixdt(r, cp, 0);
+
+        /* And aggregate */
+        updated += cp->updated;
+        g_updated += cp->g_updated;
+        ti_end_min = min(cp->ti_end_min, ti_end_min);
+        ti_end_max = max(cp->ti_end_max, ti_end_max);
+      }
+  }
+
+  /* Store the values. */
+  c->updated = updated;
+  c->g_updated = g_updated;
+  c->ti_end_min = ti_end_min;
+  c->ti_end_max = ti_end_max;
+
+  if (timer) TIMER_TOC(timer_kick);
+}
+
+/**
+ * @brief Kick particles in momentum space and collect statistics (floating
+ * time-step case)
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_kick(struct runner *r, struct cell *c, int timer) {
+
+  const struct engine *e = r->e;
+  const double timeBase = e->timeBase;
+  const int ti_current = r->e->ti_current;
+  const int count = c->count;
+  const int gcount = c->gcount;
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  struct gpart *const gparts = c->gparts;
+
+  int updated = 0, g_updated = 0;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
 
   TIMER_TIC
 
@@ -754,78 +880,16 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id < 0) {
 
-        if (is_fixdt || gp->ti_end <= ti_current) {
+        if (gp->ti_end <= ti_current) {
 
           /* First, finish the force calculation */
-          gravity_end_force(gp, const_G);
+          gravity_end_force(gp);
 
-          if (gp->id == -ICHECK)
-            message("id=%lld a=[%f %f %f] M=%f\n", gp->id, gp->a_grav[0],
-                    gp->a_grav[1], gp->a_grav[2], gp->mass_interacted);
+          /* Compute the next timestep */
+          const int new_dti = get_gpart_timestep(gp, e);
 
-          /* Now we are ready to compute the next time-step size */
-          int new_dti;
-
-          if (is_fixdt) {
-
-            /* Now we have a time step, proceed with the kick */
-            new_dti = global_dt_max * timeBase_inv;
-
-          } else {
-
-            /* Compute the next timestep (gravity condition) */
-            const float new_dt_external =
-                gravity_compute_timestep_external(potential, constants, gp);
-            const float new_dt_self =
-                gravity_compute_timestep_self(constants, gp);
-
-            float new_dt = fminf(new_dt_external, new_dt_self);
-
-            /* Limit timestep within the allowed range */
-            new_dt = fminf(new_dt, global_dt_max);
-            new_dt = fmaxf(new_dt, global_dt_min);
-
-            /* Convert to integer time */
-            new_dti = new_dt * timeBase_inv;
-
-            /* Recover the current timestep */
-            const int current_dti = gp->ti_end - gp->ti_begin;
-
-            /* Limit timestep increase */
-            if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
-
-            /* Put this timestep on the time line */
-            int dti_timeline = max_nr_timesteps;
-            while (new_dti < dti_timeline) dti_timeline /= 2;
-
-            new_dti = dti_timeline;
-
-            /* Make sure we are allowed to increase the timestep size */
-            if (new_dti > current_dti) {
-              if ((max_nr_timesteps - gp->ti_end) % new_dti > 0)
-                new_dti = current_dti;
-            }
-
-            /* Now we have a time step, proceed with the kick */
-          }
-
-          /* Compute the time step for this kick */
-          const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
-          const int ti_end = gp->ti_end + new_dti / 2;
-          const double dt = (ti_end - ti_start) * timeBase;
-          const double half_dt = (ti_end - gp->ti_end) * timeBase;
-
-          /* Move particle forward in time */
-          gp->ti_begin = gp->ti_end;
-          gp->ti_end = gp->ti_begin + new_dti;
-
-          /* Kick particles in momentum space */
-          gp->v_full[0] += gp->a_grav[0] * dt;
-          gp->v_full[1] += gp->a_grav[1] * dt;
-          gp->v_full[2] += gp->a_grav[2] * dt;
-
-          /* Extra kick work */
-          gravity_kick_extra(gp, dt, half_dt);
+          /* Now we have a time step, proceed with the kick */
+          kick_gpart(gp, new_dti, timeBase);
 
           /* Number of updated g-particles */
           g_updated++;
@@ -847,150 +911,25 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       struct xpart *const xp = &xparts[k];
 
       /* If particle needs to be kicked */
-      if (is_fixdt || p->ti_end <= ti_current) {
+      if (p->ti_end <= ti_current) {
 
         /* First, finish the force loop */
         p->h_dt *= p->h * 0.333333333f;
 
         /* And do the same of the extra variable */
         hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
+        if (p->gpart != NULL) gravity_end_force(p->gpart);
 
-        /* Now we are ready to compute the next time-step size */
-        int new_dti;
+        /* Compute the next timestep (hydro condition) */
+        const int new_dti = get_part_timestep(p, xp, e);
 
-        if (is_fixdt) {
-
-          /* Now we have a time step, proceed with the kick */
-          new_dti = global_dt_max * timeBase_inv;
-
-        } else {
-
-          /* Compute the next timestep (hydro condition) */
-          const float new_dt_hydro =
-              hydro_compute_timestep(p, xp, hydro_properties);
-
-          /* Compute the next timestep (gravity condition) */
-          float new_dt_grav = FLT_MAX;
-          if (p->gpart != NULL) {
-
-            const float new_dt_external = gravity_compute_timestep_external(
-                potential, constants, p->gpart);
-            const float new_dt_self =
-                gravity_compute_timestep_self(constants, p->gpart);
-
-            new_dt_grav = fminf(new_dt_external, new_dt_self);
-          }
-
-          /* Final time-step is minimum of hydro and gravity */
-          float new_dt = fminf(new_dt_hydro, new_dt_grav);
-
-          /* Limit change in h */
-          const float dt_h_change =
-              (p->h_dt != 0.0f) ? fabsf(ln_max_h_change * p->h / p->h_dt)
-                                : FLT_MAX;
-
-          new_dt = fminf(new_dt, dt_h_change);
-
-          /* Limit timestep within the allowed range */
-          new_dt = fminf(new_dt, global_dt_max);
-          new_dt = fmaxf(new_dt, global_dt_min);
-
-          /* Convert to integer time */
-          new_dti = new_dt * timeBase_inv;
-
-          /* Recover the current timestep */
-          const int current_dti = p->ti_end - p->ti_begin;
-
-          /* Limit timestep increase */
-          if (current_dti > 0) new_dti = min(new_dti, 2 * current_dti);
-
-          /* Put this timestep on the time line */
-          int dti_timeline = max_nr_timesteps;
-          while (new_dti < dti_timeline) dti_timeline /= 2;
-
-          new_dti = dti_timeline;
-
-          /* Make sure we are allowed to increase the timestep size */
-          if (new_dti > current_dti) {
-            if ((max_nr_timesteps - p->ti_end) % new_dti > 0)
-              new_dti = current_dti;
-          }
-
-          /* Now we have a time step, proceed with the kick */
-        }
-
-        /* Compute the time step for this kick */
-        const int ti_start = (p->ti_begin + p->ti_end) / 2;
-        const int ti_end = p->ti_end + new_dti / 2;
-        const double dt = (ti_end - ti_start) * timeBase;
-        const double half_dt = (ti_end - p->ti_end) * timeBase;
-
-        /* Move particle forward in time */
-        p->ti_begin = p->ti_end;
-        p->ti_end = p->ti_begin + new_dti;
-        if (p->gpart != NULL) {
-          p->gpart->ti_begin = p->ti_begin;
-          p->gpart->ti_end = p->ti_end;
-        }
-
-        /* Get the acceleration */
-        float a_tot[3] = {p->a_hydro[0], p->a_hydro[1], p->a_hydro[2]};
-        if (p->gpart != NULL) {
-          a_tot[0] += p->gpart->a_grav[0];
-          a_tot[1] += p->gpart->a_grav[1];
-          a_tot[1] += p->gpart->a_grav[2];
-        }
-
-        /* Kick particles in momentum space */
-        xp->v_full[0] += a_tot[0] * dt;
-        xp->v_full[1] += a_tot[1] * dt;
-        xp->v_full[2] += a_tot[2] * dt;
-
-        if (p->gpart != NULL) {
-          p->gpart->v_full[0] = xp->v_full[0];
-          p->gpart->v_full[1] = xp->v_full[1];
-          p->gpart->v_full[2] = xp->v_full[2];
-        }
-
-        /* Go back by half-step for the hydro velocity */
-        p->v[0] = xp->v_full[0] - half_dt * a_tot[0];
-        p->v[1] = xp->v_full[1] - half_dt * a_tot[1];
-        p->v[2] = xp->v_full[2] - half_dt * a_tot[2];
-
-        /* Extra kick work */
-        hydro_kick_extra(p, xp, dt, half_dt);
-        if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt, half_dt);
+        /* Now we have a time step, proceed with the kick */
+        kick_part(p, xp, new_dti, timeBase);
 
         /* Number of updated particles */
         updated++;
         if (p->gpart != NULL) g_updated++;
       }
-
-      /* Now collect quantities for statistics */
-
-      const double x[3] = {p->x[0], p->x[1], p->x[2]};
-      const float v_full[3] = {xp->v_full[0], xp->v_full[1], xp->v_full[2]};
-      const float m = p->mass;
-
-      /* Collect mass */
-      mass += m;
-
-      /* Collect momentum */
-      mom[0] += m * v_full[0];
-      mom[1] += m * v_full[1];
-      mom[2] += m * v_full[2];
-
-      /* Collect angular momentum */
-      ang[0] += m * (x[1] * v_full[2] - x[2] * v_full[1]);
-      ang[1] += m * (x[2] * v_full[0] - x[0] * v_full[2]);
-      ang[2] += m * (x[0] * v_full[1] - x[1] * v_full[0]);
-
-      /* Collect total energy. */
-      e_kin += 0.5 * m * (v_full[0] * v_full[0] + v_full[1] * v_full[1] +
-                          v_full[2] * v_full[2]);
-      e_pot += 0.f; /* No gravitational potential thus far */
-      e_int += hydro_get_internal_energy(p);
 
       /* Minimal time for next end of time-step */
       ti_end_min = min(p->ti_end, ti_end_min);
@@ -1012,16 +951,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         /* And aggregate */
         updated += cp->updated;
         g_updated += cp->g_updated;
-        e_kin += cp->e_kin;
-        e_int += cp->e_int;
-        e_pot += cp->e_pot;
-        mass += cp->mass;
-        mom[0] += cp->mom[0];
-        mom[1] += cp->mom[1];
-        mom[2] += cp->mom[2];
-        ang[0] += cp->ang[0];
-        ang[1] += cp->ang[1];
-        ang[2] += cp->ang[2];
         ti_end_min = min(cp->ti_end_min, ti_end_min);
         ti_end_max = max(cp->ti_end_max, ti_end_max);
       }
@@ -1030,16 +959,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   /* Store the values. */
   c->updated = updated;
   c->g_updated = g_updated;
-  c->e_kin = e_kin;
-  c->e_int = e_int;
-  c->e_pot = e_pot;
-  c->mass = mass;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang[0] = ang[0];
-  c->ang[1] = ang[1];
-  c->ang[2] = ang[2];
   c->ti_end_min = ti_end_min;
   c->ti_end_max = ti_end_max;
 
@@ -1130,6 +1049,7 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
+      t->last_rid = r->cpuid;
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1138,8 +1058,6 @@ void *runner_main(void *data) {
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
-          else if (t->subtype == task_subtype_grav)
-            runner_doself_grav(r, ci);
           else
             error("Unknown task subtype.");
           break;
@@ -1148,8 +1066,6 @@ void *runner_main(void *data) {
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
-          else if (t->subtype == task_subtype_grav)
-            runner_dopair_grav(r, ci, cj);
           else
             error("Unknown task subtype.");
           break;
@@ -1177,6 +1093,9 @@ void *runner_main(void *data) {
           break;
         case task_type_kick:
           runner_do_kick(r, ci, 1);
+          break;
+        case task_type_kick_fixdt:
+          runner_do_kick_fixdt(r, ci, 1);
           break;
         case task_type_send:
           break;

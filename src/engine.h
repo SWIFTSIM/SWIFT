@@ -132,6 +132,13 @@ struct engine {
 
   /* Time base */
   double timeBase;
+  double timeBase_inv;
+
+  /* Minimal ti_end for the next time-step */
+  int ti_end_min;
+
+  /* Number of particles updated */
+  size_t updates, g_updates;
 
   /* Snapshot information */
   double timeFirstSnapshot;
@@ -140,8 +147,10 @@ struct engine {
   char snapshotBaseName[200];
   struct UnitSystem *snapshotUnits;
 
-  /* File for statistics */
+  /* Statistics information */
   FILE *file_stats;
+  double timeLastStatistics;
+  double deltaTimeStatistics;
 
   /* The current step number. */
   int step;
@@ -161,8 +170,8 @@ struct engine {
   struct proxy *proxies;
   int nr_proxies, *proxy_ind;
 
-  /* Tic at the start of a step. */
-  ticks tic_step;
+  /* Tic/toc at the start/end of a step. */
+  ticks tic_step, toc_step;
 
   /* Wallclock time of the last time-step */
   float wallclock_time;
@@ -189,6 +198,9 @@ struct engine {
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
+
+  /* The (parsed) parameter file */
+  const struct swift_params *parameter_file;
 };
 
 /* Function prototypes. */
@@ -197,7 +209,7 @@ void engine_compute_next_snapshot_time(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int policy, int verbose,
+                 int nr_threads, int with_aff, int policy, int verbose,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential);
@@ -219,5 +231,7 @@ void engine_redistribute(struct engine *e);
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
+void engine_pin();
+void engine_unpin();
 
 #endif /* SWIFT_ENGINE_H */

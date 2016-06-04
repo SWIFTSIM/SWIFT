@@ -100,8 +100,9 @@ void printgParticle(struct gpart *gparts, long long int id, size_t N) {
 
 void printParticle_single(struct part *p, struct xpart *xp) {
 
-  printf("## Particle: id=%lld", p->id);
+  printf("## Particle: id=%lld ", p->id);
   hydro_debug_particle(p, xp);
+  printf("\n");
 }
 
 #ifdef HAVE_METIS

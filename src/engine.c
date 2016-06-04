@@ -73,6 +73,11 @@ const char *engine_policy_names[13] = {
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
+#ifdef HAVE_SETAFFINITY
+/** The initial affinity of the main thread (set by engin_pin()) */
+static cpu_set_t entry_affinity;
+#endif
+
 /**
  * @brief Link a density/force task to a cell.
  *
@@ -113,6 +118,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_with_external_gravity =
       (e->policy & engine_policy_external_gravity) ==
       engine_policy_external_gravity;
+  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Am I the super-cell? */
   if (super == NULL && (c->count > 0 || c->gcount > 0)) {
@@ -131,9 +137,14 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
                                    c, NULL, 0);
 
-      /* Add the kick task. */
-      c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      /* Add the kick task that matches the policy. */
+      if (is_fixdt) {
+        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
+                                    0, 0, c, NULL, 0);
+      } else {
+        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
+      }
 
       if (c->count > 0) {
 
@@ -1830,7 +1841,6 @@ void engine_prepare(struct engine *e) {
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
 #endif
-  e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
@@ -1892,8 +1902,9 @@ void engine_barrier(struct engine *e, int tid) {
 
 /**
  * @brief Mapping function to collect the data from the kick.
+ *
+ * @param c A super-cell.
  */
-
 void engine_collect_kick(struct cell *c) {
 
   /* Skip super-cells (Their values are already set) */
@@ -1901,9 +1912,103 @@ void engine_collect_kick(struct cell *c) {
 
   /* Counters for the different quantities. */
   int updated = 0, g_updated = 0;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0;
-  float mom[3] = {0.0f, 0.0f, 0.0f}, ang[3] = {0.0f, 0.0f, 0.0f};
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  int ti_end_min = max_nr_timesteps;
+
+  /* Only do something is the cell is non-empty */
+  if (c->count != 0 || c->gcount != 0) {
+
+    /* If this cell is not split, I'm in trouble. */
+    if (!c->split) error("Cell is not split.");
+
+    /* Collect the values from the progeny. */
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL) {
+
+        /* Recurse */
+        engine_collect_kick(cp);
+
+        /* And update */
+        ti_end_min = min(ti_end_min, cp->ti_end_min);
+        updated += cp->updated;
+        g_updated += cp->g_updated;
+      }
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->ti_end_min = ti_end_min;
+  c->updated = updated;
+  c->g_updated = g_updated;
+}
+
+/**
+ * @brief Collects the next time-step by making each super-cell recurse
+ * to collect the minimal of ti_end and the number of updated particles.
+ *
+ * @param e The #engine.
+ */
+void engine_collect_timestep(struct engine *e) {
+
+  int updates = 0, g_updates = 0;
+  int ti_end_min = max_nr_timesteps;
+  const struct space *s = e->s;
+
+  /* Collect the cell data. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (s->cells[k].nodeID == e->nodeID) {
+      struct cell *c = &s->cells[k];
+
+      /* Make the top-cells recurse */
+      engine_collect_kick(c);
+
+      /* And aggregate */
+      ti_end_min = min(ti_end_min, c->ti_end_min);
+      updates += c->updated;
+      g_updates += c->g_updated;
+    }
+
+/* Aggregate the data from the different nodes. */
+#ifdef WITH_MPI
+  {
+    int in_i[1], out_i[1];
+    in_i[0] = 0;
+    out_i[0] = ti_end_min;
+    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate t_end_min.");
+    ti_end_min = in_i[0];
+  }
+  {
+    unsigned long long in_ll[2], out_ll[2];
+    out_ll[0] = updates;
+    out_ll[1] = g_updates;
+    if (MPI_Allreduce(out_ll, in_ll, 2, MPI_LONG_LONG_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to aggregate energies.");
+    updates = in_ll[0];
+    g_updates = in_ll[1];
+  }
+#endif
+
+  e->ti_end_min = ti_end_min;
+  e->updates = updates;
+  e->g_updates = g_updates;
+}
+
+/**
+ * @brief Mapping function to collect the data from the drift.
+ *
+ * @param c A super-cell.
+ */
+void engine_collect_drift(struct cell *c) {
+
+  /* Skip super-cells (Their values are already set) */
+  if (c->drift != NULL) return;
+
+  /* Counters for the different quantities. */
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
 
   /* Only do something is the cell is non-empty */
   if (c->count != 0 || c->gcount != 0) {
@@ -1917,40 +2022,105 @@ void engine_collect_kick(struct cell *c) {
       if (cp != NULL) {
 
         /* Recurse */
-        engine_collect_kick(cp);
+        engine_collect_drift(cp);
 
         /* And update */
-        ti_end_min = min(ti_end_min, cp->ti_end_min);
-        ti_end_max = max(ti_end_max, cp->ti_end_max);
-        updated += cp->updated;
-        g_updated += cp->g_updated;
+        mass += cp->mass;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
         mom[2] += cp->mom[2];
-        ang[0] += cp->ang[0];
-        ang[1] += cp->ang[1];
-        ang[2] += cp->ang[2];
+        ang_mom[0] += cp->ang_mom[0];
+        ang_mom[1] += cp->ang_mom[1];
+        ang_mom[2] += cp->ang_mom[2];
       }
     }
   }
 
   /* Store the collected values in the cell. */
-  c->ti_end_min = ti_end_min;
-  c->ti_end_max = ti_end_max;
-  c->updated = updated;
-  c->g_updated = g_updated;
+  c->mass = mass;
   c->e_kin = e_kin;
   c->e_int = e_int;
   c->e_pot = e_pot;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];
-  c->ang[0] = ang[0];
-  c->ang[1] = ang[1];
-  c->ang[2] = ang[2];
+  c->ang_mom[0] = ang_mom[0];
+  c->ang_mom[1] = ang_mom[1];
+  c->ang_mom[2] = ang_mom[2];
+}
+
+void engine_print_stats(struct engine *e) {
+
+  const struct space *s = e->s;
+
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
+
+  /* Collect the cell data. */
+  for (int k = 0; k < s->nr_cells; k++)
+    if (s->cells[k].nodeID == e->nodeID) {
+      struct cell *c = &s->cells[k];
+
+      /* Make the top-cells recurse */
+      engine_collect_drift(c);
+
+      /* And aggregate */
+      mass += c->mass;
+      e_kin += c->e_kin;
+      e_int += c->e_int;
+      e_pot += c->e_pot;
+      mom[0] += c->mom[0];
+      mom[1] += c->mom[1];
+      mom[2] += c->mom[2];
+      ang_mom[0] += c->ang_mom[0];
+      ang_mom[1] += c->ang_mom[1];
+      ang_mom[2] += c->ang_mom[2];
+    }
+
+/* Aggregate the data from the different nodes. */
+#ifdef WITH_MPI
+  {
+    double in[10] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
+    double out[10];
+    out[0] = e_kin;
+    out[1] = e_int;
+    out[2] = e_pot;
+    out[3] = mom[0];
+    out[4] = mom[1];
+    out[5] = mom[2];
+    out[6] = ang_mom[0];
+    out[7] = ang_mom[1];
+    out[8] = ang_mom[2];
+    out[9] = mass;
+    if (MPI_Allreduce(out, in, 10, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
+        MPI_SUCCESS)
+      error("Failed to aggregate stats.");
+    e_kin = out[0];
+    e_int = out[1];
+    e_pot = out[2];
+    mom[0] = out[3];
+    mom[1] = out[4];
+    mom[2] = out[5];
+    ang_mom[0] = out[6];
+    ang_mom[1] = out[7];
+    ang_mom[2] = out[8];
+    mass = out[9];
+  }
+#endif
+
+  const double e_tot = e_kin + e_int + e_pot;
+
+  /* Print info */
+  if (e->nodeID == 0) {
+    fprintf(e->file_stats,
+            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+            e->time, mass, e_tot, e_kin, e_int, e_pot, mom[0], mom[1], mom[2],
+            ang_mom[0], ang_mom[1], ang_mom[2]);
+    fflush(e->file_stats);
+  }
 }
 
 /**
@@ -1961,7 +2131,6 @@ void engine_collect_kick(struct cell *c) {
  * @param mask The task mask to launch.
  * @param submask The sub-task mask to launch.
  */
-
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask) {
 
@@ -2006,17 +2175,17 @@ void engine_init_particles(struct engine *e) {
 
   if (e->nodeID == 0) message("Initialising particles");
 
+  engine_prepare(e);
+
   /* Make sure all particles are ready to go */
   /* i.e. clean-up any stupid state in the ICs */
   if (e->policy & engine_policy_hydro) {
-    space_map_cells_pre(s, 1, cell_init_parts, NULL);
+    space_map_cells_pre(s, 0, cell_init_parts, NULL);
   }
   if ((e->policy & engine_policy_self_gravity) ||
       (e->policy & engine_policy_external_gravity)) {
-    space_map_cells_pre(s, 1, cell_init_gparts, NULL);
+    space_map_cells_pre(s, 0, cell_init_gparts, NULL);
   }
-
-  engine_prepare(e);
 
   engine_marktasks(e);
 
@@ -2086,84 +2255,27 @@ void engine_init_particles(struct engine *e) {
  */
 void engine_step(struct engine *e) {
 
-  int updates = 0, g_updates = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  double e_pot = 0.0, e_int = 0.0, e_kin = 0.0;
-  float mom[3] = {0.0, 0.0, 0.0};
-  float ang[3] = {0.0, 0.0, 0.0};
-  struct space *s = e->s;
+  double snapshot_drift_time = 0.;
 
   TIMER_TIC2;
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  /* Collect the cell data. */
-  for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells[k];
+  e->tic_step = getticks();
 
-      /* Recurse */
-      engine_collect_kick(c);
-
-      /* And aggregate */
-      ti_end_min = min(ti_end_min, c->ti_end_min);
-      ti_end_max = max(ti_end_max, c->ti_end_max);
-      e_kin += c->e_kin;
-      e_int += c->e_int;
-      e_pot += c->e_pot;
-      updates += c->updated;
-      g_updates += c->g_updated;
-      mom[0] += c->mom[0];
-      mom[1] += c->mom[1];
-      mom[2] += c->mom[2];
-      ang[0] += c->ang[0];
-      ang[1] += c->ang[1];
-      ang[2] += c->ang[2];
-    }
-
-/* Aggregate the data from the different nodes. */
-#ifdef WITH_MPI
-  {
-    int in_i[1], out_i[1];
-    in_i[0] = 0;
-    out_i[0] = ti_end_min;
-    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate t_end_min.");
-    ti_end_min = in_i[0];
-    out_i[0] = ti_end_max;
-    if (MPI_Allreduce(out_i, in_i, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate t_end_max.");
-    ti_end_max = in_i[0];
-  }
-  {
-    double in_d[5], out_d[5];
-    out_d[0] = updates;
-    out_d[1] = g_updates;
-    out_d[2] = e_kin;
-    out_d[3] = e_int;
-    out_d[4] = e_pot;
-    if (MPI_Allreduce(out_d, in_d, 5, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
-        MPI_SUCCESS)
-      error("Failed to aggregate energies.");
-    updates = in_d[0];
-    g_updates = in_d[1];
-    e_kin = in_d[2];
-    e_int = in_d[3];
-    e_pot = in_d[4];
-  }
-#endif
+  /* Recover the (integer) end of the next time-step */
+  engine_collect_timestep(e);
 
   /* Check for output */
-  while (ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) {
+  while (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) {
 
     e->ti_old = e->ti_current;
     e->ti_current = e->ti_nextSnapshot;
     e->time = e->ti_current * e->timeBase + e->timeBegin;
     e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
     e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+    snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
     engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -2177,11 +2289,11 @@ void engine_step(struct engine *e) {
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
-  e->ti_current = ti_end_min;
+  e->ti_current = e->ti_end_min;
   e->step += 1;
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
-  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase;
+  e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
 
   /* Drift everybody */
   engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
@@ -2189,15 +2301,15 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10d %10d %21.3f\n", e->step, e->time, e->timeStep,
-           updates, g_updates, e->wallclock_time);
+    printf("  %6d %14e %14e %10zd %10zd %21.3f\n", e->step, e->time,
+           e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(stdout);
+  }
 
-    /* Write some energy statistics */
-    fprintf(e->file_stats, "%d %f %f %f %f %f %f %f %f %f %f %f\n", e->step,
-            e->time, e_kin, e_int, e_pot, e_kin + e_int + e_pot, mom[0], mom[1],
-            mom[2], ang[0], ang[1], ang[2]);
-    fflush(e->file_stats);
+  /* Save some statistics */
+  if (e->time - e->timeLastStatistics >= e->deltaTimeStatistics) {
+    engine_print_stats(e);
+    e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
   /* Re-distribute the particles amongst the nodes? */
@@ -2209,10 +2321,16 @@ void engine_step(struct engine *e) {
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0, submask = 0;
 
-  /* We always have sort tasks and kick tasks */
+  /* We always have sort tasks and init tasks */
   mask |= 1 << task_type_sort;
-  mask |= 1 << task_type_kick;
   mask |= 1 << task_type_init;
+
+  /* Add the correct kick task */
+  if (e->policy & engine_policy_fixdt) {
+    mask |= 1 << task_type_kick_fixdt;
+  } else {
+    mask |= 1 << task_type_kick;
+  }
 
   /* Add the tasks corresponding to hydro operations to the masks */
   if (e->policy & engine_policy_hydro) {
@@ -2295,6 +2413,7 @@ void engine_step(struct engine *e) {
   clocks_gettime(&time2);
 
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
+  e->toc_step = getticks();
 }
 
 /**
@@ -2525,23 +2644,58 @@ void engine_dump_snapshot(struct engine *e) {
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 }
 
-#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-static bool hyperthreads_present(void) {
-#ifdef __linux__
-  FILE *f =
-      fopen("/sys/devices/system/cpu/cpu0/topology/thread_siblings_list", "r");
+#ifdef HAVE_SETAFFINITY
+/**
+ * @brief Returns the initial affinity the main thread is using.
+ */
+static cpu_set_t *engine_entry_affinity() {
 
-  int c;
-  while ((c = fgetc(f)) != EOF && c != ',')
-    ;
-  fclose(f);
+  static int use_entry_affinity = 0;
 
-  return c == ',';
-#else
-  return true;  // just guess
-#endif
+  if (!use_entry_affinity) {
+    pthread_t engine = pthread_self();
+    pthread_getaffinity_np(engine, sizeof(entry_affinity), &entry_affinity);
+    use_entry_affinity = 1;
+  }
+
+  return &entry_affinity;
 }
 #endif
+
+/**
+ * @brief  Ensure the NUMA node on which we initialise (first touch) everything
+ *  doesn't change before engine_init allocates NUMA-local workers.
+ */
+void engine_pin() {
+
+#ifdef HAVE_SETAFFINITY
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+  int pin;
+  for (pin = 0; pin < CPU_SETSIZE && !CPU_ISSET(pin, entry_affinity); ++pin)
+    ;
+
+  cpu_set_t affinity;
+  CPU_ZERO(&affinity);
+  CPU_SET(pin, &affinity);
+  if (sched_setaffinity(0, sizeof(affinity), &affinity) != 0) {
+    error("failed to set engine's affinity");
+  }
+#else
+  error("SWIFT was not compiled with support for pinning.");
+#endif
+}
+
+/**
+ * @brief Unpins the main thread.
+ */
+void engine_unpin() {
+#ifdef HAVE_SETAFFINITY
+  pthread_t main_thread = pthread_self();
+  pthread_setaffinity_np(main_thread, sizeof(entry_affinity), &entry_affinity);
+#else
+  error("SWIFT was not compiled with support for pinning.");
+#endif
+}
 
 /**
  * @brief init an engine with the given number of threads, queues, and
@@ -2553,6 +2707,7 @@ static bool hyperthreads_present(void) {
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param nr_threads The number of threads per MPI rank.
+ * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
  * @param physical_constants The #phys_const used for this run.
@@ -2562,7 +2717,7 @@ static bool hyperthreads_present(void) {
 
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int policy, int verbose,
+                 int nr_threads, int with_aff, int policy, int verbose,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential) {
@@ -2591,6 +2746,7 @@ void engine_init(struct engine *e, struct space *s,
   e->ti_current = 0;
   e->timeStep = 0.;
   e->timeBase = 0.;
+  e->timeBase_inv = 0.;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
   e->deltaTimeSnapshot =
@@ -2602,12 +2758,16 @@ void engine_init(struct engine *e, struct space *s,
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
+  e->deltaTimeStatistics =
+      parser_get_param_double(params, "Statistics:delta_time");
+  e->timeLastStatistics = e->timeBegin - e->deltaTimeStatistics;
   e->verbose = verbose;
   e->count_step = 0;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
   e->hydro_properties = hydro;
   e->external_potential = potential;
+  e->parameter_file = params;
   engine_rank = nodeID;
 
   /* Make the space link back to the engine. */
@@ -2618,74 +2778,117 @@ void engine_init(struct engine *e, struct space *s,
   if (nr_queues <= 0) nr_queues = e->nr_threads;
   s->nr_queues = nr_queues;
 
+/* Deal with affinity. For now, just figure out the number of cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
-  int cpuid[nr_cores];
-  cpu_set_t cpuset;
-  if ((policy & engine_policy_cputight) == engine_policy_cputight) {
-    for (int k = 0; k < nr_cores; k++) cpuid[k] = k;
-  } else {
-    /*  Get next highest power of 2. */
-    int maxint = 1;
-    while (maxint < nr_cores) maxint *= 2;
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+  const int nr_affinity_cores = CPU_COUNT(entry_affinity);
 
-    cpuid[0] = 0;
-    int k = 1;
-    for (int i = 1; i < maxint; i *= 2)
-      for (int j = maxint / i / 2; j < maxint; j += maxint / i)
-        if (j < nr_cores && j != 0) cpuid[k++] = j;
+  if (nr_cores > CPU_SETSIZE) /* Unlikely, except on e.g. SGI UV. */
+    error("must allocate dynamic cpu_set_t (too many cores per node)");
+
+  char *buf = malloc((nr_cores + 1) * sizeof(char));
+  buf[nr_cores] = '\0';
+  for (int j = 0; j < nr_cores; ++j) {
+    /* Reversed bit order from convention, but same as e.g. Intel MPI's
+     * I_MPI_PIN_DOMAIN explicit mask: left-to-right, LSB-to-MSB. */
+    buf[j] = CPU_ISSET(j, entry_affinity) ? '1' : '0';
+  }
+
+  if (verbose && with_aff) message("Affinity at entry: %s", buf);
+
+  int *cpuid = malloc(nr_affinity_cores * sizeof(int));
+  cpu_set_t cpuset;
+
+  int skip = 0;
+  for (int k = 0; k < nr_affinity_cores; k++) {
+    int c;
+    for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
+      ;
+    cpuid[k] = c;
+    skip = c + 1;
+  }
+
+  if (with_aff) {
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-    /* Ascending NUMA distance. Bubblesort(!) for stable equidistant CPUs. */
-    if (numa_available() >= 0) {
-      if (nodeID == 0) message("prefer NUMA-local CPUs");
+    if ((policy & engine_policy_cputight) != engine_policy_cputight) {
 
-      const int home = numa_node_of_cpu(sched_getcpu());
-      const int half = nr_cores / 2;
-      const bool swap_hyperthreads = hyperthreads_present();
-      bool done = false;
-      if (swap_hyperthreads && nodeID == 0)
-        message("prefer physical cores to hyperthreads");
+      if (numa_available() >= 0) {
+        if (nodeID == 0) message("prefer NUMA-distant CPUs");
 
-      while (!done) {
-        done = true;
-        for (int i = 1; i < nr_cores; i++) {
-          const int node_a = numa_node_of_cpu(cpuid[i - 1]);
-          const int node_b = numa_node_of_cpu(cpuid[i]);
+        /* Get list of numa nodes of all available cores. */
+        int *nodes = malloc(nr_affinity_cores * sizeof(int));
+        int nnodes = 0;
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          nodes[i] = numa_node_of_cpu(cpuid[i]);
+          if (nodes[i] > nnodes) nnodes = nodes[i];
+        }
+        nnodes += 1;
 
-          /* Avoid using local hyperthreads over unused remote physical cores.
-           * Assume two hyperthreads, and that cpuid >= half partitions them.
-           */
-          const int thread_a = swap_hyperthreads && cpuid[i - 1] >= half;
-          const int thread_b = swap_hyperthreads && cpuid[i] >= half;
+        /* Count cores per node. */
+        int *core_counts = malloc(nnodes * sizeof(int));
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          core_counts[nodes[i]] = 0;
+        }
+        for (int i = 0; i < nr_affinity_cores; i++) {
+          core_counts[nodes[i]] += 1;
+        }
 
-          bool swap = thread_a > thread_b;
-          if (thread_a == thread_b)
-            swap = numa_distance(home, node_a) > numa_distance(home, node_b);
+        /* Index cores within each node. */
+        int *core_indices = malloc(nr_affinity_cores * sizeof(int));
+        for (int i = nr_affinity_cores - 1; i >= 0; i--) {
+          core_indices[i] = core_counts[nodes[i]];
+          core_counts[nodes[i]] -= 1;
+        }
 
-          if (swap) {
-            const int t = cpuid[i - 1];
-            cpuid[i - 1] = cpuid[i];
-            cpuid[i] = t;
-            done = false;
+        /* Now sort so that we pick adjacent cpuids from different nodes
+         * by sorting internal node core indices. */
+        int done = 0;
+        while (!done) {
+          done = 1;
+          for (int i = 1; i < nr_affinity_cores; i++) {
+            if (core_indices[i] < core_indices[i - 1]) {
+              int t = cpuid[i - 1];
+              cpuid[i - 1] = cpuid[i];
+              cpuid[i] = t;
+
+              t = core_indices[i - 1];
+              core_indices[i - 1] = core_indices[i];
+              core_indices[i] = t;
+              done = 0;
+            }
           }
         }
+
+        free(nodes);
+        free(core_counts);
+        free(core_indices);
       }
     }
 #endif
+  } else {
+    if (nodeID == 0) message("no processor affinity used");
 
-    if (nodeID == 0) {
+  } /* with_aff */
+
+  /* Avoid (unexpected) interference between engine and runner threads. We can
+   * do this once we've made at least one call to engine_entry_affinity and
+   * maybe numa_node_of_cpu(sched_getcpu()), even if the engine isn't already
+   * pinned. Also unpin this when asked to not pin at all (!with_aff). */
+  engine_unpin();
+#endif
+
+  if (with_aff) {
 #ifdef WITH_MPI
-      printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
-             clocks_get_timesincestart());
+    printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
+           clocks_get_timesincestart());
 #else
-      printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
+    printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
 #endif
-      for (int i = 0; i < nr_cores; i++) printf("%i ", cpuid[i]);
-      printf("].\n");
-    }
+    for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
+    printf("].\n");
   }
-#endif
 
   /* Are we doing stuff in parallel? */
   if (nr_nodes > 1) {
@@ -2705,8 +2908,10 @@ void engine_init(struct engine *e, struct space *s,
   if (e->nodeID == 0) {
     e->file_stats = fopen("energy.txt", "w");
     fprintf(e->file_stats,
-            "# Step Time E_kin E_int E_pot E_tot "
-            "p_x p_y p_z ang_x ang_y ang_z\n");
+            "# %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x", "p_y",
+            "p_z", "ang_x", "ang_y", "ang_z");
+    fflush(e->file_stats);
   }
 
   /* Print policy */
@@ -2732,6 +2937,7 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Deal with timestep */
   e->timeBase = (e->timeEnd - e->timeBegin) / max_nr_timesteps;
+  e->timeBase_inv = 1.0 / e->timeBase;
   e->ti_current = 0;
 
   /* Fixed time-step case */
@@ -2828,19 +3034,24 @@ void engine_init(struct engine *e, struct space *s,
     if (pthread_create(&e->runners[k].thread, NULL, &runner_main,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
-    if (e->policy & engine_policy_setaffinity) {
+
+    /* Try to pin the runner to a given core */
+    if (with_aff &&
+        (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
 
       /* Set a reasonable queue ID. */
-      e->runners[k].cpuid = cpuid[k % nr_cores];
+      int coreid = k % nr_affinity_cores;
+      e->runners[k].cpuid = cpuid[coreid];
+
       if (nr_queues < e->nr_threads)
-        e->runners[k].qid = cpuid[k % nr_cores] * nr_queues / nr_cores;
+        e->runners[k].qid = cpuid[coreid] * nr_queues / nr_affinity_cores;
       else
         e->runners[k].qid = k;
 
       /* Set the cpu mask to zero | e->id. */
       CPU_ZERO(&cpuset);
-      CPU_SET(cpuid[k % nr_cores], &cpuset);
+      CPU_SET(cpuid[coreid], &cpuset);
 
       /* Apply this mask to the runner's pthread. */
       if (pthread_setaffinity_np(e->runners[k].thread, sizeof(cpu_set_t),
@@ -2854,9 +3065,23 @@ void engine_init(struct engine *e, struct space *s,
       e->runners[k].cpuid = k;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
-    /* message( "runner %i on cpuid=%i with qid=%i." , e->runners[k].id , */
-    /* 	      e->runners[k].cpuid , e->runners[k].qid ); */
+    if (verbose) {
+      if (with_aff)
+        message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
+                e->runners[k].cpuid, e->runners[k].qid);
+      else
+        message("runner %i using qid=%i no cpuid.", e->runners[k].id,
+                e->runners[k].qid);
+    }
   }
+
+/* Free the affinity stuff */
+#if defined(HAVE_SETAFFINITY)
+  if (with_aff) {
+    free(cpuid);
+    free(buf);
+  }
+#endif
 
   /* Wait for the runner threads to be in place. */
   while (e->barrier_running || e->barrier_launch)

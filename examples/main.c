@@ -52,6 +52,7 @@ void print_help_message() {
 
   printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
   printf("Valid options are:\n");
+  printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
   printf(
       "  %2s %8s %s\n", "-d", "",
@@ -88,6 +89,7 @@ void print_help_message() {
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
+
 int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
@@ -121,24 +123,17 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 #endif
 
+/* Let's pin the main thread */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if ((ENGINE_POLICY) & engine_policy_setaffinity) {
-    /* Ensure the NUMA node on which we initialise (first touch) everything
-     * doesn't change before engine_init allocates NUMA-local workers.
-     * Otherwise, we may be scheduled elsewhere between the two times.
-     */
-    cpu_set_t affinity;
-    CPU_ZERO(&affinity);
-    CPU_SET(sched_getcpu(), &affinity);
-    if (sched_setaffinity(0, sizeof(cpu_set_t), &affinity) != 0) {
-      error("failed to set entry thread's affinity");
-    }
-  }
+  if (((ENGINE_POLICY) & engine_policy_setaffinity) ==
+      engine_policy_setaffinity)
+    engine_pin();
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings();
 
+  int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
   int with_cosmology = 0;
@@ -153,7 +148,10 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cdef:gGhst:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acdef:gGhst:v:y:")) != -1) switch (c) {
+      case 'a':
+        with_aff = 1;
+        break;
       case 'c':
         with_cosmology = 1;
         break;
@@ -236,8 +234,8 @@ int main(int argc, char *argv[]) {
         "Executing a dry run. No i/o or time integration will be performed.");
 
   /* Report CPU frequency. */
+  cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
-    cpufreq = clocks_get_cpufreq();
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
@@ -252,6 +250,8 @@ int main(int argc, char *argv[]) {
     message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
     message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
     message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
+    message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
   }
 
   /* How vocal are we ? */
@@ -391,6 +391,7 @@ int main(int argc, char *argv[]) {
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
+    fflush(stdout);
   }
 
   /* Verify that each particle is in it's proper cell. */
@@ -417,8 +418,9 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
-              talking, &prog_const, &hydro_properties, &potential);
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
+              engine_policies, talking, &prog_const, &hydro_properties,
+              &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -428,10 +430,6 @@ int main(int argc, char *argv[]) {
 
   /* Write the state of the system before starting time integration. */
   if (!dry_run) engine_dump_snapshot(&e);
-
-  /* Now that everything is ready, no need for the parameters any more */
-  free(params);
-  params = NULL;
 
 /* Init the runner history. */
 #ifdef HIST
@@ -514,20 +512,25 @@ int main(int argc, char *argv[]) {
           /* Open file and position at end. */
           file_thread = fopen(dumpfile, "a");
 
-          fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
-                  e.tic_step);
+          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
+                  e.tic_step, e.toc_step, cpufreq);
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++)
             if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
-              fprintf(file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n",
-                      myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                      e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                      e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                      (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
-                                                    : 0,
-                      (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count
-                                                    : 0,
-                      e.sched.tasks[l].flags);
+              fprintf(
+                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
+                  myrank, e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
+                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
+                                                : 0,
+                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count
+                                                : 0,
+                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->gcount
+                                                : 0,
+                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
+                                                : 0,
+                  e.sched.tasks[l].flags);
               fflush(stdout);
               count++;
             }
@@ -545,15 +548,20 @@ int main(int argc, char *argv[]) {
       snprintf(dumpfile, 30, "thread_info-step%d.dat", j);
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
+      /* Add some information to help with the plots */
+      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
+              1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
       for (int l = 0; l < e.sched.nr_tasks; l++)
         if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
           fprintf(
-              file_thread, " %i %i %i %i %lli %lli %i %i\n",
-              e.sched.tasks[l].rid, e.sched.tasks[l].type,
+              file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
+              e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
               e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
               e.sched.tasks[l].tic, e.sched.tasks[l].toc,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
-              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count);
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
+              (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
       fclose(file_thread);
 #endif
     }

@@ -529,7 +529,7 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
 void write_output_parallel(struct engine* e, const char* baseName,
                            struct UnitSystem* us, int mpi_rank, int mpi_size,
                            MPI_Comm comm, MPI_Info info) {
-  hid_t h_file = 0, h_grp = 0, h_grpsph = 0;
+  hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
   const size_t Ntot = e->s->nr_gparts;
   int periodic = e->s->periodic;
@@ -633,10 +633,17 @@ void write_output_parallel(struct engine* e, const char* baseName,
   writeCodeDescription(h_file);
 
   /* Print the SPH parameters */
-  h_grpsph = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_grpsph < 0) error("Error while creating SPH group");
-  writeSPHflavour(h_grpsph);
-  H5Gclose(h_grpsph);
+  h_grp = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating SPH group");
+  writeSPHflavour(h_grp);
+  H5Gclose(h_grp);
+
+  /* Print the runtime parameters */
+  h_grp =
+      H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp);
+  H5Gclose(h_grp);
 
   /* Print the system of Units */
   writeUnitSystem(h_file, us);

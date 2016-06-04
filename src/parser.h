@@ -22,9 +22,14 @@
 /* Config parameters. */
 #include "../config.h"
 
+#if defined(HAVE_HDF5)
+#include <hdf5.h>
+#endif
+
 /* Some constants. */
 #define PARSER_MAX_LINE_SIZE 256
-#define PARSER_MAX_NO_OF_PARAMS 512
+#define PARSER_MAX_NO_OF_PARAMS 256
+#define PARSER_MAX_NO_OF_SECTIONS 64
 
 /* A parameter in the input file */
 struct parameter {
@@ -38,10 +43,11 @@ struct section {
 
 /* The array of parameters read from a file */
 struct swift_params {
-  struct section section[PARSER_MAX_NO_OF_PARAMS];
+  struct section section[PARSER_MAX_NO_OF_SECTIONS];
   struct parameter data[PARSER_MAX_NO_OF_PARAMS];
   int sectionCount;
   int paramCount;
+  char fileName[PARSER_MAX_LINE_SIZE];
 };
 
 /* Public API. */
@@ -57,5 +63,9 @@ double parser_get_param_double(const struct swift_params *params,
                                const char *name);
 void parser_get_param_string(const struct swift_params *params,
                              const char *name, char *retParam);
+
+#if defined(HAVE_HDF5)
+void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp);
+#endif
 
 #endif /* SWIFT_PARSER_H */

@@ -89,7 +89,7 @@ struct scheduler {
   int nr_unlocks, size_unlocks;
 
   /* Lock for this scheduler. */
-  lock_type lock;
+  swift_lock_type lock;
 
   /* Waiting queue. */
   pthread_mutex_t sleep_mutex;

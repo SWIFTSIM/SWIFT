@@ -42,6 +42,7 @@ enum task_types {
   task_type_ghost,
   task_type_drift,
   task_type_kick,
+  task_type_kick_fixdt,
   task_type_send,
   task_type_recv,
   /* task_type_grav_pp, */
@@ -77,7 +78,7 @@ struct task {
   char skip, tight, implicit;
   int flags, wait, rank, weight;
 
-  lock_type lock;
+  swift_lock_type lock;
 
   struct cell *ci, *cj;
 
@@ -85,7 +86,7 @@ struct task {
   MPI_Request req;
 #endif
 
-  int rid;
+  int rid, last_rid;
   ticks tic, toc;
 
   int nr_unlock_tasks;
