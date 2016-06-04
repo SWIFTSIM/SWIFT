@@ -25,6 +25,8 @@
 /* Local headers. */
 #include "const.h"
 #include "debug.h"
+#include "hydro.h"
+#include "part.h"
 
 /**
  * @brief Perform the 'drift' operation on a #gpart
@@ -58,9 +60,9 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param ti_old Integer start of time-step
  * @param ti_current Integer end of time-step
  */
-__attribute__((always_inline))
-    INLINE static void drift_part(struct part* p, struct xpart* xp, float dt,
-                                  double timeBase, int ti_old, int ti_current) {
+__attribute__((always_inline)) INLINE static void drift_part(
+    struct part* p, struct xpart* xp, float dt, double timeBase, int ti_old,
+    int ti_current) {
   /* Useful quantity */
   const float h_inv = 1.0f / p->h;
 

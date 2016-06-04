@@ -24,8 +24,8 @@
 
 #include "config.h"
 #include "const.h"
-#include "part.h"
 #include "debug.h"
+#include "part.h"
 
 /* Import the right hydro definition */
 #if defined(MINIMAL_SPH)

@@ -212,7 +212,7 @@
 
 void runner_dograv_up(struct runner *r, struct cell *c) {
 
-  if (c->split) {/* Regular node */
+  if (c->split) { /* Regular node */
 
     /* Recurse. */
     for (int k = 0; k < 8; k++)
@@ -225,7 +225,7 @@ void runner_dograv_up(struct runner *r, struct cell *c) {
         multipole_add(&c->multipole, &c->progeny[k]->multipole);
     }
 
-  } else {/* Leaf node. */
+  } else { /* Leaf node. */
 
     /* Just construct the multipole from the gparts. */
     multipole_init(&c->multipole, c->gparts, c->gcount);

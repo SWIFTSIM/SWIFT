@@ -39,17 +39,19 @@
    sufficient to model both the direct potential as well as the splines
    near the origin. */
 
-
 /* Coefficients for the kernel. */
 #define kernel_grav_name "Gadget-2 softening kernel"
 #define kernel_grav_degree 6 /* Degree of the polynomial */
 #define kernel_grav_ivals 2  /* Number of branches */
-static const float kernel_grav_coeffs[(kernel_grav_degree + 1) * (kernel_grav_ivals + 1)]
+static const float
+    kernel_grav_coeffs[(kernel_grav_degree + 1) * (kernel_grav_ivals + 1)]
     __attribute__((aligned(16))) = {
-  32.f,  -38.4f, 0.f,  10.66666667f, 0.f, 0.f, 0.f,/* 0 < u < 0.5 */
-  -10.66666667f, 38.4f,  -48.f, 21.3333333, 0.f, 0.f, 0.66666667f,  /* 0.5 < u < 1 */
-  0.f,  0.f,  0.f,  0.f, 0.f, 0.f, 0.f}; /* 1 < u */
-
+        32.f,          -38.4f, 0.f,         10.66666667f,
+        0.f,           0.f,    0.f, /* 0 < u < 0.5 */
+        -10.66666667f, 38.4f,  -48.f,       21.3333333,
+        0.f,           0.f,    0.66666667f, /* 0.5 < u < 1 */
+        0.f,           0.f,    0.f,         0.f,
+        0.f,           0.f,    0.f}; /* 1 < u */
 
 #define kernel_grav_igamma 1.
 #define kernel_grav_igamma3 1.
@@ -60,14 +62,15 @@ static const float kernel_grav_coeffs[(kernel_grav_degree + 1) * (kernel_grav_iv
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline)) INLINE static void kernel_grav_eval(float u,
-                                                              float *const W) {
+__attribute__((always_inline)) INLINE static void kernel_grav_eval(
+    float u, float *const W) {
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * (float)kernel_grav_igamma;
 
   /* Pick the correct branch of the kernel */
   const int ind = (int)fminf(x * (float)kernel_grav_ivals, kernel_grav_ivals);
-  const float *const coeffs = &kernel_grav_coeffs[ind * (kernel_grav_degree + 1)];
+  const float *const coeffs =
+      &kernel_grav_coeffs[ind * (kernel_grav_degree + 1)];
 
   /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
@@ -78,10 +81,6 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval(float u,
   /* Return everything */
   *W = w * (float)kernel_grav_igamma3;
 }
-
-
-
-
 
 #if 0
 

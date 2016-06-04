@@ -42,12 +42,12 @@
 #include "atomic.h"
 #include "const.h"
 #include "debug.h"
+#include "drift.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
-#include "hydro_properties.h"
 #include "hydro.h"
-#include "drift.h"
+#include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
 #include "scheduler.h"
@@ -58,19 +58,46 @@
 
 /* Orientation of the cell pairs */
 const float runner_shift[13 * 3] = {
-    5.773502691896258e-01, 5.773502691896258e-01,  5.773502691896258e-01,
-    7.071067811865475e-01, 7.071067811865475e-01,  0.0,
-    5.773502691896258e-01, 5.773502691896258e-01,  -5.773502691896258e-01,
-    7.071067811865475e-01, 0.0,                    7.071067811865475e-01,
-    1.0,                   0.0,                    0.0,
-    7.071067811865475e-01, 0.0,                    -7.071067811865475e-01,
-    5.773502691896258e-01, -5.773502691896258e-01, 5.773502691896258e-01,
-    7.071067811865475e-01, -7.071067811865475e-01, 0.0,
-    5.773502691896258e-01, -5.773502691896258e-01, -5.773502691896258e-01,
-    0.0,                   7.071067811865475e-01,  7.071067811865475e-01,
-    0.0,                   1.0,                    0.0,
-    0.0,                   7.071067811865475e-01,  -7.071067811865475e-01,
-    0.0,                   0.0,                    1.0, };
+    5.773502691896258e-01,
+    5.773502691896258e-01,
+    5.773502691896258e-01,
+    7.071067811865475e-01,
+    7.071067811865475e-01,
+    0.0,
+    5.773502691896258e-01,
+    5.773502691896258e-01,
+    -5.773502691896258e-01,
+    7.071067811865475e-01,
+    0.0,
+    7.071067811865475e-01,
+    1.0,
+    0.0,
+    0.0,
+    7.071067811865475e-01,
+    0.0,
+    -7.071067811865475e-01,
+    5.773502691896258e-01,
+    -5.773502691896258e-01,
+    5.773502691896258e-01,
+    7.071067811865475e-01,
+    -7.071067811865475e-01,
+    0.0,
+    5.773502691896258e-01,
+    -5.773502691896258e-01,
+    -5.773502691896258e-01,
+    0.0,
+    7.071067811865475e-01,
+    7.071067811865475e-01,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    7.071067811865475e-01,
+    -7.071067811865475e-01,
+    0.0,
+    0.0,
+    1.0,
+};
 
 /* Does the axis need flipping ? */
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
@@ -97,8 +124,8 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
  */
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
-  struct gpart *g, *gparts = c->gparts;
-  int i, k, gcount = c->gcount;
+  struct gpart *restrict gparts = c->gparts;
+  const int gcount = c->gcount;
   const int ti_current = r->e->ti_current;
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
@@ -107,7 +134,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
   /* Recurse? */
   if (c->split) {
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
     return;
   }
@@ -117,10 +144,10 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Loop over the gparts in this cell. */
-  for (i = 0; i < gcount; i++) {
+  for (int i = 0; i < gcount; i++) {
 
     /* Get a direct pointer on the part. */
-    g = &gparts[i];
+    struct gpart *restrict g = &gparts[i];
 
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
@@ -128,6 +155,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       external_gravity(potential, constants, g);
     }
   }
+
   if (timer) TIMER_TOC(timer_dograv_external);
 }
 
@@ -374,8 +402,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
  */
 void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
-  struct part *const parts = c->parts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct gpart *restrict gparts = c->gparts;
   const int count = c->count;
   const int gcount = c->gcount;
   const int ti_current = r->e->ti_current;
@@ -432,12 +460,9 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
 void runner_do_ghost(struct runner *r, struct cell *c) {
 
-  struct part *p, *parts = c->parts;
-  struct xpart *xp, *xparts = c->xparts;
-  struct cell *finger;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   int redo, count = c->count;
-  int *pid;
-  float h_corr;
   const int ti_current = r->e->ti_current;
   const double timeBase = r->e->timeBase;
   const float target_wcount = r->e->hydro_properties->target_neighbours;
@@ -458,6 +483,7 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
   }
 
   /* Init the IDs that have to be updated. */
+  int *pid;
   if ((pid = (int *)alloca(sizeof(int) * count)) == NULL)
     error("Call to alloca failed.");
   for (int k = 0; k < count; k++) pid[k] = k;
@@ -473,8 +499,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      p = &parts[pid[i]];
-      xp = &xparts[pid[i]];
+      struct part *const p = &parts[pid[i]];
+      struct xpart *const xp = &xparts[pid[i]];
 
       /* Is this part within the timestep? */
       if (p->ti_end <= ti_current) {
@@ -482,6 +508,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
         /* Finish the density calculation */
         hydro_end_density(p, ti_current);
 
+	float h_corr = 0.f;
+	
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
 
@@ -534,7 +562,7 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
     if (count > 0) {
 
       /* Climb up the cell hierarchy. */
-      for (finger = c; finger != NULL; finger = finger->parent) {
+      for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
         /* Run through this cell's density interactions. */
         for (struct link *l = finger->density; l != NULL; l = l->next) {
@@ -591,9 +619,9 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
   const int ti_old = r->e->ti_old;
   const int ti_current = r->e->ti_current;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
@@ -633,7 +661,6 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       /* Get a handle on the part. */
       struct part *const p = &parts[k];
       struct xpart *const xp = &xparts[k];
-
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
@@ -738,9 +765,9 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
   const double timeBase = r->e->timeBase;
   const int count = c->count;
   const int gcount = c->gcount;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
   const double const_G = r->e->physical_constants->const_newton_G;
 
   int updated = 0, g_updated = 0;
@@ -854,9 +881,9 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   const int ti_current = r->e->ti_current;
   const int count = c->count;
   const int gcount = c->gcount;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
   const double const_G = r->e->physical_constants->const_newton_G;
 
   int updated = 0, g_updated = 0;
@@ -974,8 +1001,8 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
-  const struct part *const parts = c->parts;
-  const struct gpart *const gparts = c->gparts;
+  const struct part *restrict parts = c->parts;
+  const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
   const size_t nr_gparts = c->gcount;
   // const int ti_current = r->e->ti_current;
@@ -1058,8 +1085,8 @@ void *runner_main(void *data) {
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
-	  else if (t->subtype == task_subtype_grav)
-	    runner_doself_grav(r, ci);
+          else if (t->subtype == task_subtype_grav)
+            runner_doself_grav(r, ci);
           else
             error("Unknown task subtype.");
           break;
@@ -1068,8 +1095,8 @@ void *runner_main(void *data) {
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
-	  else if (t->subtype == task_subtype_grav)
-	    runner_dopair_grav(r, ci, cj);
+          else if (t->subtype == task_subtype_grav)
+            runner_dopair_grav(r, ci, cj);
           else
             error("Unknown task subtype.");
           break;
@@ -1083,8 +1110,8 @@ void *runner_main(void *data) {
             runner_dosub2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
             runner_dosub_grav(r, ci, cj, 1);
-	  else if (t->subtype == task_subtype_grav)
-	    runner_dosub_grav(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_grav)
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;

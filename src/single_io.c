@@ -35,8 +35,8 @@
 #include "single_io.h"
 
 /* Local includes. */
-#include "const.h"
 #include "common_io.h"
+#include "const.h"
 #include "error.h"
 
 /*-----------------------------------------------------------------------------

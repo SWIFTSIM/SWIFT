@@ -47,13 +47,13 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",      "sort",          "self",      "pair",       "sub",
-    "init",      "ghost",         "drift",     "kick",       "kick_fixdt",
-    "send",      "recv",          "grav_mm",    "grav_up",    "grav_external",
-    "part_sort", "gpart_sort", "split_cell",   "rewait"};
+    "none",      "sort",       "self",       "pair",    "sub",
+    "init",      "ghost",      "drift",      "kick",    "kick_fixdt",
+    "send",      "recv",       "grav_mm",    "grav_up", "grav_external",
+    "part_sort", "gpart_sort", "split_cell", "rewait"};
 
-const char *subtaskID_names[task_type_count] = {"none",  "density",
-                                                "force", "grav"};
+const char *subtaskID_names[task_type_count] = {"none", "density", "force",
+                                                "grav"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -124,9 +124,9 @@ void task_unlock(struct task *t) {
       cell_unlocktree(t->ci);
       if (t->cj != NULL) cell_unlocktree(t->cj);
       break;
-      //case task_type_grav_pp:
+    // case task_type_grav_pp:
     case task_type_grav_mm:
-      //case task_type_grav_down:
+      // case task_type_grav_down:
       cell_gunlocktree(t->ci);
       if (t->cj != NULL) cell_gunlocktree(t->cj);
       break;

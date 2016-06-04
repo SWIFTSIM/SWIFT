@@ -30,8 +30,8 @@
 /* Local includes. */
 #include "const.h"
 #include "error.h"
-#include "part.h"
 #include "parser.h"
+#include "part.h"
 #include "physical_constants.h"
 #include "units.h"
 
@@ -58,11 +58,10 @@ struct external_potential {
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
-__attribute__((always_inline))
-    INLINE static float external_gravity_pointmass_timestep(
-        const struct external_potential* potential,
-        const struct phys_const* const phys_const,
-        const struct gpart* const g) {
+__attribute__((always_inline)) INLINE static float
+external_gravity_pointmass_timestep(const struct external_potential* potential,
+                                    const struct phys_const* const phys_const,
+                                    const struct gpart* const g) {
 
   const float G_newton = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->point_mass.x;

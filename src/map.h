@@ -22,8 +22,8 @@
 #ifndef SWIFT_MAP_H
 #define SWIFT_MAP_H
 
-#include "part.h"
 #include "cell.h"
+#include "part.h"
 
 void map_cells_plot(struct cell *c, void *data);
 void map_check(struct part *p, struct cell *c, void *data);

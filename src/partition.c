@@ -31,11 +31,11 @@
 #include "../config.h"
 
 /* Standard headers. */
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
-#include <float.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -59,13 +59,12 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "gridded cells",                 "vectorized point associated cells",
+    "gridded cells", "vectorized point associated cells",
     "METIS particle weighted cells", "METIS unweighted cells"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
-    "no",
-    "METIS edge and vertex time weighted cells",
+    "no", "METIS edge and vertex time weighted cells",
     "METIS particle count vertex weighted cells",
     "METIS time edge weighted cells",
     "METIS particle count vertex and time edge cells"};
@@ -782,8 +781,9 @@ void partition_initial_partition(struct partition *initial_partition,
     struct cell *c;
 
     /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
-                        initial_partition->grid[2])
+    if (nr_nodes !=
+        initial_partition->grid[0] * initial_partition->grid[1] *
+            initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
@@ -792,8 +792,9 @@ void partition_initial_partition(struct partition *initial_partition,
       c = &s->cells[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
-      c->nodeID = ind[0] + initial_partition->grid[0] *
-                               (ind[1] + initial_partition->grid[1] * ind[2]);
+      c->nodeID = ind[0] +
+                  initial_partition->grid[0] *
+                      (ind[1] + initial_partition->grid[1] * ind[2]);
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }

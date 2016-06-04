@@ -194,11 +194,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_hydro_loop1(
 }
 
 /* this corresponds to task_subtype_hydro_loop1 */
-__attribute__((always_inline))
-    INLINE static void runner_iact_nonsym_hydro_loop1(float r2, float *dx,
-                                                      float hi, float hj,
-                                                      struct part *pi,
-                                                      struct part *pj) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_hydro_loop1(float r2, float *dx, float hi, float hj,
+                               struct part *pi, struct part *pj) {
 
   float r;
   float xi;
@@ -487,11 +485,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_hydro_loop2(
 #endif
 }
 
-__attribute__((always_inline))
-    INLINE static void runner_iact_nonsym_hydro_loop2(float r2, float *dx,
-                                                      float hi, float hj,
-                                                      struct part *pi,
-                                                      struct part *pj) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_hydro_loop2(float r2, float *dx, float hi, float hj,
+                               struct part *pi, struct part *pj) {
 
 #ifndef SPH_GRADIENTS
 
@@ -1025,11 +1021,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_hydro_loop3(
 }
 
 /* this corresponds to task_subtype_fluxes */
-__attribute__((always_inline))
-    INLINE static void runner_iact_nonsym_hydro_loop3(float r2, float *dx,
-                                                      float hi, float hj,
-                                                      struct part *pi,
-                                                      struct part *pj) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_hydro_loop3(float r2, float *dx, float hi, float hj,
+                               struct part *pi, struct part *pj) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0);
 }

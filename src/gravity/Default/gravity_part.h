@@ -39,7 +39,7 @@ struct gpart {
 
   /* Softening length */
   float epsilon;
-  
+
   /* Particle time of beginning of time-step. */
   int ti_begin;
 

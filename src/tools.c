@@ -20,15 +20,15 @@
  ******************************************************************************/
 
 #include <math.h>
-#include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+#include "cell.h"
 #include "error.h"
 #include "part.h"
-#include "cell.h"
-#include "tools.h"
 #include "swift.h"
+#include "tools.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -490,7 +490,8 @@ void shuffle_particles(struct part *parts, const int count) {
  * @brief gparts The array of particles.
  * @brief gcount The number of particles.
  */
-void gravity_n2(struct gpart *gparts, const int gcount, const struct phys_const *constants) {
+void gravity_n2(struct gpart *gparts, const int gcount,
+                const struct phys_const *constants) {
 
   /* Reset everything */
   for (int pid = 0; pid < gcount; pid++) {

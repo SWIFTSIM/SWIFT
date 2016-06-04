@@ -36,7 +36,7 @@
  */
 void runner_do_grav_up(struct runner *r, struct cell *c) {
 
-  if (c->split) {/* Regular node */
+  if (c->split) { /* Regular node */
 
     /* Recurse. */
     for (int k = 0; k < 8; k++)
@@ -49,7 +49,7 @@ void runner_do_grav_up(struct runner *r, struct cell *c) {
         multipole_add(&c->multipole, &c->progeny[k]->multipole);
     }
 
-  } else {/* Leaf node. */
+  } else { /* Leaf node. */
 
     /* Just construct the multipole from the gparts. */
     multipole_init(&c->multipole, c->gparts, c->gcount);
@@ -291,8 +291,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
  *
  * @todo Use a local cache for the particles.
  */
-__attribute__((always_inline))
-    INLINE static void runner_doself_grav_pp(struct runner *r, struct cell *c) {
+__attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
+    struct runner *r, struct cell *c) {
 
   // const struct engine *e = r->e;
   const int gcount = c->gcount;
@@ -450,7 +450,7 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
         }
       }
     }
-  } else {/* Not split */
+  } else { /* Not split */
 
     /* Compute the interactions at this level directly. */
     runner_dopair_grav_pp(r, ci, cj);

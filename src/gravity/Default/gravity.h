@@ -31,11 +31,10 @@
  * @param phys_const The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-__attribute__((always_inline))
-    INLINE static float gravity_compute_timestep_external(
-        const struct external_potential* potential,
-        const struct phys_const* const phys_const,
-        const struct gpart* const gp) {
+__attribute__((always_inline)) INLINE static float
+gravity_compute_timestep_external(const struct external_potential* potential,
+                                  const struct phys_const* const phys_const,
+                                  const struct gpart* const gp) {
 
   float dt = FLT_MAX;
 
@@ -53,10 +52,9 @@ __attribute__((always_inline))
  * @param phys_const The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-__attribute__((always_inline))
-    INLINE static float gravity_compute_timestep_self(
-        const struct phys_const* const phys_const,
-        const struct gpart* const gp) {
+__attribute__((always_inline)) INLINE static float
+gravity_compute_timestep_self(const struct phys_const* const phys_const,
+                              const struct gpart* const gp) {
 
   const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
                     gp->a_grav[1] * gp->a_grav[1] +
@@ -77,8 +75,8 @@ __attribute__((always_inline))
  *
  * @param gp The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void gravity_first_init_gpart(struct gpart* gp) {}
+__attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
+    struct gpart* gp) {}
 
 /**
  * @brief Prepares a g-particle for the gravity calculation
@@ -88,8 +86,8 @@ __attribute__((always_inline))
  *
  * @param gp The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void gravity_init_part(struct gpart* gp) {
+__attribute__((always_inline)) INLINE static void gravity_init_part(
+    struct gpart* gp) {
 
   /* Zero the acceleration */
   gp->a_grav[0] = 0.f;
@@ -107,8 +105,8 @@ __attribute__((always_inline))
  * @param gp The particle to act upon
  * @param const_G Newton's constant
  */
-__attribute__((always_inline))
-INLINE static void gravity_end_force(struct gpart* gp, double const_G) {
+__attribute__((always_inline)) INLINE static void gravity_end_force(
+    struct gpart* gp, double const_G) {
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;

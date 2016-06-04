@@ -249,8 +249,8 @@ void proxy_parts_exch2(struct proxy *p) {
     } while (p->nr_parts_in > p->size_parts_in);
     free(p->parts_in);
     free(p->xparts_in);
-    if ((p->parts_in = (struct part *)malloc(
-             sizeof(struct part) *p->size_parts_in)) == NULL ||
+    if ((p->parts_in = (struct part *)malloc(sizeof(struct part) *
+                                             p->size_parts_in)) == NULL ||
         (p->xparts_in = (struct xpart *)malloc(sizeof(struct xpart) *
                                                p->size_parts_in)) == NULL)
       error("Failed to re-allocate parts_in buffers.");
@@ -310,7 +310,7 @@ void proxy_parts_load(struct proxy *p, const struct part *parts,
     } while (p->nr_parts_out + N > p->size_parts_out);
     struct part *tp;
     struct xpart *txp;
-    if ((tp = (struct part *)malloc(sizeof(struct part) *p->size_parts_out)) ==
+    if ((tp = (struct part *)malloc(sizeof(struct part) * p->size_parts_out)) ==
             NULL ||
         (txp = (struct xpart *)malloc(sizeof(struct xpart) *
                                       p->size_parts_out)) == NULL)
@@ -395,8 +395,8 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   /* Allocate the part send and receive buffers, if needed. */
   if (p->parts_in == NULL) {
     p->size_parts_in = proxy_buffinit;
-    if ((p->parts_in = (struct part *)malloc(
-             sizeof(struct part) *p->size_parts_in)) == NULL ||
+    if ((p->parts_in = (struct part *)malloc(sizeof(struct part) *
+                                             p->size_parts_in)) == NULL ||
         (p->xparts_in = (struct xpart *)malloc(sizeof(struct xpart) *
                                                p->size_parts_in)) == NULL)
       error("Failed to allocate parts_in buffers.");
@@ -404,8 +404,8 @@ void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
   p->nr_parts_in = 0;
   if (p->parts_out == NULL) {
     p->size_parts_out = proxy_buffinit;
-    if ((p->parts_out = (struct part *)malloc(
-             sizeof(struct part) *p->size_parts_out)) == NULL ||
+    if ((p->parts_out = (struct part *)malloc(sizeof(struct part) *
+                                              p->size_parts_out)) == NULL ||
         (p->xparts_out = (struct xpart *)malloc(sizeof(struct xpart) *
                                                 p->size_parts_out)) == NULL)
       error("Failed to allocate parts_out buffers.");

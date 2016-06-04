@@ -112,5 +112,4 @@ void writeSPHflavour(hid_t h_grpsph) {
                    "Legacy Gadget-2 as in Springel (2005)");
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
-
 }
