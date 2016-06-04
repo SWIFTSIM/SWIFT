@@ -51,6 +51,9 @@ static const float kernel_grav_coeffs[(kernel_grav_degree + 1) * (kernel_grav_iv
   0.f,  0.f,  0.f,  0.f, 0.f, 0.f, 0.f}; /* 1 < u */
 
 
+#define kernel_grav_igamma 1.
+#define kernel_grav_igamma3 1.
+
 /**
  * @brief Computes the kernel function.
  *

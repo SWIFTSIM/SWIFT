@@ -23,6 +23,9 @@
 
 #include "kernel_gravity.h"
 
+#define const_epsilon 1.
+#define const_iepsilon3 1.
+
 /**
  * @brief The Gadget-2 gravity kernel function
  *
