@@ -62,7 +62,7 @@ __attribute__((always_inline))
                     gp->a_grav[1] * gp->a_grav[1] +
                     gp->a_grav[2] * gp->a_grav[2];
 
-  const float ac = ac2 > 0. ? sqrtf(ac) : FLT_MIN;
+  const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
 
   const float dt = sqrt(2.f * const_gravity_eta * gp->epsilon / ac);
 

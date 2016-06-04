@@ -2256,7 +2256,8 @@ void engine_init_particles(struct engine *e) {
 void engine_step(struct engine *e) {
 
   double snapshot_drift_time = 0.;
-
+  struct space *s = e->s;
+  
   TIMER_TIC2;
 
   struct clocks_time time1, time2;
