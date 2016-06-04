@@ -63,13 +63,15 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
      all these speeds are along the interface normal, since uL and uR are */
   qL = 1.;
   if (pstar > WL[4]) {
-    qL = sqrtf(1. + 0.5 * (const_hydro_gamma + 1.) / const_hydro_gamma *
-                        (pstar / WL[4] - 1.));
+    qL = sqrtf(1. +
+               0.5 * (const_hydro_gamma + 1.) / const_hydro_gamma *
+                   (pstar / WL[4] - 1.));
   }
   qR = 1.;
   if (pstar > WR[4]) {
-    qR = sqrtf(1. + 0.5 * (const_hydro_gamma + 1.) / const_hydro_gamma *
-                        (pstar / WR[4] - 1.));
+    qR = sqrtf(1. +
+               0.5 * (const_hydro_gamma + 1.) / const_hydro_gamma *
+                   (pstar / WR[4] - 1.));
   }
   SL = uL - aL * qL;
   SR = uR + aR * qR;

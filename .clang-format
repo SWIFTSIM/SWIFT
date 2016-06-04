@@ -1,6 +1,5 @@
 ---
 Language:        Cpp
 BasedOnStyle:  Google
-SortIncludes:    false
 KeepEmptyLinesAtTheStartOfBlocks: true
 ...

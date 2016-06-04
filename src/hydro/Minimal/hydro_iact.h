@@ -131,10 +131,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
 
   /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0]
-                   + (pi->v[1] - pj->v[1]) * dx[1]
-                   + (pi->v[2] - pj->v[2]) * dx[2];
-
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Compute sound speeds */
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
@@ -208,7 +207,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
-
 
   /* Compute sound speeds */
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);

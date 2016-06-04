@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-__attribute__((always_inline))
-    INLINE static void gravity_debug_particle(struct gpart* p) {
+__attribute__((always_inline)) INLINE static void gravity_debug_particle(
+    struct gpart* p) {
   printf(
       "x=[%.3e,%.3e,%.3e], "
       "v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "

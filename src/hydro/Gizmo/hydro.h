@@ -39,17 +39,16 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
-}
+__attribute__((always_inline)) INLINE static void hydro_first_init_part(
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Prepares a particle for the volume calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_init_part(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_init_part(
+    struct part* p) {
 
 #ifdef SPH_GRADIENTS
   /* use the old volumes to estimate new primitive variables to be used for the
@@ -127,8 +126,8 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_end_volume(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_end_volume(
+    struct part* p) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -387,8 +386,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_end_gradient(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_end_gradient(
+    struct part* p) {
 
 #ifndef SPH_GRADIENTS
   float h, ih, ih2, ih3;
@@ -531,8 +530,8 @@ __attribute__((always_inline))
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_prepare_fluxes(struct part* p, struct xpart* xp) {
+__attribute__((always_inline)) INLINE static void hydro_prepare_fluxes(
+    struct part* p, struct xpart* xp) {
 
   /* initialize variables used for timestep calculation */
   p->timestepvars.vmax = 0.0f;
@@ -546,8 +545,8 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_reset_acceleration(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
+    struct part* p) {
 
   /* figure out what to put here */
 }
@@ -559,8 +558,8 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_end_fluxes(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_end_fluxes(
+    struct part* p) {
 
   /* do nothing */
 }
@@ -572,8 +571,8 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_convert_quantities(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
+    struct part* p) {
 
   float volume;
   GFLOAT m;
@@ -605,17 +604,17 @@ __attribute__((always_inline))
 }
 
 // MATTHIEU
-__attribute__((always_inline))
-    INLINE static void hydro_end_density(struct part* p, float time) {}
+__attribute__((always_inline)) INLINE static void hydro_end_density(
+    struct part* p, float time) {}
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* p, struct xpart* xp, int ti_current, double timeBase) {}
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {}
-__attribute__((always_inline))
-    INLINE static void hydro_end_force(struct part* p) {}
+__attribute__((always_inline)) INLINE static void hydro_end_force(
+    struct part* p) {}
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt, float half_dt) {}
-__attribute__((always_inline))
-    INLINE static float hydro_get_internal_energy(struct part* p) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    struct part* p) {
   return 0.f;
 }
