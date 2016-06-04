@@ -25,19 +25,63 @@
 #include "inline.h"
 #include "vector.h"
 
-#define const_epsilon 1.
-#define const_iepsilon (1. / const_epsilon)
-#define const_iepsilon2 (const_iepsilon *const_iepsilon)
-#define const_iepsilon3 (const_iepsilon2 *const_iepsilon)
-#define const_iepsilon4 (const_iepsilon2 *const_iepsilon2)
-#define const_iepsilon5 (const_iepsilon3 *const_iepsilon2)
-#define const_iepsilon6 (const_iepsilon3 *const_iepsilon3)
+/* #define const_epsilon 1. */
+/* #define const_iepsilon (1. / const_epsilon) */
+/* #define const_iepsilon2 (const_iepsilon *const_iepsilon) */
+/* #define const_iepsilon3 (const_iepsilon2 *const_iepsilon) */
+/* #define const_iepsilon4 (const_iepsilon2 *const_iepsilon2) */
+/* #define const_iepsilon5 (const_iepsilon3 *const_iepsilon2) */
+/* #define const_iepsilon6 (const_iepsilon3 *const_iepsilon3) */
 
 /* The gravity kernel is defined as a degree 6 polynomial in the distance
    r. The resulting value should be post-multiplied with r^-3, resulting
    in a polynomial with terms ranging from r^-3 to r^3, which are
    sufficient to model both the direct potential as well as the splines
    near the origin. */
+
+
+/* Coefficients for the kernel. */
+#define kernel_grav_name "Gadget-2 softening kernel"
+#define kernel_grav_degree 6 /* Degree of the polynomial */
+#define kernel_grav_ivals 2  /* Number of branches */
+static const float kernel_grav_coeffs[(kernel_grav_degree + 1) * (kernel_grav_ivals + 1)]
+    __attribute__((aligned(16))) = {
+  32.f,  -38.4f, 0.f,  10.66666667f, 0.f, 0.f, 0.f,/* 0 < u < 0.5 */
+  -10.66666667f, 38.4f,  -48.f, 21.3333333, 0.f, 0.f, 0.66666667f,  /* 0.5 < u < 1 */
+  0.f,  0.f,  0.f,  0.f, 0.f, 0.f, 0.f}; /* 1 < u */
+
+
+/**
+ * @brief Computes the kernel function.
+ *
+ * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param W (return) The value of the kernel function $W(x,h)$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_grav_eval(float u,
+                                                              float *const W) {
+  /* Go to the range [0,1[ from [0,H[ */
+  const float x = u * (float)kernel_grav_igamma;
+
+  /* Pick the correct branch of the kernel */
+  const int ind = (int)fminf(x * (float)kernel_grav_ivals, kernel_grav_ivals);
+  const float *const coeffs = &kernel_grav_coeffs[ind * (kernel_grav_degree + 1)];
+
+  /* First two terms of the polynomial ... */
+  float w = coeffs[0] * x + coeffs[1];
+
+  /* ... and the rest of them */
+  for (int k = 2; k <= kernel_grav_degree; k++) w = x * w + coeffs[k];
+
+  /* Return everything */
+  *W = w * (float)kernel_grav_igamma3;
+}
+
+
+
+
+
+#if 0
+
 
 /* Coefficients for the gravity kernel. */
 #define kernel_grav_degree 6
@@ -206,6 +250,7 @@ __attribute__((always_inline))
   }
 }
 
+#endif
 #endif
 
 void gravity_kernel_dump(float r_max, int N);
