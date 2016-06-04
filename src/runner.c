@@ -508,8 +508,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
         /* Finish the density calculation */
         hydro_end_density(p, ti_current);
 
-	float h_corr = 0.f;
-	
+        float h_corr = 0.f;
+
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
 
