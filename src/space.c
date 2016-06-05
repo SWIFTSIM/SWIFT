@@ -1437,9 +1437,12 @@ void space_init(struct space *s, const struct swift_params *params,
   s->size_parts_foreign = 0;
 
   /* Get the constants for the scheduler */
-  space_maxsize = parser_get_param_int(params, "Scheduler:cell_max_size");
-  space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
-  space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
+  space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
+                                           space_maxsize_default);
+  space_subsize = parser_get_opt_param_int(params, "Scheduler:cell_sub_size",
+                                           space_subsize_default);
+  space_splitsize = parser_get_opt_param_int(
+      params, "Scheduler:cell_split_size", space_splitsize_default);
   if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
             space_maxsize, space_subsize, space_splitsize);
@@ -1454,7 +1457,7 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Apply h scaling */
   const double scaling =
-      parser_get_param_double(params, "InitialConditions:h_scaling");
+      parser_get_opt_param_double(params, "InitialConditions:h_scaling", 1.0);
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
@@ -1462,10 +1465,13 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
-  shift[0] = parser_get_param_double(params, "InitialConditions:shift_x");
-  shift[1] = parser_get_param_double(params, "InitialConditions:shift_y");
-  shift[2] = parser_get_param_double(params, "InitialConditions:shift_z");
-  if ((shift[0] != 0 || shift[1] != 0 || shift[2] != 0) && !dry_run) {
+  shift[0] =
+      parser_get_opt_param_double(params, "InitialConditions:shift_x", 0.0);
+  shift[1] =
+      parser_get_opt_param_double(params, "InitialConditions:shift_y", 0.0);
+  shift[2] =
+      parser_get_opt_param_double(params, "InitialConditions:shift_z", 0.0);
+  if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {
       parts[k].x[0] += shift[0];

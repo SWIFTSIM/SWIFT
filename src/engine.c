@@ -2626,8 +2626,11 @@ void engine_init(struct engine *e, struct space *s,
   s->e = e;
 
   /* Get the number of queues */
-  int nr_queues = parser_get_param_int(params, "Scheduler:nr_queues");
+  int nr_queues =
+      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
+  if (nr_queues != nr_threads)
+    message("Number of task queues set to %d", nr_queues);
   s->nr_queues = nr_queues;
 
 /* Deal with affinity. For now, just figure out the number of cores. */

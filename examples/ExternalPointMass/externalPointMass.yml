@@ -6,13 +6,6 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
-# Parameters for the task scheduling
-Scheduler:
-  nr_queues:        0        # The number of task queues to use. Use 0  to let the system decide.
-  cell_max_size:    8000000  # Maximal number of interactions per task (this is the default value).
-  cell_sub_size:    8000000  # Maximal number of interactions per sub-task  (this is the default value).
-  cell_split_size:  400      # Maximal number of particles per cell (this is the default value).
-
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
@@ -47,7 +40,6 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Sphere.hdf5           # The file to read
-  h_scaling:  1.                    # A scaling factor to apply to all smoothing lengths in the ICs.
   shift_x:    50.                   # A shift to apply to all particles read from the ICs (in internal units).
   shift_y:    50.
   shift_z:    50.
