@@ -921,11 +921,11 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
-  *reparttype = REPART_METIS_BOTH;
-  partition->type = INITPART_METIS_NOWEIGHT;
+  char default_repart = 'b';;
+  char default_part = 'm';
 #else
-  *reparttype = REPART_NONE;
-  partition->type = INITPART_GRID;
+  char default_repart = 'n';
+  char default_part = 'g';
 #endif
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -935,9 +935,10 @@ void partition_init(struct partition *partition,
   factor(partition->grid[0] * partition->grid[1], &partition->grid[1],
          &partition->grid[0]);
 
-  /* Now let's check what the user wants as an initial domain*/
+  /* Now let's check what the user wants as an initial domain. */
   const char part_type =
-      parser_get_param_char(params, "DomainDecomposition:initial_type");
+      parser_get_opt_param_char(params, "DomainDecomposition:initial_type",
+                                default_part);
 
   switch (part_type) {
     case 'g':
@@ -966,16 +967,21 @@ void partition_init(struct partition *partition,
   /* In case of grid, read more parameters */
   if (part_type == 'g') {
     partition->grid[0] =
-        parser_get_param_int(params, "DomainDecomposition:initial_grid_x");
+        parser_get_opt_param_int(params, "DomainDecomposition:initial_grid_x",
+                                 partition->grid[0]);
     partition->grid[1] =
-        parser_get_param_int(params, "DomainDecomposition:initial_grid_y");
+        parser_get_opt_param_int(params, "DomainDecomposition:initial_grid_y",
+                                 partition->grid[1]);
     partition->grid[2] =
-        parser_get_param_int(params, "DomainDecomposition:initial_grid_z");
+        parser_get_opt_param_int(params, "DomainDecomposition:initial_grid_z",
+                                 partition->grid[2]);
   }
 
   /* Now let's check what the user wants as a repartition strategy */
   const char repart_type =
-      parser_get_param_char(params, "DomainDecomposition:repartition_type");
+      parser_get_opt_param_char(params,
+                                "DomainDecomposition:repartition_type",
+                                default_repart);
 
   switch (repart_type) {
     case 'n':
