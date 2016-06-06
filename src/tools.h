@@ -22,8 +22,8 @@
 #ifndef SWIFT_TOOL_H
 #define SWIFT_TOOL_H
 
-#include "runner.h"
 #include "cell.h"
+#include "runner.h"
 
 void factor(int value, int *f1, int *f2);
 void density_dump(int N);

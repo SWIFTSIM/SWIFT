@@ -21,11 +21,11 @@
 
 /* gives us const_hydro_gamma and tells us which floating point type to use */
 #include "const.h"
+#include "error.h"
+#include "float.h"
 #include "math.h"
 #include "stdio.h"
-#include "float.h"
 #include "stdlib.h"
-#include "error.h"
 
 #define HLLC_SOLVER
 

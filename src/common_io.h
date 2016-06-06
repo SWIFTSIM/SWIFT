@@ -52,10 +52,7 @@ enum DATA_TYPE {
  *start a run or optional.
  *
  */
-enum DATA_IMPORTANCE {
-  COMPULSORY = 1,
-  OPTIONAL = 0
-};
+enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0 };
 
 /**
  * @brief The different particle types present in a GADGET IC file

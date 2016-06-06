@@ -29,11 +29,11 @@
 #include <float.h>
 #include <limits.h>
 #include <sched.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -56,18 +56,26 @@
 #include "error.h"
 #include "hydro.h"
 #include "minmax.h"
+#include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
-#include "parallel_io.h"
 #include "serial_io.h"
 #include "single_io.h"
 #include "timers.h"
 
-const char *engine_policy_names[13] = {
-    "none",                 "rand",   "steal",        "keep",
-    "block",                "fix_dt", "cpu_tight",    "mpi",
-    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
-    "cosmology_integration"};
+const char *engine_policy_names[13] = {"none",
+                                       "rand",
+                                       "steal",
+                                       "keep",
+                                       "block",
+                                       "fix_dt",
+                                       "cpu_tight",
+                                       "mpi",
+                                       "numa_affinity",
+                                       "hydro",
+                                       "self_gravity",
+                                       "external_gravity",
+                                       "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;

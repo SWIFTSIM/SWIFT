@@ -26,8 +26,8 @@
 
 /* Local headers. */
 #include "error.h"
-#include "kernel_hydro.h"
 #include "hydro.h"
+#include "kernel_hydro.h"
 
 void hydro_props_init(struct hydro_props *p,
                       const struct swift_params *params) {

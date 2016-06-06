@@ -19,8 +19,8 @@
  ******************************************************************************/
 
 #define NO__AVX__
-#include "vector.h"
 #include "kernel_hydro.h"
+#include "vector.h"
 
 #include <stdlib.h>
 #include <strings.h>

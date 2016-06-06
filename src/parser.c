@@ -22,16 +22,16 @@
 
 /* Some standard headers. */
 /* Needs to be included so that strtok returns char * instead of a int *. */
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* This object's header. */
 #include "parser.h"
 
 /* Local headers. */
-#include "error.h"
 #include "common_io.h"
+#include "error.h"
 
 #define PARSER_COMMENT_STRING "#"
 #define PARSER_COMMENT_CHAR '#'
@@ -256,7 +256,7 @@ static void parse_value(char *line, struct swift_params *params) {
   /* Check that it is a parameter inside a section.*/
   if (*line == ' ' || *line == '\t') {
     parse_section_param(line, &isFirstParam, section, params);
-  } else {/*Else it is the start of a new section or standalone parameter. */
+  } else { /*Else it is the start of a new section or standalone parameter. */
     /* Take first token as the parameter name. */
     token = strtok(line, " :\t");
     strcpy(tmpStr, token);

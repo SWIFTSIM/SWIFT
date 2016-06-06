@@ -20,15 +20,15 @@
  ******************************************************************************/
 
 #include <math.h>
-#include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 
+#include "cell.h"
 #include "error.h"
 #include "part.h"
-#include "cell.h"
-#include "tools.h"
 #include "swift.h"
+#include "tools.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.

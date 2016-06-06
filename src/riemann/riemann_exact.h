@@ -78,9 +78,9 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_fb(GFLOAT p,
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline))
-    INLINE static GFLOAT riemann_f(GFLOAT p, GFLOAT* WL, GFLOAT* WR, GFLOAT vL,
-                                   GFLOAT vR, GFLOAT aL, GFLOAT aR) {
+__attribute__((always_inline)) INLINE static GFLOAT riemann_f(
+    GFLOAT p, GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL,
+    GFLOAT aR) {
 
   return riemann_fb(p, WL, aL) + riemann_fb(p, WR, aR) + (vR - vL);
 }

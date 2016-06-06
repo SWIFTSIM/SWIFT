@@ -26,11 +26,11 @@
 #include "vector.h"
 
 #define const_iepsilon (1. / const_epsilon)
-#define const_iepsilon2 (const_iepsilon *const_iepsilon)
-#define const_iepsilon3 (const_iepsilon2 *const_iepsilon)
-#define const_iepsilon4 (const_iepsilon2 *const_iepsilon2)
-#define const_iepsilon5 (const_iepsilon3 *const_iepsilon2)
-#define const_iepsilon6 (const_iepsilon3 *const_iepsilon3)
+#define const_iepsilon2 (const_iepsilon * const_iepsilon)
+#define const_iepsilon3 (const_iepsilon2 * const_iepsilon)
+#define const_iepsilon4 (const_iepsilon2 * const_iepsilon2)
+#define const_iepsilon5 (const_iepsilon3 * const_iepsilon2)
+#define const_iepsilon6 (const_iepsilon3 * const_iepsilon3)
 
 /* The gravity kernel is defined as a degree 6 polynomial in the distance
    r. The resulting value should be post-multiplied with r^-3, resulting
@@ -42,18 +42,28 @@
 #define kernel_grav_degree 6
 #define kernel_grav_ivals 2
 #define kernel_grav_scale (2 * const_iepsilon)
-static float kernel_grav_coeffs
-    [(kernel_grav_degree + 1) * (kernel_grav_ivals + 1)] = {
-        32.0f * const_iepsilon6,         -192.0f / 5.0f * const_iepsilon5,
-        0.0f,                            32.0f / 3.0f * const_iepsilon3,
-        0.0f,                            0.0f,
-        0.0f,                            -32.0f / 3.0f * const_iepsilon6,
-        192.0f / 5.0f * const_iepsilon5, -48.0f * const_iepsilon4,
-        64.0f / 3.0f * const_iepsilon3,  0.0f,
-        0.0f,                            -1.0f / 15.0f,
-        0.0f,                            0.0f,
-        0.0f,                            0.0f,
-        0.0f,                            0.0f,
+static float
+    kernel_grav_coeffs[(kernel_grav_degree + 1) * (kernel_grav_ivals + 1)] = {
+        32.0f * const_iepsilon6,
+        -192.0f / 5.0f * const_iepsilon5,
+        0.0f,
+        32.0f / 3.0f * const_iepsilon3,
+        0.0f,
+        0.0f,
+        0.0f,
+        -32.0f / 3.0f * const_iepsilon6,
+        192.0f / 5.0f * const_iepsilon5,
+        -48.0f * const_iepsilon4,
+        64.0f / 3.0f * const_iepsilon3,
+        0.0f,
+        0.0f,
+        -1.0f / 15.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
         1.0f};
 
 /**
@@ -76,8 +86,8 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval(float x,
  * version).
  */
 
-__attribute__((always_inline))
-    INLINE static void kernel_grav_eval_vec(vector *x, vector *w) {
+__attribute__((always_inline)) INLINE static void kernel_grav_eval_vec(
+    vector *x, vector *w) {
 
   vector ind, c[kernel_grav_degree + 1];
   int j, k;
@@ -179,8 +189,8 @@ __attribute__((always_inline)) INLINE static void blender_eval_vec(vector *x,
  * distance x (Vectorized version). Gives a sensible answer only if x<2.
  */
 
-__attribute__((always_inline))
-    INLINE static void blender_deval_vec(vector *x, vector *w, vector *dw_dx) {
+__attribute__((always_inline)) INLINE static void blender_deval_vec(
+    vector *x, vector *w, vector *dw_dx) {
 
   vector ind, c[blender_degree + 1];
   int j, k;
