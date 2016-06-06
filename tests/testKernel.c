@@ -18,9 +18,9 @@
  *
  ******************************************************************************/
 
-#define NO__SSE2__
-#include "vector.h"
+#define NO__AVX__
 #include "kernel_hydro.h"
+#include "vector.h"
 
 #include <stdlib.h>
 #include <strings.h>

@@ -334,7 +334,7 @@ typedef unsigned __int64 ticks;
 extern "C"
 #endif
     ticks
-        __getReg(int whichReg);
+    __getReg(int whichReg);
 #pragma intrinsic(__getReg)
 
 static __inline ticks getticks(void) {
@@ -481,9 +481,9 @@ INLINE_ELAPSED(inline)
 /* MIPS ZBus */
 #if HAVE_MIPS_ZBUS_TIMER
 #if defined(__mips__) && !defined(HAVE_TICK_COUNTER)
+#include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 typedef uint64_t ticks;
 

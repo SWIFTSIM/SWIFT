@@ -137,22 +137,22 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* Ok, now comes the real deal. */
 
 /* First some powers of gamma = H/h */
-#define kernel_gamma2 ((float)(kernel_gamma *kernel_gamma))
-#define kernel_gamma3 ((float)(kernel_gamma *kernel_gamma *kernel_gamma))
+#define kernel_gamma2 ((float)(kernel_gamma * kernel_gamma))
+#define kernel_gamma3 ((float)(kernel_gamma * kernel_gamma * kernel_gamma))
 #define kernel_gamma4 \
-  ((float)(kernel_gamma *kernel_gamma *kernel_gamma *kernel_gamma))
+  ((float)(kernel_gamma * kernel_gamma * kernel_gamma * kernel_gamma))
 #define kernel_igamma ((float)(1. / kernel_gamma))
-#define kernel_igamma2 ((float)(kernel_igamma *kernel_igamma))
-#define kernel_igamma3 ((float)(kernel_igamma *kernel_igamma *kernel_igamma))
+#define kernel_igamma2 ((float)(kernel_igamma * kernel_igamma))
+#define kernel_igamma3 ((float)(kernel_igamma * kernel_igamma * kernel_igamma))
 #define kernel_igamma4 \
-  ((float)(kernel_igamma *kernel_igamma *kernel_igamma *kernel_igamma))
+  ((float)(kernel_igamma * kernel_igamma * kernel_igamma * kernel_igamma))
 
 /* The number of branches */
 #define kernel_ivals_f ((float)(kernel_ivals))
 
 /* Kernel self contribution (i.e. W(0,h)) */
 #define kernel_root \
-  ((float)(kernel_coeffs[kernel_degree]) * kernel_constant *kernel_igamma3)
+  ((float)(kernel_coeffs[kernel_degree]) * kernel_constant * kernel_igamma3)
 
 /**
  * @brief Computes the kernel function and its derivative.
@@ -200,8 +200,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
-__attribute__((always_inline))
-    INLINE static void kernel_eval(float u, float *restrict W) {
+__attribute__((always_inline)) INLINE static void kernel_eval(
+    float u, float *restrict W) {
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_igamma;
 
@@ -246,8 +246,8 @@ static const vector kernel_igamma4_vec = FILL_VEC((float)kernel_igamma4);
  * @param w (return) The value of the kernel function $W(x,h)$.
  * @param dw_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
  */
-__attribute__((always_inline))
-    INLINE static void kernel_deval_vec(vector *u, vector *w, vector *dw_dx) {
+__attribute__((always_inline)) INLINE static void kernel_deval_vec(
+    vector *u, vector *w, vector *dw_dx) {
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x;

@@ -842,7 +842,8 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
     /* Allocate the new lists. */
-    if ((s->tasks = (struct task *)malloc(sizeof(struct task) *size)) == NULL ||
+    if ((s->tasks = (struct task *)malloc(sizeof(struct task) * size)) ==
+            NULL ||
         (s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
   }
@@ -1328,7 +1329,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");

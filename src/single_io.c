@@ -35,8 +35,8 @@
 #include "single_io.h"
 
 /* Local includes. */
-#include "const.h"
 #include "common_io.h"
+#include "const.h"
 #include "error.h"
 
 /*-----------------------------------------------------------------------------
@@ -560,6 +560,13 @@ void write_output_single(struct engine* e, const char* baseName,
   h_grp = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating SPH group");
   writeSPHflavour(h_grp);
+  H5Gclose(h_grp);
+
+  /* Print the runtime parameters */
+  h_grp =
+      H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp);
   H5Gclose(h_grp);
 
   /* Print the system of Units */

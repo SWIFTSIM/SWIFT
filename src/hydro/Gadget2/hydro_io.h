@@ -83,8 +83,8 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
              FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, us,
              UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy",
-             FLOAT, N, 1, parts, N_total, mpi_rank, offset, entropy, us,
+  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy", FLOAT, N,
+             1, parts, N_total, mpi_rank, offset, entropy, us,
              UNIT_CONV_ENTROPY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
              ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, us,
@@ -104,10 +104,6 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Kernel function description */
   writeAttribute_s(h_grpsph, "Kernel", kernel_name);
-  // writeAttribute_f(h_grpsph, "Kernel eta", const_eta_kernel);
-  // writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
-  // writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
-  // writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
 
   /* Viscosity and thermal conduction */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
@@ -116,11 +112,4 @@ void writeSPHflavour(hid_t h_grpsph) {
                    "Legacy Gadget-2 as in Springel (2005)");
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
-
-  /* Time integration properties */
-  // writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);
-  // writeAttribute_f(h_grpsph, "Maximal ln(Delta h) change over dt",
-  //                 const_ln_max_h_change);
-  // writeAttribute_f(h_grpsph, "Maximal Delta h change over dt",
-  //                 exp(const_ln_max_h_change));
 }

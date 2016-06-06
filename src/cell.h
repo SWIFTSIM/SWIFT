@@ -136,13 +136,13 @@ struct cell {
   int hold, ghold;
 
   /* Spin lock for various uses. */
-  lock_type lock, glock;
+  swift_lock_type lock, glock;
 
   /* ID of the previous owner, e.g. runner. */
   int owner;
 
   /* Momentum of particles in cell. */
-  float mom[3], ang[3];
+  double mom[3], ang_mom[3];
 
   /* Mass, potential, internal  and kinetic energy of particles in this cell. */
   double mass, e_pot, e_int, e_kin;

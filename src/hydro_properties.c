@@ -26,8 +26,8 @@
 
 /* Local headers. */
 #include "error.h"
-#include "kernel_hydro.h"
 #include "hydro.h"
+#include "kernel_hydro.h"
 
 void hydro_props_init(struct hydro_props *p,
                       const struct swift_params *params) {
@@ -55,7 +55,7 @@ void hydro_props_print(const struct hydro_props *p) {
   message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours (eta=%f).",
           kernel_name, p->target_neighbours, p->delta_neighbours,
           p->eta_neighbours);
-  message("Hydrodynamic integration: CFL parmeter: %.4f.", p->CFL_condition);
+  message("Hydrodynamic integration: CFL parameter: %.4f.", p->CFL_condition);
   message(
       "Hydrodynamic integration: Max change of volume: %.2f "
       "(max|dlog(h)/dt|=%f).",

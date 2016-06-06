@@ -24,8 +24,8 @@
 
 #include "config.h"
 #include "const.h"
-#include "part.h"
 #include "debug.h"
+#include "part.h"
 
 /* Import the right hydro definition */
 #if defined(MINIMAL_SPH)
@@ -100,8 +100,9 @@ void printgParticle(struct gpart *gparts, long long int id, size_t N) {
 
 void printParticle_single(struct part *p, struct xpart *xp) {
 
-  printf("## Particle: id=%lld", p->id);
+  printf("## Particle: id=%lld ", p->id);
   hydro_debug_particle(p, xp);
+  printf("\n");
 }
 
 #ifdef HAVE_METIS

@@ -131,18 +131,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
 
   /* Compute dv dot r. */
-  float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-               (pi->v[2] - pj->v[2]) * dx[2];
-  dvdr *= r_inv;
-
-  /* Compute the relative velocity. (This is 0 if the particles move away from
-   * each other and negative otherwise) */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Compute sound speeds */
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
-  const float v_sig = ci + cj + 3.f * omega_ij;
+  const float v_sig = ci + cj;
 
   /* SPH acceleration term */
   const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
@@ -157,8 +153,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * sph_term * dx[2];
 
   /* Get the time derivative for u. */
-  pi->u_dt += P_over_rho_i * mj * dvdr * wi_dr;
-  pj->u_dt += P_over_rho_j * mi * dvdr * wj_dr;
+  pi->u_dt += P_over_rho_i * mj * dvdr * r_inv * wi_dr;
+  pj->u_dt += P_over_rho_j * mi * dvdr * r_inv * wj_dr;
 
   /* Get the time derivative for h. */
   pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
@@ -208,18 +204,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
 
   /* Compute dv dot r. */
-  float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-               (pi->v[2] - pj->v[2]) * dx[2];
-  dvdr *= r_inv;
-
-  /* Compute the relative velocity. (This is 0 if the particles move away from
-   * each other and negative otherwise) */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Compute sound speeds */
   const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
-  const float v_sig = ci + cj + 3.f * omega_ij;
+  const float v_sig = ci + cj;
 
   /* SPH acceleration term */
   const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
@@ -230,7 +222,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * sph_term * dx[2];
 
   /* Get the time derivative for u. */
-  pi->u_dt += P_over_rho_i * mj * dvdr * wi_dr;
+  pi->u_dt += P_over_rho_i * mj * dvdr * r_inv * wi_dr;
 
   /* Get the time derivative for h. */
   pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;

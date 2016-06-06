@@ -22,14 +22,15 @@
 
 /* Some standard headers. */
 /* Needs to be included so that strtok returns char * instead of a int *. */
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* This object's header. */
 #include "parser.h"
 
 /* Local headers. */
+#include "common_io.h"
 #include "error.h"
 
 #define PARSER_COMMENT_STRING "#"
@@ -255,7 +256,7 @@ static void parse_value(char *line, struct swift_params *params) {
   /* Check that it is a parameter inside a section.*/
   if (*line == ' ' || *line == '\t') {
     parse_section_param(line, &isFirstParam, section, params);
-  } else {/*Else it is the start of a new section or standalone parameter. */
+  } else { /*Else it is the start of a new section or standalone parameter. */
     /* Take first token as the parameter name. */
     token = strtok(line, " :\t");
     strcpy(tmpStr, token);
@@ -276,7 +277,13 @@ static void parse_value(char *line, struct swift_params *params) {
       find_duplicate_params(params, tmpStr);
 
       strcpy(section, tmpSectionName);
-      strcpy(params->section[params->sectionCount++].name, tmpSectionName);
+      strcpy(params->section[params->sectionCount].name, tmpSectionName);
+      if (params->sectionCount == PARSER_MAX_NO_OF_SECTIONS - 1) {
+        error(
+            "Maximal number of sections in parameter file reached. Aborting !");
+      } else {
+        params->sectionCount++;
+      }
       inSection = 1;
       isFirstParam = 1;
     } else {
@@ -294,7 +301,14 @@ static void parse_value(char *line, struct swift_params *params) {
       /* Must be a standalone parameter so no need to prefix name with a
        * section. */
       strcpy(params->data[params->paramCount].name, tmpStr);
-      strcpy(params->data[params->paramCount++].value, token);
+      strcpy(params->data[params->paramCount].value, token);
+      if (params->paramCount == PARSER_MAX_NO_OF_PARAMS - 1) {
+        error(
+            "Maximal number of parameters in parameter file reached. Aborting "
+            "!");
+      } else {
+        params->paramCount++;
+      }
       inSection = 0;
       isFirstParam = 1;
     }
@@ -346,7 +360,12 @@ static void parse_section_param(char *line, int *isFirstParam,
   find_duplicate_params(params, paramName);
 
   strcpy(params->data[params->paramCount].name, paramName);
-  strcpy(params->data[params->paramCount++].value, token);
+  strcpy(params->data[params->paramCount].value, token);
+  if (params->paramCount == PARSER_MAX_NO_OF_PARAMS - 1) {
+    error("Maximal number of parameters in parameter file reached. Aborting !");
+  } else {
+    params->paramCount++;
+  }
 }
 
 /**
@@ -376,7 +395,8 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
     }
   }
 
-  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0;
 }
 
@@ -408,7 +428,8 @@ char parser_get_param_char(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0;
 }
 
@@ -440,7 +461,8 @@ float parser_get_param_float(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0.f;
 }
 
@@ -471,7 +493,8 @@ double parser_get_param_double(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure, in file '%s'.", name,params->fileName);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0.;
 }
 
@@ -558,3 +581,11 @@ void parser_write_params_to_file(const struct swift_params *params,
 
   fclose(file);
 }
+
+#if defined(HAVE_HDF5)
+void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {
+
+  for (int i = 0; i < params->paramCount; i++)
+    writeAttribute_s(grp, params->data[i].name, params->data[i].value);
+}
+#endif

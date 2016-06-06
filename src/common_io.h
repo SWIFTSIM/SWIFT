@@ -52,10 +52,7 @@ enum DATA_TYPE {
  *start a run or optional.
  *
  */
-enum DATA_IMPORTANCE {
-  COMPULSORY = 1,
-  OPTIONAL = 0
-};
+enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0 };
 
 /**
  * @brief The different particle types present in a GADGET IC file
@@ -88,14 +85,14 @@ void duplicate_hydro_gparts(struct part* const parts,
 
 void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data);
 
-void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data,
-                    int num);
+void writeAttribute(hid_t grp, const char* name, enum DATA_TYPE type,
+                    void* data, int num);
 
-void writeAttribute_d(hid_t grp, char* name, double data);
-void writeAttribute_f(hid_t grp, char* name, float data);
-void writeAttribute_i(hid_t grp, char* name, int data);
-void writeAttribute_l(hid_t grp, char* name, long data);
-void writeAttribute_s(hid_t grp, char* name, const char* str);
+void writeAttribute_d(hid_t grp, const char* name, double data);
+void writeAttribute_f(hid_t grp, const char* name, float data);
+void writeAttribute_i(hid_t grp, const char* name, int data);
+void writeAttribute_l(hid_t grp, const char* name, long data);
+void writeAttribute_s(hid_t grp, const char* name, const char* str);
 
 void createXMFfile(const char* baseName);
 FILE* prepareXMFfile(const char* baseName);
@@ -108,7 +105,6 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
                   char* name, size_t N, int dim, enum DATA_TYPE type);
 
 void writeCodeDescription(hid_t h_file);
-void writeSPHflavour(hid_t h_file);
 void writeUnitSystem(hid_t h_file, struct UnitSystem* us);
 
 #endif

@@ -17,11 +17,11 @@
  *
  ******************************************************************************/
 
-#include "parser.h"
 #include <assert.h>
-#include <string.h>
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include "parser.h"
 
 int main(int argc, char *argv[]) {
   const char *input_file = argv[1];
