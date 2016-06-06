@@ -55,6 +55,7 @@ void parser_read_file(const char *file_name, struct swift_params *params);
 void parser_print_params(const struct swift_params *params);
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name);
+
 char parser_get_param_char(const struct swift_params *params, const char *name);
 int parser_get_param_int(const struct swift_params *params, const char *name);
 float parser_get_param_float(const struct swift_params *params,
@@ -63,6 +64,18 @@ double parser_get_param_double(const struct swift_params *params,
                                const char *name);
 void parser_get_param_string(const struct swift_params *params,
                              const char *name, char *retParam);
+
+char parser_get_opt_param_char(const struct swift_params *params,
+                               const char *name, char def);
+int parser_get_opt_param_int(const struct swift_params *params,
+                             const char *name, int def);
+float parser_get_opt_param_float(const struct swift_params *params,
+                                 const char *name, float def);
+double parser_get_opt_param_double(const struct swift_params *params,
+                                   const char *name, double def);
+void parser_get_opt_param_string(const struct swift_params *params,
+                                 const char *name, char *retParam,
+                                 const char *def);
 
 #if defined(HAVE_HDF5)
 void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp);
