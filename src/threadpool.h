@@ -38,7 +38,7 @@ struct threadpool {
   pthread_t *threads;
 
   /* This is where threads go to rest. */
-  pthread_mutex_t control_mutex, thread_mutex;
+  pthread_mutex_t thread_mutex;
   pthread_cond_t control_cond, thread_cond;
 
   /* Current map data and count. */
@@ -47,7 +47,7 @@ struct threadpool {
   volatile threadpool_map_function map_function;
 
   /* Counter for the number of threads that are done. */
-  volatile int num_threads_done;
+  volatile int num_threads_waiting, num_threads_running;
 };
 
 /* Function prototypes. */

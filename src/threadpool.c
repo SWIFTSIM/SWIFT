@@ -39,18 +39,19 @@ void *threadpool_runner(void *data) {
   /* Our threadpool. */
   struct threadpool *tp = (struct threadpool *)data;
 
-  /* Signal to the threadpool that this thread is up and running. */
-  pthread_mutex_lock(&tp->control_mutex);
-  tp->num_threads += 1;
-  pthread_cond_signal(&tp->control_cond);
-  pthread_mutex_unlock(&tp->control_mutex);
-
   /* Main loop. */
   while (1) {
 
-    /* Wait for a signal. */
+    /* Let the controller know that this thread is waiting. */
     pthread_mutex_lock(&tp->thread_mutex);
+    tp->num_threads_waiting += 1;
+    if (tp->num_threads_waiting == tp->num_threads) {
+      pthread_cond_signal(&tp->control_cond);
+    }
+    
+    /* Wait for the controller. */
     pthread_cond_wait(&tp->thread_cond, &tp->thread_mutex);
+    tp->num_threads_waiting -= 1;
     pthread_mutex_unlock(&tp->thread_mutex);
 
     /* The index of the mapping task we will work on next. */
@@ -59,23 +60,17 @@ void *threadpool_runner(void *data) {
       tp->map_function(tp->map_data + tp->map_data_stride * task_ind,
                        tp->map_extra_data);
     }
-
-    /* Signal to the threadpool that we are done for now. */
-    pthread_mutex_lock(&tp->control_mutex);
-    tp->num_threads_done += 1;
-    pthread_cond_signal(&tp->control_cond);
-    pthread_mutex_unlock(&tp->control_mutex);
   }
 }
 
 void threadpool_init(struct threadpool *tp, int num_threads) {
 
-  /* We will use this to count how many threads are up and running. */
-  tp->num_threads = 0;
+  /* Initialize the thread counters. */
+  tp->num_threads = num_threads;
+  tp->num_threads_waiting = 0;
 
   /* Init the threadpool mutexes. */
-  if (pthread_mutex_init(&tp->control_mutex, NULL) != 0 ||
-      pthread_mutex_init(&tp->thread_mutex, NULL) != 0)
+  if (pthread_mutex_init(&tp->thread_mutex, NULL) != 0)
     error("Failed to initialize mutexex.");
   if (pthread_cond_init(&tp->control_cond, NULL) != 0 ||
       pthread_cond_init(&tp->thread_cond, NULL) != 0)
@@ -100,11 +95,11 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   }
 
   /* Wait for all the threads to be up and running. */
-  pthread_mutex_lock(&tp->control_mutex);
-  while (tp->num_threads < num_threads) {
-    pthread_cond_wait(&tp->control_cond, &tp->control_mutex);
+  pthread_mutex_lock(&tp->thread_mutex);
+  while (tp->num_threads_waiting < tp->num_threads) {
+    pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
   }
-  pthread_mutex_unlock(&tp->control_mutex);
+  pthread_mutex_unlock(&tp->thread_mutex);
 }
 
 /**
@@ -133,14 +128,9 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->map_function = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;
-  tp->num_threads_done = 0;
   pthread_cond_broadcast(&tp->thread_cond);
-  pthread_mutex_unlock(&tp->thread_mutex);
 
   /* Wait for the threads to come home. */
-  pthread_mutex_lock(&tp->control_mutex);
-  while (tp->num_threads_done < tp->num_threads) {
-    pthread_cond_wait(&tp->control_cond, &tp->control_mutex);
-  }
-  pthread_mutex_unlock(&tp->control_mutex);
+  pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
+  pthread_mutex_unlock(&tp->thread_mutex);
 }
