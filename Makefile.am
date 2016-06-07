@@ -1,7 +1,6 @@
-
 # This file is part of SWIFT.
-# Copyright (c) 2012 pedro.gonnet@durham.ac.uk.
-#               2015 matthieu.schaller@durham.ac.uk.
+# Copyright (c) 2012 pedro.gonnet@durham.ac.uk
+#               2015 matthieu.schaller@durham.ac.uk
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,4 +22,4 @@ ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = src examples doc tests
 
 # Non-standard files that should be part of the distribution.
-EXTRA_DIST = INSTALL.swift
+EXTRA_DIST = INSTALL.swift .clang-format format.sh

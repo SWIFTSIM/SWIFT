@@ -1584,6 +1584,7 @@ void engine_maketasks(struct engine *e) {
 #ifdef WITH_MPI
 
   /* Add the communication tasks if MPI is being used. */
+  if (e->policy & engine_policy_mpi) {
 
   /* Loop over the proxies. */
   for (int pid = 0; pid < e->nr_proxies; pid++) {
@@ -1601,6 +1602,7 @@ void engine_maketasks(struct engine *e) {
     for (int k = 0; k < p->nr_cells_out; k++)
       engine_addtasks_send(e, p->cells_out[k], p->cells_in[0]);
   }
+}
 #endif
 
   /* Set the unlocks per task. */
@@ -2783,8 +2785,11 @@ void engine_init(struct engine *e, struct space *s,
   s->e = e;
 
   /* Get the number of queues */
-  int nr_queues = parser_get_param_int(params, "Scheduler:nr_queues");
+  int nr_queues =
+      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
+  if (nr_queues != nr_threads)
+    message("Number of task queues set to %d", nr_queues);
   s->nr_queues = nr_queues;
 
 /* Deal with affinity. For now, just figure out the number of cores. */

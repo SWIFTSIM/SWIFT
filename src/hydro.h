@@ -19,6 +19,7 @@
 #ifndef SWIFT_HYDRO_H
 #define SWIFT_HYDRO_H
 
+/* Includes. */
 #include "const.h"
 #include "hydro_properties.h"
 #include "kernel_hydro.h"
