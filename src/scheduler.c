@@ -1019,8 +1019,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &tasks[tid[k]];
     if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) &&
-        ((1 << t->subtype) & s->submask) && !t->skip &&
-        (t->type != task_type_send) && (t->type != task_type_recv)) {
+        ((1 << t->subtype) & s->submask) && !t->skip) {
       scheduler_enqueue(s, t);
       pthread_cond_signal(&s->sleep_cond);
     }
