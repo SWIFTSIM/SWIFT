@@ -89,22 +89,24 @@ static cpu_set_t entry_affinity;
  * @brief Link a density/force task to a cell.
  *
  * @param e The #engine.
- * @param l The #link.
+ * @param l A pointer to the #link, will be modified atomically.
  * @param t The #task.
  *
  * @return The new #link pointer.
  */
 
-struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
+void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 
+  /* Get the next free link. */
   const int ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
     error("Link table overflow.");
   }
   struct link *res = &e->links[ind];
-  res->next = l;
+  
+  /* Set it atomically. */
   res->t = t;
-  return res;
+  res->next = atomic_swap(l, res);
 }
 
 /**
@@ -1188,43 +1190,30 @@ void engine_count_and_link_tasks_mapper(void *map_data, void *extra_data) {
       }
 
   /* Link density tasks to cells. */
-  /* TODO(pedro): Instead of locking the cell, re-write engine_addlink to
-     directly modify the second argument using the __atomic_exchange_n
-     intrinsic. */
   if (t->type == task_type_self) {
     atomic_inc(&t->ci->nr_tasks);
     if (t->subtype == task_subtype_density) {
-      lock_lock(&t->ci->lock);
-      t->ci->density = engine_addlink(e, t->ci->density, t);
+      engine_addlink(e, &t->ci->density, t);
       atomic_inc(&t->ci->nr_density);
-      lock_unlock_blind(&t->ci->lock);
     }
   } else if (t->type == task_type_pair) {
     atomic_inc(&t->ci->nr_tasks);
     atomic_inc(&t->cj->nr_tasks);
     if (t->subtype == task_subtype_density) {
-      lock_lock(&t->ci->lock);
-      t->ci->density = engine_addlink(e, t->ci->density, t);
+      engine_addlink(e, &t->ci->density, t);
       atomic_inc(&t->ci->nr_density);
-      lock_unlock_blind(&t->ci->lock);
-      lock_lock(&t->cj->lock);
-      t->cj->density = engine_addlink(e, t->cj->density, t);
+      engine_addlink(e, &t->cj->density, t);
       atomic_inc(&t->cj->nr_density);
-      lock_unlock_blind(&t->cj->lock);
     }
   } else if (t->type == task_type_sub) {
     atomic_inc(&t->ci->nr_tasks);
     if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
     if (t->subtype == task_subtype_density) {
-      lock_lock(&t->ci->lock);
-      t->ci->density = engine_addlink(e, t->ci->density, t);
+      engine_addlink(e, &t->ci->density, t);
       atomic_inc(&t->ci->nr_density);
-      lock_unlock_blind(&t->ci->lock);
       if (t->cj != NULL) {
-        lock_lock(&t->cj->lock);
-        t->cj->density = engine_addlink(e, t->cj->density, t);
+        engine_addlink(e, &t->cj->density, t);
         atomic_inc(&t->cj->nr_density);
-        lock_unlock_blind(&t->cj->lock);
       }
     }
   }
@@ -1284,7 +1273,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data,
         sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
 
     /* Add the link between the new loop and the cell */
-    t->ci->force = engine_addlink(e, t->ci->force, t2);
+    engine_addlink(e, &t->ci->force, t2);
     atomic_inc(&t->ci->nr_force);
 
     /* Now, build all the dependencies for the hydro */
@@ -1299,9 +1288,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data,
         sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
 
     /* Add the link between the new loop and both cells */
-    t->ci->force = engine_addlink(e, t->ci->force, t2);
+    engine_addlink(e, &t->ci->force, t2);
     atomic_inc(&t->ci->nr_force);
-    t->cj->force = engine_addlink(e, t->cj->force, t2);
+    engine_addlink(e, &t->cj->force, t2);
     atomic_inc(&t->cj->nr_force);
 
     /* Now, build all the dependencies for the hydro for the cells */
@@ -1322,10 +1311,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data,
         sched, task_type_sub, task_subtype_force, t->flags, 0, t->ci, t->cj, 0);
 
     /* Add the link between the new loop and both cells */
-    t->ci->force = engine_addlink(e, t->ci->force, t2);
+    engine_addlink(e, &t->ci->force, t2);
     atomic_inc(&t->ci->nr_force);
     if (t->cj != NULL) {
-      t->cj->force = engine_addlink(e, t->cj->force, t2);
+      engine_addlink(e, &t->cj->force, t2);
       atomic_inc(&t->cj->nr_force);
     }
 
