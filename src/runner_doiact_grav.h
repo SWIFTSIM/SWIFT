@@ -69,7 +69,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
   /* Get the cutoff shift. */
   for (rshift = 0.0, k = 0; k < 3; k++)
-    rshift += shift[k] * runner_shift[3 * sid + k];
+    rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
   sort_i = &ci->gsort[sid * (ci->count + 1)];
