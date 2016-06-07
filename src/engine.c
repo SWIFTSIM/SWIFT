@@ -1637,12 +1637,12 @@ int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
   const ticks tic = getticks();
+  int rebuild_space = 0;
 
   /* Much less to do here if we're on a fixed time-step. */
   if (e->policy & engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
-    int rebuild_space = 0;
     threadpool_map(&e->threadpool, engine_marktasks_fixdt_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), &rebuild_space);
     return rebuild_space;
@@ -1651,12 +1651,12 @@ int engine_marktasks(struct engine *e) {
   } else {
 
     /* Run through the tasks and mark as skip or not. */
-    int extra_data[2] = {e->ti_current, 0};
+    int extra_data[2] = {e->ti_current, rebuild_space};
     threadpool_map(&e->threadpool, engine_marktasks_sorts_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), NULL);
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), extra_data);
-    return extra_data[1];
+    rebuild_space = extra_data[1];
   }
 
   if (e->verbose)
@@ -1664,7 +1664,7 @@ int engine_marktasks(struct engine *e) {
             clocks_getunit());
 
   /* All is well... */
-  return 0;
+  return rebuild_space;
 }
 
 /**
