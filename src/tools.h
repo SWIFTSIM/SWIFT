@@ -25,7 +25,6 @@
 #include "cell.h"
 #include "physical_constants.h"
 #include "runner.h"
-#include "cell.h"
 
 void factor(int value, int *f1, int *f2);
 void density_dump(int N);

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
+#ifdef __AVX__
 #define NO__AVX__
 #include "kernel_hydro.h"
 #include "vector.h"
@@ -86,3 +86,7 @@ int main() {
   printf("\nAll values are consistent\n");
   return 0;
 }
+
+#else
+int main() { return 0; }
+#endif

@@ -25,12 +25,12 @@
 #include "inline.h"
 #include "vector.h"
 
-#define const_iepsilon (1. / const_epsilon)
-#define const_iepsilon2 (const_iepsilon *const_iepsilon)
-#define const_iepsilon3 (const_iepsilon2 *const_iepsilon)
-#define const_iepsilon4 (const_iepsilon2 *const_iepsilon2)
-#define const_iepsilon5 (const_iepsilon3 *const_iepsilon2)
-#define const_iepsilon6 (const_iepsilon3 *const_iepsilon3)
+/* #define const_iepsilon (1. / const_epsilon) */
+/* #define const_iepsilon2 (const_iepsilon *const_iepsilon) */
+/* #define const_iepsilon3 (const_iepsilon2 *const_iepsilon) */
+/* #define const_iepsilon4 (const_iepsilon2 *const_iepsilon2) */
+/* #define const_iepsilon5 (const_iepsilon3 *const_iepsilon2) */
+/* #define const_iepsilon6 (const_iepsilon3 *const_iepsilon3) */
 
 /* The gravity kernel is defined as a degree 6 polynomial in the distance
    r. The resulting value should be post-multiplied with r^-3, resulting
