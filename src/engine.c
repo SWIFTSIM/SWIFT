@@ -63,19 +63,11 @@
 #include "single_io.h"
 #include "timers.h"
 
-const char *engine_policy_names[13] = {"none",
-                                       "rand",
-                                       "steal",
-                                       "keep",
-                                       "block",
-                                       "fix_dt",
-                                       "cpu_tight",
-                                       "mpi",
-                                       "numa_affinity",
-                                       "hydro",
-                                       "self_gravity",
-                                       "external_gravity",
-                                       "cosmology_integration"};
+const char *engine_policy_names[13] = {
+    "none",                 "rand",   "steal",        "keep",
+    "block",                "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
+    "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -103,7 +95,7 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
     error("Link table overflow.");
   }
   struct link *res = &e->links[ind];
-  
+
   /* Set it atomically. */
   res->t = t;
   res->next = atomic_swap(l, res);
@@ -1622,6 +1614,96 @@ void engine_marktasks_mapper(void *map_data, void *extra_data) {
     t->skip = 1;
 }
 
+int engine_marktasks_serial(struct engine *e) {
+
+  struct scheduler *s = &e->sched;
+  const int ti_end = e->ti_current;
+  const int nr_tasks = s->nr_tasks;
+  const int *const ind = s->tasks_ind;
+  struct task *tasks = s->tasks;
+
+  /* Run through the tasks and mark as skip or not. */
+  for (int k = 0; k < nr_tasks; k++) {
+
+    /* Get a handle on the kth task. */
+    struct task *t = &tasks[ind[k]];
+
+    /* Sort-task? Note that due to the task ranking, the sorts
+       will all come before the pairs. */
+    if (t->type == task_type_sort) {
+
+      /* Re-set the flags. */
+      t->flags = 0;
+      t->skip = 1;
+
+    }
+
+    /* Single-cell task? */
+    else if (t->type == task_type_self || t->type == task_type_ghost ||
+             (t->type == task_type_sub && t->cj == NULL)) {
+
+      /* Set this task's skip. */
+      t->skip = (t->ci->ti_end_min > ti_end);
+    }
+
+    /* Pair? */
+    else if (t->type == task_type_pair ||
+             (t->type == task_type_sub && t->cj != NULL)) {
+
+      /* Local pointers. */
+      const struct cell *ci = t->ci;
+      const struct cell *cj = t->cj;
+
+      /* Set this task's skip. */
+      t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
+
+      /* Too much particle movement? */
+      if (t->tight &&
+          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+           ci->dx_max > space_maxreldx * ci->h_max ||
+           cj->dx_max > space_maxreldx * cj->h_max))
+        return 1;
+
+      /* Set the sort flags. */
+      if (!t->skip && t->type == task_type_pair) {
+        if (!(ci->sorted & (1 << t->flags))) {
+          ci->sorts->flags |= (1 << t->flags);
+          ci->sorts->skip = 0;
+        }
+        if (!(cj->sorted & (1 << t->flags))) {
+          cj->sorts->flags |= (1 << t->flags);
+          cj->sorts->skip = 0;
+        }
+      }
+
+    }
+
+    /* Kick? */
+    else if (t->type == task_type_kick) {
+      t->skip = (t->ci->ti_end_min > ti_end);
+      t->ci->updated = 0;
+      t->ci->g_updated = 0;
+    }
+
+    /* Drift? */
+    else if (t->type == task_type_drift)
+      t->skip = 0;
+
+    /* Init? */
+    else if (t->type == task_type_init) {
+      /* Set this task's skip. */
+      t->skip = (t->ci->ti_end_min > ti_end);
+    }
+
+    /* None? */
+    else if (t->type == task_type_none)
+      t->skip = 1;
+  }
+
+  /* All is well... */
+  return 0;
+}
+
 int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
@@ -1640,12 +1722,13 @@ int engine_marktasks(struct engine *e) {
   } else {
 
     /* Run through the tasks and mark as skip or not. */
-    int extra_data[2] = {e->ti_current, rebuild_space};
+    /* int extra_data[2] = {e->ti_current, rebuild_space};
     threadpool_map(&e->threadpool, engine_marktasks_sorts_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), NULL);
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), extra_data);
-    rebuild_space = extra_data[1];
+    rebuild_space = extra_data[1]; */
+    rebuild_space = engine_marktasks_serial(e);
   }
 
   if (e->verbose)
