@@ -48,6 +48,7 @@ tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
 tests/testKernel
+tests/testKernelGrav
 tests/testParser
 tests/parser_output.yml
 

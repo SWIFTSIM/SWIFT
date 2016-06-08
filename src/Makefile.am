@@ -42,7 +42,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
-    kernel_hydro.c kernel_gravity.c tools.c part.c partition.c clocks.c parser.c \
+    kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potentials.c hydro_properties.c
 
 # Include files for distribution, not installation.
