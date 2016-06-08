@@ -376,9 +376,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       for (k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
       hi = pi->h;
       hig2 = hi * hi * kernel_gamma2;
-      di = hi * kernel_gamma + dxj + pix[0] * runner_shift[3 * sid + 0] +
-           pix[1] * runner_shift[3 * sid + 1] +
-           pix[2] * runner_shift[3 * sid + 2];
+      di = hi * kernel_gamma + dxj + pix[0] * runner_shift[sid][0] +
+           pix[1] * runner_shift[sid][1] + pix[2] * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
       for (pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
@@ -439,9 +438,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
       for (k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
       hi = pi->h;
       hig2 = hi * hi * kernel_gamma2;
-      di = -hi * kernel_gamma - dxj + pix[0] * runner_shift[3 * sid + 0] +
-           pix[1] * runner_shift[3 * sid + 1] +
-           pix[2] * runner_shift[3 * sid + 2];
+      di = -hi * kernel_gamma - dxj + pix[0] * runner_shift[sid][0] +
+           pix[1] * runner_shift[sid][1] + pix[2] * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
       for (pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
@@ -758,7 +756,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Get the cutoff shift. */
   for (rshift = 0.0, k = 0; k < 3; k++)
-    rshift += shift[k] * runner_shift[3 * sid + k];
+    rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
   sort_i = &ci->sort[sid * (ci->count + 1)];
@@ -952,7 +950,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Get the cutoff shift. */
   for (rshift = 0.0, k = 0; k < 3; k++)
-    rshift += shift[k] * runner_shift[3 * sid + k];
+    rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
   sort_i = &ci->sort[sid * (ci->count + 1)];

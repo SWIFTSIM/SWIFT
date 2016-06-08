@@ -60,8 +60,8 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
   sid = space_getsid(e->s, &ci, &cj, shift);
 
   /* Make sure the cells are sorted. */
-  runner_do_gsort(r, ci, (1 << sid), 0);
-  runner_do_gsort(r, cj, (1 << sid), 0);
+  //runner_do_gsort(r, ci, (1 << sid), 0);
+  //runner_do_gsort(r, cj, (1 << sid), 0);
 
   /* Have the cells been sorted? */
   if (!(ci->gsorted & (1 << sid)) || !(cj->gsorted & (1 << sid)))
@@ -69,7 +69,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
   /* Get the cutoff shift. */
   for (rshift = 0.0, k = 0; k < 3; k++)
-    rshift += shift[k] * runner_shift[3 * sid + k];
+    rshift += shift[k] * runner_shift[sid][k];
 
   /* Pick-out the sorted lists. */
   sort_i = &ci->gsort[sid * (ci->count + 1)];
