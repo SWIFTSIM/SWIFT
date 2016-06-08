@@ -1254,7 +1254,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
          tries++) {
 
       /* Try to get a task from the suggested queue. */
-      if (s->queues[qid].count > 0) {
+      if (s->queues[qid].count > 0 ||
+          s->queues[qid].count_incoming > 0) {
         TIMER_TIC
         res = queue_gettask(&s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
@@ -1265,7 +1266,10 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
         for (int k = 0; k < nr_queues; k++)
-          if (s->queues[k].count > 0) qids[count++] = k;
+          if (s->queues[k].count > 0 || 
+              s->queues[k].count_incoming > 0) {
+            qids[count++] = k;
+          }
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC

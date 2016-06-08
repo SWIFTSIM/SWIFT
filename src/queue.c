@@ -84,6 +84,7 @@ void queue_get_incoming(struct queue *q) {
     /* Drop the task at the end of the queue. */
     tid[q->count] = offset;
     q->count += 1;
+    atomic_dec(&q->count_incoming);
 
     /* Shuffle up. */
     for (int k = q->count - 1; k > 0; k = (k - 1) / 2)
@@ -114,13 +115,23 @@ void queue_insert(struct queue *q, struct task *t) {
   
   /* Spin until the new offset can be stored. */
   while (atomic_cas(&q->tid_incoming[ind], -1, t - q->tasks) != -1) {
+  
     /* Try to get the queue lock, non-blocking, ensures that at
        least somebody is working on this queue. */
     if (lock_trylock(&q->lock) == 0) {
+      
+      /* Clean up the incoming DEQ. */
       queue_get_incoming(q);
-      if (lock_unlock(&q->lock) != 0) error("Unlocking the qlock failed.\n");
+      
+      /* Release the queue lock. */
+      if (lock_unlock(&q->lock) != 0) {
+        error("Unlocking the qlock failed.\n");
+      }
     }
   }
+  
+  /* Increase the incoming count. */
+  atomic_inc(&q->count_incoming);
 }
 
 /**
@@ -154,6 +165,7 @@ void queue_init(struct queue *q, struct task *tasks) {
   }
   q->first_incoming = 0;
   q->last_incoming = 0;
+  q->count_incoming = 0;
 }
 
 /**

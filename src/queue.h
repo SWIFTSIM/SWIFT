@@ -55,7 +55,7 @@ struct queue {
   
   /* DEQ for incoming tasks. */
   int *tid_incoming;
-  volatile unsigned int first_incoming, last_incoming;
+  volatile unsigned int first_incoming, last_incoming, count_incoming;
 
 } __attribute__((aligned(64)));
 
