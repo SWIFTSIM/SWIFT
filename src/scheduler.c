@@ -600,23 +600,23 @@ void scheduler_splittasks_mapper(void *map_data, void *extra_data) {
       } else {
 
         /* Create the sort for ci. */
-        lock_lock( &ci->lock );
+        lock_lock(&ci->lock);
         if (ci->sorts == NULL)
           ci->sorts =
               scheduler_addtask(s, task_type_sort, 0, 1 << sid, 0, ci, NULL, 0);
         else
           ci->sorts->flags |= (1 << sid);
-        lock_unlock_blind( &ci->lock );
+        lock_unlock_blind(&ci->lock);
         scheduler_addunlock(s, ci->sorts, t);
 
         /* Create the sort for cj. */
-        lock_lock( &cj->lock );
+        lock_lock(&cj->lock);
         if (cj->sorts == NULL)
           cj->sorts =
               scheduler_addtask(s, task_type_sort, 0, 1 << sid, 0, cj, NULL, 0);
         else
           cj->sorts->flags |= (1 << sid);
-        lock_unlock_blind( &cj->lock );
+        lock_unlock_blind(&cj->lock);
         scheduler_addunlock(s, cj->sorts, t);
       }
 
@@ -842,8 +842,7 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
     /* Allocate the new lists. */
-    if ((s->tasks = (struct task *)malloc(sizeof(struct task) * size)) ==
-            NULL ||
+    if ((s->tasks = (struct task *)malloc(sizeof(struct task) *size)) == NULL ||
         (s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
   }
@@ -981,6 +980,16 @@ void scheduler_rewait_mapper(void *map_data, void *extra_data) {
   }
 }
 
+void scheduler_enqueue_mapper(void *map_data, void *extra_data) {
+  struct scheduler *s = (struct scheduler *)extra_data;
+  struct task *t = (struct task *)map_data;
+  if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
+      ((1 << t->subtype) & s->submask)) {
+    scheduler_enqueue(s, t);
+    pthread_cond_signal(&s->sleep_cond);
+  }
+}
+
 /**
  * @brief Start the scheduler, i.e. fill the queues with ready tasks.
  *
@@ -992,46 +1001,33 @@ void scheduler_rewait_mapper(void *map_data, void *extra_data) {
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  const int nr_tasks = s->nr_tasks;
-  int *tid = s->tasks_ind;
-  struct task *tasks = s->tasks;
-  // ticks tic;
+  // ticks tic = getticks();
 
   /* Store the masks */
   s->mask = mask | (1 << task_type_comm_root);
   s->submask = submask | (1 << task_subtype_none);
 
   /* Clear all the waits and rids. */
-  // ticks tic = getticks();
   for (int k = 0; k < s->nr_tasks; k++) {
     s->tasks[k].wait = 1;
     s->tasks[k].rid = -1;
   }
-  // message( "clearing task waits took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit() );
 
   /* Re-wait the tasks. */
-  threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, nr_tasks,
+  threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), s);
 
   /* Loop over the tasks and enqueue whoever is ready. */
-  // tic = getticks();
-  for (int k = 0; k < s->nr_tasks; k++) {
-    struct task *t = &tasks[tid[k]];
-    if (atomic_dec(&t->wait) == 1 && ((1 << t->type) & s->mask) &&
-        ((1 << t->subtype) & s->submask) && !t->skip) {
-      scheduler_enqueue(s, t);
-      pthread_cond_signal(&s->sleep_cond);
-    }
-  }
+  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks, s->nr_tasks,
+                 sizeof(struct task), s);
 
   /* To be safe, fire of one last sleep_cond in a safe way. */
   pthread_mutex_lock(&s->sleep_mutex);
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
 
-  // message( "enqueueing tasks took %.3f %s." ,
-  // clocks_from_ticks( getticks() - tic ), clocks_getunit());
+  /* message("enqueueing tasks took %.3f %s." ,
+          clocks_from_ticks( getticks() - tic ), clocks_getunit()); */
 }
 
 /**
@@ -1329,7 +1325,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
