@@ -26,7 +26,8 @@
 #include <pthread.h>
 
 /* Function type for mappings. */
-typedef void (*threadpool_map_function)(void *map_data, void *extra_data);
+typedef void (*threadpool_map_function)(void *map_data, int num_elements,
+                                        void *extra_data);
 
 /* Data of a threadpool. */
 struct threadpool {
@@ -43,7 +44,8 @@ struct threadpool {
 
   /* Current map data and count. */
   void *map_data, *map_extra_data;
-  volatile size_t map_data_count, map_data_size, map_data_stride;
+  volatile size_t map_data_count, map_data_size, map_data_stride,
+      map_data_chunk;
   volatile threadpool_map_function map_function;
 
   /* Counter for the number of threads that are done. */
@@ -53,6 +55,6 @@ struct threadpool {
 /* Function prototypes. */
 void threadpool_init(struct threadpool *tp, int num_threads);
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
-                    void *map_data, size_t N, int stride, void *extra_data);
+                    void *map_data, size_t N, int stride, int chunk, void *extra_data);
 
 #endif /* SWIFT_THREADPOOL_H */

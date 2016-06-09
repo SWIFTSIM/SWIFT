@@ -26,18 +26,24 @@
 #include "../src/threadpool.h"
 #include "../src/atomic.h"
 
-void map_function_first(void *map_data, void *extra_data) {
-  const int input = *(int *)map_data;
-  usleep(rand() % 1000000);
-  printf("map_function_first: got input %i.\n", input);
-  fflush(stdout);
+void map_function_first(void *map_data, int num_elements, void *extra_data) {
+  const int *inputs = (int *)map_data;
+  for (int ind = 0; ind < num_elements; ind++) {
+    int input = inputs[ind];
+    usleep(rand() % 1000000);
+    printf("map_function_first: got input %i.\n", input);
+    fflush(stdout);
+  }
 }
 
-void map_function_second(void *map_data, void *extra_data) {
-  const int input = *(int *)map_data;
-  usleep(rand() % 1000000);
-  printf("map_function_second: got input %i.\n", input);
-  fflush(stdout);
+void map_function_second(void *map_data, int num_elements, void *extra_data) {
+  const int *inputs = (int *)map_data;
+  for (int ind = 0; ind < num_elements; ind++) {
+    int input = inputs[ind];
+    usleep(rand() % 1000000);
+    printf("map_function_second: got input %i.\n", input);
+    fflush(stdout);
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -59,12 +65,16 @@ int main(int argc, char *argv[]) {
     for (int k = 0; k < N; k++) data[k] = k;
     printf("processing integers from 0..%i.\n", N);
     fflush(stdout);
-    threadpool_map(&tp, map_function_first, data, N, sizeof(int), NULL);
+    threadpool_map(&tp, map_function_first, data, N, sizeof(int), 1, NULL);
 
     // Do the same thing again, with less jobs than threads.
-    printf("processing integers from 0..%i.\n", num_threads / 2);
+    printf("processing integers from 0..%i.\n", N / 2);
     fflush(stdout);
-    threadpool_map(&tp, map_function_second, data, num_threads / 2, sizeof(int),
-                   NULL);
+    threadpool_map(&tp, map_function_second, data, N / 2, sizeof(int), 1, NULL);
+
+    // Do the same thing again, with a chunk size of two.
+    printf("processing integers from 0..%i.\n", N);
+    fflush(stdout);
+    threadpool_map(&tp, map_function_first, data, N, sizeof(int), 2, NULL);
   }
 }

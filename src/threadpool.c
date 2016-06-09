@@ -48,17 +48,25 @@ void *threadpool_runner(void *data) {
     if (tp->num_threads_waiting == tp->num_threads) {
       pthread_cond_signal(&tp->control_cond);
     }
-    
+
     /* Wait for the controller. */
     pthread_cond_wait(&tp->thread_cond, &tp->thread_mutex);
     tp->num_threads_waiting -= 1;
+    tp->num_threads_running += 1;
+    if (tp->num_threads_running == tp->num_threads) {
+      pthread_cond_signal(&tp->control_cond);
+    }
     pthread_mutex_unlock(&tp->thread_mutex);
 
     /* The index of the mapping task we will work on next. */
     size_t task_ind;
-    while ((task_ind = atomic_inc(&tp->map_data_count)) < tp->map_data_size) {
+    while ((task_ind = atomic_add(&tp->map_data_count, tp->map_data_chunk)) <
+           tp->map_data_size) {
+      const int num_elements = task_ind + tp->map_data_chunk > tp->map_data_size
+                                   ? tp->map_data_size - task_ind
+                                   : tp->map_data_chunk;
       tp->map_function(tp->map_data + tp->map_data_stride * task_ind,
-                       tp->map_extra_data);
+                       num_elements, tp->map_extra_data);
     }
   }
 }
@@ -80,6 +88,7 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   tp->map_data_size = 0;
   tp->map_data_count = 0;
   tp->map_data_stride = 0;
+  tp->map_data_chunk = 0;
   tp->map_function = NULL;
 
   /* Allocate the threads. */
@@ -89,13 +98,13 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
   }
 
   /* Create and start the threads. */
+  pthread_mutex_lock(&tp->thread_mutex);
   for (int k = 0; k < num_threads; k++) {
     if (pthread_create(&tp->threads[k], NULL, &threadpool_runner, tp) != 0)
       error("Failed to create threadpool runner thread.");
   }
 
   /* Wait for all the threads to be up and running. */
-  pthread_mutex_lock(&tp->thread_mutex);
   while (tp->num_threads_waiting < tp->num_threads) {
     pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
   }
@@ -113,24 +122,35 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
  * @param map_data The data on which the mapping function will be called.
  * @param N Number of elements in @c map_data.
  * @param stride Size, in bytes, of each element of @c map_data.
+ * @param chunk Number of map data elements to pass to the function at a time.
  * @param extra_data Addtitional pointer that will be passed to the mapping
  *        function, may contain additional data.
  */
 
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
-                    void *map_data, size_t N, int stride, void *extra_data) {
+                    void *map_data, size_t N, int stride, int chunk,
+                    void *extra_data) {
 
   /* Set the map data and signal the threads. */
   pthread_mutex_lock(&tp->thread_mutex);
   tp->map_data_stride = stride;
   tp->map_data_size = N;
   tp->map_data_count = 0;
+  tp->map_data_chunk = chunk;
   tp->map_function = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;
+  tp->num_threads_running = 0;
   pthread_cond_broadcast(&tp->thread_cond);
 
-  /* Wait for the threads to come home. */
-  pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
+  /* Wait for all the threads to be up and running. */
+  while (tp->num_threads_running < tp->num_threads) {
+    pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
+  }
+  
+  /* Wait for all threads to be done. */
+  while (tp->num_threads_waiting < tp->num_threads) {
+    pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
+  }
   pthread_mutex_unlock(&tp->thread_mutex);
 }
