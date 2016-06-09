@@ -33,40 +33,96 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
     float r2, const float *dx, struct gpart *gpi, struct gpart *gpj) {
 
   /* Apply the gravitational acceleration. */
-  const float ir = 1.0f / sqrtf(r2);
-  const float w = ir * ir * ir;
-  const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
+  const float r = sqrtf(r2);
+  const float ir = 1.f / r;
   const float mi = gpi->mass;
   const float mj = gpj->mass;
+  const float hi = gpi->epsilon;
+  const float hi_inv = 1.f / hi;
+  const float hi_inv3 = hi_inv * hi_inv * hi_inv;
+  const float hj = gpj->epsilon;
+  const float hj_inv = 1.f / hj;
+  const float hj_inv3 = hj_inv * hj_inv * hj_inv;
+  const float ui = r * hi_inv;
+  const float uj = r * hj_inv;
+  float fi, fj, W;
 
-  gpi->a_grav[0] -= wdx[0] * mj;
-  gpi->a_grav[1] -= wdx[1] * mj;
-  gpi->a_grav[2] -= wdx[2] * mj;
+  if(r >= hi) {
+    
+    /* Get Newtonian graavity */
+    fi = mj * ir * ir * ir;
+    
+  } else {
+    
+    /* Get softened gravity */
+    kernel_grav_eval(ui, &W);
+    fi = mj * hi_inv3 * W;
+  }
+
+  if(r >= hj) {
+    
+    /* Get Newtonian graavity */
+    fj = mi * ir * ir * ir;
+    
+  } else {
+    
+    /* Get softened gravity */
+    kernel_grav_eval(uj, &W);
+    fj = mi * hj_inv3 * W;
+  }
+
+  
+  const float fidx[3] = {fi * dx[0], fi * dx[1], fi * dx[2]};
+  gpi->a_grav[0] -= fidx[0];
+  gpi->a_grav[1] -= fidx[1];
+  gpi->a_grav[2] -= fidx[2];
   gpi->mass_interacted += mj;
 
-  gpj->a_grav[0] += wdx[0] * mi;
-  gpj->a_grav[1] += wdx[1] * mi;
-  gpj->a_grav[2] += wdx[2] * mi;
+  const float fjdx[3] = {fj * dx[0], fj * dx[1], fj * dx[2]};
+  gpj->a_grav[0] += fjdx[0];
+  gpj->a_grav[1] += fjdx[1];
+  gpj->a_grav[2] += fjdx[2];
   gpj->mass_interacted += mi;
 }
 
+/**
+ * @brief Gravity forces between particles (non-symmetric version)
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
     float r2, const float *dx, struct gpart *gpi, const struct gpart *gpj) {
 
   /* Apply the gravitational acceleration. */
-  const float ir = 1.0f / sqrtf(r2);
-  const float w = ir * ir * ir;
-  const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
+  const float r = sqrtf(r2);
+  const float ir = 1.f / r;
   const float mj = gpj->mass;
+  const float hi = gpi->epsilon;
+  const float hi_inv = 1.f / hi;
+  const float hi_inv3 = hi_inv * hi_inv * hi_inv;
+  const float ui = r * hi_inv;
+  float f, W;
 
-  gpi->a_grav[0] -= wdx[0] * mj;
-  gpi->a_grav[1] -= wdx[1] * mj;
-  gpi->a_grav[2] -= wdx[2] * mj;
+  if (r >= hi) {
+
+    /* Get Newtonian graavity */
+    f = mj * ir * ir * ir;
+
+  } else {
+
+    /* Get softened gravity */
+    kernel_grav_eval(ui, &W);
+    f = mj * hi_inv3 * W;
+  }
+
+  const float fdx[3] = {f * dx[0], f * dx[1], f * dx[2]};
+
+  gpi->a_grav[0] -= fdx[0];
+  gpi->a_grav[1] -= fdx[1];
+  gpi->a_grav[2] -= fdx[2];
   gpi->mass_interacted += mj;
 }
 
 /**
- * @brief Gravity forces between particles
+ * @brief Gravity forces between particle and multipole
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
     float r2, const float *dx, struct gpart *gp,

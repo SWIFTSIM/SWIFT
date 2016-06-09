@@ -506,13 +506,11 @@ void gravity_n2(struct gpart *gparts, const int gcount,
 
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gpi = &gparts[pid];
-    const float mi = gpi->mass;
 
     for (int pjd = pid + 1; pjd < gcount; pjd++) {
 
       /* Get a hold of the jth part in ci. */
       struct gpart *restrict gpj = &gparts[pjd];
-      const float mj = gpj->mass;
 
       /* Compute the pairwise distance. */
       const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
@@ -521,17 +519,7 @@ void gravity_n2(struct gpart *gparts, const int gcount,
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Apply the gravitational acceleration. */
-      const float ir = 1.0f / sqrtf(r2);
-      const float w = ir * ir * ir;
-      const float wdx[3] = {w * dx[0], w * dx[1], w * dx[2]};
-
-      gpi->a_grav[0] -= wdx[0] * mj;
-      gpi->a_grav[1] -= wdx[1] * mj;
-      gpi->a_grav[2] -= wdx[2] * mj;
-
-      gpj->a_grav[0] += wdx[0] * mi;
-      gpj->a_grav[1] += wdx[1] * mi;
-      gpj->a_grav[2] += wdx[2] * mi;
+      runner_iact_grav_pp(r2, dx, gpi, gpj);
     }
   }
 
