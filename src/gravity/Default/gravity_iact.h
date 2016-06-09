@@ -47,31 +47,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
   const float uj = r * hj_inv;
   float fi, fj, W;
 
-  if(r >= hi) {
-    
+  if (r >= hi) {
+
     /* Get Newtonian graavity */
     fi = mj * ir * ir * ir;
-    
+
   } else {
-    
+
     /* Get softened gravity */
     kernel_grav_eval(ui, &W);
     fi = mj * hi_inv3 * W;
   }
 
-  if(r >= hj) {
-    
+  if (r >= hj) {
+
     /* Get Newtonian graavity */
     fj = mi * ir * ir * ir;
-    
+
   } else {
-    
+
     /* Get softened gravity */
     kernel_grav_eval(uj, &W);
     fj = mi * hj_inv3 * W;
   }
 
-  
   const float fidx[3] = {fi * dx[0], fi * dx[1], fi * dx[2]};
   gpi->a_grav[0] -= fidx[0];
   gpi->a_grav[1] -= fidx[1];
