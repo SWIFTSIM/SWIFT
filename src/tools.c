@@ -305,7 +305,7 @@ void pairs_single_grav(double *dim, long long int pid,
       fdx[i] = dx[i];
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
-    runner_iact_grav(r2, fdx, &pi, &pj);
+    runner_iact_grav_pp(r2, fdx, &pi, &pj);
     a[0] += pi.a_grav[0];
     a[1] += pi.a_grav[1];
     a[2] += pi.a_grav[2];

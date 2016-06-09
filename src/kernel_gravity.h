@@ -31,7 +31,8 @@
    r. The resulting value should be post-multiplied with r^-3, resulting
    in a polynomial with terms ranging from r^-3 to r^3, which are
    sufficient to model both the direct potential as well as the splines
-   near the origin. */
+   near the origin.
+   As in the hydro case, the 1/h^3 needs to be multiplied in afterwards */
 
 /* Coefficients for the kernel. */
 #define kernel_grav_name "Gadget-2 softening kernel"
