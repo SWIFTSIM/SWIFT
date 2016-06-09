@@ -1717,7 +1717,8 @@ int engine_marktasks(struct engine *e) {
           return 1;
 
         /* Set the sort flags. */
-        if (!t->skip && t->type == task_type_pair) {
+        if (!t->skip && t->type == task_type_pair &&
+            t->subtype != task_subtype_grav) {
           if (!(ci->sorted & (1 << t->flags))) {
             ci->sorts->flags |= (1 << t->flags);
             ci->sorts->skip = 0;

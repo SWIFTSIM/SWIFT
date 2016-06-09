@@ -98,11 +98,11 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     const struct runner *r, const struct cell *restrict ci,
     const struct cell *restrict cj) {
 
-  // const struct engine *e = r->e;
+  const struct engine *e = r->e;
   const int gcount = ci->gcount;
   struct gpart *restrict gparts = ci->gparts;
   const struct multipole multi = cj->multipole;
-  // const int ti_current = e->ti_current;
+  const int ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -113,8 +113,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     error("Multipole does not seem to have been set.");
 #endif
 
-/* Anything to do here? */
-// if (ci->ti_end_min > ti_current) return;
+  /* Anything to do here? */
+  if (ci->ti_end_min > ti_current) return;
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount; pid++) {
@@ -134,9 +134,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts[pid];
 
-    if (gp->id == -ICHECK) message("id=%lld mass= %f", gp->id, multi.mass);
-
-    // if (gp->ti_end > ti_current) continue;
+    if (gp->ti_end > ti_current) continue;
 
     /* Compute the pairwise distance. */
     const float dx[3] = {multi.CoM[0] - gp->x[0],   // x
@@ -164,12 +162,12 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
 __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     struct runner *r, struct cell *ci, struct cell *cj) {
 
-  // const struct engine *e = r->e;
+  const struct engine *e = r->e;
   const int gcount_i = ci->gcount;
   const int gcount_j = cj->gcount;
   struct gpart *restrict gparts_i = ci->gparts;
   struct gpart *restrict gparts_j = cj->gparts;
-  // const int ti_current = e->ti_current;
+  const int ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -178,8 +176,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     error("Non matching cell sizes !! h_i=%f h_j=%f", ci->h[0], cj->h[0]);
 #endif
 
-/* Anything to do here? */
-// if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+  /* Anything to do here? */
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount_i; pid++) {
@@ -216,13 +214,30 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
       struct gpart *restrict gpj = &gparts_j[pjd];
 
       /* Compute the pairwise distance. */
-      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                           gpi->x[1] - gpj->x[1],   // y
-                           gpi->x[2] - gpj->x[2]};  // z
+      float dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                     gpi->x[1] - gpj->x[1],   // y
+                     gpi->x[2] - gpj->x[2]};  // z
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Interact ! */
-      runner_iact_grav_pp(r2, dx, gpi, gpj);
+      if (gpi->ti_end <= ti_current && gpj->ti_end <= ti_current) {
+
+        runner_iact_grav_pp(r2, dx, gpi, gpj);
+
+      } else {
+
+        if (gpi->ti_end <= ti_current) {
+
+          runner_iact_grav_pp_nonsym(r2, dx, gpi, gpj);
+
+        } else if (gpj->ti_end <= ti_current) {
+
+          dx[0] = -dx[0];
+          dx[1] = -dx[1];
+          dx[2] = -dx[2];
+          runner_iact_grav_pp_nonsym(r2, dx, gpj, gpi);
+        }
+      }
     }
   }
 
@@ -240,10 +255,10 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
 __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
     struct runner *r, struct cell *c) {
 
-  // const struct engine *e = r->e;
+  const struct engine *e = r->e;
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
-  // const int ti_current = e->ti_current;
+  const int ti_current = e->ti_current;
 
   TIMER_TIC;
 
@@ -252,8 +267,8 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
     error("Empty cell !");
 #endif
 
-/* Anything to do here? */
-// if (c->ti_end_min > ti_current) return;
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
 
 #if ICHECK > 0
   for (int pid = 0; pid < gcount; pid++) {
@@ -280,13 +295,30 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
       struct gpart *restrict gpj = &gparts[pjd];
 
       /* Compute the pairwise distance. */
-      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
-                           gpi->x[1] - gpj->x[1],   // y
-                           gpi->x[2] - gpj->x[2]};  // z
+      float dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                     gpi->x[1] - gpj->x[1],   // y
+                     gpi->x[2] - gpj->x[2]};  // z
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Interact ! */
-      runner_iact_grav_pp(r2, dx, gpi, gpj);
+      if (gpi->ti_end <= ti_current && gpj->ti_end <= ti_current) {
+
+        runner_iact_grav_pp(r2, dx, gpi, gpj);
+
+      } else {
+
+        if (gpi->ti_end <= ti_current) {
+
+          runner_iact_grav_pp_nonsym(r2, dx, gpi, gpj);
+
+        } else if (gpj->ti_end <= ti_current) {
+
+          dx[0] = -dx[0];
+          dx[1] = -dx[1];
+          dx[2] = -dx[2];
+          runner_iact_grav_pp_nonsym(r2, dx, gpj, gpi);
+        }
+      }
     }
   }
 
