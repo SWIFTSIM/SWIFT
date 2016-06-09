@@ -50,10 +50,10 @@ void runner_do_grav_up(struct runner *r, struct cell *c) {
     }
 
   } else { /* Leaf node. */
-
-  /* Make sure the cells are sorted. */
-  runner_do_gsort(r, ci, (1 << sid), 0);
-  runner_do_gsort(r, cj, (1 << sid), 0);
+    /* Just construct the multipole from the gparts. */
+    multipole_init(&c->multipole, c->gparts, c->gcount);
+  }
+}
 
 /**
  * @brief Checks whether the cells are direct neighbours ot not. Both cells have
@@ -66,10 +66,6 @@ void runner_do_grav_up(struct runner *r, struct cell *c) {
  */
 __attribute__((always_inline)) INLINE static int are_neighbours(
     const struct cell *restrict ci, const struct cell *restrict cj) {
-
-  /* Get the cutoff shift. */
-  for (rshift = 0.0, k = 0; k < 3; k++)
-    rshift += shift[k] * runner_shift[3 * sid + k];
 
   /* Maximum allowed distance */
   const double min_dist = 1.2 * ci->h[0]; /* 1.2 accounts for rounding errors */
