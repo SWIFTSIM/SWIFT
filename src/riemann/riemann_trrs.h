@@ -40,9 +40,9 @@
  * By assuming 2 rarefaction waves, we can analytically solve for the pressure
  * and velocity in the intermediate region, eliminating the iterative procedure.
  *
- * According to Toro: "The two-rarefaction approximation is generally quite
+ * According to Toro: 'The two-rarefaction approximation is generally quite
  * robust; (...) The TRRS is in fact exact when both non-linear waves are
- * actually rarefaction waves."
+ * actually rarefaction waves.'
  *
  * @param WL The left state vector
  * @param WR The right state vector
