@@ -29,6 +29,7 @@
 #define queue_sizeinit 100
 #define queue_sizegrow 2
 #define queue_search_window 8
+#define queue_incoming_size 1024
 
 /* Counters. */
 enum {
@@ -51,6 +52,10 @@ struct queue {
 
   /* The task indices. */
   int *tid;
+  
+  /* DEQ for incoming tasks. */
+  int *tid_incoming;
+  volatile unsigned int first_incoming, last_incoming, count_incoming;
 
 } __attribute__((aligned(64)));
 
