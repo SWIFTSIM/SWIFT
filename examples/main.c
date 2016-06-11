@@ -50,7 +50,11 @@
  */
 void print_help_message() {
 
-  printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
+  printf("\nUsage: swift [OPTIONS] PARAMFILE\n");
+  printf("       swift_mpi [OPTIONS] PARAMFILE\n");
+  printf("       swift_fixdt [OPTIONS] PARAMFILE\n");
+  printf("       swift_fixdt_mpi [OPTIONS] PARAMFILE\n\n");
+
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
