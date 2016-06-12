@@ -31,7 +31,8 @@
  * @brief Gravity forces between particles
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
-    float r2, const float *dx, struct gpart *gpi, struct gpart *gpj) {
+    float rlr_inv, float r2, const float *dx, struct gpart *gpi,
+    struct gpart *gpj) {
 
   /* Apply the gravitational acceleration. */
   const float r = sqrtf(r2);
@@ -39,37 +40,45 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
   const float mi = gpi->mass;
   const float mj = gpj->mass;
   const float hi = gpi->epsilon;
-  const float hi_inv = 1.f / hi;
-  const float hi_inv3 = hi_inv * hi_inv * hi_inv;
   const float hj = gpj->epsilon;
-  const float hj_inv = 1.f / hj;
-  const float hj_inv3 = hj_inv * hj_inv * hj_inv;
-  const float ui = r * hi_inv;
-  const float uj = r * hj_inv;
-  float fi, fj, W;
+  const float u = r * rlr_inv;
+  float f_lr, fi, fj, W;
+
+  /* Get long-range correction */
+  kernel_long_grav_eval(u, &f_lr);
 
   if (r >= hi) {
 
     /* Get Newtonian gravity */
-    fi = mj * ir * ir * ir;
+    fi = mj * ir * ir * ir * f_lr;
 
   } else {
 
-    /* Get softened gravity */
+    const float hi_inv = 1.f / hi;
+    const float hi_inv3 = hi_inv * hi_inv * hi_inv;
+    const float ui = r * hi_inv;
+
     kernel_grav_eval(ui, &W);
-    fi = mj * hi_inv3 * W;
+
+    /* Get softened gravity */
+    fi = mj * hi_inv3 * W * f_lr;
   }
 
   if (r >= hj) {
 
     /* Get Newtonian gravity */
-    fj = mi * ir * ir * ir;
+    fj = mi * ir * ir * ir * f_lr;
 
   } else {
 
-    /* Get softened gravity */
+    const float hj_inv = 1.f / hj;
+    const float hj_inv3 = hj_inv * hj_inv * hj_inv;
+    const float uj = r * hj_inv;
+
     kernel_grav_eval(uj, &W);
-    fj = mi * hj_inv3 * W;
+
+    /* Get softened gravity */
+    fj = mi * hj_inv3 * W * f_lr;
   }
 
   const float fidx[3] = {fi * dx[0], fi * dx[1], fi * dx[2]};
@@ -89,28 +98,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
  * @brief Gravity forces between particles (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
-    float r2, const float *dx, struct gpart *gpi, const struct gpart *gpj) {
+    float rlr_inv, float r2, const float *dx, struct gpart *gpi,
+    const struct gpart *gpj) {
 
   /* Apply the gravitational acceleration. */
   const float r = sqrtf(r2);
   const float ir = 1.f / r;
   const float mj = gpj->mass;
   const float hi = gpi->epsilon;
-  const float hi_inv = 1.f / hi;
-  const float hi_inv3 = hi_inv * hi_inv * hi_inv;
-  const float ui = r * hi_inv;
-  float f, W;
+  const float u = r * rlr_inv;
+  float f_lr, f, W;
+
+  /* Get long-range correction */
+  kernel_long_grav_eval(u, &f_lr);
 
   if (r >= hi) {
 
     /* Get Newtonian gravity */
-    f = mj * ir * ir * ir;
+    f = mj * ir * ir * ir * f_lr;
 
   } else {
 
-    /* Get softened gravity */
+    const float hi_inv = 1.f / hi;
+    const float hi_inv3 = hi_inv * hi_inv * hi_inv;
+    const float ui = r * hi_inv;
+
     kernel_grav_eval(ui, &W);
-    f = mj * hi_inv3 * W;
+
+    /* Get softened gravity */
+    f = mj * hi_inv3 * W * f_lr;
   }
 
   const float fdx[3] = {f * dx[0], f * dx[1], f * dx[2]};
@@ -125,7 +141,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
  * @brief Gravity forces between particle and multipole
  */
 __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
-    float r2, const float *dx, struct gpart *gp,
+    float rlr_inv, float r2, const float *dx, struct gpart *gp,
     const struct multipole *multi) {
 
   /* Apply the gravitational acceleration. */
@@ -133,7 +149,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   const float ir = 1.f / r;
   const float mrinv3 = multi->mass * ir * ir * ir;
 
-#if multipole_order < 2
+#if const_gravity_multipole_order < 2
 
   /* 0th and 1st order terms */
   gp->a_grav[0] += mrinv3 * dx[0];
@@ -141,7 +157,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   gp->a_grav[2] += mrinv3 * dx[2];
 
   gp->mass_interacted += multi->mass;
-#elif multipole_order == 2
+#elif const_gravity_multipole_order == 2
   /* Terms up to 2nd order (quadrupole) */
 
   /* Follows the notation in Bonsai */

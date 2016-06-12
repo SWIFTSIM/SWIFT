@@ -53,7 +53,9 @@
 //#define DEFAULT_SPH
 
 /* Self gravity stuff. */
-#define multipole_order 2
+#define const_gravity_multipole_order 2
+#define const_gravity_a_smooth 1.25f
+#define const_gravity_r_cut 4.5f
 #define const_gravity_eta 0.025f
 
 /* External gravity properties */

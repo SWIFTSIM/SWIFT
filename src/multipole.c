@@ -48,7 +48,7 @@ void multipole_reset(struct multipole *m) {
 void multipole_init(struct multipole *m, const struct gpart *gparts,
                     int gcount) {
 
-#if multipole_order > 2
+#if const_gravity_multipole_order > 2
 #error "Multipoles of order >2 not yet implemented."
 #endif
 
@@ -59,7 +59,7 @@ void multipole_init(struct multipole *m, const struct gpart *gparts,
   double mass = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
 
-#if multipole_order >= 2
+#if const_gravity_multipole_order >= 2
   double I_xx = 0.0, I_yy = 0.0, I_zz = 0.0;
   double I_xy = 0.0, I_xz = 0.0, I_yz = 0.0;
 #endif
@@ -73,7 +73,7 @@ void multipole_init(struct multipole *m, const struct gpart *gparts,
     com[1] += gparts[k].x[1] * w;
     com[2] += gparts[k].x[2] * w;
 
-#if multipole_order >= 2
+#if const_gravity_multipole_order >= 2
     I_xx += gparts[k].x[0] * gparts[k].x[0] * w;
     I_yy += gparts[k].x[1] * gparts[k].x[1] * w;
     I_zz += gparts[k].x[2] * gparts[k].x[2] * w;
@@ -91,7 +91,7 @@ void multipole_init(struct multipole *m, const struct gpart *gparts,
   m->CoM[1] = com[1] * imass;
   m->CoM[2] = com[2] * imass;
 
-#if multipole_order >= 2
+#if const_gravity_multipole_order >= 2
   m->I_xx = I_xx - imass * com[0] * com[0];
   m->I_yy = I_yy - imass * com[1] * com[1];
   m->I_zz = I_zz - imass * com[2] * com[2];
@@ -110,7 +110,7 @@ void multipole_init(struct multipole *m, const struct gpart *gparts,
 
 void multipole_add(struct multipole *ma, const struct multipole *mb) {
 
-#if multipole_order > 2
+#if const_gravity_multipole_order > 2
 #error "Multipoles of order >2 not yet implemented."
 #endif
 
@@ -123,7 +123,7 @@ void multipole_add(struct multipole *ma, const struct multipole *mb) {
   const double ma_CoM[3] = {ma->CoM[0], ma->CoM[1], ma->CoM[2]};
   const double mb_CoM[3] = {mb->CoM[0], mb->CoM[1], mb->CoM[2]};
 
-#if multipole_order >= 2
+#if const_gravity_multipole_order >= 2
   const double ma_I_xx = (double)ma->I_xx + ma_mass * ma_CoM[0] * ma_CoM[0];
   const double ma_I_yy = (double)ma->I_yy + ma_mass * ma_CoM[1] * ma_CoM[1];
   const double ma_I_zz = (double)ma->I_zz + ma_mass * ma_CoM[2] * ma_CoM[2];
@@ -148,7 +148,7 @@ void multipole_add(struct multipole *ma, const struct multipole *mb) {
   ma->CoM[2] = (ma_CoM[2] * ma_mass + mb_CoM[2] * mb_mass) * M_tot_inv;
 
 /* New quadrupole */
-#if multipole_order >= 2
+#if const_gravity_multipole_order >= 2
   ma->I_xx = (ma_I_xx + mb_I_xx) - M_tot * ma->CoM[0] * ma->CoM[0];
   ma->I_yy = (ma_I_yy + mb_I_yy) - M_tot * ma->CoM[1] * ma->CoM[1];
   ma->I_zz = (ma_I_zz + mb_I_zz) - M_tot * ma->CoM[2] * ma->CoM[2];
@@ -167,7 +167,7 @@ void multipole_add(struct multipole *ma, const struct multipole *mb) {
 
 void multipole_addpart(struct multipole *m, struct gpart *p) {
 
-  /* #if multipole_order == 1 */
+  /* #if const_gravity_multipole_order == 1 */
 
   /*   /\* Correct the position. *\/ */
   /*   float mm = m->coeffs[0], mp = p->mass; */
@@ -179,7 +179,8 @@ void multipole_addpart(struct multipole *m, struct gpart *p) {
   /*   m->coeffs[0] = mm + mp; */
 
   /* #else */
-  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+  /* #error( "Multipoles of order %i not yet implemented." ,
+   * const_gravity_multipole_order )
    */
   /* #endif */
 }
@@ -194,7 +195,7 @@ void multipole_addpart(struct multipole *m, struct gpart *p) {
 
 void multipole_addparts(struct multipole *m, struct gpart *p, int N) {
 
-  /* #if multipole_order == 1 */
+  /* #if const_gravity_multipole_order == 1 */
 
   /*   /\* Get the combined mass and positions. *\/ */
   /*   double xp[3] = {0.0, 0.0, 0.0}; */
@@ -216,7 +217,8 @@ void multipole_addparts(struct multipole *m, struct gpart *p, int N) {
   /*   m->coeffs[0] = mm + mp; */
 
   /* #else */
-  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+  /* #error( "Multipoles of order %i not yet implemented." ,
+   * const_gravity_multipole_order )
    */
   /* #endif */
 }

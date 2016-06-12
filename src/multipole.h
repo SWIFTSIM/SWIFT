@@ -38,7 +38,7 @@ struct multipole {
   /* Multipole mass */
   float mass;
 
-#if multipole_order >= 2
+#if const_gravity_multipole_order >= 2
   /* Quadrupole terms */
   float I_xx, I_yy, I_zz;
   float I_xy, I_xz, I_yz;
@@ -85,14 +85,15 @@ __attribute__((always_inline)) INLINE static void multipole_iact_mm(
   /*   acc *= const_G * ir * ir * ir; */
 
   /* /\* Compute the forces on both multipoles. *\/ */
-  /* #if multipole_order == 1 */
+  /* #if const_gravity_multipole_order == 1 */
   /*   float mma = ma->coeffs[0], mmb = mb->coeffs[0]; */
   /*   for (k = 0; k < 3; k++) { */
   /*     ma->a[k] -= dx[k] * acc * mmb; */
   /*     mb->a[k] += dx[k] * acc * mma; */
   /*   } */
   /* #else */
-  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+  /* #error( "Multipoles of order %i not yet implemented." ,
+   * const_gravity_multipole_order )
    */
   /* #endif */
 }
@@ -127,10 +128,11 @@ __attribute__((always_inline)) INLINE static void multipole_iact_mp(
   /*   acc *= const_G * ir * ir * ir * m->coeffs[0]; */
 
   /* /\* Compute the forces on both multipoles. *\/ */
-  /* #if multipole_order == 1 */
+  /* #if const_gravity_multipole_order == 1 */
   /*   for (k = 0; k < 3; k++) p->a_grav[k] += dx[k] * acc; */
   /* #else */
-  /* #error( "Multipoles of order %i not yet implemented." , multipole_order )
+  /* #error( "Multipoles of order %i not yet implemented." ,
+   * const_gravity_multipole_order )
    */
   /* #endif */
 }

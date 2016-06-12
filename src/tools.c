@@ -305,7 +305,7 @@ void pairs_single_grav(double *dim, long long int pid,
       fdx[i] = dx[i];
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
-    runner_iact_grav_pp(r2, fdx, &pi, &pj);
+    runner_iact_grav_pp(0.f, r2, fdx, &pi, &pj);
     a[0] += pi.a_grav[0];
     a[1] += pi.a_grav[1];
     a[2] += pi.a_grav[2];
@@ -519,7 +519,7 @@ void gravity_n2(struct gpart *gparts, const int gcount,
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Apply the gravitational acceleration. */
-      runner_iact_grav_pp(r2, dx, gpi, gpj);
+      runner_iact_grav_pp(0.f, r2, dx, gpi, gpj);
     }
   }
 

@@ -97,6 +97,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
   struct gpart *restrict gparts = ci->gparts;
   const struct multipole multi = cj->multipole;
   const int ti_current = e->ti_current;
+  const float rlr_inv = 1.f;
 
   TIMER_TIC;
 
@@ -137,7 +138,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     /* Interact !*/
-    runner_iact_grav_pm(r2, dx, gp, &multi);
+    runner_iact_grav_pm(rlr_inv, r2, dx, gp, &multi);
   }
 
   TIMER_TOC(TIMER_DOPAIR);  // MATTHIEU
@@ -162,6 +163,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
   struct gpart *restrict gparts_i = ci->gparts;
   struct gpart *restrict gparts_j = cj->gparts;
   const int ti_current = e->ti_current;
+  const float rlr_inv = 1.f;
 
   TIMER_TIC;
 
@@ -216,20 +218,20 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
       /* Interact ! */
       if (gpi->ti_end <= ti_current && gpj->ti_end <= ti_current) {
 
-        runner_iact_grav_pp(r2, dx, gpi, gpj);
+        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
 
       } else {
 
         if (gpi->ti_end <= ti_current) {
 
-          runner_iact_grav_pp_nonsym(r2, dx, gpi, gpj);
+          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
         } else if (gpj->ti_end <= ti_current) {
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
           dx[2] = -dx[2];
-          runner_iact_grav_pp_nonsym(r2, dx, gpj, gpi);
+          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
         }
       }
     }
@@ -253,6 +255,7 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
   const int ti_current = e->ti_current;
+  const float rlr_inv = 1.f;
 
   TIMER_TIC;
 
@@ -297,20 +300,20 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
       /* Interact ! */
       if (gpi->ti_end <= ti_current && gpj->ti_end <= ti_current) {
 
-        runner_iact_grav_pp(r2, dx, gpi, gpj);
+        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
 
       } else {
 
         if (gpi->ti_end <= ti_current) {
 
-          runner_iact_grav_pp_nonsym(r2, dx, gpi, gpj);
+          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpi, gpj);
 
         } else if (gpj->ti_end <= ti_current) {
 
           dx[0] = -dx[0];
           dx[1] = -dx[1];
           dx[2] = -dx[2];
-          runner_iact_grav_pp_nonsym(r2, dx, gpj, gpi);
+          runner_iact_grav_pp_nonsym(rlr_inv, r2, dx, gpj, gpi);
         }
       }
     }
