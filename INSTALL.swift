@@ -88,6 +88,9 @@ Before running configure the "mpirun" command should be available in the
 shell. If your command isn't called "mpirun" then define the "MPIRUN"
 environment variable, either in the shell or when running configure.
 
+The MPI compiler can be controlled using the MPICC variable, much like
+the CC one. Use this when your MPI compiler has a none-standard name.
+
 
 METIS: a build of the METIS library can be optionally used to optimize the
 load between MPI nodes (requires an MPI library). This should be found in

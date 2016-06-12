@@ -11,7 +11,10 @@
 
 See INSTALL.swift for install instructions.
 
-Usage: swift [OPTION] PARAMFILE
+Usage: swift [OPTION]... PARAMFILE
+       swift_mpi [OPTION]... PARAMFILE
+       swift_fixdt [OPTION]... PARAMFILE
+       swift_fixdt_mpi [OPTION]... PARAMFILE
 
 Valid options are:
   -a          Pin runners using processor affinity
