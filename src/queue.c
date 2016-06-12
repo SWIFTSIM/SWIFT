@@ -38,13 +38,6 @@
 #include "const.h"
 #include "error.h"
 
-/* Counter macros. */
-#ifdef COUNTER
-#define COUNT(c) (__sync_add_and_fetch(&queue_counter[c], 1))
-#else
-#define COUNT(c)
-#endif
-
 /* The counters. */
 int queue_counter[queue_counter_count];
 

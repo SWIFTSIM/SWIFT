@@ -18,9 +18,18 @@
  *
  ******************************************************************************/
 
-#include "map.h"
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stdio.h>
 #include <stdlib.h>
+
+/* This object's header. */
+#include "map.h"
+
+/* Local headers. */
+#include "atomic.h"
 #include "error.h"
 
 /**
@@ -97,7 +106,7 @@ void map_cells_plot(struct cell *c, void *data) {
 void map_cellcheck(struct cell *c, void *data) {
 
   int *count = (int *)data;
-  __sync_fetch_and_add(count, c->count);
+  atomic_add(count, c->count);
 
   /* Loop over all parts and check if they are in the cell. */
   for (int k = 0; k < c->count; k++) {
