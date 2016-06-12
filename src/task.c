@@ -58,7 +58,6 @@ const char *subtaskID_names[task_type_count] = {"none", "density", "force",
 /**
  * @brief Computes the overlap between the parts array of two given cells.
  */
-
 size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
   if (ci == NULL || cj == NULL) return 0;
   if (ci->parts <= cj->parts &&
@@ -78,7 +77,6 @@ size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
  * @param ta The first #task.
  * @param tb The second #task.
  */
-
 float task_overlap(const struct task *ta, const struct task *tb) {
   /* First check if any of the two tasks are of a type that don't
      use cells. */
@@ -110,25 +108,50 @@ float task_overlap(const struct task *ta, const struct task *tb) {
  *
  * @param t The #task.
  */
-
 void task_unlock(struct task *t) {
 
+  const int type = t->type;
+  const int subtype = t->subtype;
+  struct cell *ci = t->ci, *cj = t->cj;
+
   /* Act based on task type. */
-  switch (t->type) {
-    case task_type_self:
+  switch (type) {
+
     case task_type_sort:
-      cell_unlocktree(t->ci);
+      cell_unlocktree(ci);
       break;
+
+    case task_type_self:
+      if (subtype == task_subtype_grav) {
+        cell_gunlocktree(ci);
+      } else {
+        cell_unlocktree(ci);
+      }
+      break;
+
     case task_type_pair:
-    case task_type_sub:
-      cell_unlocktree(t->ci);
-      if (t->cj != NULL) cell_unlocktree(t->cj);
+      if (subtype == task_subtype_grav) {
+        cell_gunlocktree(ci);
+        cell_gunlocktree(cj);
+      } else {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      }
       break;
-    // case task_type_grav_pp:
+
+    case task_type_sub:
+      if (subtype == task_subtype_grav) {
+        cell_gunlocktree(ci);
+        if (cj != NULL) cell_gunlocktree(cj);
+      } else {
+        cell_unlocktree(ci);
+        if (cj != NULL) cell_unlocktree(cj);
+      }
+      break;
+
     case task_type_grav_mm:
-      // case task_type_grav_down:
-      cell_gunlocktree(t->ci);
-      if (t->cj != NULL) cell_gunlocktree(t->cj);
+      cell_gunlocktree(ci);
+      cell_gunlocktree(cj);
       break;
     default:
       break;
@@ -140,58 +163,104 @@ void task_unlock(struct task *t) {
  *
  * @param t the #task.
  */
-
 int task_lock(struct task *t) {
 
-  int type = t->type;
+  const int type = t->type;
+  const int subtype = t->subtype;
   struct cell *ci = t->ci, *cj = t->cj;
-
-  /* Communication task? */
-  if (type == task_type_recv || type == task_type_send) {
-
 #ifdef WITH_MPI
-    /* Check the status of the MPI request. */
-    int res = 0, err = 0;
-    MPI_Status stat;
-    if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
-      char buff[MPI_MAX_ERROR_STRING];
-      int len;
-      MPI_Error_string(err, buff, &len);
-      error("Failed to test request on send/recv task (tag=%i, %s).", t->flags,
-            buff);
-    }
-    return res;
-#else
-    error("SWIFT was not compiled with MPI support.");
+  int res = 0, err = 0;
+  MPI_Status stat;
 #endif
 
-  }
+  switch (type) {
 
-  /* Unary lock? */
-  else if (type == task_type_self || type == task_type_sort ||
-           (type == task_type_sub && cj == NULL)) {
-    if (cell_locktree(ci) != 0) return 0;
-  }
+    /* Communication task? */
+    case task_type_recv:
+    case task_type_send:
+#ifdef WITH_MPI
+      /* Check the status of the MPI request. */
+      if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
+        char buff[MPI_MAX_ERROR_STRING];
+        int len;
+        MPI_Error_string(err, buff, &len);
+        error("Failed to test request on send/recv task (tag=%i, %s).",
+              t->flags, buff);
+      }
+      return res;
+#else
+      error("SWIFT was not compiled with MPI support.");
+#endif
+      break;
 
-  /* Otherwise, binary lock. */
-  else if (type == task_type_pair || (type == task_type_sub && cj != NULL)) {
-    if (ci->hold || cj->hold) return 0;
-    if (cell_locktree(ci) != 0) return 0;
-    if (cell_locktree(cj) != 0) {
-      cell_unlocktree(ci);
-      return 0;
-    }
-  }
+    case task_type_sort:
+      if (cell_locktree(ci) != 0) return 0;
+      break;
 
-  /* Gravity tasks? */
-  else if (type == task_type_grav_mm) {
-    //|| type == task_type_grav_pp || type == task_type_grav_down) {
-    if (ci->ghold || (cj != NULL && cj->ghold)) return 0;
-    if (cell_glocktree(ci) != 0) return 0;
-    if (cj != NULL && cell_glocktree(cj) != 0) {
-      cell_gunlocktree(ci);
-      return 0;
-    }
+    case task_type_self:
+      if (subtype == task_subtype_grav) {
+        if (cell_glocktree(ci) != 0) return 0;
+      } else {
+        if (cell_locktree(ci) != 0) return 0;
+      }
+      break;
+
+    case task_type_pair:
+      if (subtype == task_subtype_grav) {
+        if (ci->ghold || cj->ghold) return 0;
+        if (cell_glocktree(ci) != 0) return 0;
+        if (cell_glocktree(cj) != 0) {
+          cell_gunlocktree(ci);
+          return 0;
+        }
+      } else {
+        if (ci->hold || cj->hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      }
+      break;
+
+    case task_type_sub:
+      if (cj == NULL) { /* sub-self */
+
+        if (subtype == task_subtype_grav) {
+          if (cell_glocktree(ci) != 0) return 0;
+        } else {
+          if (cell_locktree(ci) != 0) return 0;
+        }
+
+      } else { /* Sub-pair */
+        if (subtype == task_subtype_grav) {
+          if (ci->ghold || cj->ghold) return 0;
+          if (cell_glocktree(ci) != 0) return 0;
+          if (cell_glocktree(cj) != 0) {
+            cell_gunlocktree(ci);
+            return 0;
+          }
+        } else {
+          if (ci->hold || cj->hold) return 0;
+          if (cell_locktree(ci) != 0) return 0;
+          if (cell_locktree(cj) != 0) {
+            cell_unlocktree(ci);
+            return 0;
+          }
+        }
+      }
+      break;
+
+    case task_type_grav_mm:
+      if (ci->ghold || cj->ghold) return 0;
+      if (cell_glocktree(ci) != 0) return 0;
+      if (cell_glocktree(cj) != 0) {
+        cell_gunlocktree(ci);
+        return 0;
+      }
+
+    default:
+      break;
   }
 
   /* If we made it this far, we've got a lock. */
@@ -204,7 +273,6 @@ int task_lock(struct task *t) {
  * @param t The #task.
  * @param type The task type ID to remove.
  */
-
 void task_cleanunlock(struct task *t, int type) {
 
   int k;
@@ -226,7 +294,6 @@ void task_cleanunlock(struct task *t, int type) {
  * @param ta The unlocking #task.
  * @param tb The #task that will be unlocked.
  */
-
 void task_rmunlock(struct task *ta, struct task *tb) {
 
   int k;
@@ -252,7 +319,6 @@ void task_rmunlock(struct task *ta, struct task *tb) {
  * Differs from #task_rmunlock in that it will not fail if
  * the task @c tb is not in the unlocks of @c ta.
  */
-
 void task_rmunlock_blind(struct task *ta, struct task *tb) {
 
   int k;
@@ -275,7 +341,6 @@ void task_rmunlock_blind(struct task *ta, struct task *tb) {
  * @param ta The unlocking #task.
  * @param tb The #task that will be unlocked.
  */
-
 void task_addunlock(struct task *ta, struct task *tb) {
 
   error("Use sched_addunlock instead.");
