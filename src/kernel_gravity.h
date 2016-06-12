@@ -63,9 +63,9 @@ static const float
                                     0.f}; /* 1 < u */
 
 /**
- * @brief Computes the kernel function.
+ * @brief Computes the gravity softening function.
  *
- * @param u The ratio of the distance to the smoothing length $u = x/h$.
+ * @param u The ratio of the distance to the softening length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
 __attribute__((always_inline)) INLINE static void kernel_grav_eval(

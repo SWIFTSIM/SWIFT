@@ -23,6 +23,7 @@
 /* Includes. */
 #include "const.h"
 #include "kernel_gravity.h"
+#include "kernel_long_gravity.h"
 #include "multipole.h"
 #include "vector.h"
 
@@ -49,7 +50,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
 
   if (r >= hi) {
 
-    /* Get Newtonian graavity */
+    /* Get Newtonian gravity */
     fi = mj * ir * ir * ir;
 
   } else {
@@ -61,7 +62,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
 
   if (r >= hj) {
 
-    /* Get Newtonian graavity */
+    /* Get Newtonian gravity */
     fj = mi * ir * ir * ir;
 
   } else {
@@ -102,7 +103,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
 
   if (r >= hi) {
 
-    /* Get Newtonian graavity */
+    /* Get Newtonian gravity */
     f = mj * ir * ir * ir;
 
   } else {
