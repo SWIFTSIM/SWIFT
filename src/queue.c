@@ -58,14 +58,14 @@ void queue_get_incoming(struct queue *q) {
 
   int *tid = q->tid;
   struct task *tasks = q->tasks;
-  
+
   /* Loop over the incoming DEQ. */
   while (1) {
-  
+
     /* Is there a next element? */
     const int ind = q->first_incoming % queue_incoming_size;
     if (q->tid_incoming[ind] < 0) break;
-  
+
     /* Get the next offset off the DEQ. */
     const int offset = atomic_swap(&q->tid_incoming[ind], -1);
     atomic_inc(&q->first_incoming);
@@ -108,28 +108,28 @@ void queue_get_incoming(struct queue *q) {
  * @param q The #queue.
  * @param t The #task.
  */
- 
+
 void queue_insert(struct queue *q, struct task *t) {
   /* Get an index in the DEQ. */
   const int ind = atomic_inc(&q->last_incoming) % queue_incoming_size;
-  
+
   /* Spin until the new offset can be stored. */
   while (atomic_cas(&q->tid_incoming[ind], -1, t - q->tasks) != -1) {
-  
+
     /* Try to get the queue lock, non-blocking, ensures that at
        least somebody is working on this queue. */
     if (lock_trylock(&q->lock) == 0) {
-      
+
       /* Clean up the incoming DEQ. */
       queue_get_incoming(q);
-      
+
       /* Release the queue lock. */
       if (lock_unlock(&q->lock) != 0) {
         error("Unlocking the qlock failed.\n");
       }
     }
   }
-  
+
   /* Increase the incoming count. */
   atomic_inc(&q->count_incoming);
 }
@@ -156,9 +156,10 @@ void queue_init(struct queue *q, struct task *tasks) {
 
   /* Init the queue lock. */
   if (lock_init(&q->lock) != 0) error("Failed to init queue lock.");
-  
+
   /* Init the incoming DEQ. */
-  if ((q->tid_incoming = (int *)malloc(sizeof(int) * queue_incoming_size)) == NULL)
+  if ((q->tid_incoming = (int *)malloc(sizeof(int) * queue_incoming_size)) ==
+      NULL)
     error("Failed to allocate queue incoming buffer.");
   for (int k = 0; k < queue_incoming_size; k++) {
     q->tid_incoming[k] = -1;
@@ -188,7 +189,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   } else {
     if (lock_trylock(qlock) != 0) return NULL;
   }
-  
+
   /* Fill any tasks from the incoming DEQ. */
   queue_get_incoming(q);
 

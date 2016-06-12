@@ -52,7 +52,7 @@ struct queue {
 
   /* The task indices. */
   int *tid;
-  
+
   /* DEQ for incoming tasks. */
   int *tid_incoming;
   volatile unsigned int first_incoming, last_incoming, count_incoming;
