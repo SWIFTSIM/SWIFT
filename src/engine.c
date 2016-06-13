@@ -1165,6 +1165,7 @@ void engine_make_hydroloop_tasks(struct engine *e) {
  *
  * @param e The #engine.
  */
+ 
 void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
                                         void *extra_data) {
 
@@ -1175,6 +1176,55 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     struct task *t = &tasks[ind];
+
+    if (t->skip) continue;
+
+    /* Link sort tasks together. */
+    if (t->type == task_type_sort && t->ci->split)
+      for (int j = 0; j < 8; j++)
+        if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
+          t->ci->progeny[j]->sorts->skip = 0;
+          scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
+        }
+
+    /* Link density tasks to cells. */
+    if (t->type == task_type_self) {
+      atomic_inc(&t->ci->nr_tasks);
+      if (t->subtype == task_subtype_density) {
+        engine_addlink(e, &t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
+      }
+    } else if (t->type == task_type_pair) {
+      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&t->cj->nr_tasks);
+      if (t->subtype == task_subtype_density) {
+        engine_addlink(e, &t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
+        engine_addlink(e, &t->cj->density, t);
+        atomic_inc(&t->cj->nr_density);
+      }
+    } else if (t->type == task_type_sub) {
+      atomic_inc(&t->ci->nr_tasks);
+      if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
+      if (t->subtype == task_subtype_density) {
+        engine_addlink(e, &t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
+        if (t->cj != NULL) {
+          engine_addlink(e, &t->cj->density, t);
+          atomic_inc(&t->cj->nr_density);
+        }
+      }
+    }
+  }
+}
+
+void engine_count_and_link_tasks_serial(struct engine *e) {
+
+  struct scheduler *sched = &e->sched;
+
+  for (int ind = 0; ind < sched->nr_tasks; ind++) {
+
+    struct task *t = &sched->tasks[ind];
 
     if (t->skip) continue;
 
@@ -1262,6 +1312,95 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
+
+    /* Skip? */
+    if (t->skip) continue;
+
+    /* Self-interaction? */
+    if (t->type == task_type_self && t->subtype == task_subtype_density) {
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
+
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
+
+      /* Now, build all the dependencies for the hydro */
+      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+    }
+
+    /* Otherwise, pair interaction? */
+    else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
+
+      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
+      engine_addlink(e, &t->cj->force, t2);
+      atomic_inc(&t->cj->nr_force);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+      }
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
+      }
+    }
+
+    /* Otherwise, sub interaction? */
+    else if (t->type == task_type_sub && t->subtype == task_subtype_density) {
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
+                            0, t->ci, t->cj, 0);
+
+      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
+      if (t->cj != NULL) {
+        engine_addlink(e, &t->cj->force, t2);
+        atomic_inc(&t->cj->nr_force);
+      }
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+      }
+      if (t->cj != NULL && t->cj->nodeID == nodeID &&
+          t->ci->super != t->cj->super) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
+      }
+    }
+
+    /* /\* Kick tasks should rely on the grav_down tasks of their cell. *\/ */
+    /* else if (t->type == task_type_kick && t->ci->grav_down != NULL) */
+    /*   scheduler_addunlock(sched, t->ci->grav_down, t); */
+
+    /* External gravity tasks should depend on init and unlock the kick */
+    else if (t->type == task_type_grav_external) {
+      scheduler_addunlock(sched, t->ci->init, t);
+      scheduler_addunlock(sched, t, t->ci->kick);
+    }
+  }
+}
+
+void engine_make_extra_hydroloop_tasks_serial(struct engine *e) {
+
+  struct scheduler *sched = &e->sched;
+  int nr_tasks = sched->nr_tasks;
+  const int nodeID = e->nodeID;
+
+  for (int ind = 0; ind < nr_tasks; ind++) {
+    struct task *t = &sched->tasks[ind];
 
     /* Skip? */
     if (t->skip) continue;
@@ -1455,8 +1594,9 @@ void engine_maketasks(struct engine *e) {
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
-  threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
-                 sched->tasks, sched->nr_tasks, sizeof(struct task), 1000, e);
+  /* threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
+                 sched->tasks, sched->nr_tasks, sizeof(struct task), 1000, e); */
+  engine_count_and_link_tasks_serial(e);
 
   /* Append hierarchical tasks to each cells */
   for (int k = 0; k < nr_cells; k++)
@@ -1465,8 +1605,9 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-                 sched->tasks, sched->nr_tasks, sizeof(struct task), 1000, e);
+  /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
+                 sched->tasks, sched->nr_tasks, sizeof(struct task), 1000, e); */
+  engine_make_extra_hydroloop_tasks_serial(e);
 
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
