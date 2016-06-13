@@ -1086,6 +1086,14 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 #endif
 }
 
+/**
+ * @brief Checks whether two cells are direct neighbours or not.
+ *
+ * @param ci First #cell.
+ * @param cj Second #cell.
+ *
+ * @return 1 if the cell are touching (by a face, edge or corner).
+ */
 __attribute__((always_inline)) INLINE static int are_neighbours(
     const struct cell *restrict ci, const struct cell *restrict cj) {
 
@@ -1108,9 +1116,12 @@ __attribute__((always_inline)) INLINE static int are_neighbours(
 }
 
 /**
- * @brief Constructs the top-level pair tasks for the gravity M-M interactions
+ * @brief Constructs the top-level pair tasks for the short-range gravity
+ * interactions.
  *
- * Correct implementation is still lacking here.
+ * All top-cells get a self task.
+ * All neighbouring pairs get a pair task.
+ * All non-neighbouring pairs within a range of 6 cells get a M-M task.
  *
  * @param e The #engine.
  */
@@ -1158,7 +1169,7 @@ void engine_make_gravity_tasks(struct engine *e) {
 
 /**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
- *neighbours
+ * neighbours
  *
  * Here we construct all the tasks for all possible neighbouring non-empty
  * local cells in the hierarchy. No dependencies are being added thus far.
@@ -1286,7 +1297,30 @@ void engine_count_and_link_tasks(struct engine *e) {
   }
 }
 
-void engine_make_gravity_dependencies(struct engine *e) {
+/**
+ * @brief Creates the dependency network for the gravity tasks of a given cell.
+ *
+ * @param sched The #scheduler.
+ * @param gravity The gravity task to link.
+ * @param c The cell.
+ */
+static inline void engine_make_gravity_dependencies(struct scheduler *sched,
+                                                    struct task *gravity,
+                                                    struct cell *c) {
+
+  /* init --> gravity --> kick */
+  /* grav_up --> gravity ( --> kick) */
+  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, c->super->grav_up, gravity);
+  scheduler_addunlock(sched, gravity, c->super->kick);
+}
+
+/**
+ * @brief Creates all the task dependencies for the gravity
+ *
+ * @param e The #engine
+ */
+void engine_link_gravity_tasks(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
@@ -1303,21 +1337,14 @@ void engine_make_gravity_dependencies(struct engine *e) {
     /* Long-range interaction */
     if (t->type == task_type_grav_mm) {
 
-      scheduler_addunlock(sched, t->ci->super->init, t);
-      scheduler_addunlock(sched, t->ci->super->grav_up, t);
-      scheduler_addunlock(sched, t, t->ci->super->kick);
-
-      scheduler_addunlock(sched, t->cj->super->init, t);
-      scheduler_addunlock(sched, t->cj->super->grav_up, t);
-      scheduler_addunlock(sched, t, t->cj->super->kick);
+      engine_make_gravity_dependencies(sched, t, t->ci);
+      engine_make_gravity_dependencies(sched, t, t->cj);
     }
 
     /* Self-interaction? */
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
-      scheduler_addunlock(sched, t->ci->super->init, t);
-      scheduler_addunlock(sched, t->ci->super->grav_up, t);
-      scheduler_addunlock(sched, t, t->ci->super->kick);
+      engine_make_gravity_dependencies(sched, t, t->ci);
 
     }
 
@@ -1326,16 +1353,12 @@ void engine_make_gravity_dependencies(struct engine *e) {
 
       if (t->ci->nodeID == nodeID) {
 
-        scheduler_addunlock(sched, t->ci->super->init, t);
-        scheduler_addunlock(sched, t->ci->super->grav_up, t);
-        scheduler_addunlock(sched, t, t->ci->super->kick);
+        engine_make_gravity_dependencies(sched, t, t->ci);
       }
 
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-        scheduler_addunlock(sched, t->cj->super->init, t);
-        scheduler_addunlock(sched, t->cj->super->grav_up, t);
-        scheduler_addunlock(sched, t, t->cj->super->kick);
+        engine_make_gravity_dependencies(sched, t, t->cj);
       }
 
     }
@@ -1345,16 +1368,12 @@ void engine_make_gravity_dependencies(struct engine *e) {
 
       if (t->ci->nodeID == nodeID) {
 
-        scheduler_addunlock(sched, t->ci->super->init, t);
-        scheduler_addunlock(sched, t->ci->super->grav_up, t);
-        scheduler_addunlock(sched, t, t->ci->super->kick);
+        engine_make_gravity_dependencies(sched, t, t->ci);
       }
       if (t->cj != NULL && t->cj->nodeID == nodeID &&
           t->ci->super != t->cj->super) {
 
-        scheduler_addunlock(sched, t->cj->super->init, t);
-        scheduler_addunlock(sched, t->cj->super->grav_up, t);
-        scheduler_addunlock(sched, t, t->cj->super->kick);
+        engine_make_gravity_dependencies(sched, t, t->cj);
       }
     }
   }
@@ -1578,8 +1597,7 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_hydro) engine_make_extra_hydroloop_tasks(e);
 
   /* Add the dependencies for the self-gravity stuff */
-  if (e->policy & engine_policy_self_gravity)
-    engine_make_gravity_dependencies(e);
+  if (e->policy & engine_policy_self_gravity) engine_link_gravity_tasks(e);
 
 #ifdef WITH_MPI
 
