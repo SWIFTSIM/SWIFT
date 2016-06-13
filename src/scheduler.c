@@ -985,7 +985,7 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 
     /* Skip sort tasks that have already been performed */
     if (t->type == task_type_sort && t->flags == 0) {
-      error("empty sort task, bad!");
+      error("Empty sort task encountered.");
     }
 
     /* Sets the waits of the dependances */
@@ -1005,9 +1005,9 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
     if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
         ((1 << t->subtype) & s->submask)) {
       scheduler_enqueue(s, t);
-      pthread_cond_signal(&s->sleep_cond);
     }
   }
+  pthread_cond_broadcast(&s->sleep_cond);
 }
 
 /**
@@ -1021,7 +1021,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  // ticks tic = getticks();
+  ticks tic = getticks();
 
   /* Store the masks */
   s->mask = mask | (1 << task_type_comm_root);
@@ -1046,8 +1046,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
 
-  /* message("enqueueing tasks took %.3f %s." ,
-          clocks_from_ticks( getticks() - tic ), clocks_getunit()); */
+  message("enqueueing tasks took %.3f %s." ,
+          clocks_from_ticks( getticks() - tic ), clocks_getunit());
 }
 
 /**
