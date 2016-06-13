@@ -1021,7 +1021,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  ticks tic = getticks();
+  // ticks tic = getticks();
 
   /* Store the masks */
   s->mask = mask | (1 << task_type_comm_root);
@@ -1046,8 +1046,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
 
-  message("enqueueing tasks took %.3f %s." ,
-          clocks_from_ticks( getticks() - tic ), clocks_getunit());
+  /* message("enqueueing tasks took %.3f %s." ,
+          clocks_from_ticks( getticks() - tic ), clocks_getunit()); */
 }
 
 /**
