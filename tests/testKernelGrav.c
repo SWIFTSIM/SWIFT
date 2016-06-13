@@ -30,6 +30,7 @@
  * @brief The Gadget-2 gravity kernel function
  *
  * @param r The distance between particles
+ * @param h The cut-off distance of the kernel
  */
 float gadget(float r, float h) {
   float fac;

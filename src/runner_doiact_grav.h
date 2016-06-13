@@ -56,31 +56,6 @@ void runner_do_grav_up(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Checks whether the cells are direct neighbours ot not. Both cells have
- * to be of the same size
- *
- * @param ci First #cell.
- * @param cj Second #cell.
- *
- * @todo Deal with periodicity.
- */
-__attribute__((always_inline)) INLINE static int are_neighbours(
-    const struct cell *restrict ci, const struct cell *restrict cj) {
-
-  /* Maximum allowed distance */
-  const double min_dist = 1.2 * ci->h[0]; /* 1.2 accounts for rounding errors */
-
-  /* (Manhattan) Distance between the cells */
-  for (int k = 0; k < 3; k++) {
-    const double center_i = ci->loc[k];
-    const double center_j = cj->loc[k];
-    if (fabsf(center_i - center_j) > min_dist) return 0;
-  }
-
-  return 1;
-}
-
-/**
  * @brief Computes the interaction of all the particles in a cell with the
  * multipole of another cell.
  *
@@ -354,7 +329,7 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
         "itself.");
 
   /* Are the cells direct neighbours? */
-  if (!are_neighbours(ci, cj))
+  if (!cell_are_neighbours(ci, cj))
     error(
         "Non-neighbouring cells ! ci->x=[%f %f %f] ci->h=%f cj->loc=[%f %f %f] "
         "cj->h=%f",
@@ -394,7 +369,7 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
         for (int k = 0; k < 8; k++) {
           if (cj->progeny[k] != NULL) {
 
-            if (are_neighbours(ci->progeny[j], cj->progeny[k])) {
+            if (cell_are_neighbours(ci->progeny[j], cj->progeny[k])) {
 
               /* Recurse */
               runner_dopair_grav(r, ci->progeny[j], cj->progeny[k]);
@@ -461,7 +436,8 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
   } else {
 
 #ifdef SANITY_CHECKS
-    if (!are_neighbours(ci, cj)) error("Non-neighbouring cells in pair task !");
+    if (!cell_are_neighbours(ci, cj))
+      error("Non-neighbouring cells in pair task !");
 #endif
 
     runner_dopair_grav(r, ci, cj);
@@ -472,36 +448,35 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci,
                               struct cell *cj) {
 
 #ifdef SANITY_CHECKS
-  if (are_neighbours(ci, cj)) {
-
+  if (cell_are_neighbours(ci, cj)) {
     error("Non-neighbouring cells in mm task !");
-
+  }
 #endif
 
 #if ICHECK > 0
-    for (int pid = 0; pid < ci->gcount; pid++) {
+  for (int pid = 0; pid < ci->gcount; pid++) {
 
-      /* Get a hold of the ith part in ci. */
-      struct gpart *restrict gp = &ci->gparts[pid];
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gp = &ci->gparts[pid];
 
-      if (gp->id == -ICHECK)
-        message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
-                cj->loc[0], cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
-    }
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
+              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
+  }
 
-    for (int pid = 0; pid < cj->gcount; pid++) {
+  for (int pid = 0; pid < cj->gcount; pid++) {
 
-      /* Get a hold of the ith part in ci. */
-      struct gpart *restrict gp = &cj->gparts[pid];
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gp = &cj->gparts[pid];
 
-      if (gp->id == -ICHECK)
-        message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id,
-                ci->loc[0], ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
-    }
+    if (gp->id == -ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
+              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
+  }
 #endif
 
-    runner_dopair_grav_pm(r, ci, cj);
-    runner_dopair_grav_pm(r, cj, ci);
-  }
+  runner_dopair_grav_pm(r, ci, cj);
+  runner_dopair_grav_pm(r, cj, ci);
+}
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */

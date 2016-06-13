@@ -1079,35 +1079,6 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 }
 
 /**
- * @brief Checks whether two cells are direct neighbours or not.
- *
- * @param ci First #cell.
- * @param cj Second #cell.
- *
- * @return 1 if the cell are touching (by a face, edge or corner), 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int are_neighbours(
-    const struct cell *restrict ci, const struct cell *restrict cj) {
-
-#ifdef SANITY_CHECKS
-  if (ci->h[0] != cj->h[0])
-    error(" Cells of different size in distance calculation.");
-#endif
-
-  /* Maximum allowed distance */
-  const double min_dist = 1.2 * ci->h[0]; /* 1.2 accounts for rounding errors */
-
-  /* (Manhattan) Distance between the cells */
-  for (int k = 0; k < 3; k++) {
-    const double center_i = ci->loc[k];
-    const double center_j = cj->loc[k];
-    if (fabsf(center_i - center_j) > min_dist) return 0;
-  }
-
-  return 1;
-}
-
-/**
  * @brief Constructs the top-level pair tasks for the short-range gravity
  * interactions.
  *
@@ -1149,7 +1120,7 @@ void engine_make_gravity_tasks(struct engine *e) {
       /* Is that neighbour local ? */
       if (cj->nodeID != nodeID) continue;
 
-      if (are_neighbours(ci, cj))
+      if (cell_are_neighbours(ci, cj))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
                           cj, 1);
       else
