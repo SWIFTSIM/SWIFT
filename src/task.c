@@ -117,13 +117,14 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (t->type) {
     case task_type_self:
+    case task_type_sub_self:
     case task_type_sort:
       cell_unlocktree(t->ci);
       break;
     case task_type_pair:
-    case task_type_sub:
+    case task_type_sub_pair:
       cell_unlocktree(t->ci);
-      if (t->cj != NULL) cell_unlocktree(t->cj);
+      cell_unlocktree(t->cj);
       break;
     case task_type_grav_pp:
     case task_type_grav_mm:
@@ -170,12 +171,12 @@ int task_lock(struct task *t) {
 
   /* Unary lock? */
   else if (type == task_type_self || type == task_type_sort ||
-           (type == task_type_sub && cj == NULL)) {
+           (type == task_type_sub_self)) {
     if (cell_locktree(ci) != 0) return 0;
   }
 
   /* Otherwise, binary lock. */
-  else if (type == task_type_pair || (type == task_type_sub && cj != NULL)) {
+  else if (type == task_type_pair || (type == task_type_sub_pair)) {
     if (ci->hold || cj->hold) return 0;
     if (cell_locktree(ci) != 0) return 0;
     if (cell_locktree(cj) != 0) {
