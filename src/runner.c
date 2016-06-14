@@ -527,8 +527,6 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
     count = redo;
     if (count > 0) {
 
-      return;
-      
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
 
@@ -552,8 +550,13 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 
           }
 
-          /* Otherwise, sub interaction? */
-          else if (l->t->type == task_type_sub_pair) {  // MATTHIEU
+          /* Otherwise, sub-self interaction? */
+          else if (l->t->type == task_type_sub_self)
+            runner_dosub_subset_density(r, finger, parts, pid, count, NULL, -1,
+                                        1);
+
+          /* Otherwise, sub-pair interaction? */
+          else if (l->t->type == task_type_sub_pair) {
 
             /* Left or right? */
             if (l->t->ci == finger)

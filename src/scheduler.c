@@ -774,22 +774,22 @@ void scheduler_reweight(struct scheduler *s) {
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
           break;
         case task_type_sub_pair:
-	  if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-	    if (t->flags < 0)
-	      t->weight += 3 * wscale * t->ci->count * t->cj->count;
-	    else
-	      t->weight += 3 * wscale * t->ci->count * t->cj->count *
-		sid_scale[t->flags];
-	  } else {
-	    if (t->flags < 0)
-	      t->weight += 2 * wscale * t->ci->count * t->cj->count;
-	    else
-	      t->weight += 2 * wscale * t->ci->count * t->cj->count *
-		sid_scale[t->flags];
-	  }
-	  break;
-      case task_type_sub_self:
-	t->weight += 1 * wscale * t->ci->count * t->ci->count;
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            if (t->flags < 0)
+              t->weight += 3 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 3 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          } else {
+            if (t->flags < 0)
+              t->weight += 2 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 2 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          }
+          break;
+        case task_type_sub_self:
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_ghost:
           if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
@@ -967,7 +967,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_pair:
       case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (qid < 0 || s->queues[qid].count > s->queues[t->cj->super->owner].count)
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
           qid = t->cj->super->owner;
         break;
       case task_type_recv:
