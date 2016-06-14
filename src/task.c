@@ -123,6 +123,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_self:
+    case task_type_sub_self:
       if (subtype == task_subtype_grav) {
         cell_gunlocktree(ci);
       } else {
@@ -131,6 +132,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_pair:
+    case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
         cell_gunlocktree(ci);
         cell_gunlocktree(cj);
@@ -140,15 +142,6 @@ void task_unlock(struct task *t) {
       }
       break;
 
-    case task_type_sub:
-      if (subtype == task_subtype_grav) {
-        cell_gunlocktree(ci);
-        if (cj != NULL) cell_gunlocktree(cj);
-      } else {
-        cell_unlocktree(ci);
-        if (cj != NULL) cell_unlocktree(cj);
-      }
-      break;
 
     case task_type_grav_mm:
       cell_gunlocktree(ci);
@@ -198,6 +191,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_self:
+    case task_type_sub_self:
       if (subtype == task_subtype_grav) {
         if (cell_glocktree(ci) != 0) return 0;
       } else {
@@ -206,6 +200,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_pair:
+    case task_type_sub_pair:
       if (subtype == task_subtype_grav) {
         if (ci->ghold || cj->ghold) return 0;
         if (cell_glocktree(ci) != 0) return 0;
@@ -222,37 +217,6 @@ int task_lock(struct task *t) {
         }
       }
       break;
-
-    case task_type_sub:
-      if (cj == NULL) { /* sub-self */
-
-        if (subtype == task_subtype_grav) {
-          if (cell_glocktree(ci) != 0) return 0;
-        } else {
-          if (cell_locktree(ci) != 0) return 0;
-        }
-
-      } else { /* Sub-pair */
-        if (subtype == task_subtype_grav) {
-          if (ci->ghold || cj->ghold) return 0;
-          if (cell_glocktree(ci) != 0) return 0;
-          if (cell_glocktree(cj) != 0) {
-            cell_gunlocktree(ci);
-            return 0;
-          }
-        } else {
-          if (ci->hold || cj->hold) return 0;
-          if (cell_locktree(ci) != 0) return 0;
-          if (cell_locktree(cj) != 0) {
-            cell_unlocktree(ci);
-            return 0;
-          }
-        }
-      }
-      break;
-
-    case task_type_grav_mm:
-      if (cell_glocktree(ci) != 0) return 0;
 
     default:
       break;
@@ -326,47 +290,6 @@ void task_rmunlock_blind(struct task *ta, struct task *tb) {
       ta->unlock_tasks[k] = ta->unlock_tasks[ta->nr_unlock_tasks];
       break;
     }
-
-  lock_unlock_blind(&ta->lock);
-}
-
-/**
- * @brief Add an unlock_task to the given task.
- *
- * @param ta The unlocking #task.
- * @param tb The #task that will be unlocked.
- */
-void task_addunlock(struct task *ta, struct task *tb) {
-
-  error("Use sched_addunlock instead.");
-
-  /* Add the lock atomically. */
-  ta->unlock_tasks[atomic_inc(&ta->nr_unlock_tasks)] = tb;
-
-  /* Check a posteriori if we did not overshoot. */
-  if (ta->nr_unlock_tasks > task_maxunlock)
-    error("Too many unlock_tasks in task.");
-}
-
-void task_addunlock_old(struct task *ta, struct task *tb) {
-
-  int k;
-
-  lock_lock(&ta->lock);
-
-  /* Check if ta already unlocks tb. */
-  for (k = 0; k < ta->nr_unlock_tasks; k++)
-    if (ta->unlock_tasks[k] == tb) {
-      error("Duplicate unlock.");
-      lock_unlock_blind(&ta->lock);
-      return;
-    }
-
-  if (ta->nr_unlock_tasks == task_maxunlock)
-    error("Too many unlock_tasks in task.");
-
-  ta->unlock_tasks[ta->nr_unlock_tasks] = tb;
-  ta->nr_unlock_tasks += 1;
 
   lock_unlock_blind(&ta->lock);
 }

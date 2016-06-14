@@ -174,7 +174,7 @@ void scheduler_splittasks(struct scheduler *s) {
                                 ci->gcount * ci->gcount < space_subsize)) {
 
           /* convert to a self-subtask. */
-          t->type = task_type_sub;
+          t->type = task_type_sub_self;
 
         }
 
@@ -235,7 +235,7 @@ void scheduler_splittasks(struct scheduler *s) {
             sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
           /* Make this task a sub task. */
-          t->type = task_type_sub;
+          t->type = task_type_sub_pair;
 
         }
 
@@ -784,23 +784,23 @@ void scheduler_reweight(struct scheduler *s) {
             t->weight +=
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
           break;
-        case task_type_sub:
-          if (t->cj != NULL) {
-            if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-              if (t->flags < 0)
-                t->weight += 3 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 3 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            } else {
-              if (t->flags < 0)
-                t->weight += 2 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 2 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            }
-          } else
-            t->weight += 1 * wscale * t->ci->count * t->ci->count;
+        case task_type_sub_pair:
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            if (t->flags < 0)
+              t->weight += 3 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 3 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          } else {
+            if (t->flags < 0)
+              t->weight += 2 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 2 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          }
+          break;
+        case task_type_sub_self:
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_ghost:
           if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
@@ -967,6 +967,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
        any pre-processing needed. */
     switch (t->type) {
       case task_type_self:
+      case task_type_sub_self:
       case task_type_sort:
       case task_type_ghost:
       case task_type_kick:
@@ -975,11 +976,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->super->owner;
         break;
       case task_type_pair:
-      case task_type_sub:
+      case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (t->cj != NULL &&
-            (qid < 0 ||
-             s->queues[qid].count > s->queues[t->cj->super->owner].count))
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
           qid = t->cj->super->owner;
         break;
       case task_type_recv:

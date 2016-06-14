@@ -1246,38 +1246,25 @@ void engine_count_and_link_tasks(struct engine *e) {
         t->cj->density = engine_addlink(e, t->cj->density, t);
         atomic_inc(&t->cj->nr_density);
       }
-    } else if (t->type == task_type_sub) {
+    } else if (t->type == task_type_sub_self) {
       atomic_inc(&t->ci->nr_tasks);
-      if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         t->ci->density = engine_addlink(e, t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
-        if (t->cj != NULL) {
-          t->cj->density = engine_addlink(e, t->cj->density, t);
-          atomic_inc(&t->cj->nr_density);
-        }
+      }
+    } else if (t->type == task_type_sub_pair) {
+      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&t->cj->nr_tasks);
+      if (t->subtype == task_subtype_density) {
+        t->ci->density = engine_addlink(e, t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
+        t->cj->density = engine_addlink(e, t->cj->density, t);
+        atomic_inc(&t->cj->nr_density);
       }
     }
   }
 }
 
-/**
- * @brief Creates the dependency network for the gravity tasks of a given cell.
- *
- * @param sched The #scheduler.
- * @param gravity The gravity task to link.
- * @param c The cell.
- */
-static inline void engine_make_gravity_dependencies(struct scheduler *sched,
-                                                    struct task *gravity,
-                                                    struct cell *c) {
-
-  /* init --> gravity --> kick */
-  /* grav_up --> gravity ( --> kick) */
-  scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, c->super->grav_up, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick);
-}
 
 /**
  * @brief Creates all the task dependencies for the gravity
@@ -1445,29 +1432,47 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       }
     }
 
-    /* Otherwise, sub interaction? */
-    else if (t->type == task_type_sub && t->subtype == task_subtype_density) {
+    /* Otherwise, sub-self interaction? */
+    else if (t->type == task_type_sub_self &&
+             t->subtype == task_subtype_density) {
 
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 =
-          scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
-                            0, t->ci, t->cj, 0);
+          scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj, 0);
 
-      /* Add the link between the new loop and both cells */
+      /* Add the link between the new loop and the cell */
       t->ci->force = engine_addlink(e, t->ci->force, t2);
       atomic_inc(&t->ci->nr_force);
-      if (t->cj != NULL) {
-        t->cj->force = engine_addlink(e, t->cj->force, t2);
-        atomic_inc(&t->cj->nr_force);
-      }
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
       }
-      if (t->cj != NULL && t->cj->nodeID == nodeID &&
-          t->ci->super != t->cj->super) {
+    }
+
+    /* Otherwise, sub-pair interaction? */
+    else if (t->type == task_type_sub_pair &&
+             t->subtype == task_subtype_density) {
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj, 0);
+
+      /* Add the link between the new loop and both cells */
+      t->ci->force = engine_addlink(e, t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
+      t->cj->force = engine_addlink(e, t->cj->force, t2);
+      atomic_inc(&t->cj->nr_force);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+      }
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
     }
@@ -1646,8 +1651,7 @@ int engine_marktasks(struct engine *e) {
       struct task *t = &tasks[ind[k]];
 
       /* Pair? */
-      if (t->type == task_type_pair ||
-          (t->type == task_type_sub && t->cj != NULL)) {
+      if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
         /* Local pointers. */
         const struct cell *ci = t->ci;
@@ -1691,15 +1695,14 @@ int engine_marktasks(struct engine *e) {
 
       /* Single-cell task? */
       else if (t->type == task_type_self || t->type == task_type_ghost ||
-               (t->type == task_type_sub && t->cj == NULL)) {
+               t->type == task_type_sub_self) {
 
         /* Set this task's skip. */
         t->skip = (t->ci->ti_end_min > ti_end);
       }
 
       /* Pair? */
-      else if (t->type == task_type_pair ||
-               (t->type == task_type_sub && t->cj != NULL)) {
+      else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
         /* Local pointers. */
         const struct cell *ci = t->ci;
@@ -2213,7 +2216,8 @@ void engine_init_particles(struct engine *e) {
 
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
-    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_sub_self;
+    mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_ghost;
 
     submask |= 1 << task_subtype_density;
@@ -2228,7 +2232,8 @@ void engine_init_particles(struct engine *e) {
     mask |= 1 << task_type_grav_fft;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
-    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_sub_self;
+    mask |= 1 << task_type_sub_pair;
 
     submask |= 1 << task_subtype_grav;
   }
@@ -2351,7 +2356,8 @@ void engine_step(struct engine *e) {
 
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
-    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_sub_self;
+    mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_ghost;
 
     submask |= 1 << task_subtype_density;
@@ -2367,7 +2373,8 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_grav_fft;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
-    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_sub_self;
+    mask |= 1 << task_type_sub_pair;
 
     submask |= 1 << task_subtype_grav;
   }
