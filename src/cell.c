@@ -269,7 +269,7 @@ int cell_locktree(struct cell *c) {
     /* Undo the holds up to finger. */
     for (struct cell *finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
-      __sync_fetch_and_sub(&finger2->hold, 1);
+      atomic_dec(&finger2->hold);
 
     /* Unlock this cell. */
     if (lock_unlock(&c->lock) != 0) error("Failed to unlock cell.");
@@ -309,7 +309,7 @@ int cell_glocktree(struct cell *c) {
     if (lock_trylock(&finger->glock) != 0) break;
 
     /* Increment the hold. */
-    __sync_fetch_and_add(&finger->ghold, 1);
+    atomic_inc(&finger->ghold);
 
     /* Unlock the cell. */
     if (lock_unlock(&finger->glock) != 0) error("Failed to unlock cell.");
@@ -327,7 +327,7 @@ int cell_glocktree(struct cell *c) {
     /* Undo the holds up to finger. */
     for (struct cell *finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
-      __sync_fetch_and_sub(&finger2->ghold, 1);
+      atomic_dec(&finger2->ghold);
 
     /* Unlock this cell. */
     if (lock_unlock(&c->glock) != 0) error("Failed to unlock cell.");
@@ -353,7 +353,7 @@ void cell_unlocktree(struct cell *c) {
 
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
-    __sync_fetch_and_sub(&finger->hold, 1);
+    atomic_dec(&finger->hold);
 
   TIMER_TOC(timer_locktree);
 }
@@ -367,7 +367,7 @@ void cell_gunlocktree(struct cell *c) {
 
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
-    __sync_fetch_and_sub(&finger->ghold, 1);
+    atomic_dec(&finger->ghold);
 
   TIMER_TOC(timer_locktree);
 }

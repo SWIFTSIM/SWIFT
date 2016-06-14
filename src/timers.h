@@ -23,6 +23,7 @@
 #define SWIFT_TIMERS_H
 
 /* Includes. */
+#include "atomic.h"
 #include "cycle.h"
 #include "inline.h"
 
@@ -71,7 +72,7 @@ extern ticks timers[timer_count];
 #define TIMER_TOC2(t) timers_toc(t, tic2)
 INLINE static ticks timers_toc(int t, ticks tic) {
   ticks d = (getticks() - tic);
-  __sync_add_and_fetch(&timers[t], d);
+  atomic_add(&timers[t], d);
   return d;
 }
 #else
