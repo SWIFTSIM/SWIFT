@@ -96,6 +96,9 @@ struct space {
   /* Is the space periodic? */
   int periodic;
 
+  /* Are we doing gravity? */
+  int gravity;
+
   /* General-purpose lock for this space. */
   swift_lock_type lock;
 
@@ -139,8 +142,8 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift);
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
-                size_t Npart, size_t Ngpart, int periodic, int verbose,
-                int dry_run);
+                size_t Npart, size_t Ngpart, int periodic, int gravity,
+                int verbose, int dry_run);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
 void space_map_parts(struct space *s,

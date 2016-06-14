@@ -205,6 +205,12 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.");
 
+  /* Check if we have enough cells for gravity. */
+  if (s->gravity && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
+    error(
+        "Must have at least 8 cells in each spatial dimension when gravity "
+        "is switched on.");
+
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
@@ -1415,8 +1421,8 @@ struct cell *space_getcell(struct space *s) {
 
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
-                size_t Npart, size_t Ngpart, int periodic, int verbose,
-                int dry_run) {
+                size_t Npart, size_t Ngpart, int periodic, int gravity,
+                int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1426,6 +1432,7 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
   s->periodic = periodic;
+  s->gravity = gravity;
   s->nr_parts = Npart;
   s->size_parts = Npart;
   s->parts = parts;
