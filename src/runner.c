@@ -1087,6 +1087,8 @@ void *runner_main(void *data) {
             runner_dosub_self1_density(r, ci, 1);
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
+          else if (t->subtype == task_subtype_grav)
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1095,6 +1097,8 @@ void *runner_main(void *data) {
             runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
+          else if (t->subtype == task_subtype_grav)
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;

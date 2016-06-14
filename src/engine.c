@@ -1265,6 +1265,23 @@ void engine_count_and_link_tasks(struct engine *e) {
   }
 }
 
+/**
+ * @brief Creates the dependency network for the gravity tasks of a given cell.
+ *
+ * @param sched The #scheduler.
+ * @param gravity The gravity task to link.
+ * @param c The cell.
+ */
+static inline void engine_make_gravity_dependencies(struct scheduler *sched,
+                                                    struct task *gravity,
+                                                    struct cell *c) {
+
+  /* init --> gravity --> kick */
+  /* grav_up --> gravity ( --> kick) */
+  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, c->super->grav_up, gravity);
+  scheduler_addunlock(sched, gravity, c->super->kick);
+}
 
 /**
  * @brief Creates all the task dependencies for the gravity
@@ -1285,6 +1302,8 @@ void engine_link_gravity_tasks(struct engine *e) {
   struct task *fft = scheduler_addtask(sched, task_type_grav_fft,
                                        task_subtype_none, 0, 0, NULL, NULL, 0);
 
+  scheduler_addunlock(sched, gather, fft);
+
   for (int k = 0; k < nr_tasks; k++) {
 
     /* Get a pointer to the task. */
@@ -1296,7 +1315,6 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Multipole construction */
     if (t->type == task_type_grav_up) {
       scheduler_addunlock(sched, t, gather);
-      scheduler_addunlock(sched, t, fft);
     }
 
     /* Long-range interaction */
@@ -1332,15 +1350,22 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     }
 
-    /* Otherwise, sub interaction? */
-    else if (t->type == task_type_sub && t->subtype == task_subtype_grav) {
+    /* Otherwise, sub-self interaction? */
+    else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
+
+      if (t->ci->nodeID == nodeID) {
+        engine_make_gravity_dependencies(sched, t, t->ci);
+      }
+    }
+
+    /* Otherwise, sub-pair interaction? */
+    else if (t->type == task_type_sub_pair && t->subtype == task_subtype_grav) {
 
       if (t->ci->nodeID == nodeID) {
 
         engine_make_gravity_dependencies(sched, t, t->ci);
       }
-      if (t->cj != NULL && t->cj->nodeID == nodeID &&
-          t->ci->super != t->cj->super) {
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
         engine_make_gravity_dependencies(sched, t, t->cj);
       }

@@ -142,7 +142,6 @@ void task_unlock(struct task *t) {
       }
       break;
 
-
     case task_type_grav_mm:
       cell_gunlocktree(ci);
       break;
@@ -216,6 +215,10 @@ int task_lock(struct task *t) {
           return 0;
         }
       }
+      break;
+
+    case task_type_grav_mm:
+      cell_glocktree(ci);
       break;
 
     default:
