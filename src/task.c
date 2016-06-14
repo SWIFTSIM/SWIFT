@@ -145,55 +145,68 @@ void task_unlock(struct task *t) {
 
 int task_lock(struct task *t) {
 
-  int type = t->type;
+  const int type = t->type;
+  const int subtype = t->subtype;
   struct cell *ci = t->ci, *cj = t->cj;
-
-  /* Communication task? */
-  if (type == task_type_recv || type == task_type_send) {
-
 #ifdef WITH_MPI
-    /* Check the status of the MPI request. */
-    int res = 0, err = 0;
-    MPI_Status stat;
-    if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
-      char buff[MPI_MAX_ERROR_STRING];
-      int len;
-      MPI_Error_string(err, buff, &len);
-      error("Failed to test request on send/recv task (tag=%i, %s).", t->flags,
-            buff);
-    }
-    return res;
-#else
-    error("SWIFT was not compiled with MPI support.");
+  int res = 0, err = 0;
+  MPI_Status stat;
 #endif
 
-  }
+  switch (type) {
 
-  /* Unary lock? */
-  else if (type == task_type_self || type == task_type_sort ||
-           (type == task_type_sub_self)) {
-    if (cell_locktree(ci) != 0) return 0;
-  }
+    /* Communication task? */
+    case task_type_recv:
+    case task_type_send:
+#ifdef WITH_MPI
+      /* Check the status of the MPI request. */
+      if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
+        char buff[MPI_MAX_ERROR_STRING];
+        int len;
+        MPI_Error_string(err, buff, &len);
+        error("Failed to test request on send/recv task (tag=%i, %s).",
+              t->flags, buff);
+      }
+      return res;
+#else
+      error("SWIFT was not compiled with MPI support.");
+#endif
+      break;
 
-  /* Otherwise, binary lock. */
-  else if (type == task_type_pair || (type == task_type_sub_pair)) {
-    if (ci->hold || cj->hold) return 0;
-    if (cell_locktree(ci) != 0) return 0;
-    if (cell_locktree(cj) != 0) {
-      cell_unlocktree(ci);
-      return 0;
-    }
-  }
+    case task_type_sort:
+      if (cell_locktree(ci) != 0) return 0;
+      break;
 
-  /* Gravity tasks? */
-  else if (type == task_type_grav_mm || type == task_type_grav_pp ||
-           type == task_type_grav_down) {
-    if (ci->ghold || (cj != NULL && cj->ghold)) return 0;
-    if (cell_glocktree(ci) != 0) return 0;
-    if (cj != NULL && cell_glocktree(cj) != 0) {
-      cell_gunlocktree(ci);
-      return 0;
-    }
+    case task_type_self:
+    case task_type_sub_self:
+      if (subtype == task_subtype_grav) {
+        if (cell_glocktree(ci) != 0) return 0;
+      } else {
+        if (cell_locktree(ci) != 0) return 0;
+      }
+      break;
+
+    case task_type_pair:
+    case task_type_sub_pair:
+      if (subtype == task_subtype_grav) {
+        if (ci->ghold || cj->ghold) return 0;
+        if (cell_glocktree(ci) != 0) return 0;
+        if (cell_glocktree(cj) != 0) {
+          cell_gunlocktree(ci);
+          return 0;
+        }
+      } else {
+        if (ci->hold || cj->hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      }
+      break;
+
+    default:
+      break;
   }
 
   /* If we made it this far, we've got a lock. */
