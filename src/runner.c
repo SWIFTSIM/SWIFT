@@ -527,6 +527,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
     count = redo;
     if (count > 0) {
 
+      return;
+      
       /* Climb up the cell hierarchy. */
       for (finger = c; finger != NULL; finger = finger->parent) {
 
