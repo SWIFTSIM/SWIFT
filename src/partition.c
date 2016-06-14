@@ -504,8 +504,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     }
 
     /* Pair? */
-    else if (t->type == task_type_pair ||
-             (t->type == task_type_sub_pair)) {
+    else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
       /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */
