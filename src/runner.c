@@ -1109,21 +1109,16 @@ void *runner_main(void *data) {
         case task_type_recv:
           runner_do_recv_cell(r, ci, 1);
           break;
-        /* case task_type_grav_pp: */
-        /*   if (t->cj == NULL) */
-        /*     runner_doself_grav(r, t->ci); */
-        /*   else */
-        /*     runner_dopair_grav(r, t->ci, t->cj); */
-        /*   break; */
         case task_type_grav_mm:
-          runner_do_grav_mm(r, t->ci, t->cj);
+          runner_do_grav_mm(r, t->ci, 1);
           break;
         case task_type_grav_up:
           runner_do_grav_up(r, t->ci);
           break;
-        /* case task_type_grav_down: */
-        /*   runner_dograv_down(r, t->ci); */
-        /*   break; */
+        case task_type_grav_gather_m:
+          break;
+        case task_type_grav_fft:
+          break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
           break;

@@ -444,14 +444,7 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
   }
 }
 
-static void runner_do_grav_mm(struct runner *r, struct cell *ci,
-                              struct cell *cj) {
-
-#ifdef SANITY_CHECKS
-  if (cell_are_neighbours(ci, cj)) {
-    error("Non-neighbouring cells in mm task !");
-  }
-#endif
+static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
 
 #if ICHECK > 0
   for (int pid = 0; pid < ci->gcount; pid++) {
@@ -460,23 +453,29 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci,
     struct gpart *restrict gp = &ci->gparts[pid];
 
     if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
-              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
-  }
-
-  for (int pid = 0; pid < cj->gcount; pid++) {
-
-    /* Get a hold of the ith part in ci. */
-    struct gpart *restrict gp = &cj->gparts[pid];
-
-    if (gp->id == -ICHECK)
       message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
               ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
   }
 #endif
 
-  runner_dopair_grav_pm(r, ci, cj);
-  runner_dopair_grav_pm(r, cj, ci);
+  /* Recover the list of top-level cells */
+  const struct engine *e = r->e;
+  struct cell *cells = e->s->cells;
+  const int nr_cells = e->s->nr_cells;
+  const int ti_current = e->ti_current;
+
+  /* Anything to do here? */
+  if (ci->ti_end_min > ti_current) return;
+
+  /* Loop over all the cells and go for a p-m interaction if far enough */
+  for (int i = 0; i < nr_cells; ++i) {
+
+    struct cell *cj = &cells[i];
+
+    if (ci == cj) continue;
+
+    if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_pm(r, ci, cj);
+  }
 }
 
 #endif /* SWIFT_RUNNER_DOIACT_GRAV_H */

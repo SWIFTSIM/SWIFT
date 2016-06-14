@@ -47,10 +47,11 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",      "sort",       "self",       "pair",    "sub",
-    "init",      "ghost",      "drift",      "kick",    "kick_fixdt",
-    "send",      "recv",       "grav_mm",    "grav_up", "grav_external",
-    "part_sort", "gpart_sort", "split_cell", "rewait"};
+    "none",    "sort",          "self",          "pair",       "sub",
+    "init",    "ghost",         "drift",         "kick",       "kick_fixdt",
+    "send",    "recv",          "grav_gather_m", "grav_fft",   "grav_mm",
+    "grav_up", "grav_external", "part_sort",     "gpart_sort", "split_cell",
+    "rewait"};
 
 const char *subtaskID_names[task_type_count] = {"none", "density", "force",
                                                 "grav"};
@@ -151,7 +152,6 @@ void task_unlock(struct task *t) {
 
     case task_type_grav_mm:
       cell_gunlocktree(ci);
-      cell_gunlocktree(cj);
       break;
     default:
       break;
@@ -252,12 +252,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_mm:
-      if (ci->ghold || cj->ghold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
-      if (cell_glocktree(cj) != 0) {
-        cell_gunlocktree(ci);
-        return 0;
-      }
 
     default:
       break;

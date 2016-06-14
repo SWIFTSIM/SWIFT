@@ -520,10 +520,9 @@ void scheduler_splittasks(struct scheduler *s) {
 
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
 
       /* Safety thing */
-      if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
+      if (ci->gcount == 0) t->type = task_type_none;
 
     } /* gravity interaction? */
 

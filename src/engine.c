@@ -1079,7 +1079,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 }
 
 /**
- * @brief Constructs the top-level pair tasks for the short-range gravity
+ * @brief Constructs the top-level tasks for the short-range gravity
  * interactions.
  *
  * All top-cells get a self task.
@@ -1110,6 +1110,10 @@ void engine_make_gravity_tasks(struct engine *e) {
     scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci, NULL,
                       0);
 
+    /* Let's also build a task for all the non-neighbouring pm calculations */
+    scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, 0, 0, ci,
+                      NULL, 0);
+
     for (int cjd = cid + 1; cjd < nr_cells; ++cjd) {
 
       struct cell *cj = &cells[cjd];
@@ -1122,9 +1126,6 @@ void engine_make_gravity_tasks(struct engine *e) {
 
       if (cell_are_neighbours(ci, cj))
         scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
-                          cj, 1);
-      else
-        scheduler_addtask(sched, task_type_grav_mm, task_subtype_none, 0, 0, ci,
                           cj, 1);
     }
   }
@@ -1289,6 +1290,14 @@ void engine_link_gravity_tasks(struct engine *e) {
   const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
 
+  /* Add one task gathering all the multipoles */
+  struct task *gather = scheduler_addtask(
+      sched, task_type_grav_gather_m, task_subtype_none, 0, 0, NULL, NULL, 0);
+
+  /* And one task performing the FFT */
+  struct task *fft = scheduler_addtask(sched, task_type_grav_fft,
+                                       task_subtype_none, 0, 0, NULL, NULL, 0);
+
   for (int k = 0; k < nr_tasks; k++) {
 
     /* Get a pointer to the task. */
@@ -1297,11 +1306,21 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Skip? */
     if (t->skip) continue;
 
+    /* Multipole construction */
+    if (t->type == task_type_grav_up) {
+      scheduler_addunlock(sched, t, gather);
+      scheduler_addunlock(sched, t, fft);
+    }
+
     /* Long-range interaction */
     if (t->type == task_type_grav_mm) {
 
-      engine_make_gravity_dependencies(sched, t, t->ci);
-      engine_make_gravity_dependencies(sched, t, t->cj);
+      /* Gather the multipoles --> mm interaction --> kick */
+      scheduler_addunlock(sched, gather, t);
+      scheduler_addunlock(sched, t, t->ci->super->kick);
+
+      /* init --> mm interaction */
+      scheduler_addunlock(sched, t->ci->super->init, t);
     }
 
     /* Self-interaction? */
@@ -2205,6 +2224,8 @@ void engine_init_particles(struct engine *e) {
 
     mask |= 1 << task_type_grav_up;
     mask |= 1 << task_type_grav_mm;
+    mask |= 1 << task_type_grav_gather_m;
+    mask |= 1 << task_type_grav_fft;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub;
@@ -2342,6 +2363,8 @@ void engine_step(struct engine *e) {
 
     mask |= 1 << task_type_grav_up;
     mask |= 1 << task_type_grav_mm;
+    mask |= 1 << task_type_grav_gather_m;
+    mask |= 1 << task_type_grav_fft;
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub;
