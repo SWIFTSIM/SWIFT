@@ -272,48 +272,6 @@ void task_rmunlock_blind(struct task *ta, struct task *tb) {
 }
 
 /**
- * @brief Add an unlock_task to the given task.
- *
- * @param ta The unlocking #task.
- * @param tb The #task that will be unlocked.
- */
-
-void task_addunlock(struct task *ta, struct task *tb) {
-
-  error("Use sched_addunlock instead.");
-
-  /* Add the lock atomically. */
-  ta->unlock_tasks[atomic_inc(&ta->nr_unlock_tasks)] = tb;
-
-  /* Check a posteriori if we did not overshoot. */
-  if (ta->nr_unlock_tasks > task_maxunlock)
-    error("Too many unlock_tasks in task.");
-}
-
-void task_addunlock_old(struct task *ta, struct task *tb) {
-
-  int k;
-
-  lock_lock(&ta->lock);
-
-  /* Check if ta already unlocks tb. */
-  for (k = 0; k < ta->nr_unlock_tasks; k++)
-    if (ta->unlock_tasks[k] == tb) {
-      error("Duplicate unlock.");
-      lock_unlock_blind(&ta->lock);
-      return;
-    }
-
-  if (ta->nr_unlock_tasks == task_maxunlock)
-    error("Too many unlock_tasks in task.");
-
-  ta->unlock_tasks[ta->nr_unlock_tasks] = tb;
-  ta->nr_unlock_tasks += 1;
-
-  lock_unlock_blind(&ta->lock);
-}
-
-/**
  * @brief Prints the list of tasks contained in a given mask
  *
  * @param mask The mask to analyse
