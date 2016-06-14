@@ -173,7 +173,7 @@ void scheduler_splittasks(struct scheduler *s) {
         if (scheduler_dosub && ci->count < space_subsize / ci->count) {
 
           /* convert to a self-subtask. */
-          t->type = task_type_sub;
+          t->type = task_type_sub_self;
 
         }
 
@@ -235,7 +235,7 @@ void scheduler_splittasks(struct scheduler *s) {
             sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
           /* Make this task a sub task. */
-          t->type = task_type_sub;
+          t->type = task_type_sub_pair;
 
         }
 
@@ -515,132 +515,6 @@ void scheduler_splittasks(struct scheduler *s) {
 
     } /* pair interaction? */
 
-    /* Gravity interaction? */
-    else if (t->type == task_type_grav_mm) {
-
-      /* Get a handle on the cells involved. */
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
-
-      /* Self-interaction? */
-      if (cj == NULL) {
-
-        /* Ignore this task if the cell has no gparts. */
-        if (ci->gcount == 0) t->type = task_type_none;
-
-        /* If the cell is split, recurse. */
-        else if (ci->split) {
-
-          /* Make a single sub-task? */
-          if (scheduler_dosub && ci->gcount < space_subsize / ci->gcount) {
-
-            t->type = task_type_sub;
-            t->subtype = task_subtype_grav;
-
-          }
-
-          /* Otherwise, just split the task. */
-          else {
-
-            /* Split this task into tasks on its progeny. */
-            t->type = task_type_none;
-            for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                if (t->type == task_type_none) {
-                  t->type = task_type_grav_mm;
-                  t->ci = ci->progeny[j];
-                  t->cj = NULL;
-                } else
-                  t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none,
-                                        0, 0, ci->progeny[j], NULL, 0);
-                for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) {
-                    if (t->type == task_type_none) {
-                      t->type = task_type_grav_mm;
-                      t->ci = ci->progeny[j];
-                      t->cj = ci->progeny[k];
-                    } else
-                      t = scheduler_addtask(s, task_type_grav_mm,
-                                            task_subtype_none, 0, 0,
-                                            ci->progeny[j], ci->progeny[k], 0);
-                  }
-              }
-            redo = (t->type != task_type_none);
-          }
-
-        }
-
-        /* Otherwise, just make a pp task out of it. */
-        else
-          t->type = task_type_grav_pp;
-
-      }
-
-      /* Nope, pair. */
-      else {
-
-        /* Make a sub-task? */
-        if (scheduler_dosub && ci->gcount < space_subsize / cj->gcount) {
-
-          t->type = task_type_sub;
-          t->subtype = task_subtype_grav;
-
-        }
-
-        /* Otherwise, split the task. */
-        else {
-
-          /* Get the opening angle theta. */
-          float dx[3], theta;
-          for (int k = 0; k < 3; k++) {
-            dx[k] = fabs(ci->loc[k] - cj->loc[k]);
-            if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k])
-              dx[k] = -dx[k] + s->space->dim[k];
-            if (dx[k] > 0.0f) dx[k] -= ci->h[k];
-          }
-          theta =
-              (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
-              (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]);
-
-          /* Ignore this task if the cell has no gparts. */
-          if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
-
-          /* Split the interaction? */
-          else if (theta < const_theta_max * const_theta_max) {
-
-            /* Are both ci and cj split? */
-            if (ci->split && cj->split) {
-
-              /* Split this task into tasks on its progeny. */
-              t->type = task_type_none;
-              for (int j = 0; j < 8; j++)
-                if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                  for (int k = 0; k < 8; k++)
-                    if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) {
-                      if (t->type == task_type_none) {
-                        t->type = task_type_grav_mm;
-                        t->ci = ci->progeny[j];
-                        t->cj = cj->progeny[k];
-                      } else
-                        t = scheduler_addtask(
-                            s, task_type_grav_mm, task_subtype_none, 0, 0,
-                            ci->progeny[j], cj->progeny[k], 0);
-                    }
-                }
-              redo = (t->type != task_type_none);
-
-            }
-
-            /* Otherwise, make a pp task out of it. */
-            else
-              t->type = task_type_grav_pp;
-          }
-        }
-
-      } /* gravity pair interaction? */
-
-    } /* gravity interaction? */
-
   } /* loop over all tasks. */
 }
 
@@ -899,23 +773,23 @@ void scheduler_reweight(struct scheduler *s) {
             t->weight +=
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
           break;
-        case task_type_sub:
-          if (t->cj != NULL) {
-            if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-              if (t->flags < 0)
-                t->weight += 3 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 3 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            } else {
-              if (t->flags < 0)
-                t->weight += 2 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 2 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            }
-          } else
-            t->weight += 1 * wscale * t->ci->count * t->ci->count;
+        case task_type_sub_pair:
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            if (t->flags < 0)
+              t->weight += 3 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 3 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          } else {
+            if (t->flags < 0)
+              t->weight += 2 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 2 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          }
+          break;
+        case task_type_sub_self:
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_ghost:
           if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
@@ -1082,6 +956,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
        any pre-processing needed. */
     switch (t->type) {
       case task_type_self:
+      case task_type_sub_self:
       case task_type_sort:
       case task_type_ghost:
       case task_type_kick:
@@ -1090,11 +965,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->super->owner;
         break;
       case task_type_pair:
-      case task_type_sub:
+      case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (t->cj != NULL &&
-            (qid < 0 ||
-             s->queues[qid].count > s->queues[t->cj->super->owner].count))
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
           qid = t->cj->super->owner;
         break;
       case task_type_recv:

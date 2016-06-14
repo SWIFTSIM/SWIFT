@@ -1,4 +1,3 @@
-
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
@@ -57,11 +56,17 @@
 #define _DOSELF_SUBSET(f) PASTE(runner_doself_subset, f)
 #define DOSELF_SUBSET _DOSELF_SUBSET(FUNCTION)
 
-#define _DOSUB1(f) PASTE(runner_dosub1, f)
-#define DOSUB1 _DOSUB1(FUNCTION)
+#define _DOSUB_SELF1(f) PASTE(runner_dosub_self1, f)
+#define DOSUB_SELF1 _DOSUB_SELF1(FUNCTION)
 
-#define _DOSUB2(f) PASTE(runner_dosub2, f)
-#define DOSUB2 _DOSUB2(FUNCTION)
+#define _DOSUB_PAIR1(f) PASTE(runner_dosub_pair1, f)
+#define DOSUB_PAIR1 _DOSUB_PAIR1(FUNCTION)
+
+#define _DOSUB_SELF2(f) PASTE(runner_dosub_self2, f)
+#define DOSUB_SELF2 _DOSUB_SELF2(FUNCTION)
+
+#define _DOSUB_PAIR2(f) PASTE(runner_dosub_pair2, f)
+#define DOSUB_PAIR2 _DOSUB_PAIR2(FUNCTION)
 
 #define _DOSUB_SUBSET(f) PASTE(runner_dosub_subset, f)
 #define DOSUB_SUBSET _DOSUB_SUBSET(FUNCTION)
@@ -78,8 +83,11 @@
 #define _TIMER_DOPAIR(f) PASTE(timer_dopair, f)
 #define TIMER_DOPAIR _TIMER_DOPAIR(FUNCTION)
 
-#define _TIMER_DOSUB(f) PASTE(timer_dosub, f)
-#define TIMER_DOSUB _TIMER_DOSUB(FUNCTION)
+#define _TIMER_DOSUB_SELF(f) PASTE(timer_dosub_self, f)
+#define TIMER_DOSUB_SELF _TIMER_DOSUB_SELF(FUNCTION)
+
+#define _TIMER_DOSUB_PAIR(f) PASTE(timer_dosub_pair, f)
+#define TIMER_DOSUB_PAIR _TIMER_DOSUB_PAIR(FUNCTION)
 
 #define _TIMER_DOSELF_SUBSET(f) PASTE(timer_doself_subset, f)
 #define TIMER_DOSELF_SUBSET _TIMER_DOSELF_SUBSET(FUNCTION)
@@ -1711,7 +1719,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 }
 
 /**
- * @brief Compute grouped sub-cell interactions
+ * @brief Compute grouped sub-cell interactions for pairs
  *
  * @param r The #runner.
  * @param ci The first #cell.
@@ -1722,543 +1730,561 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
+void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
+                 int gettimer) {
 
-void DOSUB1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
-            int gettimer) {
-
-  int j = 0, k;
-  double shift[3];
-  float h;
   struct space *s = r->e->s;
   const int ti_current = r->e->ti_current;
 
   TIMER_TIC
 
-  /* Is this a single cell? */
-  if (cj == NULL) {
+  /* Should we even bother? */
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
-    /* Should we even bother? */
-    if (ci->ti_end_min > ti_current) return;
+  /* Get the cell dimensions. */
+  const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
 
-    /* Recurse? */
-    if (ci->split) {
+  /* Get the type of pair if not specified explicitly. */
+  // if ( sid < 0 )
+  double shift[3];
+  sid = space_getsid(s, &ci, &cj, shift);
 
-      /* Loop over all progeny. */
-      for (k = 0; k < 8; k++)
-        if (ci->progeny[k] != NULL) {
-          DOSUB1(r, ci->progeny[k], NULL, -1, 0);
-          for (j = k + 1; j < 8; j++)
-            if (ci->progeny[j] != NULL)
-              DOSUB1(r, ci->progeny[k], ci->progeny[j], -1, 0);
-        }
+  /* Recurse? */
+  if (ci->split && cj->split &&
+      fmaxf(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+          h / 2) {
 
+    /* Different types of flags. */
+    switch (sid) {
+
+      /* Regular sub-cell interactions of a single cell. */
+      case 0: /* (  1 ,  1 ,  1 ) */
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        break;
+
+      case 1: /* (  1 ,  1 ,  0 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        break;
+
+      case 2: /* (  1 ,  1 , -1 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        break;
+
+      case 3: /* (  1 ,  0 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        break;
+
+      case 4: /* (  1 ,  0 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[0], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[1], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[2], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[1], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[3], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[2], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[3], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[3], -1, 0);
+        break;
+
+      case 5: /* (  1 ,  0 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[1], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[3], -1, 0);
+        break;
+
+      case 6: /* (  1 , -1 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        break;
+
+      case 7: /* (  1 , -1 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[2], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[3], -1, 0);
+        break;
+
+      case 8: /* (  1 , -1 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        break;
+
+      case 9: /* (  0 ,  1 ,  1 ) */
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        break;
+
+      case 10: /* (  0 ,  1 ,  0 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[2], cj->progeny[0], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[2], cj->progeny[1], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[2], cj->progeny[4], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[2], cj->progeny[5], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[1], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[5], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[4], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[5], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[5], -1, 0);
+        break;
+
+      case 11: /* (  0 ,  1 , -1 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[2], cj->progeny[1], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[2], cj->progeny[5], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[6], cj->progeny[5], -1, 0);
+        break;
+
+      case 12: /* (  0 ,  0 ,  1 ) */
+        if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[1], cj->progeny[0], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[1], cj->progeny[2], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[1], cj->progeny[4], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[1], cj->progeny[6], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[2], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[3], cj->progeny[6], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[4], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[5], cj->progeny[6], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR1(r, ci->progeny[7], cj->progeny[6], -1, 0);
+        break;
     }
 
-    /* Otherwise, compute self-interaction. */
-    else
-      DOSELF1(r, ci);
+  }
 
-  } /* self-interaction. */
+  /* Otherwise, compute the pair directly. */
+  else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
 
-  /* Otherwise, it's a pair interaction. */
-  else {
+    /* Do any of the cells need to be sorted first? */
+    if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
+    if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
 
-    /* Should we even bother? */
-    if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+    /* Compute the interactions. */
+    DOPAIR1(r, ci, cj);
+  }
 
-    /* Get the cell dimensions. */
-    h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
-
-    /* Get the type of pair if not specified explicitly. */
-    // if ( sid < 0 )
-    sid = space_getsid(s, &ci, &cj, shift);
-
-    /* Recurse? */
-    if (ci->split && cj->split &&
-        fmaxf(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
-            h / 2) {
-
-      /* Different types of flags. */
-      switch (sid) {
-
-        /* Regular sub-cell interactions of a single cell. */
-        case 0: /* (  1 ,  1 ,  1 ) */
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          break;
-
-        case 1: /* (  1 ,  1 ,  0 ) */
-          if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[0], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[1], -1, 0);
-          break;
-
-        case 2: /* (  1 ,  1 , -1 ) */
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          break;
-
-        case 3: /* (  1 ,  0 ,  1 ) */
-          if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[0], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[2], -1, 0);
-          break;
-
-        case 4: /* (  1 ,  0 ,  0 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[0], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[1], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[2], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[0], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[1], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[3], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[0], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[2], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[3], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[1], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[2], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[3], -1, 0);
-          break;
-
-        case 5: /* (  1 ,  0 , -1 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[1], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[3], -1, 0);
-          break;
-
-        case 6: /* (  1 , -1 ,  1 ) */
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          break;
-
-        case 7: /* (  1 , -1 ,  0 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[2], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[3], -1, 0);
-          break;
-
-        case 8: /* (  1 , -1 , -1 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB1(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          break;
-
-        case 9: /* (  0 ,  1 ,  1 ) */
-          if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[0], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[4], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[4], -1, 0);
-          break;
-
-        case 10: /* (  0 ,  1 ,  0 ) */
-          if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[2], cj->progeny[0], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[2], cj->progeny[1], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[2], cj->progeny[4], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-            DOSUB1(r, ci->progeny[2], cj->progeny[5], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[0], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[1], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[4], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[5], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[0], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[4], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[5], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[1], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[4], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[5], -1, 0);
-          break;
-
-        case 11: /* (  0 ,  1 , -1 ) */
-          if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[2], cj->progeny[1], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-            DOSUB1(r, ci->progeny[2], cj->progeny[5], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-            DOSUB1(r, ci->progeny[6], cj->progeny[5], -1, 0);
-          break;
-
-        case 12: /* (  0 ,  0 ,  1 ) */
-          if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[1], cj->progeny[0], -1, 0);
-          if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[1], cj->progeny[2], -1, 0);
-          if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[1], cj->progeny[4], -1, 0);
-          if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
-            DOSUB1(r, ci->progeny[1], cj->progeny[6], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[0], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[2], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[4], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
-            DOSUB1(r, ci->progeny[3], cj->progeny[6], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[0], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[4], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
-            DOSUB1(r, ci->progeny[5], cj->progeny[6], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[2], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[4], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
-            DOSUB1(r, ci->progeny[7], cj->progeny[6], -1, 0);
-          break;
-      }
-
-    }
-
-    /* Otherwise, compute the pair directly. */
-    else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
-
-      /* Do any of the cells need to be sorted first? */
-      if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
-      if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
-
-      /* Compute the interactions. */
-      DOPAIR1(r, ci, cj);
-    }
-
-  } /* otherwise, pair interaction. */
-
-  if (gettimer) TIMER_TOC(TIMER_DOSUB);
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
 }
 
-void DOSUB2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
-            int gettimer) {
+/**
+ * @brief Compute grouped sub-cell interactions for self tasks
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param gettimer Do we have a timer ?
+ */
+void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
-  int j, k;
-  double shift[3];
-  float h;
+  const int ti_current = r->e->ti_current;
+
+  TIMER_TIC
+
+  /* Should we even bother? */
+  if (ci->ti_end_min > ti_current) return;
+
+  /* Recurse? */
+  if (ci->split) {
+
+    /* Loop over all progeny. */
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL) {
+        DOSUB_SELF1(r, ci->progeny[k], 0);
+        for (int j = k + 1; j < 8; j++)
+          if (ci->progeny[j] != NULL)
+            DOSUB_PAIR1(r, ci->progeny[k], ci->progeny[j], -1, 0);
+      }
+  }
+
+  /* Otherwise, compute self-interaction. */
+  else
+    DOSELF1(r, ci);
+
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
+}
+
+/**
+ * @brief Compute grouped sub-cell interactions for pairs (symmetric case)
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param sid The direction linking the cells
+ * @param gettimer Do we have a timer ?
+ *
+ * @todo Hard-code the sid on the recursive calls to avoid the
+ * redundant computations to find the sid on-the-fly.
+ */
+void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
+                 int gettimer) {
+
   struct space *s = r->e->s;
   const int ti_current = r->e->ti_current;
 
   TIMER_TIC
 
-  /* Is this a single cell? */
-  if (cj == NULL) {
+  /* Should we even bother? */
+  if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
-    /* Should we even bother? */
-    if (ci->ti_end_min > ti_current) return;
+  /* Get the cell dimensions. */
+  const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
 
-    /* Recurse? */
-    if (ci->split) {
+  /* Get the type of pair if not specified explicitly. */
+  // if ( sid < 0 )
+  double shift[3];
+  sid = space_getsid(s, &ci, &cj, shift);
 
-      /* Loop over all progeny. */
-      for (k = 0; k < 8; k++)
-        if (ci->progeny[k] != NULL) {
-          DOSUB2(r, ci->progeny[k], NULL, -1, 0);
-          for (j = k + 1; j < 8; j++)
-            if (ci->progeny[j] != NULL)
-              DOSUB2(r, ci->progeny[k], ci->progeny[j], -1, 0);
-        }
+  /* Recurse? */
+  if (ci->split && cj->split &&
+      fmaxf(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+          h / 2) {
 
+    /* Different types of flags. */
+    switch (sid) {
+
+      /* Regular sub-cell interactions of a single cell. */
+      case 0: /* (  1 ,  1 ,  1 ) */
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        break;
+
+      case 1: /* (  1 ,  1 ,  0 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        break;
+
+      case 2: /* (  1 ,  1 , -1 ) */
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        break;
+
+      case 3: /* (  1 ,  0 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        break;
+
+      case 4: /* (  1 ,  0 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[0], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[1], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[2], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[1], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[3], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[2], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[3], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[3], -1, 0);
+        break;
+
+      case 5: /* (  1 ,  0 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[1], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[3], -1, 0);
+        break;
+
+      case 6: /* (  1 , -1 ,  1 ) */
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        break;
+
+      case 7: /* (  1 , -1 ,  0 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[2], -1, 0);
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[3], -1, 0);
+        break;
+
+      case 8: /* (  1 , -1 , -1 ) */
+        if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[4], cj->progeny[3], -1, 0);
+        break;
+
+      case 9: /* (  0 ,  1 ,  1 ) */
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        break;
+
+      case 10: /* (  0 ,  1 ,  0 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[2], cj->progeny[0], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[2], cj->progeny[1], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[2], cj->progeny[4], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[2], cj->progeny[5], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[1], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[5], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[0], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[4], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[5], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[1], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[5], -1, 0);
+        break;
+
+      case 11: /* (  0 ,  1 , -1 ) */
+        if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[2], cj->progeny[1], -1, 0);
+        if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[2], cj->progeny[5], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[1], -1, 0);
+        if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[6], cj->progeny[5], -1, 0);
+        break;
+
+      case 12: /* (  0 ,  0 ,  1 ) */
+        if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[1], cj->progeny[0], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[1], cj->progeny[2], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[1], cj->progeny[4], -1, 0);
+        if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[1], cj->progeny[6], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[0], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[2], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[4], -1, 0);
+        if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[3], cj->progeny[6], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[0], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[2], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[4], -1, 0);
+        if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[5], cj->progeny[6], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[0], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[2], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[4], -1, 0);
+        if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
+          DOSUB_PAIR2(r, ci->progeny[7], cj->progeny[6], -1, 0);
+        break;
     }
 
-    /* Otherwise, compute self-interaction. */
-    else
-      DOSELF2(r, ci);
+  }
 
-  } /* self-interaction. */
+  /* Otherwise, compute the pair directly. */
+  else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
 
-  /* Otherwise, it's a pair interaction. */
-  else {
+    /* Do any of the cells need to be sorted first? */
+    if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
+    if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
 
-    /* Should we even bother? */
-    if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
+    /* Compute the interactions. */
+    DOPAIR2(r, ci, cj);
+  }
 
-    /* Get the cell dimensions. */
-    h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
+}
 
-    /* Get the type of pair if not specified explicitly. */
-    // if ( sid < 0 )
-    sid = space_getsid(s, &ci, &cj, shift);
+/**
+ * @brief Compute grouped sub-cell interactions for self tasks (symmetric case)
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param gettimer Do we have a timer ?
+ */
+void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 
-    /* Recurse? */
-    if (ci->split && cj->split &&
-        fmaxf(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
-            h / 2) {
+  const int ti_current = r->e->ti_current;
 
-      /* Different types of flags. */
-      switch (sid) {
+  TIMER_TIC
 
-        /* Regular sub-cell interactions of a single cell. */
-        case 0: /* (  1 ,  1 ,  1 ) */
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          break;
+  /* Should we even bother? */
+  if (ci->ti_end_min > ti_current) return;
 
-        case 1: /* (  1 ,  1 ,  0 ) */
-          if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[0], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[1], -1, 0);
-          break;
+  /* Recurse? */
+  if (ci->split) {
 
-        case 2: /* (  1 ,  1 , -1 ) */
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          break;
-
-        case 3: /* (  1 ,  0 ,  1 ) */
-          if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[0], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[2], -1, 0);
-          break;
-
-        case 4: /* (  1 ,  0 ,  0 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[0], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[1], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[2], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[0], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[1], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[3], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[0], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[2], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[3], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[1], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[2], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[3], -1, 0);
-          break;
-
-        case 5: /* (  1 ,  0 , -1 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[1], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[3], -1, 0);
-          break;
-
-        case 6: /* (  1 , -1 ,  1 ) */
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          break;
-
-        case 7: /* (  1 , -1 ,  0 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[2], -1, 0);
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[3], -1, 0);
-          break;
-
-        case 8: /* (  1 , -1 , -1 ) */
-          if (ci->progeny[4] != NULL && cj->progeny[3] != NULL)
-            DOSUB2(r, ci->progeny[4], cj->progeny[3], -1, 0);
-          break;
-
-        case 9: /* (  0 ,  1 ,  1 ) */
-          if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[0], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[4], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[4], -1, 0);
-          break;
-
-        case 10: /* (  0 ,  1 ,  0 ) */
-          if (ci->progeny[2] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[2], cj->progeny[0], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[2], cj->progeny[1], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[2], cj->progeny[4], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-            DOSUB2(r, ci->progeny[2], cj->progeny[5], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[0], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[1], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[4], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[5] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[5], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[0], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[4], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[5], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[1], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[4], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[5] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[5], -1, 0);
-          break;
-
-        case 11: /* (  0 ,  1 , -1 ) */
-          if (ci->progeny[2] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[2], cj->progeny[1], -1, 0);
-          if (ci->progeny[2] != NULL && cj->progeny[5] != NULL)
-            DOSUB2(r, ci->progeny[2], cj->progeny[5], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[1] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[1], -1, 0);
-          if (ci->progeny[6] != NULL && cj->progeny[5] != NULL)
-            DOSUB2(r, ci->progeny[6], cj->progeny[5], -1, 0);
-          break;
-
-        case 12: /* (  0 ,  0 ,  1 ) */
-          if (ci->progeny[1] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[1], cj->progeny[0], -1, 0);
-          if (ci->progeny[1] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[1], cj->progeny[2], -1, 0);
-          if (ci->progeny[1] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[1], cj->progeny[4], -1, 0);
-          if (ci->progeny[1] != NULL && cj->progeny[6] != NULL)
-            DOSUB2(r, ci->progeny[1], cj->progeny[6], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[0], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[2], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[4], -1, 0);
-          if (ci->progeny[3] != NULL && cj->progeny[6] != NULL)
-            DOSUB2(r, ci->progeny[3], cj->progeny[6], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[0], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[2], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[4], -1, 0);
-          if (ci->progeny[5] != NULL && cj->progeny[6] != NULL)
-            DOSUB2(r, ci->progeny[5], cj->progeny[6], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[0] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[0], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[2] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[2], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[4] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[4], -1, 0);
-          if (ci->progeny[7] != NULL && cj->progeny[6] != NULL)
-            DOSUB2(r, ci->progeny[7], cj->progeny[6], -1, 0);
-          break;
+    /* Loop over all progeny. */
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL) {
+        DOSUB_SELF2(r, ci->progeny[k], 0);
+        for (int j = k + 1; j < 8; j++)
+          if (ci->progeny[j] != NULL)
+            DOSUB_PAIR2(r, ci->progeny[k], ci->progeny[j], -1, 0);
       }
 
-    }
+  }
 
-    /* Otherwise, compute the pair directly. */
-    else if (ci->ti_end_min <= ti_current || cj->ti_end_min <= ti_current) {
+  /* Otherwise, compute self-interaction. */
+  else
+    DOSELF2(r, ci);
 
-      /* Do any of the cells need to be sorted first? */
-      if (!(ci->sorted & (1 << sid))) runner_do_sort(r, ci, (1 << sid), 1);
-      if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
-
-      /* Compute the interactions. */
-      DOPAIR2(r, ci, cj);
-    }
-
-  } /* otherwise, pair interaction. */
-
-  if (gettimer) TIMER_TOC(TIMER_DOSUB);
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
 }
 
 void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
@@ -2856,5 +2882,5 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   } /* otherwise, pair interaction. */
 
-  if (gettimer) TIMER_TOC(TIMER_DOSUB);
+  if (gettimer) TIMER_TOC(TIMER_DOSUB_PAIR);
 }

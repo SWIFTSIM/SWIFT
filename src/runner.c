@@ -86,9 +86,6 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION force
 #include "runner_doiact.h"
 
-/* Import the gravity loop functions. */
-#include "runner_doiact_grav.h"
-
 /**
  * @brief Calculate gravity acceleration from external potential
  *
@@ -98,8 +95,8 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
  */
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
-  struct gpart *g, *gparts = c->gparts;
-  int i, k, gcount = c->gcount;
+  struct gpart *restrict gparts = c->gparts;
+  const int gcount = c->gcount;
   const int ti_current = r->e->ti_current;
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
@@ -108,7 +105,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
   /* Recurse? */
   if (c->split) {
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
     return;
   }
@@ -118,10 +115,10 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Loop over the parts in this cell. */
-  for (i = 0; i < gcount; i++) {
+  for (int i = 0; i < gcount; i++) {
 
     /* Get a direct pointer on the part. */
-    g = &gparts[i];
+    struct gpart *const g = &gparts[i];
 
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
@@ -553,8 +550,13 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 
           }
 
-          /* Otherwise, sub interaction? */
-          else if (l->t->type == task_type_sub) {
+          /* Otherwise, sub-self interaction? */
+          else if (l->t->type == task_type_sub_self)
+            runner_dosub_subset_density(r, finger, parts, pid, count, NULL, -1,
+                                        1);
+
+          /* Otherwise, sub-pair interaction? */
+          else if (l->t->type == task_type_sub_pair) {
 
             /* Left or right? */
             if (l->t->ci == finger)
@@ -1066,13 +1068,19 @@ void *runner_main(void *data) {
         case task_type_sort:
           runner_do_sort(r, ci, t->flags, 1);
           break;
-        case task_type_sub:
+        case task_type_sub_self:
           if (t->subtype == task_subtype_density)
-            runner_dosub1_density(r, ci, cj, t->flags, 1);
+            runner_dosub_self1_density(r, ci, 1);
           else if (t->subtype == task_subtype_force)
-            runner_dosub2_force(r, ci, cj, t->flags, 1);
-          else if (t->subtype == task_subtype_grav)
-            runner_dosub_grav(r, ci, cj, 1);
+            runner_dosub_self2_force(r, ci, 1);
+          else
+            error("Unknown task subtype.");
+          break;
+        case task_type_sub_pair:
+          if (t->subtype == task_subtype_density)
+            runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+          else if (t->subtype == task_subtype_force)
+            runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1095,21 +1103,6 @@ void *runner_main(void *data) {
           break;
         case task_type_recv:
           runner_do_recv_cell(r, ci, 1);
-          break;
-        case task_type_grav_pp:
-          if (t->cj == NULL)
-            runner_doself_grav(r, t->ci);
-          else
-            runner_dopair_grav(r, t->ci, t->cj);
-          break;
-        case task_type_grav_mm:
-          runner_dograv_mm(r, t->ci, t->cj);
-          break;
-        case task_type_grav_up:
-          runner_dograv_up(r, t->ci);
-          break;
-        case task_type_grav_down:
-          runner_dograv_down(r, t->ci);
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
