@@ -344,6 +344,17 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
   fi
 fi
 
+# Check for FFTW
+have_fftw3="no"
+AC_CHECK_HEADER([fftw3.h])
+if test "$ac_cv_header_fftw3_h" = "yes"; then
+   AC_CHECK_LIB([fftw3],[fftw_malloc], [AC_DEFINE([HAVE_FFTW],
+   [1],[Defined if FFTW 3.x exists.])] )
+   FFTW_LIBS="-lfftw3"
+   have_fftw3="yes"
+fi
+AC_SUBST([FFTW_LIBS])
+
 # Check for Intel intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
 
@@ -409,6 +420,7 @@ AC_MSG_RESULT([
    HDF5 enabled    : $with_hdf5
     - parallel     : $have_parallel_hdf5
    Metis enabled   : $have_metis
+   FFTW3 enabled   : $have_fftw3
    libNUMA enabled : $have_numa
 ])
 
