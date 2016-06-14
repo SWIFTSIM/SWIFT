@@ -23,12 +23,12 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Includes. */
-#include "kernel_hydro.h"
-#include "part.h"
-#include "units.h"
-
 #if defined(HAVE_HDF5)
+
+/* Forward-declare stuff to avoid cyclic includes. */
+struct UnitSystem;
+struct part;
+struct gpart;
 
 /**
  * @brief The different types of data used in the GADGET IC files.

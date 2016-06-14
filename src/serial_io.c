@@ -26,22 +26,22 @@
 /* Some standard headers. */
 #include <hdf5.h>
 #include <math.h>
+#include <mpi.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
 
 /* This object's header. */
 #include "serial_io.h"
 
 /* Local includes. */
 #include "common_io.h"
+#include "engine.h"
 #include "error.h"
+#include "kernel_hydro.h"
+#include "part.h"
+#include "units.h"
 
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file

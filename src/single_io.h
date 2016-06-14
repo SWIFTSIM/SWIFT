@@ -19,10 +19,14 @@
 #ifndef SWIFT_SINGLE_IO_H
 #define SWIFT_SINGLE_IO_H
 
-/* Includes. */
-#include "engine.h"
-#include "part.h"
-#include "units.h"
+/* Config parameters. */
+#include "../config.h"
+
+/* Forward-declare stuff to avoid cyclic includes. */
+struct engine;
+struct gpart;
+struct part;
+struct UnitSystem;
 
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 

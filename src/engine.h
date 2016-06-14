@@ -37,18 +37,9 @@
 #include <stdio.h>
 
 /* Includes. */
-#include "hydro_properties.h"
-#include "lock.h"
-#include "parser.h"
+#include "clocks.h"
 #include "partition.h"
-#include "physical_constants.h"
-#include "potentials.h"
-#include "proxy.h"
-#include "runner.h"
 #include "scheduler.h"
-#include "space.h"
-#include "task.h"
-#include "units.h"
 
 /* Some constants. */
 enum engine_policy {

@@ -19,6 +19,8 @@
 #ifndef SWIFT_APPROX_MATH_H
 #define SWIFT_APPROX_MATH_H
 
+#include "inline.h"
+
 /**
  * @brief Approximate version of expf(x) using a 4th order Taylor expansion
  *

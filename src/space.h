@@ -26,13 +26,10 @@
 /* Includes. */
 #include <stddef.h>
 
-/* Local includes. */
-#include "cell.h"
-#include "parser.h"
-#include "part.h"
+#include "lock.h"
 
-/* Forward-declare the engine to avoid cyclic includes. */
-struct engine;
+/* Forward-declare stuff to avoid cyclic includes. */
+struct swift_params;
 
 /* Some constants. */
 #define space_maxdepth 10
@@ -158,4 +155,5 @@ void space_do_split(struct space *s, struct cell *c);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_link_cleanup(struct space *s);
+
 #endif /* SWIFT_SPACE_H */

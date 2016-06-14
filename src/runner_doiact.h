@@ -18,10 +18,6 @@
  *
  ******************************************************************************/
 
-/* Includes. */
-#include "cell.h"
-#include "part.h"
-
 /* Before including this file, define FUNCTION, which is the
    name of the interaction function. This creates the interaction functions
    runner_dopair_FUNCTION, runner_dopair_FUNCTION_naive, runner_doself_FUNCTION,

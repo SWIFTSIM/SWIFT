@@ -93,7 +93,6 @@ void print_help_message() {
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
-
 int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
@@ -482,10 +481,8 @@ int main(int argc, char *argv[]) {
     if (j % 100 == 2) e.forcerepart = reparttype;
 #endif
 
+    /* Reset timers */
     timers_reset(timers_mask_all);
-#ifdef COUNTER
-    for (k = 0; k < runner_counter_count; k++) runner_counter[k] = 0;
-#endif
 
     /* Take a step. */
     engine_step(&e);

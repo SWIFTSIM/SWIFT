@@ -20,12 +20,6 @@
 #ifndef SWIFT_RUNNER_IACT_LEGACY_H
 #define SWIFT_RUNNER_IACT_LEGACY_H
 
-/* Includes. */
-#include "const.h"
-#include "kernel_hydro.h"
-#include "part.h"
-#include "vector.h"
-
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
@@ -42,7 +36,6 @@
 /**
  * @brief Density loop
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -113,7 +106,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 /**
  * @brief Density loop (non-symmetric version)
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -162,7 +154,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 /**
  * @brief Force loop
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -260,7 +251,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 /**
  * @brief Force loop (non-symmetric version)
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 

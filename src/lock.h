@@ -24,7 +24,6 @@
 
 /* Includes. */
 #include "atomic.h"
-#include "inline.h"
 
 #ifdef PTHREAD_SPINLOCK
 #include <pthread.h>

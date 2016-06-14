@@ -22,21 +22,23 @@
 #ifndef SWIFT_TOOL_H
 #define SWIFT_TOOL_H
 
-#include "cell.h"
-#include "runner.h"
+/* Forward-declare stuff to avoid cyclic includes. */
+struct cell;
+struct gpart;
+struct part;
+struct runner;
 
 void factor(int value, int *f1, int *f2);
 void density_dump(int N);
 void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *__restrict__ parts, int N, int periodic);
+                       struct gpart *restrict parts, int N, int periodic);
 void pairs_single_density(double *dim, long long int pid,
-                          struct part *__restrict__ parts, int N, int periodic);
+                          struct part *restrict parts, int N, int periodic);
 
 void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj);
 void self_all_density(struct runner *r, struct cell *ci);
 
-void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
-              int periodic);
+void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic);
 
 double random_uniform(double a, double b);
 void shuffle_particles(struct part *parts, const int count);
