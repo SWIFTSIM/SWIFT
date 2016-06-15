@@ -38,8 +38,14 @@
 
 /* Includes. */
 #include "clocks.h"
+#include "parser.h"
 #include "partition.h"
+#include "potentials.h"
+#include "runner.h"
 #include "scheduler.h"
+#include "space.h"
+#include "task.h"
+#include "units.h"
 
 /* Some constants. */
 enum engine_policy {
