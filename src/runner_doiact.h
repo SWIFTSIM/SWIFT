@@ -2361,7 +2361,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
             DOSUB_SUBSET(r, ci->progeny[7], parts, ind, count, cj->progeny[0],
                          -1, 0);
           if (ci->progeny[7] != NULL && cj->progeny[0] == sub)
-            DOSUB_SUBSET(r, ci->progeny[0], parts, ind, count, cj->progeny[7],
+            DOSUB_SUBSET(r, cj->progeny[0], parts, ind, count, ci->progeny[7],
                          -1, 0);
           break;
 
