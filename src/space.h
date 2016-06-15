@@ -23,13 +23,18 @@
 #ifndef SWIFT_SPACE_H
 #define SWIFT_SPACE_H
 
-/* Includes. */
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stddef.h>
 
+/* Includes. */
+#include "cell.h"
 #include "lock.h"
-
-/* Forward-declare stuff to avoid cyclic includes. */
-struct swift_params;
+#include "parser.h"
+#include "part.h"
+#include "space.h"
 
 /* Some constants. */
 #define space_maxdepth 10

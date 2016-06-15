@@ -22,11 +22,13 @@
 #ifndef SWIFT_TOOL_H
 #define SWIFT_TOOL_H
 
-/* Forward-declare stuff to avoid cyclic includes. */
-struct cell;
-struct gpart;
-struct part;
-struct runner;
+/* Config parameters. */
+#include "../config.h"
+
+/* Includes. */
+#include "cell.h"
+#include "part.h"
+#include "runner.h"
 
 void factor(int value, int *f1, int *f2);
 void density_dump(int N);

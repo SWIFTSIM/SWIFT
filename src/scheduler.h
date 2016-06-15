@@ -32,13 +32,10 @@
 #include <pthread.h>
 
 /* Includes. */
+#include "cell.h"
 #include "lock.h"
-
-/* Forward-declare stuff to avoid cyclic includes. */
-struct cell;
-struct queue;
-struct space;
-struct task;
+#include "queue.h"
+#include "task.h"
 
 /* Some constants. */
 #define scheduler_maxwait 3

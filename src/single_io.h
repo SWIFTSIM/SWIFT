@@ -22,11 +22,10 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Forward-declare stuff to avoid cyclic includes. */
-struct engine;
-struct gpart;
-struct part;
-struct UnitSystem;
+/* Includes. */
+#include "engine.h"
+#include "part.h"
+#include "units.h"
 
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
