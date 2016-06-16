@@ -17,14 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#include "const.h"
 #include "kernel_gravity.h"
+#include "kernel_long_gravity.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
 
-#define numPoints (1 << 6)
+#define numPoints (1 << 7)
 
 /**
  * @brief The Gadget-2 gravity kernel function
@@ -54,7 +56,7 @@ float gadget(float r, float h) {
 int main() {
 
   const float h = 3.f;
-  const float r_max = 5.f;
+  const float r_max = 6.f;
 
   for (int k = 1; k < numPoints; ++k) {
 
@@ -82,5 +84,29 @@ int main() {
   }
 
   printf("\nAll values are consistent\n");
+
+  /* Now test the long range function */
+  const float a_smooth = const_gravity_a_smooth;
+
+  for (int k = 1; k < numPoints; ++k) {
+
+    const float r = (r_max * k) / numPoints;
+
+    const float u = r / a_smooth;
+
+    float swift_w;
+    kernel_long_grav_eval(u, &swift_w);
+
+    float gadget_w = erfc(u / 2) + u * exp(-u * u / 4) / sqrt(M_PI);
+
+    printf("%2d: r= %f r_lr= %f u= %f Ws(r)= %f Wg(r)= %f\n", k, r, a_smooth, u,
+           swift_w, gadget_w);
+
+    if (fabsf(gadget_w - swift_w) > 2e-7) {
+      printf("Invalid value ! Gadget= %e, SWIFT= %e\n", gadget_w, swift_w);
+      return 1;
+    }
+  }
+
   return 0;
 }
