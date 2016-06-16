@@ -110,6 +110,9 @@ struct engine {
   /* The task scheduler. */
   struct scheduler sched;
 
+  /* Common threadpool for all the engine's tasks. */
+  struct threadpool threadpool;
+
   /* The minimum and maximum allowed dt */
   double dt_min, dt_max;
 
@@ -187,6 +190,9 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
+  /* Root task for all send and recv tasks. */
+  struct task *send_root, *recv_root;
+
   /* Are we talkative ? */
   int verbose;
 
@@ -198,7 +204,7 @@ struct engine {
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
-
+  
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
 };
@@ -228,7 +234,6 @@ void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
-struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin();

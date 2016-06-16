@@ -34,6 +34,7 @@
 #define lock_trylock(l) (pthread_spin_lock(l) != 0)
 #define lock_unlock(l) (pthread_spin_unlock(l) != 0)
 #define lock_unlock_blind(l) pthread_spin_unlock(l)
+
 #elif defined(PTHREAD_LOCK)
 #include <pthread.h>
 #define swift_lock_type pthread_mutex_t
@@ -43,6 +44,7 @@
 #define lock_trylock(l) (pthread_mutex_trylock(l) != 0)
 #define lock_unlock(l) (pthread_mutex_unlock(l) != 0)
 #define lock_unlock_blind(l) pthread_mutex_unlock(l)
+
 #else
 #define swift_lock_type volatile int
 #define lock_init(l) (*(l) = 0)

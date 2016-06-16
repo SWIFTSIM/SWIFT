@@ -45,6 +45,9 @@ struct dump {
   /* The file with which this memory is associated. */
   int fd;
   
+  /* Mask containing the significant bits for page addresses. */
+  size_t page_mask;
+  
 };
 
 /* Function prototypes. */

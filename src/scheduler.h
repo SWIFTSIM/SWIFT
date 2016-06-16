@@ -37,6 +37,7 @@
 #include "queue.h"
 #include "space.h"
 #include "task.h"
+#include "threadpool.h"
 
 /* Some constants. */
 #define scheduler_maxwait 3
@@ -84,9 +85,9 @@ struct scheduler {
   int *tasks_ind;
 
   /* The task unlocks. */
-  struct task **unlocks;
-  int *unlock_ind;
-  int nr_unlocks, size_unlocks;
+  struct task **volatile unlocks;
+  int *volatile unlock_ind;
+  volatile int nr_unlocks, size_unlocks, completed_unlock_writes;
 
   /* Lock for this scheduler. */
   swift_lock_type lock;
@@ -98,13 +99,17 @@ struct scheduler {
   /* The space associated with this scheduler. */
   struct space *space;
 
+  /* Threadpool to use internally for mundane parallel work. */
+  struct threadpool *threadpool;
+
   /* The node we are working on. */
   int nodeID;
 };
 
 /* Function prototypes. */
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
-                    int nr_queues, unsigned int flags, int nodeID);
+                    int nr_queues, unsigned int flags, int nodeID,
+                    struct threadpool *tp);
 struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
@@ -123,7 +128,5 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
 void scheduler_set_unlocks(struct scheduler *s);
 void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
-void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
-                         unsigned int mask, unsigned int submask);
 
 #endif /* SWIFT_SCHEDULER_H */

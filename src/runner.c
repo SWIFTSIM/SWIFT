@@ -1114,18 +1114,7 @@ void *runner_main(void *data) {
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
           break;
-        case task_type_part_sort:
-          space_do_parts_sort();
-          break;
-        case task_type_gpart_sort:
-          space_do_gparts_sort();
-          break;
-        case task_type_split_cell:
-          space_do_split(e->s, t->ci);
-          break;
-        case task_type_rewait:
-          scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj,
-                              t->flags, t->rank);
+        case task_type_comm_root:
           break;
         default:
           error("Unknown task type.");

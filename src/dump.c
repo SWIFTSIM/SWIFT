@@ -61,18 +61,28 @@ void dump_ensure(struct dump *d, size_t size) {
   if (d->size - d->count > size) return;
 
   /* Unmap the current data. */
-  if (munmap(d->data, d->count) != 0) error("Failed to unmap dump data.");
+  size_t trunc_count = d->count & d->page_mask;
+  if (munmap(d->data, trunc_count > 0 ? trunc_count : 1) != 0) {
+    error("Failed to unmap %zi bytes of dump data (%s).", trunc_count,
+          strerror(errno));
+  }
+  
+  /* Update the size and count. */
+  d->file_offset += trunc_count;
+  d->count -= trunc_count;
+  d->size = (size * dump_grow_ensure_factor + ~d->page_mask) & d->page_mask;
 
-  /* Re-map starting at the end of the file. */
-  d->file_offset += d->count;
-  d->size = size * dump_grow_ensure_factor;
-  if ((d->data = mmap(NULL, d->size, PROT_WRITE, MAP_PRIVATE, d->fd,
-                      d->file_offset)) == MAP_FAILED) {
-    error("Failed to allocate map of size %zi bytes.", size);
+  /* Re-allocate the file size. */
+  if (posix_fallocate(d->fd, d->file_offset, d->size) != 0) {
+    error("Failed to pre-allocate the dump file.");
   }
 
-  /* Re-set the counter. */
-  d->count = 0;
+  /* Re-map starting at the end of the file. */
+  if ((d->data = mmap(NULL, d->size, PROT_WRITE, MAP_SHARED, d->fd,
+                      d->file_offset)) == MAP_FAILED) {
+    error("Failed to allocate map of size %zi bytes (%s).", d->size,
+          strerror(errno));
+  }
 }
 
 /**
@@ -90,7 +100,14 @@ void dump_sync(struct dump *d) {
 
 void dump_close(struct dump *d) {
   /* Unmap the data in memory. */
-  if (munmap(d->data, d->count) != 0) error("Failed to unmap dump data.");
+  if (munmap(d->data, d->count) != 0) {
+    error("Failed to unmap dump data (%s).", strerror(errno));
+  }
+  
+  /* Truncate the file to the correct length. */
+  if (ftruncate(d->fd, d->file_offset + d->count) != 0) {
+    error("Failed to truncate dump file (%s).", strerror(errno));
+  }
 
   /* Close the memory-mapped file. */
   if (close(d->fd) != 0) error("Failed to close memory-mapped file.");
@@ -108,18 +125,29 @@ void dump_close(struct dump *d) {
 void dump_init(struct dump *d, const char *filename, size_t size) {
 
   /* Create the output file. */
-  if ((d->fd = open(filename, O_WRONLY)) == -1) {
+  if ((d->fd = open(filename, O_CREAT | O_RDWR, 0660)) == -1) {
     error("Failed to create dump file '%s' (%s).", filename, strerror(errno));
   }
 
+  /* Adjust the size to be at least the page size. */
+  const size_t page_mask = ~(sysconf(_SC_PAGE_SIZE) - 1);
+  size = (size + ~page_mask) & page_mask;
+  
+  /* Pre-allocate the file size. */
+  if (posix_fallocate(d->fd, 0, size) != 0) {
+    error("Failed to pre-allocate the dump file.");
+  }
+
   /* Map memory to the created file. */
-  if ((d->data = mmap(NULL, size, PROT_WRITE, MAP_PRIVATE, d->fd, 0)) ==
+  if ((d->data = mmap(NULL, size, PROT_WRITE, MAP_SHARED, d->fd, 0)) ==
       MAP_FAILED) {
-    error("Failed to allocate map of size %zi bytes.", size);
+    error("Failed to allocate map of size %zi bytes (%s).", size,
+          strerror(errno));
   }
 
   /* Init some counters. */
   d->size = size;
   d->count = 0;
   d->file_offset = 0;
+  d->page_mask = page_mask;
 }
