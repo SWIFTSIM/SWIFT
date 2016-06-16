@@ -19,6 +19,9 @@
 #ifndef SWIFT_PARALLEL_IO_H
 #define SWIFT_PARALLEL_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>

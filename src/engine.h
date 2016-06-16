@@ -37,13 +37,10 @@
 #include <stdio.h>
 
 /* Includes. */
-#include "hydro_properties.h"
-#include "lock.h"
+#include "clocks.h"
 #include "parser.h"
 #include "partition.h"
-#include "physical_constants.h"
 #include "potentials.h"
-#include "proxy.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"

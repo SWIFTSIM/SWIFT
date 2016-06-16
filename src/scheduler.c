@@ -44,6 +44,9 @@
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
+#include "queue.h"
+#include "space.h"
+#include "task.h"
 #include "timers.h"
 
 /**
