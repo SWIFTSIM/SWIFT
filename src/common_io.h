@@ -23,12 +23,10 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Includes. */
-#include "kernel_hydro.h"
+#if defined(HAVE_HDF5)
+
 #include "part.h"
 #include "units.h"
-
-#if defined(HAVE_HDF5)
 
 /**
  * @brief The different types of data used in the GADGET IC files.
@@ -107,6 +105,6 @@ void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
 void writeCodeDescription(hid_t h_file);
 void writeUnitSystem(hid_t h_file, struct UnitSystem* us);
 
-#endif
+#endif /* defined HDF5 */
 
 #endif /* SWIFT_COMMON_IO_H */

@@ -19,6 +19,9 @@
 #ifndef SWIFT_SINGLE_IO_H
 #define SWIFT_SINGLE_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include "engine.h"
 #include "part.h"

@@ -40,6 +40,7 @@
 /* Local headers. */
 #include "approx_math.h"
 #include "atomic.h"
+#include "cell.h"
 #include "const.h"
 #include "debug.h"
 #include "drift.h"
@@ -139,7 +140,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  * @param sort The entries
  * @param N The number of entries.
  */
-
 void runner_do_sort_ascending(struct entry *sort, int N) {
 
   struct {
@@ -221,7 +221,6 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
-
 void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   struct entry *finger;
@@ -431,7 +430,6 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
  * @param r The runner thread.
  * @param c The cell.
  */
-
 void runner_do_ghost(struct runner *r, struct cell *c) {
 
   struct part *restrict parts = c->parts;

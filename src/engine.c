@@ -59,10 +59,13 @@
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
+#include "proxy.h"
+#include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
 #include "timers.h"
 #include "tools.h"
+#include "units.h"
 
 const char *engine_policy_names[13] = {"none",
                                        "rand",

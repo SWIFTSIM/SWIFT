@@ -37,7 +37,11 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "engine.h"
 #include "error.h"
+#include "kernel_hydro.h"
+#include "part.h"
+#include "units.h"
 
 /**
  * @brief Reads a data array from a given HDF5 group.
