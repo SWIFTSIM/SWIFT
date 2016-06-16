@@ -68,9 +68,13 @@ int main(int argc, char *argv[]) {
     dump_ensure(&d, 7 * chunk_size);
 
     /* Dump a few numbers. */
-    printf("dumping %i chunks...\n", chunk_size); fflush(stdout);
+    printf("dumping %i chunks...\n", chunk_size);
+    fflush(stdout);
     threadpool_map(&t, dump_mapper, NULL, chunk_size, 0, 1, &d);
   }
+
+  /* Sync the file, not necessary before dump_close, but just to test this. */
+  dump_sync(&d);
 
   /* Finalize the dump. */
   dump_close(&d);
