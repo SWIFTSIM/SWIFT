@@ -481,27 +481,26 @@ void engine_redistribute(struct engine *e) {
     } */
 
   /* Verify that the links are correct */
-  /* MATTHIEU: To be commented out once we are happy */
-  for (size_t k = 0; k < nr_gparts; ++k) {
+  /* for (size_t k = 0; k < nr_gparts; ++k) { */
 
-    if (gparts_new[k].id > 0) {
+  /*   if (gparts_new[k].id > 0) { */
 
-      if (gparts_new[k].part->gpart != &gparts_new[k])
-        error("Linking problem !");
+  /*     if (gparts_new[k].part->gpart != &gparts_new[k]) */
+  /*       error("Linking problem !"); */
 
-      if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
-          gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
-          gparts_new[k].x[2] != gparts_new[k].part->x[2])
-        error("Linked particles are not at the same position !");
-    }
-  }
-  for (size_t k = 0; k < nr_parts; ++k) {
+  /*     if (gparts_new[k].x[0] != gparts_new[k].part->x[0] || */
+  /*         gparts_new[k].x[1] != gparts_new[k].part->x[1] || */
+  /*         gparts_new[k].x[2] != gparts_new[k].part->x[2]) */
+  /*       error("Linked particles are not at the same position !"); */
+  /*   } */
+  /* } */
+  /* for (size_t k = 0; k < nr_parts; ++k) { */
 
-    if (parts_new[k].gpart != NULL) {
+  /*   if (parts_new[k].gpart != NULL) { */
 
-      if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !");
-    }
-  }
+  /*     if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !"); */
+  /*   } */
+  /* } */
 
   /* Set the new part data, free the old. */
   free(parts);
@@ -2447,26 +2446,25 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
     if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
 
   /* Verify that the links are correct */
-  /* MATTHIEU: To be commented out once we are happy */
-  for (size_t k = 0; k < s->nr_gparts; ++k) {
+  /* for (size_t k = 0; k < s->nr_gparts; ++k) { */
 
-    if (s->gparts[k].id > 0) {
+  /*   if (s->gparts[k].id > 0) { */
 
-      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+  /*     if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !"); */
 
-      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
-          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
-          s->gparts[k].x[2] != s->gparts[k].part->x[2])
-        error("Linked particles are not at the same position !");
-    }
-  }
-  for (size_t k = 0; k < s->nr_parts; ++k) {
+  /*     if (s->gparts[k].x[0] != s->gparts[k].part->x[0] || */
+  /*         s->gparts[k].x[1] != s->gparts[k].part->x[1] || */
+  /*         s->gparts[k].x[2] != s->gparts[k].part->x[2]) */
+  /*       error("Linked particles are not at the same position !"); */
+  /*   } */
+  /* } */
+  /* for (size_t k = 0; k < s->nr_parts; ++k) { */
 
-    if (s->parts[k].gpart != NULL) {
+  /*   if (s->parts[k].gpart != NULL) { */
 
-      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
-    }
-  }
+  /*     if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !"); */
+  /*   } */
+  /* } */
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2485,7 +2483,7 @@ void engine_dump_snapshot(struct engine *e) {
 
   if (e->verbose) message("writing snapshot at t=%f.", e->time);
 
-/* Dump... */
+  /* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   write_output_parallel(e, e->snapshotBaseName, e->snapshotUnits, e->nodeID,
