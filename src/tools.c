@@ -491,7 +491,14 @@ void shuffle_particles(struct part *parts, const int count) {
  * @brief gcount The number of particles.
  */
 void gravity_n2(struct gpart *gparts, const int gcount,
-                const struct phys_const *constants) {
+                const struct phys_const *constants, float rlr) {
+
+  const float rlr_inv = 0.;  // 1. / rlr;
+  const float max_d = const_gravity_r_cut * rlr;
+  const float max_d2 = max_d * max_d;
+
+  message("rlr_inv= %f", rlr_inv);
+  message("max_d: %f", max_d);
 
   /* Reset everything */
   for (int pid = 0; pid < gcount; pid++) {
@@ -518,8 +525,11 @@ void gravity_n2(struct gpart *gparts, const int gcount,
                            gpi->x[2] - gpj->x[2]};  // z
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      /* Apply the gravitational acceleration. */
-      runner_iact_grav_pp(0.f, r2, dx, gpi, gpj);
+      if (r2 < max_d2 || 1) {
+
+        /* Apply the gravitational acceleration. */
+        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
+      }
     }
   }
 

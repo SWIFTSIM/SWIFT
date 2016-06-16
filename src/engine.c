@@ -2441,7 +2441,8 @@ void engine_step(struct engine *e) {
   /* Check the gravity accelerations */
   struct gpart *temp = malloc(s->nr_gparts * sizeof(struct gpart));
   memcpy(temp, s->gparts, s->nr_gparts * sizeof(struct gpart));
-  gravity_n2(temp, s->nr_gparts, e->physical_constants);
+  const double rlr = const_gravity_a_smooth * s->cells[0].h[0];
+  gravity_n2(temp, s->nr_gparts, e->physical_constants, rlr);
   file = fopen("grav_brute.dat", "w");
   for (size_t k = 0; k < s->nr_gparts; ++k) {
     fprintf(file, "%lld %f %f %f %e %e %e\n", temp[k].id, temp[k].x[0],

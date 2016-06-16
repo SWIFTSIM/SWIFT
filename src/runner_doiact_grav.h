@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
   struct gpart *restrict gparts = ci->gparts;
   const struct multipole multi = cj->multipole;
   const int ti_current = e->ti_current;
-  const float rlr_inv = 1.f;
+  const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->h[0]);
 
   TIMER_TIC;
 
@@ -138,7 +138,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
   struct gpart *restrict gparts_i = ci->gparts;
   struct gpart *restrict gparts_j = cj->gparts;
   const int ti_current = e->ti_current;
-  const float rlr_inv = 1.f;
+  const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->h[0]);
 
   TIMER_TIC;
 
@@ -230,7 +230,9 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
   const int gcount = c->gcount;
   struct gpart *restrict gparts = c->gparts;
   const int ti_current = e->ti_current;
-  const float rlr_inv = 1.f;
+  const float rlr_inv = 1. / (const_gravity_a_smooth * c->super->h[0]);
+
+  // message("rlr_inv= %f", rlr_inv);
 
   TIMER_TIC;
 
@@ -463,18 +465,31 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
   struct cell *cells = e->s->cells;
   const int nr_cells = e->s->nr_cells;
   const int ti_current = e->ti_current;
+  const double max_d = const_gravity_a_smooth * const_gravity_r_cut * ci->h[0];
+  const double max_d2 = max_d * max_d;
+  const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
+
+  // message("max_d: %f", max_d);
 
   /* Anything to do here? */
   if (ci->ti_end_min > ti_current) return;
 
-  /* Loop over all the cells and go for a p-m interaction if far enough */
+  /* Loop over all the cells and go for a p-m interaction if far enough but not
+   * too far */
   for (int i = 0; i < nr_cells; ++i) {
 
     struct cell *cj = &cells[i];
 
     if (ci == cj) continue;
 
+    const double dx[3] = {cj->loc[0] - pos_i[0],   // x
+                          cj->loc[1] - pos_i[1],   // y
+                          cj->loc[2] - pos_i[2]};  // z
+    const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
     if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_pm(r, ci, cj);
+
+    if (r2 > max_d2) continue;
   }
 }
 
