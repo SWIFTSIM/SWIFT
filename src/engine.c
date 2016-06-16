@@ -97,7 +97,6 @@ static cpu_set_t entry_affinity;
  *
  * @return The new #link pointer.
  */
-
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
   const int ind = atomic_inc(&e->nr_links);
@@ -120,7 +119,6 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  * @param c The #cell.
  * @param super The super #cell.
  */
-
 void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
                                     struct cell *super) {
 
@@ -544,7 +542,6 @@ void engine_redistribute(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_repartition(struct engine *e) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
@@ -594,7 +591,6 @@ void engine_repartition(struct engine *e) {
  * @param up The upward gravity #task.
  * @param down The downward gravity #task.
  */
-
 void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
                           struct task *down) {
 
@@ -616,7 +612,6 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  * @param ci The sending #cell.
  * @param cj The receiving #cell
  */
-
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
 #ifdef WITH_MPI
@@ -709,7 +704,6 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
  *
  * @param e The #engine.
  */
-
 void engine_exchange_cells(struct engine *e) {
 
 #ifdef WITH_MPI
@@ -857,7 +851,6 @@ void engine_exchange_cells(struct engine *e) {
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
  */
-
 void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             int *ind_part, size_t *Npart, size_t offset_gparts,
                             int *ind_gpart, size_t *Ngpart) {
@@ -1533,7 +1526,6 @@ void engine_maketasks(struct engine *e) {
  *
  * @return 1 if the space has to be rebuilt, 0 otherwise.
  */
-
 int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
@@ -1670,7 +1662,6 @@ int engine_marktasks(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_print_task_counts(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
@@ -1739,7 +1730,6 @@ void engine_rebuild(struct engine *e) {
  *
  * @param e The #engine to prepare.
  */
-
 void engine_prepare(struct engine *e) {
 
   TIMER_TIC;
@@ -1780,7 +1770,6 @@ void engine_prepare(struct engine *e) {
  * @param e The #engine.
  * @param tid The thread ID
  */
-
 void engine_barrier(struct engine *e, int tid) {
 
   /* First, get the barrier mutex. */
@@ -1965,7 +1954,11 @@ void engine_collect_drift(struct cell *c) {
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
 }
-
+/**
+ * @brief Print the conserved quantities statistics to a log file
+ *
+ * @param e The #engine.
+ */
 void engine_print_stats(struct engine *e) {
 
   const struct space *s = e->s;
@@ -2297,7 +2290,6 @@ int engine_is_done(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
@@ -2403,7 +2395,6 @@ void engine_makeproxies(struct engine *e) {
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
  */
-
 void engine_split(struct engine *e, struct partition *initial_partition) {
 
 #ifdef WITH_MPI
@@ -2583,7 +2574,6 @@ void engine_unpin() {
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
  */
-
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
