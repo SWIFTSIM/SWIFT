@@ -224,7 +224,7 @@ void engine_redistribute(struct engine *e) {
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
 
-  // Allocate the destination index arrays.
+  /* Allocate the destination index arrays. */
   int *dest, *g_dest;
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
@@ -243,9 +243,12 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
-    /* if (cid < 0 || cid >= s->nr_cells)
-       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
-             cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+            parts[k].x[0], parts[k].x[1], parts[k].x[2]);
+#endif
+
     dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
@@ -272,9 +275,10 @@ void engine_redistribute(struct engine *e) {
           count_this_dest = 0;
         }
 
-        /* Debug */
-        /* if(s->parts[k].gpart->id < 0) */
-        /*   error("Trying to link a partnerless gpart !"); */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (s->parts[k].gpart->id < 0)
+          error("Trying to link a partnerless gpart !");
+#endif
 
         s->parts[k].gpart->id = count_this_dest;
         count_this_dest++;
@@ -294,9 +298,12 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, gparts[k].x[0] * ih[0],
                                gparts[k].x[1] * ih[1], gparts[k].x[2] * ih[2]);
-    /* if (cid < 0 || cid >= s->nr_cells)
-       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
-             cid, k, g_parts[k].x[0], g_parts[k].x[1], g_parts[k].x[2]); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]);
+#endif
+
     g_dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
@@ -471,36 +478,38 @@ void engine_redistribute(struct engine *e) {
     offset_gparts += count_gparts;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
-  /* for ( int k = 0 ; k < nr_parts ; k++ ) {
-      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0],
-    parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
-      if ( cells[ cid ].nodeID != nodeID )
-          error( "Received particle (%i) that does not belong here
-    (nodeID=%i).", k , cells[ cid ].nodeID );
-    } */
+  for (int k = 0; k < nr_parts; k++) {
+    int cid = cell_getid(cdim, parts_new[k].x[0] * ih[0],
+                         parts_new[k].x[1] * ih[1], parts_new[k].x[2] * ih[2]);
+    if (cells[cid].nodeID != nodeID)
+      error("Received particle (%i) that does not belong here (nodeID=%i).", k,
+            cells[cid].nodeID);
+  }
 
   /* Verify that the links are correct */
-  /* for (size_t k = 0; k < nr_gparts; ++k) { */
+  for (size_t k = 0; k < nr_gparts; ++k) {
 
-  /*   if (gparts_new[k].id > 0) { */
+    if (gparts_new[k].id > 0) {
 
-  /*     if (gparts_new[k].part->gpart != &gparts_new[k]) */
-  /*       error("Linking problem !"); */
+      if (gparts_new[k].part->gpart != &gparts_new[k])
+        error("Linking problem !");
 
-  /*     if (gparts_new[k].x[0] != gparts_new[k].part->x[0] || */
-  /*         gparts_new[k].x[1] != gparts_new[k].part->x[1] || */
-  /*         gparts_new[k].x[2] != gparts_new[k].part->x[2]) */
-  /*       error("Linked particles are not at the same position !"); */
-  /*   } */
-  /* } */
-  /* for (size_t k = 0; k < nr_parts; ++k) { */
+      if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
+          gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
+          gparts_new[k].x[2] != gparts_new[k].part->x[2])
+        error("Linked particles are not at the same position !");
+    }
+  }
+  for (size_t k = 0; k < nr_parts; ++k) {
 
-  /*   if (parts_new[k].gpart != NULL) { */
+    if (parts_new[k].gpart != NULL) {
 
-  /*     if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !"); */
-  /*   } */
-  /* } */
+      if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !");
+    }
+  }
+#endif
 
   /* Set the new part data, free the old. */
   free(parts);
@@ -717,8 +726,7 @@ void engine_exchange_cells(struct engine *e) {
   MPI_Status status;
   ticks tic = getticks();
 
-  /* Run through the cells and get the size of the ones that will be sent off.
-   */
+  /* Run through the cells and get the size of the ones that will be sent */
   int count_out = 0;
   for (int k = 0; k < nr_cells; k++) {
     offset[k] = count_out;
@@ -2445,26 +2453,29 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   for (size_t k = 0; k < s->nr_gparts; k++)
     if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   /* Verify that the links are correct */
-  /* for (size_t k = 0; k < s->nr_gparts; ++k) { */
+  for (size_t k = 0; k < s->nr_gparts; ++k) {
 
-  /*   if (s->gparts[k].id > 0) { */
+    if (s->gparts[k].id > 0) {
 
-  /*     if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !"); */
+      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
 
-  /*     if (s->gparts[k].x[0] != s->gparts[k].part->x[0] || */
-  /*         s->gparts[k].x[1] != s->gparts[k].part->x[1] || */
-  /*         s->gparts[k].x[2] != s->gparts[k].part->x[2]) */
-  /*       error("Linked particles are not at the same position !"); */
-  /*   } */
-  /* } */
-  /* for (size_t k = 0; k < s->nr_parts; ++k) { */
+      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
+          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
+          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+        error("Linked particles are not at the same position !");
+    }
+  }
+  for (size_t k = 0; k < s->nr_parts; ++k) {
 
-  /*   if (s->parts[k].gpart != NULL) { */
+    if (s->parts[k].gpart != NULL) {
+      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
+    }
+  }
 
-  /*     if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !"); */
-  /*   } */
-  /* } */
+#endif
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2483,7 +2494,7 @@ void engine_dump_snapshot(struct engine *e) {
 
   if (e->verbose) message("writing snapshot at t=%f.", e->time);
 
-  /* Dump... */
+/* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   write_output_parallel(e, e->snapshotBaseName, e->snapshotUnits, e->nodeID,

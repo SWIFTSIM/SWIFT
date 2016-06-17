@@ -60,4 +60,7 @@
 /* Gravity properties */
 #define EXTERNAL_POTENTIAL_POINTMASS
 
+/* Are we debugging ? */
+//#define SWIFT_DEBUG_CHECKS
+
 #endif /* SWIFT_CONST_H */
