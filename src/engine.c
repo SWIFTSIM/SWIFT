@@ -1576,7 +1576,12 @@ void engine_maketasks(struct engine *e) {
     engine_make_gravityinteraction_tasks(e);
 
   /* Split the tasks. */
-  scheduler_splittasks(sched);
+  {
+    const ticks tic = getticks();
+    scheduler_splittasks(sched);
+    message("scheduler_splittasks took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+  }
 
   /* Allocate the list of cell-task links. The maximum number of links
      is the number of cells (s->tot_cells) times the number of neighbours (27)
@@ -1640,10 +1645,20 @@ void engine_maketasks(struct engine *e) {
   scheduler_set_unlocks(sched);
 
   /* Rank the tasks. */
-  scheduler_ranktasks(sched);
+  {
+    const ticks tic = getticks();
+    scheduler_ranktasks(sched);
+    message("scheduler_ranktasks took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+  }
 
   /* Weight the tasks. */
-  scheduler_reweight(sched);
+  {
+    const ticks tic = getticks();
+    scheduler_reweight(sched);
+    message("scheduler_reweight took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+  }
 
   /* Set the tasks age. */
   e->tasks_age = 0;
