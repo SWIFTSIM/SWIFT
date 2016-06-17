@@ -634,7 +634,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
   threadpool_map(s->threadpool, scheduler_splittasks_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), 1, s);
+                 s->nr_tasks, sizeof(struct task), 1000, s);
 }
 
 /**
@@ -791,8 +791,16 @@ void scheduler_ranktasks(struct scheduler *s) {
   const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
-  threadpool_map(s->threadpool, scheduler_simple_rewait_mapper, tasks, nr_tasks,
-                 sizeof(struct task), 1000, NULL);
+  /* threadpool_map(s->threadpool, scheduler_simple_rewait_mapper, tasks, nr_tasks,
+                 sizeof(struct task), 1000, NULL); */
+  for (int i = 0; i < nr_tasks; i++) {
+    struct task *t = &tasks[i];
+
+    // Increment the waits of the dependances
+    for (int k = 0; k < t->nr_unlock_tasks; k++) {
+      t->unlock_tasks[k]->wait++;
+    }
+  }
 
   /* Load the tids of tasks with no waits. */
   int left = 0;
