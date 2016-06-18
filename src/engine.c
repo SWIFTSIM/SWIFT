@@ -66,19 +66,11 @@
 #include "timers.h"
 #include "units.h"
 
-const char *engine_policy_names[13] = {"none",
-                                       "rand",
-                                       "steal",
-                                       "keep",
-                                       "block",
-                                       "fix_dt",
-                                       "cpu_tight",
-                                       "mpi",
-                                       "numa_affinity",
-                                       "hydro",
-                                       "self_gravity",
-                                       "external_gravity",
-                                       "cosmology_integration"};
+const char *engine_policy_names[13] = {
+    "none",                 "rand",   "steal",        "keep",
+    "block",                "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
+    "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -129,9 +121,11 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Am I the super-cell? */
-  if (super == NULL && (c->count > 0 || c->gcount > 0)) {
+  /* TODO(pedro): Add a condition for gravity tasks as well. */
+  if (super == NULL &&
+      (c->density != NULL || (!c->split && (c->count > 0 || c->gcount > 0)))) {
 
-    /* Remember me. */
+    /* This is the super cell, i.e. the first with density tasks attached. */
     super = c;
 
     /* Local tasks only... */
@@ -618,44 +612,54 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  *
  * @param e The #engine.
  * @param ci The sending #cell.
- * @param cj The receiving #cell
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_xv The send_xv #task, if it has already been created.
+ * @param t_rho The send_rho #task, if it has already been created.
  */
-void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
+void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
+                          struct task *t_xv, struct task *t_rho) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->density; l != NULL; l = l->next)
-    if (l->t->ci->nodeID == cj->nodeID ||
-        (l->t->cj != NULL && l->t->cj->nodeID == cj->nodeID))
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    /* Create the tasks. */
-    struct task *t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                          2 * ci->tag, 0, ci, cj, 0);
-    struct task *t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                           2 * ci->tag + 1, 0, ci, cj, 0);
+    /* Create the tasks and their dependencies? */
+    if (t_xv == NULL) {
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
+                               2 * ci->tag, 0, ci, cj, 0);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                2 * ci->tag + 1, 0, ci, cj, 0);
 
-    /* The send_rho task depends on the cell's ghost task. */
-    scheduler_addunlock(s, ci->super->ghost, t_rho);
+      /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->super->ghost, t_rho);
 
-    /* The send_rho task should unlock the super-cell's kick task. */
-    scheduler_addunlock(s, t_rho, ci->super->kick);
+      /* The send_rho task should unlock the super-cell's kick task. */
+      scheduler_addunlock(s, t_rho, ci->super->kick);
 
-    /* The send_xv task should unlock the super-cell's ghost task. */
-    scheduler_addunlock(s, t_xv, ci->super->ghost);
-
+      /* The send_xv task should unlock the super-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->super->ghost);
+    }
+    
+    /* Add them to the local cell. */
+    ci->send_xv = engine_addlink(e, ci->send_xv, t_xv);
+    ci->send_rho = engine_addlink(e, ci->send_rho, t_rho);
   }
 
   /* Recurse? */
-  else if (ci->split)
+  if (ci->split)
     for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL) engine_addtasks_send(e, ci->progeny[k], cj);
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -666,7 +670,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
  * @brief Add recv tasks to a hierarchy of cells.
  *
  * @param e The #engine.
- * @param c The #cell.
+ * @param c The foreign #cell.
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
  */
@@ -677,15 +681,19 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
-  /* Do we need to construct a recv task? */
-  if (t_xv == NULL && c->nr_density > 0) {
+  /* Do we need to construct a recv task?
+     Note that since c is a foreign cell, all its density tasks will involve
+     only the current rank, and thus we don't have to check them.*/
+  if (t_xv == NULL && c->density != NULL) {
 
     /* Create the tasks. */
-    t_xv = c->recv_xv = scheduler_addtask(s, task_type_recv, task_subtype_none,
-                                          2 * c->tag, 0, c, NULL, 0);
-    t_rho = c->recv_rho = scheduler_addtask(
-        s, task_type_recv, task_subtype_none, 2 * c->tag + 1, 0, c, NULL, 0);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 2 * c->tag,
+                             0, c, NULL, 0);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
+                              2 * c->tag + 1, 0, c, NULL, 0);
   }
+  c->recv_xv = t_xv;
+  c->recv_rho = t_rho;
 
   /* Add dependencies. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
@@ -1507,7 +1515,7 @@ void engine_maketasks(struct engine *e) {
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
       for (int k = 0; k < p->nr_cells_out; k++)
-        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0]);
+        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0], NULL, NULL);
     }
   }
 
@@ -1593,6 +1601,12 @@ int engine_marktasks(struct engine *e) {
         t->skip = 1;
 
       }
+
+      /* Send/recv-task? Note that due to the task ranking, these
+         will all come before the associated pair tasks.. */
+      /* else if (t->type == task_type_send || t->type == task_type_recv) {
+        t->skip = 1;
+      } */
 
       /* Single-cell task? */
       else if (t->type == task_type_self || t->type == task_type_ghost ||

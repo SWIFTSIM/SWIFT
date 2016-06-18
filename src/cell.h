@@ -124,6 +124,9 @@ struct cell {
   /* Task receiving data. */
   struct task *recv_xv, *recv_rho;
 
+  /* Task send data. */
+  struct link *send_xv, *send_rho;
+
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
 
