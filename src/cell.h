@@ -122,10 +122,10 @@ struct cell {
   struct task *ghost, *init, *drift, *kick;
 
   /* Task receiving data. */
-  struct task *recv_xv, *recv_rho;
+  struct task *recv_xv, *recv_rho, *recv_ti;
 
   /* Task send data. */
-  struct link *send_xv, *send_rho;
+  struct link *send_xv, *send_rho, *send_ti;
 
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;

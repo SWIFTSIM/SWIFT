@@ -71,8 +71,7 @@ const double runner_shift[13][3] = {
     {0.0, 7.071067811865475e-01, 7.071067811865475e-01},
     {0.0, 1.0, 0.0},
     {0.0, 7.071067811865475e-01, -7.071067811865475e-01},
-    {0.0, 0.0, 1.0},
-};
+    {0.0, 0.0, 1.0}, };
 
 /* Does the axis need flipping ? */
 const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
@@ -980,19 +979,36 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   int ti_end_max = 0;
   float h_max = 0.f;
 
-  /* Collect everything... */
-  for (size_t k = 0; k < nr_parts; k++) {
-    const int ti_end = parts[k].ti_end;
-    // if(ti_end < ti_current) error("Received invalid particle !");
-    ti_end_min = min(ti_end_min, ti_end);
-    ti_end_max = max(ti_end_max, ti_end);
-    h_max = fmaxf(h_max, parts[k].h);
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_parts; k++) {
+      const int ti_end = parts[k].ti_end;
+      // if(ti_end < ti_current) error("Received invalid particle !");
+      ti_end_min = min(ti_end_min, ti_end);
+      ti_end_max = max(ti_end_max, ti_end);
+      h_max = fmaxf(h_max, parts[k].h);
+    }
+    for (size_t k = 0; k < nr_gparts; k++) {
+      const int ti_end = gparts[k].ti_end;
+      // if(ti_end < ti_current) error("Received invalid particle !");
+      ti_end_min = min(ti_end_min, ti_end);
+      ti_end_max = max(ti_end_max, ti_end);
+    }
+
   }
-  for (size_t k = 0; k < nr_gparts; k++) {
-    const int ti_end = gparts[k].ti_end;
-    // if(ti_end < ti_current) error("Received invalid particle !");
-    ti_end_min = min(ti_end_min, ti_end);
-    ti_end_max = max(ti_end_max, ti_end);
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_recv_cell(r, c->progeny[k], 0);
+        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        h_max = fmaxf(h_max, c->progeny[k]->h_max);
+      }
+    }
   }
 
   /* ... and store. */
