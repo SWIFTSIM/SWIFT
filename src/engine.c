@@ -66,11 +66,19 @@
 #include "timers.h"
 #include "units.h"
 
-const char *engine_policy_names[13] = {
-    "none",                 "rand",   "steal",        "keep",
-    "block",                "fix_dt", "cpu_tight",    "mpi",
-    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
-    "cosmology_integration"};
+const char *engine_policy_names[13] = {"none",
+                                       "rand",
+                                       "steal",
+                                       "keep",
+                                       "block",
+                                       "fix_dt",
+                                       "cpu_tight",
+                                       "mpi",
+                                       "numa_affinity",
+                                       "hydro",
+                                       "self_gravity",
+                                       "external_gravity",
+                                       "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -120,7 +128,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       engine_policy_external_gravity;
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
-  /* Is this the super-cell? 
+  /* Is this the super-cell?
      TODO(pedro): Add a condition for gravity tasks as well. */
   if (super == NULL &&
       (c->density != NULL || (!c->split && (c->count > 0 || c->gcount > 0)))) {
