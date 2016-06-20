@@ -82,6 +82,8 @@ struct task {
 
   struct cell *ci, *cj;
 
+  void *buff;
+
 #ifdef WITH_MPI
   MPI_Request req;
 #endif

@@ -1114,9 +1114,17 @@ void *runner_main(void *data) {
           runner_do_kick_fixdt(r, ci, 1);
           break;
         case task_type_send:
+          if (t->subtype == task_subtype_tend) {
+            free(t->buff);
+          }
           break;
         case task_type_recv:
-          runner_do_recv_cell(r, ci, 1);
+          if (t->subtype == task_subtype_tend) {
+            cell_unpack_ti_ends(ci, t->buff);
+            free(t->buff);
+          } else {
+            runner_do_recv_cell(r, ci, 1);
+          }
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);

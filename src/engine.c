@@ -641,7 +641,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
                                 3 * ci->tag + 1, 0, ci, cj, 0);
       if (!(e->policy & engine_policy_fixdt))
-        t_ti = scheduler_addtask(s, task_type_send, task_subtype_none,
+        t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
                                  3 * ci->tag + 2, 0, ci, cj, 0);
 
       /* The send_rho task depends on the cell's ghost task. */
@@ -700,7 +700,7 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
                               3 * c->tag + 1, 0, c, NULL, 0);
     if (!(e->policy & engine_policy_fixdt))
-      t_ti = scheduler_addtask(s, task_type_recv, task_subtype_none,
+      t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
                                3 * c->tag + 2, 0, c, NULL, 0);
   }
   c->recv_xv = t_xv;
@@ -2241,9 +2241,9 @@ void engine_init_particles(struct engine *e) {
 
   /* Add MPI tasks if need be */
   if (e->policy & engine_policy_mpi) {
-
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
+    submask |= 1 << task_subtype_tend;
   }
 
   /* Now, launch the calculation */
@@ -2371,9 +2371,9 @@ void engine_step(struct engine *e) {
 
   /* Add MPI tasks if need be */
   if (e->policy & engine_policy_mpi) {
-
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
+    submask |= 1 << task_subtype_tend;
   }
 
   /* Send off the runners. */
