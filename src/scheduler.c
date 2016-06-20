@@ -565,9 +565,6 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
   t->rid = -1;
   t->last_rid = -1;
 
-  /* Init the lock. */
-  lock_init(&t->lock);
-
   /* Add an index for it. */
   // lock_lock( &s->lock );
   s->tasks_ind[atomic_inc(&s->nr_tasks)] = ind;
