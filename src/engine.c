@@ -66,19 +66,11 @@
 #include "timers.h"
 #include "units.h"
 
-const char *engine_policy_names[13] = {"none",
-                                       "rand",
-                                       "steal",
-                                       "keep",
-                                       "block",
-                                       "fix_dt",
-                                       "cpu_tight",
-                                       "mpi",
-                                       "numa_affinity",
-                                       "hydro",
-                                       "self_gravity",
-                                       "external_gravity",
-                                       "cosmology_integration"};
+const char *engine_policy_names[13] = {
+    "none",                 "rand",   "steal",        "keep",
+    "block",                "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
+    "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -128,10 +120,12 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       engine_policy_external_gravity;
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
-  /* Am I the super-cell? */
-  if (super == NULL && (c->count > 0 || c->gcount > 0)) {
+  /* Is this the super-cell? 
+     TODO(pedro): Add a condition for gravity tasks as well. */
+  if (super == NULL &&
+      (c->density != NULL || (!c->split && (c->count > 0 || c->gcount > 0)))) {
 
-    /* Remember me. */
+    /* This is the super cell, i.e. the first with density tasks attached. */
     super = c;
 
     /* Local tasks only... */
@@ -847,7 +841,8 @@ void engine_exchange_cells(struct engine *e) {
  * @param offset_parts The index in the parts array as of which the foreign
  *        parts reside.
  * @param ind_part The foreign #cell ID of each part.
- * @param Npart The number of stray parts, contains the number of parts received
+ * @param Npart The number of stray parts, contains the number of parts
+ *received
  *        on return.
  * @param offset_gparts The index in the gparts array as of which the foreign
  *        parts reside.
@@ -1049,7 +1044,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
              sizeof(struct gpart) * p->nr_gparts_in);
       /* for (int k = offset; k < offset + count; k++)
          message(
-            "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
+            "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node
+         %i.",
             s->parts[k].id, s->parts[k].x[0], s->parts[k].x[1],
             s->parts[k].x[2], s->parts[k].h, p->nodeID); */
 
@@ -1163,7 +1159,8 @@ void engine_make_hydroloop_tasks(struct engine *e) {
 /**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
- * For each hydrodynamic task, construct the links with the corresponding cell.
+ * For each hydrodynamic task, construct the links with the corresponding
+ *cell.
  * Similarly, construct the dependencies for all the sorting tasks.
  *
  * @param e The #engine.
@@ -1472,7 +1469,8 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
-  /* Add the gravity up/down tasks at the top-level cells and push them down. */
+  /* Add the gravity up/down tasks at the top-level cells and push them down.
+   */
   if (e->policy & engine_policy_self_gravity)
     engine_make_gravityrecursive_tasks(e);
 
@@ -2397,7 +2395,8 @@ void engine_makeproxies(struct engine *e) {
 }
 
 /**
- * @brief Split the underlying space into regions and assign to separate nodes.
+ * @brief Split the underlying space into regions and assign to separate
+ *nodes.
  *
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
@@ -2532,7 +2531,8 @@ static cpu_set_t *engine_entry_affinity() {
 #endif
 
 /**
- * @brief  Ensure the NUMA node on which we initialise (first touch) everything
+ * @brief  Ensure the NUMA node on which we initialise (first touch)
+ * everything
  *  doesn't change before engine_init allocates NUMA-local workers.
  */
 void engine_pin() {
@@ -2795,7 +2795,8 @@ void engine_init(struct engine *e, struct space *s,
   /* Check we have sensible time bounds */
   if (e->timeBegin >= e->timeEnd)
     error(
-        "Final simulation time (t_end = %e) must be larger than the start time "
+        "Final simulation time (t_end = %e) must be larger than the start "
+        "time "
         "(t_beg = %e)",
         e->timeEnd, e->timeBegin);
 
@@ -2856,7 +2857,8 @@ void engine_init(struct engine *e, struct space *s,
 
   if (e->timeFirstSnapshot < e->timeBegin)
     error(
-        "Time of first snapshot (%e) must be after the simulation start t=%e.",
+        "Time of first snapshot (%e) must be after the simulation start "
+        "t=%e.",
         e->timeFirstSnapshot, e->timeBegin);
 
   /* Find the time of the first output */
