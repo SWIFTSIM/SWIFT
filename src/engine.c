@@ -66,19 +66,11 @@
 #include "timers.h"
 #include "units.h"
 
-const char *engine_policy_names[13] = {"none",
-                                       "rand",
-                                       "steal",
-                                       "keep",
-                                       "block",
-                                       "fix_dt",
-                                       "cpu_tight",
-                                       "mpi",
-                                       "numa_affinity",
-                                       "hydro",
-                                       "self_gravity",
-                                       "external_gravity",
-                                       "cosmology_integration"};
+const char *engine_policy_names[13] = {
+    "none",                 "rand",   "steal",        "keep",
+    "block",                "fix_dt", "cpu_tight",    "mpi",
+    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
+    "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1863,10 +1855,10 @@ int engine_marktasks_serial(struct engine *e) {
       t->flags = 0;
       t->skip = 1;
     }
-    
+
     /* Single-cell task? */
     else if (t->type == task_type_self || t->type == task_type_ghost ||
-        t->type == task_type_sub_self) {
+             t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
       t->skip = (t->ci->ti_end_min > ti_end);
@@ -1924,7 +1916,7 @@ int engine_marktasks_serial(struct engine *e) {
     else if (t->type == task_type_none)
       t->skip = 1;
   }
-  
+
   /* All is well. */
   return 0;
 }
@@ -2505,7 +2497,9 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
 
   /* Drift everybody */
-  engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
+  // engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
 
   if (e->nodeID == 0) {
 
