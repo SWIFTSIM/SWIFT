@@ -1012,9 +1012,10 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 void scheduler_enqueue_mapper(void *map_data, int num_elements,
                               void *extra_data) {
   struct scheduler *s = (struct scheduler *)extra_data;
-  struct task *tasks = (struct task *)map_data;
+  const int *tid = (int *)map_data;
+  struct task *tasks = s->tasks;
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
+    struct task *t = &tasks[tid[ind]];
     if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
         ((1 << t->subtype) & s->submask)) {
       scheduler_enqueue(s, t);
@@ -1051,8 +1052,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
                  sizeof(struct task), 1000, s);
 
   /* Loop over the tasks and enqueue whoever is ready. */
-  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks, s->nr_tasks,
-                 sizeof(struct task), 1000, s);
+  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind, s->nr_tasks,
+                 sizeof(int), 1000, s);
 
   /* To be safe, fire of one last sleep_cond in a safe way. */
   pthread_mutex_lock(&s->sleep_mutex);
