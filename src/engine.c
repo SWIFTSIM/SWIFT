@@ -1845,6 +1845,90 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   }
 }
 
+int engine_marktasks_serial(struct engine *e) {
+
+  /* Unpack the arguments. */
+  struct task *tasks = e->sched.tasks;
+  const int *tid = e->sched.tasks_ind;
+  const int ti_end = e->ti_current;
+  const int nr_tasks = e->sched.nr_tasks;
+
+  for (int ind = 0; ind < nr_tasks; ind++) {
+    struct task *t = &tasks[tid[ind]];
+
+    /* Clear the flags on sort tasks. Since we're traversing the tasks in
+       topological order, they will only ever be set after they have been
+       cleared. */
+    if (t->type == task_type_sort) {
+      t->flags = 0;
+      t->skip = 1;
+    }
+    
+    /* Single-cell task? */
+    else if (t->type == task_type_self || t->type == task_type_ghost ||
+        t->type == task_type_sub_self) {
+
+      /* Set this task's skip. */
+      t->skip = (t->ci->ti_end_min > ti_end);
+    }
+
+    /* Pair? */
+    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+      /* Local pointers. */
+      const struct cell *ci = t->ci;
+      const struct cell *cj = t->cj;
+
+      /* Set this task's skip. */
+      t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
+
+      /* Too much particle movement? */
+      if (t->tight &&
+          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+           ci->dx_max > space_maxreldx * ci->h_max ||
+           cj->dx_max > space_maxreldx * cj->h_max))
+        return 1;
+
+      /* Set the sort flags. */
+      if (!t->skip && t->type == task_type_pair) {
+        if (!(ci->sorted & (1 << t->flags))) {
+          ci->sorts->flags |= (1 << t->flags);
+          ci->sorts->skip = 0;
+        }
+        if (!(cj->sorted & (1 << t->flags))) {
+          cj->sorts->flags |= (1 << t->flags);
+          cj->sorts->skip = 0;
+        }
+      }
+
+    }
+
+    /* Kick? */
+    else if (t->type == task_type_kick) {
+      t->skip = (t->ci->ti_end_min > ti_end);
+      t->ci->updated = 0;
+      t->ci->g_updated = 0;
+    }
+
+    /* Drift? */
+    else if (t->type == task_type_drift)
+      t->skip = 0;
+
+    /* Init? */
+    else if (t->type == task_type_init) {
+      /* Set this task's skip. */
+      t->skip = (t->ci->ti_end_min > ti_end);
+    }
+
+    /* None? */
+    else if (t->type == task_type_none)
+      t->skip = 1;
+  }
+  
+  /* All is well. */
+  return 0;
+}
+
 int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
@@ -1863,11 +1947,12 @@ int engine_marktasks(struct engine *e) {
   } else {
 
     /* Run through the tasks and mark as skip or not. */
+    // rebuild_space = engine_marktasks_serial(e);
     int extra_data[2] = {e->ti_current, rebuild_space};
     threadpool_map(&e->threadpool, engine_marktasks_sorts_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 1000, NULL);
+                   s->nr_tasks, sizeof(struct task), 10000, NULL);
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 1000, extra_data);
+                   s->nr_tasks, sizeof(struct task), 10000, extra_data);
     rebuild_space = extra_data[1];
   }
 
