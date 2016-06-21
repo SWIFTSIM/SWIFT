@@ -110,8 +110,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 }
 
 /**
- * @brief Generate the hierarchical tasks for a hierarchy of cells - i.e. all
- * the O(Npart) tasks.
+ * @brief Generate the gravity hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -119,8 +119,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  * @param c The #cell.
  * @param super The super #cell.
  */
-void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
-                                    struct cell *super) {
+void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
+                                            struct cell *super) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -128,10 +128,70 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       engine_policy_external_gravity;
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
-  /* Is this the super-cell?
-     TODO(pedro): Add a condition for gravity tasks as well. */
-  if (super == NULL &&
-      (c->density != NULL || (!c->split && (c->count > 0 || c->gcount > 0)))) {
+  /* Is this the super-cell? */
+  if (super == NULL && (c->grav != NULL || (c->gcount > 0 && !c->split))) {
+
+    /* This is the super cell, i.e. the first with gravity tasks attached. */
+    super = c;
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the init task. */
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
+
+      /* Add the drift task. */
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
+
+      /* Add the kick task that matches the policy. */
+      if (is_fixdt) {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
+      } else {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
+      }
+
+      if (is_with_external_gravity)
+        c->grav_external = scheduler_addtask(
+            s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
+    }
+  }
+
+  /* Set the super-cell. */
+  c->super = super;
+
+  /* Recurse. */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_gravity_hierarchical_tasks(e, c->progeny[k], super);
+}
+
+/**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param super The super #cell.
+ */
+void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
+                                          struct cell *super) {
+
+  struct scheduler *s = &e->sched;
+  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+
+  /* Is this the super-cell? */
+  if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
 
     /* This is the super cell, i.e. the first with density tasks attached. */
     super = c;
@@ -156,20 +216,9 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
                                     c, NULL, 0);
       }
 
-      if (c->count > 0) {
-
-        /* Generate the ghost task. */
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL, 0);
-      }
-
-      if (c->gcount > 0) {
-
-        /* Add the external gravity tasks */
-        if (is_with_external_gravity)
-          c->grav_external = scheduler_addtask(
-              s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
-      }
+      /* Generate the ghost task. */
+      c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
     }
   }
 
@@ -180,7 +229,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks(e, c->progeny[k], super);
+        engine_make_hydro_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -849,8 +898,7 @@ void engine_exchange_cells(struct engine *e) {
  * @param offset_parts The index in the parts array as of which the foreign
  *        parts reside.
  * @param ind_part The foreign #cell ID of each part.
- * @param Npart The number of stray parts, contains the number of parts
- *received
+ * @param Npart The number of stray parts, contains the number of parts received
  *        on return.
  * @param offset_gparts The index in the gparts array as of which the foreign
  *        parts reside.
@@ -1052,8 +1100,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
              sizeof(struct gpart) * p->nr_gparts_in);
       /* for (int k = offset; k < offset + count; k++)
          message(
-            "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node
-         %i.",
+            "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
             s->parts[k].id, s->parts[k].x[0], s->parts[k].x[1],
             s->parts[k].x[2], s->parts[k].h, p->nodeID); */
 
@@ -1167,8 +1214,7 @@ void engine_make_hydroloop_tasks(struct engine *e) {
 /**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
- * For each hydrodynamic task, construct the links with the corresponding
- *cell.
+ * For each hydrodynamic task, construct the links with the corresponding cell.
  * Similarly, construct the dependencies for all the sorting tasks.
  *
  * @param e The #engine.
@@ -1477,8 +1523,7 @@ void engine_maketasks(struct engine *e) {
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
 
-  /* Add the gravity up/down tasks at the top-level cells and push them down.
-   */
+  /* Add the gravity up/down tasks at the top-level cells and push them down. */
   if (e->policy & engine_policy_self_gravity)
     engine_make_gravityrecursive_tasks(e);
 
@@ -1488,8 +1533,14 @@ void engine_maketasks(struct engine *e) {
   engine_count_and_link_tasks(e);
 
   /* Append hierarchical tasks to each cells */
-  for (int k = 0; k < nr_cells; k++)
-    engine_make_hierarchical_tasks(e, &cells[k], NULL);
+  if (e->policy & engine_policy_hydro)
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_hydro_hierarchical_tasks(e, &cells[k], NULL);
+
+  if ((e->policy & engine_policy_self_gravity) ||
+      (e->policy & engine_policy_external_gravity))
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_gravity_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -2403,8 +2454,7 @@ void engine_makeproxies(struct engine *e) {
 }
 
 /**
- * @brief Split the underlying space into regions and assign to separate
- *nodes.
+ * @brief Split the underlying space into regions and assign to separatw nodes.
  *
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
@@ -2803,8 +2853,7 @@ void engine_init(struct engine *e, struct space *s,
   /* Check we have sensible time bounds */
   if (e->timeBegin >= e->timeEnd)
     error(
-        "Final simulation time (t_end = %e) must be larger than the start "
-        "time "
+        "Final simulation time (t_end = %e) must be larger than the start time "
         "(t_beg = %e)",
         e->timeEnd, e->timeBegin);
 
@@ -2865,8 +2914,7 @@ void engine_init(struct engine *e, struct space *s,
 
   if (e->timeFirstSnapshot < e->timeBegin)
     error(
-        "Time of first snapshot (%e) must be after the simulation start "
-        "t=%e.",
+        "Time of first snapshot (%e) must be after the simulation start t=%e.",
         e->timeFirstSnapshot, e->timeBegin);
 
   /* Find the time of the first output */
