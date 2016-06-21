@@ -66,11 +66,19 @@
 #include "timers.h"
 #include "units.h"
 
-const char *engine_policy_names[13] = {
-    "none",                 "rand",   "steal",        "keep",
-    "block",                "fix_dt", "cpu_tight",    "mpi",
-    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
-    "cosmology_integration"};
+const char *engine_policy_names[13] = {"none",
+                                       "rand",
+                                       "steal",
+                                       "keep",
+                                       "block",
+                                       "fix_dt",
+                                       "cpu_tight",
+                                       "mpi",
+                                       "numa_affinity",
+                                       "hydro",
+                                       "self_gravity",
+                                       "external_gravity",
+                                       "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -135,10 +143,6 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       /* Add the init task. */
       c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
                                   NULL, 0);
-
-      /* Add the drift task. */
-      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
 
       /* Add the kick task that matches the policy. */
       if (is_fixdt) {
@@ -1821,10 +1825,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       t->ci->g_updated = 0;
     }
 
-    /* Drift? */
-    else if (t->type == task_type_drift)
-      t->skip = 0;
-
     /* Init? */
     else if (t->type == task_type_init) {
       /* Set this task's skip. */
@@ -1901,10 +1901,6 @@ int engine_marktasks_serial(struct engine *e) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
     }
-
-    /* Drift? */
-    else if (t->type == task_type_drift)
-      t->skip = 0;
 
     /* Init? */
     else if (t->type == task_type_init) {
@@ -2205,9 +2201,6 @@ void engine_collect_timestep(struct engine *e) {
  */
 void engine_collect_drift(struct cell *c) {
 
-  /* Skip super-cells (Their values are already set) */
-  if (c->drift != NULL) return;
-
   /* Counters for the different quantities. */
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
@@ -2253,6 +2246,7 @@ void engine_collect_drift(struct cell *c) {
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
 }
+
 /**
  * @brief Print the conserved quantities statistics to a log file
  *
@@ -2479,7 +2473,8 @@ void engine_step(struct engine *e) {
     snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
-    engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
+    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+                   e->s->nr_cells, sizeof(struct cell), 1, e);
 
     /* Dump... */
     engine_dump_snapshot(e);
@@ -2497,7 +2492,6 @@ void engine_step(struct engine *e) {
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
 
   /* Drift everybody */
-  // engine_launch(e, e->nr_threads, 1 << task_type_drift, 0);
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 

@@ -349,7 +349,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells[k].gcount = 0;
       s->cells[k].init = NULL;
       s->cells[k].ghost = NULL;
-      s->cells[k].drift = NULL;
       s->cells[k].kick = NULL;
       s->cells[k].super = &s->cells[k];
     }

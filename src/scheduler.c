@@ -136,7 +136,6 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       /* Non-splittable task? */
       if ((t->ci == NULL || (t->type == task_type_pair && t->cj == NULL)) ||
           ((t->type == task_type_kick) && t->ci->nodeID != s->nodeID) ||
-          ((t->type == task_type_drift) && t->ci->nodeID != s->nodeID) ||
           ((t->type == task_type_init) && t->ci->nodeID != s->nodeID)) {
         t->type = task_type_none;
         t->skip = 1;
@@ -954,9 +953,6 @@ void scheduler_reweight(struct scheduler *s) {
         case task_type_kick:
           t->weight += wscale * t->ci->count;
           break;
-        case task_type_drift:
-          t->weight += wscale * t->ci->count;
-          break;
         case task_type_init:
           t->weight += wscale * t->ci->count;
           break;
@@ -1052,8 +1048,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
                  sizeof(struct task), 1000, s);
 
   /* Loop over the tasks and enqueue whoever is ready. */
-  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind, s->nr_tasks,
-                 sizeof(int), 1000, s);
+  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,
+                 s->nr_tasks, sizeof(int), 1000, s);
 
   /* To be safe, fire of one last sleep_cond in a safe way. */
   pthread_mutex_lock(&s->sleep_mutex);
@@ -1107,7 +1103,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sort:
       case task_type_ghost:
       case task_type_kick:
-      case task_type_drift:
       case task_type_init:
         qid = t->ci->super->owner;
         break;
