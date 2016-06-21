@@ -61,8 +61,8 @@ PLOT_PARAMS = {"axes.labelsize": 10,
 pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
-TASKTYPES = ["none", "sort", "self", "pair", "sub", "init", "ghost", "drift",
-             "kick", "kick_fixdt", "send", "recv", "grav_pp", "grav_mm",
+TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init", "ghost",
+             "drift", "kick", "kick_fixdt", "send", "recv", "grav_pp", "grav_mm",
              "grav_up", "grav_down", "grav_external", "part_sort", "gpart_sort",
              "split_cell", "rewait", "count"]
 
@@ -70,7 +70,8 @@ TASKCOLOURS = {"none": "black",
                "sort": "lightblue",
                "self": "greenyellow",
                "pair": "navy",
-               "sub": "hotpink",
+               "sub_self": "greenyellow",
+               "sub_pair": "navy",
                "init": "indigo",
                "ghost": "cyan",
                "drift": "maroon",

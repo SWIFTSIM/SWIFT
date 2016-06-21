@@ -24,8 +24,8 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* This object's header. */
 #include "threadpool.h"
@@ -147,7 +147,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   while (tp->num_threads_running < tp->num_threads) {
     pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);
   }
-  
+
   /* Wait for all threads to be done. */
   while (tp->num_threads_waiting < tp->num_threads) {
     pthread_cond_wait(&tp->control_cond, &tp->thread_mutex);

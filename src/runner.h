@@ -23,12 +23,11 @@
 #ifndef SWIFT_RUNNER_H
 #define SWIFT_RUNNER_H
 
-/* Includes. */
-#include "cell.h"
-#include "inline.h"
-
-extern const float runner_shift[13 * 3];
+extern const double runner_shift[13][3];
 extern const char runner_flip[27];
+
+struct cell;
+struct engine;
 
 /* A struct representing a runner's thread and its data. */
 struct runner {

@@ -34,18 +34,62 @@
 #include "queue.h"
 
 /* Local headers. */
+#include "atomic.h"
 #include "const.h"
 #include "error.h"
 
-/* Counter macros. */
-#ifdef COUNTER
-#define COUNT(c) (__sync_add_and_fetch(&queue_counter[c], 1))
-#else
-#define COUNT(c)
-#endif
+/**
+ * @brief Enqueue all tasks in the incoming DEQ.
+ *
+ * @param q The #queue, assumed to be locked.
+ */
+void queue_get_incoming(struct queue *q) {
 
-/* The counters. */
-int queue_counter[queue_counter_count];
+  int *tid = q->tid;
+  struct task *tasks = q->tasks;
+
+  /* Loop over the incoming DEQ. */
+  while (1) {
+
+    /* Is there a next element? */
+    const int ind = q->first_incoming % queue_incoming_size;
+    if (q->tid_incoming[ind] < 0) break;
+
+    /* Get the next offset off the DEQ. */
+    const int offset = atomic_swap(&q->tid_incoming[ind], -1);
+    atomic_inc(&q->first_incoming);
+
+    /* Does the queue need to be grown? */
+    if (q->count == q->size) {
+      int *temp;
+      q->size *= queue_sizegrow;
+      if ((temp = (int *)malloc(sizeof(int) * q->size)) == NULL)
+        error("Failed to allocate new indices.");
+      memcpy(temp, tid, sizeof(int) * q->count);
+      free(tid);
+      q->tid = tid = temp;
+    }
+
+    /* Drop the task at the end of the queue. */
+    tid[q->count] = offset;
+    q->count += 1;
+    atomic_dec(&q->count_incoming);
+
+    /* Shuffle up. */
+    for (int k = q->count - 1; k > 0; k = (k - 1) / 2)
+      if (tasks[tid[k]].weight > tasks[tid[(k - 1) / 2]].weight) {
+        int temp = tid[k];
+        tid[k] = tid[(k - 1) / 2];
+        tid[(k - 1) / 2] = temp;
+      } else
+        break;
+
+    /* Check the queue's consistency. */
+    /* for (int k = 1; k < q->count; k++)
+        if ( tasks[ tid[(k-1)/2] ].weight < tasks[ tid[k] ].weight )
+            error( "Queue heap is disordered." ); */
+  }
+}
 
 /**
  * @brief Insert a used tasks into the given queue.
@@ -53,49 +97,29 @@ int queue_counter[queue_counter_count];
  * @param q The #queue.
  * @param t The #task.
  */
-
 void queue_insert(struct queue *q, struct task *t) {
+  /* Get an index in the DEQ. */
+  const int ind = atomic_inc(&q->last_incoming) % queue_incoming_size;
 
-  int k, *tid;
-  struct task *tasks;
+  /* Spin until the new offset can be stored. */
+  while (atomic_cas(&q->tid_incoming[ind], -1, t - q->tasks) != -1) {
 
-  /* Lock the queue. */
-  if (lock_lock(&q->lock) != 0) error("Failed to get queue lock.");
+    /* Try to get the queue lock, non-blocking, ensures that at
+       least somebody is working on this queue. */
+    if (lock_trylock(&q->lock) == 0) {
 
-  tid = q->tid;
-  tasks = q->tasks;
+      /* Clean up the incoming DEQ. */
+      queue_get_incoming(q);
 
-  /* Does the queue need to be grown? */
-  if (q->count == q->size) {
-    int *temp;
-    q->size *= queue_sizegrow;
-    if ((temp = (int *)malloc(sizeof(int) * q->size)) == NULL)
-      error("Failed to allocate new indices.");
-    memcpy(temp, tid, sizeof(int) * q->count);
-    free(tid);
-    q->tid = tid = temp;
+      /* Release the queue lock. */
+      if (lock_unlock(&q->lock) != 0) {
+        error("Unlocking the qlock failed.\n");
+      }
+    }
   }
 
-  /* Drop the task at the end of the queue. */
-  tid[q->count] = (t - tasks);
-  q->count += 1;
-
-  /* Shuffle up. */
-  for (k = q->count - 1; k > 0; k = (k - 1) / 2)
-    if (tasks[tid[k]].weight > tasks[tid[(k - 1) / 2]].weight) {
-      int temp = tid[k];
-      tid[k] = tid[(k - 1) / 2];
-      tid[(k - 1) / 2] = temp;
-    } else
-      break;
-
-  /* Check the queue's consistency. */
-  /* for ( k = 1 ; k < q->count ; k++ )
-      if ( tasks[ tid[(k-1)/2] ].weight < tasks[ tid[k] ].weight )
-          error( "Queue heap is disordered." ); */
-
-  /* Unlock the queue. */
-  if (lock_unlock(&q->lock) != 0) error("Failed to unlock queue.");
+  /* Increase the incoming count. */
+  atomic_inc(&q->count_incoming);
 }
 
 /**
@@ -104,7 +128,6 @@ void queue_insert(struct queue *q, struct task *t) {
  * @param q The #queue.
  * @param tasks List of tasks to which the queue indices refer to.
  */
-
 void queue_init(struct queue *q, struct task *tasks) {
 
   /* Allocate the task list if needed. */
@@ -120,6 +143,17 @@ void queue_init(struct queue *q, struct task *tasks) {
 
   /* Init the queue lock. */
   if (lock_init(&q->lock) != 0) error("Failed to init queue lock.");
+
+  /* Init the incoming DEQ. */
+  if ((q->tid_incoming = (int *)malloc(sizeof(int) * queue_incoming_size)) ==
+      NULL)
+    error("Failed to allocate queue incoming buffer.");
+  for (int k = 0; k < queue_incoming_size; k++) {
+    q->tid_incoming[k] = -1;
+  }
+  q->first_incoming = 0;
+  q->last_incoming = 0;
+  q->count_incoming = 0;
 }
 
 /**
@@ -129,7 +163,6 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param prev The previous #task extracted from this #queue.
  * @param blocking Block until access to the queue is granted.
  */
-
 struct task *queue_gettask(struct queue *q, const struct task *prev,
                            int blocking) {
 
@@ -142,6 +175,9 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   } else {
     if (lock_trylock(qlock) != 0) return NULL;
   }
+
+  /* Fill any tasks from the incoming DEQ. */
+  queue_get_incoming(q);
 
   /* If there are no tasks, leave immediately. */
   if (q->count == 0) {

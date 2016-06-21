@@ -43,6 +43,8 @@
 #include "const.h"
 #include "error.h"
 #include "kernel_hydro.h"
+#include "part.h"
+#include "units.h"
 #include "version.h"
 
 const char* particle_type_names[NUM_PARTICLE_TYPES] = {

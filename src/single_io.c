@@ -36,8 +36,11 @@
 
 /* Local includes. */
 #include "common_io.h"
-#include "const.h"
+#include "engine.h"
 #include "error.h"
+#include "kernel_hydro.h"
+#include "part.h"
+#include "units.h"
 
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file

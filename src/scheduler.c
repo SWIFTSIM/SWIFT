@@ -44,6 +44,9 @@
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
+#include "queue.h"
+#include "space.h"
+#include "task.h"
 #include "timers.h"
 
 /**
@@ -65,8 +68,8 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     struct task **unlocks_new;
     int *unlock_ind_new;
     const int size_unlocks_new = s->size_unlocks * 2;
-    if ((unlocks_new = (struct task **)malloc(
-             sizeof(struct task *) *size_unlocks_new)) == NULL ||
+    if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) *
+                                              size_unlocks_new)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * size_unlocks_new)) ==
             NULL)
       error("Failed to re-allocate unlocks.");
@@ -107,13 +110,11 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
   /* Static constants. */
-  const static int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
-                                {-1, -1, 11, 10, 5, 4, 2, 1},
-                                {-1, -1, -1, 12, 7, 6, 4, 3},
-                                {-1, -1, -1, -1, 8, 7, 5, 4},
-                                {-1, -1, -1, -1, -1, 12, 10, 9},
-                                {-1, -1, -1, -1, -1, -1, 11, 10},
-                                {-1, -1, -1, -1, -1, -1, -1, 12}};
+  const static int pts[7][8] = {
+      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
+      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
+      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
+      {-1, -1, -1, -1, -1, -1, -1, 12}};
   const static float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
                                       0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
                                       0.5788, 0.4025, 0.5788};
@@ -161,7 +162,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
           if (scheduler_dosub && ci->count < space_subsize / ci->count) {
 
             /* convert to a self-subtask. */
-            t->type = task_type_sub;
+            t->type = task_type_sub_self;
 
             /* Otherwise, make tasks explicitly. */
           } else {
@@ -224,7 +225,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
               sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
             /* Make this task a sub task. */
-            t->type = task_type_sub;
+            t->type = task_type_sub_pair;
 
             /* Otherwise, split it. */
           } else {
@@ -791,7 +792,8 @@ void scheduler_ranktasks(struct scheduler *s) {
   const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
-  /* threadpool_map(s->threadpool, scheduler_simple_rewait_mapper, tasks, nr_tasks,
+  /* threadpool_map(s->threadpool, scheduler_simple_rewait_mapper, tasks,
+     nr_tasks,
                  sizeof(struct task), 1000, NULL); */
   for (int i = 0; i < nr_tasks; i++) {
     struct task *t = &tasks[i];
@@ -837,10 +839,12 @@ void scheduler_ranktasks(struct scheduler *s) {
     j = left_old;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the tasks were ranked correctly. */
-  /* for (int k = 1; k < s->nr_tasks; k++)
+  for (int k = 1; k < s->nr_tasks; k++)
     if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
-      error("Task ranking failed."); */
+      error("Task ranking failed.");
+#endif
 }
 
 /**
@@ -860,7 +864,8 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
     /* Allocate the new lists. */
-    if ((s->tasks = (struct task *)malloc(sizeof(struct task) *size)) == NULL ||
+    if ((s->tasks = (struct task *)malloc(sizeof(struct task) * size)) ==
+            NULL ||
         (s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
   }
@@ -925,23 +930,23 @@ void scheduler_reweight(struct scheduler *s) {
             t->weight +=
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
           break;
-        case task_type_sub:
-          if (t->cj != NULL) {
-            if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-              if (t->flags < 0)
-                t->weight += 3 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 3 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            } else {
-              if (t->flags < 0)
-                t->weight += 2 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 2 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            }
-          } else
-            t->weight += 1 * wscale * t->ci->count * t->ci->count;
+        case task_type_sub_pair:
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            if (t->flags < 0)
+              t->weight += 3 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 3 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          } else {
+            if (t->flags < 0)
+              t->weight += 2 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 2 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          }
+          break;
+        case task_type_sub_self:
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_ghost:
           if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
@@ -1097,6 +1102,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
        any pre-processing needed. */
     switch (t->type) {
       case task_type_self:
+      case task_type_sub_self:
       case task_type_sort:
       case task_type_ghost:
       case task_type_kick:
@@ -1105,11 +1111,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->super->owner;
         break;
       case task_type_pair:
-      case task_type_sub:
+      case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (t->cj != NULL &&
-            (qid < 0 ||
-             s->queues[qid].count > s->queues[t->cj->super->owner].count))
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
           qid = t->cj->super->owner;
         break;
       case task_type_recv:
@@ -1269,7 +1274,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
          tries++) {
 
       /* Try to get a task from the suggested queue. */
-      if (s->queues[qid].count > 0) {
+      if (s->queues[qid].count > 0 || s->queues[qid].count_incoming > 0) {
         TIMER_TIC
         res = queue_gettask(&s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
@@ -1280,7 +1285,9 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
         for (int k = 0; k < nr_queues; k++)
-          if (s->queues[k].count > 0) qids[count++] = k;
+          if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
+            qids[count++] = k;
+          }
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
@@ -1353,7 +1360,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");

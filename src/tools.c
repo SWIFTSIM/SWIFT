@@ -19,16 +19,25 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+/* This object's header. */
+#include "tools.h"
+
+/* Local includes. */
 #include "cell.h"
 #include "error.h"
+#include "gravity.h"
+#include "hydro.h"
 #include "part.h"
-#include "swift.h"
-#include "tools.h"
+#include "runner.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -56,9 +65,7 @@ void factor(int value, int *f1, int *f2) {
  * @param N The number of parts.
  * @param periodic Periodic boundary conditions flag.
  */
-
-void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
-              int periodic) {
+void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   int i, j, k, count = 0;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -121,8 +128,7 @@ void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
 }
 
 void pairs_single_density(double *dim, long long int pid,
-                          struct part *__restrict__ parts, int N,
-                          int periodic) {
+                          struct part *restrict parts, int N, int periodic) {
   int i, k;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -271,7 +277,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
 }
 
 void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *__restrict__ parts, int N, int periodic) {
+                       struct gpart *restrict parts, int N, int periodic) {
   int i, k;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -328,7 +334,6 @@ void pairs_single_grav(double *dim, long long int pid,
  *
  * @param N number of intervals in [0,1].
  */
-
 void density_dump(int N) {
   int k;
   float r2[4] = {0.0f, 0.0f, 0.0f, 0.0f}, hi[4], hj[4];
@@ -363,10 +368,8 @@ void density_dump(int N) {
 /**
  * @brief Compute the force on a single particle brute-force.
  */
-
 void engine_single_density(double *dim, long long int pid,
-                           struct part *__restrict__ parts, int N,
-                           int periodic) {
+                           struct part *restrict parts, int N, int periodic) {
   int i, k;
   double r2, dx[3];
   float fdx[3], ih;
@@ -412,7 +415,7 @@ void engine_single_density(double *dim, long long int pid,
 }
 
 void engine_single_force(double *dim, long long int pid,
-                         struct part *__restrict__ parts, int N, int periodic) {
+                         struct part *restrict parts, int N, int periodic) {
   int i, k;
   double r2, dx[3];
   float fdx[3];

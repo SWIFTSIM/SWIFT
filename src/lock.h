@@ -23,7 +23,7 @@
 #include <pthread.h>
 
 /* Includes. */
-#include "inline.h"
+#include "atomic.h"
 
 #ifdef PTHREAD_SPINLOCK
 #include <pthread.h>
@@ -50,14 +50,14 @@
 #define lock_init(l) (*(l) = 0)
 #define lock_destroy(l) 0
 INLINE static int lock_lock(volatile int *l) {
-  while (__sync_val_compare_and_swap(l, 0, 1) != 0)
+  while (atomic_cas(l, 0, 1) != 0)
     ;
   // while( *l );
   return 0;
 }
-#define lock_trylock(l) ((*(l)) ? 1 : __sync_val_compare_and_swap(l, 0, 1))
-#define lock_unlock(l) (__sync_val_compare_and_swap(l, 1, 0) != 1)
-#define lock_unlock_blind(l) __sync_val_compare_and_swap(l, 1, 0)
+#define lock_trylock(l) ((*(l)) ? 1 : atomic_cas(l, 0, 1))
+#define lock_unlock(l) (atomic_cas(l, 1, 0) != 1)
+#define lock_unlock_blind(l) atomic_cas(l, 1, 0)
 #endif
 
 #endif /* SWIFT_LOCK_H */

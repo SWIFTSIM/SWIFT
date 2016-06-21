@@ -40,6 +40,7 @@
 /* Local headers. */
 #include "approx_math.h"
 #include "atomic.h"
+#include "cell.h"
 #include "const.h"
 #include "debug.h"
 #include "drift.h"
@@ -57,46 +58,20 @@
 #include "timestep.h"
 
 /* Orientation of the cell pairs */
-const float runner_shift[13 * 3] = {
-    5.773502691896258e-01,
-    5.773502691896258e-01,
-    5.773502691896258e-01,
-    7.071067811865475e-01,
-    7.071067811865475e-01,
-    0.0,
-    5.773502691896258e-01,
-    5.773502691896258e-01,
-    -5.773502691896258e-01,
-    7.071067811865475e-01,
-    0.0,
-    7.071067811865475e-01,
-    1.0,
-    0.0,
-    0.0,
-    7.071067811865475e-01,
-    0.0,
-    -7.071067811865475e-01,
-    5.773502691896258e-01,
-    -5.773502691896258e-01,
-    5.773502691896258e-01,
-    7.071067811865475e-01,
-    -7.071067811865475e-01,
-    0.0,
-    5.773502691896258e-01,
-    -5.773502691896258e-01,
-    -5.773502691896258e-01,
-    0.0,
-    7.071067811865475e-01,
-    7.071067811865475e-01,
-    0.0,
-    1.0,
-    0.0,
-    0.0,
-    7.071067811865475e-01,
-    -7.071067811865475e-01,
-    0.0,
-    0.0,
-    1.0,
+const double runner_shift[13][3] = {
+    {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
+    {7.071067811865475e-01, 7.071067811865475e-01, 0.0},
+    {5.773502691896258e-01, 5.773502691896258e-01, -5.773502691896258e-01},
+    {7.071067811865475e-01, 0.0, 7.071067811865475e-01},
+    {1.0, 0.0, 0.0},
+    {7.071067811865475e-01, 0.0, -7.071067811865475e-01},
+    {5.773502691896258e-01, -5.773502691896258e-01, 5.773502691896258e-01},
+    {7.071067811865475e-01, -7.071067811865475e-01, 0.0},
+    {5.773502691896258e-01, -5.773502691896258e-01, -5.773502691896258e-01},
+    {0.0, 7.071067811865475e-01, 7.071067811865475e-01},
+    {0.0, 1.0, 0.0},
+    {0.0, 7.071067811865475e-01, -7.071067811865475e-01},
+    {0.0, 0.0, 1.0},
 };
 
 /* Does the axis need flipping ? */
@@ -112,9 +87,6 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION force
 #include "runner_doiact.h"
 
-/* Import the gravity loop functions. */
-#include "runner_doiact_grav.h"
-
 /**
  * @brief Calculate gravity acceleration from external potential
  *
@@ -124,8 +96,8 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
  */
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
-  struct gpart *g, *gparts = c->gparts;
-  int i, k, gcount = c->gcount;
+  struct gpart *restrict gparts = c->gparts;
+  const int gcount = c->gcount;
   const int ti_current = r->e->ti_current;
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
@@ -134,7 +106,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 
   /* Recurse? */
   if (c->split) {
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) runner_do_grav_external(r, c->progeny[k], 0);
     return;
   }
@@ -144,10 +116,10 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Loop over the parts in this cell. */
-  for (i = 0; i < gcount; i++) {
+  for (int i = 0; i < gcount; i++) {
 
     /* Get a direct pointer on the part. */
-    g = &gparts[i];
+    struct gpart *const g = &gparts[i];
 
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
@@ -164,7 +136,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
  * @param sort The entries
  * @param N The number of entries.
  */
-
 void runner_do_sort_ascending(struct entry *sort, int N) {
 
   struct {
@@ -246,7 +217,6 @@ void runner_do_sort_ascending(struct entry *sort, int N) {
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
-
 void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
 
   struct entry *finger;
@@ -255,8 +225,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
   struct entry *sort;
   int j, k, count = c->count;
   int i, ind, off[8], inds[8], temp_i, missing;
-  // float shift[3];
-  float buff[8], px[3];
+  float buff[8];
+  double px[3];
 
   TIMER_TIC
 
@@ -360,9 +330,9 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       for (j = 0; j < 13; j++)
         if (flags & (1 << j)) {
           sort[j * (count + 1) + k].i = k;
-          sort[j * (count + 1) + k].d = px[0] * runner_shift[3 * j + 0] +
-                                        px[1] * runner_shift[3 * j + 1] +
-                                        px[2] * runner_shift[3 * j + 2];
+          sort[j * (count + 1) + k].d = px[0] * runner_shift[j][0] +
+                                        px[1] * runner_shift[j][1] +
+                                        px[2] * runner_shift[j][2];
         }
     }
 
@@ -376,163 +346,18 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */
-  /* for ( j = 0 ; j < 13 ; j++ ) {
-      if ( !( flags & (1 << j) ) )
-          continue;
-      finger = &sort[ j*(count + 1) ];
-      for ( k = 1 ; k < count ; k++ ) {
-          if ( finger[k].d < finger[k-1].d )
-              error( "Sorting failed, ascending array." );
-          if ( finger[k].i >= count )
-              error( "Sorting failed, indices borked." );
-          }
-      } */
-
-  if (clock) TIMER_TOC(timer_dosort);
-}
-
-void runner_do_gsort(struct runner *r, struct cell *c, int flags, int clock) {
-
-  struct entry *finger;
-  struct entry *fingers[8];
-  struct gpart *gparts = c->gparts;
-  struct entry *gsort;
-  int j, k, count = c->gcount;
-  int i, ind, off[8], inds[8], temp_i, missing;
-  // float shift[3];
-  float buff[8], px[3];
-
-  TIMER_TIC
-
-  /* Clean-up the flags, i.e. filter out what's already been sorted. */
-  flags &= ~c->gsorted;
-  if (flags == 0) return;
-
-  /* start by allocating the entry arrays. */
-  if (c->gsort == NULL || c->gsortsize < count) {
-    if (c->gsort != NULL) free(c->gsort);
-    c->gsortsize = count * 1.1;
-    if ((c->gsort = (struct entry *)malloc(sizeof(struct entry) *
-                                           (c->gsortsize + 1) * 13)) == NULL)
-      error("Failed to allocate sort memory.");
-  }
-  gsort = c->gsort;
-
-  /* Does this cell have any progeny? */
-  if (c->split) {
-
-    /* Fill in the gaps within the progeny. */
-    for (k = 0; k < 8; k++) {
-      if (c->progeny[k] == NULL) continue;
-      missing = flags & ~c->progeny[k]->gsorted;
-      if (missing) runner_do_gsort(r, c->progeny[k], missing, 0);
+  for (j = 0; j < 13; j++) {
+    if (!(flags & (1 << j))) continue;
+    finger = &sort[j * (count + 1)];
+    for (k = 1; k < count; k++) {
+      if (finger[k].d < finger[k - 1].d)
+        error("Sorting failed, ascending array.");
+      if (finger[k].i >= count) error("Sorting failed, indices borked.");
     }
-
-    /* Loop over the 13 different sort arrays. */
-    for (j = 0; j < 13; j++) {
-
-      /* Has this sort array been flagged? */
-      if (!(flags & (1 << j))) continue;
-
-      /* Init the particle index offsets. */
-      for (off[0] = 0, k = 1; k < 8; k++)
-        if (c->progeny[k - 1] != NULL)
-          off[k] = off[k - 1] + c->progeny[k - 1]->gcount;
-        else
-          off[k] = off[k - 1];
-
-      /* Init the entries and indices. */
-      for (k = 0; k < 8; k++) {
-        inds[k] = k;
-        if (c->progeny[k] != NULL && c->progeny[k]->gcount > 0) {
-          fingers[k] = &c->progeny[k]->gsort[j * (c->progeny[k]->gcount + 1)];
-          buff[k] = fingers[k]->d;
-          off[k] = off[k];
-        } else
-          buff[k] = FLT_MAX;
-      }
-
-      /* Sort the buffer. */
-      for (i = 0; i < 7; i++)
-        for (k = i + 1; k < 8; k++)
-          if (buff[inds[k]] < buff[inds[i]]) {
-            temp_i = inds[i];
-            inds[i] = inds[k];
-            inds[k] = temp_i;
-          }
-
-      /* For each entry in the new sort list. */
-      finger = &gsort[j * (count + 1)];
-      for (ind = 0; ind < count; ind++) {
-
-        /* Copy the minimum into the new sort array. */
-        finger[ind].d = buff[inds[0]];
-        finger[ind].i = fingers[inds[0]]->i + off[inds[0]];
-
-        /* Update the buffer. */
-        fingers[inds[0]] += 1;
-        buff[inds[0]] = fingers[inds[0]]->d;
-
-        /* Find the smallest entry. */
-        for (k = 1; k < 8 && buff[inds[k]] < buff[inds[k - 1]]; k++) {
-          temp_i = inds[k - 1];
-          inds[k - 1] = inds[k];
-          inds[k] = temp_i;
-        }
-
-      } /* Merge. */
-
-      /* Add a sentinel. */
-      gsort[j * (count + 1) + count].d = FLT_MAX;
-      gsort[j * (count + 1) + count].i = 0;
-
-      /* Mark as sorted. */
-      c->gsorted |= (1 << j);
-
-    } /* loop over sort arrays. */
-
-  } /* progeny? */
-
-  /* Otherwise, just sort. */
-  else {
-
-    /* Fill the sort array. */
-    for (k = 0; k < count; k++) {
-      px[0] = gparts[k].x[0];
-      px[1] = gparts[k].x[1];
-      px[2] = gparts[k].x[2];
-      for (j = 0; j < 13; j++)
-        if (flags & (1 << j)) {
-          gsort[j * (count + 1) + k].i = k;
-          gsort[j * (count + 1) + k].d = px[0] * runner_shift[3 * j + 0] +
-                                         px[1] * runner_shift[3 * j + 1] +
-                                         px[2] * runner_shift[3 * j + 2];
-        }
-    }
-
-    /* Add the sentinel and sort. */
-    for (j = 0; j < 13; j++)
-      if (flags & (1 << j)) {
-        gsort[j * (count + 1) + count].d = FLT_MAX;
-        gsort[j * (count + 1) + count].i = 0;
-        runner_do_sort_ascending(&gsort[j * (count + 1)], count);
-        c->gsorted |= (1 << j);
-      }
   }
-
-  /* Verify the sorting. */
-  /* for ( j = 0 ; j < 13 ; j++ ) {
-      if ( !( flags & (1 << j) ) )
-          continue;
-      finger = &c->gsort[ j*(count + 1) ];
-      for ( k = 1 ; k < count ; k++ ) {
-          if ( finger[k].d < finger[k-1].d )
-              error( "Sorting failed, ascending array." );
-          if ( finger[k].i < 0 || finger[k].i >= count )
-              error( "Sorting failed, indices borked." );
-          }
-      } */
+#endif
 
   if (clock) TIMER_TOC(timer_dosort);
 }
@@ -597,7 +422,6 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
  * @param r The runner thread.
  * @param c The cell.
  */
-
 void runner_do_ghost(struct runner *r, struct cell *c) {
 
   struct part *p, *parts = c->parts;
@@ -724,8 +548,13 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 
           }
 
-          /* Otherwise, sub interaction? */
-          else if (l->t->type == task_type_sub) {
+          /* Otherwise, sub-self interaction? */
+          else if (l->t->type == task_type_sub_self)
+            runner_dosub_subset_density(r, finger, parts, pid, count, NULL, -1,
+                                        1);
+
+          /* Otherwise, sub-pair interaction? */
+          else if (l->t->type == task_type_sub_pair) {
 
             /* Left or right? */
             if (l->t->ci == finger)
@@ -1237,13 +1066,19 @@ void *runner_main(void *data) {
         case task_type_sort:
           runner_do_sort(r, ci, t->flags, 1);
           break;
-        case task_type_sub:
+        case task_type_sub_self:
           if (t->subtype == task_subtype_density)
-            runner_dosub1_density(r, ci, cj, t->flags, 1);
+            runner_dosub_self1_density(r, ci, 1);
           else if (t->subtype == task_subtype_force)
-            runner_dosub2_force(r, ci, cj, t->flags, 1);
-          else if (t->subtype == task_subtype_grav)
-            runner_dosub_grav(r, ci, cj, 1);
+            runner_dosub_self2_force(r, ci, 1);
+          else
+            error("Unknown task subtype.");
+          break;
+        case task_type_sub_pair:
+          if (t->subtype == task_subtype_density)
+            runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+          else if (t->subtype == task_subtype_force)
+            runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1266,21 +1101,6 @@ void *runner_main(void *data) {
           break;
         case task_type_recv:
           runner_do_recv_cell(r, ci, 1);
-          break;
-        case task_type_grav_pp:
-          if (t->cj == NULL)
-            runner_doself_grav(r, t->ci);
-          else
-            runner_dopair_grav(r, t->ci, t->cj);
-          break;
-        case task_type_grav_mm:
-          runner_dograv_mm(r, t->ci, t->cj);
-          break;
-        case task_type_grav_up:
-          runner_dograv_up(r, t->ci);
-          break;
-        case task_type_grav_down:
-          runner_dograv_down(r, t->ci);
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);

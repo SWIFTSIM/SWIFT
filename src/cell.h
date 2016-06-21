@@ -27,8 +27,9 @@
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
+#include "task.h"
 
-/* Forward declaration of space, needed for cell_unpack. */
+/* Avoid cyclic inclusions */
 struct space;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations

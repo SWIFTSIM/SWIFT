@@ -50,7 +50,11 @@
  */
 void print_help_message() {
 
-  printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
+  printf("\nUsage: swift [OPTION]... PARAMFILE\n");
+  printf("       swift_mpi [OPTION]... PARAMFILE\n");
+  printf("       swift_fixdt [OPTION]... PARAMFILE\n");
+  printf("       swift_fixdt_mpi [OPTION]... PARAMFILE\n\n");
+
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
@@ -89,7 +93,6 @@ void print_help_message() {
  * @brief Main routine that loads a few particles and generates some output.
  *
  */
-
 int main(int argc, char *argv[]) {
 
   struct clocks_time tic, toc;
@@ -478,10 +481,8 @@ int main(int argc, char *argv[]) {
     if (j % 100 == 2) e.forcerepart = reparttype;
 #endif
 
+    /* Reset timers */
     timers_reset(timers_mask_all);
-#ifdef COUNTER
-    for (k = 0; k < runner_counter_count; k++) runner_counter[k] = 0;
-#endif
 
     /* Take a step. */
     engine_step(&e);
