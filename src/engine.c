@@ -200,20 +200,24 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
     if (c->nodeID == e->nodeID) {
 
       /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
 
       /* Add the drift task. */
-      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
 
       /* Add the kick task that matches the policy. */
       if (is_fixdt) {
-        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
-                                    0, 0, c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
       } else {
-        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
-                                    c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
       }
 
       /* Generate the ghost task. */
@@ -2454,7 +2458,7 @@ void engine_makeproxies(struct engine *e) {
 }
 
 /**
- * @brief Split the underlying space into regions and assign to separatw nodes.
+ * @brief Split the underlying space into regions and assign to separate nodes.
  *
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
@@ -2589,8 +2593,7 @@ static cpu_set_t *engine_entry_affinity() {
 #endif
 
 /**
- * @brief  Ensure the NUMA node on which we initialise (first touch)
- * everything
+ * @brief  Ensure the NUMA node on which we initialise (first touch) everything
  *  doesn't change before engine_init allocates NUMA-local workers.
  */
 void engine_pin() {
