@@ -2195,59 +2195,6 @@ void engine_collect_timestep(struct engine *e) {
 }
 
 /**
- * @brief Mapping function to collect the data from the drift.
- *
- * @param c A super-cell.
- */
-void engine_collect_drift(struct cell *c) {
-
-  /* Counters for the different quantities. */
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
-  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
-
-  /* Only do something is the cell is non-empty */
-  if (c->count != 0 || c->gcount != 0) {
-
-    /* If this cell is not split, I'm in trouble. */
-    if (!c->split) error("Cell has no super-cell.");
-
-    /* Collect the values from the progeny. */
-    for (int k = 0; k < 8; k++) {
-      struct cell *cp = c->progeny[k];
-      if (cp != NULL) {
-
-        /* Recurse */
-        engine_collect_drift(cp);
-
-        /* And update */
-        mass += cp->mass;
-        e_kin += cp->e_kin;
-        e_int += cp->e_int;
-        e_pot += cp->e_pot;
-        mom[0] += cp->mom[0];
-        mom[1] += cp->mom[1];
-        mom[2] += cp->mom[2];
-        ang_mom[0] += cp->ang_mom[0];
-        ang_mom[1] += cp->ang_mom[1];
-        ang_mom[2] += cp->ang_mom[2];
-      }
-    }
-  }
-
-  /* Store the collected values in the cell. */
-  c->mass = mass;
-  c->e_kin = e_kin;
-  c->e_int = e_int;
-  c->e_pot = e_pot;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang_mom[0] = ang_mom[0];
-  c->ang_mom[1] = ang_mom[1];
-  c->ang_mom[2] = ang_mom[2];
-}
-
-/**
  * @brief Print the conserved quantities statistics to a log file
  *
  * @param e The #engine.
@@ -2263,11 +2210,6 @@ void engine_print_stats(struct engine *e) {
   for (int k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
       struct cell *c = &s->cells[k];
-
-      /* Make the top-cells recurse */
-      engine_collect_drift(c);
-
-      /* And aggregate */
       mass += c->mass;
       e_kin += c->e_kin;
       e_int += c->e_int;
