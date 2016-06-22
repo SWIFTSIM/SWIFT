@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,16 +23,18 @@
 #ifndef SWIFT_SPACE_H
 #define SWIFT_SPACE_H
 
-/* Includes. */
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stddef.h>
 
-/* Local includes. */
+/* Includes. */
 #include "cell.h"
+#include "lock.h"
 #include "parser.h"
 #include "part.h"
-
-/* Forward-declare the engine to avoid cyclic includes. */
-struct engine;
+#include "space.h"
 
 /* Some constants. */
 #define space_maxdepth 10
@@ -93,7 +99,7 @@ struct space {
   int periodic;
 
   /* General-purpose lock for this space. */
-  lock_type lock;
+  swift_lock_type lock;
 
   /* Number of queues in the system. */
   int nr_queues;
@@ -154,4 +160,5 @@ void space_do_split(struct space *s, struct cell *c);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_link_cleanup(struct space *s);
+
 #endif /* SWIFT_SPACE_H */

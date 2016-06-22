@@ -43,6 +43,8 @@
 #include "const.h"
 #include "error.h"
 #include "kernel_hydro.h"
+#include "part.h"
+#include "units.h"
 #include "version.h"
 
 const char* particle_type_names[NUM_PARTICLE_TYPES] = {
@@ -147,8 +149,8 @@ void readAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data) {
  *
  * Calls #error() if an error occurs.
  */
-void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data,
-                    int num) {
+void writeAttribute(hid_t grp, const char* name, enum DATA_TYPE type,
+                    void* data, int num) {
   hid_t h_space = 0, h_attr = 0, h_err = 0;
   hsize_t dim[1] = {num};
 
@@ -186,7 +188,8 @@ void writeAttribute(hid_t grp, char* name, enum DATA_TYPE type, void* data,
  *
  * Calls #error() if an error occurs.
  */
-void writeStringAttribute(hid_t grp, char* name, const char* str, int length) {
+void writeStringAttribute(hid_t grp, const char* name, const char* str,
+                          int length) {
   hid_t h_space = 0, h_attr = 0, h_err = 0, h_type = 0;
 
   h_space = H5Screate(H5S_SCALAR);
@@ -225,7 +228,7 @@ void writeStringAttribute(hid_t grp, char* name, const char* str, int length) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_d(hid_t grp, char* name, double data) {
+void writeAttribute_d(hid_t grp, const char* name, double data) {
   writeAttribute(grp, name, DOUBLE, &data, 1);
 }
 
@@ -235,7 +238,7 @@ void writeAttribute_d(hid_t grp, char* name, double data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_f(hid_t grp, char* name, float data) {
+void writeAttribute_f(hid_t grp, const char* name, float data) {
   writeAttribute(grp, name, FLOAT, &data, 1);
 }
 
@@ -246,7 +249,7 @@ void writeAttribute_f(hid_t grp, char* name, float data) {
  * @param data The value to write
  */
 
-void writeAttribute_i(hid_t grp, char* name, int data) {
+void writeAttribute_i(hid_t grp, const char* name, int data) {
   writeAttribute(grp, name, INT, &data, 1);
 }
 
@@ -256,7 +259,7 @@ void writeAttribute_i(hid_t grp, char* name, int data) {
  * @param name The name of the attribute
  * @param data The value to write
  */
-void writeAttribute_l(hid_t grp, char* name, long data) {
+void writeAttribute_l(hid_t grp, const char* name, long data) {
   writeAttribute(grp, name, LONG, &data, 1);
 }
 
@@ -266,7 +269,7 @@ void writeAttribute_l(hid_t grp, char* name, long data) {
  * @param name The name of the attribute
  * @param str The string to write
  */
-void writeAttribute_s(hid_t grp, char* name, const char* str) {
+void writeAttribute_s(hid_t grp, const char* name, const char* str) {
   writeStringAttribute(grp, name, str, strlen(str));
 }
 
@@ -335,11 +338,15 @@ void writeCodeDescription(hid_t h_file) {
  *
  * @todo Use a proper XML library to avoid stupid copies.
  */
-FILE* prepareXMFfile() {
+FILE* prepareXMFfile(const char* baseName) {
   char buffer[1024];
 
-  FILE* xmfFile = fopen("output.xmf", "r");
-  FILE* tempFile = fopen("output_temp.xmf", "w");
+  char fileName[FILENAME_BUFFER_SIZE];
+  char tempFileName[FILENAME_BUFFER_SIZE];
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
+  snprintf(tempFileName, FILENAME_BUFFER_SIZE, "%s_temp.xmf", baseName);
+  FILE* xmfFile = fopen(fileName, "r");
+  FILE* tempFile = fopen(tempFileName, "w");
 
   if (xmfFile == NULL) error("Unable to open current XMF file.");
 
@@ -355,8 +362,8 @@ FILE* prepareXMFfile() {
   fclose(xmfFile);
 
   /* We then copy the XMF file back up to the closing lines */
-  xmfFile = fopen("output.xmf", "w");
-  tempFile = fopen("output_temp.xmf", "r");
+  xmfFile = fopen(fileName, "w");
+  tempFile = fopen(tempFileName, "r");
 
   if (xmfFile == NULL) error("Unable to open current XMF file.");
 
@@ -369,7 +376,7 @@ FILE* prepareXMFfile() {
   }
   fprintf(xmfFile, "\n");
   fclose(tempFile);
-  remove("output_temp.xmf");
+  remove(tempFileName);
 
   return xmfFile;
 }
@@ -380,8 +387,11 @@ FILE* prepareXMFfile() {
  * @todo Exploit the XML nature of the XMF format to write a proper XML writer
  *and simplify all the XMF-related stuff.
  */
-void createXMFfile() {
-  FILE* xmfFile = fopen("output.xmf", "w");
+void createXMFfile(const char* baseName) {
+
+  char fileName[FILENAME_BUFFER_SIZE];
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s.xmf", baseName);
+  FILE* xmfFile = fopen(fileName, "w");
 
   fprintf(xmfFile, "<?xml version=\"1.0\" ?> \n");
   fprintf(xmfFile, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []> \n");
@@ -508,7 +518,8 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
   for (size_t i = 0; i < Ndm; ++i) {
     /* 0 or negative ids are not allowed */
     if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle %zd: ID=%lld", i, gparts[i].id_or_neg_offset);
+      error("0 or negative ID for DM particle %zd: ID=%lld", i,
+            gparts[i].id_or_neg_offset);
   }
 }
 

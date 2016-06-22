@@ -19,6 +19,9 @@
 #ifndef SWIFT_SERIAL_IO_H
 #define SWIFT_SERIAL_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -36,8 +39,9 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
                     int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info, int dry_run);
 
-void write_output_serial(struct engine* e, struct UnitSystem* us, int mpi_rank,
-                         int mpi_size, MPI_Comm comm, MPI_Info info);
+void write_output_serial(struct engine* e, const char* baseName,
+                         struct UnitSystem* us, int mpi_rank, int mpi_size,
+                         MPI_Comm comm, MPI_Info info);
 
 #endif
 

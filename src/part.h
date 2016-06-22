@@ -22,8 +22,7 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
-#include <stdlib.h>
+/* Standard headers. */
 #include <stddef.h>
 
 /* MPI headers. */
@@ -39,7 +38,7 @@
 #define xpart_align 32
 #define gpart_align 32
 
-/* Import the right particle definition */
+/* Import the right hydro particle definition */
 #if defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #elif defined(GADGET2_SPH)
@@ -50,6 +49,7 @@
 #error "Invalid choice of SPH variant"
 #endif
 
+/* Import the right gravity particle definition */
 #include "./gravity/Default/gravity_part.h"
 
 void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset);

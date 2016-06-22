@@ -1,4 +1,3 @@
-
 # This file is part of SWIFT.
 # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
 #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
@@ -17,10 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the debug flag to the whole thing
-AM_CFLAGS = -DTIMER -DCOUNTER $(HDF5_CPPFLAGS)
+AM_CFLAGS = -DTIMER $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
-AM_LDFLAGS = $(LAPACK_LIBS) $(BLAS_LIBS) $(HDF5_LDFLAGS) -version-info 0:0:0 # -fsanitize=address
+AM_LDFLAGS = $(HDF5_LDFLAGS) -version-info 0:0:0
 
 # The git command, if available.
 GIT_CMD = @GIT_CMD@
@@ -35,17 +34,20 @@ endif
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
-    common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h
+    common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
+    physical_constants.h physical_constants_cgs.h potentials.h version.h hydro_properties.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
-    kernel_hydro.c kernel_gravity.c tools.c part.c partition.c clocks.c parser.c
+    kernel_hydro.c kernel_gravity.c tools.c part.c partition.c clocks.c parser.c \
+    physical_constants.c potentials.c hydro_properties.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
-		 vector.h runner_doiact.h runner_doiact_grav.h units.h intrinsics.h minmax.h \
+		 vector.h runner_doiact.h runner_doiact_grav.h units.h intrinsics.h minmax.h kick.h \
+		 timestep.h drift.h \
 		 gravity.h gravity_io.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
@@ -67,30 +69,31 @@ libswiftsim_la_SOURCES = $(AM_SOURCES)
 # Sources and flags for MPI library
 libswiftsim_mpi_la_SOURCES = $(AM_SOURCES)
 libswiftsim_mpi_la_CFLAGS = $(AM_CFLAGS) -DWITH_MPI $(METIS_INCS)
+libswiftsim_mpi_la_LDFLAGS = $(AM_LDFLAGS) -DWITH_MPI $(METIS_LIBS)
 libswiftsim_mpi_la_SHORTNAME = mpi
 
 
-# Versioning. If any sources change then update the version.h file with
+# Versioning. If any sources change then update the version_string.h file with
 # the current git revision and package version.
-# May have a checkout without a version.h file and no git command (tar/zip
+# May have a checkout without a version_string.h file and no git command (tar/zip
 # download), allow that, but make sure we know it.
-version.h: version.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
+version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_HEADERS)
 	if test "X$(GIT_CMD)" != "X"; then \
 	    GIT_REVISION=`$(GIT_CMD) describe --abbrev=8  --always --tags --dirty`; \
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
-	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" version.h.in > version.h; \
+	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" version_string.h.in > version_string.h; \
 	else \
-	    if test ! -f version.h; then \
+	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
-		    -e "s,@GIT_BRANCH\@,unknown," version.h.in > version.h; \
+		    -e "s,@GIT_BRANCH\@,unknown," version_string.h.in > version_string.h; \
 	    fi; \
 	fi
 
-#  Make sure version.h is built first.
-BUILT_SOURCES = version.h
+#  Make sure version_string.h is built first.
+BUILT_SOURCES = version_string.h
 
 #  And distribute the built files.
-EXTRA_DIST = version.h version.h.in
+EXTRA_DIST = version_string.h version_string.h.in

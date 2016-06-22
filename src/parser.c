@@ -22,14 +22,15 @@
 
 /* Some standard headers. */
 /* Needs to be included so that strtok returns char * instead of a int *. */
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* This object's header. */
 #include "parser.h"
 
 /* Local headers. */
+#include "common_io.h"
 #include "error.h"
 
 #define PARSER_COMMENT_STRING "#"
@@ -47,7 +48,10 @@ static void parse_line(char *line, struct swift_params *params);
 static void parse_value(char *line, struct swift_params *params);
 static void parse_section_param(char *line, int *isFirstParam,
                                 char *sectionName, struct swift_params *params);
-
+static void find_duplicate_params(const struct swift_params *params,
+                                  const char *param_name);
+static void find_duplicate_section(const struct swift_params *params,
+                                   const char *section_name);
 static int lineNumber = 0;
 
 /**
@@ -65,7 +69,9 @@ void parser_read_file(const char *file_name, struct swift_params *params) {
   char line[PARSER_MAX_LINE_SIZE];
 
   /* Initialise parameter count. */
-  params->count = 0;
+  params->paramCount = 0;
+  params->sectionCount = 0;
+  strcpy(params->fileName, file_name);
 
   /* Check if parameter file exits. */
   if (file == NULL) {
@@ -143,11 +149,45 @@ static int is_empty(const char *str) {
 }
 
 /**
+ * @brief Look for duplicate parameters.
+ *
+ * @param params Structure that holds the parameters
+ * @param param_name Name of parameter to be searched for
+ */
+
+static void find_duplicate_params(const struct swift_params *params,
+                                  const char *param_name) {
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(param_name, params->data[i].name)) {
+      error("Invalid line:%d '%s', parameter is a duplicate.", lineNumber,
+            param_name);
+    }
+  }
+}
+
+/**
+ * @brief Look for duplicate sections.
+ *
+ * @param params Structure that holds the parameters
+ * @param section_name Name of section to be searched for
+ */
+
+static void find_duplicate_section(const struct swift_params *params,
+                                   const char *section_name) {
+  for (int i = 0; i < params->sectionCount; i++) {
+    if (!strcmp(section_name, params->section[i].name)) {
+      error("Invalid line:%d '%s', section is a duplicate.", lineNumber,
+            section_name);
+    }
+  }
+}
+/**
  * @brief Parses a line from a file and stores any parameters in a structure.
  *
  * @param line Line to be parsed.
  * @param params Structure to be populated from file.
  */
+
 static void parse_line(char *line, struct swift_params *params) {
   /* Parse line if it doesn't begin with a comment. */
   if (*line != PARSER_COMMENT_CHAR) {
@@ -170,7 +210,6 @@ static void parse_line(char *line, struct swift_params *params) {
         parse_value(trim_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
-      /* Note: strcmp returns 0 if both strings are the same.*/
       else if (strcmp(trim_line, PARSER_START_OF_FILE) &&
                strcmp(trim_line, PARSER_END_OF_FILE)) {
         error("Invalid line:%d '%s'.", lineNumber, trim_line);
@@ -193,6 +232,7 @@ static void parse_value(char *line, struct swift_params *params) {
                                                 name. */
   static int isFirstParam = 1;
   char tmpStr[PARSER_MAX_LINE_SIZE];
+  char tmpSectionName[PARSER_MAX_LINE_SIZE];
 
   char *token;
 
@@ -213,7 +253,7 @@ static void parse_value(char *line, struct swift_params *params) {
   /* Check that it is a parameter inside a section.*/
   if (*line == ' ' || *line == '\t') {
     parse_section_param(line, &isFirstParam, section, params);
-  } else {/*Else it is the start of a new section or standalone parameter. */
+  } else { /*Else it is the start of a new section or standalone parameter. */
     /* Take first token as the parameter name. */
     token = strtok(line, " :\t");
     strcpy(tmpStr, token);
@@ -223,15 +263,49 @@ static void parse_value(char *line, struct swift_params *params) {
 
     /* If second token is NULL then the line must be a section heading. */
     if (token == NULL) {
-      strcat(tmpStr, PARSER_VALUE_STRING);
-      strcpy(section, tmpStr);
+      strcpy(tmpSectionName, tmpStr);
+      strcat(tmpSectionName, PARSER_VALUE_STRING);
+
+      /* Check for duplicate section name. */
+      find_duplicate_section(params, tmpSectionName);
+
+      /* Check for duplicate standalone parameter name used as a section name.
+       */
+      find_duplicate_params(params, tmpStr);
+
+      strcpy(section, tmpSectionName);
+      strcpy(params->section[params->sectionCount].name, tmpSectionName);
+      if (params->sectionCount == PARSER_MAX_NO_OF_SECTIONS - 1) {
+        error(
+            "Maximal number of sections in parameter file reached. Aborting !");
+      } else {
+        params->sectionCount++;
+      }
       inSection = 1;
       isFirstParam = 1;
     } else {
+      /* Create string with standalone parameter name appended with ":" to aid
+       * duplicate search as section names are stored with ":" at the end.*/
+      strcpy(tmpSectionName, tmpStr);
+      strcat(tmpSectionName, PARSER_VALUE_STRING);
+
+      /* Check for duplicate parameter name. */
+      find_duplicate_params(params, tmpStr);
+
+      /* Check for duplicate section name used as standalone parameter name. */
+      find_duplicate_section(params, tmpSectionName);
+
       /* Must be a standalone parameter so no need to prefix name with a
        * section. */
-      strcpy(params->data[params->count].name, tmpStr);
-      strcpy(params->data[params->count++].value, token);
+      strcpy(params->data[params->paramCount].name, tmpStr);
+      strcpy(params->data[params->paramCount].value, token);
+      if (params->paramCount == PARSER_MAX_NO_OF_PARAMS - 1) {
+        error(
+            "Maximal number of parameters in parameter file reached. Aborting "
+            "!");
+      } else {
+        params->paramCount++;
+      }
       inSection = 0;
       isFirstParam = 1;
     }
@@ -278,8 +352,17 @@ static void parse_section_param(char *line, int *isFirstParam,
    * copy it into the parameter structure. */
   strcpy(paramName, sectionName);
   strcat(paramName, tmpStr);
-  strcpy(params->data[params->count].name, paramName);
-  strcpy(params->data[params->count++].value, token);
+
+  /* Check for duplicate parameter name. */
+  find_duplicate_params(params, paramName);
+
+  strcpy(params->data[params->paramCount].name, paramName);
+  strcpy(params->data[params->paramCount].value, token);
+  if (params->paramCount == PARSER_MAX_NO_OF_PARAMS - 1) {
+    error("Maximal number of parameters in parameter file reached. Aborting !");
+  } else {
+    params->paramCount++;
+  }
 }
 
 /**
@@ -294,8 +377,7 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
   char str[PARSER_MAX_LINE_SIZE];
   int retParam = 0;
 
-  for (int i = 0; i < params->count; i++) {
-    /*strcmp returns 0 if both strings are the same.*/
+  for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
       if (sscanf(params->data[i].value, "%d%s", &retParam, str) != 1) {
@@ -309,7 +391,8 @@ int parser_get_param_int(const struct swift_params *params, const char *name) {
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0;
 }
 
@@ -326,8 +409,7 @@ char parser_get_param_char(const struct swift_params *params,
   char str[PARSER_MAX_LINE_SIZE];
   char retParam = 0;
 
-  for (int i = 0; i < params->count; i++) {
-    /*strcmp returns 0 if both strings are the same.*/
+  for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
       if (sscanf(params->data[i].value, "%c%s", &retParam, str) != 1) {
@@ -341,7 +423,8 @@ char parser_get_param_char(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0;
 }
 
@@ -358,8 +441,7 @@ float parser_get_param_float(const struct swift_params *params,
   char str[PARSER_MAX_LINE_SIZE];
   float retParam = 0.f;
 
-  for (int i = 0; i < params->count; i++) {
-    /*strcmp returns 0 if both strings are the same.*/
+  for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
       if (sscanf(params->data[i].value, "%f%s", &retParam, str) != 1) {
@@ -373,7 +455,8 @@ float parser_get_param_float(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0.f;
 }
 
@@ -390,8 +473,7 @@ double parser_get_param_double(const struct swift_params *params,
   char str[PARSER_MAX_LINE_SIZE];
   double retParam = 0.;
 
-  for (int i = 0; i < params->count; i++) {
-    /*strcmp returns 0 if both strings are the same.*/
+  for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       /* Check that exactly one number is parsed. */
       if (sscanf(params->data[i].value, "%lf%s", &retParam, str) != 1) {
@@ -404,7 +486,8 @@ double parser_get_param_double(const struct swift_params *params,
     }
   }
 
-  error("Cannot find '%s' in the structure.", name);
+  error("Cannot find '%s' in the structure, in file '%s'.", name,
+        params->fileName);
   return 0.;
 }
 
@@ -417,8 +500,7 @@ double parser_get_param_double(const struct swift_params *params,
  */
 void parser_get_param_string(const struct swift_params *params,
                              const char *name, char *retParam) {
-  for (int i = 0; i < params->count; i++) {
-    /*strcmp returns 0 if both strings are the same.*/
+  for (int i = 0; i < params->paramCount; i++) {
     if (!strcmp(name, params->data[i].name)) {
       strcpy(retParam, params->data[i].value);
       return;
@@ -426,6 +508,150 @@ void parser_get_param_string(const struct swift_params *params,
   }
 
   error("Cannot find '%s' in the structure.", name);
+}
+
+/**
+ * @brief Retrieve optional integer parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param def Default value of the parameter of not found.
+ * @return Value of the parameter found
+ */
+int parser_get_opt_param_int(const struct swift_params *params,
+                             const char *name, int def) {
+
+  char str[PARSER_MAX_LINE_SIZE];
+  int retParam = 0;
+
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(name, params->data[i].name)) {
+      /* Check that exactly one number is parsed. */
+      if (sscanf(params->data[i].value, "%d%s", &retParam, str) != 1) {
+        error(
+            "Tried parsing int '%s' but found '%s' with illegal integer "
+            "characters '%s'.",
+            params->data[i].name, params->data[i].value, str);
+      }
+
+      return retParam;
+    }
+  }
+
+  return def;
+}
+
+/**
+ * @brief Retrieve optional char parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param def Default value of the parameter of not found.
+ * @return Value of the parameter found
+ */
+char parser_get_opt_param_char(const struct swift_params *params,
+                               const char *name, char def) {
+
+  char str[PARSER_MAX_LINE_SIZE];
+  char retParam = 0;
+
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(name, params->data[i].name)) {
+      /* Check that exactly one number is parsed. */
+      if (sscanf(params->data[i].value, "%c%s", &retParam, str) != 1) {
+        error(
+            "Tried parsing char '%s' but found '%s' with illegal char "
+            "characters '%s'.",
+            params->data[i].name, params->data[i].value, str);
+      }
+
+      return retParam;
+    }
+  }
+
+  return def;
+}
+
+/**
+ * @brief Retrieve optional float parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param def Default value of the parameter of not found.
+ * @return Value of the parameter found
+ */
+float parser_get_opt_param_float(const struct swift_params *params,
+                                 const char *name, float def) {
+
+  char str[PARSER_MAX_LINE_SIZE];
+  float retParam = 0.f;
+
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(name, params->data[i].name)) {
+      /* Check that exactly one number is parsed. */
+      if (sscanf(params->data[i].value, "%f%s", &retParam, str) != 1) {
+        error(
+            "Tried parsing float '%s' but found '%s' with illegal float "
+            "characters '%s'.",
+            params->data[i].name, params->data[i].value, str);
+      }
+
+      return retParam;
+    }
+  }
+
+  return def;
+}
+
+/**
+ * @brief Retrieve optional double parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param def Default value of the parameter of not found.
+ * @return Value of the parameter found
+ */
+double parser_get_opt_param_double(const struct swift_params *params,
+                                   const char *name, double def) {
+
+  char str[PARSER_MAX_LINE_SIZE];
+  double retParam = 0.;
+
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(name, params->data[i].name)) {
+      /* Check that exactly one number is parsed. */
+      if (sscanf(params->data[i].value, "%lf%s", &retParam, str) != 1) {
+        error(
+            "Tried parsing double '%s' but found '%s' with illegal double "
+            "characters '%s'.",
+            params->data[i].name, params->data[i].value, str);
+      }
+      return retParam;
+    }
+  }
+
+  return def;
+}
+
+/**
+ * @brief Retrieve string parameter from structure.
+ *
+ * @param params Structure that holds the parameters
+ * @param name Name of the parameter to be found
+ * @param def Default value of the parameter of not found.
+ * @param retParam (return) Value of the parameter found
+ */
+void parser_get_opt_param_string(const struct swift_params *params,
+                                 const char *name, char *retParam,
+                                 const char *def) {
+  for (int i = 0; i < params->paramCount; i++) {
+    if (!strcmp(name, params->data[i].name)) {
+      strcpy(retParam, params->data[i].value);
+      return;
+    }
+  }
+
+  strcpy(retParam, def);
 }
 
 /**
@@ -438,7 +664,7 @@ void parser_print_params(const struct swift_params *params) {
   printf("|  SWIFT Parameter File  |\n");
   printf("--------------------------\n");
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     printf("Parameter name: %s\n", params->data[i].name);
     printf("Parameter value: %s\n", params->data[i].value);
   }
@@ -461,7 +687,7 @@ void parser_write_params_to_file(const struct swift_params *params,
   /* Start of file identifier in YAML. */
   fprintf(file, "%s\n", PARSER_START_OF_FILE);
 
-  for (int i = 0; i < params->count; i++) {
+  for (int i = 0; i < params->paramCount; i++) {
     /* Check that the parameter name contains a section name. */
     if (strchr(params->data[i].name, PARSER_VALUE_CHAR)) {
       /* Copy the parameter name into a temporary string and find the section
@@ -478,7 +704,7 @@ void parser_write_params_to_file(const struct swift_params *params,
       /* Remove white space from parameter name and write it to the file. */
       token = strtok(NULL, " #\n");
 
-      fprintf(file, "\t%s%c %s\n", token, PARSER_VALUE_CHAR,
+      fprintf(file, "  %s%c %s\n", token, PARSER_VALUE_CHAR,
               params->data[i].value);
     } else {
       fprintf(file, "\n%s%c %s\n", params->data[i].name, PARSER_VALUE_CHAR,
@@ -491,3 +717,11 @@ void parser_write_params_to_file(const struct swift_params *params,
 
   fclose(file);
 }
+
+#if defined(HAVE_HDF5)
+void parser_write_params_to_hdf5(const struct swift_params *params, hid_t grp) {
+
+  for (int i = 0; i < params->paramCount; i++)
+    writeAttribute_s(grp, params->data[i].name, params->data[i].value);
+}
+#endif

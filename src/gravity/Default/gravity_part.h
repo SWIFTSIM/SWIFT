@@ -25,6 +25,9 @@ struct gpart {
   /* Particle position. */
   double x[3];
 
+  /* Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
+
   /* Particle velocity. */
   float v_full[3];
 
@@ -39,6 +42,10 @@ struct gpart {
 
   /* Particle time of end of time-step. */
   int ti_end;
+
+  /* /\* current time of x, and of v_full *\/ */
+  /* float tx; */
+  /* float tv; */
 
   /* Particle ID. If negative, it is the negative offset of the #part with
      which this gpart is linked. */

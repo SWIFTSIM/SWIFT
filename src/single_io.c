@@ -35,9 +35,12 @@
 #include "single_io.h"
 
 /* Local includes. */
-#include "const.h"
 #include "common_io.h"
+#include "engine.h"
 #include "error.h"
+#include "kernel_hydro.h"
+#include "part.h"
+#include "units.h"
 
 /*-----------------------------------------------------------------------------
  * Routines reading an IC file
@@ -456,7 +459,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
  * @brief Writes an HDF5 output file (GADGET-3 type) with its XMF descriptor
  *
  * @param e The engine containing all the system.
- * @param us The UnitSystem used for the conversion of units in the output
+ * @param baseName The common part of the snapshot file name.
+ * @param us The UnitSystem used for the conversion of units in the output.
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -466,7 +470,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
  * Calls #error() if an error occurs.
  *
  */
-void write_output_single(struct engine* e, struct UnitSystem* us) {
+void write_output_single(struct engine* e, const char* baseName,
+                         struct UnitSystem* us) {
 
   hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
@@ -478,25 +483,22 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   struct gpart* dmparts = NULL;
   static int outputCount = 0;
 
-  /* Number of particles of each type */
-  // const size_t Ndm = Ntot - Ngas;
-
-  /* MATTHIEU: Temporary fix to preserve master */
+  /* Number of unassociated gparts */
   const size_t Ndm = Ntot > 0 ? Ntot - Ngas : 0;
-  /* MATTHIEU: End temporary fix */
 
   long long N_total[NUM_PARTICLE_TYPES] = {Ngas, Ndm, 0};
 
   /* File name */
   char fileName[FILENAME_BUFFER_SIZE];
-  snprintf(fileName, FILENAME_BUFFER_SIZE, "output_%03i.hdf5", outputCount);
+  snprintf(fileName, FILENAME_BUFFER_SIZE, "%s_%03i.hdf5", baseName,
+           outputCount);
 
   /* First time, we need to create the XMF file */
-  if (outputCount == 0) createXMFfile();
+  if (outputCount == 0) createXMFfile(baseName);
 
   /* Prepare the XMF file for the new entry */
   FILE* xmfFile = 0;
-  xmfFile = prepareXMFfile();
+  xmfFile = prepareXMFfile(baseName);
 
   /* Write the part corresponding to this specific output */
   writeXMFoutputheader(xmfFile, fileName, e->time);
@@ -561,6 +563,13 @@ void write_output_single(struct engine* e, struct UnitSystem* us) {
   h_grp = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating SPH group");
   writeSPHflavour(h_grp);
+  H5Gclose(h_grp);
+
+  /* Print the runtime parameters */
+  h_grp =
+      H5Gcreate(h_file, "/Parameters", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_grp < 0) error("Error while creating parameters group");
+  parser_write_params_to_hdf5(e->parameter_file, h_grp);
   H5Gclose(h_grp);
 
   /* Print the system of Units */

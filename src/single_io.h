@@ -19,6 +19,9 @@
 #ifndef SWIFT_SINGLE_IO_H
 #define SWIFT_SINGLE_IO_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include "engine.h"
 #include "part.h"
@@ -30,7 +33,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
                     struct gpart** gparts, size_t* Ngas, size_t* Ndm,
                     int* periodic, int dry_run);
 
-void write_output_single(struct engine* e, struct UnitSystem* us);
+void write_output_single(struct engine* e, const char* baseName,
+                         struct UnitSystem* us);
 
 #endif
 

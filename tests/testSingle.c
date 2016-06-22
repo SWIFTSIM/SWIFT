@@ -22,15 +22,15 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <pthread.h>
-#include <math.h>
+#include <fenv.h>
 #include <float.h>
 #include <limits.h>
-#include <fenv.h>
+#include <math.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 /* Conditional headers. */
 #ifdef HAVE_LIBZ

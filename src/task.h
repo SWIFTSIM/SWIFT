@@ -2,6 +2,9 @@
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -34,17 +37,20 @@ enum task_types {
   task_type_sort,
   task_type_self,
   task_type_pair,
-  task_type_sub,
+  task_type_sub_self,
+  task_type_sub_pair,
   task_type_init,
   task_type_ghost,
   task_type_drift,
   task_type_kick,
+  task_type_kick_fixdt,
   task_type_send,
   task_type_recv,
   task_type_grav_pp,
   task_type_grav_mm,
   task_type_grav_up,
   task_type_grav_down,
+  task_type_grav_external,
   task_type_part_sort,
   task_type_gpart_sort,
   task_type_split_cell,
@@ -73,7 +79,7 @@ struct task {
   char skip, tight, implicit;
   int flags, wait, rank, weight;
 
-  lock_type lock;
+  swift_lock_type lock;
 
   struct cell *ci, *cj;
 
@@ -81,7 +87,7 @@ struct task {
   MPI_Request req;
 #endif
 
-  int rid;
+  int rid, last_rid;
   ticks tic, toc;
 
   int nr_unlock_tasks;
@@ -92,7 +98,6 @@ struct task {
 void task_rmunlock(struct task *ta, struct task *tb);
 void task_rmunlock_blind(struct task *ta, struct task *tb);
 void task_cleanunlock(struct task *t, int type);
-void task_addunlock(struct task *ta, struct task *tb);
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);

@@ -44,6 +44,9 @@
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
+#include "queue.h"
+#include "space.h"
+#include "task.h"
 #include "timers.h"
 
 /**
@@ -66,8 +69,8 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
     struct task **unlocks_new;
     int *unlock_ind_new;
     s->size_unlocks *= 2;
-    if ((unlocks_new = (struct task **)malloc(
-             sizeof(struct task *) *s->size_unlocks)) == NULL ||
+    if ((unlocks_new = (struct task **)malloc(sizeof(struct task *) *
+                                              s->size_unlocks)) == NULL ||
         (unlock_ind_new = (int *)malloc(sizeof(int) * s->size_unlocks)) == NULL)
       error("Failed to re-allocate unlocks.");
     memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->nr_unlocks);
@@ -95,13 +98,11 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 
 void scheduler_splittasks(struct scheduler *s) {
 
-  const int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
-                         {-1, -1, 11, 10, 5, 4, 2, 1},
-                         {-1, -1, -1, 12, 7, 6, 4, 3},
-                         {-1, -1, -1, -1, 8, 7, 5, 4},
-                         {-1, -1, -1, -1, -1, 12, 10, 9},
-                         {-1, -1, -1, -1, -1, -1, 11, 10},
-                         {-1, -1, -1, -1, -1, -1, -1, 12}};
+  const int pts[7][8] = {
+      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
+      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
+      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
+      {-1, -1, -1, -1, -1, -1, -1, 12}};
   const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
                                0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
                                0.5788, 0.4025, 0.5788};
@@ -175,7 +176,7 @@ void scheduler_splittasks(struct scheduler *s) {
         if (scheduler_dosub && ci->count < space_subsize / ci->count) {
 
           /* convert to a self-subtask. */
-          t->type = task_type_sub;
+          t->type = task_type_sub_self;
 
         }
 
@@ -237,7 +238,7 @@ void scheduler_splittasks(struct scheduler *s) {
             sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
           /* Make this task a sub task. */
-          t->type = task_type_sub;
+          t->type = task_type_sub_pair;
 
         }
 
@@ -517,132 +518,6 @@ void scheduler_splittasks(struct scheduler *s) {
 
     } /* pair interaction? */
 
-    /* Gravity interaction? */
-    else if (t->type == task_type_grav_mm) {
-
-      /* Get a handle on the cells involved. */
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
-
-      /* Self-interaction? */
-      if (cj == NULL) {
-
-        /* Ignore this task if the cell has no gparts. */
-        if (ci->gcount == 0) t->type = task_type_none;
-
-        /* If the cell is split, recurse. */
-        else if (ci->split) {
-
-          /* Make a single sub-task? */
-          if (scheduler_dosub && ci->gcount < space_subsize / ci->gcount) {
-
-            t->type = task_type_sub;
-            t->subtype = task_subtype_grav;
-
-          }
-
-          /* Otherwise, just split the task. */
-          else {
-
-            /* Split this task into tasks on its progeny. */
-            t->type = task_type_none;
-            for (int j = 0; j < 8; j++)
-              if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                if (t->type == task_type_none) {
-                  t->type = task_type_grav_mm;
-                  t->ci = ci->progeny[j];
-                  t->cj = NULL;
-                } else
-                  t = scheduler_addtask(s, task_type_grav_mm, task_subtype_none,
-                                        0, 0, ci->progeny[j], NULL, 0);
-                for (int k = j + 1; k < 8; k++)
-                  if (ci->progeny[k] != NULL && ci->progeny[k]->gcount > 0) {
-                    if (t->type == task_type_none) {
-                      t->type = task_type_grav_mm;
-                      t->ci = ci->progeny[j];
-                      t->cj = ci->progeny[k];
-                    } else
-                      t = scheduler_addtask(s, task_type_grav_mm,
-                                            task_subtype_none, 0, 0,
-                                            ci->progeny[j], ci->progeny[k], 0);
-                  }
-              }
-            redo = (t->type != task_type_none);
-          }
-
-        }
-
-        /* Otherwise, just make a pp task out of it. */
-        else
-          t->type = task_type_grav_pp;
-
-      }
-
-      /* Nope, pair. */
-      else {
-
-        /* Make a sub-task? */
-        if (scheduler_dosub && ci->gcount < space_subsize / cj->gcount) {
-
-          t->type = task_type_sub;
-          t->subtype = task_subtype_grav;
-
-        }
-
-        /* Otherwise, split the task. */
-        else {
-
-          /* Get the opening angle theta. */
-          float dx[3], theta;
-          for (int k = 0; k < 3; k++) {
-            dx[k] = fabs(ci->loc[k] - cj->loc[k]);
-            if (s->space->periodic && dx[k] > 0.5 * s->space->dim[k])
-              dx[k] = -dx[k] + s->space->dim[k];
-            if (dx[k] > 0.0f) dx[k] -= ci->h[k];
-          }
-          theta =
-              (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
-              (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]);
-
-          /* Ignore this task if the cell has no gparts. */
-          if (ci->gcount == 0 || cj->gcount == 0) t->type = task_type_none;
-
-          /* Split the interaction? */
-          else if (theta < const_theta_max * const_theta_max) {
-
-            /* Are both ci and cj split? */
-            if (ci->split && cj->split) {
-
-              /* Split this task into tasks on its progeny. */
-              t->type = task_type_none;
-              for (int j = 0; j < 8; j++)
-                if (ci->progeny[j] != NULL && ci->progeny[j]->gcount > 0) {
-                  for (int k = 0; k < 8; k++)
-                    if (cj->progeny[k] != NULL && cj->progeny[k]->gcount > 0) {
-                      if (t->type == task_type_none) {
-                        t->type = task_type_grav_mm;
-                        t->ci = ci->progeny[j];
-                        t->cj = cj->progeny[k];
-                      } else
-                        t = scheduler_addtask(
-                            s, task_type_grav_mm, task_subtype_none, 0, 0,
-                            ci->progeny[j], cj->progeny[k], 0);
-                    }
-                }
-              redo = (t->type != task_type_none);
-
-            }
-
-            /* Otherwise, make a pp task out of it. */
-            else
-              t->type = task_type_grav_pp;
-          }
-        }
-
-      } /* gravity pair interaction? */
-
-    } /* gravity interaction? */
-
   } /* loop over all tasks. */
 }
 
@@ -687,6 +562,8 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
   t->tic = 0;
   t->toc = 0;
   t->nr_unlock_tasks = 0;
+  t->rid = -1;
+  t->last_rid = -1;
 
   /* Init the lock. */
   lock_init(&t->lock);
@@ -808,10 +685,12 @@ void scheduler_ranktasks(struct scheduler *s) {
     left = j;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the tasks were ranked correctly. */
-  /* for ( k = 1 ; k < s->nr_tasks ; k++ )
-      if ( tasks[ tid[k-1] ].rank > tasks[ tid[k-1] ].rank )
-          error( "Task ranking failed." ); */
+  for (int k = 1; k < s->nr_tasks; k++)
+    if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
+      error("Task ranking failed.");
+#endif
 }
 
 /**
@@ -831,7 +710,8 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
     /* Allocate the new lists. */
-    if ((s->tasks = (struct task *)malloc(sizeof(struct task) *size)) == NULL ||
+    if ((s->tasks = (struct task *)malloc(sizeof(struct task) * size)) ==
+            NULL ||
         (s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
   }
@@ -898,23 +778,23 @@ void scheduler_reweight(struct scheduler *s) {
             t->weight +=
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
           break;
-        case task_type_sub:
-          if (t->cj != NULL) {
-            if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-              if (t->flags < 0)
-                t->weight += 3 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 3 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            } else {
-              if (t->flags < 0)
-                t->weight += 2 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 2 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            }
-          } else
-            t->weight += 1 * wscale * t->ci->count * t->ci->count;
+        case task_type_sub_pair:
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            if (t->flags < 0)
+              t->weight += 3 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 3 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          } else {
+            if (t->flags < 0)
+              t->weight += 2 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 2 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          }
+          break;
+        case task_type_sub_self:
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_ghost:
           if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
@@ -1081,6 +961,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
        any pre-processing needed. */
     switch (t->type) {
       case task_type_self:
+      case task_type_sub_self:
       case task_type_sort:
       case task_type_ghost:
       case task_type_kick:
@@ -1089,11 +970,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->super->owner;
         break;
       case task_type_pair:
-      case task_type_sub:
+      case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (t->cj != NULL &&
-            (qid < 0 ||
-             s->queues[qid].count > s->queues[t->cj->super->owner].count))
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
           qid = t->cj->super->owner;
         break;
       case task_type_recv:
@@ -1253,7 +1133,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
          tries++) {
 
       /* Try to get a task from the suggested queue. */
-      if (s->queues[qid].count > 0) {
+      if (s->queues[qid].count > 0 || s->queues[qid].count_incoming > 0) {
         TIMER_TIC
         res = queue_gettask(&s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
@@ -1264,7 +1144,9 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       if (s->flags & scheduler_flag_steal) {
         int count = 0, qids[nr_queues];
         for (int k = 0; k < nr_queues; k++)
-          if (s->queues[k].count > 0) qids[count++] = k;
+          if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
+            qids[count++] = k;
+          }
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
@@ -1336,7 +1218,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");

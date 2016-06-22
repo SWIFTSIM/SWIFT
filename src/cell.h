@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -26,8 +30,9 @@
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
+#include "task.h"
 
-/* Forward declaration of space, needed for cell_unpack. */
+/* Avoid cyclic inclusions */
 struct space;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
@@ -116,7 +121,7 @@ struct cell {
   struct link *density, *force, *grav;
   int nr_density, nr_force, nr_grav;
 
-  /* The ghost task to link density to interactions. */
+  /* The hierarchical tasks. */
   struct task *ghost, *init, *drift, *kick;
 
   /* Task receiving data. */
@@ -125,6 +130,9 @@ struct cell {
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
 
+  /* Task for external gravity */
+  struct task *grav_external;
+
   /* Number of tasks that are associated with this cell. */
   int nr_tasks;
 
@@ -132,13 +140,13 @@ struct cell {
   int hold, ghold;
 
   /* Spin lock for various uses. */
-  lock_type lock, glock;
+  swift_lock_type lock, glock;
 
   /* ID of the previous owner, e.g. runner. */
   int owner;
 
   /* Momentum of particles in cell. */
-  float mom[3], ang[3];
+  double mom[3], ang_mom[3];
 
   /* Mass, potential, internal  and kinetic energy of particles in this cell. */
   double mass, e_pot, e_int, e_kin;

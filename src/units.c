@@ -39,7 +39,6 @@
 /* Includes. */
 #include "const.h"
 #include "error.h"
-#include "units.h"
 
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
@@ -47,20 +46,23 @@
  *
  * @param us The UnitSystem to initialize.
  * @param params The parsed parameter file.
+ * @param category The section of the parameter file to read from.
  */
-void units_init(struct UnitSystem* us, const struct swift_params* params) {
+void units_init(struct UnitSystem* us, const struct swift_params* params,
+                const char* category) {
 
-  us->UnitMass_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitMass_in_cgs");
-  us->UnitLength_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitLength_in_cgs");
-  const double unitVelocity =
-      parser_get_param_double(params, "UnitSystem:UnitVelocity_in_cgs");
+  char buffer[200];
+  sprintf(buffer, "%s:UnitMass_in_cgs", category);
+  us->UnitMass_in_cgs = parser_get_param_double(params, buffer);
+  sprintf(buffer, "%s:UnitLength_in_cgs", category);
+  us->UnitLength_in_cgs = parser_get_param_double(params, buffer);
+  sprintf(buffer, "%s:UnitVelocity_in_cgs", category);
+  const double unitVelocity = parser_get_param_double(params, buffer);
   us->UnitTime_in_cgs = us->UnitLength_in_cgs / unitVelocity;
-  us->UnitCurrent_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitCurrent_in_cgs");
-  us->UnitTemperature_in_cgs =
-      parser_get_param_double(params, "UnitSystem:UnitTemp_in_cgs");
+  sprintf(buffer, "%s:UnitCurrent_in_cgs", category);
+  us->UnitCurrent_in_cgs = parser_get_param_double(params, buffer);
+  sprintf(buffer, "%s:UnitTemp_in_cgs", category);
+  us->UnitTemperature_in_cgs = parser_get_param_double(params, buffer);
 }
 
 /**
@@ -331,7 +333,7 @@ void units_conversion_string(char* buffer, const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 double units_general_conversion_factor(const struct UnitSystem* us,
-                                       float baseUnitsExponants[5]) {
+                                       const float baseUnitsExponants[5]) {
   double factor = 1.;
   int i;
 
@@ -349,7 +351,7 @@ double units_general_conversion_factor(const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 float units_general_h_factor(const struct UnitSystem* us,
-                             float baseUnitsExponants[5]) {
+                             const float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += -baseUnitsExponants[UNIT_MASS];
@@ -367,7 +369,7 @@ float units_general_h_factor(const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 float units_general_a_factor(const struct UnitSystem* us,
-                             float baseUnitsExponants[5]) {
+                             const float baseUnitsExponants[5]) {
   float factor_exp = 0.f;
 
   factor_exp += baseUnitsExponants[UNIT_LENGTH];
@@ -385,7 +387,7 @@ float units_general_a_factor(const struct UnitSystem* us,
  * the desired quantity. See conversionFactor() for a working example
  */
 void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
-                                     float baseUnitsExponants[5]) {
+                                     const float baseUnitsExponants[5]) {
   char temp[14];
   double a_exp = units_general_a_factor(us, baseUnitsExponants);
   double h_exp = units_general_h_factor(us, baseUnitsExponants);

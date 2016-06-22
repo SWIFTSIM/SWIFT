@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -43,13 +47,14 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",      "sort",       "self",       "pair",    "sub",
-    "init",      "ghost",      "drift",      "kick",    "send",
-    "recv",      "grav_pp",    "grav_mm",    "grav_up", "grav_down",
-    "part_sort", "gpart_sort", "split_cell", "rewait"};
+    "none",       "sort",      "self",          "pair",      "sub_self",
+    "sub_pair",   "init",      "ghost",         "drift",     "kick",
+    "kick_fixdt", "send",      "recv",          "grav_pp",   "grav_mm",
+    "grav_up",    "grav_down", "grav_external", "part_sort", "gpart_sort",
+    "split_cell", "rewait"};
 
-const char *subtaskID_names[task_type_count] = {"none",  "density",
-                                                "force", "grav"};
+const char *subtaskID_names[task_type_count] = {"none", "density", "force",
+                                                "grav"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -112,13 +117,14 @@ void task_unlock(struct task *t) {
   /* Act based on task type. */
   switch (t->type) {
     case task_type_self:
+    case task_type_sub_self:
     case task_type_sort:
       cell_unlocktree(t->ci);
       break;
     case task_type_pair:
-    case task_type_sub:
+    case task_type_sub_pair:
       cell_unlocktree(t->ci);
-      if (t->cj != NULL) cell_unlocktree(t->cj);
+      cell_unlocktree(t->cj);
       break;
     case task_type_grav_pp:
     case task_type_grav_mm:
@@ -139,55 +145,68 @@ void task_unlock(struct task *t) {
 
 int task_lock(struct task *t) {
 
-  int type = t->type;
+  const int type = t->type;
+  const int subtype = t->subtype;
   struct cell *ci = t->ci, *cj = t->cj;
-
-  /* Communication task? */
-  if (type == task_type_recv || type == task_type_send) {
-
 #ifdef WITH_MPI
-    /* Check the status of the MPI request. */
-    int res = 0, err = 0;
-    MPI_Status stat;
-    if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
-      char buff[MPI_MAX_ERROR_STRING];
-      int len;
-      MPI_Error_string(err, buff, &len);
-      error("Failed to test request on send/recv task (tag=%i, %s).", t->flags,
-            buff);
-    }
-    return res;
-#else
-    error("SWIFT was not compiled with MPI support.");
+  int res = 0, err = 0;
+  MPI_Status stat;
 #endif
 
-  }
+  switch (type) {
 
-  /* Unary lock? */
-  else if (type == task_type_self || type == task_type_sort ||
-           (type == task_type_sub && cj == NULL)) {
-    if (cell_locktree(ci) != 0) return 0;
-  }
+    /* Communication task? */
+    case task_type_recv:
+    case task_type_send:
+#ifdef WITH_MPI
+      /* Check the status of the MPI request. */
+      if ((err = MPI_Test(&t->req, &res, &stat)) != MPI_SUCCESS) {
+        char buff[MPI_MAX_ERROR_STRING];
+        int len;
+        MPI_Error_string(err, buff, &len);
+        error("Failed to test request on send/recv task (tag=%i, %s).",
+              t->flags, buff);
+      }
+      return res;
+#else
+      error("SWIFT was not compiled with MPI support.");
+#endif
+      break;
 
-  /* Otherwise, binary lock. */
-  else if (type == task_type_pair || (type == task_type_sub && cj != NULL)) {
-    if (ci->hold || cj->hold) return 0;
-    if (cell_locktree(ci) != 0) return 0;
-    if (cell_locktree(cj) != 0) {
-      cell_unlocktree(ci);
-      return 0;
-    }
-  }
+    case task_type_sort:
+      if (cell_locktree(ci) != 0) return 0;
+      break;
 
-  /* Gravity tasks? */
-  else if (type == task_type_grav_mm || type == task_type_grav_pp ||
-           type == task_type_grav_down) {
-    if (ci->ghold || (cj != NULL && cj->ghold)) return 0;
-    if (cell_glocktree(ci) != 0) return 0;
-    if (cj != NULL && cell_glocktree(cj) != 0) {
-      cell_gunlocktree(ci);
-      return 0;
-    }
+    case task_type_self:
+    case task_type_sub_self:
+      if (subtype == task_subtype_grav) {
+        if (cell_glocktree(ci) != 0) return 0;
+      } else {
+        if (cell_locktree(ci) != 0) return 0;
+      }
+      break;
+
+    case task_type_pair:
+    case task_type_sub_pair:
+      if (subtype == task_subtype_grav) {
+        if (ci->ghold || cj->ghold) return 0;
+        if (cell_glocktree(ci) != 0) return 0;
+        if (cell_glocktree(cj) != 0) {
+          cell_gunlocktree(ci);
+          return 0;
+        }
+      } else {
+        if (ci->hold || cj->hold) return 0;
+        if (cell_locktree(ci) != 0) return 0;
+        if (cell_locktree(cj) != 0) {
+          cell_unlocktree(ci);
+          return 0;
+        }
+      }
+      break;
+
+    default:
+      break;
   }
 
   /* If we made it this far, we've got a lock. */
@@ -261,48 +280,6 @@ void task_rmunlock_blind(struct task *ta, struct task *tb) {
       ta->unlock_tasks[k] = ta->unlock_tasks[ta->nr_unlock_tasks];
       break;
     }
-
-  lock_unlock_blind(&ta->lock);
-}
-
-/**
- * @brief Add an unlock_task to the given task.
- *
- * @param ta The unlocking #task.
- * @param tb The #task that will be unlocked.
- */
-
-void task_addunlock(struct task *ta, struct task *tb) {
-
-  error("Use sched_addunlock instead.");
-
-  /* Add the lock atomically. */
-  ta->unlock_tasks[atomic_inc(&ta->nr_unlock_tasks)] = tb;
-
-  /* Check a posteriori if we did not overshoot. */
-  if (ta->nr_unlock_tasks > task_maxunlock)
-    error("Too many unlock_tasks in task.");
-}
-
-void task_addunlock_old(struct task *ta, struct task *tb) {
-
-  int k;
-
-  lock_lock(&ta->lock);
-
-  /* Check if ta already unlocks tb. */
-  for (k = 0; k < ta->nr_unlock_tasks; k++)
-    if (ta->unlock_tasks[k] == tb) {
-      error("Duplicate unlock.");
-      lock_unlock_blind(&ta->lock);
-      return;
-    }
-
-  if (ta->nr_unlock_tasks == task_maxunlock)
-    error("Too many unlock_tasks in task.");
-
-  ta->unlock_tasks[ta->nr_unlock_tasks] = tb;
-  ta->nr_unlock_tasks += 1;
 
   lock_unlock_blind(&ta->lock);
 }

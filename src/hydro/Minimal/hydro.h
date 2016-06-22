@@ -27,13 +27,18 @@
  *
  * @param p Pointer to the particle data
  * @param xp Pointer to the extended particle data
+ * @param hydro_properties The SPH parameters
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp) {
+    const struct part* p, const struct xpart* xp,
+    const struct hydro_props* hydro_properties) {
+
+  const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
+  const float dt_cfl =
+      2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
 
   return dt_cfl;
 }
@@ -48,8 +53,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
+__attribute__((always_inline)) INLINE static void hydro_first_init_part(
+    struct part* p, struct xpart* xp) {
 
   xp->u_full = p->u;
 }
@@ -63,8 +68,8 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_init_part(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_init_part(
+    struct part* p) {
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
@@ -83,8 +88,8 @@ __attribute__((always_inline))
  * @param p The particle to act upon
  * @param time The current time
  */
-__attribute__((always_inline))
-    INLINE static void hydro_end_density(struct part* p, float time) {
+__attribute__((always_inline)) INLINE static void hydro_end_density(
+    struct part* p, float time) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -94,7 +99,7 @@ __attribute__((always_inline))
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= 3.0f * p->mass * kernel_root * kernel_igamma;
+  p->rho_dh -= 3.0f * p->mass * kernel_root;
   p->density.wcount += kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
@@ -138,8 +143,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_reset_acceleration(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
+    struct part* p) {
 
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
@@ -167,14 +172,7 @@ __attribute__((always_inline))
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
 
-  const float dt = t1 - t0;
-
-  /* Predict internal energy */
-  const float w = p->u_dt / p->u * dt;
-  if (fabsf(w) < 0.2f)
-    p->u *= approx_expf(w); /* 4th order expansion of exp(w) */
-  else
-    p->u *= expf(w);
+  p->u = xp->u_full;
 
   /* Need to recompute the pressure as well */
   p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);
@@ -189,8 +187,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_end_force(struct part* p) {}
+__attribute__((always_inline)) INLINE static void hydro_end_force(
+    struct part* p) {}
 
 /**
  * @brief Kick the additional variables
@@ -223,8 +221,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_convert_quantities(struct part* p) {}
+__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
+    struct part* p) {}
 
 /**
  * @brief Returns the internal energy of a particle
@@ -234,9 +232,10 @@ __attribute__((always_inline))
  * energy from the thermodynamic variable.
  *
  * @param p The particle of interest
+ * @param dt Time since the last kick
  */
-__attribute__((always_inline))
-    INLINE static float hydro_get_internal_energy(struct part* p) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    const struct part* p, float dt) {
 
   return p->u;
 }

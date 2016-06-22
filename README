@@ -11,9 +11,13 @@
 
 See INSTALL.swift for install instructions.
 
-Usage: swift [OPTION] PARAMFILE
+Usage: swift [OPTION]... PARAMFILE
+       swift_mpi [OPTION]... PARAMFILE
+       swift_fixdt [OPTION]... PARAMFILE
+       swift_fixdt_mpi [OPTION]... PARAMFILE
 
 Valid options are:
+  -a          Pin runners using processor affinity
   -c          Run with cosmological time integration
   -d          Dry run. Read the parameter file, allocate memory but does not read 
               the particles from ICs and exit before the start of time integration.

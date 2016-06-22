@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,12 +23,11 @@
 #ifndef SWIFT_RUNNER_H
 #define SWIFT_RUNNER_H
 
-/* Includes. */
-#include "cell.h"
-#include "inline.h"
-
-extern const float runner_shift[13 * 3];
+extern const double runner_shift[13][3];
 extern const char runner_flip[27];
+
+struct cell;
+struct engine;
 
 /* A struct representing a runner's thread and its data. */
 struct runner {
@@ -43,16 +46,13 @@ struct runner {
 };
 
 /* Function prototypes. */
-void runner_doghost(struct runner *r, struct cell *c);
-void runner_dopair_density(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_doself_density(struct runner *r, struct cell *c);
-void runner_dosub_density(struct runner *r, struct cell *ci, struct cell *cj,
-                          int flags);
-void runner_dosort(struct runner *r, struct cell *c, int flag, int clock);
-void runner_dogsort(struct runner *r, struct cell *c, int flag, int clock);
-void runner_dokick(struct runner *r, struct cell *c, int timer);
-void runner_dodrift(struct runner *r, struct cell *c, int timer);
-void runner_doinit(struct runner *r, struct cell *c, int timer);
+void runner_do_ghost(struct runner *r, struct cell *c);
+void runner_do_sort(struct runner *r, struct cell *c, int flag, int clock);
+void runner_do_gsort(struct runner *r, struct cell *c, int flag, int clock);
+void runner_do_kick(struct runner *r, struct cell *c, int timer);
+void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer);
+void runner_do_drift(struct runner *r, struct cell *c, int timer);
+void runner_do_init(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
 
 #endif /* SWIFT_RUNNER_H */

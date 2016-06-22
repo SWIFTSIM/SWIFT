@@ -18,15 +18,23 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stdio.h>
 #include <stdlib.h>
-#include "error.h"
+
+/* This object's header. */
 #include "map.h"
+
+/* Local headers. */
+#include "atomic.h"
+#include "error.h"
 
 /**
  * @brief Mapping function to draw a specific cell (gnuplot).
  */
-
 void map_cells_plot(struct cell *c, void *data) {
 
   int depth = *(int *)data;
@@ -80,24 +88,21 @@ void map_cells_plot(struct cell *c, void *data) {
 /**
  * @brief Mapping function for checking if each part is in its box.
  */
+void map_check(struct part *p, struct cell *c, void *data) {
 
-/* void map_check ( struct part *p , struct cell *c , void *data ) {
-
-    if ( p->x[0] < c->loc[0] || p->x[0] > c->loc[0]+c->h[0] ||
-         p->x[0] < c->loc[0] || p->x[0] > c->loc[0]+c->h[0] ||
-         p->x[0] < c->loc[0] || p->x[0] > c->loc[0]+c->h[0] )
-        printf( "map_check: particle %i is outside of its box.\n" , p->id );
-
-    } */
+  if (p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->h[0] ||
+      p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->h[0] ||
+      p->x[0] < c->loc[0] || p->x[0] > c->loc[0] + c->h[0])
+    printf("map_check: particle %lld is outside of its box.\n", p->id);
+}
 
 /**
  * @brief Mapping function for neighbour count.
  */
-
 void map_cellcheck(struct cell *c, void *data) {
 
   int *count = (int *)data;
-  __sync_fetch_and_add(count, c->count);
+  atomic_add(count, c->count);
 
   /* Loop over all parts and check if they are in the cell. */
   for (int k = 0; k < c->count; k++) {
@@ -133,7 +138,6 @@ void map_cellcheck(struct cell *c, void *data) {
 /**
  * @brief Mapping function for maxdepth cell count.
  */
-
 void map_maxdepth(struct cell *c, void *data) {
 
   int maxdepth = ((int *)data)[0];
@@ -147,7 +151,6 @@ void map_maxdepth(struct cell *c, void *data) {
 /**
  * @brief Mapping function for neighbour count.
  */
-
 void map_count(struct part *p, struct cell *c, void *data) {
 
   double *wcount = (double *)data;
@@ -156,7 +159,6 @@ void map_count(struct part *p, struct cell *c, void *data) {
 
   *wcount += p->density.wcount;
 }
-
 void map_wcount_min(struct part *p, struct cell *c, void *data) {
 
   struct part **p2 = (struct part **)data;
@@ -188,7 +190,6 @@ void map_h_max(struct part *p, struct cell *c, void *data) {
 /**
  * @brief Mapping function for neighbour count.
  */
-
 void map_icount(struct part *p, struct cell *c, void *data) {
 
   // int *count = (int *)data;
@@ -201,7 +202,6 @@ void map_icount(struct part *p, struct cell *c, void *data) {
 /**
  * @brief Mapping function to print the particle position.
  */
-
 void map_dump(struct part *p, struct cell *c, void *data) {
 
   double *shift = (double *)data;

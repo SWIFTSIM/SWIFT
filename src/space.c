@@ -1,22 +1,25 @@
 /*******************************************************************************
-* This file is part of SWIFT.
-* Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
-*               2016 Peter W. Draper (p.w.draper@durham.ac.uk)
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published
-* by the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-******************************************************************************/
+ * This file is part of SWIFT.
+ * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
 
 /* Config parameters. */
 #include "../config.h"
@@ -25,8 +28,8 @@
 #include <float.h>
 #include <limits.h>
 #include <math.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -164,15 +167,17 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   /* Run through the parts and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
-  if (s->cells != NULL) {
-    for (int k = 0; k < s->nr_cells; k++) {
-      if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+  if (nr_parts > 0) {
+    if (s->cells != NULL) {
+      for (int k = 0; k < s->nr_cells; k++) {
+        if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+      }
+    } else {
+      for (size_t k = 0; k < nr_parts; k++) {
+        if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+      }
+      s->h_max = h_max;
     }
-  } else {
-    for (size_t k = 0; k < nr_parts; k++) {
-      if (s->parts[k].h > h_max) h_max = s->parts[k].h;
-    }
-    s->h_max = h_max;
   }
 
 /* If we are running in parallel, make sure everybody agrees on
@@ -200,9 +205,9 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.");
 
-  /* In MPI-Land, changing the top-level cell size requires that the
-   * global partition is recomputed and the particles redistributed.
-   * Be prepared to do that. */
+/* In MPI-Land, changing the top-level cell size requires that the
+ * global partition is recomputed and the particles redistributed.
+ * Be prepared to do that. */
 #ifdef WITH_MPI
   double oldh[3];
   double oldcdim[3];
@@ -296,10 +301,11 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
        * cells around the nodes. We repartition using the old space node
        * positions as a grid to resample. */
       if (s->e->nodeID == 0)
-        message("basic cell dimensions have increased - recalculating the "
-                "global partition.");
+        message(
+            "basic cell dimensions have increased - recalculating the "
+            "global partition.");
 
-      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s) ) {
+      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s)) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
@@ -371,7 +377,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   const ticks tic = getticks();
 
   /* Be verbose about this. */
-  // message( "re)building space..." ); fflush(stdout);
+  // message("re)building space..."); fflush(stdout);
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, cell_max, verbose);
@@ -425,9 +431,10 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef WITH_MPI
+
   /* Move non-local parts to the end of the list. */
   const int local_nodeID = s->e->nodeID;
-  for (size_t k = 0; k < nr_parts; k++)
+  for (size_t k = 0; k < nr_parts;) {
     if (cells[ind[k]].nodeID != local_nodeID) {
       cells[ind[k]].count -= 1;
       nr_parts -= 1;
@@ -446,10 +453,28 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const int t = ind[k];
       ind[k] = ind[nr_parts];
       ind[nr_parts] = t;
+    } else {
+      /* Increment when not exchanging otherwise we need to retest "k".*/
+      k++;
     }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all parts are in the correct places. */
+  for (size_t k = 0; k < nr_parts; k++) {
+    if (cells[ind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local parts to send list");
+    }
+  }
+  for (size_t k = nr_parts; k < s->nr_parts; k++) {
+    if (cells[ind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local parts from send list");
+    }
+  }
+#endif
 
   /* Move non-local gparts to the end of the list. */
-  for (int k = 0; k < nr_gparts; k++)
+  for (int k = 0; k < nr_gparts;) {
     if (cells[gind[k]].nodeID != local_nodeID) {
       cells[gind[k]].gcount -= 1;
       nr_gparts -= 1;
@@ -466,18 +491,32 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const int t = gind[k];
       gind[k] = gind[nr_gparts];
       gind[nr_gparts] = t;
+    } else {
+      /* Increment when not exchanging otherwise we need to retest "k".*/
+      k++;
     }
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that all gparts are in the correct place (untested). */
+  for (size_t k = 0; k < nr_gparts; k++) {
+    if (cells[gind[k]].nodeID != local_nodeID) {
+      error("Failed to move all non-local gparts to send list");
+    }
+  }
+  for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
+    if (cells[gind[k]].nodeID == local_nodeID) {
+      error("Failed to remove local gparts from send list");
+    }
+  }
+#endif
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
-  /* TODO: This function also exchanges gparts, but this is shorted-out
-     until they are fully implemented. */
   size_t nr_parts_exchanged = s->nr_parts - nr_parts;
   size_t nr_gparts_exchanged = s->nr_gparts - nr_gparts;
   engine_exchange_strays(s->e, nr_parts, &ind[nr_parts], &nr_parts_exchanged,
                          nr_gparts, &gind[nr_gparts], &nr_gparts_exchanged);
-
-  /* Add post-processing, i.e. re-linking/creating of gparts here. */
 
   /* Set the new particle counts. */
   s->nr_parts = nr_parts + nr_parts_exchanged;
@@ -488,7 +527,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     int *ind_new;
     if ((ind_new = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
       error("Failed to allocate temporary particle indices.");
-    memcpy(ind_new, ind, sizeof(size_t) * nr_parts);
+    memcpy(ind_new, ind, sizeof(int) * nr_parts);
     free(ind);
     ind = ind_new;
   }
@@ -499,12 +538,15 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count += 1;
-    /* if ( cells[ ind[k] ].nodeID != nodeID )
-        error( "Received part that does not belong to me (nodeID=%i)." , cells[
-       ind[k] ].nodeID ); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cells[ind[k]].nodeID != local_nodeID)
+      error("Received part that does not belong to me (nodeID=%i).",
+            cells[ind[k]].nodeID);
+#endif
   }
   nr_parts = s->nr_parts;
-#endif
+
+#endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
@@ -512,15 +554,18 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* Re-link the gparts. */
   part_relink_gparts(s->parts, nr_parts, 0);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify space_sort_struct. */
-  /* for ( k = 1 ; k < nr_parts ; k++ ) {
-      if ( ind[k-1] > ind[k] ) {
-          error( "Sort failed!" );
-          }
-      else if ( ind[k] != cell_getid( cdim , parts[k].x[0]*ih[0] ,
-     parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) )
-          error( "Incorrect indices!" );
-      } */
+  for (size_t k = 1; k < nr_parts; k++) {
+    if (ind[k - 1] > ind[k]) {
+      error("Sort failed!");
+    } else if (ind[k] != cell_getid(cdim, s->parts[k].x[0] * ih[0],
+                                    s->parts[k].x[1] * ih[1],
+                                    s->parts[k].x[2] * ih[2])) {
+      error("Incorrect indices!");
+    }
+  }
+#endif
 
   /* We no longer need the indices as of here. */
   free(ind);
@@ -560,8 +605,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* We no longer need the indices as of here. */
   free(gind);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
-  /* MATTHIEU: To be commented out once we are happy */
   for (size_t k = 0; k < nr_gparts; ++k) {
 
     if (s->gparts[k].id_or_neg_offset < 0) {
@@ -582,6 +627,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       error("Linking problem !");
     }
   }
+#endif
 
   /* Hook the cells up to the parts. */
   // tic = getticks();
@@ -671,13 +717,14 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   /* Launch the sorting tasks. */
   engine_launch(s->e, s->e->nr_threads, (1 << task_type_part_sort), 0);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify space_sort_struct. */
-  /* for (int i = 1; i < N; i++)
+  for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1,
-  ind[i - 1], i,
-            ind[i], min, max);
-  message("Sorting succeeded."); */
+            ind[i - 1], i, ind[i], min, max);
+  message("Sorting succeeded.");
+#endif
 
   /* Clean up. */
   free(space_sort_struct.stack);
@@ -739,19 +786,21 @@ void space_do_parts_sort() {
         }
       }
 
+#ifdef SWIFT_DEBUG_CHECKS
       /* Verify space_sort_struct. */
-      /* for (int k = i; k <= jj; k++)
+      for (int k = i; k <= jj; k++)
         if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (<=pivot).");
         }
       for (int k = jj + 1; k <= j; k++)
         if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (>pivot).");
-        } */
+        }
+#endif
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {
@@ -851,13 +900,14 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   /* Launch the sorting tasks. */
   engine_launch(s->e, s->e->nr_threads, (1 << task_type_gpart_sort), 0);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify space_sort_struct. */
-  /* for (int i = 1; i < N; i++)
+  for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1,
-  ind[i - 1], i,
-            ind[i], min, max);
-  message("Sorting succeeded."); */
+            ind[i - 1], i, ind[i], min, max);
+  message("Sorting succeeded.");
+#endif
 
   /* Clean up. */
   free(space_sort_struct.stack);
@@ -915,19 +965,21 @@ void space_do_gparts_sort() {
         }
       }
 
+#ifdef SWIFT_DEBUG_CHECKS
       /* Verify space_sort_struct. */
-      /* for (int k = i; k <= jj; k++)
+      for (int k = i; k <= jj; k++)
         if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (<=pivot).");
         }
       for (int k = jj + 1; k <= j; k++)
         if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (>pivot).");
-        } */
+        }
+#endif
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {
@@ -1209,7 +1261,7 @@ void space_do_split(struct space *s, struct cell *c) {
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->h_max = 0.0;
-      temp->dx_max = 0.0;
+      temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -1254,16 +1306,19 @@ void space_do_split(struct space *s, struct cell *c) {
       struct xpart *xp = &xparts[k];
       const float h = p->h;
       const int ti_end = p->ti_end;
-      xp->x_old[0] = p->x[0];
-      xp->x_old[1] = p->x[1];
-      xp->x_old[2] = p->x[2];
+      xp->x_diff[0] = 0.f;
+      xp->x_diff[1] = 0.f;
+      xp->x_diff[2] = 0.f;
       if (h > h_max) h_max = h;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
     for (int k = 0; k < gcount; k++) {
-      struct gpart *p = &gparts[k];
-      const int ti_end = p->ti_end;
+      struct gpart *gp = &gparts[k];
+      const int ti_end = gp->ti_end;
+      gp->x_diff[0] = 0.f;
+      gp->x_diff[1] = 0.f;
+      gp->x_diff[2] = 0.f;
       if (ti_end < ti_end_min) ti_end_min = ti_end;
       if (ti_end > ti_end_max) ti_end_max = ti_end;
     }
@@ -1276,9 +1331,11 @@ void space_do_split(struct space *s, struct cell *c) {
   if (s->nr_parts > 0)
     c->owner =
         ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
-  else
+  else if (s->nr_gparts > 0)
     c->owner =
         ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
+  else
+    c->owner = 0; /* Ok, there is really nothing on this rank... */
 }
 
 /**
@@ -1397,12 +1454,15 @@ void space_init(struct space *s, const struct swift_params *params,
   s->size_parts_foreign = 0;
 
   /* Get the constants for the scheduler */
-  space_maxsize = parser_get_param_int(params, "Scheduler:cell_max_size");
-  space_subsize = parser_get_param_int(params, "Scheduler:cell_sub_size");
-  space_splitsize = parser_get_param_int(params, "Scheduler:cell_split_size");
-  if(verbose)
+  space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
+                                           space_maxsize_default);
+  space_subsize = parser_get_opt_param_int(params, "Scheduler:cell_sub_size",
+                                           space_subsize_default);
+  space_splitsize = parser_get_opt_param_int(
+      params, "Scheduler:cell_split_size", space_splitsize_default);
+  if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
-	    space_maxsize, space_subsize, space_splitsize);
+            space_maxsize, space_subsize, space_splitsize);
 
   /* Check that we have enough cells */
   if (s->cell_min * 3 > dim[0] || s->cell_min * 3 > dim[1] ||
@@ -1414,7 +1474,7 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Apply h scaling */
   const double scaling =
-      parser_get_param_double(params, "InitialConditions:h_scaling");
+      parser_get_opt_param_double(params, "InitialConditions:h_scaling", 1.0);
   if (scaling != 1.0 && !dry_run) {
     message("Re-scaling smoothing lengths by a factor %e", scaling);
     for (size_t k = 0; k < Npart; k++) parts[k].h *= scaling;
@@ -1422,10 +1482,13 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
-  shift[0] = parser_get_param_double(params, "InitialConditions:shift_x");
-  shift[1] = parser_get_param_double(params, "InitialConditions:shift_y");
-  shift[2] = parser_get_param_double(params, "InitialConditions:shift_z");
-  if ((shift[0] != 0 || shift[1] != 0 || shift[2] != 0) && !dry_run) {
+  shift[0] =
+      parser_get_opt_param_double(params, "InitialConditions:shift_x", 0.0);
+  shift[1] =
+      parser_get_opt_param_double(params, "InitialConditions:shift_y", 0.0);
+  shift[2] =
+      parser_get_opt_param_double(params, "InitialConditions:shift_z", 0.0);
+  if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {
       parts[k].x[0] += shift[0];
@@ -1471,10 +1534,12 @@ void space_init(struct space *s, const struct swift_params *params,
   }
 
   /* Allocate the extra parts array. */
-  if (posix_memalign((void *)&s->xparts, xpart_align,
-                     Npart * sizeof(struct xpart)) != 0)
-    error("Failed to allocate xparts.");
-  bzero(s->xparts, Npart * sizeof(struct xpart));
+  if (Npart > 0) {
+    if (posix_memalign((void *)&s->xparts, xpart_align,
+                       Npart * sizeof(struct xpart)) != 0)
+      error("Failed to allocate xparts.");
+    bzero(s->xparts, Npart * sizeof(struct xpart));
+  }
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

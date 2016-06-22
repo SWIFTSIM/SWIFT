@@ -19,16 +19,25 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <math.h>
-#include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "error.h"
-#include "part.h"
-#include "cell.h"
+/* This object's header. */
 #include "tools.h"
-#include "swift.h"
+
+/* Local includes. */
+#include "cell.h"
+#include "error.h"
+#include "gravity.h"
+#include "hydro.h"
+#include "part.h"
+#include "runner.h"
 
 /**
  *  Factorize a given integer, attempts to keep larger pair of factors.
@@ -56,10 +65,7 @@ void factor(int value, int *f1, int *f2) {
  * @param N The number of parts.
  * @param periodic Periodic boundary conditions flag.
  */
-
-void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
-              int periodic) {
-
+void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   int i, j, k, count = 0;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -122,9 +128,7 @@ void pairs_n2(double *dim, struct part *__restrict__ parts, int N,
 }
 
 void pairs_single_density(double *dim, long long int pid,
-                          struct part *__restrict__ parts, int N,
-                          int periodic) {
-
+                          struct part *restrict parts, int N, int periodic) {
   int i, k;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -384,9 +388,7 @@ void density_dump(int N) {
  */
 
 void engine_single_density(double *dim, long long int pid,
-                           struct part *__restrict__ parts, int N,
-                           int periodic) {
-
+                           struct part *restrict parts, int N, int periodic) {
   int i, k;
   double r2, dx[3];
   float fdx[3], ih;
@@ -432,8 +434,7 @@ void engine_single_density(double *dim, long long int pid,
 }
 
 void engine_single_force(double *dim, long long int pid,
-                         struct part *__restrict__ parts, int N, int periodic) {
-
+                         struct part *restrict parts, int N, int periodic) {
   int i, k;
   double r2, dx[3];
   float fdx[3];
@@ -474,4 +475,30 @@ void engine_single_force(double *dim, long long int pid,
   message("part %lli (h=%e) has a=[%.3e,%.3e,%.3e]", p.id, p.h, p.a_hydro[0],
           p.a_hydro[1], p.a_hydro[2]);
   fflush(stdout);
+}
+
+/**
+ * Returns a random number (uniformly distributed) in [a,b[
+ */
+double random_uniform(double a, double b) {
+  return (rand() / (double)RAND_MAX) * (b - a) + a;
+}
+
+/**
+ * @brief Randomly shuffle an array of particles.
+ */
+void shuffle_particles(struct part *parts, const int count) {
+  if (count > 1) {
+    for (int i = 0; i < count - 1; i++) {
+      int j = i + random_uniform(0., (double)(count - 1 - i));
+
+      struct part particle = parts[j];
+
+      parts[j] = parts[i];
+
+      parts[i] = particle;
+    }
+
+  } else
+    error("Array not big enough to shuffle!");
 }

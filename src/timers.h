@@ -1,6 +1,9 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,6 +23,7 @@
 #define SWIFT_TIMERS_H
 
 /* Includes. */
+#include "atomic.h"
 #include "cycle.h"
 #include "inline.h"
 
@@ -37,11 +41,16 @@ enum {
   timer_dopair_density,
   timer_dopair_force,
   timer_dopair_grav,
-  timer_dosub_density,
-  timer_dosub_force,
-  timer_dosub_grav,
+  timer_dograv_external,
+  timer_dosub_self_density,
+  timer_dosub_self_force,
+  timer_dosub_self_grav,
+  timer_dosub_pair_density,
+  timer_dosub_pair_force,
+  timer_dosub_pair_grav,
   timer_dopair_subset,
-  timer_doghost,
+  timer_do_ghost,
+  timer_dorecv_cell,
   timer_gettask,
   timer_qget,
   timer_qsteal,
@@ -66,7 +75,7 @@ extern ticks timers[timer_count];
 #define TIMER_TOC2(t) timers_toc(t, tic2)
 INLINE static ticks timers_toc(int t, ticks tic) {
   ticks d = (getticks() - tic);
-  __sync_add_and_fetch(&timers[t], d);
+  atomic_add(&timers[t], d);
   return d;
 }
 #else

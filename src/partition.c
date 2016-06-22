@@ -31,11 +31,11 @@
 #include "../config.h"
 
 /* Standard headers. */
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
-#include <float.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -59,13 +59,12 @@
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
-    "gridded cells",                 "vectorized point associated cells",
+    "gridded cells", "vectorized point associated cells",
     "METIS particle weighted cells", "METIS unweighted cells"};
 
 /* Simple descriptions of repartition types for reports. */
 const char *repartition_name[] = {
-    "no",
-    "METIS edge and vertex time weighted cells",
+    "no", "METIS edge and vertex time weighted cells",
     "METIS particle count vertex weighted cells",
     "METIS time edge weighted cells",
     "METIS particle count vertex and time edge cells"};
@@ -454,9 +453,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
 
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
-        t->type != task_type_sub && t->type != task_type_ghost &&
-        t->type != task_type_drift && t->type != task_type_kick &&
-        t->type != task_type_init)
+        t->type != task_type_sub_self && t->type != task_type_sub_self &&
+        t->type != task_type_ghost && t->type != task_type_drift &&
+        t->type != task_type_kick && t->type != task_type_init)
       continue;
 
     /* Get the task weight. */
@@ -497,15 +496,15 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
 
     /* Self interaction? */
     else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
-             (t->type == task_type_sub && cj == NULL && ci->nodeID == nodeID)) {
+             (t->type == task_type_sub_self && cj == NULL &&
+              ci->nodeID == nodeID)) {
       /* Self interactions add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
 
     }
 
     /* Pair? */
-    else if (t->type == task_type_pair ||
-             (t->type == task_type_sub && cj != NULL)) {
+    else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
       /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */
@@ -782,8 +781,9 @@ void partition_initial_partition(struct partition *initial_partition,
     struct cell *c;
 
     /* If we've got the wrong number of nodes, fail. */
-    if (nr_nodes != initial_partition->grid[0] * initial_partition->grid[1] *
-                        initial_partition->grid[2])
+    if (nr_nodes !=
+        initial_partition->grid[0] * initial_partition->grid[1] *
+            initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
     /* Run through the cells and set their nodeID. */
@@ -792,8 +792,9 @@ void partition_initial_partition(struct partition *initial_partition,
       c = &s->cells[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
-      c->nodeID = ind[0] + initial_partition->grid[0] *
-                               (ind[1] + initial_partition->grid[1] * ind[2]);
+      c->nodeID = ind[0] +
+                  initial_partition->grid[0] *
+                      (ind[1] + initial_partition->grid[1] * ind[2]);
       // message("cell at [%e,%e,%e]: ind = [%i,%i,%i], nodeID = %i", c->loc[0],
       // c->loc[1], c->loc[2], ind[0], ind[1], ind[2], c->nodeID);
     }
@@ -921,11 +922,12 @@ void partition_init(struct partition *partition,
 
 /* Defaults make use of METIS if available */
 #ifdef HAVE_METIS
-  *reparttype = REPART_METIS_BOTH;
-  partition->type = INITPART_METIS_NOWEIGHT;
+  char default_repart = 'b';
+  ;
+  char default_part = 'm';
 #else
-  *reparttype = REPART_NONE;
-  partition->type = INITPART_GRID;
+  char default_repart = 'n';
+  char default_part = 'g';
 #endif
 
   /* Set a default grid so that grid[0]*grid[1]*grid[2] == nr_nodes. */
@@ -935,9 +937,9 @@ void partition_init(struct partition *partition,
   factor(partition->grid[0] * partition->grid[1], &partition->grid[1],
          &partition->grid[0]);
 
-  /* Now let's check what the user wants as an initial domain*/
-  const char part_type =
-      parser_get_param_char(params, "DomainDecomposition:initial_type");
+  /* Now let's check what the user wants as an initial domain. */
+  const char part_type = parser_get_opt_param_char(
+      params, "DomainDecomposition:initial_type", default_part);
 
   switch (part_type) {
     case 'g':
@@ -965,17 +967,17 @@ void partition_init(struct partition *partition,
 
   /* In case of grid, read more parameters */
   if (part_type == 'g') {
-    partition->grid[0] =
-        parser_get_param_int(params, "DomainDecomposition:initial_grid_x");
-    partition->grid[1] =
-        parser_get_param_int(params, "DomainDecomposition:initial_grid_y");
-    partition->grid[2] =
-        parser_get_param_int(params, "DomainDecomposition:initial_grid_z");
+    partition->grid[0] = parser_get_opt_param_int(
+        params, "DomainDecomposition:initial_grid_x", partition->grid[0]);
+    partition->grid[1] = parser_get_opt_param_int(
+        params, "DomainDecomposition:initial_grid_y", partition->grid[1]);
+    partition->grid[2] = parser_get_opt_param_int(
+        params, "DomainDecomposition:initial_grid_z", partition->grid[2]);
   }
 
   /* Now let's check what the user wants as a repartition strategy */
-  const char repart_type =
-      parser_get_param_char(params, "DomainDecomposition:repartition_type");
+  const char repart_type = parser_get_opt_param_char(
+      params, "DomainDecomposition:repartition_type", default_repart);
 
   switch (repart_type) {
     case 'n':
@@ -1044,7 +1046,6 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   return (!failed);
 }
 
-
 /**
  * @brief Partition a space of cells based on another space of cells.
  *
@@ -1062,7 +1063,8 @@ static int check_complete(struct space *s, int verbose, int nregions) {
  *
  * @param oldh the cell dimensions of old space.
  * @param oldcdim number of cells per dimension in old space.
- * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old cellid.
+ * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old
+ *cellid.
  * @param s the space to be partitioned.
  *
  * @return 1 if the new space contains nodeIDs from all nodes, 0 otherwise.

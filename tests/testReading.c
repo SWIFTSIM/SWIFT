@@ -17,8 +17,11 @@
  *
  ******************************************************************************/
 
-#include "swift.h"
+/* Some standard headers. */
 #include <stdlib.h>
+
+/* Includes. */
+#include "swift.h"
 
 int main() {
 

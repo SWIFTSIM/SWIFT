@@ -17,12 +17,13 @@
  *
  ******************************************************************************/
 
-__attribute__((always_inline))
-    INLINE static void gravity_debug_particle(const struct gpart* p) {
+__attribute__((always_inline)) INLINE static void gravity_debug_particle(
+    const struct gpart* p) {
   printf(
       "x=[%.3e,%.3e,%.3e], "
       "v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
       "mass=%.3e t_begin=%d, t_end=%d\n",
       p->x[0], p->x[1], p->x[2], p->v_full[0], p->v_full[1], p->v_full[2],
-      p->a_grav[0], p->a_grav[1], p->a_grav[2], p->mass, p->ti_begin, p->ti_end);
+      p->a_grav[0], p->a_grav[1], p->a_grav[2], p->mass, p->ti_begin,
+      p->ti_end);
 }

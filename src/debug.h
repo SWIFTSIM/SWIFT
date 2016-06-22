@@ -28,6 +28,7 @@ void printParticle(const struct part *parts, struct xpart *xparts,
 void printgParticle(const struct gpart *gparts, const struct part *parts,
                     long long int id, size_t N);
 void printParticle_single(const struct part *p, const struct xpart *xp);
+void printgParticle_single(struct gpart *gp);
 
 #ifdef HAVE_METIS
 #include "metis.h"

@@ -36,57 +36,47 @@
 
 \begin{document}
 
-%Conference
-\conferenceinfo{PASC '16}{June 8--10, 2016, Lausanne, Switzerland}
+\CopyrightYear{2016}
+\setcopyright{acmlicensed}
+\conferenceinfo{PASC '16,}{June 08 - 10, 2016, Lausanne, Switzerland}
+\isbn{978-1-4503-4126-4/16/06}\acmPrice{\$15.00}
+\doi{http://dx.doi.org/10.1145/2929908.2929916}
+
 
 \title{{\ttlit SWIFT}: Using task-based parallelism, fully asynchronous
 communication, and graph partition-based domain decomposition for
 strong scaling on more than 100\,000 cores.}
-% \title{{\ttlit SWIFT}: A task-based hybrid-parallel strongly scalable code for
-%   particle-based cosmological simulations}
 
-\numberofauthors{6}
+\numberofauthors{4}
   
 \author{
 \alignauthor
-       Main~Author\\
-       \affaddr{Institute}\\
-       \affaddr{Department}\\
-       \affaddr{University}\\
-       \affaddr{City Postal code, Country}\\
-       \email{\footnotesize \url{main.author@university.country}}
-% \alignauthor
-%        Matthieu~Schaller\\
-%        \affaddr{Institute for Computational Cosmology (ICC)}\\
-%        \affaddr{Department of Physics}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-%        \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
-% \alignauthor
-%        Pedro~Gonnet\\
-%        \affaddr{School of Engineering and Computing Sciences}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-% \alignauthor
-%        Aidan~B.~G.~Chalk\\
-%        \affaddr{School of Engineering and Computing Sciences}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-% \and
-% \alignauthor
-%        Peter~W.~Draper\\
-%        \affaddr{Institute for Computational Cosmology (ICC)}\\
-%        \affaddr{Department of Physics}\\
-%        \affaddr{Durham University}\\
-%        \affaddr{Durham DH1 3LE, UK}\\
-%        %% \alignauthor
-%        %% Tom Theuns\\
-%        %% \affaddr{Institute for Computational Cosmology}\\
-%        %% \affaddr{Department of Physics}\\
-%        %% \affaddr{Durham University}\\
-%        %% \affaddr{Durham DH1 3LE, UK}      
+       Matthieu~Schaller\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+       \email{\footnotesize \url{matthieu.schaller@durham.ac.uk}}
+       \alignauthor
+      Pedro~Gonnet\\
+      \affaddr{School of Engineering and Computing Sciences}\\
+      \affaddr{Durham University}\\
+      \affaddr{Durham DH1 3LE, UK}\\ \vspace{1ex}
+      \affaddr{Google Switzerland GmbH}\\
+      \affaddr{8002 Z\"urich, Switzerland}\\
+\and
+\alignauthor
+       Aidan~B.~G.~Chalk\\
+       \affaddr{School of Engineering and Computing Sciences}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
+\alignauthor
+       Peter~W.~Draper\\
+       \affaddr{Institute for Computational Cosmology (ICC)}\\
+       \affaddr{Department of Physics}\\
+       \affaddr{Durham University}\\
+       \affaddr{Durham DH1 3LE, UK}\\
 }
-
 
 \date{\today}
 
@@ -124,28 +114,12 @@ strong scaling on more than 100\,000 cores.}
 
   \end{itemize}
   
-  %% These three main aspects alongside improved cache-efficient
-  %% algorithms for neighbour finding allow the code to be 40x faster on
-  %% the same architecture than the standard code Gadget-2 widely used by
-  %% researchers.
-
   In order to use these approaches, the code had to be re-written from
   scratch, and the algorithms therein adapted to the task-based paradigm.
   As a result, we can show upwards of 60\% parallel efficiency for 
   moderate-sized problems when increasing the number of cores 512-fold,
   on both x86-based and Power8-based architectures.
-  
-  %% As a result, our code present excellent \emph{strong}
-  %% scaling on a variety of architectures, ranging from x86 Tier-2 systems to the
-  %% largest Tier-0 machines currently available. It displays, for instance, a
-  %% \emph{strong} scaling parallel efficiency of more than 60\% when going from
-  %% 512 to 131072 cores on a Blue Gene architecture. Similar results are obtained
-  %% on standard clusters of x86 CPUs.
-  
-  %% The task-based library, \qs, used as the backbone of the code is
-  %% itself also freely available and can be used in a wide variety of
-  %% other numerical problems.
-  
+    
 \end{abstract}
 
 
@@ -356,12 +330,20 @@ SMP~Superscalar \cite{ref:SMPSuperscalar}, OpenMP~3.0 \cite{ref:Duran2009},
 Intel's TBB \cite{ref:Reinders2007}, and, to some extent,
 Charm++ \cite{ref:Kale1993}.
 
-For convenience, and to make experimenting with different scheduling
-techniques easier, we chose to implement our own task scheduler
+Since none of these existing taks-based libraries provided the flexibility
+required to experiment with different scheduling and communication
+techniques, (\swift is an interdisciplinary effort between
+Computer Science and Astrophysics to study not only cosmological
+phenomena, but also novel simulation algorithms and parallel computing techniques)
+we chose to implement our own task scheduler
 in \swift, which has since been back-ported as the general-purpose
 \qs task scheduler \cite{gonnet2013quicksched}.
+In \qs and \swift, task dependencies are specified explicitly,
+as opposed to being implicitly derived from data dependencies,
+allowing us to more easily build complex task hierarchies.
 This also allowed us to extend the scheduler with the concept of
-task conflicts.
+task conflicts and integrate the asynchronous communication
+scheme described further on.
 
 Despite its advantages, and the variety of implementations,
 task-based parallelism is rarely used in
@@ -374,9 +356,19 @@ which is usually not an option for large and complex codebases.
 
 Since we were re-implementing \swift from scratch, this was not an issue.
 The tree-based neighbour-finding described above was replaced with a more
-task-friendly approach as described in \cite{ref:Gonnet2015}.
-Particle interactions are computed within, and between pairs, of
-hierarchical {\em cells} containing one or more particles.
+task-friendly approach as described in \cite{ref:Gonnet2015}, in which
+the domain is first decomposed into a grid of {\em cells} of edge length
+larger or equal to the largest particle radius.
+An initial set of interaction tasks is then defined over all cells and
+pairs of neighbouring cells, such that if two particles are close enough to interact,
+they are either in the same cell or they span a pair of neighbouring cells.
+These initial interaction tasks are then refined by recursively
+splitting cells that contain more than a certain number of particles
+and replacing tasks that span a pair of split cells with tasks
+spanning the neighboring sub-cells.
+The resulting refined set of tasks contains all the cells and pairs of cells
+over which particle interactions must be computed.
+
 The dependencies between the tasks are set following
 equations \eqn{rho}, \eqn{dvdt}, and \eqn{dudt}, i.e.~such that for any cell,
 all the tasks computing the particle densities therein must have
@@ -416,7 +408,10 @@ cores of a shared-memory machine \cite{ref:Gonnet2015}.
   and purple. Although the data for the yellow cell resides on
   Node~2, it is required for some tasks on Node~1, and thus needs
   to be copied over  during
-  the computation using {\tt send}/{\tt recv} tasks (diamond-shaped).}
+  the computation using {\tt send}/{\tt recv} tasks
+  (diamond-shaped). \newline 
+  Figure adapted from \cite{ref:Gonnet2015}.
+  }
 \label{tasks}
 \end{figure}  
 
@@ -871,7 +866,6 @@ Union's ERC Grant agreements 267291 ``Cosmiway'', and by {\sc intel}
 through establishment of the ICC as an {\sc intel} parallel computing
 centre (IPCC).
 
-\nocite{*}
 \bibliographystyle{abbrv}
 \bibliography{biblio}
 

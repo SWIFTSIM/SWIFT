@@ -23,11 +23,11 @@
 #include <pthread.h>
 
 /* Includes. */
-#include "inline.h"
+#include "atomic.h"
 
 #ifdef PTHREAD_SPINLOCK
 #include <pthread.h>
-#define lock_type pthread_spinlock_t
+#define swift_lock_type pthread_spinlock_t
 #define lock_init(l) (pthread_spin_init(l, PTHREAD_PROCESS_PRIVATE) != 0)
 #define lock_destroy(l) (pthread_spin_destroy(l) != 0)
 #define lock_lock(l) (pthread_spin_lock(l) != 0)
@@ -36,7 +36,7 @@
 #define lock_unlock_blind(l) pthread_spin_unlock(l)
 #elif defined(PTHREAD_LOCK)
 #include <pthread.h>
-#define lock_type pthread_mutex_t
+#define swift_lock_type pthread_mutex_t
 #define lock_init(l) (pthread_mutex_init(l, NULL) != 0)
 #define lock_destroy(l) (pthread_mutex_destroy(l) != 0)
 #define lock_lock(l) (pthread_mutex_lock(l) != 0)
@@ -44,18 +44,18 @@
 #define lock_unlock(l) (pthread_mutex_unlock(l) != 0)
 #define lock_unlock_blind(l) pthread_mutex_unlock(l)
 #else
-#define lock_type volatile int
+#define swift_lock_type volatile int
 #define lock_init(l) (*(l) = 0)
 #define lock_destroy(l) 0
 INLINE static int lock_lock(volatile int *l) {
-  while (__sync_val_compare_and_swap(l, 0, 1) != 0)
+  while (atomic_cas(l, 0, 1) != 0)
     ;
   // while( *l );
   return 0;
 }
-#define lock_trylock(l) ((*(l)) ? 1 : __sync_val_compare_and_swap(l, 0, 1))
-#define lock_unlock(l) (__sync_val_compare_and_swap(l, 1, 0) != 1)
-#define lock_unlock_blind(l) __sync_val_compare_and_swap(l, 1, 0)
+#define lock_trylock(l) ((*(l)) ? 1 : atomic_cas(l, 0, 1))
+#define lock_unlock(l) (atomic_cas(l, 1, 0) != 1)
+#define lock_unlock_blind(l) atomic_cas(l, 1, 0)
 #endif
 
 #endif /* SWIFT_LOCK_H */

@@ -20,12 +20,20 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stdio.h>
 
+/* This object's header. */
+#include "debug.h"
+
+/* Local includes. */
 #include "config.h"
 #include "const.h"
+#include "inline.h"
 #include "part.h"
-#include "debug.h"
 
 /* Import the right hydro definition */
 #if defined(MINIMAL_SPH)
@@ -52,8 +60,8 @@
  * (Should be used for debugging only as it runs in O(N).)
  */
 
-void printParticle(const struct part *parts, struct xpart *xparts,
-                   long long int id, size_t N) {
+void printParticle(const struct part *parts, struct xpart *xparts, long long int id,
+                   size_t N) {
 
   int found = 0;
 
@@ -69,8 +77,18 @@ void printParticle(const struct part *parts, struct xpart *xparts,
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
 }
 
-void printgParticle(const struct gpart *gparts, const struct part *parts,
-                    long long int id, size_t N) {
+/**
+ * @brief Looks for the g-particle with the given id and prints its information
+ * to
+ * the standard output.
+ *
+ * @param gparts The array of g-particles.
+ * @param id The id too look for.
+ * @param N The size of the array of g-particles.
+ *
+ * (Should be used for debugging only as it runs in O(N).)
+ */
+void printgParticle(const struct gpart *gparts, const struct part *parts, long long int id, size_t N) {
 
   int found = 0;
 
@@ -97,13 +115,25 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
  *
  * @param p The particle to print
  * @param xp The extended data ot the particle to print
- *
  */
 
 void printParticle_single(const struct part *p, const struct xpart *xp) {
 
   printf("## Particle: id=%lld", p->id);
   hydro_debug_particle(p, xp);
+  printf("\n");
+}
+
+/**
+ * @brief Prints the details of a given particle to stdout
+ *
+ * @param gp The g-particle to print
+ */
+void printgParticle_single(struct gpart *gp) {
+
+  printf("## g-Particle: id=%lld ", gp->id_or_neg_offset);
+  gravity_debug_particle(gp);
+  printf("\n");
 }
 
 #ifdef HAVE_METIS

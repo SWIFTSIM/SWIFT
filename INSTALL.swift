@@ -30,7 +30,7 @@ or:
    ./configure CC=icc
 
 to use an Intel compiler. The main "programs" can be found in the "examples/"
-directory.
+directory. See README for run parameters.
 
 SWIFT has been successfully built and tested with the following compilers:
 
@@ -88,6 +88,9 @@ Before running configure the "mpirun" command should be available in the
 shell. If your command isn't called "mpirun" then define the "MPIRUN"
 environment variable, either in the shell or when running configure.
 
+The MPI compiler can be controlled using the MPICC variable, much like
+the CC one. Use this when your MPI compiler has a none-standard name.
+
 
 METIS: a build of the METIS library can be optionally used to optimize the
 load between MPI nodes (requires an MPI library). This should be found in
@@ -105,3 +108,14 @@ among the different cores on each computing node.
 
 DOXYGEN: the doxygen library is required to create the SWIFT API
 documentation.
+
+
+
+                             SWIFT Coding style
+                             ==================
+
+The SWIFT source code is using a variation of the 'Google' style. The
+script 'format.sh' in the root directory applies the clang-format-3.8
+tool with our style choices to all the SWIFT C source file. Please
+apply the formatting script to the files before submitting a merge
+request.

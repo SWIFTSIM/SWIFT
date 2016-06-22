@@ -25,20 +25,16 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp) {
+    const struct part* p, const struct xpart* xp,
+    const struct hydro_props* hydro_properties) {
 
-  /* Acceleration */
-  float ac =
-      sqrtf(p->a_hydro[0] * p->a_hydro[0] + p->a_hydro[1] * p->a_hydro[1] +
-            p->a_hydro[2] * p->a_hydro[2]);
-  ac = fmaxf(ac, 1e-30);
-
-  const float dt_accel = sqrtf(2.f);  // MATTHIEU
+  const float CFL_condition = hydro_properties->CFL_condition;
 
   /* CFL condition */
-  const float dt_cfl = 2.f * const_cfl * kernel_gamma * p->h / p->force.v_sig;
+  const float dt_cfl =
+      2.f * kernel_gamma * CFL_condition * p->h / p->force.v_sig;
 
-  return fminf(dt_cfl, dt_accel);
+  return dt_cfl;
 }
 
 /**
@@ -50,9 +46,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_first_init_part(struct part* p, struct xpart* xp) {
-}
+__attribute__((always_inline)) INLINE static void hydro_first_init_part(
+    struct part* p, struct xpart* xp) {}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -62,8 +57,8 @@ __attribute__((always_inline))
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_init_part(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_init_part(
+    struct part* p) {
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
@@ -83,8 +78,8 @@ __attribute__((always_inline))
  * @param p The particle to act upon
  * @param ti_current The current time (on the integer timeline)
  */
-__attribute__((always_inline))
-    INLINE static void hydro_end_density(struct part* p, int ti_current) {
+__attribute__((always_inline)) INLINE static void hydro_end_density(
+    struct part* p, int ti_current) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -94,7 +89,7 @@ __attribute__((always_inline))
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= 3.0f * p->mass * kernel_root * kernel_igamma;
+  p->rho_dh -= 3.0f * p->mass * kernel_root;
   p->density.wcount += kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
@@ -152,8 +147,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_reset_acceleration(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
+    struct part* p) {
 
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
@@ -197,8 +192,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_end_force(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_end_force(
+    struct part* p) {
 
   p->entropy_dt *=
       (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
@@ -234,8 +229,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline))
-    INLINE static void hydro_convert_quantities(struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
+    struct part* p) {
 
   p->entropy = (const_hydro_gamma - 1.f) * p->entropy *
                powf(p->rho, -(const_hydro_gamma - 1.f));
@@ -245,10 +240,13 @@ __attribute__((always_inline))
  * @brief Returns the internal energy of a particle
  *
  * @param p The particle of interest
+ * @param dt Time since the last kick
  */
-__attribute__((always_inline))
-    INLINE static float hydro_get_internal_energy(struct part* p) {
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    const struct part* p, float dt) {
 
-  return p->entropy * powf(p->rho, const_hydro_gamma - 1.f) *
+  const float entropy = p->entropy + p->entropy_dt * dt;
+
+  return entropy * powf(p->rho, const_hydro_gamma - 1.f) *
          (1.f / (const_hydro_gamma - 1.f));
 }

@@ -3,6 +3,9 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *                    Angus Lepper (angus.lepper@ed.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -24,10 +27,10 @@
 
 /* Some standard headers. */
 #include <fenv.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -47,8 +50,13 @@
  */
 void print_help_message() {
 
-  printf("\nUsage: swift [OPTION] PARAMFILE\n\n");
+  printf("\nUsage: swift [OPTION]... PARAMFILE\n");
+  printf("       swift_mpi [OPTION]... PARAMFILE\n");
+  printf("       swift_fixdt [OPTION]... PARAMFILE\n");
+  printf("       swift_fixdt_mpi [OPTION]... PARAMFILE\n\n");
+
   printf("Valid options are:\n");
+  printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
   printf(
       "  %2s %8s %s\n", "-d", "",
@@ -118,24 +126,16 @@ int main(int argc, char *argv[]) {
   fflush(stdout);
 #endif
 
+/* Let's pin the main thread */
 #if defined(HAVE_SETAFFINITY) && defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
-  if ((ENGINE_POLICY) & engine_policy_setaffinity) {
-    /* Ensure the NUMA node on which we initialise (first touch) everything
-     * doesn't change before engine_init allocates NUMA-local workers.
-     * Otherwise, we may be scheduled elsewhere between the two times.
-     */
-    cpu_set_t affinity;
-    CPU_ZERO(&affinity);
-    CPU_SET(sched_getcpu(), &affinity);
-    if (sched_setaffinity(0, sizeof(cpu_set_t), &affinity) != 0) {
-      error("failed to set entry thread's affinity");
-    }
-  }
+  if (((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
+    engine_pin();
 #endif
 
   /* Welcome to SWIFT, you made the right choice */
   if (myrank == 0) greetings();
 
+  int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
   int with_cosmology = 0;
@@ -150,7 +150,10 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "cdef:gGhst:v:y")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acdef:gGhst:v:y:")) != -1) switch (c) {
+      case 'a':
+        with_aff = 1;
+        break;
       case 'c':
         with_cosmology = 1;
         break;
@@ -233,8 +236,8 @@ int main(int argc, char *argv[]) {
         "Executing a dry run. No i/o or time integration will be performed.");
 
   /* Report CPU frequency. */
+  cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
-    cpufreq = clocks_get_cpufreq();
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
@@ -249,6 +252,8 @@ int main(int argc, char *argv[]) {
     message("sizeof(struct part)  is %4zi bytes.", sizeof(struct part));
     message("sizeof(struct xpart) is %4zi bytes.", sizeof(struct xpart));
     message("sizeof(struct gpart) is %4zi bytes.", sizeof(struct gpart));
+    message("sizeof(struct task)  is %4zi bytes.", sizeof(struct task));
+    message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
   }
 
   /* How vocal are we ? */
@@ -268,17 +273,6 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(params, sizeof(struct swift_params), MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
-  /* Initialize unit system */
-  struct UnitSystem us;
-  units_init(&us, params);
-  if (myrank == 0) {
-    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
-  }
-
 /* Prepare the domain decomposition scheme */
 #ifdef WITH_MPI
   struct partition initial_partition;
@@ -295,6 +289,29 @@ int main(int argc, char *argv[]) {
     message("Using %s repartitioning", repartition_name[reparttype]);
   }
 #endif
+
+  /* Initialize unit system and constants */
+  struct UnitSystem us;
+  struct phys_const prog_const;
+  units_init(&us, params, "InternalUnitSystem");
+  phys_const_init(&us, &prog_const);
+  if (myrank == 0 && verbose > 0) {
+    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    phys_const_print(&prog_const);
+  }
+
+  /* Initialise the hydro properties */
+  struct hydro_props hydro_properties;
+  hydro_props_init(&hydro_properties, params);
+
+  /* Initialise the external potential properties */
+  struct external_potential potential;
+  if (with_external_gravity) potential_init(params, &us, &potential);
+  if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
@@ -333,6 +350,13 @@ int main(int argc, char *argv[]) {
     for (size_t k = 0; k < Ngas; ++k) parts[k].gpart = NULL;
     Ngpart = 0;
   }
+  if (!with_hydro) {
+    free(parts);
+    parts = NULL;
+    for (size_t k = 0; k < Ngpart; ++k)
+      if (gparts[k].id_or_neg_offset < 0) error("Linking problem");
+    Ngas = 0;
+  }
 
   /* Get the total number of particles across all nodes. */
   long long N_total[2] = {0, 0};
@@ -369,6 +393,7 @@ int main(int argc, char *argv[]) {
     message("%zi parts in %i cells.", s.nr_parts, s.tot_cells);
     message("%zi gparts in %i cells.", s.nr_gparts, s.tot_cells);
     message("maximum depth is %d.", s.maxdepth);
+    fflush(stdout);
   }
 
   /* Verify that each particle is in it's proper cell. */
@@ -395,8 +420,9 @@ int main(int argc, char *argv[]) {
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
-  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, engine_policies,
-              talking);
+  engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
+              engine_policies, talking, &prog_const, &hydro_properties,
+              &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -404,32 +430,8 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-  /* Now that everything is ready, no need for the parameters any more */
-  free(params);
-  params = NULL;
-
-  int with_outputs = 1;
-  if (with_outputs && !dry_run) {
-    /* Write the state of the system before starting time integration. */
-    if (myrank == 0) clocks_gettime(&tic);
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#else
-    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                        MPI_INFO_NULL);
-#endif
-#else
-    write_output_single(&e, &us);
-#endif
-    if (myrank == 0 && verbose) {
-      clocks_gettime(&toc);
-      message("writing particle properties took %.3f %s.",
-              clocks_diff(&tic, &toc), clocks_getunit());
-      fflush(stdout);
-    }
-  }
+  /* Write the state of the system before starting time integration. */
+  if (!dry_run) engine_dump_snapshot(&e);
 
 /* Init the runner history. */
 #ifdef HIST
@@ -439,10 +441,10 @@ int main(int argc, char *argv[]) {
   /* Get some info to the user. */
   if (myrank == 0) {
     message(
-        "Running on %lld gas particles and %lld DM particles until t=%.3e with "
-        "%i threads and %i queues (dt_min=%.3e, dt_max=%.3e)...",
-        N_total[0], N_total[1], e.timeEnd, e.nr_threads, e.sched.nr_queues,
-        e.dt_min, e.dt_max);
+        "Running on %lld gas particles and %lld DM particles from t=%.3e until "
+        "t=%.3e with %d threads and %d queues (dt_min=%.3e, dt_max=%.3e)...",
+        N_total[0], N_total[1], e.timeBegin, e.timeEnd, e.nr_threads,
+        e.sched.nr_queues, e.dt_min, e.dt_max);
     fflush(stdout);
   }
 
@@ -479,35 +481,11 @@ int main(int argc, char *argv[]) {
     if (j % 100 == 2) e.forcerepart = reparttype;
 #endif
 
+    /* Reset timers */
     timers_reset(timers_mask_all);
-#ifdef COUNTER
-    for (k = 0; k < runner_counter_count; k++) runner_counter[k] = 0;
-#endif
 
     /* Take a step. */
     engine_step(&e);
-
-    if (with_outputs && j % 100 == 0) {
-
-      if (myrank == 0) clocks_gettime(&tic);
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-      write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                            MPI_INFO_NULL);
-#else
-      write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#endif
-#else
-      write_output_single(&e, &us);
-#endif
-      if (myrank == 0 && verbose) {
-        clocks_gettime(&toc);
-        message("writing particle properties took %.3f %s.",
-                clocks_diff(&tic, &toc), clocks_getunit());
-        fflush(stdout);
-      }
-    }
 
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
@@ -534,20 +512,25 @@ int main(int argc, char *argv[]) {
           /* Open file and position at end. */
           file_thread = fopen(dumpfile, "a");
 
-          fprintf(file_thread, " %03i 0 0 0 0 %lli 0 0 0 0\n", myrank,
-                  e.tic_step);
+          fprintf(file_thread, " %03i 0 0 0 0 %lli %lli 0 0 0 0 %lli\n", myrank,
+                  e.tic_step, e.toc_step, cpufreq);
           int count = 0;
           for (int l = 0; l < e.sched.nr_tasks; l++)
             if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
-              fprintf(file_thread, " %03i %i %i %i %i %lli %lli %i %i %i\n",
-                      myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
-                      e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
-                      e.sched.tasks[l].tic, e.sched.tasks[l].toc,
-                      (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
-                                                    : 0,
-                      (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count
-                                                    : 0,
-                      e.sched.tasks[l].flags);
+              fprintf(
+                  file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
+                  myrank, e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
+                  e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
+                  e.sched.tasks[l].tic, e.sched.tasks[l].toc,
+                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
+                                                : 0,
+                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->count
+                                                : 0,
+                  (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->gcount
+                                                : 0,
+                  (e.sched.tasks[l].cj != NULL) ? e.sched.tasks[l].cj->gcount
+                                                : 0,
+                  e.sched.tasks[l].flags);
               fflush(stdout);
               count++;
             }
@@ -565,15 +548,20 @@ int main(int argc, char *argv[]) {
       snprintf(dumpfile, 30, "thread_info-step%d.dat", j);
       FILE *file_thread;
       file_thread = fopen(dumpfile, "w");
+      /* Add some information to help with the plots */
+      fprintf(file_thread, " %i %i %i %i %lli %lli %i %i %i %lli\n", -2, -1, -1,
+              1, e.tic_step, e.toc_step, 0, 0, 0, cpufreq);
       for (int l = 0; l < e.sched.nr_tasks; l++)
         if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
           fprintf(
-              file_thread, " %i %i %i %i %lli %lli %i %i\n",
-              e.sched.tasks[l].rid, e.sched.tasks[l].type,
+              file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
+              e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
               e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
               e.sched.tasks[l].tic, e.sched.tasks[l].toc,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
-              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count);
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->count,
+              (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->gcount,
+              (e.sched.tasks[l].cj == NULL) ? 0 : e.sched.tasks[l].cj->gcount);
       fclose(file_thread);
 #endif
     }
@@ -590,28 +578,8 @@ int main(int argc, char *argv[]) {
            (double)runner_hist_bins[k]);
 #endif
 
-  if (with_outputs) {
-
-    if (myrank == 0) clocks_gettime(&tic);
-/* Write final output. */
-#if defined(WITH_MPI)
-#if defined(HAVE_PARALLEL_HDF5)
-    write_output_parallel(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                          MPI_INFO_NULL);
-#else
-    write_output_serial(&e, &us, myrank, nr_nodes, MPI_COMM_WORLD,
-                        MPI_INFO_NULL);
-#endif
-#else
-    write_output_single(&e, &us);
-#endif
-    if (myrank == 0 && verbose) {
-      clocks_gettime(&toc);
-      message("writing particle properties took %.3f %s.",
-              clocks_diff(&tic, &toc), clocks_getunit());
-      fflush(stdout);
-    }
-  }
+  /* Write final output. */
+  engine_dump_snapshot(&e);
 
 #ifdef WITH_MPI
   if ((res = MPI_Finalize()) != MPI_SUCCESS)

@@ -20,12 +20,6 @@
 #ifndef SWIFT_RUNNER_IACT_H
 #define SWIFT_RUNNER_IACT_H
 
-/* Includes. */
-#include "const.h"
-#include "kernel_hydro.h"
-#include "part.h"
-#include "vector.h"
-
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
@@ -44,7 +38,6 @@
 /**
  * @brief Density loop
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -218,7 +211,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 /**
  * @brief Density loop (non-symmetric version)
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -267,12 +259,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 /**
  * @brief Density loop (non-symmetric vectorized version)
  */
-
-__attribute__((always_inline))
-    INLINE static void runner_iact_nonsym_vec_density(float *R2, float *Dx,
-                                                      float *Hi, float *Hj,
-                                                      struct part **pi,
-                                                      struct part **pj) {
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
+                               struct part **pi, struct part **pj) {
 
 #ifdef VECTORIZE
 
@@ -362,7 +351,6 @@ __attribute__((always_inline))
 /**
  * @brief Force loop
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -458,7 +446,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 /**
  * @brief Force loop (Vectorized version)
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
@@ -677,7 +664,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 /**
  * @brief Force loop (non-symmetric version)
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -768,7 +754,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 /**
  * @brief Force loop (Vectorized non-symmetric version)
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {

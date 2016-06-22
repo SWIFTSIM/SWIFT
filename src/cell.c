@@ -1,6 +1,10 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -47,6 +51,7 @@
 #include "error.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "hydro_properties.h"
 #include "space.h"
 #include "timers.h"
 
@@ -114,7 +119,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       if (k & 1) temp->loc[2] += temp->h[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
-      temp->dx_max = 0.0;
+      temp->dx_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       c->progeny[k] = temp;
@@ -264,7 +269,7 @@ int cell_locktree(struct cell *c) {
     /* Undo the holds up to finger. */
     for (struct cell *finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
-      __sync_fetch_and_sub(&finger2->hold, 1);
+      atomic_dec(&finger2->hold);
 
     /* Unlock this cell. */
     if (lock_unlock(&c->lock) != 0) error("Failed to unlock cell.");
@@ -304,7 +309,7 @@ int cell_glocktree(struct cell *c) {
     if (lock_trylock(&finger->glock) != 0) break;
 
     /* Increment the hold. */
-    __sync_fetch_and_add(&finger->ghold, 1);
+    atomic_inc(&finger->ghold);
 
     /* Unlock the cell. */
     if (lock_unlock(&finger->glock) != 0) error("Failed to unlock cell.");
@@ -322,7 +327,7 @@ int cell_glocktree(struct cell *c) {
     /* Undo the holds up to finger. */
     for (struct cell *finger2 = c->parent; finger2 != finger;
          finger2 = finger2->parent)
-      __sync_fetch_and_sub(&finger2->ghold, 1);
+      atomic_dec(&finger2->ghold);
 
     /* Unlock this cell. */
     if (lock_unlock(&c->glock) != 0) error("Failed to unlock cell.");
@@ -348,7 +353,7 @@ void cell_unlocktree(struct cell *c) {
 
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
-    __sync_fetch_and_sub(&finger->hold, 1);
+    atomic_dec(&finger->hold);
 
   TIMER_TOC(timer_locktree);
 }
@@ -362,7 +367,7 @@ void cell_gunlocktree(struct cell *c) {
 
   /* Climb up the tree and unhold the parents. */
   for (struct cell *finger = c->parent; finger != NULL; finger = finger->parent)
-    __sync_fetch_and_sub(&finger->ghold, 1);
+    atomic_dec(&finger->ghold);
 
   TIMER_TOC(timer_locktree);
 }
@@ -403,12 +408,14 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
       xparts[j] = xtemp;
     }
   }
-  /* for ( k = 0 ; k <= j ; k++ )
-      if ( parts[k].x[0] > pivot[0] )
-          error( "cell_split: sorting failed." );
-  for ( k = i ; k < count ; k++ )
-      if ( parts[k].x[0] < pivot[0] )
-          error( "cell_split: sorting failed." ); */
+
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int k = 0; k <= j; k++)
+    if (parts[k].x[0] > pivot[0]) error("cell_split: sorting failed.");
+  for (int k = i; k < count; k++)
+    if (parts[k].x[0] < pivot[0]) error("cell_split: sorting failed.");
+#endif
+
   left[1] = i;
   right[1] = count - 1;
   left[0] = 0;
@@ -430,14 +437,17 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
         xparts[j] = xtemp;
       }
     }
-    /* for ( int kk = left[k] ; kk <= j ; kk++ )
-        if ( parts[kk].x[1] > pivot[1] ) {
-            message( "ival=[%i,%i], i=%i, j=%i." , left[k] , right[k] , i , j );
-            error( "sorting failed (left)." );
-            }
-    for ( int kk = i ; kk <= right[k] ; kk++ )
-        if ( parts[kk].x[1] < pivot[1] )
-            error( "sorting failed (right)." ); */
+
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int kk = left[k]; kk <= j; kk++)
+      if (parts[kk].x[1] > pivot[1]) {
+        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
+        error("sorting failed (left).");
+      }
+    for (int kk = i; kk <= right[k]; kk++)
+      if (parts[kk].x[1] < pivot[1]) error("sorting failed (right).");
+#endif
+
     left[2 * k + 1] = i;
     right[2 * k + 1] = right[k];
     left[2 * k] = left[k];
@@ -460,16 +470,20 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
         xparts[j] = xtemp;
       }
     }
-    /* for ( int kk = left[k] ; kk <= j ; kk++ )
-        if ( parts[kk].x[2] > pivot[2] ) {
-            message( "ival=[%i,%i], i=%i, j=%i." , left[k] , right[k] , i , j );
-            error( "sorting failed (left)." );
-            }
-    for ( int kk = i ; kk <= right[k] ; kk++ )
-        if ( parts[kk].x[2] < pivot[2] ) {
-            message( "ival=[%i,%i], i=%i, j=%i." , left[k] , right[k] , i , j );
-            error( "sorting failed (right)." );
-            } */
+
+#ifdef SWIFT_DEBUG_CHECKS
+    for (int kk = left[k]; kk <= j; kk++)
+      if (parts[kk].x[2] > pivot[2]) {
+        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
+        error("sorting failed (left).");
+      }
+    for (int kk = i; kk <= right[k]; kk++)
+      if (parts[kk].x[2] < pivot[2]) {
+        message("ival=[%i,%i], i=%i, j=%i.", left[k], right[k], i, j);
+        error("sorting failed (right).");
+      }
+#endif
+
     left[2 * k + 1] = i;
     right[2 * k + 1] = right[k];
     left[2 * k] = left[k];
@@ -486,32 +500,34 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
   /* Re-link the gparts. */
   part_relink_gparts(parts, count, parts_offset);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that _all_ the parts have been assigned to a cell. */
-  /* for ( k = 1 ; k < 8 ; k++ )
-      if ( &c->progeny[k-1]->parts[ c->progeny[k-1]->count ] !=
-  c->progeny[k]->parts )
-          error( "Particle sorting failed (internal consistency)." );
-  if ( c->progeny[0]->parts != c->parts )
-      error( "Particle sorting failed (left edge)." );
-  if ( &c->progeny[7]->parts[ c->progeny[7]->count ] != &c->parts[ count ] )
-      error( "Particle sorting failed (right edge)." ); */
+  for (int k = 1; k < 8; k++)
+    if (&c->progeny[k - 1]->parts[c->progeny[k - 1]->count] !=
+        c->progeny[k]->parts)
+      error("Particle sorting failed (internal consistency).");
+  if (c->progeny[0]->parts != c->parts)
+    error("Particle sorting failed (left edge).");
+  if (&c->progeny[7]->parts[c->progeny[7]->count] != &c->parts[count])
+    error("Particle sorting failed (right edge).");
 
   /* Verify a few sub-cells. */
-  /* for (int k = 0 ; k < c->progeny[0]->count ; k++ )
-      if ( c->progeny[0]->parts[k].x[0] > pivot[0] ||
-           c->progeny[0]->parts[k].x[1] > pivot[1] ||
-           c->progeny[0]->parts[k].x[2] > pivot[2] )
-          error( "Sorting failed (progeny=0)." );
-  for (int k = 0 ; k < c->progeny[1]->count ; k++ )
-      if ( c->progeny[1]->parts[k].x[0] > pivot[0] ||
-           c->progeny[1]->parts[k].x[1] > pivot[1] ||
-           c->progeny[1]->parts[k].x[2] <= pivot[2] )
-          error( "Sorting failed (progeny=1)." );
-  for (int k = 0 ; k < c->progeny[2]->count ; k++ )
-      if ( c->progeny[2]->parts[k].x[0] > pivot[0] ||
-           c->progeny[2]->parts[k].x[1] <= pivot[1] ||
-           c->progeny[2]->parts[k].x[2] > pivot[2] )
-          error( "Sorting failed (progeny=2)." ); */
+  for (int k = 0; k < c->progeny[0]->count; k++)
+    if (c->progeny[0]->parts[k].x[0] > pivot[0] ||
+        c->progeny[0]->parts[k].x[1] > pivot[1] ||
+        c->progeny[0]->parts[k].x[2] > pivot[2])
+      error("Sorting failed (progeny=0).");
+  for (int k = 0; k < c->progeny[1]->count; k++)
+    if (c->progeny[1]->parts[k].x[0] > pivot[0] ||
+        c->progeny[1]->parts[k].x[1] > pivot[1] ||
+        c->progeny[1]->parts[k].x[2] <= pivot[2])
+      error("Sorting failed (progeny=1).");
+  for (int k = 0; k < c->progeny[2]->count; k++)
+    if (c->progeny[2]->parts[k].x[0] > pivot[0] ||
+        c->progeny[2]->parts[k].x[1] <= pivot[1] ||
+        c->progeny[2]->parts[k].x[2] > pivot[2])
+      error("Sorting failed (progeny=2).");
+#endif
 
   /* Now do the same song and dance for the gparts. */
 

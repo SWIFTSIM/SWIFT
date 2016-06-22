@@ -26,8 +26,8 @@
  * This is a wrapper for the GCC intrinsics with an implementation (from
  * Hacker's Delight) if the compiler intrinsics are not available.
  */
-__attribute__((always_inline))
-    INLINE static int intrinsics_clz(unsigned int x) {
+__attribute__((always_inline)) INLINE static int intrinsics_clz(
+    unsigned int x) {
 
 #ifdef __GNUC__
   /* Use GCC intrinsics if possible */
@@ -66,8 +66,8 @@ __attribute__((always_inline))
  * This is a wrapper for the GCC intrinsics with an implementation (from
  * Hacker's Delight) if the compiler intrinsics are not available.
  */
-__attribute__((always_inline))
-    INLINE static int intrinsics_popcount(unsigned int x) {
+__attribute__((always_inline)) INLINE static int intrinsics_popcount(
+    unsigned int x) {
 
 #ifdef __GNUC__
   /* Use GCC intrinsics if possible */

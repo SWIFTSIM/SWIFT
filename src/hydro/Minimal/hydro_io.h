@@ -104,9 +104,6 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Kernel function description */
   writeAttribute_s(h_grpsph, "Kernel", kernel_name);
-  writeAttribute_f(h_grpsph, "Kernel eta", const_eta_kernel);
-  writeAttribute_f(h_grpsph, "Weighted N_ngb", kernel_nwneigh);
-  writeAttribute_f(h_grpsph, "Delta N_ngb", const_delta_nwneigh);
   writeAttribute_f(h_grpsph, "Hydro gamma", const_hydro_gamma);
 
   /* Viscosity and thermal conduction */
@@ -115,11 +112,6 @@ void writeSPHflavour(hid_t h_grpsph) {
   writeAttribute_s(h_grpsph, "Viscosity Model", "No model");
 
   /* Time integration properties */
-  writeAttribute_f(h_grpsph, "CFL parameter", const_cfl);
-  writeAttribute_f(h_grpsph, "Maximal ln(Delta h) change over dt",
-                   const_ln_max_h_change);
-  writeAttribute_f(h_grpsph, "Maximal Delta h change over dt",
-                   exp(const_ln_max_h_change));
   writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
                    const_max_u_change);
 }
