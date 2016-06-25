@@ -277,7 +277,7 @@ void engine_redistribute(struct engine *e) {
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (s->parts[k].gpart->id < 0)
+        if (s->parts[k].gpart->id_or_ned_offset >= 0)
           error("Trying to link a partnerless gpart !");
 #endif
 
@@ -467,11 +467,11 @@ void engine_redistribute(struct engine *e) {
       /* Does this gpart have a partner ? */
       if (gparts_new[k].id_or_neg_offset <= 0) {
 
-        const size_t partner_index = offset_parts - gparts_new[k].id_or_neg_offset;
+        const ptrdiff_t partner_index = offset_parts - gparts_new[k].id_or_neg_offset;
 
         /* Re-link */
         gparts_new[k].id_or_neg_offset = -partner_index;
-        parts[partner_index].gpart = &gparts_new[k];
+        parts_new[partner_index].gpart = &gparts_new[k];
       }
     }
 

@@ -53,7 +53,7 @@ void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset) {
  */
 void part_relink_parts(struct gpart *gparts, size_t N, struct part *parts) {
   for (size_t k = 0; k < N; k++) {
-    if (gparts[k].id_or_neg_offset < 0) {
+    if (gparts[k].id_or_neg_offset <= 0) {
       parts[-gparts[k].id_or_neg_offset].gpart = &gparts[k];
     }
   }
