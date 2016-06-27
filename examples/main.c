@@ -322,18 +322,21 @@ int main(int argc, char *argv[]) {
   size_t Ngas = 0, Ngpart = 0;
   double dim[3] = {0., 0., 0.};
   int periodic = 0;
+  int flag_entropy_ICs = 0;
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+                   &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
+                   MPI_INFO_NULL, dry_run);
 #else
   read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+                 &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
+                 MPI_INFO_NULL, dry_run);
 #endif
 #else
   read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 dry_run);
+                 &flag_entropy_ICs, dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -466,7 +469,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Initialise the particles */
-  engine_init_particles(&e);
+  engine_init_particles(&e, flag_entropy_ICs);
 
   /* Legend */
   if (myrank == 0)

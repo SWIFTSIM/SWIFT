@@ -214,7 +214,7 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);
 void engine_print(struct engine *e);
-void engine_init_particles(struct engine *e);
+void engine_init_particles(struct engine *e, int flag_entropy_ICs);
 void engine_step(struct engine *e);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);

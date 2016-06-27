@@ -83,8 +83,8 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
              FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, us,
              UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy", FLOAT, N,
-             1, parts, N_total, mpi_rank, offset, entropy, us,
+  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "InternalEnergy",
+             FLOAT, N, 1, parts, N_total, mpi_rank, offset, entropy, us,
              UNIT_CONV_ENTROPY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
              ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, us,
@@ -113,3 +113,10 @@ void writeSPHflavour(hid_t h_grpsph) {
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 }
+
+/**
+ * @brief Are we writing entropy in the internal energy field ?
+ *
+ * @return 1 if entropy is in 'internal energy', 0 otherwise.
+ */
+int writeEntropyFlag() { return 1; }

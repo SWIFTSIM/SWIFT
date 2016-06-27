@@ -2140,8 +2140,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
  *forward in time.
  *
  * @param e The #engine
+ * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
+ *contain entropy ?
  */
-void engine_init_particles(struct engine *e) {
+void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   struct space *s = e->s;
 
@@ -2209,7 +2211,7 @@ void engine_init_particles(struct engine *e) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+  if (!flag_entropy_ICs) space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
   clocks_gettime(&time2);
 
