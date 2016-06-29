@@ -467,7 +467,8 @@ void engine_redistribute(struct engine *e) {
       /* Does this gpart have a partner ? */
       if (gparts_new[k].id_or_neg_offset <= 0) {
 
-        const ptrdiff_t partner_index = offset_parts - gparts_new[k].id_or_neg_offset;
+        const ptrdiff_t partner_index =
+            offset_parts - gparts_new[k].id_or_neg_offset;
 
         /* Re-link */
         gparts_new[k].id_or_neg_offset = -partner_index;
@@ -551,7 +552,6 @@ void engine_redistribute(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_repartition(struct engine *e) {
 
 #if defined(WITH_MPI) && defined(HAVE_METIS)
@@ -601,7 +601,6 @@ void engine_repartition(struct engine *e) {
  * @param up The upward gravity #task.
  * @param down The downward gravity #task.
  */
-
 void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
                           struct task *down) {
 
@@ -623,7 +622,6 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  * @param ci The sending #cell.
  * @param cj The receiving #cell
  */
-
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
 
 #ifdef WITH_MPI
@@ -674,7 +672,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
  */
-
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho) {
 
@@ -716,7 +713,6 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
  *
  * @param e The #engine.
  */
-
 void engine_exchange_cells(struct engine *e) {
 
 #ifdef WITH_MPI
@@ -864,7 +860,6 @@ void engine_exchange_cells(struct engine *e) {
  * Note that this function does not mess-up the linkage between parts and
  * gparts, i.e. the received particles have correct linkeage.
  */
-
 void engine_exchange_strays(struct engine *e, size_t offset_parts,
                             int *ind_part, size_t *Npart, size_t offset_gparts,
                             int *ind_gpart, size_t *Ngpart) {
@@ -1679,7 +1674,6 @@ int engine_marktasks(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_print_task_counts(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
@@ -1712,7 +1706,6 @@ void engine_print_task_counts(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_rebuild(struct engine *e) {
 
   const ticks tic = getticks();
@@ -1748,7 +1741,6 @@ void engine_rebuild(struct engine *e) {
  *
  * @param e The #engine to prepare.
  */
-
 void engine_prepare(struct engine *e) {
 
   TIMER_TIC;
@@ -1790,7 +1782,6 @@ void engine_prepare(struct engine *e) {
  * @param e The #engine.
  * @param tid The thread ID
  */
-
 void engine_barrier(struct engine *e, int tid) {
 
   /* First, get the barrier mutex. */
@@ -1829,7 +1820,6 @@ void engine_barrier(struct engine *e, int tid) {
  *
  * @param c A super-cell.
  */
-
 void engine_collect_kick(struct cell *c) {
 
   /* Skip super-cells (Their values are already set) */
@@ -2060,7 +2050,6 @@ void engine_print_stats(struct engine *e) {
  * @param mask The task mask to launch.
  * @param submask The sub-task mask to launch.
  */
-
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask) {
 
@@ -2312,7 +2301,6 @@ int engine_is_done(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
@@ -2418,7 +2406,6 @@ void engine_makeproxies(struct engine *e) {
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
  */
-
 void engine_split(struct engine *e, struct partition *initial_partition) {
 
 #ifdef WITH_MPI
@@ -2594,7 +2581,6 @@ void engine_unpin() {
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
  */
-
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,

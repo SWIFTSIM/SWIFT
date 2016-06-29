@@ -288,7 +288,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
 }
 
 void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *__restrict__ gparts,
+                       struct gpart *restrict gparts,
                        const struct part *parts, int N, int periodic) {
 
   int i, k;
@@ -350,7 +350,6 @@ void pairs_single_grav(double *dim, long long int pid,
  *
  * @param N number of intervals in [0,1].
  */
-
 void density_dump(int N) {
 
   int k;
@@ -386,7 +385,6 @@ void density_dump(int N) {
 /**
  * @brief Compute the force on a single particle brute-force.
  */
-
 void engine_single_density(double *dim, long long int pid,
                            struct part *restrict parts, int N, int periodic) {
   int i, k;
