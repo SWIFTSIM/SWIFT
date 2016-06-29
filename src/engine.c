@@ -111,8 +111,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 }
 
 /**
- * @brief Generate the hierarchical tasks for a hierarchy of cells - i.e. all
- * the O(Npart) tasks.
+ * @brief Generate the gravity hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -120,8 +120,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  * @param c The #cell.
  * @param super The super #cell.
  */
-void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
-                                    struct cell *super) {
+void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
+                                            struct cell *super) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -129,46 +129,39 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
       engine_policy_external_gravity;
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
-  /* Am I the super-cell? */
-  if (super == NULL && (c->count > 0 || c->gcount > 0)) {
+  /* Is this the super-cell? */
+  if (super == NULL && (c->grav != NULL || (c->gcount > 0 && !c->split))) {
 
-    /* Remember me. */
+    /* This is the super cell, i.e. the first with gravity tasks attached. */
     super = c;
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
       /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
 
       /* Add the drift task. */
-      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
 
       /* Add the kick task that matches the policy. */
       if (is_fixdt) {
-        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
-                                    0, 0, c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
       } else {
-        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
-                                    c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
       }
 
-      if (c->count > 0) {
-
-        /* Generate the ghost task. */
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL, 0);
-      }
-
-      if (c->gcount > 0) {
-
-        /* Add the external gravity tasks */
-        if (is_with_external_gravity)
-          c->grav_external = scheduler_addtask(
-              s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
-      }
+      if (is_with_external_gravity)
+        c->grav_external = scheduler_addtask(
+            s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
     }
   }
 
@@ -179,7 +172,69 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks(e, c->progeny[k], super);
+        engine_make_gravity_hierarchical_tasks(e, c->progeny[k], super);
+}
+
+/**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param super The super #cell.
+ */
+void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
+                                          struct cell *super) {
+
+  struct scheduler *s = &e->sched;
+  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+
+  /* Is this the super-cell? */
+  if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
+
+    /* This is the super cell, i.e. the first with density tasks attached. */
+    super = c;
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the init task. */
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
+
+      /* Add the drift task. */
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
+
+      /* Add the kick task that matches the policy. */
+      if (is_fixdt) {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
+      } else {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
+      }
+
+      /* Generate the ghost task. */
+      c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+    }
+  }
+
+  /* Set the super-cell. */
+  c->super = super;
+
+  /* Recurse. */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hydro_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -225,7 +280,7 @@ void engine_redistribute(struct engine *e) {
   bzero(counts, sizeof(int) * nr_nodes * nr_nodes);
   bzero(g_counts, sizeof(int) * nr_nodes * nr_nodes);
 
-  // Allocate the destination index arrays.
+  /* Allocate the destination index arrays. */
   int *dest, *g_dest;
   if ((dest = (int *)malloc(sizeof(int) * s->nr_parts)) == NULL)
     error("Failed to allocate dest temporary buffer.");
@@ -244,9 +299,12 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
-    /* if (cid < 0 || cid >= s->nr_cells)
-       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
-             cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+            parts[k].x[0], parts[k].x[1], parts[k].x[2]);
+#endif
+
     dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
@@ -273,9 +331,10 @@ void engine_redistribute(struct engine *e) {
           count_this_dest = 0;
         }
 
-        /* Debug */
-        /* if(s->parts[k].gpart->id < 0) */
-        /*   error("Trying to link a partnerless gpart !"); */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (s->parts[k].gpart->id < 0)
+          error("Trying to link a partnerless gpart !");
+#endif
 
         s->parts[k].gpart->id = count_this_dest;
         count_this_dest++;
@@ -295,9 +354,12 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, gparts[k].x[0] * ih[0],
                                gparts[k].x[1] * ih[1], gparts[k].x[2] * ih[2]);
-    /* if (cid < 0 || cid >= s->nr_cells)
-       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
-             cid, k, g_parts[k].x[0], g_parts[k].x[1], g_parts[k].x[2]); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]);
+#endif
+
     g_dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
@@ -472,17 +534,17 @@ void engine_redistribute(struct engine *e) {
     offset_gparts += count_gparts;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
-  /* for ( int k = 0 ; k < nr_parts ; k++ ) {
-      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0],
-    parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
-      if ( cells[ cid ].nodeID != nodeID )
-          error( "Received particle (%i) that does not belong here
-    (nodeID=%i).", k , cells[ cid ].nodeID );
-    } */
+  for (int k = 0; k < nr_parts; k++) {
+    int cid = cell_getid(cdim, parts_new[k].x[0] * ih[0],
+                         parts_new[k].x[1] * ih[1], parts_new[k].x[2] * ih[2]);
+    if (cells[cid].nodeID != nodeID)
+      error("Received particle (%i) that does not belong here (nodeID=%i).", k,
+            cells[cid].nodeID);
+  }
 
   /* Verify that the links are correct */
-  /* MATTHIEU: To be commented out once we are happy */
   for (size_t k = 0; k < nr_gparts; ++k) {
 
     if (gparts_new[k].id > 0) {
@@ -503,6 +565,7 @@ void engine_redistribute(struct engine *e) {
       if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !");
     }
   }
+#endif
 
   /* Set the new part data, free the old. */
   free(parts);
@@ -1603,8 +1666,14 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_hydro) engine_count_and_link_tasks(e);
 
   /* Append hierarchical tasks to each cells */
-  for (int k = 0; k < nr_cells; k++)
-    engine_make_hierarchical_tasks(e, &cells[k], NULL);
+  if (e->policy & engine_policy_hydro)
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_hydro_hierarchical_tasks(e, &cells[k], NULL);
+
+  if ((e->policy & engine_policy_self_gravity) ||
+      (e->policy & engine_policy_external_gravity))
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_gravity_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -2480,7 +2549,6 @@ int engine_is_done(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_makeproxies(struct engine *e) {
 
 #ifdef WITH_MPI
@@ -2586,7 +2654,6 @@ void engine_makeproxies(struct engine *e) {
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
  */
-
 void engine_split(struct engine *e, struct partition *initial_partition) {
 
 #ifdef WITH_MPI
@@ -2638,8 +2705,9 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   for (size_t k = 0; k < s->nr_gparts; k++)
     if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
 
+#ifdef SWIFT_DEBUG_CHECKS
+
   /* Verify that the links are correct */
-  /* MATTHIEU: To be commented out once we are happy */
   for (size_t k = 0; k < s->nr_gparts; ++k) {
 
     if (s->gparts[k].id > 0) {
@@ -2655,10 +2723,11 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   for (size_t k = 0; k < s->nr_parts; ++k) {
 
     if (s->parts[k].gpart != NULL) {
-
       if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
     }
   }
+
+#endif
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -2766,7 +2835,6 @@ void engine_unpin() {
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
  */
-
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,

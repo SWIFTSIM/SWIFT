@@ -696,10 +696,12 @@ void scheduler_ranktasks(struct scheduler *s) {
     left = j;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the tasks were ranked correctly. */
-  /* for ( k = 1 ; k < s->nr_tasks ; k++ )
-      if ( tasks[ tid[k-1] ].rank > tasks[ tid[k-1] ].rank )
-          error( "Task ranking failed." ); */
+  for (int k = 1; k < s->nr_tasks; k++)
+    if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
+      error("Task ranking failed.");
+#endif
 }
 
 /**

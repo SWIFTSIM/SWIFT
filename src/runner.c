@@ -350,18 +350,18 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
       }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify the sorting. */
-  /* for ( j = 0 ; j < 13 ; j++ ) {
-      if ( !( flags & (1 << j) ) )
-          continue;
-      finger = &sort[ j*(count + 1) ];
-      for ( k = 1 ; k < count ; k++ ) {
-          if ( finger[k].d < finger[k-1].d )
-              error( "Sorting failed, ascending array." );
-          if ( finger[k].i >= count )
-              error( "Sorting failed, indices borked." );
-          }
-      } */
+  for (j = 0; j < 13; j++) {
+    if (!(flags & (1 << j))) continue;
+    finger = &sort[j * (count + 1)];
+    for (k = 1; k < count; k++) {
+      if (finger[k].d < finger[k - 1].d)
+        error("Sorting failed, ascending array.");
+      if (finger[k].i >= count) error("Sorting failed, indices borked.");
+    }
+  }
+#endif
 
   if (clock) TIMER_TOC(timer_dosort);
 }
