@@ -130,7 +130,7 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Is this the super-cell? */
-  if (super == NULL && (c->grav != NULL || (c->gcount > 0 && !c->split))) {
+  if (super == NULL && (c->grav != NULL || (c->gcount > 0 && c->split))) {
 
     /* This is the super cell, i.e. the first with gravity tasks attached. */
     super = c;
@@ -192,7 +192,7 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Is this the super-cell? */
-  if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
+  if (super == NULL && (c->density != NULL || (c->count > 0 && c->split))) {
 
     /* This is the super cell, i.e. the first with density tasks attached. */
     super = c;
