@@ -929,7 +929,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       ti_end_min = min(p->ti_end, ti_end_min);
       ti_end_max = max(p->ti_end, ti_end_max);
     }
-
   }
 
   /* Otherwise, aggregate data from children. */
@@ -1009,7 +1008,6 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
  *
  * @param data A pointer to this thread's data.
  */
-
 void *runner_main(void *data) {
 
   struct runner *r = (struct runner *)data;

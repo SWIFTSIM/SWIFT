@@ -97,7 +97,6 @@ static cpu_set_t entry_affinity;
  *
  * @return The new #link pointer.
  */
-
 struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
   const int ind = atomic_inc(&e->nr_links);
@@ -1537,7 +1536,6 @@ void engine_maketasks(struct engine *e) {
  *
  * @return 1 if the space has to be rebuilt, 0 otherwise.
  */
-
 int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
@@ -1756,7 +1754,6 @@ void engine_prepare(struct engine *e) {
     error("Failed to aggregate the rebuild flag across nodes.");
   rebuild = buff;
 #endif
-  e->tic_step = getticks();
 
   /* Did this not go through? */
   if (rebuild) {
@@ -2107,6 +2104,7 @@ void engine_init_particles(struct engine *e) {
   engine_prepare(e);
 
   engine_marktasks(e);
+
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0;
   unsigned int submask = 0;

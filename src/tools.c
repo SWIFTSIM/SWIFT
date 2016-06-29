@@ -288,8 +288,8 @@ void self_all_density(struct runner *r, struct cell *ci) {
 }
 
 void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *restrict gparts,
-                       const struct part *parts, int N, int periodic) {
+                       struct gpart *restrict gparts, const struct part *parts,
+                       int N, int periodic) {
 
   int i, k;
   // int mj, mk;
