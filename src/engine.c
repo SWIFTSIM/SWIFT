@@ -1343,10 +1343,11 @@ static inline void engine_make_gravity_dependencies(struct scheduler *sched,
                                                     struct cell *c) {
 
   /* init --> gravity --> kick */
-  /* grav_up --> gravity ( --> kick) */
   scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, c->super->grav_up, gravity);
   scheduler_addunlock(sched, gravity, c->super->kick);
+
+  /* grav_up --> gravity ( --> kick) */
+  scheduler_addunlock(sched, c->super->grav_up, gravity);
 }
 
 /**

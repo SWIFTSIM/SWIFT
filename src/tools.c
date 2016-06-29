@@ -496,7 +496,7 @@ void shuffle_particles(struct part *parts, const int count) {
 void gravity_n2(struct gpart *gparts, const int gcount,
                 const struct phys_const *constants, float rlr) {
 
-  const float rlr_inv = 0.;  // 1. / rlr;
+  const float rlr_inv = 1. / rlr;
   const float max_d = const_gravity_r_cut * rlr;
   const float max_d2 = max_d * max_d;
 

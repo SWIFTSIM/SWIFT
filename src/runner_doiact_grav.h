@@ -76,6 +76,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
 
   TIMER_TIC;
 
+// message("rlr_inv= %f", rlr_inv);
+
 #ifdef SANITY_CHECKS
   if (gcount == 0) error("Empty cell!");  // MATTHIEU sanity check
 
@@ -487,9 +489,9 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
                           cj->loc[2] - pos_i[2]};  // z
     const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-    if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_pm(r, ci, cj);
-
     if (r2 > max_d2) continue;
+
+    if (!cell_are_neighbours(ci, cj)) runner_dopair_grav_pm(r, ci, cj);
   }
 }
 

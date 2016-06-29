@@ -77,7 +77,7 @@ gravity_compute_timestep_self(const struct phys_const* const phys_const,
  */
 __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp) {
-  gp->epsilon = 0.1;  // MATTHIEU
+  gp->epsilon = 0.;  // MATTHIEU
 }
 
 /**

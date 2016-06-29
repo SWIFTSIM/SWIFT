@@ -147,14 +147,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   /* Apply the gravitational acceleration. */
   const float r = sqrtf(r2);
   const float ir = 1.f / r;
+  const float u = r * rlr_inv;
   const float mrinv3 = multi->mass * ir * ir * ir;
+
+  /* Get long-range correction */
+  float f_lr;
+  kernel_long_grav_eval(u, &f_lr);
 
 #if const_gravity_multipole_order < 2
 
   /* 0th and 1st order terms */
-  gp->a_grav[0] += mrinv3 * dx[0];
-  gp->a_grav[1] += mrinv3 * dx[1];
-  gp->a_grav[2] += mrinv3 * dx[2];
+  gp->a_grav[0] += mrinv3 * f_lr * dx[0];
+  gp->a_grav[1] += mrinv3 * f_lr * dx[1];
+  gp->a_grav[2] += mrinv3 * f_lr * dx[2];
 
   gp->mass_interacted += multi->mass;
 #elif const_gravity_multipole_order == 2
@@ -178,9 +183,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   const float qRR = qRx * dx[0] + qRy * dx[1] + qRz * dx[2];
   const float C = D1 + 0.5f * D2 * q + 0.5f * D3 * qRR;
 
-  gp->a_grav[0] -= C * dx[0] + D2 * qRx;
-  gp->a_grav[1] -= C * dx[1] + D2 * qRy;
-  gp->a_grav[2] -= C * dx[2] + D2 * qRz;
+  gp->a_grav[0] -= f_lr * (C * dx[0] + D2 * qRx);
+  gp->a_grav[1] -= f_lr * (C * dx[1] + D2 * qRy);
+  gp->a_grav[2] -= f_lr * (C * dx[2] + D2 * qRz);
 
   gp->mass_interacted += multi->mass;
 #else
