@@ -2453,6 +2453,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Re-link the parts. */
   part_relink_parts(s->gparts, s->nr_gparts, s->parts);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
   for (size_t k = 0; k < s->nr_gparts; ++k) {
 
@@ -2472,6 +2473,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
     if (s->parts[k].gpart != NULL && s->parts[k].gpart->id_or_neg_offset != -k)
       error("Linking problem !");
   }
+#endif
 
 #else
   error("SWIFT was not compiled with MPI support.");
