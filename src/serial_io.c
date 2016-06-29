@@ -489,6 +489,7 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
   }
 
   /* Now need to broadcast that information to all ranks. */
+  MPI_Bcast(flag_entropy, MPI_INT, 0, comm);
   MPI_Bcast(periodic, 1, MPI_INT, 0, comm);
   MPI_Bcast(&N_total, NUM_PARTICLE_TYPES, MPI_LONG_LONG, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
