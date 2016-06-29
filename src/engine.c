@@ -277,7 +277,7 @@ void engine_redistribute(struct engine *e) {
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (s->parts[k].gpart->id_or_ned_offset >= 0)
+        if (s->parts[k].gpart->id_or_neg_offset >= 0)
           error("Trying to link a partnerless gpart !");
 #endif
 
