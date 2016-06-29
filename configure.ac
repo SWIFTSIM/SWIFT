@@ -179,7 +179,7 @@ if test "$enable_opt" = "yes" ; then
    ac_test_CFLAGS="yes"
    CFLAGS="$old_CFLAGS $CFLAGS"
 
-   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT). 
+   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
    # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
    # value from AX_CC_MAXOPT should be sufficient.
    AX_EXT
@@ -287,12 +287,63 @@ AC_SUBST([METIS_LIBS])
 AC_SUBST([METIS_INCS])
 AM_CONDITIONAL([HAVEMETIS],[test -n "$METIS_LIBS"])
 
-# # Check for zlib.
-# AC_CHECK_LIB([z],[gzopen],[
-#     AC_DEFINE([HAVE_LIBZ],[1],[Set to 1 if zlib is installed.])
-#     LDFLAGS="$LDFLAGS -lz"
-#     ],[])
+#  Check for tcmalloc a fast malloc that is part of the gperftools.
+have_tcmalloc="no"
+AC_ARG_WITH([tcmalloc],
+   [AS_HELP_STRING([--with-tcmalloc],
+      [use tcmalloc library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_tcmalloc="$withval"],
+   [with_tcmalloc="no"]
+)
+if test "x$with_tcmalloc" != "xno"; then
+   if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+      TCMALLOC_LIBS="-L$with_tcmalloc -ltcmalloc"
+   else
+      TCMALLOC_LIBS="-ltcmalloc"
+   fi
+   AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
+                $TCMALLOC_LIBS)
 
+   #  Could just have the minimal version.
+   if test "$have_tcmalloc" = "no"; then
+      if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
+         TCMALLOC_LIBS="-L$with_tcmalloc -ltcmalloc_minimal"
+      else
+         TCMALLOC_LIBS="-ltcmalloc_minimal"
+      fi
+      AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
+                   $TCMALLOC_LIBS)
+   fi
+
+   # These are recommended for GCC.
+   if test "$have_tcmalloc" = "yes" -a "$ax_cv_c_compiler_vendor" = "gnu"; then
+      CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+   fi
+fi
+AC_SUBST([TCMALLOC_LIBS])
+AM_CONDITIONAL([HAVETCMALLOC],[test -n "$TCMALLOC_LIBS"])
+
+#  Check for -lprofiler usually part of the gpreftools along with tcmalloc.
+have_profiler="no"
+AC_ARG_WITH([profiler],
+   [AS_HELP_STRING([--with-profiler],
+      [use cpu profiler library or specify the directory with lib @<:@yes/no@:>@]
+   )],
+   [with_profiler="$withval"],
+   [with_profiler="yes"]
+)
+if test "x$with_profiler" != "xno"; then
+   if test "x$with_profiler" != "xyes" && test "x$with_profiler" != "x"; then
+      PROFILER_LIBS="-L$with_profiler -lprofiler"
+   else
+      PROFILER_LIBS="-lprofiler"
+   fi
+   AC_CHECK_LIB([profiler],[ProfilerFlush],[have_profiler="yes"],[have_profiler="no"],
+                $PROFILER_LIBS)
+fi
+AC_SUBST([PROFILER_LIBS])
+AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -410,6 +461,8 @@ AC_MSG_RESULT([
     - parallel     : $have_parallel_hdf5
    Metis enabled   : $have_metis
    libNUMA enabled : $have_numa
+   Using tcmalloc  : $have_tcmalloc
+   CPU profiler    : $have_profiler
 ])
 
 # Generate output.
