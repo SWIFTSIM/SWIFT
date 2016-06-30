@@ -30,11 +30,11 @@
 #include "part.h"
 
 /**
- * @brief Re-link the #gparts associated with the list of #parts.
+ * @brief Re-link the #gpart%s associated with the list of #part%s.
  *
  * @param parts The list of #part.
  * @param N The number of particles to re-link;
- * @param offset The offset of #parts relative to the global parts list.
+ * @param offset The offset of #part%s relative to the global parts list.
  */
 void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset) {
   for (size_t k = 0; k < N; k++) {
@@ -45,7 +45,7 @@ void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset) {
 }
 
 /**
- * @brief Re-link the #gparts associated with the list of #parts.
+ * @brief Re-link the #gpart%s associated with the list of #part%s.
  *
  * @param gparts The list of #gpart.
  * @param N The number of particles to re-link;

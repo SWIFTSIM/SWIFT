@@ -59,7 +59,6 @@
  *
  * (Should be used for debugging only as it runs in O(N).)
  */
-
 void printParticle(const struct part *parts, struct xpart *xparts,
                    long long int id, size_t N) {
 
@@ -83,6 +82,7 @@ void printParticle(const struct part *parts, struct xpart *xparts,
  * the standard output.
  *
  * @param gparts The array of g-particles.
+ * @param parts The array of particles.
  * @param id The id too look for.
  * @param N The size of the array of g-particles.
  *
@@ -117,7 +117,6 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
  * @param p The particle to print
  * @param xp The extended data ot the particle to print
  */
-
 void printParticle_single(const struct part *p, const struct xpart *xp) {
 
   printf("## Particle: id=%lld", p->id);
