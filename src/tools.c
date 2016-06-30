@@ -181,16 +181,19 @@ void pairs_single_density(double *dim, long long int pid,
 }
 
 void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
+
   float r2, hi, hj, hig2, hjg2, dx[3];
   struct part *pi, *pj;
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
+
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
 
     for (int j = 0; j < cj->count; ++j) {
+
       pj = &cj->parts[j];
 
       /* Pairwise distance */
@@ -202,6 +205,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Hit or miss? */
       if (r2 < hig2) {
+
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hi, pj->h, pi, pj);
       }
@@ -210,11 +214,13 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
   /* Reverse double-for loop and checks every interaction */
   for (int j = 0; j < cj->count; ++j) {
+
     pj = &cj->parts[j];
     hj = pj->h;
     hjg2 = hj * hj * kernel_gamma2;
 
     for (int i = 0; i < ci->count; ++i) {
+
       pi = &ci->parts[i];
 
       /* Pairwise distance */
@@ -226,6 +232,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
 
       /* Hit or miss? */
       if (r2 < hjg2) {
+
         /* Interact */
         runner_iact_nonsym_density(r2, dx, hj, pi->h, pj, pi);
       }
@@ -239,11 +246,13 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
   /* Implements a double-for loop and checks every interaction */
   for (int i = 0; i < ci->count; ++i) {
+
     pi = &ci->parts[i];
     hi = pi->h;
     hig2 = hi * hi * kernel_gamma2;
 
     for (int j = i + 1; j < ci->count; ++j) {
+
       pj = &ci->parts[j];
       hj = pj->h;
       hjg2 = hj * hj * kernel_gamma2;
@@ -259,12 +268,14 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
       /* Hit or miss? */
       if (r2 < hig2) {
+
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hi, hj, pi, pj);
       }
 
       /* Hit or miss? */
       if (r2 < hjg2) {
+
         dxi[0] = -dxi[0];
         dxi[1] = -dxi[1];
         dxi[2] = -dxi[2];
@@ -277,7 +288,9 @@ void self_all_density(struct runner *r, struct cell *ci) {
 }
 
 void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *restrict parts, int N, int periodic) {
+                       struct gpart *restrict gparts, const struct part *parts,
+                       int N, int periodic) {
+
   int i, k;
   // int mj, mk;
   // double maxratio = 1.0;
@@ -288,18 +301,20 @@ void pairs_single_grav(double *dim, long long int pid,
 
   /* Find "our" part. */
   for (k = 0; k < N; k++)
-    if ((parts[k].id > 0 && parts[k].part->id == pid) || parts[k].id == -pid)
+    if ((gparts[k].id_or_neg_offset < 0 &&
+         parts[-gparts[k].id_or_neg_offset].id == pid) ||
+        gparts[k].id_or_neg_offset == pid)
       break;
   if (k == N) error("Part not found.");
-  pi = parts[k];
+  pi = gparts[k];
   pi.a_grav[0] = 0.0f;
   pi.a_grav[1] = 0.0f;
   pi.a_grav[2] = 0.0f;
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
-    if (parts[k].id == pi.id) continue;
-    pj = parts[k];
+    if (gparts[k].id_or_neg_offset == pi.id_or_neg_offset) continue;
+    pj = gparts[k];
     for (i = 0; i < 3; i++) {
       dx[i] = pi.x[i] - pj.x[i];
       if (periodic) {
@@ -326,7 +341,8 @@ void pairs_single_grav(double *dim, long long int pid,
   /* Dump the result. */
   message(
       "acceleration on gpart %lli is a=[ %e %e %e ], |a|=[ %.2e %.2e %.2e ].\n",
-      pi.part->id, a[0], a[1], a[2], aabs[0], aabs[1], aabs[2]);
+      parts[-pi.id_or_neg_offset].id, a[0], a[1], a[2], aabs[0], aabs[1],
+      aabs[2]);
 }
 
 /**
@@ -335,6 +351,7 @@ void pairs_single_grav(double *dim, long long int pid,
  * @param N number of intervals in [0,1].
  */
 void density_dump(int N) {
+
   int k;
   float r2[4] = {0.0f, 0.0f, 0.0f, 0.0f}, hi[4], hj[4];
   struct part /**pi[4],  *pj[4],*/ Pi[4], Pj[4];

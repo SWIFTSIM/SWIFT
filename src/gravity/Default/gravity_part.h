@@ -48,14 +48,8 @@ struct gpart {
 
   double mass_interacted;
 
-  /* Anonymous union for id/part. */
-  union {
-
-    /* Particle ID. */
-    long long id;
-
-    /* Pointer to corresponding SPH part. */
-    struct part* part;
-  };
+  /* Particle ID. If negative, it is the negative offset of the #part with
+     which this gpart is linked. */
+  long long id_or_neg_offset;
 
 } __attribute__((aligned(gpart_align)));

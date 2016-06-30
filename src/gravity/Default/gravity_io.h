@@ -39,8 +39,8 @@ __attribute__((always_inline)) INLINE static void darkmatter_read_particles(
             COMPULSORY);
   readArray(h_grp, "Velocities", FLOAT, N, 3, gparts, N_total, offset, v_full,
             COMPULSORY);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, gparts, N_total, offset, id,
-            COMPULSORY);
+  readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, gparts, N_total, offset,
+            id_or_neg_offset, COMPULSORY);
 }
 
 /**
@@ -75,6 +75,6 @@ __attribute__((always_inline)) INLINE static void darkmatter_write_particles(
              Ndm, 3, gparts, Ndm_total, mpi_rank, offset, v_full, us,
              UNIT_CONV_SPEED);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
-             ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset, id, us,
-             UNIT_CONV_NO_UNITS);
+             ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset,
+             id_or_neg_offset, us, UNIT_CONV_NO_UNITS);
 }
