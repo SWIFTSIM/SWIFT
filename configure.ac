@@ -298,27 +298,33 @@ AC_ARG_WITH([tcmalloc],
 )
 if test "x$with_tcmalloc" != "xno"; then
    if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
-      TCMALLOC_LIBS="-L$with_tcmalloc -ltcmalloc"
+      tclibs="-L$with_tcmalloc -ltcmalloc"
    else
-      TCMALLOC_LIBS="-ltcmalloc"
+      tclibs="-ltcmalloc"
    fi
    AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
-                $TCMALLOC_LIBS)
+                $tclibs)
 
    #  Could just have the minimal version.
    if test "$have_tcmalloc" = "no"; then
       if test "x$with_tcmalloc" != "xyes" && test "x$with_tcmalloc" != "x"; then
-         TCMALLOC_LIBS="-L$with_tcmalloc -ltcmalloc_minimal"
+         tclibs="-L$with_tcmalloc -ltcmalloc_minimal"
       else
-         TCMALLOC_LIBS="-ltcmalloc_minimal"
+         tclibs="-ltcmalloc_minimal"
       fi
       AC_CHECK_LIB([tcmalloc],[tc_cfree],[have_tcmalloc="yes"],[have_tcmalloc="no"],
-                   $TCMALLOC_LIBS)
+                   $tclibs)
    fi
 
-   # These are recommended for GCC.
-   if test "$have_tcmalloc" = "yes" -a "$ax_cv_c_compiler_vendor" = "gnu"; then
-      CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+   if test "$have_tcmalloc" = "yes"; then
+      TCMALLOC_LIBS="$tclibs"
+
+      # These are recommended for GCC.
+      if "$ax_cv_c_compiler_vendor" = "gnu"; then
+         CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
+      fi
+   else
+      TCMALLOC_LIBS=""
    fi
 fi
 AC_SUBST([TCMALLOC_LIBS])
@@ -335,12 +341,18 @@ AC_ARG_WITH([profiler],
 )
 if test "x$with_profiler" != "xno"; then
    if test "x$with_profiler" != "xyes" && test "x$with_profiler" != "x"; then
-      PROFILER_LIBS="-L$with_profiler -lprofiler"
+      proflibs="-L$with_profiler -lprofiler"
    else
-      PROFILER_LIBS="-lprofiler"
+      proflibs="-lprofiler"
    fi
    AC_CHECK_LIB([profiler],[ProfilerFlush],[have_profiler="yes"],[have_profiler="no"],
-                $PROFILER_LIBS)
+                $proflibs)
+
+   if test "$have_profiler" = "yes"; then
+      PROFILER_LIBS="$proflibs"
+   else
+      PROFILER_LIBS=""
+   fi
 fi
 AC_SUBST([PROFILER_LIBS])
 AM_CONDITIONAL([HAVEPROFILER],[test -n "$PROFILER_LIBS"])
