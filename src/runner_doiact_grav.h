@@ -25,7 +25,7 @@
 #include "gravity.h"
 #include "part.h"
 
-#define ICHECK -1
+#define ICHECK 1000
 
 /**
  * @brief Compute the recursive upward sweep, i.e. construct the
@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
 
 // message("rlr_inv= %f", rlr_inv);
 
-#ifdef SANITY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   if (gcount == 0) error("Empty cell!");  // MATTHIEU sanity check
 
   if (multi.mass == 0.0)  // MATTHIEU sanity check
@@ -94,9 +94,10 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts[pid];
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
-              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
+    if (gp->id_or_neg_offset == ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
+              gp->id_or_neg_offset, cj->loc[0], cj->loc[1], cj->loc[2],
+              cj->h[0], cj->gcount);
   }
 #endif
 
@@ -144,7 +145,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
 
   TIMER_TIC;
 
-#ifdef SANITY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   if (ci->h[0] != cj->h[0])  // MATTHIEU sanity check
     error("Non matching cell sizes !! h_i=%f h_j=%f", ci->h[0], cj->h[0]);
 #endif
@@ -158,9 +159,10 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts_i[pid];
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
-              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
+    if (gp->id_or_neg_offset == ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
+              gp->id_or_neg_offset, cj->loc[0], cj->loc[1], cj->loc[2],
+              cj->h[0], cj->gcount);
   }
 
   for (int pid = 0; pid < gcount_j; pid++) {
@@ -168,9 +170,10 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts_j[pid];
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count=%d", gp->id, ci->loc[0],
-              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
+    if (gp->id_or_neg_offset == ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count=%d",
+              gp->id_or_neg_offset, ci->loc[0], ci->loc[1], ci->loc[2],
+              ci->h[0], ci->gcount);
   }
 #endif
 
@@ -238,7 +241,7 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
 
   TIMER_TIC;
 
-#ifdef SANITY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   if (c->gcount == 0)  // MATTHIEU sanity check
     error("Empty cell !");
 #endif
@@ -252,9 +255,10 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &gparts[pid];
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, c->loc[0],
-              c->loc[1], c->loc[2], c->h[0], c->gcount);
+    if (gp->id_or_neg_offset == ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
+              gp->id_or_neg_offset, c->loc[0], c->loc[1], c->loc[2], c->h[0],
+              c->gcount);
   }
 #endif
 
@@ -314,7 +318,7 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
 static void runner_dopair_grav(struct runner *r, struct cell *ci,
                                struct cell *cj) {
 
-#ifdef SANITY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 
   const int gcount_i = ci->gcount;
   const int gcount_j = cj->gcount;
@@ -343,24 +347,26 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 #endif
 
 #if ICHECK > 0
-  for (int pid = 0; pid < gcount_i; pid++) {
+  for (int pid = 0; pid < ci->gcount; pid++) {
 
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &ci->gparts[pid];
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, cj->loc[0],
-              cj->loc[1], cj->loc[2], cj->h[0], cj->gcount);
+    if (gp->id_or_neg_offset == ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
+              gp->id_or_neg_offset, cj->loc[0], cj->loc[1], cj->loc[2],
+              cj->h[0], cj->gcount);
   }
 
-  for (int pid = 0; pid < gcount_j; pid++) {
+  for (int pid = 0; pid < cj->gcount; pid++) {
 
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &cj->gparts[pid];
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
-              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
+    if (gp->id_or_neg_offset == ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
+              gp->id_or_neg_offset, ci->loc[0], ci->loc[1], ci->loc[2],
+              ci->h[0], ci->gcount);
   }
 #endif
 
@@ -397,7 +403,7 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 
 static void runner_doself_grav(struct runner *r, struct cell *c) {
 
-#ifdef SANITY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
 
   /* Early abort? */
   if (c->gcount == 0) error("Empty cell !");
@@ -439,7 +445,7 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
 
   } else {
 
-#ifdef SANITY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
     if (!cell_are_neighbours(ci, cj))
       error("Non-neighbouring cells in pair task !");
 #endif
@@ -456,9 +462,10 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
     /* Get a hold of the ith part in ci. */
     struct gpart *restrict gp = &ci->gparts[pid];
 
-    if (gp->id == -ICHECK)
-      message("id=%lld loc=[ %f %f %f ] size= %f count= %d", gp->id, ci->loc[0],
-              ci->loc[1], ci->loc[2], ci->h[0], ci->gcount);
+    if (gp->id_or_neg_offset == ICHECK)
+      message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
+              gp->id_or_neg_offset, ci->loc[0], ci->loc[1], ci->loc[2],
+              ci->h[0], ci->gcount);
   }
 #endif
 

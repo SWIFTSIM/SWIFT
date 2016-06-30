@@ -63,6 +63,5 @@
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS
-#define SANITY_CHECKS
 
 #endif /* SWIFT_CONST_H */

@@ -685,7 +685,7 @@ void cell_clean_links(struct cell *c, void *data) {
 int cell_are_neighbours(const struct cell *restrict ci,
                         const struct cell *restrict cj) {
 
-#ifdef SANITY_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   if (ci->h[0] != cj->h[0]) error("Cells of different size !");
 #endif
 
