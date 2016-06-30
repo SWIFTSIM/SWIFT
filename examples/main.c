@@ -354,7 +354,7 @@ int main(int argc, char *argv[]) {
     free(parts);
     parts = NULL;
     for (size_t k = 0; k < Ngpart; ++k)
-      if (gparts[k].id > 0) error("Linking problem");
+      if (gparts[k].id_or_neg_offset < 0) error("Linking problem");
     Ngas = 0;
   }
 

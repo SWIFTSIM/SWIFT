@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
-    struct part* p, struct xpart* xp) {
+    const struct part* p, const struct xpart* xp) {
   printf(
       "x=[%.3e,%.3e,%.3e], "
       "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e], "

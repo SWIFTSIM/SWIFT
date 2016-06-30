@@ -19,14 +19,15 @@
 #ifndef SWIFT_DEBUG_H
 #define SWIFT_DEBUG_H
 
-struct part;
-struct gpart;
-struct xpart;
+/* Includes. */
+#include "cell.h"
+#include "part.h"
 
-void printParticle(struct part *parts, struct xpart *xparts, long long int id,
-                   size_t N);
-void printgParticle(struct gpart *parts, long long int id, size_t N);
-void printParticle_single(struct part *p, struct xpart *xp);
+void printParticle(const struct part *parts, struct xpart *xparts,
+                   long long int id, size_t N);
+void printgParticle(const struct gpart *gparts, const struct part *parts,
+                    long long int id, size_t N);
+void printParticle_single(const struct part *p, const struct xpart *xp);
 void printgParticle_single(struct gpart *gp);
 
 #ifdef HAVE_METIS

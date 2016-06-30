@@ -22,6 +22,9 @@
 /* Config parameters. */
 #include "../config.h"
 
+/* Standard headers. */
+#include <stddef.h>
+
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -49,6 +52,8 @@
 /* Import the right gravity particle definition */
 #include "./gravity/Default/gravity_part.h"
 
+void part_relink_gparts(struct part *parts, size_t N, ptrdiff_t offset);
+void part_relink_parts(struct gpart *gparts, size_t N, struct part *parts);
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype part_mpi_type;

@@ -376,9 +376,11 @@ void cell_gunlocktree(struct cell *c) {
  * @brief Sort the parts into eight bins along the given pivots.
  *
  * @param c The #cell array to be sorted.
+ * @param parts_offset Offset of the cell parts array relative to the
+ *        space's parts array, i.e. c->parts - s->parts.
  */
 
-void cell_split(struct cell *c) {
+void cell_split(struct cell *c, ptrdiff_t parts_offset) {
 
   int i, j;
   const int count = c->count, gcount = c->gcount;
@@ -496,8 +498,7 @@ void cell_split(struct cell *c) {
   }
 
   /* Re-link the gparts. */
-  for (int k = 0; k < count; k++)
-    if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k];
+  part_relink_gparts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -592,8 +593,7 @@ void cell_split(struct cell *c) {
   }
 
   /* Re-link the parts. */
-  for (int k = 0; k < gcount; k++)
-    if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
+  part_relink_parts(gparts, gcount, parts - parts_offset);
 }
 
 /**
