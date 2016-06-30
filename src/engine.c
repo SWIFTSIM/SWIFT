@@ -2504,11 +2504,11 @@ void engine_step(struct engine *e) {
 
   FILE *file = fopen("grav_swift.dat", "w");
   for (size_t k = 0; k < s->nr_gparts; ++k) {
-    fprintf(file, "%lld %f %f %f %e %e %e\n", s->gparts[k].id,
+    fprintf(file, "%lld %f %f %f %e %e %e\n", s->gparts[k].id_or_neg_offset,
             s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2],
             s->gparts[k].a_grav[0], s->gparts[k].a_grav[1],
             s->gparts[k].a_grav[2]);
-    if (s->gparts[k].id == -1)
+    if (s->gparts[k].id_or_neg_offset == 1)
       message("interacting mass= %f (%f)", s->gparts[k].mass_interacted,
               s->gparts[k].mass_interacted + s->gparts[k].mass);
   }
@@ -2521,9 +2521,9 @@ void engine_step(struct engine *e) {
   gravity_n2(temp, s->nr_gparts, e->physical_constants, rlr);
   file = fopen("grav_brute.dat", "w");
   for (size_t k = 0; k < s->nr_gparts; ++k) {
-    fprintf(file, "%lld %f %f %f %e %e %e\n", temp[k].id, temp[k].x[0],
-            temp[k].x[1], temp[k].x[2], temp[k].a_grav[0], temp[k].a_grav[1],
-            temp[k].a_grav[2]);
+    fprintf(file, "%lld %f %f %f %e %e %e\n", temp[k].id_or_neg_offset,
+            temp[k].x[0], temp[k].x[1], temp[k].x[2], temp[k].a_grav[0],
+            temp[k].a_grav[1], temp[k].a_grav[2]);
   }
   fclose(file);
 

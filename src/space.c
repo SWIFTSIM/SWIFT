@@ -1427,7 +1427,8 @@ struct cell *space_getcell(struct space *s) {
  * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
  * @param periodic flag whether the domain is periodic or not.
- * @param verbose Print messages to stdout or not
+ * @param gravity flag whether we are doing gravity or not.
+ * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
  * Makes a grid of edge length > r_max and fills the particles

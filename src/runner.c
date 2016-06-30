@@ -414,8 +414,8 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
         /* Get ready for a density calculation */
         gravity_init_part(gp);
 
-        if (gp->id == -ICHECK)
-          message("id=%lld a=[%f %f %f]\n", gp->id, gp->a_grav[0],
+        if (gp->id_or_neg_offset == ICHECK)
+          message("id=%lld a=[%f %f %f]\n", gp->id_or_neg_offset, gp->a_grav[0],
                   gp->a_grav[1], gp->a_grav[2]);
       }
     }
