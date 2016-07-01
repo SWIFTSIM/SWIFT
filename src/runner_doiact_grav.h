@@ -25,7 +25,7 @@
 #include "gravity.h"
 #include "part.h"
 
-#define ICHECK 1000
+#define ICHECK -1000
 
 /**
  * @brief Compute the recursive upward sweep, i.e. construct the
@@ -75,8 +75,6 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
   const float rlr_inv = 1. / (const_gravity_a_smooth * ci->super->h[0]);
 
   TIMER_TIC;
-
-// message("rlr_inv= %f", rlr_inv);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount == 0) error("Empty cell!");  // MATTHIEU sanity check
@@ -236,8 +234,6 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
   struct gpart *restrict gparts = c->gparts;
   const int ti_current = e->ti_current;
   const float rlr_inv = 1. / (const_gravity_a_smooth * c->super->h[0]);
-
-  // message("rlr_inv= %f", rlr_inv);
 
   TIMER_TIC;
 
@@ -477,8 +473,6 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
   const double max_d = const_gravity_a_smooth * const_gravity_r_cut * ci->h[0];
   const double max_d2 = max_d * max_d;
   const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
-
-  // message("max_d: %f", max_d);
 
   /* Anything to do here? */
   if (ci->ti_end_min > ti_current) return;
