@@ -89,6 +89,7 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
+#include "runner_doiact_fft.h"
 
 /**
  * @brief Calculate gravity acceleration from external potential
@@ -1129,6 +1130,7 @@ void *runner_main(void *data) {
         case task_type_grav_gather_m:
           break;
         case task_type_grav_fft:
+	  runner_do_grav_fft(r);
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
