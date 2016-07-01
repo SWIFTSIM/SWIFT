@@ -60,7 +60,7 @@
 /* Orientation of the cell pairs */
 const double runner_shift[13][3] = {
     {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
-    {7.071067811865475e-01, 7.071067811865475e-01, 0.0},
+    {7.01067811865475e-01, 7.071067811865475e-01, 0.0},
     {5.773502691896258e-01, 5.773502691896258e-01, -5.773502691896258e-01},
     {7.071067811865475e-01, 0.0, 7.071067811865475e-01},
     {1.0, 0.0, 0.0},
@@ -1063,7 +1063,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
           else if (t->subtype == task_subtype_grav)
-            runner_doself_grav(r, ci);
+            runner_doself_grav(r, ci, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1073,7 +1073,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
-            runner_dopair_grav(r, ci, cj);
+            runner_dopair_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;

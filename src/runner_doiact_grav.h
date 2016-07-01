@@ -117,7 +117,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pm(
     runner_iact_grav_pm(rlr_inv, r2, dx, gp, &multi);
   }
 
-  TIMER_TOC(TIMER_DOPAIR);  // MATTHIEU
+  TIMER_TOC(timer_dopair_grav_pm);
 }
 
 /**
@@ -215,7 +215,7 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
     }
   }
 
-  TIMER_TOC(TIMER_DOPAIR);  // MATTHIEU
+  TIMER_TOC(timer_dopair_grav_pp);
 }
 
 /**
@@ -298,7 +298,7 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
     }
   }
 
-  TIMER_TOC(TIMER_DOSELF);  // MATTHIEU
+  TIMER_TOC(timer_doself_grav_pp);
 }
 
 /**
@@ -308,11 +308,12 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
  * @param r The #runner.
  * @param ci The first #cell.
  * @param cj The other #cell.
+ * @param gettimer Are we timing this ?
  *
  * @todo Use a local cache for the particles.
  */
 static void runner_dopair_grav(struct runner *r, struct cell *ci,
-                               struct cell *cj) {
+                               struct cell *cj, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -366,6 +367,8 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
   }
 #endif
 
+  TIMER_TIC;
+
   /* Are both cells split ? */
   if (ci->split && cj->split) {
 
@@ -378,7 +381,7 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
             if (cell_are_neighbours(ci->progeny[j], cj->progeny[k])) {
 
               /* Recurse */
-              runner_dopair_grav(r, ci->progeny[j], cj->progeny[k]);
+              runner_dopair_grav(r, ci->progeny[j], cj->progeny[k], 0);
 
             } else {
 
@@ -395,15 +398,28 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
     /* Compute the interactions at this level directly. */
     runner_dopair_grav_pp(r, ci, cj);
   }
+
+  if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
 }
 
-static void runner_doself_grav(struct runner *r, struct cell *c) {
+/**
+ * @brief Computes the interaction of all the particles in a cell
+ *
+ * @param r The #runner.
+ * @param c The first #cell.
+ * @param gettimer Are we timing this ?
+ *
+ * @todo Use a local cache for the particles.
+ */
+static void runner_doself_grav(struct runner *r, struct cell *c, int gettimer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Early abort? */
   if (c->gcount == 0) error("Empty cell !");
 #endif
+
+  TIMER_TIC;
 
   /* If the cell is split, interact each progeny with itself, and with
      each of its siblings. */
@@ -412,12 +428,12 @@ static void runner_doself_grav(struct runner *r, struct cell *c) {
     for (int j = 0; j < 8; j++) {
       if (c->progeny[j] != NULL) {
 
-        runner_doself_grav(r, c->progeny[j]);
+        runner_doself_grav(r, c->progeny[j], 0);
 
         for (int k = j + 1; k < 8; k++) {
           if (c->progeny[k] != NULL) {
 
-            runner_dopair_grav(r, c->progeny[j], c->progeny[k]);
+            runner_dopair_grav(r, c->progeny[j], c->progeny[k], 0);
           }
         }
       }
@@ -429,6 +445,8 @@ static void runner_doself_grav(struct runner *r, struct cell *c) {
 
     runner_doself_grav_pp(r, c);
   }
+
+  if (gettimer) TIMER_TOC(timer_dosub_self_grav);
 }
 
 static void runner_dosub_grav(struct runner *r, struct cell *ci,
@@ -437,7 +455,7 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
   /* Is this a single cell? */
   if (cj == NULL) {
 
-    runner_doself_grav(r, ci);
+    runner_doself_grav(r, ci, 1);
 
   } else {
 
@@ -446,7 +464,7 @@ static void runner_dosub_grav(struct runner *r, struct cell *ci,
       error("Non-neighbouring cells in pair task !");
 #endif
 
-    runner_dopair_grav(r, ci, cj);
+    runner_dopair_grav(r, ci, cj, 1);
   }
 }
 
