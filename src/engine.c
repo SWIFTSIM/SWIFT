@@ -2565,7 +2565,8 @@ void engine_dump_snapshot(struct engine *e) {
                       e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
 #endif
 #else
-  write_output_single(e, e->snapshotBaseName, e->snapshotUnits);
+  write_output_single(e, e->snapshotBaseName, e->internalUnits,
+                      e->snapshotUnits);
 #endif
 
   clocks_gettime(&time2);
@@ -2640,6 +2641,7 @@ void engine_unpin() {
  * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
+ * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
@@ -2647,6 +2649,7 @@ void engine_unpin() {
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
+                 const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential) {
@@ -2676,6 +2679,7 @@ void engine_init(struct engine *e, struct space *s,
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
+  e->internalUnits = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");
   e->deltaTimeSnapshot =

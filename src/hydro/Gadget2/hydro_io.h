@@ -65,35 +65,41 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
  * @param offset The offset of the particles for this MPI rank (only used in MPI
  *mode)
  * @param parts The particle array
- * @param us The unit system to use
+ * @param internal_units The #UnitSystem used internally
+ * @param snapshot_units The #UnitSystem used in the snapshots
  *
  */
 __attribute__((always_inline)) INLINE static void hydro_write_particles(
     hid_t h_grp, char* fileName, char* partTypeGroupName, FILE* xmfFile, int N,
     long long N_total, int mpi_rank, long long offset, struct part* parts,
-    struct UnitSystem* us) {
+    const struct UnitSystem* internal_units,
+    const struct UnitSystem* snapshot_units) {
 
   /* Write arrays */
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates", DOUBLE,
-             N, 3, parts, N_total, mpi_rank, offset, x, us, UNIT_CONV_LENGTH);
+             N, 3, parts, N_total, mpi_rank, offset, x, internal_units,
+             snapshot_units, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities", FLOAT,
-             N, 3, parts, N_total, mpi_rank, offset, v, us, UNIT_CONV_SPEED);
+             N, 3, parts, N_total, mpi_rank, offset, v, internal_units,
+             snapshot_units, UNIT_CONV_SPEED);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT, N, 1,
-             parts, N_total, mpi_rank, offset, mass, us, UNIT_CONV_MASS);
+             parts, N_total, mpi_rank, offset, mass, internal_units,
+             snapshot_units, UNIT_CONV_MASS);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
-             FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, us,
-             UNIT_CONV_LENGTH);
+             FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, internal_units,
+             snapshot_units, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy", FLOAT, N,
-             1, parts, N_total, mpi_rank, offset, entropy, us,
-             UNIT_CONV_ENTROPY_PER_UNIT_MASS);
+             1, parts, N_total, mpi_rank, offset, entropy, internal_units,
+             snapshot_units, UNIT_CONV_ENTROPY_PER_UNIT_MASS);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
-             ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, us,
-             UNIT_CONV_NO_UNITS);
+             ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id,
+             internal_units, snapshot_units, UNIT_CONV_NO_UNITS);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Acceleration", FLOAT,
-             N, 3, parts, N_total, mpi_rank, offset, a_hydro, us,
-             UNIT_CONV_ACCELERATION);
+             N, 3, parts, N_total, mpi_rank, offset, a_hydro, internal_units,
+             snapshot_units, UNIT_CONV_ACCELERATION);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Density", FLOAT, N,
-             1, parts, N_total, mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
+             1, parts, N_total, mpi_rank, offset, rho, internal_units,
+             snapshot_units, UNIT_CONV_DENSITY);
 }
 
 /**

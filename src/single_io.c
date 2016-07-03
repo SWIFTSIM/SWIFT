@@ -149,7 +149,8 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
  * @param part_c A (char*) pointer on the first occurrence of the field of
  *interest in the parts array.
  * @param partSize The size in bytes of the particle structure.
- * @param us The UnitSystem currently in use
+ * @param internal_units The #UnitSystem used internally
+ * @param snapshot_units The #UnitSystem used in the snapshots
  * @param convFactor The UnitConversionFactor for this array
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
@@ -159,7 +160,8 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
 void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
                        char* partTypeGroupName, char* name, enum DATA_TYPE type,
                        int N, int dim, char* part_c, size_t partSize,
-                       struct UnitSystem* us,
+                       const struct UnitSystem* internal_units,
+                       const struct UnitSystem* snapshot_units,
                        enum UnitConversionFactor convFactor) {
   hid_t h_data = 0, h_err = 0, h_space = 0, h_prop = 0;
   void* temp = 0;
@@ -244,11 +246,13 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   writeXMFline(xmfFile, fileName, partTypeGroupName, name, N, dim, type);
 
   /* Write unit conversion factors for this data set */
-  units_conversion_string(buffer, us, convFactor);
+  units_conversion_string(buffer, snapshot_units, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
-                   units_conversion_factor(us, convFactor));
-  writeAttribute_f(h_data, "h-scale exponent", units_h_factor(us, convFactor));
-  writeAttribute_f(h_data, "a-scale exponent", units_a_factor(us, convFactor));
+                   units_conversion_factor(snapshot_units, convFactor));
+  writeAttribute_f(h_data, "h-scale exponent",
+                   units_h_factor(snapshot_units, convFactor));
+  writeAttribute_f(h_data, "a-scale exponent",
+                   units_a_factor(snapshot_units, convFactor));
   writeAttribute_s(h_data, "Conversion factor", buffer);
 
   /* Free and close everything */
@@ -296,16 +300,17 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @param mpi_rank Unused parameter in non-MPI mode
  * @param offset Unused parameter in non-MPI mode
  * @param field The name (code name) of the field to read from.
- * @param us The UnitSystem currently in use
+ * @param internal_units The #UnitSystem used internally
+ * @param snapshot_units The #UnitSystem used in the snapshots
  * @param convFactor The UnitConversionFactor for this array
  *
  */
 #define writeArray(grp, fileName, xmfFile, partTypeGroupName, name, type, N,  \
-                   dim, part, N_total, mpi_rank, offset, field, us,           \
-                   convFactor)                                                \
+                   dim, part, N_total, mpi_rank, offset, field,               \
+                   internal_units, snapshot_units, convFactor)                \
   writeArrayBackEnd(grp, fileName, xmfFile, partTypeGroupName, name, type, N, \
-                    dim, (char*)(&(part[0]).field), sizeof(part[0]), us,      \
-                    convFactor)
+                    dim, (char*)(&(part[0]).field), sizeof(part[0]),          \
+                    internal_units, snapshot_units, convFactor)
 
 /* Import the right hydro definition */
 #include "hydro_io.h"
@@ -316,6 +321,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
  *
  * @param fileName The file to read.
+ * @param internal_units The system units used internally
  * @param dim (output) The dimension of the volume.
  * @param parts (output) Array of Gas particles.
  * @param gparts (output) Array of #gpart particles.
@@ -332,9 +338,10 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @todo Read snapshots distributed in more than one file.
  *
  */
-void read_ic_single(char* fileName, double dim[3], struct part** parts,
-                    struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
-                    int* periodic, int dry_run) {
+void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
+                    double dim[3], struct part** parts, struct gpart** gparts,
+                    size_t* Ngas, size_t* Ngparts, int* periodic, int dry_run) {
+
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
@@ -460,7 +467,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
  *
  * @param e The engine containing all the system.
  * @param baseName The common part of the snapshot file name.
- * @param us The UnitSystem used for the conversion of units in the output.
+ * @param internal_units The #UnitSystem used internally
+ * @param snapshot_units The #UnitSystem used in the snapshots
  *
  * Creates an HDF5 output file and writes the particles contained
  * in the engine. If such a file already exists, it is erased and replaced
@@ -471,7 +479,8 @@ void read_ic_single(char* fileName, double dim[3], struct part** parts,
  *
  */
 void write_output_single(struct engine* e, const char* baseName,
-                         struct UnitSystem* us) {
+                         const struct UnitSystem* internal_units,
+                         const struct UnitSystem* snapshot_units) {
 
   hid_t h_file = 0, h_grp = 0;
   const size_t Ngas = e->s->nr_parts;
@@ -572,8 +581,11 @@ void write_output_single(struct engine* e, const char* baseName,
   parser_write_params_to_hdf5(e->parameter_file, h_grp);
   H5Gclose(h_grp);
 
-  /* Print the system of Units */
-  writeUnitSystem(h_file, us);
+  /* Print the system of Units used in the spashot */
+  writeUnitSystem(h_file, snapshot_units, "Units");
+
+  /* Print the system of Units used internally */
+  writeUnitSystem(h_file, internal_units, "InternalUnits");
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
@@ -601,7 +613,8 @@ void write_output_single(struct engine* e, const char* baseName,
 
       case GAS:
         hydro_write_particles(h_grp, fileName, partTypeGroupName, xmfFile, Ngas,
-                              Ngas, 0, 0, parts, us);
+                              Ngas, 0, 0, parts, internal_units,
+                              snapshot_units);
         break;
 
       case DM:
@@ -616,7 +629,8 @@ void write_output_single(struct engine* e, const char* baseName,
 
         /* Write DM particles */
         darkmatter_write_particles(h_grp, fileName, partTypeGroupName, xmfFile,
-                                   Ndm, Ndm, 0, 0, dmparts, us);
+                                   Ndm, Ndm, 0, 0, dmparts, internal_units,
+                                   snapshot_units);
 
         /* Free temporary array */
         free(dmparts);

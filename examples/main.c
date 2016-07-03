@@ -332,8 +332,8 @@ int main(int argc, char *argv[]) {
                  myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #endif
 #else
-  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 dry_run);
+  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -421,7 +421,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
-              engine_policies, talking, &prog_const, &hydro_properties,
+              engine_policies, talking, &us, &prog_const, &hydro_properties,
               &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);

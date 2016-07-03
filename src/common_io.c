@@ -276,12 +276,14 @@ void writeAttribute_s(hid_t grp, const char* name, const char* str) {
 /**
  * @brief Writes the current Unit System
  * @param h_file The (opened) HDF5 file in which to write
- * @param us The UnitSystem used in the run
+ * @param us The UnitSystem to dump
+ * @param groupName The name of the HDF5 group to write to
  */
-void writeUnitSystem(hid_t h_file, struct UnitSystem* us) {
-  hid_t h_grpunit = 0;
+void writeUnitSystem(hid_t h_file, const struct UnitSystem* us,
+                     const char* groupName) {
 
-  h_grpunit = H5Gcreate1(h_file, "/Units", 0);
+  hid_t h_grpunit = 0;
+  h_grpunit = H5Gcreate1(h_file, groupName, 0);
   if (h_grpunit < 0) error("Error while creating Unit System group");
 
   writeAttribute_d(h_grpunit, "Unit mass in cgs (U_M)",

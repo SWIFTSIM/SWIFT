@@ -57,24 +57,27 @@ __attribute__((always_inline)) INLINE static void darkmatter_read_particles(
  * @param offset The offset of the particles for this MPI rank (only used in MPI
  *mode)
  * @param gparts The #gpart array
- * @param us The unit system to use
+ * @param internal_units The #UnitSystem used internally
+ * @param snapshot_units The #UnitSystem used in the snapshots
  *
  */
 __attribute__((always_inline)) INLINE static void darkmatter_write_particles(
     hid_t h_grp, char* fileName, char* partTypeGroupName, FILE* xmfFile,
     int Ndm, long long Ndm_total, int mpi_rank, long long offset,
-    struct gpart* gparts, struct UnitSystem* us) {
+    struct gpart* gparts, const struct UnitSystem* internal_units,
+    const struct UnitSystem* snapshot_units) {
 
   /* Write arrays */
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates", DOUBLE,
-             Ndm, 3, gparts, Ndm_total, mpi_rank, offset, x, us,
-             UNIT_CONV_LENGTH);
+             Ndm, 3, gparts, Ndm_total, mpi_rank, offset, x, internal_units,
+             snapshot_units, UNIT_CONV_LENGTH);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT, Ndm,
-             1, gparts, Ndm_total, mpi_rank, offset, mass, us, UNIT_CONV_MASS);
+             1, gparts, Ndm_total, mpi_rank, offset, mass, internal_units,
+             snapshot_units, UNIT_CONV_MASS);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities", FLOAT,
-             Ndm, 3, gparts, Ndm_total, mpi_rank, offset, v_full, us,
-             UNIT_CONV_SPEED);
+             Ndm, 3, gparts, Ndm_total, mpi_rank, offset, v_full,
+             internal_units, snapshot_units, UNIT_CONV_SPEED);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
-             ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset, id, us,
-             UNIT_CONV_NO_UNITS);
+             ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset, id,
+             internal_units, snapshot_units, UNIT_CONV_NO_UNITS);
 }
