@@ -320,7 +320,7 @@ if test "x$with_tcmalloc" != "xno"; then
       TCMALLOC_LIBS="$tclibs"
 
       # These are recommended for GCC.
-      if "$ax_cv_c_compiler_vendor" = "gnu"; then
+      if test "$ax_cv_c_compiler_vendor" = "gnu"; then
          CFLAGS="$CFLAGS -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free"
       fi
    else
