@@ -72,9 +72,6 @@ if test "$enable_ipo" = "yes"; then
    fi
 fi
 
-# Add libtool support.
-LT_INIT
-
 # Check for MPI. Need to do this before characterising the compiler (C99 mode),
 # as this changes the compiler.
 # We should consider using AX_PROG_CC_MPI to replace AC_PROG_CC when compiling
@@ -150,6 +147,9 @@ AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 
 # Indicate that MPIRUN can be modified by an environement variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
+
+# Add libtool support (now that CC is defined).
+LT_INIT
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
