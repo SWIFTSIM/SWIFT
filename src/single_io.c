@@ -59,6 +59,9 @@
  * @param partSize The size in bytes of the particle structure.
  * @param importance If COMPULSORY, the data must be present in the IC file. If
  *OPTIONAL, the array will be zeroed when the data is not present.
+ * @param internal_units The #UnitSystem used internally
+ * @param ic_units The #UnitSystem used in the ICs
+ * @param convFactor The UnitConversionFactor for this array
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  *the part array
@@ -66,7 +69,11 @@
  */
 void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                       int dim, char* part_c, size_t partSize,
-                      enum DATA_IMPORTANCE importance) {
+                      enum DATA_IMPORTANCE importance,
+                      const struct UnitSystem* internal_units,
+                      const struct UnitSystem* snapshot_units,
+                      enum UnitConversionFactor convFactor) {
+
   hid_t h_data = 0, h_err = 0, h_type = 0;
   htri_t exist = 0;
   void* temp;
@@ -246,9 +253,9 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   writeXMFline(xmfFile, fileName, partTypeGroupName, name, N, dim, type);
 
   /* Write unit conversion factors for this data set */
-  units_conversion_string(buffer, snapshot_units, convFactor);
+  units_cgs_conversion_string(buffer, snapshot_units, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
-                   units_conversion_factor(snapshot_units, convFactor));
+                   units_cgs_conversion_factor(snapshot_units, convFactor));
   writeAttribute_f(h_data, "h-scale exponent",
                    units_h_factor(snapshot_units, convFactor));
   writeAttribute_f(h_data, "a-scale exponent",
@@ -275,12 +282,16 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @param offset Unused parameter in non-MPI mode
  * @param field The name of the field (C code name as defined in part.h) to fill
  * @param importance Is the data compulsory or not
+ * @param internal_units The #UnitSystem used internally
+ * @param ic_units The #UnitSystem used in the ICs
+ * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define readArray(grp, name, type, N, dim, part, N_total, offset, field, \
-                  importance)                                            \
-  readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),   \
-                   sizeof(part[0]), importance)
+#define readArray(grp, name, type, N, dim, part, N_total, offset, field,  \
+                  importance, internal_units, ic_units, convFactor)       \
+  readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),    \
+                   sizeof(part[0]), importance, internal_units, ic_units, \
+                   convFactor)
 
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
@@ -387,11 +398,38 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
 
-  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
-  /* 	  *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]);  */
-
   /* Close header */
   H5Gclose(h_grp);
+
+  /* Read the unit system used in the snapshots */
+  struct UnitSystem* ic_units = malloc(sizeof(struct UnitSystem));
+  if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
+  readUnitSystem(h_file, ic_units);
+
+  /* Tell the user if a conversion will be needed */
+  if (!units_are_equal(ic_units, internal_units)) {
+
+    message("Conversion needed from:");
+    message("(ICs) Unit system: U_M =      %e g.", ic_units->UnitMass_in_cgs);
+    message("(ICs) Unit system: U_L =      %e cm.",
+            ic_units->UnitLength_in_cgs);
+    message("(ICs) Unit system: U_t =      %e s.", ic_units->UnitTime_in_cgs);
+    message("(ICs) Unit system: U_I =      %e A.",
+            ic_units->UnitCurrent_in_cgs);
+    message("(ICs) Unit system: U_T =      %e K.",
+            ic_units->UnitTemperature_in_cgs);
+    message("to:");
+    message("(internal) Unit system: U_M = %e g.",
+            internal_units->UnitMass_in_cgs);
+    message("(internal) Unit system: U_L = %e cm.",
+            internal_units->UnitLength_in_cgs);
+    message("(internal) Unit system: U_t = %e s.",
+            internal_units->UnitTime_in_cgs);
+    message("(internal) Unit system: U_I = %e A.",
+            internal_units->UnitCurrent_in_cgs);
+    message("(internal) Unit system: U_T = %e K.",
+            internal_units->UnitTemperature_in_cgs);
+  }
 
   /* Allocate memory to store SPH particles */
   *Ngas = N[0];
@@ -407,12 +445,6 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
                      *Ngparts * sizeof(struct gpart)) != 0)
     error("Error while allocating memory for gravity particles");
   bzero(*gparts, *Ngparts * sizeof(struct gpart));
-
-  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
-   * (1024.*1024.)); */
-
-  /* message("BoxSize = %lf", dim[0]); */
-  /* message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts); */
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
@@ -435,11 +467,15 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
     switch (ptype) {
 
       case GAS:
-        if (!dry_run) hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts);
+        if (!dry_run)
+          hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts, internal_units,
+                               ic_units);
         break;
 
       case DM:
-        if (!dry_run) darkmatter_read_particles(h_grp, Ndm, Ndm, 0, *gparts);
+        if (!dry_run)
+          darkmatter_read_particles(h_grp, Ndm, Ndm, 0, *gparts, internal_units,
+                                    ic_units);
         break;
 
       default:
@@ -457,6 +493,9 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   if (!dry_run) duplicate_hydro_gparts(*parts, *gparts, *Ngas, Ndm);
 
   /* message("Done Reading particles..."); */
+
+  /* Clean up */
+  free(ic_units);
 
   /* Close file */
   H5Fclose(h_file);
