@@ -671,6 +671,7 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_xv The send_xv #task, if it has already been created.
  * @param t_rho The send_rho #task, if it has already been created.
+ * @param t_ti The send_ti #task, if required and has already been created.
  */
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
                           struct task *t_xv, struct task *t_rho,
@@ -737,6 +738,7 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
  * @param c The foreign #cell.
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
+ * @param t_ti The recv_ti #task, if required and has already been created.
  */
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho, struct task *t_ti) {
