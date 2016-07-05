@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
   struct swift_params *params = malloc(sizeof(struct swift_params));
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
-    message("Reading parameters from file '%s'", paramFileName);
+    message("Reading runtime parameters from file '%s'", paramFileName);
     parser_read_file(paramFileName, params);
     // parser_print_params(&params);
     parser_write_params_to_file(params, "used_parameters.yml");
@@ -296,11 +296,11 @@ int main(int argc, char *argv[]) {
   units_init(&us, params, "InternalUnitSystem");
   phys_const_init(&us, &prog_const);
   if (myrank == 0 && verbose > 0) {
-    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Internal unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Internal unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
     phys_const_print(&prog_const);
   }
 
