@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
-  int nsteps = -1;
+  int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
   int with_self_gravity = 0;
