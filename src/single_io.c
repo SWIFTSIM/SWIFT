@@ -183,29 +183,43 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
                        const struct UnitSystem* internal_units,
                        const struct UnitSystem* snapshot_units,
                        enum UnitConversionFactor convFactor) {
-  hid_t h_data = 0, h_err = 0, h_space = 0, h_prop = 0;
-  void* temp = 0;
-  int i = 0, rank = 0;
+
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
-  char* temp_c = 0;
-  hsize_t shape[2];
-  hsize_t chunk_shape[2];
-  char buffer[FILENAME_BUFFER_SIZE];
+  const size_t num_elements = N * dim;
 
   /* message("Writing '%s' array...", name); */
 
   /* Allocate temporary buffer */
-  temp = malloc(N * dim * sizeOfType(type));
+  void* temp = malloc(N * dim * sizeOfType(type));
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Copy particle data to temporary buffer */
-  temp_c = temp;
-  for (i = 0; i < N; ++i)
+  char* temp_c = temp;
+  for (int i = 0; i < N; ++i)
     memcpy(&temp_c[i * copySize], part_c + i * partSize, copySize);
 
+  /* Unit conversion if necessary */
+  const double factor =
+      units_conversion_factor(internal_units, snapshot_units, convFactor);
+  if (factor != 1.) {
+
+    message("aaa");
+
+    if (isDoublePrecision(type)) {
+      double* temp_d = temp;
+      for (int i = 0; i < num_elements; ++i) temp_d[i] *= factor;
+    } else {
+      float* temp_f = temp;
+      for (int i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+    }
+  }
+
   /* Create data space */
-  h_space = H5Screate(H5S_SIMPLE);
+  const hid_t h_space = H5Screate(H5S_SIMPLE);
+  int rank;
+  hsize_t shape[2];
+  hsize_t chunk_shape[2];
   if (h_space < 0) {
     error("Error while creating data space for field '%s'.", name);
   }
@@ -228,13 +242,13 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   if (chunk_shape[0] > N) chunk_shape[0] = N;
 
   /* Change shape of data space */
-  h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
+  hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if (h_err < 0) {
     error("Error while changing data space shape for field '%s'.", name);
   }
 
   /* Dataset properties */
-  h_prop = H5Pcreate(H5P_DATASET_CREATE);
+  const hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
   /* Set chunk size */
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
@@ -250,8 +264,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   }
 
   /* Create dataset */
-  h_data = H5Dcreate(grp, name, hdf5Type(type), h_space, H5P_DEFAULT, h_prop,
-                     H5P_DEFAULT);
+  const hid_t h_data = H5Dcreate(grp, name, hdf5Type(type), h_space,
+                                 H5P_DEFAULT, h_prop, H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while creating dataspace '%s'.", name);
   }
@@ -266,6 +280,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   writeXMFline(xmfFile, fileName, partTypeGroupName, name, N, dim, type);
 
   /* Write unit conversion factors for this data set */
+  char buffer[FILENAME_BUFFER_SIZE];
   units_cgs_conversion_string(buffer, snapshot_units, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
                    units_cgs_conversion_factor(snapshot_units, convFactor));
