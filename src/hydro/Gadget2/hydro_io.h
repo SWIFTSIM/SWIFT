@@ -24,31 +24,33 @@
  * @param N The number of particles on that MPI rank.
  * @param N_total The total number of particles (only used in MPI mode)
  * @param offset The offset of the particles for this MPI rank (only used in MPI
- *mode)
+ * mode)
  * @param parts The particle array
+ * @param internal_units The #UnitSystem used internally
+ * @param ic_units The #UnitSystem used in the snapshots
  *
  */
 __attribute__((always_inline)) INLINE static void hydro_read_particles(
-    hid_t h_grp, int N, long long N_total, long long offset,
-    struct part* parts) {
+    hid_t h_grp, int N, long long N_total, long long offset, struct part* parts,
+    const struct UnitSystem* internal_units, struct UnitSystem* ic_units) {
 
   /* Read arrays */
   readArray(h_grp, "Coordinates", DOUBLE, N, 3, parts, N_total, offset, x,
-            COMPULSORY);
+            COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH);
   readArray(h_grp, "Velocities", FLOAT, N, 3, parts, N_total, offset, v,
-            COMPULSORY);
+            COMPULSORY, internal_units, ic_units, UNIT_CONV_SPEED);
   readArray(h_grp, "Masses", FLOAT, N, 1, parts, N_total, offset, mass,
-            COMPULSORY);
+            COMPULSORY, internal_units, ic_units, UNIT_CONV_MASS);
   readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h,
-            COMPULSORY);
+            COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH);
   readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset,
-            entropy, COMPULSORY);
+            entropy, COMPULSORY, internal_units, ic_units, UNIT_CONV_ENERGY);
   readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id,
-            COMPULSORY);
+            COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS);
   readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a_hydro,
-            OPTIONAL);
+            OPTIONAL, internal_units, ic_units, UNIT_CONV_ACCELERATION);
   readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho,
-            OPTIONAL);
+            OPTIONAL, internal_units, ic_units, UNIT_CONV_DENSITY);
 }
 
 /**
@@ -57,13 +59,13 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
  * @param h_grp The HDF5 group in which to write the arrays.
  * @param fileName The name of the file (unsued in MPI mode).
  * @param partTypeGroupName The name of the group containing the particles in
- *the HDF5 file.
+ * the HDF5 file.
  * @param xmfFile The XMF file to write to (unused in MPI mode).
  * @param N The number of particles on that MPI rank.
  * @param N_total The total number of particles (only used in MPI mode)
  * @param mpi_rank The MPI rank of this node (only used in MPI mode)
  * @param offset The offset of the particles for this MPI rank (only used in MPI
- *mode)
+ * mode)
  * @param parts The particle array
  * @param internal_units The #UnitSystem used internally
  * @param snapshot_units The #UnitSystem used in the snapshots
