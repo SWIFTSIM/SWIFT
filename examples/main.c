@@ -74,6 +74,7 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-g", "",
          "Run with an external gravitational potential");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
+  printf("  %2s %8s %s\n", "-n", "{int}", "Execute a fixed number of time steps");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
@@ -138,6 +139,7 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
+  int nsteps = -1;
   int with_cosmology = 0;
   int with_external_gravity = 0;
   int with_self_gravity = 0;
@@ -150,7 +152,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acdef:gGhst:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acdef:gGhn:st:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -179,6 +181,13 @@ int main(int argc, char *argv[]) {
       case 'h':
         if (myrank == 0) print_help_message();
         return 0;
+      case 'n':
+        if (sscanf(optarg, "%d", &nsteps) != 1) {
+          if (myrank == 0) printf("Error parsing fixed number of steps.\n");
+          if (myrank == 0) print_help_message();
+          return 1;
+        }
+        break;
       case 's':
         with_hydro = 1;
         break;
@@ -477,7 +486,7 @@ int main(int argc, char *argv[]) {
            "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
 
   /* Main simulation loop */
-  for (int j = 0; !engine_is_done(&e); j++) {
+  for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI
