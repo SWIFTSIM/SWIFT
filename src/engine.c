@@ -102,8 +102,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 }
 
 /**
- * @brief Generate the hierarchical tasks for a hierarchy of cells - i.e. all
- * the O(Npart) tasks.
+ * @brief Generate the gravity hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -111,8 +111,8 @@ struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
  * @param c The #cell.
  * @param super The super #cell.
  */
-void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
-                                    struct cell *super) {
+void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
+                                            struct cell *super) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -132,36 +132,29 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
     if (c->nodeID == e->nodeID) {
 
       /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
 
       /* Add the drift task. */
-      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
 
       /* Add the kick task that matches the policy. */
       if (is_fixdt) {
-        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
-                                    0, 0, c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
       } else {
-        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
-                                    c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
       }
 
-      if (c->count > 0) {
-
-        /* Generate the ghost task. */
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL, 0);
-      }
-
-      if (c->gcount > 0) {
-
-        /* Add the external gravity tasks */
-        if (is_with_external_gravity)
-          c->grav_external = scheduler_addtask(
-              s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
-      }
+      if (is_with_external_gravity)
+        c->grav_external = scheduler_addtask(
+            s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
     }
   }
 
@@ -172,7 +165,69 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks(e, c->progeny[k], super);
+        engine_make_gravity_hierarchical_tasks(e, c->progeny[k], super);
+}
+
+/**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param super The super #cell.
+ */
+void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
+                                          struct cell *super) {
+
+  struct scheduler *s = &e->sched;
+  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+
+  /* Is this the super-cell? */
+  if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
+
+    /* This is the super cell, i.e. the first with density tasks attached. */
+    super = c;
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the init task. */
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
+
+      /* Add the drift task. */
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
+
+      /* Add the kick task that matches the policy. */
+      if (is_fixdt) {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
+      } else {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
+      }
+
+      /* Generate the ghost task. */
+      c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+    }
+  }
+
+  /* Set the super-cell. */
+  c->super = super;
+
+  /* Recurse. */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hydro_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -270,11 +325,11 @@ void engine_redistribute(struct engine *e) {
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
-        if (s->parts[k].gpart->id < 0)
+        if (s->parts[k].gpart->id_or_neg_offset >= 0)
           error("Trying to link a partnerless gpart !");
 #endif
 
-        s->parts[k].gpart->id = count_this_dest;
+        s->parts[k].gpart->id_or_neg_offset = -count_this_dest;
         count_this_dest++;
       }
     }
@@ -458,13 +513,14 @@ void engine_redistribute(struct engine *e) {
     for (size_t k = offset_gparts; k < offset_gparts + count_gparts; ++k) {
 
       /* Does this gpart have a partner ? */
-      if (gparts_new[k].id >= 0) {
+      if (gparts_new[k].id_or_neg_offset <= 0) {
 
-        const size_t partner_index = offset_parts + gparts_new[k].id;
+        const ptrdiff_t partner_index =
+            offset_parts - gparts_new[k].id_or_neg_offset;
 
         /* Re-link */
-        gparts_new[k].part = &parts_new[partner_index];
-        gparts_new[k].part->gpart = &gparts_new[k];
+        gparts_new[k].id_or_neg_offset = -partner_index;
+        parts_new[partner_index].gpart = &gparts_new[k];
       }
     }
 
@@ -485,22 +541,22 @@ void engine_redistribute(struct engine *e) {
   /* Verify that the links are correct */
   for (size_t k = 0; k < nr_gparts; ++k) {
 
-    if (gparts_new[k].id > 0) {
+    if (gparts_new[k].id_or_neg_offset <= 0) {
 
-      if (gparts_new[k].part->gpart != &gparts_new[k])
-        error("Linking problem !");
+      struct part *part = &parts_new[-gparts_new[k].id_or_neg_offset];
 
-      if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
-          gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
-          gparts_new[k].x[2] != gparts_new[k].part->x[2])
+      if (part->gpart != &gparts_new[k]) error("Linking problem !");
+
+      if (gparts_new[k].x[0] != part->x[0] ||
+          gparts_new[k].x[1] != part->x[1] || gparts_new[k].x[2] != part->x[2])
         error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < nr_parts; ++k) {
 
-    if (parts_new[k].gpart != NULL) {
-
-      if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !");
+    if (parts_new[k].gpart != NULL &&
+        parts_new[k].gpart->id_or_neg_offset != -k) {
+      error("Linking problem !");
     }
   }
 #endif
@@ -682,7 +738,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
  */
-
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho, struct task *t_ti) {
 
@@ -748,7 +803,8 @@ void engine_exchange_cells(struct engine *e) {
   MPI_Status status;
   ticks tic = getticks();
 
-  /* Run through the cells and get the size of the ones that will be sent */
+  /* Run through the cells and get the size of the ones that will be sent off.
+   */
   int count_out = 0;
   for (int k = 0; k < nr_cells; k++) {
     offset[k] = count_out;
@@ -913,7 +969,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
     /* Re-link the associated gpart with the buffer offset of the part. */
     if (s->parts[offset_parts + k].gpart != NULL) {
-      s->parts[offset_parts + k].gpart->id = e->proxies[pid].nr_parts_out;
+      s->parts[offset_parts + k].gpart->id_or_neg_offset =
+          -e->proxies[pid].nr_parts_out;
     }
 
     /* Load the part and xpart into the proxy. */
@@ -929,7 +986,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
           "id=%lli, x=[%e,%e,%e].",
-          node_id, s->gparts[offset_parts + k].id,
+          node_id, s->gparts[offset_parts + k].id_or_neg_offset,
           s->gparts[offset_gparts + k].x[0], s->gparts[offset_parts + k].x[1],
           s->gparts[offset_gparts + k].x[2]);
     proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
@@ -989,7 +1046,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     s->xparts = xparts_new;
     for (size_t k = 0; k < offset_parts; k++) {
       if (s->parts[k].gpart != NULL) {
-        s->parts[k].gpart->part = &s->parts[k];
+        s->parts[k].gpart->id_or_neg_offset = -k;
       }
     }
   }
@@ -1004,8 +1061,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     free(s->gparts);
     s->gparts = gparts_new;
     for (size_t k = 0; k < offset_gparts; k++) {
-      if (s->gparts[k].id > 0) {
-        s->gparts[k].part->gpart = &s->gparts[k];
+      if (s->gparts[k].id_or_neg_offset < 0) {
+        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
   }
@@ -1078,9 +1135,10 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       /* Re-link the gparts. */
       for (int k = 0; k < p->nr_gparts_in; k++) {
         struct gpart *gp = &s->gparts[offset_gparts + count_gparts + k];
-        if (gp->id >= 0) {
-          struct part *p = &s->parts[offset_parts + count_parts + gp->id];
-          gp->part = p;
+        if (gp->id_or_neg_offset <= 0) {
+          struct part *p =
+              &s->parts[offset_gparts + count_parts - gp->id_or_neg_offset];
+          gp->id_or_neg_offset = s->parts - p;
           p->gpart = gp;
         }
       }
@@ -1504,8 +1562,14 @@ void engine_maketasks(struct engine *e) {
   engine_count_and_link_tasks(e);
 
   /* Append hierarchical tasks to each cells */
-  for (int k = 0; k < nr_cells; k++)
-    engine_make_hierarchical_tasks(e, &cells[k], NULL);
+  if (e->policy & engine_policy_hydro)
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_hydro_hierarchical_tasks(e, &cells[k], NULL);
+
+  if ((e->policy & engine_policy_self_gravity) ||
+      (e->policy & engine_policy_external_gravity))
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_gravity_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -1805,7 +1869,6 @@ void engine_print_task_counts(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_rebuild(struct engine *e) {
 
   const ticks tic = getticks();
@@ -2183,8 +2246,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
  *forward in time.
  *
  * @param e The #engine
+ * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
+ *contain entropy ?
  */
-void engine_init_particles(struct engine *e) {
+void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   struct space *s = e->s;
 
@@ -2252,7 +2317,7 @@ void engine_init_particles(struct engine *e) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+  if (!flag_entropy_ICs) space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
   clocks_gettime(&time2);
 
@@ -2537,8 +2602,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->xparts = xparts_new;
 
   /* Re-link the gparts. */
-  for (size_t k = 0; k < s->nr_parts; k++)
-    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
+  part_relink_gparts(s->parts, s->nr_parts, 0);
 
   /* Re-allocate the local gparts. */
   if (e->verbose)
@@ -2554,31 +2618,28 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->gparts = gparts_new;
 
   /* Re-link the parts. */
-  for (size_t k = 0; k < s->nr_gparts; k++)
-    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
+  part_relink_parts(s->gparts, s->nr_gparts, s->parts);
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Verify that the links are correct */
   for (size_t k = 0; k < s->nr_gparts; ++k) {
 
-    if (s->gparts[k].id > 0) {
+    if (s->gparts[k].id_or_neg_offset <= 0) {
 
-      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+      struct part *part = &s->parts[-s->gparts[k].id_or_neg_offset];
 
-      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
-          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
-          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+      if (part->gpart != &s->gparts[k]) error("Linking problem !");
+
+      if (s->gparts[k].x[0] != part->x[0] || s->gparts[k].x[1] != part->x[1] ||
+          s->gparts[k].x[2] != part->x[2])
         error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < s->nr_parts; ++k) {
 
-    if (s->parts[k].gpart != NULL) {
-      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
-    }
+    if (s->parts[k].gpart != NULL && s->parts[k].gpart->id_or_neg_offset != -k)
+      error("Linking problem !");
   }
-
 #endif
 
 #else

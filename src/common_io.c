@@ -516,12 +516,10 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
 
   /* Let's give all these gparts a negative id */
   for (size_t i = 0; i < Ndm; ++i) {
-
     /* 0 or negative ids are not allowed */
-    if (gparts[i].id <= 0)
-      error("0 or negative ID for DM particle %zd: ID=%lld", i, gparts[i].id);
-
-    gparts[i].id = -gparts[i].id;
+    if (gparts[i].id_or_neg_offset <= 0)
+      error("0 or negative ID for DM particle %zd: ID=%lld", i,
+            gparts[i].id_or_neg_offset);
   }
 }
 
@@ -555,7 +553,7 @@ void duplicate_hydro_gparts(struct part* const parts,
     gparts[i + Ndm].mass = parts[i].mass;
 
     /* Link the particles */
-    gparts[i + Ndm].part = &parts[i];
+    gparts[i + Ndm].id_or_neg_offset = -i;
     parts[i].gpart = &gparts[i + Ndm];
   }
 }
@@ -580,9 +578,8 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
      * gparts[i].part); */
 
     /* And collect the DM ones */
-    if (gparts[i].id < 0LL) {
-      memcpy(&dmparts[count], &gparts[i], sizeof(struct gpart));
-      dmparts[count].id = -dmparts[count].id;
+    if (gparts[i].id_or_neg_offset > 0) {
+      dmparts[count] = gparts[i];
       count++;
     }
   }

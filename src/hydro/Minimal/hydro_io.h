@@ -115,3 +115,10 @@ void writeSPHflavour(hid_t h_grpsph) {
   writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
                    const_max_u_change);
 }
+
+/**
+ * @brief Are we writing entropy in the internal energy field ?
+ *
+ * @return 1 if entropy is in 'internal energy', 0 otherwise.
+ */
+int writeEntropyFlag() { return 0; }

@@ -36,8 +36,8 @@
 
 void read_ic_serial(char* fileName, double dim[3], struct part** parts,
                     struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
-                    int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
-                    MPI_Info info, int dry_run);
+                    int* periodic, int* flag_entropy, int mpi_rank,
+                    int mpi_size, MPI_Comm comm, MPI_Info info, int dry_run);
 
 void write_output_serial(struct engine* e, const char* baseName,
                          struct UnitSystem* us, int mpi_rank, int mpi_size,

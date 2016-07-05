@@ -759,7 +759,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
       struct gpart *const gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
-      if (gp->id < 0) {
+      if (gp->id_or_neg_offset > 0) {
 
         /* First, finish the force calculation */
         gravity_end_force(gp);
@@ -871,7 +871,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       struct gpart *const gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id < 0) {
+      if (gp->id_or_neg_offset > 0) {
 
         if (gp->ti_end <= ti_current) {
 
