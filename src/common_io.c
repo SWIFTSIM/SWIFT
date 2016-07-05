@@ -274,6 +274,44 @@ void writeAttribute_s(hid_t grp, const char* name, const char* str) {
 }
 
 /**
+ * @brief Reads the Unit System from an IC file.
+ * @param h_file The (opened) HDF5 file from which to read.
+ * @param us The UnitSystem to fill.
+ *
+ * If the 'Units' group does not exist in the ICs, cgs units will be assumed
+ */
+void readUnitSystem(hid_t h_file, struct UnitSystem* us) {
+
+  hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
+
+  if (h_grp < 0) {
+    message("'Units' group not found in ICs. Assuming CGS unit system.");
+
+    /* Default to CGS */
+    us->UnitMass_in_cgs = 1.;
+    us->UnitLength_in_cgs = 1.;
+    us->UnitTime_in_cgs = 1.;
+    us->UnitCurrent_in_cgs = 1.;
+    us->UnitTemperature_in_cgs = 1.;
+
+    return;
+  }
+
+  /* Ok, Read the damn thing */
+  readAttribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
+                &us->UnitLength_in_cgs);
+  readAttribute(h_grp, "Unit mass in cgs (U_M)", DOUBLE, &us->UnitMass_in_cgs);
+  readAttribute(h_grp, "Unit time in cgs (U_t)", DOUBLE, &us->UnitTime_in_cgs);
+  readAttribute(h_grp, "Unit current in cgs (U_I)", DOUBLE,
+                &us->UnitCurrent_in_cgs);
+  readAttribute(h_grp, "Unit temperature in cgs (U_T)", DOUBLE,
+                &us->UnitTemperature_in_cgs);
+
+  /* Clean up */
+  H5Gclose(h_grp);
+}
+
+/**
  * @brief Writes the current Unit System
  * @param h_file The (opened) HDF5 file in which to write
  * @param us The UnitSystem to dump
