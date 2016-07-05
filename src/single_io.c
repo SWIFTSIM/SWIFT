@@ -71,7 +71,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                       int dim, char* part_c, size_t partSize,
                       enum DATA_IMPORTANCE importance,
                       const struct UnitSystem* internal_units,
-                      const struct UnitSystem* snapshot_units,
+                      const struct UnitSystem* ic_units,
                       enum UnitConversionFactor convFactor) {
 
   hid_t h_data = 0, h_err = 0, h_type = 0;

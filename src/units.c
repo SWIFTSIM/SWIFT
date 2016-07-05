@@ -506,7 +506,9 @@ double units_general_conversion_factor(const struct UnitSystem* from,
  *
  * @param from The #UnitSystem we are converting from
  * @param to The #UnitSystem we are converting to
- * @return unit The unit we are converting
+ * @param unit The unit we are converting
+ * 
+ * @return The conversion factor
  */
 double units_conversion_factor(const struct UnitSystem* from,
                                const struct UnitSystem* to,
