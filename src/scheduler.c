@@ -808,8 +808,6 @@ void scheduler_reweight(struct scheduler *s) {
         default:
           break;
       }
-    if (t->type == task_type_send) t->weight = INT_MAX / 8;
-    if (t->type == task_type_recv) t->weight *= 1.41;
   }
   // message( "weighting tasks took %.3f %s." ,
   // clocks_from_ticks( getticks() - tic ), clocks_getunit());
