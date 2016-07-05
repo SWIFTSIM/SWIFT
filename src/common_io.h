@@ -73,6 +73,7 @@ extern const char* particle_type_names[];
 
 hid_t hdf5Type(enum DATA_TYPE type);
 size_t sizeOfType(enum DATA_TYPE type);
+int isDoublePrecision(enum DATA_TYPE type);
 
 void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
                        struct gpart* const dmparts, size_t Ndm);

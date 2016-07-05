@@ -74,16 +74,12 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
                       const struct UnitSystem* ic_units,
                       enum UnitConversionFactor convFactor) {
 
-  hid_t h_data = 0, h_err = 0, h_type = 0;
-  htri_t exist = 0;
-  void* temp;
-  int i = 0;
   const size_t typeSize = sizeOfType(type);
   const size_t copySize = typeSize * dim;
-  char* temp_c = 0;
+  const size_t num_elements = N * dim;
 
   /* Check whether the dataspace exists or not */
-  exist = H5Lexists(grp, name, 0);
+  const htri_t exist = H5Lexists(grp, name, 0);
   if (exist < 0) {
     error("Error while checking the existence of data set '%s'.", name);
   } else if (exist == 0) {
@@ -93,7 +89,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
       /* message("Optional data set '%s' not present. Zeroing this particle
        * field...", name);	   */
 
-      for (i = 0; i < N; ++i) memset(part_c + i * partSize, 0, copySize);
+      for (int i = 0; i < N; ++i) memset(part_c + i * partSize, 0, copySize);
 
       return;
     }
@@ -103,32 +99,49 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
    * "compulsory": "optional  ", name); */
 
   /* Open data space */
-  h_data = H5Dopen(grp, name, H5P_DEFAULT);
+  const hid_t h_data = H5Dopen(grp, name, H5P_DEFAULT);
   if (h_data < 0) {
     error("Error while opening data space '%s'.", name);
   }
 
   /* Check data type */
-  h_type = H5Dget_type(h_data);
+  const hid_t h_type = H5Dget_type(h_data);
   if (h_type < 0) error("Unable to retrieve data type from the file");
   // if (!H5Tequal(h_type, hdf5Type(type)))
   //  error("Non-matching types between the code and the file");
 
   /* Allocate temporary buffer */
-  temp = malloc(N * dim * typeSize);
+  void* temp = malloc(num_elements * typeSize);
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Read HDF5 dataspace in temporary buffer */
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
-  h_err = H5Dread(h_data, hdf5Type(type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
+  const hid_t h_err =
+      H5Dread(h_data, hdf5Type(type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (h_err < 0) {
     error("Error while reading data array '%s'.", name);
   }
 
+  /* Unit conversion if necessary */
+  const double factor =
+      units_conversion_factor(ic_units, internal_units, convFactor);
+  if (factor != 1. && exist != 0) {
+
+    message("aaa");
+
+    if (isDoublePrecision(type)) {
+      double* temp_d = temp;
+      for (int i = 0; i < num_elements; ++i) temp_d[i] *= factor;
+    } else {
+      float* temp_f = temp;
+      for (int i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+    }
+  }
+
   /* Copy temporary buffer to particle data */
-  temp_c = temp;
-  for (i = 0; i < N; ++i)
+  char* temp_c = temp;
+  for (int i = 0; i < N; ++i)
     memcpy(part_c + i * partSize, &temp_c[i * copySize], copySize);
 
   /* Free and close everything */
@@ -407,7 +420,11 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   readUnitSystem(h_file, ic_units);
 
   /* Tell the user if a conversion will be needed */
-  if (!units_are_equal(ic_units, internal_units)) {
+  if (units_are_equal(ic_units, internal_units)) {
+
+    message("IC and internal units match. No conversion needed");
+
+  } else {
 
     message("Conversion needed from:");
     message("(ICs) Unit system: U_M =      %e g.", ic_units->UnitMass_in_cgs);

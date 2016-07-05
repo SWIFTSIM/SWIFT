@@ -58,6 +58,7 @@ const char* particle_type_names[NUM_PARTICLE_TYPES] = {
  *way.
  */
 hid_t hdf5Type(enum DATA_TYPE type) {
+
   switch (type) {
     case INT:
       return H5T_NATIVE_INT;
@@ -87,6 +88,7 @@ hid_t hdf5Type(enum DATA_TYPE type) {
  * @brief Returns the memory size of the data type
  */
 size_t sizeOfType(enum DATA_TYPE type) {
+
   switch (type) {
     case INT:
       return sizeof(int);
@@ -108,6 +110,23 @@ size_t sizeOfType(enum DATA_TYPE type) {
       return sizeof(char);
     default:
       error("Unknown type");
+      return 0;
+  }
+}
+
+/**
+ * @brief Return 1 if the type has double precision
+ *
+ * Returns an error if the type is not FLOAT or DOUBLE
+ */
+int isDoublePrecision(enum DATA_TYPE type) {
+  switch (type) {
+    case FLOAT:
+      return 0;
+    case DOUBLE:
+      return 1;
+    default:
+      error("Invalid type");
       return 0;
   }
 }
