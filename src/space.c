@@ -732,7 +732,8 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
             clocks_getunit());
 }
 
-void space_parts_sort_mapper(void *map_data, int num_elements, void *extra_data) {
+void space_parts_sort_mapper(void *map_data, int num_elements,
+                             void *extra_data) {
 
   /* Unpack the mapping data. */
   struct parallel_sort *sort_struct = (struct parallel_sort *)map_data;
@@ -916,7 +917,8 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
             clocks_getunit());
 }
 
-void space_gparts_sort_mapper(void *map_data, int num_elements, void *extra_data) {
+void space_gparts_sort_mapper(void *map_data, int num_elements,
+                              void *extra_data) {
 
   /* Unpack the mapping data. */
   struct parallel_sort *sort_struct = (struct parallel_sort *)map_data;

@@ -32,22 +32,21 @@ struct dump {
 
   /* The memory-mapped data of this dump. */
   void *data;
-  
+
   /* The size of the memory-mapped data, in bytes. */
   size_t size;
-  
+
   /* The number of bytes that have been dumped. */
   size_t count;
-  
+
   /* The offset of the data within the current file. */
   size_t file_offset;
-  
+
   /* The file with which this memory is associated. */
   int fd;
-  
+
   /* Mask containing the significant bits for page addresses. */
   size_t page_mask;
-  
 };
 
 /* Function prototypes. */

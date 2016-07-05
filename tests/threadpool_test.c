@@ -23,8 +23,8 @@
 #include <unistd.h>
 
 // Local includes.
-#include "../src/threadpool.h"
 #include "../src/atomic.h"
+#include "../src/threadpool.h"
 
 void map_function_first(void *map_data, int num_elements, void *extra_data) {
   const int *inputs = (int *)map_data;

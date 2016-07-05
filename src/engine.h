@@ -201,7 +201,7 @@ struct engine {
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
-  
+
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
 };

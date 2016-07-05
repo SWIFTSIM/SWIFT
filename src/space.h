@@ -152,8 +152,10 @@ void space_map_parts_xparts(struct space *s,
                                         struct cell *c));
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
-void space_parts_sort_mapper(void *map_data, int num_elements, void *extra_data);
-void space_gparts_sort_mapper(void *map_data, int num_elements, void *extra_data);
+void space_parts_sort_mapper(void *map_data, int num_elements,
+                             void *extra_data);
+void space_gparts_sort_mapper(void *map_data, int num_elements,
+                              void *extra_data);
 void space_rebuild(struct space *s, double h_max, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_split(struct space *s, struct cell *cells, int verbose);

@@ -66,7 +66,7 @@ void dump_ensure(struct dump *d, size_t size) {
     error("Failed to unmap %zi bytes of dump data (%s).", trunc_count,
           strerror(errno));
   }
-  
+
   /* Update the size and count. */
   d->file_offset += trunc_count;
   d->count -= trunc_count;
@@ -103,7 +103,7 @@ void dump_close(struct dump *d) {
   if (munmap(d->data, d->count) != 0) {
     error("Failed to unmap dump data (%s).", strerror(errno));
   }
-  
+
   /* Truncate the file to the correct length. */
   if (ftruncate(d->fd, d->file_offset + d->count) != 0) {
     error("Failed to truncate dump file (%s).", strerror(errno));
@@ -132,7 +132,7 @@ void dump_init(struct dump *d, const char *filename, size_t size) {
   /* Adjust the size to be at least the page size. */
   const size_t page_mask = ~(sysconf(_SC_PAGE_SIZE) - 1);
   size = (size + ~page_mask) & page_mask;
-  
+
   /* Pre-allocate the file size. */
   if (posix_fallocate(d->fd, 0, size) != 0) {
     error("Failed to pre-allocate the dump file.");
