@@ -125,7 +125,10 @@ struct cell {
   struct task *ghost, *init, *drift, *kick;
 
   /* Task receiving data. */
-  struct task *recv_xv, *recv_rho;
+  struct task *recv_xv, *recv_rho, *recv_ti;
+
+  /* Task send data. */
+  struct link *send_xv, *send_rho, *send_ti;
 
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
@@ -185,6 +188,8 @@ int cell_glocktree(struct cell *c);
 void cell_gunlocktree(struct cell *c);
 int cell_pack(struct cell *c, struct pcell *pc);
 int cell_unpack(struct pcell *pc, struct cell *c, struct space *s);
+int cell_pack_ti_ends(struct cell *c, int *ti_ends);
+int cell_unpack_ti_ends(struct cell *c, int *ti_ends);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);

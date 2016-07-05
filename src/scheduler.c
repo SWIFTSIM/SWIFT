@@ -565,9 +565,6 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
   t->rid = -1;
   t->last_rid = -1;
 
-  /* Init the lock. */
-  lock_init(&t->lock);
-
   /* Add an index for it. */
   // lock_lock( &s->lock );
   s->tasks_ind[atomic_inc(&s->nr_tasks)] = ind;
@@ -978,8 +975,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
-                        t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        if (t->subtype == task_subtype_tend) {
+          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
+                          t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
@@ -993,8 +996,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
-                        t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        if (t->subtype == task_subtype_tend) {
+          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+          cell_pack_ti_ends(t->ci, t->buff);
+          err = MPI_Isend(t->buff, t->ci->pcell_size, MPI_INT, t->cj->nodeID,
+                          t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
+                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }

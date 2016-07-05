@@ -74,7 +74,8 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-g", "",
          "Run with an external gravitational potential");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
-  printf("  %2s %8s %s\n", "-n", "{int}", "Execute a fixed number of time steps");
+  printf("  %2s %8s %s\n", "-n", "{int}",
+         "Execute a fixed number of time steps");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
@@ -139,7 +140,7 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
-  int nsteps = -1;
+  int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
   int with_self_gravity = 0;
