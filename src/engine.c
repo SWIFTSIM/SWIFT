@@ -59,15 +59,26 @@
 #include "parallel_io.h"
 #include "part.h"
 #include "partition.h"
+#include "proxy.h"
+#include "runner.h"
 #include "serial_io.h"
 #include "single_io.h"
 #include "timers.h"
+#include "units.h"
 
-const char *engine_policy_names[13] = {
-    "none",                 "rand",   "steal",        "keep",
-    "block",                "fix_dt", "cpu_tight",    "mpi",
-    "numa_affinity",        "hydro",  "self_gravity", "external_gravity",
-    "cosmology_integration"};
+const char *engine_policy_names[13] = {"none",
+                                       "rand",
+                                       "steal",
+                                       "keep",
+                                       "block",
+                                       "fix_dt",
+                                       "cpu_tight",
+                                       "mpi",
+                                       "numa_affinity",
+                                       "hydro",
+                                       "self_gravity",
+                                       "external_gravity",
+                                       "cosmology_integration"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -87,7 +98,7 @@ static cpu_set_t entry_affinity;
  * @return The new #link pointer.
  */
 
-void engine_addlink(struct engine *e, struct link **l, struct task *t) {
+struct link *engine_addlink(struct engine *e, struct link *l, struct task *t) {
 
   /* Get the next free link. */
   const int ind = atomic_inc(&e->nr_links);
@@ -102,8 +113,8 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 }
 
 /**
- * @brief Generate the hierarchical tasks for a hierarchy of cells - i.e. all
- * the O(Npart) tasks.
+ * @brief Generate the gravity hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
  *
  * Tasks are only created here. The dependencies will be added later on.
  *
@@ -111,9 +122,8 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  * @param c The #cell.
  * @param super The super #cell.
  */
-
-void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
-                                    struct cell *super) {
+void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
+                                            struct cell *super) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -122,45 +132,40 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Am I the super-cell? */
-  if (super == NULL && (c->count > 0 || c->gcount > 0)) {
+  /* TODO(pedro): Add a condition for gravity tasks as well. */
+  if (super == NULL &&
+      (c->density != NULL || (!c->split && (c->count > 0 || c->gcount > 0)))) {
 
-    /* Remember me. */
+    /* This is the super cell, i.e. the first with density tasks attached. */
     super = c;
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
 
       /* Add the init task. */
-      c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0, c,
-                                  NULL, 0);
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
 
       /* Add the drift task. */
-      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
 
       /* Add the kick task that matches the policy. */
       if (is_fixdt) {
-        c->kick = scheduler_addtask(s, task_type_kick_fixdt, task_subtype_none,
-                                    0, 0, c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
       } else {
-        c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0, 0,
-                                    c, NULL, 0);
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
       }
 
-      if (c->count > 0) {
-
-        /* Generate the ghost task. */
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL, 0);
-      }
-
-      if (c->gcount > 0) {
-
-        /* Add the external gravity tasks */
-        if (is_with_external_gravity)
-          c->grav_external = scheduler_addtask(
-              s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
-      }
+      if (is_with_external_gravity)
+        c->grav_external = scheduler_addtask(
+            s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
     }
   }
 
@@ -171,7 +176,69 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_hierarchical_tasks(e, c->progeny[k], super);
+        engine_make_gravity_hierarchical_tasks(e, c->progeny[k], super);
+}
+
+/**
+ * @brief Generate the hydro hierarchical tasks for a hierarchy of cells -
+ * i.e. all the O(Npart) tasks.
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ * @param super The super #cell.
+ */
+void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
+                                          struct cell *super) {
+
+  struct scheduler *s = &e->sched;
+  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+
+  /* Is this the super-cell? */
+  if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
+
+    /* This is the super cell, i.e. the first with density tasks attached. */
+    super = c;
+
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+
+      /* Add the init task. */
+      if (c->init == NULL)
+        c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
+                                    c, NULL, 0);
+
+      /* Add the drift task. */
+      if (c->drift == NULL)
+        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
+                                     0, c, NULL, 0);
+
+      /* Add the kick task that matches the policy. */
+      if (is_fixdt) {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick_fixdt,
+                                      task_subtype_none, 0, 0, c, NULL, 0);
+      } else {
+        if (c->kick == NULL)
+          c->kick = scheduler_addtask(s, task_type_kick, task_subtype_none, 0,
+                                      0, c, NULL, 0);
+      }
+
+      /* Generate the ghost task. */
+      c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
+                                   c, NULL, 0);
+    }
+  }
+
+  /* Set the super-cell. */
+  c->super = super;
+
+  /* Recurse. */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hydro_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -236,9 +303,12 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
                                parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
-    /* if (cid < 0 || cid >= s->nr_cells)
-       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
-             cid, k, parts[k].x[0], parts[k].x[1], parts[k].x[2]); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+            parts[k].x[0], parts[k].x[1], parts[k].x[2]);
+#endif
+
     dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
@@ -265,11 +335,12 @@ void engine_redistribute(struct engine *e) {
           count_this_dest = 0;
         }
 
-        /* Debug */
-        /* if(s->parts[k].gpart->id < 0) */
-        /*   error("Trying to link a partnerless gpart !"); */
+#ifdef SWIFT_DEBUG_CHECKS
+        if (s->parts[k].gpart->id_or_neg_offset >= 0)
+          error("Trying to link a partnerless gpart !");
+#endif
 
-        s->parts[k].gpart->id = count_this_dest;
+        s->parts[k].gpart->id_or_neg_offset = -count_this_dest;
         count_this_dest++;
       }
     }
@@ -287,9 +358,12 @@ void engine_redistribute(struct engine *e) {
     }
     const int cid = cell_getid(cdim, gparts[k].x[0] * ih[0],
                                gparts[k].x[1] * ih[1], gparts[k].x[2] * ih[2]);
-    /* if (cid < 0 || cid >= s->nr_cells)
-       error("Bad cell id %i for part %i at [%.3e,%.3e,%.3e].",
-             cid, k, g_parts[k].x[0], g_parts[k].x[1], g_parts[k].x[2]); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cid < 0 || cid >= s->nr_cells)
+      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+            gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]);
+#endif
+
     g_dest[k] = cells[cid].nodeID;
 
     /* The counts array is indexed as count[from * nr_nodes + to]. */
@@ -450,13 +524,14 @@ void engine_redistribute(struct engine *e) {
     for (size_t k = offset_gparts; k < offset_gparts + count_gparts; ++k) {
 
       /* Does this gpart have a partner ? */
-      if (gparts_new[k].id >= 0) {
+      if (gparts_new[k].id_or_neg_offset <= 0) {
 
-        const size_t partner_index = offset_parts + gparts_new[k].id;
+        const ptrdiff_t partner_index =
+            offset_parts - gparts_new[k].id_or_neg_offset;
 
         /* Re-link */
-        gparts_new[k].part = &parts_new[partner_index];
-        gparts_new[k].part->gpart = &gparts_new[k];
+        gparts_new[k].id_or_neg_offset = -partner_index;
+        parts_new[partner_index].gpart = &gparts_new[k];
       }
     }
 
@@ -464,37 +539,39 @@ void engine_redistribute(struct engine *e) {
     offset_gparts += count_gparts;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
-  /* for ( int k = 0 ; k < nr_parts ; k++ ) {
-      int cid = cell_getid( cdim , parts_new[k].x[0]*ih[0],
-    parts_new[k].x[1]*ih[1], parts_new[k].x[2]*ih[2] );
-      if ( cells[ cid ].nodeID != nodeID )
-          error( "Received particle (%i) that does not belong here
-    (nodeID=%i).", k , cells[ cid ].nodeID );
-    } */
+  for (int k = 0; k < nr_parts; k++) {
+    int cid = cell_getid(cdim, parts_new[k].x[0] * ih[0],
+                         parts_new[k].x[1] * ih[1], parts_new[k].x[2] * ih[2]);
+    if (cells[cid].nodeID != nodeID)
+      error("Received particle (%i) that does not belong here (nodeID=%i).", k,
+            cells[cid].nodeID);
+  }
 
   /* Verify that the links are correct */
   /* MATTHIEU: To be commented out once we are happy */
   for (size_t k = 0; k < nr_gparts; ++k) {
 
-    if (gparts_new[k].id > 0) {
+    if (gparts_new[k].id_or_neg_offset <= 0) {
 
-      if (gparts_new[k].part->gpart != &gparts_new[k])
-        error("Linking problem !");
+      struct part *part = &parts_new[-gparts_new[k].id_or_neg_offset];
 
-      if (gparts_new[k].x[0] != gparts_new[k].part->x[0] ||
-          gparts_new[k].x[1] != gparts_new[k].part->x[1] ||
-          gparts_new[k].x[2] != gparts_new[k].part->x[2])
+      if (part->gpart != &gparts_new[k]) error("Linking problem !");
+
+      if (gparts_new[k].x[0] != part->x[0] ||
+          gparts_new[k].x[1] != part->x[1] || gparts_new[k].x[2] != part->x[2])
         error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < nr_parts; ++k) {
 
-    if (parts_new[k].gpart != NULL) {
-
-      if (parts_new[k].gpart->part != &parts_new[k]) error("Linking problem !");
+    if (parts_new[k].gpart != NULL &&
+        parts_new[k].gpart->id_or_neg_offset != -k) {
+      error("Linking problem !");
     }
   }
+#endif
 
   /* Set the new part data, free the old. */
   free(parts);
@@ -605,48 +682,63 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  *
  * @param e The #engine.
  * @param ci The sending #cell.
- * @param cj The receiving #cell
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_xv The send_xv #task, if it has already been created.
+ * @param t_rho The send_rho #task, if it has already been created.
+ * @param t_ti The send_ti #task, if required and has already been created.
  */
-
-void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
+void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
+                          struct task *t_xv, struct task *t_rho,
+                          struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->density; l != NULL; l = l->next)
-    if (l->t->ci->nodeID == cj->nodeID ||
-        (l->t->cj != NULL && l->t->cj->nodeID == cj->nodeID))
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    /* Create the tasks. */
-    struct task *t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                          2 * ci->tag, 0, ci, cj, 0);
-    struct task *t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                           2 * ci->tag + 1, 0, ci, cj, 0);
+    /* Create the tasks and their dependencies? */
+    if (t_xv == NULL) {
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
+                               3 * ci->tag, 0, ci, cj, 0);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                3 * ci->tag + 1, 0, ci, cj, 0);
+      if (!(e->policy & engine_policy_fixdt))
+        t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
+                                 3 * ci->tag + 2, 0, ci, cj, 0);
 
-    /* The first send should depend on the engine's send_root. */
-    scheduler_addunlock(s, e->send_root, t_xv);
+      /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->super->ghost, t_rho);
 
-    /* The send_rho task depends on the cell's ghost task. */
-    scheduler_addunlock(s, ci->super->ghost, t_rho);
+      /* The send_rho task should unlock the super-cell's kick task. */
+      scheduler_addunlock(s, t_rho, ci->super->kick);
 
-    /* The send_rho task should unlock the super-cell's kick task. */
-    scheduler_addunlock(s, t_rho, ci->super->kick);
+      /* The send_xv task should unlock the super-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->super->ghost);
 
-    /* The send_xv task should unlock the super-cell's ghost task. */
-    scheduler_addunlock(s, t_xv, ci->super->ghost);
+      /* The super-cell's kick task should unlock the send_ti task. */
+      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick, t_ti);
+    }
 
+    /* Add them to the local cell. */
+    ci->send_xv = engine_addlink(e, ci->send_xv, t_xv);
+    ci->send_rho = engine_addlink(e, ci->send_rho, t_rho);
+    if (t_ti != NULL) ci->send_ti = engine_addlink(e, ci->send_ti, t_ti);
   }
 
   /* Recurse? */
-  else if (ci->split)
+  if (ci->split)
     for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL) engine_addtasks_send(e, ci->progeny[k], cj);
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -657,44 +749,52 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
  * @brief Add recv tasks to a hierarchy of cells.
  *
  * @param e The #engine.
- * @param c The #cell.
+ * @param c The foreign #cell.
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
+ * @param t_ti The recv_ti #task, if required and has already been created.
  */
 
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
-                          struct task *t_rho) {
+                          struct task *t_rho, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
-  /* Do we need to construct a recv task? */
-  if (t_xv == NULL && c->nr_density > 0) {
+  /* Do we need to construct a recv task?
+     Note that since c is a foreign cell, all its density tasks will involve
+     only the current rank, and thus we don't have to check them.*/
+  if (t_xv == NULL && c->density != NULL) {
 
     /* Create the tasks. */
-    t_xv = c->recv_xv = scheduler_addtask(s, task_type_recv, task_subtype_none,
-                                          2 * c->tag, 0, c, NULL, 0);
-    t_rho = c->recv_rho = scheduler_addtask(
-        s, task_type_recv, task_subtype_none, 2 * c->tag + 1, 0, c, NULL, 0);
-
-    /* The first recv should depend on the engine's recv_root. */
-    scheduler_addunlock(s, e->recv_root, t_xv);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 3 * c->tag,
+                             0, c, NULL, 0);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
+                              3 * c->tag + 1, 0, c, NULL, 0);
+    if (!(e->policy & engine_policy_fixdt))
+      t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
+                               3 * c->tag + 2, 0, c, NULL, 0);
   }
+  c->recv_xv = t_xv;
+  c->recv_rho = t_rho;
+  c->recv_ti = t_ti;
 
   /* Add dependencies. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
     scheduler_addunlock(s, l->t, t_rho);
   }
-  for (struct link *l = c->force; l != NULL; l = l->next)
+  for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
+    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+  }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho);
+        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -888,7 +988,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
 
     /* Re-link the associated gpart with the buffer offset of the part. */
     if (s->parts[offset_parts + k].gpart != NULL) {
-      s->parts[offset_parts + k].gpart->id = e->proxies[pid].nr_parts_out;
+      s->parts[offset_parts + k].gpart->id_or_neg_offset =
+          -e->proxies[pid].nr_parts_out;
     }
 
     /* Load the part and xpart into the proxy. */
@@ -904,7 +1005,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
           "id=%lli, x=[%e,%e,%e].",
-          node_id, s->gparts[offset_parts + k].id,
+          node_id, s->gparts[offset_parts + k].id_or_neg_offset,
           s->gparts[offset_gparts + k].x[0], s->gparts[offset_parts + k].x[1],
           s->gparts[offset_gparts + k].x[2]);
     proxy_gparts_load(&e->proxies[pid], &s->gparts[offset_gparts + k], 1);
@@ -964,7 +1065,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     s->xparts = xparts_new;
     for (size_t k = 0; k < offset_parts; k++) {
       if (s->parts[k].gpart != NULL) {
-        s->parts[k].gpart->part = &s->parts[k];
+        s->parts[k].gpart->id_or_neg_offset = -k;
       }
     }
   }
@@ -979,8 +1080,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     free(s->gparts);
     s->gparts = gparts_new;
     for (size_t k = 0; k < offset_gparts; k++) {
-      if (s->gparts[k].id > 0) {
-        s->gparts[k].part->gpart = &s->gparts[k];
+      if (s->gparts[k].id_or_neg_offset < 0) {
+        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
     }
   }
@@ -1053,9 +1154,10 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       /* Re-link the gparts. */
       for (int k = 0; k < p->nr_gparts_in; k++) {
         struct gpart *gp = &s->gparts[offset_gparts + count_gparts + k];
-        if (gp->id >= 0) {
-          struct part *p = &s->parts[offset_parts + count_parts + gp->id];
-          gp->part = p;
+        if (gp->id_or_neg_offset <= 0) {
+          struct part *p =
+              &s->parts[offset_gparts + count_parts - gp->id_or_neg_offset];
+          gp->id_or_neg_offset = s->parts - p;
           p->gpart = gp;
         }
       }
@@ -1172,6 +1274,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct task *tasks = (struct task *)map_data;
   struct scheduler *sched = &e->sched;
+  const int nr_tasks = sched->nr_tasks;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -1203,20 +1306,23 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &t->cj->density, t);
         atomic_inc(&t->cj->nr_density);
       }
-    } else if (t->type == task_type_sub) {
+    } else if (t->type == task_type_sub_self) {
       atomic_inc(&t->ci->nr_tasks);
       if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
-        if (t->cj != NULL) {
-          engine_addlink(e, &t->cj->density, t);
-          atomic_inc(&t->cj->nr_density);
-        }
+      }
+    } else if (t->type == task_type_sub_pair) {
+      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&t->cj->nr_tasks);
+      if (t->subtype == task_subtype_density) {
+        t->ci->density = engine_addlink(e, t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
+        t->cj->density = engine_addlink(e, t->cj->density, t);
+        atomic_inc(&t->cj->nr_density);
       }
     }
-  }
-}
 
 void engine_count_and_link_tasks_serial(struct engine *e) {
 
@@ -1252,16 +1358,21 @@ void engine_count_and_link_tasks_serial(struct engine *e) {
         engine_addlink(e, &t->cj->density, t);
         atomic_inc(&t->cj->nr_density);
       }
-    } else if (t->type == task_type_sub) {
+    } else if (t->type == task_type_sub_self) {
       atomic_inc(&t->ci->nr_tasks);
       if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
-        if (t->cj != NULL) {
-          engine_addlink(e, &t->cj->density, t);
-          atomic_inc(&t->cj->nr_density);
-        }
+      }
+    } else if (t->type == task_type_sub_pair) {
+      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&t->cj->nr_tasks);
+      if (t->subtype == task_subtype_density) {
+        t->ci->density = engine_addlink(e, t->ci->density, t);
+        atomic_inc(&t->ci->nr_density);
+        t->cj->density = engine_addlink(e, t->cj->density, t);
+        atomic_inc(&t->cj->nr_density);
       }
     }
   }
@@ -1443,29 +1554,47 @@ void engine_make_extra_hydroloop_tasks_serial(struct engine *e) {
       }
     }
 
-    /* Otherwise, sub interaction? */
-    else if (t->type == task_type_sub && t->subtype == task_subtype_density) {
+    /* Otherwise, sub-self interaction? */
+    else if (t->type == task_type_sub_self &&
+             t->subtype == task_subtype_density) {
 
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 =
-          scheduler_addtask(sched, task_type_sub, task_subtype_force, t->flags,
-                            0, t->ci, t->cj, 0);
+          scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj, 0);
 
-      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &t->ci->force, t2);
+      /* Add the link between the new loop and the cell */
+      t->ci->force = engine_addlink(e, t->ci->force, t2);
       atomic_inc(&t->ci->nr_force);
-      if (t->cj != NULL) {
-        engine_addlink(e, &t->cj->force, t2);
-        atomic_inc(&t->cj->nr_force);
-      }
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
       }
-      if (t->cj != NULL && t->cj->nodeID == nodeID &&
-          t->ci->super != t->cj->super) {
+    }
+
+    /* Otherwise, sub-pair interaction? */
+    else if (t->type == task_type_sub_pair &&
+             t->subtype == task_subtype_density) {
+
+      /* Start by constructing the task for the second hydro loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj, 0);
+
+      /* Add the link between the new loop and both cells */
+      t->ci->force = engine_addlink(e, t->ci->force, t2);
+      atomic_inc(&t->ci->nr_force);
+      t->cj->force = engine_addlink(e, t->cj->force, t2);
+      atomic_inc(&t->cj->nr_force);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+      }
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
     }
@@ -1599,8 +1728,14 @@ void engine_maketasks(struct engine *e) {
   engine_count_and_link_tasks_serial(e);
 
   /* Append hierarchical tasks to each cells */
-  for (int k = 0; k < nr_cells; k++)
-    engine_make_hierarchical_tasks(e, &cells[k], NULL);
+  if (e->policy & engine_policy_hydro)
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_hydro_hierarchical_tasks(e, &cells[k], NULL);
+
+  if ((e->policy & engine_policy_self_gravity) ||
+      (e->policy & engine_policy_external_gravity))
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_gravity_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -1627,12 +1762,13 @@ void engine_maketasks(struct engine *e) {
       /* Loop through the proxy's incoming cells and add the
          recv tasks. */
       for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL);
+        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
       for (int k = 0; k < p->nr_cells_out; k++)
-        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0]);
+        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0], NULL, NULL,
+                             NULL);
     }
   }
 
@@ -1670,7 +1806,7 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
 
     /* Pair? */
     if (t->type == task_type_pair ||
-        (t->type == task_type_sub && t->cj != NULL)) {
+        (t->type == task_type_sub_pair)) {
 
       /* Local pointers. */
       const struct cell *ci = t->ci;
@@ -1727,7 +1863,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Pair? */
     else if (t->type == task_type_pair ||
-             (t->type == task_type_sub && t->cj != NULL)) {
+             (t->type == task_type_sub_pair)) {
 
       /* Local pointers. */
       const struct cell *ci = t->ci;
@@ -2114,7 +2250,11 @@ void engine_collect_drift(struct cell *c) {
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
 }
-
+/**
+ * @brief Print the conserved quantities statistics to a log file
+ *
+ * @param e The #engine.
+ */
 void engine_print_stats(struct engine *e) {
 
   const struct space *s = e->s;
@@ -2228,8 +2368,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
  *forward in time.
  *
  * @param e The #engine
+ * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
+ *contain entropy ?
  */
-void engine_init_particles(struct engine *e) {
+void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   struct space *s = e->s;
 
@@ -2288,6 +2430,7 @@ void engine_init_particles(struct engine *e) {
 
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
+    submask |= 1 << task_subtype_tend;
   }
 
   /* Now, launch the calculation */
@@ -2296,7 +2439,7 @@ void engine_init_particles(struct engine *e) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+  if (!flag_entropy_ICs) space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
   clocks_gettime(&time2);
 
@@ -2394,7 +2537,8 @@ void engine_step(struct engine *e) {
 
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
-    mask |= 1 << task_type_sub;
+    mask |= 1 << task_type_sub_self;
+    mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_ghost;
 
     submask |= 1 << task_subtype_density;
@@ -2417,6 +2561,7 @@ void engine_step(struct engine *e) {
 
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
+    submask |= 1 << task_subtype_tend;
   }
 
   /* Send off the runners. */
@@ -2582,8 +2727,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->xparts = xparts_new;
 
   /* Re-link the gparts. */
-  for (size_t k = 0; k < s->nr_parts; k++)
-    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
+  part_relink_gparts(s->parts, s->nr_parts, 0);
 
   /* Re-allocate the local gparts. */
   if (e->verbose)
@@ -2599,30 +2743,29 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->gparts = gparts_new;
 
   /* Re-link the parts. */
-  for (size_t k = 0; k < s->nr_gparts; k++)
-    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
+  part_relink_parts(s->gparts, s->nr_gparts, s->parts);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
-  /* MATTHIEU: To be commented out once we are happy */
   for (size_t k = 0; k < s->nr_gparts; ++k) {
 
-    if (s->gparts[k].id > 0) {
+    if (s->gparts[k].id_or_neg_offset <= 0) {
 
-      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+      struct part *part = &s->parts[-s->gparts[k].id_or_neg_offset];
 
-      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
-          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
-          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+      if (part->gpart != &s->gparts[k]) error("Linking problem !");
+
+      if (s->gparts[k].x[0] != part->x[0] || s->gparts[k].x[1] != part->x[1] ||
+          s->gparts[k].x[2] != part->x[2])
         error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < s->nr_parts; ++k) {
 
-    if (s->parts[k].gpart != NULL) {
-
-      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
-    }
+    if (s->parts[k].gpart != NULL && s->parts[k].gpart->id_or_neg_offset != -k)
+      error("Linking problem !");
   }
+#endif
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -3015,9 +3158,6 @@ void engine_init(struct engine *e, struct space *s,
   part_create_mpi_types();
 #endif
 
-  /* Initialize the threadpool. */
-  threadpool_init(&e->threadpool, e->nr_threads);
-
   /* First of all, init the barrier and lock it. */
   if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)
     error("Failed to initialize barrier mutex.");
@@ -3032,7 +3172,16 @@ void engine_init(struct engine *e, struct space *s,
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
   const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
-                 e->nodeID, &e->threadpool);
+                 e->nodeID);
+
+  /* Create the sorting tasks. */
+  for (int i = 0; i < e->nr_threads; i++) {
+    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+
+    scheduler_addtask(&e->sched, task_type_gpart_sort, task_subtype_none, i, 0,
+                      NULL, NULL, 0);
+  }
 
   scheduler_ranktasks(&e->sched);
 

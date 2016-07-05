@@ -44,6 +44,9 @@
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
+#include "queue.h"
+#include "space.h"
+#include "task.h"
 #include "timers.h"
 
 /**
@@ -106,17 +109,14 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 void scheduler_splittasks_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
 
-  /* Static constants. */
-  const static int pts[7][8] = {{-1, 12, 10, 9, 4, 3, 1, 0},
-                                {-1, -1, 11, 10, 5, 4, 2, 1},
-                                {-1, -1, -1, 12, 7, 6, 4, 3},
-                                {-1, -1, -1, -1, 8, 7, 5, 4},
-                                {-1, -1, -1, -1, -1, 12, 10, 9},
-                                {-1, -1, -1, -1, -1, -1, 11, 10},
-                                {-1, -1, -1, -1, -1, -1, -1, 12}};
-  const static float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
-                                      0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
-                                      0.5788, 0.4025, 0.5788};
+  const int pts[7][8] = {
+      {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
+      {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
+      {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
+      {-1, -1, -1, -1, -1, -1, -1, 12}};
+  const float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
+                               0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
+                               0.5788, 0.4025, 0.5788};
 
   /* Extract the parameters. */
   struct scheduler *s = (struct scheduler *)extra_data;
@@ -681,9 +681,6 @@ struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
   t->rid = -1;
   t->last_rid = -1;
 
-  /* Init the lock. */
-  lock_init(&t->lock);
-
   /* Add an index for it. */
   // lock_lock( &s->lock );
   s->tasks_ind[atomic_inc(&s->nr_tasks)] = ind;
@@ -742,40 +739,9 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->unlock_tasks = &s->unlocks[offsets[k]];
   }
 
-  /* Verify that there are no duplicate unlocks. */
-  /* for (int k = 0; k < s->nr_tasks; k++) {
-    struct task *t = &s->tasks[k];
-    for (int i = 0; i < t->nr_unlock_tasks; i++) {
-      for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
-        if (t->unlock_tasks[i] == t->unlock_tasks[j])
-          error("duplicate unlock!");
-      }
-    }
-  } */
-
   /* Clean up. */
   free(counts);
   free(offsets);
-}
-
-/**
- * @brief #threadpool_map function which runs through the task
- *        graph and re-computes the task wait counters.
- */
-
-void scheduler_simple_rewait_mapper(void *map_data, int num_elements,
-                                    void *extra_data) {
-
-  struct task *tasks = (struct task *)map_data;
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-
-    /* Increment the waits of the dependances */
-    for (int k = 0; k < t->nr_unlock_tasks; k++) {
-      struct task *u = t->unlock_tasks[k];
-      atomic_inc(&u->wait);
-    }
-  }
 }
 
 /**
@@ -829,10 +795,12 @@ void scheduler_ranktasks(struct scheduler *s) {
     j = left_old;
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the tasks were ranked correctly. */
-  /* for (int k = 1; k < s->nr_tasks; k++)
+  for (int k = 1; k < s->nr_tasks; k++)
     if (tasks[tid[k - 1]].rank > tasks[tid[k - 1]].rank)
-      error("Task ranking failed."); */
+      error("Task ranking failed.");
+#endif
 }
 
 /**
@@ -917,23 +885,23 @@ void scheduler_reweight(struct scheduler *s) {
             t->weight +=
                 2 * wscale * t->ci->count * t->cj->count * sid_scale[t->flags];
           break;
-        case task_type_sub:
-          if (t->cj != NULL) {
-            if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
-              if (t->flags < 0)
-                t->weight += 3 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 3 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            } else {
-              if (t->flags < 0)
-                t->weight += 2 * wscale * t->ci->count * t->cj->count;
-              else
-                t->weight += 2 * wscale * t->ci->count * t->cj->count *
-                             sid_scale[t->flags];
-            }
-          } else
-            t->weight += 1 * wscale * t->ci->count * t->ci->count;
+        case task_type_sub_pair:
+          if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID) {
+            if (t->flags < 0)
+              t->weight += 3 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 3 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          } else {
+            if (t->flags < 0)
+              t->weight += 2 * wscale * t->ci->count * t->cj->count;
+            else
+              t->weight += 2 * wscale * t->ci->count * t->cj->count *
+                           sid_scale[t->flags];
+          }
+          break;
+        case task_type_sub_self:
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_ghost:
           if (t->ci == t->ci->super) t->weight += wscale * t->ci->count;
@@ -950,8 +918,6 @@ void scheduler_reweight(struct scheduler *s) {
         default:
           break;
       }
-    if (t->type == task_type_send) t->weight = INT_MAX / 8;
-    if (t->type == task_type_recv) t->weight *= 1.41;
   }
   // message( "weighting tasks took %.3f %s." ,
   // clocks_from_ticks( getticks() - tic ), clocks_getunit());
@@ -1075,6 +1041,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->implicit) {
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
       struct task *t2 = t->unlock_tasks[j];
+
       if (atomic_dec(&t2->wait) == 1) scheduler_enqueue(s, t2);
     }
   }
@@ -1097,17 +1064,22 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         qid = t->ci->super->owner;
         break;
       case task_type_pair:
-      case task_type_sub:
+      case task_type_sub_pair:
         qid = t->ci->super->owner;
-        if (t->cj != NULL &&
-            (qid < 0 ||
-             s->queues[qid].count > s->queues[t->cj->super->owner].count))
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
           qid = t->cj->super->owner;
         break;
       case task_type_recv:
 #ifdef WITH_MPI
-        err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
-                        t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        if (t->subtype == task_subtype_tend) {
+          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+          err = MPI_Irecv(t->buff, t->ci->pcell_size, MPI_INT, t->ci->nodeID,
+                          t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          err = MPI_Irecv(t->ci->parts, t->ci->count, part_mpi_type,
+                          t->ci->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit irecv for particle data.");
         }
@@ -1121,8 +1093,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_send:
 #ifdef WITH_MPI
-        err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
-                        t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        if (t->subtype == task_subtype_tend) {
+          t->buff = malloc(sizeof(int) * t->ci->pcell_size);
+          cell_pack_ti_ends(t->ci, t->buff);
+          err = MPI_Isend(t->buff, t->ci->pcell_size, MPI_INT, t->cj->nodeID,
+                          t->flags, MPI_COMM_WORLD, &t->req);
+        } else {
+          err = MPI_Isend(t->ci->parts, t->ci->count, part_mpi_type,
+                          t->cj->nodeID, t->flags, MPI_COMM_WORLD, &t->req);
+        }
         if (err != MPI_SUCCESS) {
           mpi_error(err, "Failed to emit isend for particle data.");
         }
@@ -1326,8 +1305,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  */
 
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
-                    int nr_queues, unsigned int flags, int nodeID,
-                    struct threadpool *tp) {
+                    int nr_queues, unsigned int flags, int nodeID) {
 
   /* Init the lock. */
   lock_init(&s->lock);
@@ -1347,7 +1325,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
 
   /* Init the unlocks. */
   if ((s->unlocks = (struct task **)malloc(
-           sizeof(struct task *) *scheduler_init_nr_unlocks)) == NULL ||
+           sizeof(struct task *) * scheduler_init_nr_unlocks)) == NULL ||
       (s->unlock_ind =
            (int *)malloc(sizeof(int) * scheduler_init_nr_unlocks)) == NULL)
     error("Failed to allocate unlocks.");
@@ -1359,7 +1337,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->flags = flags;
   s->space = space;
   s->nodeID = nodeID;
-  s->threadpool = tp;
 
   /* Init the tasks array. */
   s->size = 0;
@@ -1391,4 +1368,32 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
   }
 
   fclose(file);
+}
+
+/**
+ * @brief Sets the waits of the dependants of a range of task
+ *
+ * @param t_begin Beginning of the #task range
+ * @param t_end End of the #task range
+ * @param mask The scheduler task mask
+ * @param submask The scheduler subtask mask
+ */
+void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
+                         unsigned int mask, unsigned int submask) {
+  for (struct task *t2 = t_begin; t2 != t_end; t2++) {
+
+    if (t2->skip) continue;
+
+    /* Skip tasks not in the mask */
+    if (!((1 << t2->type) & mask) || !((1 << t2->subtype) & submask)) continue;
+
+    /* Skip sort tasks that have already been performed */
+    if (t2->type == task_type_sort && t2->flags == 0) continue;
+
+    /* Sets the waits of the dependances */
+    for (int k = 0; k < t2->nr_unlock_tasks; k++) {
+      struct task *t3 = t2->unlock_tasks[k];
+      atomic_inc(&t3->wait);
+    }
+  }
 }

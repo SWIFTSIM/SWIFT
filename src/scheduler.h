@@ -35,7 +35,6 @@
 #include "cell.h"
 #include "lock.h"
 #include "queue.h"
-#include "space.h"
 #include "task.h"
 #include "threadpool.h"
 

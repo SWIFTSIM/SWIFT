@@ -23,16 +23,18 @@
 #ifndef SWIFT_SPACE_H
 #define SWIFT_SPACE_H
 
-/* Includes. */
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stddef.h>
 
-/* Local includes. */
+/* Includes. */
 #include "cell.h"
+#include "lock.h"
 #include "parser.h"
 #include "part.h"
-
-/* Forward-declare the engine to avoid cyclic includes. */
-struct engine;
+#include "space.h"
 
 /* Some constants. */
 #define space_maxdepth 10
@@ -159,4 +161,5 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_link_cleanup(struct space *s);
+
 #endif /* SWIFT_SPACE_H */

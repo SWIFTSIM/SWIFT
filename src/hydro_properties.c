@@ -29,6 +29,9 @@
 #include "hydro.h"
 #include "kernel_hydro.h"
 
+#define hydro_props_default_max_iterations 30
+#define hydro_props_default_volume_change 2.0f
+
 void hydro_props_init(struct hydro_props *p,
                       const struct swift_params *params) {
 
@@ -39,13 +42,13 @@ void hydro_props_init(struct hydro_props *p,
   p->delta_neighbours = parser_get_param_float(params, "SPH:delta_neighbours");
 
   /* Ghost stuff */
-  p->max_smoothing_iterations =
-      parser_get_param_int(params, "SPH:max_ghost_iterations");
+  p->max_smoothing_iterations = parser_get_opt_param_int(
+      params, "SPH:max_ghost_iterations", hydro_props_default_max_iterations);
 
   /* Time integration properties */
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
-  const float max_volume_change =
-      parser_get_param_float(params, "SPH:max_volume_change");
+  const float max_volume_change = parser_get_opt_param_float(
+      params, "SPH:max_volume_change", hydro_props_default_volume_change);
   p->log_max_h_change = logf(powf(max_volume_change, 0.33333333333f));
 }
 
@@ -60,4 +63,8 @@ void hydro_props_print(const struct hydro_props *p) {
       "Hydrodynamic integration: Max change of volume: %.2f "
       "(max|dlog(h)/dt|=%f).",
       powf(expf(p->log_max_h_change), 3.f), p->log_max_h_change);
+
+  if (p->max_smoothing_iterations != hydro_props_default_max_iterations)
+    message("Maximal iterations in ghost task set to %d (default is %d)",
+            p->max_smoothing_iterations, hydro_props_default_max_iterations);
 }

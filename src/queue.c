@@ -38,22 +38,11 @@
 #include "const.h"
 #include "error.h"
 
-/* Counter macros. */
-#ifdef COUNTER
-#define COUNT(c) (__sync_add_and_fetch(&queue_counter[c], 1))
-#else
-#define COUNT(c)
-#endif
-
-/* The counters. */
-int queue_counter[queue_counter_count];
-
 /**
  * @brief Enqueue all tasks in the incoming DEQ.
  *
  * @param q The #queue, assumed to be locked.
  */
-
 void queue_get_incoming(struct queue *q) {
 
   int *tid = q->tid;
@@ -108,7 +97,6 @@ void queue_get_incoming(struct queue *q) {
  * @param q The #queue.
  * @param t The #task.
  */
-
 void queue_insert(struct queue *q, struct task *t) {
   /* Get an index in the DEQ. */
   const int ind = atomic_inc(&q->last_incoming) % queue_incoming_size;
@@ -140,7 +128,6 @@ void queue_insert(struct queue *q, struct task *t) {
  * @param q The #queue.
  * @param tasks List of tasks to which the queue indices refer to.
  */
-
 void queue_init(struct queue *q, struct task *tasks) {
 
   /* Allocate the task list if needed. */
@@ -176,7 +163,6 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param prev The previous #task extracted from this #queue.
  * @param blocking Block until access to the queue is granted.
  */
-
 struct task *queue_gettask(struct queue *q, const struct task *prev,
                            int blocking) {
 

@@ -20,11 +20,19 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <stdio.h>
 
+/* This object's header. */
+#include "debug.h"
+
+/* Local includes. */
 #include "config.h"
 #include "const.h"
-#include "debug.h"
+#include "inline.h"
 #include "part.h"
 
 /* Import the right hydro definition */
@@ -51,9 +59,8 @@
  *
  * (Should be used for debugging only as it runs in O(N).)
  */
-
-void printParticle(struct part *parts, struct xpart *xparts, long long int id,
-                   size_t N) {
+void printParticle(const struct part *parts, struct xpart *xparts,
+                   long long int id, size_t N) {
 
   int found = 0;
 
@@ -69,19 +76,33 @@ void printParticle(struct part *parts, struct xpart *xparts, long long int id,
   if (!found) printf("## Particles[???] id=%lld not found\n", id);
 }
 
-void printgParticle(struct gpart *gparts, long long int id, size_t N) {
+/**
+ * @brief Looks for the g-particle with the given id and prints its information
+ * to
+ * the standard output.
+ *
+ * @param gparts The array of g-particles.
+ * @param parts The array of particles.
+ * @param id The id too look for.
+ * @param N The size of the array of g-particles.
+ *
+ * (Should be used for debugging only as it runs in O(N).)
+ */
+void printgParticle(const struct gpart *gparts, const struct part *parts,
+                    long long int id, size_t N) {
 
   int found = 0;
 
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
-    if (gparts[i].id == -id) {
-      printf("## gParticle[%zd] (DM) :\n id=%lld ", i, -gparts[i].id);
+    if (gparts[i].id_or_neg_offset == id) {
+      printf("## gParticle[%zd] (DM) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
-    } else if (gparts[i].id > 0 && gparts[i].part->id == id) {
-      printf("## gParticle[%zd] (hydro) :\n id=%lld ", i, gparts[i].id);
+    } else if (gparts[i].id_or_neg_offset < 0 &&
+               parts[-gparts[i].id_or_neg_offset].id == id) {
+      printf("## gParticle[%zd] (hydro) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
@@ -95,13 +116,23 @@ void printgParticle(struct gpart *gparts, long long int id, size_t N) {
  *
  * @param p The particle to print
  * @param xp The extended data ot the particle to print
- *
  */
+void printParticle_single(const struct part *p, const struct xpart *xp) {
 
-void printParticle_single(struct part *p, struct xpart *xp) {
-
-  printf("## Particle: id=%lld ", p->id);
+  printf("## Particle: id=%lld", p->id);
   hydro_debug_particle(p, xp);
+  printf("\n");
+}
+
+/**
+ * @brief Prints the details of a given particle to stdout
+ *
+ * @param gp The g-particle to print
+ */
+void printgParticle_single(struct gpart *gp) {
+
+  printf("## g-Particle: id=%lld ", gp->id_or_neg_offset);
+  gravity_debug_particle(gp);
   printf("\n");
 }
 

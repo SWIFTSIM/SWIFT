@@ -453,9 +453,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
 
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
-        t->type != task_type_sub && t->type != task_type_ghost &&
-        t->type != task_type_drift && t->type != task_type_kick &&
-        t->type != task_type_init)
+        t->type != task_type_sub_self && t->type != task_type_sub_self &&
+        t->type != task_type_ghost && t->type != task_type_drift &&
+        t->type != task_type_kick && t->type != task_type_init)
       continue;
 
     /* Get the task weight. */
@@ -496,15 +496,15 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
 
     /* Self interaction? */
     else if ((t->type == task_type_self && ci->nodeID == nodeID) ||
-             (t->type == task_type_sub && cj == NULL && ci->nodeID == nodeID)) {
+             (t->type == task_type_sub_self && cj == NULL &&
+              ci->nodeID == nodeID)) {
       /* Self interactions add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
 
     }
 
     /* Pair? */
-    else if (t->type == task_type_pair ||
-             (t->type == task_type_sub && cj != NULL)) {
+    else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
       /* In-cell pair? */
       if (ci == cj) {
         /* Add weight to vertex for ci. */

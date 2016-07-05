@@ -439,10 +439,10 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       s->parts[k] = s->parts[nr_parts];
       s->parts[nr_parts] = tp;
       if (s->parts[k].gpart != NULL) {
-        s->parts[k].gpart->part = &s->parts[k];
+        s->parts[k].gpart->id_or_neg_offset = -k;
       }
       if (s->parts[nr_parts].gpart != NULL) {
-        s->parts[nr_parts].gpart->part = &s->parts[nr_parts];
+        s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
       }
       const struct xpart txp = s->xparts[k];
       s->xparts[k] = s->xparts[nr_parts];
@@ -456,8 +456,9 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that all parts are in the correct places. */
-  /*  for (size_t k = 0; k < nr_parts; k++) {
+  for (size_t k = 0; k < nr_parts; k++) {
     if (cells[ind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local parts to send list");
     }
@@ -466,7 +467,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     if (cells[ind[k]].nodeID == local_nodeID) {
       error("Failed to remove local parts from send list");
     }
-  }*/
+  }
+#endif
 
   /* Move non-local gparts to the end of the list. */
   for (int k = 0; k < nr_gparts;) {
@@ -476,11 +478,12 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const struct gpart tp = s->gparts[k];
       s->gparts[k] = s->gparts[nr_gparts];
       s->gparts[nr_gparts] = tp;
-      if (s->gparts[k].id > 0) {
-        s->gparts[k].part->gpart = &s->gparts[k];
+      if (s->gparts[k].id_or_neg_offset <= 0) {
+        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
-      if (s->gparts[nr_gparts].id > 0) {
-        s->gparts[nr_gparts].part->gpart = &s->gparts[nr_gparts];
+      if (s->gparts[nr_gparts].id_or_neg_offset <= 0) {
+        s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+            &s->gparts[nr_gparts];
       }
       const int t = gind[k];
       gind[k] = gind[nr_gparts];
@@ -491,8 +494,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Check that all gparts are in the correct place (untested). */
-  /*
   for (size_t k = 0; k < nr_gparts; k++) {
     if (cells[gind[k]].nodeID != local_nodeID) {
       error("Failed to move all non-local gparts to send list");
@@ -502,7 +505,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     if (cells[gind[k]].nodeID == local_nodeID) {
       error("Failed to remove local gparts from send list");
     }
-  }*/
+  }
+#endif
 
   /* Exchange the strays, note that this potentially re-allocates
      the parts arrays. */
@@ -531,29 +535,34 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     ind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
     cells[ind[k]].count += 1;
-    /* if ( cells[ ind[k] ].nodeID != nodeID )
-        error( "Received part that does not belong to me (nodeID=%i)." , cells[
-       ind[k] ].nodeID ); */
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cells[ind[k]].nodeID != local_nodeID)
+      error("Received part that does not belong to me (nodeID=%i).",
+            cells[ind[k]].nodeID);
+#endif
   }
   nr_parts = s->nr_parts;
-#endif
+
+#endif /* WITH_MPI */
 
   /* Sort the parts according to their cells. */
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
-  for (size_t k = 0; k < nr_parts; k++)
-    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
+  part_relink_gparts(s->parts, nr_parts, 0);
 
-  /* Verify sort_struct. */
-  /* for ( k = 1 ; k < nr_parts ; k++ ) {
-      if ( ind[k-1] > ind[k] ) {
-          error( "Sort failed!" );
-          }
-      else if ( ind[k] != cell_getid( cdim , parts[k].x[0]*ih[0] ,
-     parts[k].x[1]*ih[1] , parts[k].x[2]*ih[2] ) )
-          error( "Incorrect indices!" );
-      } */
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify space_sort_struct. */
+  for (size_t k = 1; k < nr_parts; k++) {
+    if (ind[k - 1] > ind[k]) {
+      error("Sort failed!");
+    } else if (ind[k] != cell_getid(cdim, s->parts[k].x[0] * ih[0],
+                                    s->parts[k].x[1] * ih[1],
+                                    s->parts[k].x[2] * ih[2])) {
+      error("Incorrect indices!");
+    }
+  }
+#endif
 
   /* We no longer need the indices as of here. */
   free(ind);
@@ -588,33 +597,34 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
-  for (int k = 0; k < nr_gparts; k++)
-    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
+  part_relink_parts(s->gparts, nr_gparts, s->parts);
 
   /* We no longer need the indices as of here. */
   free(gind);
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that the links are correct */
-  /* MATTHIEU: To be commented out once we are happy */
   for (size_t k = 0; k < nr_gparts; ++k) {
 
-    if (s->gparts[k].id > 0) {
+    if (s->gparts[k].id_or_neg_offset < 0) {
 
-      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+      const struct part *part = &s->parts[-s->gparts[k].id_or_neg_offset];
 
-      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
-          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
-          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+      if (part->gpart != &s->gparts[k]) error("Linking problem !");
+
+      if (s->gparts[k].x[0] != part->x[0] || s->gparts[k].x[1] != part->x[1] ||
+          s->gparts[k].x[2] != part->x[2])
         error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < nr_parts; ++k) {
 
-    if (s->parts[k].gpart != NULL) {
-
-      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
+    if (s->parts[k].gpart != NULL &&
+        s->parts[k].gpart->id_or_neg_offset != -k) {
+      error("Linking problem !");
     }
   }
+#endif
 
   /* Hook the cells up to the parts. */
   // tic = getticks();
@@ -705,13 +715,14 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   threadpool_map(&s->e->threadpool, space_parts_sort_mapper, &sort_struct,
                  s->e->threadpool.num_threads, 0, 1, NULL);
 
-  /* Verify sort_struct. */
-  /* for (int i = 1; i < N; i++)
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify space_sort_struct. */
+  for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1,
-  ind[i - 1], i,
-            ind[i], min, max);
-  message("Sorting succeeded."); */
+            ind[i - 1], i, ind[i], min, max);
+  message("Sorting succeeded.");
+#endif
 
   /* Clean up. */
   free(sort_struct.stack);
@@ -775,19 +786,21 @@ void space_parts_sort_mapper(void *map_data, int num_elements, void *extra_data)
         }
       }
 
-      /* Verify sort_struct. */
-      /* for (int k = i; k <= jj; k++)
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify space_sort_struct. */
+      for (int k = i; k <= jj; k++)
         if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (<=pivot).");
         }
       for (int k = jj + 1; k <= j; k++)
         if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (>pivot).");
-        } */
+        }
+#endif
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {
@@ -886,13 +899,14 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   threadpool_map(&s->e->threadpool, space_gparts_sort_mapper, &sort_struct,
                  s->e->threadpool.num_threads, 0, 1, NULL);
 
-  /* Verify sort_struct. */
-  /* for (int i = 1; i < N; i++)
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Verify space_sort_struct. */
+  for (int i = 1; i < N; i++)
     if (ind[i - 1] > ind[i])
       error("Sorting failed (ind[%i]=%i,ind[%i]=%i), min=%i, max=%i.", i - 1,
-  ind[i - 1], i,
-            ind[i], min, max);
-  message("Sorting succeeded."); */
+            ind[i - 1], i, ind[i], min, max);
+  message("Sorting succeeded.");
+#endif
 
   /* Clean up. */
   free(sort_struct.stack);
@@ -952,19 +966,21 @@ void space_gparts_sort_mapper(void *map_data, int num_elements, void *extra_data
         }
       }
 
-      /* Verify sort_struct. */
-      /* for (int k = i; k <= jj; k++)
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Verify space_sort_struct. */
+      for (int k = i; k <= jj; k++)
         if (ind[k] > pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (<=pivot).");
         }
       for (int k = jj + 1; k <= j; k++)
         if (ind[k] <= pivot) {
-          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%i, j=%i.", k,
-                  ind[k], pivot, i, j);
+          message("sorting failed at k=%i, ind[k]=%i, pivot=%i, i=%li, j=%li.",
+                  k, ind[k], pivot, i, j);
           error("Partition failed (>pivot).");
-        } */
+        }
+#endif
 
       /* Split-off largest interval. */
       if (jj - i > j - jj + 1) {
