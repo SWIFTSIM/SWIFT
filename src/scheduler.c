@@ -161,7 +161,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
           if (scheduler_dosub && ci->count < space_subsize / ci->count) {
 
             /* convert to a self-subtask. */
-            t->type = task_type_sub;
+            t->type = task_type_sub_self;
 
             /* Otherwise, make tasks explicitly. */
           } else {
@@ -224,7 +224,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
               sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
             /* Make this task a sub task. */
-            t->type = task_type_sub;
+            t->type = task_type_sub_pair;
 
             /* Otherwise, split it. */
           } else {
@@ -757,8 +757,11 @@ void scheduler_ranktasks(struct scheduler *s) {
   const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
-  threadpool_map(s->threadpool, scheduler_simple_rewait_mapper, tasks, nr_tasks,
-                 sizeof(struct task), 1000, NULL);
+  for (int k = 0; k < nr_tasks; k++) {
+    tid[k] = k;
+    for (int j = 0; j < tasks[k].nr_unlock_tasks; j++)
+      tasks[k].unlock_tasks[j]->wait += 1;
+  }
 
   /* Load the tids of tasks with no waits. */
   int left = 0;
@@ -1305,7 +1308,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  */
 
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
-                    int nr_queues, unsigned int flags, int nodeID) {
+                    int nr_queues, unsigned int flags, int nodeID,
+                    struct threadpool *tp) {
 
   /* Init the lock. */
   lock_init(&s->lock);
@@ -1337,6 +1341,7 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->flags = flags;
   s->space = space;
   s->nodeID = nodeID;
+  s->threadpool = tp;
 
   /* Init the tasks array. */
   s->size = 0;
