@@ -1,2 +1,2 @@
 #!/bin/bash
-wget http://icc.dur.ac.uk/swift/Files/EAGLE_ICs_25.hdf5
+wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/EAGLE_ICs_25.hdf5
