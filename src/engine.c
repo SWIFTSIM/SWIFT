@@ -1731,12 +1731,13 @@ void engine_maketasks(struct engine *e) {
       /* Loop through the proxy's incoming cells and add the
          recv tasks. */
       for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL);
+        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
       for (int k = 0; k < p->nr_cells_out; k++)
-        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0]);
+        engine_addtasks_send(e, p->cells_out[k], p->cells_in[0], NULL, NULL,
+                             NULL);
     }
   }
 #endif
@@ -1869,8 +1870,7 @@ int engine_marktasks(struct engine *e) {
           continue;
 
         /* Set the sort flags. */
-        if (t->type == task_type_pair &&
-            t->subtype != task_subtype_grav) {
+        if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
           if (!(ci->sorted & (1 << t->flags))) {
             ci->sorts->flags |= (1 << t->flags);
             ci->sorts->skip = 0;

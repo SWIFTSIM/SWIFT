@@ -33,7 +33,4 @@
 /* Local includes. */
 #include "runner.h"
 
-void runner_do_grav_fft(struct runner *r) {
-
-
-}
+void runner_do_grav_fft(struct runner *r) {}
