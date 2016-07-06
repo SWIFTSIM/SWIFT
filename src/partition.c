@@ -463,9 +463,9 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
      * make a report and ignore these tasks. */
     int w = (t->toc - t->tic) * wscale;
     if (w < 0) {
-        message("Task toc before tic: -%.3f %s, (try using processor affinity).",
-                clocks_from_ticks( t->tic - t->toc ), clocks_getunit());
-        w = 0;
+      message("Task toc before tic: -%.3f %s, (try using processor affinity).",
+              clocks_from_ticks(t->tic - t->toc), clocks_getunit());
+      w = 0;
     }
 
     /* Do we need to re-scale? */
