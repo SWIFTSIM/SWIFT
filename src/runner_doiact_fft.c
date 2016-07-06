@@ -23,6 +23,10 @@
 /* Some standard headers. */
 #include <pthread.h>
 
+#ifdef HAVE_FFTW
+#include <fftw.h>
+#endif
+
 /* This object's header. */
 #include "runner_doiact_fft.h"
 
