@@ -564,7 +564,8 @@ void read_ic_serial(char* fileName, double dim[3], struct part** parts,
             break;
 
           default:
-            error("Particle Type %d not yet supported. Aborting", ptype);
+            message("Particle Type %d not yet supported. Particles ignored",
+                    ptype);
         }
 
         /* Close particle group */
