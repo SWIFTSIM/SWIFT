@@ -760,7 +760,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
       struct gpart *const gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
-      if (gp->id < 0) {
+      if (gp->id_or_neg_offset > 0) {
 
         /* First, finish the force calculation */
         gravity_end_force(gp);
@@ -872,7 +872,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       struct gpart *const gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
-      if (gp->id < 0) {
+      if (gp->id_or_neg_offset > 0) {
 
         if (gp->ti_end <= ti_current) {
 
@@ -980,19 +980,36 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
   int ti_end_max = 0;
   float h_max = 0.f;
 
-  /* Collect everything... */
-  for (size_t k = 0; k < nr_parts; k++) {
-    const int ti_end = parts[k].ti_end;
-    // if(ti_end < ti_current) error("Received invalid particle !");
-    ti_end_min = min(ti_end_min, ti_end);
-    ti_end_max = max(ti_end_max, ti_end);
-    h_max = fmaxf(h_max, parts[k].h);
+  /* If this cell is a leaf, collect the particle data. */
+  if (!c->split) {
+
+    /* Collect everything... */
+    for (size_t k = 0; k < nr_parts; k++) {
+      const int ti_end = parts[k].ti_end;
+      // if(ti_end < ti_current) error("Received invalid particle !");
+      ti_end_min = min(ti_end_min, ti_end);
+      ti_end_max = max(ti_end_max, ti_end);
+      h_max = fmaxf(h_max, parts[k].h);
+    }
+    for (size_t k = 0; k < nr_gparts; k++) {
+      const int ti_end = gparts[k].ti_end;
+      // if(ti_end < ti_current) error("Received invalid particle !");
+      ti_end_min = min(ti_end_min, ti_end);
+      ti_end_max = max(ti_end_max, ti_end);
+    }
+
   }
-  for (size_t k = 0; k < nr_gparts; k++) {
-    const int ti_end = gparts[k].ti_end;
-    // if(ti_end < ti_current) error("Received invalid particle !");
-    ti_end_min = min(ti_end_min, ti_end);
-    ti_end_max = max(ti_end_max, ti_end);
+
+  /* Otherwise, recurse and collect. */
+  else {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        runner_do_recv_cell(r, c->progeny[k], 0);
+        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+        h_max = fmaxf(h_max, c->progeny[k]->h_max);
+      }
+    }
   }
 
   /* ... and store. */
@@ -1098,9 +1115,17 @@ void *runner_main(void *data) {
           runner_do_kick_fixdt(r, ci, 1);
           break;
         case task_type_send:
+          if (t->subtype == task_subtype_tend) {
+            free(t->buff);
+          }
           break;
         case task_type_recv:
-          runner_do_recv_cell(r, ci, 1);
+          if (t->subtype == task_subtype_tend) {
+            cell_unpack_ti_ends(ci, t->buff);
+            free(t->buff);
+          } else {
+            runner_do_recv_cell(r, ci, 1);
+          }
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);

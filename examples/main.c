@@ -74,6 +74,8 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-g", "",
          "Run with an external gravitational potential");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
+  printf("  %2s %8s %s\n", "-n", "{int}",
+         "Execute a fixed number of time steps");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
@@ -138,6 +140,7 @@ int main(int argc, char *argv[]) {
   int with_aff = 0;
   int dry_run = 0;
   int dump_tasks = 0;
+  int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
   int with_self_gravity = 0;
@@ -150,7 +153,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acdef:gGhst:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acdef:gGhn:st:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -179,6 +182,13 @@ int main(int argc, char *argv[]) {
       case 'h':
         if (myrank == 0) print_help_message();
         return 0;
+      case 'n':
+        if (sscanf(optarg, "%d", &nsteps) != 1) {
+          if (myrank == 0) printf("Error parsing fixed number of steps.\n");
+          if (myrank == 0) print_help_message();
+          return 1;
+        }
+        break;
       case 's':
         with_hydro = 1;
         break;
@@ -322,18 +332,21 @@ int main(int argc, char *argv[]) {
   size_t Ngas = 0, Ngpart = 0;
   double dim[3] = {0., 0., 0.};
   int periodic = 0;
+  int flag_entropy_ICs = 0;
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
   read_ic_parallel(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                   myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+                   &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
+                   MPI_INFO_NULL, dry_run);
 #else
   read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
+                 &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
+                 MPI_INFO_NULL, dry_run);
 #endif
 #else
   read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 dry_run);
+                 &flag_entropy_ICs, dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -354,7 +367,7 @@ int main(int argc, char *argv[]) {
     free(parts);
     parts = NULL;
     for (size_t k = 0; k < Ngpart; ++k)
-      if (gparts[k].id > 0) error("Linking problem");
+      if (gparts[k].id_or_neg_offset < 0) error("Linking problem");
     Ngas = 0;
   }
 
@@ -466,7 +479,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Initialise the particles */
-  engine_init_particles(&e);
+  engine_init_particles(&e, flag_entropy_ICs);
 
   /* Legend */
   if (myrank == 0)
@@ -474,7 +487,7 @@ int main(int argc, char *argv[]) {
            "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
 
   /* Main simulation loop */
-  for (int j = 0; !engine_is_done(&e); j++) {
+  for (int j = 0; !engine_is_done(&e) && e.step != nsteps; j++) {
 
 /* Repartition the space amongst the nodes? */
 #ifdef WITH_MPI

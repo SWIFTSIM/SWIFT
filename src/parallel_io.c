@@ -367,8 +367,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  */
 void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
                       struct gpart** gparts, size_t* Ngas, size_t* Ngparts,
-                      int* periodic, int mpi_rank, int mpi_size, MPI_Comm comm,
-                      MPI_Info info, int dry_run) {
+                      int* periodic, int* flag_entropy, int mpi_rank,
+                      int mpi_size, MPI_Comm comm, MPI_Info info, int dry_run) {
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
   double boxSize[3] = {0.0, -1.0, -1.0};
@@ -404,6 +404,7 @@ void read_ic_parallel(char* fileName, double dim[3], struct part** parts,
   if (h_grp < 0) error("Error while opening file header\n");
 
   /* Read the relevant information and print status */
+  readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy);
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
   readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
@@ -626,6 +627,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
   double MassTable[6] = {0., 0., 0., 0., 0., 0.};
   writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, NUM_PARTICLE_TYPES);
   unsigned int flagEntropy[NUM_PARTICLE_TYPES] = {0};
+  flagEntropy[0] = writeEntropyFlag();
   writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
                  NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);

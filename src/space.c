@@ -442,10 +442,10 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       s->parts[k] = s->parts[nr_parts];
       s->parts[nr_parts] = tp;
       if (s->parts[k].gpart != NULL) {
-        s->parts[k].gpart->part = &s->parts[k];
+        s->parts[k].gpart->id_or_neg_offset = -k;
       }
       if (s->parts[nr_parts].gpart != NULL) {
-        s->parts[nr_parts].gpart->part = &s->parts[nr_parts];
+        s->parts[nr_parts].gpart->id_or_neg_offset = -nr_parts;
       }
       const struct xpart txp = s->xparts[k];
       s->xparts[k] = s->xparts[nr_parts];
@@ -481,11 +481,12 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
       const struct gpart tp = s->gparts[k];
       s->gparts[k] = s->gparts[nr_gparts];
       s->gparts[nr_gparts] = tp;
-      if (s->gparts[k].id > 0) {
-        s->gparts[k].part->gpart = &s->gparts[k];
+      if (s->gparts[k].id_or_neg_offset <= 0) {
+        s->parts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
       }
-      if (s->gparts[nr_gparts].id > 0) {
-        s->gparts[nr_gparts].part->gpart = &s->gparts[nr_gparts];
+      if (s->gparts[nr_gparts].id_or_neg_offset <= 0) {
+        s->parts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+            &s->gparts[nr_gparts];
       }
       const int t = gind[k];
       gind[k] = gind[nr_gparts];
@@ -551,8 +552,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
-  for (size_t k = 0; k < nr_parts; k++)
-    if (s->parts[k].gpart != NULL) s->parts[k].gpart->part = &s->parts[k];
+  part_relink_gparts(s->parts, nr_parts, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify space_sort_struct. */
@@ -600,8 +600,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
-  for (int k = 0; k < nr_gparts; k++)
-    if (s->gparts[k].id > 0) s->gparts[k].part->gpart = &s->gparts[k];
+  part_relink_parts(s->gparts, nr_gparts, s->parts);
 
   /* We no longer need the indices as of here. */
   free(gind);
@@ -610,21 +609,22 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   /* Verify that the links are correct */
   for (size_t k = 0; k < nr_gparts; ++k) {
 
-    if (s->gparts[k].id > 0) {
+    if (s->gparts[k].id_or_neg_offset < 0) {
 
-      if (s->gparts[k].part->gpart != &s->gparts[k]) error("Linking problem !");
+      const struct part *part = &s->parts[-s->gparts[k].id_or_neg_offset];
 
-      if (s->gparts[k].x[0] != s->gparts[k].part->x[0] ||
-          s->gparts[k].x[1] != s->gparts[k].part->x[1] ||
-          s->gparts[k].x[2] != s->gparts[k].part->x[2])
+      if (part->gpart != &s->gparts[k]) error("Linking problem !");
+
+      if (s->gparts[k].x[0] != part->x[0] || s->gparts[k].x[1] != part->x[1] ||
+          s->gparts[k].x[2] != part->x[2])
         error("Linked particles are not at the same position !");
     }
   }
   for (size_t k = 0; k < nr_parts; ++k) {
 
-    if (s->parts[k].gpart != NULL) {
-
-      if (s->parts[k].gpart->part != &s->parts[k]) error("Linking problem !");
+    if (s->parts[k].gpart != NULL &&
+        s->parts[k].gpart->id_or_neg_offset != -k) {
+      error("Linking problem !");
     }
   }
 #endif
@@ -1268,7 +1268,7 @@ void space_do_split(struct space *s, struct cell *c) {
     }
 
     /* Split the cell data. */
-    cell_split(c);
+    cell_split(c, c->parts - s->parts);
 
     /* Remove any progeny with zero parts. */
     for (int k = 0; k < 8; k++)
