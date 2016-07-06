@@ -66,6 +66,7 @@ enum task_subtypes {
   task_subtype_density,
   task_subtype_force,
   task_subtype_grav,
+  task_subtype_tend,
   task_subtype_count
 };
 
@@ -79,9 +80,9 @@ struct task {
   char skip, tight, implicit;
   int flags, wait, rank, weight;
 
-  swift_lock_type lock;
-
   struct cell *ci, *cj;
+
+  void *buff;
 
 #ifdef WITH_MPI
   MPI_Request req;
@@ -95,9 +96,6 @@ struct task {
 };
 
 /* Function prototypes. */
-void task_rmunlock(struct task *ta, struct task *tb);
-void task_rmunlock_blind(struct task *ta, struct task *tb);
-void task_cleanunlock(struct task *t, int type);
 void task_unlock(struct task *t);
 float task_overlap(const struct task *ta, const struct task *tb);
 int task_lock(struct task *t);

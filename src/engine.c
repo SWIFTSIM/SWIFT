@@ -675,44 +675,63 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  *
  * @param e The #engine.
  * @param ci The sending #cell.
- * @param cj The receiving #cell
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_xv The send_xv #task, if it has already been created.
+ * @param t_rho The send_rho #task, if it has already been created.
+ * @param t_ti The send_ti #task, if required and has already been created.
  */
-void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
+void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
+                          struct task *t_xv, struct task *t_rho,
+                          struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
 
   /* Check if any of the density tasks are for the target node. */
   for (l = ci->density; l != NULL; l = l->next)
-    if (l->t->ci->nodeID == cj->nodeID ||
-        (l->t->cj != NULL && l->t->cj->nodeID == cj->nodeID))
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
       break;
 
   /* If so, attach send tasks. */
   if (l != NULL) {
 
-    /* Create the tasks. */
-    struct task *t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                          2 * ci->tag, 0, ci, cj, 0);
-    struct task *t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                           2 * ci->tag + 1, 0, ci, cj, 0);
+    /* Create the tasks and their dependencies? */
+    if (t_xv == NULL) {
+      t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
+                               3 * ci->tag, 0, ci, cj, 0);
+      t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                3 * ci->tag + 1, 0, ci, cj, 0);
+      if (!(e->policy & engine_policy_fixdt))
+        t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
+                                 3 * ci->tag + 2, 0, ci, cj, 0);
 
-    /* The send_rho task depends on the cell's ghost task. */
-    scheduler_addunlock(s, ci->super->ghost, t_rho);
+      /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->super->ghost, t_rho);
 
-    /* The send_rho task should unlock the super-cell's kick task. */
-    scheduler_addunlock(s, t_rho, ci->super->kick);
+      /* The send_rho task should unlock the super-cell's kick task. */
+      scheduler_addunlock(s, t_rho, ci->super->kick);
 
-    /* The send_xv task should unlock the super-cell's ghost task. */
-    scheduler_addunlock(s, t_xv, ci->super->ghost);
+      /* The send_xv task should unlock the super-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->super->ghost);
 
+      /* The super-cell's kick task should unlock the send_ti task. */
+      if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick, t_ti);
+    }
+
+    /* Add them to the local cell. */
+    ci->send_xv = engine_addlink(e, ci->send_xv, t_xv);
+    ci->send_rho = engine_addlink(e, ci->send_rho, t_rho);
+    if (t_ti != NULL) ci->send_ti = engine_addlink(e, ci->send_ti, t_ti);
   }
 
   /* Recurse? */
-  else if (ci->split)
+  if (ci->split)
     for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL) engine_addtasks_send(e, ci->progeny[k], cj);
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -723,40 +742,51 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj) {
  * @brief Add recv tasks to a hierarchy of cells.
  *
  * @param e The #engine.
- * @param c The #cell.
+ * @param c The foreign #cell.
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
+ * @param t_ti The recv_ti #task, if required and has already been created.
  */
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
-                          struct task *t_rho) {
+                          struct task *t_rho, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
 
-  /* Do we need to construct a recv task? */
-  if (t_xv == NULL && c->nr_density > 0) {
+  /* Do we need to construct a recv task?
+     Note that since c is a foreign cell, all its density tasks will involve
+     only the current rank, and thus we don't have to check them.*/
+  if (t_xv == NULL && c->density != NULL) {
 
     /* Create the tasks. */
-    t_xv = c->recv_xv = scheduler_addtask(s, task_type_recv, task_subtype_none,
-                                          2 * c->tag, 0, c, NULL, 0);
-    t_rho = c->recv_rho = scheduler_addtask(
-        s, task_type_recv, task_subtype_none, 2 * c->tag + 1, 0, c, NULL, 0);
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 3 * c->tag,
+                             0, c, NULL, 0);
+    t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
+                              3 * c->tag + 1, 0, c, NULL, 0);
+    if (!(e->policy & engine_policy_fixdt))
+      t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
+                               3 * c->tag + 2, 0, c, NULL, 0);
   }
+  c->recv_xv = t_xv;
+  c->recv_rho = t_rho;
+  c->recv_ti = t_ti;
 
   /* Add dependencies. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
     scheduler_addunlock(s, l->t, t_rho);
   }
-  for (struct link *l = c->force; l != NULL; l = l->next)
+  for (struct link *l = c->force; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_rho, l->t);
+    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+  }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho);
+        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1782,16 +1812,33 @@ int engine_marktasks(struct engine *e) {
     for (int k = 0; k < nr_tasks; k++) {
 
       /* Get a handle on the kth task. */
-      struct task *t = &tasks[ind[k]];
+      struct task *t = &tasks[k];
 
-      /* Sort-task? Note that due to the task ranking, the sorts
-         will all come before the pairs. */
+      /* Sort-task? */
       if (t->type == task_type_sort) {
 
         /* Re-set the flags. */
         t->flags = 0;
         t->skip = 1;
 
+      }
+
+      /* Send/recv-task? */
+      else if (t->type == task_type_send || t->type == task_type_recv) {
+        t->skip = 1;
+      }
+    }
+
+    /* Run through the tasks and mark as skip or not. */
+    for (int k = 0; k < nr_tasks; k++) {
+
+      /* Get a handle on the kth task. */
+      struct task *t = &tasks[k];
+
+      /* Skip sorts, sends, and recvs. */
+      if (t->type == task_type_sort || t->type == task_type_send ||
+          t->type == task_type_recv) {
+        continue;
       }
 
       /* Single-cell task? */
@@ -1809,9 +1856,6 @@ int engine_marktasks(struct engine *e) {
         const struct cell *ci = t->ci;
         const struct cell *cj = t->cj;
 
-        /* Set this task's skip. */
-        t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
-
         /* Too much particle movement? */
         if (t->tight &&
             (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
@@ -1819,8 +1863,13 @@ int engine_marktasks(struct engine *e) {
              cj->dx_max > space_maxreldx * cj->h_max))
           return 1;
 
+        /* Set this task's skip. */
+        if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) ==
+            1)
+          continue;
+
         /* Set the sort flags. */
-        if (!t->skip && t->type == task_type_pair &&
+        if (t->type == task_type_pair &&
             t->subtype != task_subtype_grav) {
           if (!(ci->sorted & (1 << t->flags))) {
             ci->sorts->flags |= (1 << t->flags);
@@ -1830,6 +1879,68 @@ int engine_marktasks(struct engine *e) {
             cj->sorts->flags |= (1 << t->flags);
             cj->sorts->skip = 0;
           }
+        }
+
+        /* Activate the send/recv flags. */
+        if (ci->nodeID != e->nodeID) {
+
+          /* Activate the tasks to recv foreign cell ci's data. */
+          ci->recv_xv->skip = 0;
+          ci->recv_rho->skip = 0;
+          ci->recv_ti->skip = 0;
+
+          /* Look for the local cell cj's send tasks. */
+          struct link *l = NULL;
+          for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) {
+            abort();
+            error("Missing link to send_xv task.");
+          }
+          l->t->skip = 0;
+
+          for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          l->t->skip = 0;
+
+          for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          l->t->skip = 0;
+
+        } else if (cj->nodeID != e->nodeID) {
+
+          /* Activate the tasks to recv foreign cell cj's data. */
+          cj->recv_xv->skip = 0;
+          cj->recv_rho->skip = 0;
+          cj->recv_ti->skip = 0;
+
+          /* Look for the local cell ci's send tasks. */
+          struct link *l = NULL;
+          for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) {
+            abort();
+            error("Missing link to send_xv task.");
+          }
+          l->t->skip = 0;
+
+          for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_rho task.");
+          l->t->skip = 0;
+
+          for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+               l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_ti task.");
+          l->t->skip = 0;
         }
 
       }
@@ -2280,8 +2391,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
  *forward in time.
  *
  * @param e The #engine
+ * @param flag_entropy_ICs Did the 'Internal Energy' of the particles actually
+ *contain entropy ?
  */
-void engine_init_particles(struct engine *e) {
+void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   struct space *s = e->s;
 
@@ -2350,6 +2463,7 @@ void engine_init_particles(struct engine *e) {
 
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
+    submask |= 1 << task_subtype_tend;
   }
 
   /* Now, launch the calculation */
@@ -2358,7 +2472,7 @@ void engine_init_particles(struct engine *e) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+  if (!flag_entropy_ICs) space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
 
   clocks_gettime(&time2);
 
@@ -2490,6 +2604,7 @@ void engine_step(struct engine *e) {
 
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
+    submask |= 1 << task_subtype_tend;
   }
 
   /* Send off the runners. */

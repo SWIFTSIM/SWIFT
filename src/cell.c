@@ -128,6 +128,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
     }
 
   /* Return the total number of unpacked cells. */
+  c->pcell_size = count;
   return count;
 }
 
@@ -213,6 +214,39 @@ int cell_pack(struct cell *c, struct pcell *pc) {
       pc->progeny[k] = -1;
 
   /* Return the number of packed cells used. */
+  c->pcell_size = count;
+  return count;
+}
+
+int cell_pack_ti_ends(struct cell *c, int *ti_ends) {
+
+  /* Pack this cell's data. */
+  ti_ends[0] = c->ti_end_min;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_ti_ends(c->progeny[k], &ti_ends[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+}
+
+int cell_unpack_ti_ends(struct cell *c, int *ti_ends) {
+
+  /* Unpack this cell's data. */
+  c->ti_end_min = ti_ends[0];
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_ti_ends(c->progeny[k], &ti_ends[count]);
+    }
+
+  /* Return the number of packed values. */
   return count;
 }
 
