@@ -28,6 +28,7 @@ examples/*.xmf
 examples/used_parameters.yml
 examples/energy.txt
 examples/*/*.xmf
+examples/*/*.dat
 examples/*/*.hdf5
 examples/*/used_parameters.yml
 examples/*/energy.txt
