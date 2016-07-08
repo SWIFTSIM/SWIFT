@@ -35,15 +35,35 @@ __attribute__((always_inline)) INLINE static void darkmatter_read_particles(
     struct gpart* gparts, const struct UnitSystem* internal_units,
     struct UnitSystem* ic_units) {
 
+  const int num_fields = 4;
+  struct io_props list[num_fields];
+
+  /* List what we want to read */
+  list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
+                                UNIT_CONV_LENGTH, gparts, x);
+  list[1] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_SPEED, gparts, v_full);
+  list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
+                                gparts, mass);
+  list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, gparts, id);
+
   /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, N, 3, gparts, N_total, offset, x,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH);
-  readArray(h_grp, "Masses", FLOAT, N, 1, gparts, N_total, offset, mass,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_MASS);
-  readArray(h_grp, "Velocities", FLOAT, N, 3, gparts, N_total, offset, v_full,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_SPEED);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, gparts, N_total, offset, id,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS);
+  /* readArray(h_grp, "Coordinates", DOUBLE, N, 3, gparts, N_total, offset, x,
+   */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH); */
+  /* readArray(h_grp, "Masses", FLOAT, N, 1, gparts, N_total, offset, mass, */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_MASS); */
+  /* readArray(h_grp, "Velocities", FLOAT, N, 3, gparts, N_total, offset,
+   * v_full, */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_SPEED); */
+  /* readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, gparts, N_total, offset,
+   * id, */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS); */
+
+  /* And read everything */
+  for (int i = 0; i < num_fields; ++i)
+    readArray(h_grp, list[i], N, N_total, offset, internal_units, ic_units);
 }
 
 /**

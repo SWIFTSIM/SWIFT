@@ -69,6 +69,7 @@ enum PARTICLE_TYPE {
 extern const char* particle_type_names[];
 
 #define FILENAME_BUFFER_SIZE 150
+#define FIELD_BUFFER_SIZE 50
 #define PARTICLE_GROUP_BUFFER_SIZE 20
 
 hid_t hdf5Type(enum DATA_TYPE type);
@@ -108,6 +109,46 @@ void writeCodeDescription(hid_t h_file);
 void readUnitSystem(hid_t h_file, struct UnitSystem* us);
 void writeUnitSystem(hid_t h_grp, const struct UnitSystem* us,
                      const char* groupName);
+
+/**
+ * @brief The properties of a given dataset for i/o
+ */
+struct io_props {
+
+  /* Name */
+  char name[FIELD_BUFFER_SIZE];
+
+  /* Type of the field */
+  enum DATA_TYPE type;
+
+  /* Dimension (1D, 3D, ...) */
+  int dimension;
+
+  /* Is it compulsory ? (input only) */
+  enum DATA_IMPORTANCE importance;
+
+  /* Units of the quantity */
+  enum UnitConversionFactor units;
+
+  /* Pointer to the field of the first particle in the array */
+  char* field;
+
+  /* The size of the particles */
+  size_t partSize;
+};
+
+/**
+ * @brief Constructs an #io_props from its attributes
+ */
+#define io_make_input_field(name, type, dim, importance, units, part, field) \
+  io_make_input_field_(name, type, dim, importance, units,                   \
+                       (char*)(&(part[0]).field), sizeof(part[0]))
+
+struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
+                                     enum DATA_TYPE type, int dimension,
+                                     enum DATA_IMPORTANCE importance,
+                                     enum UnitConversionFactor units,
+                                     char* field, size_t partSize);
 
 #endif /* defined HDF5 */
 

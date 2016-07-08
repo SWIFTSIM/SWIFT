@@ -652,4 +652,25 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
           count, Ndm);
 }
 
+/**
+ * @brief Construct an #io_props from its parameters
+ */
+struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
+                                     enum DATA_TYPE type, int dimension,
+                                     enum DATA_IMPORTANCE importance,
+                                     enum UnitConversionFactor units,
+                                     char* field, size_t partSize) {
+
+  struct io_props r;
+  strcpy(r.name, name);
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = importance;
+  r.units = units;
+  r.field = field;
+  r.partSize = partSize;
+
+  return r;
+}
+
 #endif

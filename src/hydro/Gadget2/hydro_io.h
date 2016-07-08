@@ -34,23 +34,52 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
     hid_t h_grp, int N, long long N_total, long long offset, struct part* parts,
     const struct UnitSystem* internal_units, struct UnitSystem* ic_units) {
 
+  const int num_fields = 8;
+  struct io_props list[num_fields];
+
+  /* List what we want to read */
+  list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
+                                UNIT_CONV_LENGTH, parts, x);
+  list[1] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_SPEED, parts, v);
+  list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
+                                parts, mass);
+  list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_LENGTH, parts, h);
+  list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_ENERGY, parts, entropy);
+  list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, id);
+  list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
+                                UNIT_CONV_ACCELERATION, parts, a_hydro);
+  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_DENSITY, parts, rho);
+
   /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, N, 3, parts, N_total, offset, x,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH);
-  readArray(h_grp, "Velocities", FLOAT, N, 3, parts, N_total, offset, v,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_SPEED);
-  readArray(h_grp, "Masses", FLOAT, N, 1, parts, N_total, offset, mass,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_MASS);
-  readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH);
-  readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset,
-            entropy, COMPULSORY, internal_units, ic_units, UNIT_CONV_ENERGY);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id,
-            COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS);
-  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a_hydro,
-            OPTIONAL, internal_units, ic_units, UNIT_CONV_ACCELERATION);
-  readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho,
-            OPTIONAL, internal_units, ic_units, UNIT_CONV_DENSITY);
+  /* readArray(h_grp, "Coordinates", DOUBLE, N, 3, parts, N_total, offset, x, */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH); */
+  /* readArray(h_grp, "Velocities", FLOAT, N, 3, parts, N_total, offset, v, */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_SPEED); */
+  /* readArray(h_grp, "Masses", FLOAT, N, 1, parts, N_total, offset, mass, */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_MASS); */
+  /* readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h,
+   */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH); */
+  /* readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset, */
+  /*           entropy, COMPULSORY, internal_units, ic_units, UNIT_CONV_ENERGY);
+   */
+  /* readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset,
+   * id, */
+  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS); */
+  /* readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset,
+   * a_hydro, */
+  /*           OPTIONAL, internal_units, ic_units, UNIT_CONV_ACCELERATION); */
+  /* readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho, */
+  /*           OPTIONAL, internal_units, ic_units, UNIT_CONV_DENSITY); */
+
+  /* And read everything */
+  for (int i = 0; i < num_fields; ++i)
+    readArray(h_grp, list[i], N, N_total, offset, internal_units, ic_units);
 }
 
 /**
@@ -78,30 +107,39 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
     const struct UnitSystem* snapshot_units) {
 
   /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates", DOUBLE,
-             N, 3, parts, N_total, mpi_rank, offset, x, internal_units,
-             snapshot_units, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities", FLOAT,
-             N, 3, parts, N_total, mpi_rank, offset, v, internal_units,
-             snapshot_units, UNIT_CONV_SPEED);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT, N, 1,
-             parts, N_total, mpi_rank, offset, mass, internal_units,
-             snapshot_units, UNIT_CONV_MASS);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
-             FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, internal_units,
-             snapshot_units, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy", FLOAT, N,
-             1, parts, N_total, mpi_rank, offset, entropy, internal_units,
-             snapshot_units, UNIT_CONV_ENTROPY_PER_UNIT_MASS);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
-             ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id,
-             internal_units, snapshot_units, UNIT_CONV_NO_UNITS);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Acceleration", FLOAT,
-             N, 3, parts, N_total, mpi_rank, offset, a_hydro, internal_units,
-             snapshot_units, UNIT_CONV_ACCELERATION);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Density", FLOAT, N,
-             1, parts, N_total, mpi_rank, offset, rho, internal_units,
-             snapshot_units, UNIT_CONV_DENSITY);
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates",
+   * DOUBLE, */
+  /*            N, 3, parts, N_total, mpi_rank, offset, x, internal_units, */
+  /*            snapshot_units, UNIT_CONV_LENGTH); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities",
+   * FLOAT, */
+  /*            N, 3, parts, N_total, mpi_rank, offset, v, internal_units, */
+  /*            snapshot_units, UNIT_CONV_SPEED); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT, N,
+   * 1, */
+  /*            parts, N_total, mpi_rank, offset, mass, internal_units, */
+  /*            snapshot_units, UNIT_CONV_MASS); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
+   */
+  /*            FLOAT, N, 1, parts, N_total, mpi_rank, offset, h,
+   * internal_units, */
+  /*            snapshot_units, UNIT_CONV_LENGTH); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy", FLOAT,
+   * N, */
+  /*            1, parts, N_total, mpi_rank, offset, entropy, internal_units, */
+  /*            snapshot_units, UNIT_CONV_ENTROPY_PER_UNIT_MASS); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs", */
+  /*            ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, */
+  /*            internal_units, snapshot_units, UNIT_CONV_NO_UNITS); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Acceleration",
+   * FLOAT, */
+  /*            N, 3, parts, N_total, mpi_rank, offset, a_hydro, internal_units,
+   */
+  /*            snapshot_units, UNIT_CONV_ACCELERATION); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Density", FLOAT,
+   * N, */
+  /*            1, parts, N_total, mpi_rank, offset, rho, internal_units, */
+  /*            snapshot_units, UNIT_CONV_DENSITY); */
 }
 
 /**

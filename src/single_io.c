@@ -67,41 +67,48 @@
  *the part array
  * will be written once the structures have been stabilized.
  */
-void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
-                      int dim, char* part_c, size_t partSize,
-                      enum DATA_IMPORTANCE importance,
-                      const struct UnitSystem* internal_units,
-                      const struct UnitSystem* ic_units,
-                      enum UnitConversionFactor convFactor) {
+/* void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, */
+/*                       int dim, char* part_c, size_t partSize, */
+/*                       enum DATA_IMPORTANCE importance, */
+/*                       const struct UnitSystem* internal_units, */
+/*                       const struct UnitSystem* ic_units, */
+/*                       enum UnitConversionFactor convFactor) { */
 
-  const size_t typeSize = sizeOfType(type);
-  const size_t copySize = typeSize * dim;
-  const size_t num_elements = N * dim;
+void readArray(hid_t h_grp, const struct io_props prop, int N,
+               long long N_total, long long offset,
+               const struct UnitSystem* internal_units,
+               const struct UnitSystem* ic_units) {
+
+  const size_t typeSize = sizeOfType(prop.type);
+  const size_t copySize = typeSize * prop.dimension;
+  const size_t num_elements = N * prop.dimension;
 
   /* Check whether the dataspace exists or not */
-  const htri_t exist = H5Lexists(grp, name, 0);
+  const htri_t exist = H5Lexists(h_grp, prop.name, 0);
   if (exist < 0) {
-    error("Error while checking the existence of data set '%s'.", name);
+    error("Error while checking the existence of data set '%s'.", prop.name);
   } else if (exist == 0) {
-    if (importance == COMPULSORY) {
-      error("Compulsory data set '%s' not present in the file.", name);
+    if (prop.importance == COMPULSORY) {
+      error("Compulsory data set '%s' not present in the file.", prop.name);
     } else {
       /* message("Optional data set '%s' not present. Zeroing this particle
-       * field...", name);	   */
+       * prop...", name);	   */
 
-      for (int i = 0; i < N; ++i) memset(part_c + i * partSize, 0, copySize);
+      for (int i = 0; i < N; ++i)
+        memset(prop.field + i * prop.partSize, 0, copySize);
 
       return;
     }
   }
 
-  /* message( "Reading %s '%s' array...", importance == COMPULSORY ?
-   * "compulsory": "optional  ", name); */
+  message("Reading %s '%s' array...",
+          prop.importance == COMPULSORY ? "compulsory" : "optional  ",
+          prop.name);
 
   /* Open data space */
-  const hid_t h_data = H5Dopen(grp, name, H5P_DEFAULT);
+  const hid_t h_data = H5Dopen(h_grp, prop.name, H5P_DEFAULT);
   if (h_data < 0) {
-    error("Error while opening data space '%s'.", name);
+    error("Error while opening data space '%s'.", prop.name);
   }
 
   /* Check data type */
@@ -118,19 +125,19 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   /* Dirty version that happens to work for vectors but should be improved */
   /* Using HDF5 dataspaces would be better */
   const hid_t h_err =
-      H5Dread(h_data, hdf5Type(type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
+      H5Dread(h_data, hdf5Type(prop.type), H5S_ALL, H5S_ALL, H5P_DEFAULT, temp);
   if (h_err < 0) {
-    error("Error while reading data array '%s'.", name);
+    error("Error while reading data array '%s'.", prop.name);
   }
 
   /* Unit conversion if necessary */
   const double factor =
-      units_conversion_factor(ic_units, internal_units, convFactor);
+      units_conversion_factor(ic_units, internal_units, prop.units);
   if (factor != 1. && exist != 0) {
 
     message("aaa");
 
-    if (isDoublePrecision(type)) {
+    if (isDoublePrecision(prop.type)) {
       double* temp_d = temp;
       for (int i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
@@ -142,7 +149,7 @@ void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N,
   /* Copy temporary buffer to particle data */
   char* temp_c = temp;
   for (int i = 0; i < N; ++i)
-    memcpy(part_c + i * partSize, &temp_c[i * copySize], copySize);
+    memcpy(prop.field + i * prop.partSize, &temp_c[i * copySize], copySize);
 
   /* Free and close everything */
   free(temp);
@@ -280,7 +287,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   writeXMFline(xmfFile, fileName, partTypeGroupName, name, N, dim, type);
 
   /* Write unit conversion factors for this data set */
-  char buffer[FILENAME_BUFFER_SIZE];
+  char buffer[FIELD_BUFFER_SIZE];
   units_cgs_conversion_string(buffer, snapshot_units, convFactor);
   writeAttribute_d(h_data, "CGS conversion factor",
                    units_cgs_conversion_factor(snapshot_units, convFactor));
@@ -315,11 +322,15 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  * @param convFactor The UnitConversionFactor for this array
  *
  */
-#define readArray(grp, name, type, N, dim, part, N_total, offset, field,  \
-                  importance, internal_units, ic_units, convFactor)       \
-  readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),    \
-                   sizeof(part[0]), importance, internal_units, ic_units, \
-                   convFactor)
+/* #define readArray(grp, name, type, N, dim, part, N_total, offset, field,  \
+ */
+/*                   importance, internal_units, ic_units, convFactor)       \
+ */
+/*   readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),    \
+ */
+/*                    sizeof(part[0]), importance, internal_units, ic_units, \
+ */
+/*                    convFactor) */
 
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
