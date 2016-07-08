@@ -94,8 +94,9 @@ void writeXMFoutputfooter(FILE* xmfFile, int outputCount, float time);
 void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
                          enum PARTICLE_TYPE ptype);
 void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype);
-void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
-                  char* name, size_t N, int dim, enum DATA_TYPE type);
+void writeXMFline(FILE* xmfFile, const char* fileName,
+                  const char* partTypeGroupName, const char* name, size_t N,
+                  int dim, enum DATA_TYPE type);
 
 void writeCodeDescription(hid_t h_file);
 

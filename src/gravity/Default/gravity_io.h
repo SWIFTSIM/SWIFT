@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+#include "io_properties.h"
+
 /**
  * @brief Read dark matter particles from HDF5.
  *
@@ -45,24 +47,6 @@ void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
                                 gparts, mass);
   list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
-
-  /* Read arrays */
-  /* readArray(h_grp, "Coordinates", DOUBLE, N, 3, gparts, N_total, offset, x,
-   */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH); */
-  /* readArray(h_grp, "Masses", FLOAT, N, 1, gparts, N_total, offset, mass, */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_MASS); */
-  /* readArray(h_grp, "Velocities", FLOAT, N, 3, gparts, N_total, offset,
-   * v_full, */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_SPEED); */
-  /* readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, gparts, N_total, offset,
-   * id, */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS); */
-
-  /* And read everything */
-  /* for (int i = 0; i < num_fields; ++i) */
-  /*   readArray(h_grp, list[i], N, N_total, offset, internal_units, ic_units);
-   */
 }
 
 /**
@@ -90,17 +74,21 @@ __attribute__((always_inline)) INLINE static void darkmatter_write_particles(
     const struct UnitSystem* snapshot_units) {
 
   /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates", DOUBLE,
-             Ndm, 3, gparts, Ndm_total, mpi_rank, offset, x, internal_units,
-             snapshot_units, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT, Ndm,
-             1, gparts, Ndm_total, mpi_rank, offset, mass, internal_units,
-             snapshot_units, UNIT_CONV_MASS);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities", FLOAT,
-             Ndm, 3, gparts, Ndm_total, mpi_rank, offset, v_full,
-             internal_units, snapshot_units, UNIT_CONV_SPEED);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
-             ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset,
-             id_or_neg_offset, internal_units, snapshot_units,
-             UNIT_CONV_NO_UNITS);
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates",
+   * DOUBLE, */
+  /*            Ndm, 3, gparts, Ndm_total, mpi_rank, offset, x, internal_units,
+   */
+  /*            snapshot_units, UNIT_CONV_LENGTH); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT,
+   * Ndm, */
+  /*            1, gparts, Ndm_total, mpi_rank, offset, mass, internal_units, */
+  /*            snapshot_units, UNIT_CONV_MASS); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities",
+   * FLOAT, */
+  /*            Ndm, 3, gparts, Ndm_total, mpi_rank, offset, v_full, */
+  /*            internal_units, snapshot_units, UNIT_CONV_SPEED); */
+  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs", */
+  /*            ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset, */
+  /*            id_or_neg_offset, internal_units, snapshot_units, */
+  /*            UNIT_CONV_NO_UNITS); */
 }

@@ -38,6 +38,8 @@
 #include "common_io.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity_io.h"
+#include "hydro_io.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
@@ -170,36 +172,34 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
  *the part array
  * will be written once the structures have been stabilized.
  */
-void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
-                       char* partTypeGroupName, char* name, enum DATA_TYPE type,
-                       int N, int dim, char* part_c, size_t partSize,
-                       const struct UnitSystem* internal_units,
-                       const struct UnitSystem* snapshot_units,
-                       enum UnitConversionFactor convFactor) {
+void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
+                char* partTypeGroupName, const struct io_props props, size_t N,
+                const struct UnitSystem* internal_units,
+                const struct UnitSystem* snapshot_units) {
 
-  const size_t typeSize = sizeOfType(type);
-  const size_t copySize = typeSize * dim;
-  const size_t num_elements = N * dim;
+  const size_t typeSize = sizeOfType(props.type);
+  const size_t copySize = typeSize * props.dimension;
+  const size_t num_elements = N * props.dimension;
 
-  /* message("Writing '%s' array...", name); */
+  /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
-  void* temp = malloc(N * dim * sizeOfType(type));
+  void* temp = malloc(num_elements * sizeOfType(props.type));
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Copy particle data to temporary buffer */
   char* temp_c = temp;
   for (int i = 0; i < N; ++i)
-    memcpy(&temp_c[i * copySize], part_c + i * partSize, copySize);
+    memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
 
   /* Unit conversion if necessary */
   const double factor =
-      units_conversion_factor(internal_units, snapshot_units, convFactor);
+      units_conversion_factor(internal_units, snapshot_units, props.units);
   if (factor != 1.) {
 
     message("aaa");
 
-    if (isDoublePrecision(type)) {
+    if (isDoublePrecision(props.type)) {
       double* temp_d = temp;
       for (int i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
@@ -214,15 +214,15 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   hsize_t shape[2];
   hsize_t chunk_shape[2];
   if (h_space < 0) {
-    error("Error while creating data space for field '%s'.", name);
+    error("Error while creating data space for field '%s'.", props.name);
   }
 
-  if (dim > 1) {
+  if (props.dimension > 1) {
     rank = 2;
     shape[0] = N;
-    shape[1] = dim;
+    shape[1] = props.dimension;
     chunk_shape[0] = 1 << 16; /* Just a guess...*/
-    chunk_shape[1] = dim;
+    chunk_shape[1] = props.dimension;
   } else {
     rank = 1;
     shape[0] = N;
@@ -237,7 +237,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   /* Change shape of data space */
   hid_t h_err = H5Sset_extent_simple(h_space, rank, shape, NULL);
   if (h_err < 0) {
-    error("Error while changing data space shape for field '%s'.", name);
+    error("Error while changing data space shape for field '%s'.", props.name);
   }
 
   /* Dataset properties */
@@ -247,40 +247,43 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
   if (h_err < 0) {
     error("Error while setting chunk size (%lld, %lld) for field '%s'.",
-          chunk_shape[0], chunk_shape[1], name);
+          chunk_shape[0], chunk_shape[1], props.name);
   }
 
   /* Impose data compression */
   h_err = H5Pset_deflate(h_prop, 4);
   if (h_err < 0) {
-    error("Error while setting compression options for field '%s'.", name);
+    error("Error while setting compression options for field '%s'.",
+          props.name);
   }
 
   /* Create dataset */
-  const hid_t h_data = H5Dcreate(grp, name, hdf5Type(type), h_space,
+  const hid_t h_data = H5Dcreate(grp, props.name, hdf5Type(props.type), h_space,
                                  H5P_DEFAULT, h_prop, H5P_DEFAULT);
   if (h_data < 0) {
-    error("Error while creating dataspace '%s'.", name);
+    error("Error while creating dataspace '%s'.", props.name);
   }
 
   /* Write temporary buffer to HDF5 dataspace */
-  h_err = H5Dwrite(h_data, hdf5Type(type), h_space, H5S_ALL, H5P_DEFAULT, temp);
+  h_err = H5Dwrite(h_data, hdf5Type(props.type), h_space, H5S_ALL, H5P_DEFAULT,
+                   temp);
   if (h_err < 0) {
-    error("Error while writing data array '%s'.", name);
+    error("Error while writing data array '%s'.", props.name);
   }
 
   /* Write XMF description for this data set */
-  writeXMFline(xmfFile, fileName, partTypeGroupName, name, N, dim, type);
+  writeXMFline(xmfFile, fileName, partTypeGroupName, props.name, N,
+               props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE];
-  units_cgs_conversion_string(buffer, snapshot_units, convFactor);
+  units_cgs_conversion_string(buffer, snapshot_units, props.units);
   writeAttribute_d(h_data, "CGS conversion factor",
-                   units_cgs_conversion_factor(snapshot_units, convFactor));
+                   units_cgs_conversion_factor(snapshot_units, props.units));
   writeAttribute_f(h_data, "h-scale exponent",
-                   units_h_factor(snapshot_units, convFactor));
+                   units_h_factor(snapshot_units, props.units));
   writeAttribute_f(h_data, "a-scale exponent",
-                   units_a_factor(snapshot_units, convFactor));
+                   units_a_factor(snapshot_units, props.units));
   writeAttribute_s(h_data, "Conversion factor", buffer);
 
   /* Free and close everything */
@@ -289,41 +292,6 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
   H5Dclose(h_data);
   H5Sclose(h_space);
 }
-
-/**
- * @brief A helper macro to call the readArrayBackEnd function more easily.
- *
- * @param grp The group in which to write.
- * @param fileName The name of the file in which the data is written
- * @param xmfFile The FILE used to write the XMF description
- * @param name The name of the array to write.
- * @param partTypeGroupName The name of the group containing the particles in
- *the HDF5 file.
- * @param type The #DATA_TYPE of the array.
- * @param N The number of particles to write.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part A (char*) pointer on the first occurrence of the field of
- * interest in the parts array
- * @param N_total Unused parameter in non-MPI mode
- * @param mpi_rank Unused parameter in non-MPI mode
- * @param offset Unused parameter in non-MPI mode
- * @param field The name (code name) of the field to read from.
- * @param internal_units The #UnitSystem used internally
- * @param snapshot_units The #UnitSystem used in the snapshots
- * @param convFactor The UnitConversionFactor for this array
- *
- */
-#define writeArray(grp, fileName, xmfFile, partTypeGroupName, name, type, N,  \
-                   dim, part, N_total, mpi_rank, offset, field,               \
-                   internal_units, snapshot_units, convFactor)                \
-  writeArrayBackEnd(grp, fileName, xmfFile, partTypeGroupName, name, type, N, \
-                    dim, (char*)(&(part[0]).field), sizeof(part[0]),          \
-                    internal_units, snapshot_units, convFactor)
-
-/* Import the right hydro definition */
-#include "hydro_io.h"
-/* Import the right gravity definition */
-#include "gravity_io.h"
 
 /**
  * @brief Reads an HDF5 initial condition file (GADGET-3 type)
@@ -663,15 +631,16 @@ void write_output_single(struct engine* e, const char* baseName,
       error("Error while creating particle group.\n");
     }
 
-    /* message("Writing particle arrays..."); */
+    int num_fields = 0;
+    struct io_props list[100];
+    size_t N;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
 
       case GAS:
-        hydro_write_particles(h_grp, fileName, partTypeGroupName, xmfFile, Ngas,
-                              Ngas, 0, 0, parts, internal_units,
-                              snapshot_units);
+        N = Ngas;
+        hydro_write_particles(parts, list, &num_fields);
         break;
 
       case DM:
@@ -684,18 +653,23 @@ void write_output_single(struct engine* e, const char* baseName,
         /* Collect the DM particles from gpart */
         collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
 
-        /* Write DM particles */
-        darkmatter_write_particles(h_grp, fileName, partTypeGroupName, xmfFile,
-                                   Ndm, Ndm, 0, 0, dmparts, internal_units,
-                                   snapshot_units);
-
-        /* Free temporary array */
-        free(dmparts);
-        break;
+      /* /\* Write DM particles *\/ */
+      /* darkmatter_write_particles(h_grp, fileName, partTypeGroupName, xmfFile,
+       */
+      /*                            Ndm, Ndm, 0, 0, dmparts, internal_units, */
+      /*                            snapshot_units); */
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
     }
+
+    /* Write everything */
+    for (int i = 0; i < num_fields; ++i)
+      writeArray(h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
+                 internal_units, snapshot_units);
+
+    /* Free temporary array */
+    free(dmparts);
 
     /* Close particle group */
     H5Gclose(h_grp);

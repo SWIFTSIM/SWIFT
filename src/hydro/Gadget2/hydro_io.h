@@ -17,18 +17,15 @@
  *
  ******************************************************************************/
 
+#include "io_properties.h"
+#include "kernel_hydro.h"
+
 /**
- * @brief Reads the different particles to the HDF5 file
+ * @brief Specifies which particle fields to read from a dataset
  *
- * @param h_grp The HDF5 group in which to read the arrays.
- * @param N The number of particles on that MPI rank.
- * @param N_total The total number of particles (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI
- * mode)
- * @param parts The particle array
- * @param internal_units The #UnitSystem used internally
- * @param ic_units The #UnitSystem used in the snapshots
- *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to read.
+ * @param num_fields The number of i/o fields to read.
  */
 void hydro_read_particles(struct part* parts, struct io_props* list,
                           int* num_fields) {
@@ -72,11 +69,14 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
  * @param snapshot_units The #UnitSystem used in the snapshots
  *
  */
-__attribute__((always_inline)) INLINE static void hydro_write_particles(
-    hid_t h_grp, char* fileName, char* partTypeGroupName, FILE* xmfFile, int N,
-    long long N_total, int mpi_rank, long long offset, struct part* parts,
-    const struct UnitSystem* internal_units,
-    const struct UnitSystem* snapshot_units) {
+void hydro_write_particles(struct part* parts, struct io_props* list,
+                           int* num_fields) {
+
+  *num_fields = 1;
+
+  /* List what we want to read */
+  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
+                                 parts, x);
 
   /* Write arrays */
   /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates",

@@ -63,7 +63,6 @@ struct io_props {
   io_make_input_field_(name, type, dim, importance, units,                   \
                        (char*)(&(part[0]).field), sizeof(part[0]))
 
-
 /**
  * @brief Construct an #io_props from its parameters
  *
@@ -94,14 +93,12 @@ struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
   return r;
 }
 
-
 /**
  * @brief Constructs an #io_props from its parameters
  */
-#define io_make_output_field(name, type, dim, units, part, field) \
-  io_make_output_field_(name, type, dim, units,                   \
-                       (char*)(&(part[0]).field), sizeof(part[0]))
-
+#define io_make_output_field(name, type, dim, units, part, field)          \
+  io_make_output_field_(name, type, dim, units, (char*)(&(part[0]).field), \
+                        sizeof(part[0]))
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -116,9 +113,9 @@ struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
  * Do not call this function directly. Use the macro defined above.
  */
 struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
-				      enum DATA_TYPE type, int dimension,
-				      enum UnitConversionFactor units,
-				      char* field, size_t partSize) {
+                                      enum DATA_TYPE type, int dimension,
+                                      enum UnitConversionFactor units,
+                                      char* field, size_t partSize) {
   struct io_props r;
   strcpy(r.name, name);
   r.type = type;
@@ -130,7 +127,5 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
 
   return r;
 }
-
-
 
 #endif /* SWIFT_IO_PROPERTIES_H */

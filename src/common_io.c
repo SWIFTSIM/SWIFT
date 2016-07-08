@@ -543,8 +543,9 @@ void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
  *
  * @todo Treat the types in a better way.
  */
-void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
-                  char* name, size_t N, int dim, enum DATA_TYPE type) {
+void writeXMFline(FILE* xmfFile, const char* fileName,
+                  const char* partTypeGroupName, const char* name, size_t N,
+                  int dim, enum DATA_TYPE type) {
   fprintf(xmfFile,
           "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",
           name, dim == 1 ? "Scalar" : "Vector");
