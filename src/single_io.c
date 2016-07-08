@@ -390,7 +390,7 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  */
 void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
-                    size_t* Ngas, size_t* Ngparts, int* periodic, int dry_run) {
+                    size_t* Ngas, size_t* Ngparts, int* periodic, int* flag_entropy, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -425,6 +425,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   if (h_grp < 0) error("Error while opening file header\n");
 
   /* Read the relevant information and print status */
+  readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy);
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
   readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
@@ -436,6 +437,9 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   dim[0] = boxSize[0];
   dim[1] = (boxSize[1] < 0) ? boxSize[0] : boxSize[1];
   dim[2] = (boxSize[2] < 0) ? boxSize[0] : boxSize[2];
+
+  /* message("Found %d particles in a %speriodic box of size [%f %f %f].",  */
+  /* 	  *N, (periodic ? "": "non-"), dim[0], dim[1], dim[2]);  */
 
   /* Close header */
   H5Gclose(h_grp);
@@ -489,6 +493,12 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
     error("Error while allocating memory for gravity particles");
   bzero(*gparts, *Ngparts * sizeof(struct gpart));
 
+  /* message("Allocated %8.2f MB for particles.", *N * sizeof(struct part) /
+   * (1024.*1024.)); */
+
+  /* message("BoxSize = %lf", dim[0]); */
+  /* message("NumPart = [%zd, %zd] Total = %zd", *Ngas, Ndm, *Ngparts); */
+
   /* Loop over all particle types */
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
@@ -522,7 +532,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
         break;
 
       default:
-        error("Particle Type %d not yet supported. Aborting", ptype);
+        message("Particle Type %d not yet supported. Particles ignored", ptype);
     }
 
     /* Close particle group */
@@ -640,6 +650,7 @@ void write_output_single(struct engine* e, const char* baseName,
   double MassTable[NUM_PARTICLE_TYPES] = {0};
   writeAttribute(h_grp, "MassTable", DOUBLE, MassTable, NUM_PARTICLE_TYPES);
   unsigned int flagEntropy[NUM_PARTICLE_TYPES] = {0};
+  flagEntropy[0] = writeEntropyFlag();
   writeAttribute(h_grp, "Flag_Entropy_ICs", UINT, flagEntropy,
                  NUM_PARTICLE_TYPES);
   writeAttribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);

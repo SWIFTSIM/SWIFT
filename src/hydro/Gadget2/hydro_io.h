@@ -159,3 +159,10 @@ void writeSPHflavour(hid_t h_grpsph) {
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 }
+
+/**
+ * @brief Are we writing entropy in the internal energy field ?
+ *
+ * @return 1 if entropy is in 'internal energy', 0 otherwise.
+ */
+int writeEntropyFlag() { return 1; }
