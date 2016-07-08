@@ -52,66 +52,34 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 }
 
 /**
- * @brief Writes the different particles to the HDF5 file
+ * @brief Specifies which particle fields to write to a dataset
  *
- * @param h_grp The HDF5 group in which to write the arrays.
- * @param fileName The name of the file (unsued in MPI mode).
- * @param partTypeGroupName The name of the group containing the particles in
- * the HDF5 file.
- * @param xmfFile The XMF file to write to (unused in MPI mode).
- * @param N The number of particles on that MPI rank.
- * @param N_total The total number of particles (only used in MPI mode)
- * @param mpi_rank The MPI rank of this node (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI
- * mode)
- * @param parts The particle array
- * @param internal_units The #UnitSystem used internally
- * @param snapshot_units The #UnitSystem used in the snapshots
- *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to write.
+ * @param num_fields The number of i/o fields to write.
  */
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 1;
+  *num_fields = 8;
 
-  /* List what we want to read */
+  /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
                                  parts, x);
-
-  /* Write arrays */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates",
-   * DOUBLE, */
-  /*            N, 3, parts, N_total, mpi_rank, offset, x, internal_units, */
-  /*            snapshot_units, UNIT_CONV_LENGTH); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities",
-   * FLOAT, */
-  /*            N, 3, parts, N_total, mpi_rank, offset, v, internal_units, */
-  /*            snapshot_units, UNIT_CONV_SPEED); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT, N,
-   * 1, */
-  /*            parts, N_total, mpi_rank, offset, mass, internal_units, */
-  /*            snapshot_units, UNIT_CONV_MASS); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
-   */
-  /*            FLOAT, N, 1, parts, N_total, mpi_rank, offset, h,
-   * internal_units, */
-  /*            snapshot_units, UNIT_CONV_LENGTH); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Entropy", FLOAT,
-   * N, */
-  /*            1, parts, N_total, mpi_rank, offset, entropy, internal_units, */
-  /*            snapshot_units, UNIT_CONV_ENTROPY_PER_UNIT_MASS); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs", */
-  /*            ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, */
-  /*            internal_units, snapshot_units, UNIT_CONV_NO_UNITS); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Acceleration",
-   * FLOAT, */
-  /*            N, 3, parts, N_total, mpi_rank, offset, a_hydro, internal_units,
-   */
-  /*            snapshot_units, UNIT_CONV_ACCELERATION); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Density", FLOAT,
-   * N, */
-  /*            1, parts, N_total, mpi_rank, offset, rho, internal_units, */
-  /*            snapshot_units, UNIT_CONV_DENSITY); */
+  list[1] =
+      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, v);
+  list[2] =
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
+  list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
+                                 parts, h);
+  list[4] = io_make_output_field(
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
+  list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, parts, id);
+  list[6] = io_make_output_field("Acceleration", FLOAT, 3,
+                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
+  list[7] =
+      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
 }
 
 /**

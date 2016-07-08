@@ -20,17 +20,11 @@
 #include "io_properties.h"
 
 /**
- * @brief Read dark matter particles from HDF5.
+ * @brief Specifies which g-particle fields to read from a dataset
  *
- * @param h_grp The HDF5 group in which to read the arrays.
- * @param N The number of particles on that MPI rank.
- * @param N_total The total number of particles (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI
- * mode)
- * @param gparts The particle array
- * @param internal_units The #UnitSystem used internally
- * @param ic_units The #UnitSystem used in the snapshots
- *
+ * @param gparts The g-particle array.
+ * @param list The list of i/o properties to read.
+ * @param num_fields The number of i/o fields to read.
  */
 void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
                                int* num_fields) {
@@ -50,45 +44,27 @@ void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
 }
 
 /**
- * @brief Writes the different particles to the HDF5 file
+ * @brief Specifies which g-particle fields to write to a dataset
  *
- * @param h_grp The HDF5 group in which to write the arrays.
- * @param fileName The name of the file (unsued in MPI mode).
- * @param partTypeGroupName The name of the group containing the particles in
- * the HDF5 file.
- * @param xmfFile The XMF file to write to (unused in MPI mode).
- * @param Ndm The number of DM particles on that MPI rank.
- * @param Ndm_total The total number of g-particles (only used in MPI mode)
- * @param mpi_rank The MPI rank of this node (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI
- * mode)
- * @param gparts The #gpart array
- * @param internal_units The #UnitSystem used internally
- * @param snapshot_units The #UnitSystem used in the snapshots
- *
+ * @param gparts The g-particle array.
+ * @param list The list of i/o properties to write.
+ * @param num_fields The number of i/o fields to write.
  */
-__attribute__((always_inline)) INLINE static void darkmatter_write_particles(
-    hid_t h_grp, char* fileName, char* partTypeGroupName, FILE* xmfFile,
-    int Ndm, long long Ndm_total, int mpi_rank, long long offset,
-    struct gpart* gparts, const struct UnitSystem* internal_units,
-    const struct UnitSystem* snapshot_units) {
+void darkmatter_write_particles(struct gpart* gparts, struct io_props* list,
+                                int* num_fields) {
 
-  /* Write arrays */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates",
-   * DOUBLE, */
-  /*            Ndm, 3, gparts, Ndm_total, mpi_rank, offset, x, internal_units,
-   */
-  /*            snapshot_units, UNIT_CONV_LENGTH); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT,
-   * Ndm, */
-  /*            1, gparts, Ndm_total, mpi_rank, offset, mass, internal_units, */
-  /*            snapshot_units, UNIT_CONV_MASS); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities",
-   * FLOAT, */
-  /*            Ndm, 3, gparts, Ndm_total, mpi_rank, offset, v_full, */
-  /*            internal_units, snapshot_units, UNIT_CONV_SPEED); */
-  /* writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs", */
-  /*            ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset, */
-  /*            id_or_neg_offset, internal_units, snapshot_units, */
-  /*            UNIT_CONV_NO_UNITS); */
+  /* Say how much we want to read */
+  *num_fields = 5;
+
+  /* List what we want to read */
+  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
+                                 gparts, x);
+  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED,
+                                 gparts, v_full);
+  list[2] =
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, gparts, mass);
+  list[3] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
+  list[4] = io_make_output_field("Acceleration", FLOAT, 3,
+                                 UNIT_CONV_ACCELERATION, gparts, a_grav);
 }

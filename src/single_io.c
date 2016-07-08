@@ -52,9 +52,8 @@
 /**
  * @brief Reads a data array from a given HDF5 group.
  *
- * @param grp The group from which to read.
+ * @param h_grp The group from which to read.
  * @param prop The #io_props of the field to read
- * @param type The #DATA_TYPE of the attribute.
  * @param N The number of particles.
  * @param internal_units The #UnitSystem used internally
  * @param ic_units The #UnitSystem used in the ICs
@@ -156,20 +155,14 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
  * @param partTypeGroupName The name of the group containing the particles in
- *the HDF5 file.
- * @param name The name of the array to write.
- * @param type The #DATA_TYPE of the array.
+ * the HDF5 file.
+ * @param props The #io_props of the field to read
  * @param N The number of particles to write.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurrence of the field of
- *interest in the parts array.
- * @param partSize The size in bytes of the particle structure.
  * @param internal_units The #UnitSystem used internally
  * @param snapshot_units The #UnitSystem used in the snapshots
- * @param convFactor The UnitConversionFactor for this array
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
- *the part array
+ * the part array
  * will be written once the structures have been stabilized.
  */
 void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
@@ -181,7 +174,7 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
   const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
 
-  /* message("Writing '%s' array...", props.name); */
+  message("Writing '%s' array...", props.name);
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * sizeOfType(props.type));
@@ -304,6 +297,8 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
+ * @param flag_entropy 1 if the ICs contained Entropy in the InternalEnergy
+ * field
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  * Opens the HDF5 file fileName and reads the particles contained
@@ -653,11 +648,10 @@ void write_output_single(struct engine* e, const char* baseName,
         /* Collect the DM particles from gpart */
         collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
 
-      /* /\* Write DM particles *\/ */
-      /* darkmatter_write_particles(h_grp, fileName, partTypeGroupName, xmfFile,
-       */
-      /*                            Ndm, Ndm, 0, 0, dmparts, internal_units, */
-      /*                            snapshot_units); */
+        /* Write DM particles */
+        N = Ndm;
+        darkmatter_write_particles(dmparts, list, &num_fields);
+        break;
 
       default:
         error("Particle Type %d not yet supported. Aborting", ptype);
