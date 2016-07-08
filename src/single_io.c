@@ -38,6 +38,7 @@
 #include "common_io.h"
 #include "engine.h"
 #include "error.h"
+#include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
 #include "units.h"
@@ -50,32 +51,17 @@
  * @brief Reads a data array from a given HDF5 group.
  *
  * @param grp The group from which to read.
- * @param name The name of the array to read.
+ * @param prop The #io_props of the field to read
  * @param type The #DATA_TYPE of the attribute.
  * @param N The number of particles.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part_c A (char*) pointer on the first occurrence of the field of
- *interest in the parts array
- * @param partSize The size in bytes of the particle structure.
- * @param importance If COMPULSORY, the data must be present in the IC file. If
- *OPTIONAL, the array will be zeroed when the data is not present.
  * @param internal_units The #UnitSystem used internally
  * @param ic_units The #UnitSystem used in the ICs
- * @param convFactor The UnitConversionFactor for this array
  *
  * @todo A better version using HDF5 hyper-slabs to read the file directly into
  *the part array
  * will be written once the structures have been stabilized.
  */
-/* void readArrayBackEnd(hid_t grp, char* name, enum DATA_TYPE type, int N, */
-/*                       int dim, char* part_c, size_t partSize, */
-/*                       enum DATA_IMPORTANCE importance, */
-/*                       const struct UnitSystem* internal_units, */
-/*                       const struct UnitSystem* ic_units, */
-/*                       enum UnitConversionFactor convFactor) { */
-
-void readArray(hid_t h_grp, const struct io_props prop, int N,
-               long long N_total, long long offset,
+void readArray(hid_t h_grp, const struct io_props prop, size_t N,
                const struct UnitSystem* internal_units,
                const struct UnitSystem* ic_units) {
 
@@ -307,34 +293,6 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
 /**
  * @brief A helper macro to call the readArrayBackEnd function more easily.
  *
- * @param grp The group from which to read.
- * @param name The name of the array to read.
- * @param type The #DATA_TYPE of the attribute.
- * @param N The number of particles.
- * @param dim The dimension of the data (1 for scalar, 3 for vector)
- * @param part The array of particles to fill
- * @param N_total Unused parameter in non-MPI mode
- * @param offset Unused parameter in non-MPI mode
- * @param field The name of the field (C code name as defined in part.h) to fill
- * @param importance Is the data compulsory or not
- * @param internal_units The #UnitSystem used internally
- * @param ic_units The #UnitSystem used in the ICs
- * @param convFactor The UnitConversionFactor for this array
- *
- */
-/* #define readArray(grp, name, type, N, dim, part, N_total, offset, field,  \
- */
-/*                   importance, internal_units, ic_units, convFactor)       \
- */
-/*   readArrayBackEnd(grp, name, type, N, dim, (char*)(&(part[0]).field),    \
- */
-/*                    sizeof(part[0]), importance, internal_units, ic_units, \
- */
-/*                    convFactor) */
-
-/**
- * @brief A helper macro to call the readArrayBackEnd function more easily.
- *
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
@@ -390,7 +348,8 @@ void writeArrayBackEnd(hid_t grp, char* fileName, FILE* xmfFile,
  */
 void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
                     double dim[3], struct part** parts, struct gpart** gparts,
-                    size_t* Ngas, size_t* Ngparts, int* periodic, int* flag_entropy, int dry_run) {
+                    size_t* Ngas, size_t* Ngparts, int* periodic,
+                    int* flag_entropy, int dry_run) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -514,26 +473,31 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
       error("Error while opening particle group %s.", partTypeGroupName);
     }
 
-    /* message("Group %s found - reading...", partTypeGroupName); */
+    int num_fields = 0;
+    struct io_props list[100];
+    size_t N;
 
-    /* Read particle fields into the particle structure */
+    /* Read particle fields into the structure */
     switch (ptype) {
 
       case GAS:
-        if (!dry_run)
-          hydro_read_particles(h_grp, *Ngas, *Ngas, 0, *parts, internal_units,
-                               ic_units);
+        N = *Ngas;
+        hydro_read_particles(*parts, list, &num_fields);
         break;
 
       case DM:
-        if (!dry_run)
-          darkmatter_read_particles(h_grp, Ndm, Ndm, 0, *gparts, internal_units,
-                                    ic_units);
+        N = Ndm;
+        darkmatter_read_particles(*gparts, list, &num_fields);
         break;
 
       default:
         message("Particle Type %d not yet supported. Particles ignored", ptype);
     }
+
+    /* Read everything */
+    if (!dry_run)
+      for (int i = 0; i < num_fields; ++i)
+        readArray(h_grp, list[i], N, internal_units, ic_units);
 
     /* Close particle group */
     H5Gclose(h_grp);

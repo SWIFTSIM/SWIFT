@@ -345,8 +345,8 @@ int main(int argc, char *argv[]) {
                  MPI_INFO_NULL, dry_run);
 #endif
 #else
-  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 &flag_entropy_ICs, dry_run);
+  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);

@@ -30,12 +30,10 @@
  * @param ic_units The #UnitSystem used in the snapshots
  *
  */
-__attribute__((always_inline)) INLINE static void hydro_read_particles(
-    hid_t h_grp, int N, long long N_total, long long offset, struct part* parts,
-    const struct UnitSystem* internal_units, struct UnitSystem* ic_units) {
+void hydro_read_particles(struct part* parts, struct io_props* list,
+                          int* num_fields) {
 
-  const int num_fields = 8;
-  struct io_props list[num_fields];
+  *num_fields = 8;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -54,32 +52,6 @@ __attribute__((always_inline)) INLINE static void hydro_read_particles(
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
-
-  /* Read arrays */
-  /* readArray(h_grp, "Coordinates", DOUBLE, N, 3, parts, N_total, offset, x, */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH); */
-  /* readArray(h_grp, "Velocities", FLOAT, N, 3, parts, N_total, offset, v, */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_SPEED); */
-  /* readArray(h_grp, "Masses", FLOAT, N, 1, parts, N_total, offset, mass, */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_MASS); */
-  /* readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h,
-   */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_LENGTH); */
-  /* readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset, */
-  /*           entropy, COMPULSORY, internal_units, ic_units, UNIT_CONV_ENERGY);
-   */
-  /* readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset,
-   * id, */
-  /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS); */
-  /* readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset,
-   * a_hydro, */
-  /*           OPTIONAL, internal_units, ic_units, UNIT_CONV_ACCELERATION); */
-  /* readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho, */
-  /*           OPTIONAL, internal_units, ic_units, UNIT_CONV_DENSITY); */
-
-  /* And read everything */
-  for (int i = 0; i < num_fields; ++i)
-    readArray(h_grp, list[i], N, N_total, offset, internal_units, ic_units);
 }
 
 /**

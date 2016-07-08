@@ -30,13 +30,11 @@
  * @param ic_units The #UnitSystem used in the snapshots
  *
  */
-__attribute__((always_inline)) INLINE static void darkmatter_read_particles(
-    hid_t h_grp, int N, long long N_total, long long offset,
-    struct gpart* gparts, const struct UnitSystem* internal_units,
-    struct UnitSystem* ic_units) {
+void darkmatter_read_particles(struct gpart* gparts, struct io_props* list,
+                               int* num_fields) {
 
-  const int num_fields = 4;
-  struct io_props list[num_fields];
+  /* Say how much we want to read */
+  *num_fields = 4;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -46,7 +44,7 @@ __attribute__((always_inline)) INLINE static void darkmatter_read_particles(
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
                                 gparts, mass);
   list[3] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, gparts, id);
+                                UNIT_CONV_NO_UNITS, gparts, id_or_neg_offset);
 
   /* Read arrays */
   /* readArray(h_grp, "Coordinates", DOUBLE, N, 3, gparts, N_total, offset, x,
@@ -62,8 +60,9 @@ __attribute__((always_inline)) INLINE static void darkmatter_read_particles(
   /*           COMPULSORY, internal_units, ic_units, UNIT_CONV_NO_UNITS); */
 
   /* And read everything */
-  for (int i = 0; i < num_fields; ++i)
-    readArray(h_grp, list[i], N, N_total, offset, internal_units, ic_units);
+  /* for (int i = 0; i < num_fields; ++i) */
+  /*   readArray(h_grp, list[i], N, N_total, offset, internal_units, ic_units);
+   */
 }
 
 /**
@@ -101,6 +100,7 @@ __attribute__((always_inline)) INLINE static void darkmatter_write_particles(
              Ndm, 3, gparts, Ndm_total, mpi_rank, offset, v_full,
              internal_units, snapshot_units, UNIT_CONV_SPEED);
   writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
-             ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset, id,
-             internal_units, snapshot_units, UNIT_CONV_NO_UNITS);
+             ULONGLONG, Ndm, 1, gparts, Ndm_total, mpi_rank, offset,
+             id_or_neg_offset, internal_units, snapshot_units,
+             UNIT_CONV_NO_UNITS);
 }
