@@ -147,7 +147,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
       units_conversion_factor(ic_units, internal_units, props.units);
   if (factor != 1. && exist != 0) {
 
-    message("aaa");
+    /* message("Converting ! factor=%e", factor); */
 
     if (isDoublePrecision(props.type)) {
       double* temp_d = temp;
@@ -285,7 +285,7 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
   const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
 
-  message("Writing '%s' array...", props.name);
+  /* message("Writing '%s' array...", props.name); */
 
   /* Prepare the arrays in the file */
   if (mpi_rank == 0)
@@ -306,7 +306,7 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
       units_conversion_factor(internal_units, snapshot_units, props.units);
   if (factor != 1.) {
 
-    message("aaa");
+    /* message("Converting ! factor=%e", factor); */
 
     if (isDoublePrecision(props.type)) {
       double* temp_d = temp;
@@ -464,7 +464,7 @@ void read_ic_serial(char* fileName, const struct UnitSystem* internal_units,
 
     if (units_are_equal(ic_units, internal_units)) {
 
-      message("IC and internal units match. No conversion needed");
+      message("IC and internal units match. No conversion needed.");
 
     } else {
 

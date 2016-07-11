@@ -88,9 +88,9 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
     }
   }
 
-  message("Reading %s '%s' array...",
-          prop.importance == COMPULSORY ? "compulsory" : "optional  ",
-          prop.name);
+  /* message("Reading %s '%s' array...", */
+  /*         prop.importance == COMPULSORY ? "compulsory" : "optional  ", */
+  /*         prop.name); */
 
   /* Open data space */
   const hid_t h_data = H5Dopen(h_grp, prop.name, H5P_DEFAULT);
@@ -122,7 +122,7 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
       units_conversion_factor(ic_units, internal_units, prop.units);
   if (factor != 1. && exist != 0) {
 
-    message("aaa");
+    /* message("Converting ! factor=%e", factor); */
 
     if (isDoublePrecision(prop.type)) {
       double* temp_d = temp;
@@ -173,7 +173,7 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
   const size_t copySize = typeSize * props.dimension;
   const size_t num_elements = N * props.dimension;
 
-  message("Writing '%s' array...", props.name);
+  /* message("Writing '%s' array...", props.name); */
 
   /* Allocate temporary buffer */
   void* temp = malloc(num_elements * sizeOfType(props.type));
@@ -189,7 +189,7 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
       units_conversion_factor(internal_units, snapshot_units, props.units);
   if (factor != 1.) {
 
-    message("aaa");
+    /* message("Converting ! factor=%e", factor); */
 
     if (isDoublePrecision(props.type)) {
       double* temp_d = temp;
@@ -374,7 +374,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   /* Tell the user if a conversion will be needed */
   if (units_are_equal(ic_units, internal_units)) {
 
-    message("IC and internal units match. No conversion needed");
+    message("IC and internal units match. No conversion needed.");
 
   } else {
 
