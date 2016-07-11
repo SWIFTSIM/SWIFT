@@ -759,7 +759,7 @@ void write_output_serial(struct engine* e, const char* baseName,
     writeUnitSystem(h_file, snapshot_units, "Units");
 
     /* Print the system of Units used internally */
-    writeUnitSystem(h_file, internal_units, "InternalUnits");
+    writeUnitSystem(h_file, internal_units, "InternalCodeUnits");
 
     /* Loop over all particle types */
     for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
