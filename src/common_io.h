@@ -62,8 +62,8 @@ enum PARTICLE_TYPE {
 extern const char* particle_type_names[];
 
 #define FILENAME_BUFFER_SIZE 150
-#define FIELD_BUFFER_SIZE 50
-#define PARTICLE_GROUP_BUFFER_SIZE 20
+#define FIELD_BUFFER_SIZE 200
+#define PARTICLE_GROUP_BUFFER_SIZE 50
 
 hid_t hdf5Type(enum DATA_TYPE type);
 size_t sizeOfType(enum DATA_TYPE type);
