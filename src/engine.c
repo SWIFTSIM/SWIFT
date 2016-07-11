@@ -2676,8 +2676,9 @@ void engine_dump_snapshot(struct engine *e) {
                         e->snapshotUnits, e->nodeID, e->nr_nodes,
                         MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
-  write_output_serial(e, e->snapshotBaseName, e->snapshotUnits, e->nodeID,
-                      e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+  write_output_serial(e, e->snapshotBaseName, e->internalUnits,
+                      e->snapshotUnits, e->nodeID, e->nr_nodes, MPI_COMM_WORLD,
+                      MPI_INFO_NULL);
 #endif
 #else
   write_output_single(e, e->snapshotBaseName, e->internalUnits,

@@ -65,8 +65,9 @@
  *
  * Calls #error() if an error occurs.
  */
-void readArray(hid_t grp, const struct io_props prop, int N, long long N_total,
-               long long offset, const struct UnitSystem* internal_units,
+void readArray(hid_t grp, const struct io_props prop, size_t N,
+               long long N_total, long long offset,
+               const struct UnitSystem* internal_units,
                const struct UnitSystem* ic_units) {
 
   const size_t typeSize = sizeOfType(prop.type);
@@ -334,8 +335,11 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
  * @param N (output) The number of particles read from the file.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
  * @param flag_entropy (output) 1 if the ICs contained Entropy in the
- * InternalEnergy
- * field
+ * InternalEnergy field
+ * @param mpi_rank The MPI rank of this node
+ * @param mpi_size The number of MPI ranks
+ * @param comm The MPI communicator
+ * @param info The MPI information object
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
  * Opens the HDF5 file fileName and reads the particles contained
