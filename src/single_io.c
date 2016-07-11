@@ -81,7 +81,7 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
       /* message("Optional data set '%s' not present. Zeroing this particle
        * prop...", name);	   */
 
-      for (int i = 0; i < N; ++i)
+      for (size_t i = 0; i < N; ++i)
         memset(prop.field + i * prop.partSize, 0, copySize);
 
       return;
@@ -126,16 +126,16 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
 
     if (isDoublePrecision(prop.type)) {
       double* temp_d = temp;
-      for (int i = 0; i < num_elements; ++i) temp_d[i] *= factor;
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
       float* temp_f = temp;
-      for (int i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
     }
   }
 
   /* Copy temporary buffer to particle data */
   char* temp_c = temp;
-  for (int i = 0; i < N; ++i)
+  for (size_t i = 0; i < N; ++i)
     memcpy(prop.field + i * prop.partSize, &temp_c[i * copySize], copySize);
 
   /* Free and close everything */
@@ -162,8 +162,7 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
  * @param snapshot_units The #UnitSystem used in the snapshots
  *
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
- * the part array
- * will be written once the structures have been stabilized.
+ * the part array will be written once the structures have been stabilized.
  */
 void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
@@ -182,7 +181,7 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
 
   /* Copy particle data to temporary buffer */
   char* temp_c = temp;
-  for (int i = 0; i < N; ++i)
+  for (size_t i = 0; i < N; ++i)
     memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
 
   /* Unit conversion if necessary */
@@ -194,10 +193,10 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
 
     if (isDoublePrecision(props.type)) {
       double* temp_d = temp;
-      for (int i = 0; i < num_elements; ++i) temp_d[i] *= factor;
+      for (size_t i = 0; i < num_elements; ++i) temp_d[i] *= factor;
     } else {
       float* temp_f = temp;
-      for (int i = 0; i < num_elements; ++i) temp_f[i] *= factor;
+      for (size_t i = 0; i < num_elements; ++i) temp_f[i] *= factor;
     }
   }
 
@@ -297,7 +296,8 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
  * @param Ngas (output) number of Gas particles read.
  * @param Ngparts (output) The number of #gpart read.
  * @param periodic (output) 1 if the volume is periodic, 0 if not.
- * @param flag_entropy 1 if the ICs contained Entropy in the InternalEnergy
+ * @param flag_entropy (output) 1 if the ICs contained Entropy in the
+ * InternalEnergy
  * field
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  *
@@ -366,7 +366,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   /* Close header */
   H5Gclose(h_grp);
 
-  /* Read the unit system used in the snapshots */
+  /* Read the unit system used in the ICs */
   struct UnitSystem* ic_units = malloc(sizeof(struct UnitSystem));
   if (ic_units == NULL) error("Unable to allocate memory for IC unit system");
   readUnitSystem(h_file, ic_units);

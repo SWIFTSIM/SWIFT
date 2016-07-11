@@ -2672,8 +2672,9 @@ void engine_dump_snapshot(struct engine *e) {
 /* Dump... */
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  write_output_parallel(e, e->snapshotBaseName, e->snapshotUnits, e->nodeID,
-                        e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
+  write_output_parallel(e, e->snapshotBaseName, e->internalUnits,
+                        e->snapshotUnits, e->nodeID, e->nr_nodes,
+                        MPI_COMM_WORLD, MPI_INFO_NULL);
 #else
   write_output_serial(e, e->snapshotBaseName, e->snapshotUnits, e->nodeID,
                       e->nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL);
