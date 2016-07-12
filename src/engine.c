@@ -65,6 +65,7 @@
 #include "single_io.h"
 #include "timers.h"
 #include "units.h"
+#include "version.h"
 
 const char *engine_policy_names[13] = {"none",
                                        "rand",
@@ -2392,6 +2393,11 @@ void engine_step(struct engine *e) {
     printf("  %6d %14e %14e %10zd %10zd %21.3f\n", e->step, e->time,
            e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(stdout);
+ 
+    fprintf(e->file_timesteps,
+            "  %6d %14e %14e %10zd %10zd %21.3f\n", e->step, e->time,
+            e->timeStep, e->updates, e->g_updates, e->wallclock_time);
+    fflush(e->file_timesteps);   
   }
 
   /* Save some statistics */
@@ -2801,6 +2807,7 @@ void engine_init(struct engine *e, struct space *s,
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
+  e->file_timesteps = NULL;
   e->deltaTimeStatistics =
       parser_get_param_double(params, "Statistics:delta_time");
   e->timeLastStatistics = e->timeBegin - e->deltaTimeStatistics;
@@ -2958,6 +2965,17 @@ void engine_init(struct engine *e, struct space *s,
             "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x", "p_y",
             "p_z", "ang_x", "ang_y", "ang_z");
     fflush(e->file_stats);
+    
+    e->file_timesteps = fopen("timesteps.txt", "w");
+    fprintf(e->file_timesteps,
+            "# Revision: %s, Branch: %s\n# Compiler: %s, Version:%s\n# Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic scheme: %s\n# Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours (eta=%f)\n", git_revision(), git_branch(), compiler_name(), compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION, kernel_name, e->hydro_properties->target_neighbours, e->hydro_properties->delta_neighbours,
+          e->hydro_properties->eta_neighbours);
+
+    fprintf(e->file_timesteps,
+           "# %6s %14s %14s %10s %10s %16s [%s]\n", "Step", "Time", "Time-step",
+           "Updates", "g-Updates", "Wall-clock time", clocks_getunit());
+    fflush(e->file_timesteps);
+
   }
 
   /* Print policy */
