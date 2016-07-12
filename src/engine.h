@@ -146,6 +146,7 @@ struct engine {
 
   /* Statistics information */
   FILE *file_stats;
+  FILE *file_timesteps;
   double timeLastStatistics;
   double deltaTimeStatistics;
 
