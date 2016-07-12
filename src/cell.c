@@ -128,6 +128,7 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
     }
 
   /* Return the total number of unpacked cells. */
+  c->pcell_size = count;
   return count;
 }
 
@@ -213,6 +214,39 @@ int cell_pack(struct cell *c, struct pcell *pc) {
       pc->progeny[k] = -1;
 
   /* Return the number of packed cells used. */
+  c->pcell_size = count;
+  return count;
+}
+
+int cell_pack_ti_ends(struct cell *c, int *ti_ends) {
+
+  /* Pack this cell's data. */
+  ti_ends[0] = c->ti_end_min;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_pack_ti_ends(c->progeny[k], &ti_ends[count]);
+    }
+
+  /* Return the number of packed values. */
+  return count;
+}
+
+int cell_unpack_ti_ends(struct cell *c, int *ti_ends) {
+
+  /* Unpack this cell's data. */
+  c->ti_end_min = ti_ends[0];
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_ti_ends(c->progeny[k], &ti_ends[count]);
+    }
+
+  /* Return the number of packed values. */
   return count;
 }
 
@@ -376,9 +410,11 @@ void cell_gunlocktree(struct cell *c) {
  * @brief Sort the parts into eight bins along the given pivots.
  *
  * @param c The #cell array to be sorted.
+ * @param parts_offset Offset of the cell parts array relative to the
+ *        space's parts array, i.e. c->parts - s->parts.
  */
 
-void cell_split(struct cell *c) {
+void cell_split(struct cell *c, ptrdiff_t parts_offset) {
 
   int i, j;
   const int count = c->count, gcount = c->gcount;
@@ -496,8 +532,7 @@ void cell_split(struct cell *c) {
   }
 
   /* Re-link the gparts. */
-  for (int k = 0; k < count; k++)
-    if (parts[k].gpart != NULL) parts[k].gpart->part = &parts[k];
+  part_relink_gparts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -592,8 +627,7 @@ void cell_split(struct cell *c) {
   }
 
   /* Re-link the parts. */
-  for (int k = 0; k < gcount; k++)
-    if (gparts[k].id > 0) gparts[k].part->gpart = &gparts[k];
+  part_relink_parts(gparts, gcount, parts - parts_offset);
 }
 
 /**

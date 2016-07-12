@@ -457,9 +457,15 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
         t->type != task_type_kick && t->type != task_type_init)
       continue;
 
-    /* Get the task weight. */
+    /* Get the task weight. This can be slightly negative on multiple board
+     * computers when the runners are not pinned to cores, don't stress just
+     * make a report and ignore these tasks. */
     int w = (t->toc - t->tic) * wscale;
-    if (w < 0) error("Bad task weight (%d).", w);
+    if (w < 0) {
+      message("Task toc before tic: -%.3f %s, (try using processor affinity).",
+              clocks_from_ticks(t->tic - t->toc), clocks_getunit());
+      w = 0;
+    }
 
     /* Do we need to re-scale? */
     wtot += w;

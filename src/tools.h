@@ -33,7 +33,8 @@
 void factor(int value, int *f1, int *f2);
 void density_dump(int N);
 void pairs_single_grav(double *dim, long long int pid,
-                       struct gpart *restrict parts, int N, int periodic);
+                       struct gpart *restrict gparts, const struct part *parts,
+                       int N, int periodic);
 void pairs_single_density(double *dim, long long int pid,
                           struct part *restrict parts, int N, int periodic);
 

@@ -53,7 +53,7 @@ const char *taskID_names[task_type_count] = {
     "grav_down", "grav_external", "comm_root"};
 
 const char *subtaskID_names[task_type_count] = {"none", "density", "force",
-                                                "grav"};
+                                                "grav", "t_end"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -206,77 +206,6 @@ int task_lock(struct task *t) {
 
   /* If we made it this far, we've got a lock. */
   return 1;
-}
-
-/**
- * @brief Remove all unlocks to tasks that are of the given type.
- *
- * @param t The #task.
- * @param type The task type ID to remove.
- */
-
-void task_cleanunlock(struct task *t, int type) {
-
-  int k;
-
-  lock_lock(&t->lock);
-
-  for (k = 0; k < t->nr_unlock_tasks; k++)
-    if (t->unlock_tasks[k]->type == type) {
-      t->nr_unlock_tasks -= 1;
-      t->unlock_tasks[k] = t->unlock_tasks[t->nr_unlock_tasks];
-    }
-
-  lock_unlock_blind(&t->lock);
-}
-
-/**
- * @brief Remove an unlock_task from the given task.
- *
- * @param ta The unlocking #task.
- * @param tb The #task that will be unlocked.
- */
-
-void task_rmunlock(struct task *ta, struct task *tb) {
-
-  int k;
-
-  lock_lock(&ta->lock);
-
-  for (k = 0; k < ta->nr_unlock_tasks; k++)
-    if (ta->unlock_tasks[k] == tb) {
-      ta->nr_unlock_tasks -= 1;
-      ta->unlock_tasks[k] = ta->unlock_tasks[ta->nr_unlock_tasks];
-      lock_unlock_blind(&ta->lock);
-      return;
-    }
-  error("Task not found.");
-}
-
-/**
- * @brief Remove an unlock_task from the given task.
- *
- * @param ta The unlocking #task.
- * @param tb The #task that will be unlocked.
- *
- * Differs from #task_rmunlock in that it will not fail if
- * the task @c tb is not in the unlocks of @c ta.
- */
-
-void task_rmunlock_blind(struct task *ta, struct task *tb) {
-
-  int k;
-
-  lock_lock(&ta->lock);
-
-  for (k = 0; k < ta->nr_unlock_tasks; k++)
-    if (ta->unlock_tasks[k] == tb) {
-      ta->nr_unlock_tasks -= 1;
-      ta->unlock_tasks[k] = ta->unlock_tasks[ta->nr_unlock_tasks];
-      break;
-    }
-
-  lock_unlock_blind(&ta->lock);
 }
 
 /**
