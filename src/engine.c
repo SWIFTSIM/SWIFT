@@ -147,10 +147,6 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
         c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
                                     c, NULL, 0);
 
-      /* Add the drift task. */
-      c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0, 0,
-                                   c, NULL, 0);
-
       /* Add the kick task that matches the policy. */
       if (is_fixdt) {
         if (c->kick == NULL)
@@ -207,11 +203,6 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
       if (c->init == NULL)
         c->init = scheduler_addtask(s, task_type_init, task_subtype_none, 0, 0,
                                     c, NULL, 0);
-
-      /* Add the drift task. */
-      if (c->drift == NULL)
-        c->drift = scheduler_addtask(s, task_type_drift, task_subtype_none, 0,
-                                     0, c, NULL, 0);
 
       /* Add the kick task that matches the policy. */
       if (is_fixdt) {
@@ -725,9 +716,9 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     }
 
     /* Add them to the local cell. */
-    ci->send_xv = engine_addlink(e, ci->send_xv, t_xv);
-    ci->send_rho = engine_addlink(e, ci->send_rho, t_rho);
-    if (t_ti != NULL) ci->send_ti = engine_addlink(e, ci->send_ti, t_ti);
+    engine_addlink(e, &ci->send_xv, t_xv);
+    engine_addlink(e, &ci->send_rho, t_rho);
+    if (t_ti != NULL) engine_addlink(e, &ci->send_ti, t_ti);
   }
 
   /* Recurse? */
@@ -1739,8 +1730,14 @@ void engine_maketasks(struct engine *e) {
   engine_count_and_link_tasks_serial(e);
 
   /* Append hierarchical tasks to each cells */
-  for (int k = 0; k < nr_cells; k++)
-    engine_make_hierarchical_tasks(e, &cells[k], NULL);
+  if (e->policy & engine_policy_hydro)
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_hydro_hierarchical_tasks(e, &cells[k], NULL);
+
+  if ((e->policy & engine_policy_self_gravity) ||
+      (e->policy & engine_policy_external_gravity))
+    for (int k = 0; k < nr_cells; k++)
+      engine_make_gravity_hierarchical_tasks(e, &cells[k], NULL);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
@@ -2281,61 +2278,7 @@ void engine_collect_timestep(struct engine *e) {
   e->g_updates = g_updates;
 }
 
-/**
- * @brief Mapping function to collect the data from the drift.
- *
- * @param c A super-cell.
- */
-void engine_collect_drift(struct cell *c) {
 
-  /* Skip super-cells (Their values are already set) */
-  if (c->drift != NULL) return;
-
-  /* Counters for the different quantities. */
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
-  double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
-
-  /* Only do something is the cell is non-empty */
-  if (c->count != 0 || c->gcount != 0) {
-
-    /* If this cell is not split, I'm in trouble. */
-    if (!c->split) error("Cell has no super-cell.");
-
-    /* Collect the values from the progeny. */
-    for (int k = 0; k < 8; k++) {
-      struct cell *cp = c->progeny[k];
-      if (cp != NULL) {
-
-        /* Recurse */
-        engine_collect_drift(cp);
-
-        /* And update */
-        mass += cp->mass;
-        e_kin += cp->e_kin;
-        e_int += cp->e_int;
-        e_pot += cp->e_pot;
-        mom[0] += cp->mom[0];
-        mom[1] += cp->mom[1];
-        mom[2] += cp->mom[2];
-        ang_mom[0] += cp->ang_mom[0];
-        ang_mom[1] += cp->ang_mom[1];
-        ang_mom[2] += cp->ang_mom[2];
-      }
-    }
-  }
-
-  /* Store the collected values in the cell. */
-  c->mass = mass;
-  c->e_kin = e_kin;
-  c->e_int = e_int;
-  c->e_pot = e_pot;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang_mom[0] = ang_mom[0];
-  c->ang_mom[1] = ang_mom[1];
-  c->ang_mom[2] = ang_mom[2];
-}
 /**
  * @brief Print the conserved quantities statistics to a log file
  *
@@ -2352,11 +2295,6 @@ void engine_print_stats(struct engine *e) {
   for (int k = 0; k < s->nr_cells; k++)
     if (s->cells[k].nodeID == e->nodeID) {
       struct cell *c = &s->cells[k];
-
-      /* Make the top-cells recurse */
-      engine_collect_drift(c);
-
-      /* And aggregate */
       mass += c->mass;
       e_kin += c->e_kin;
       e_int += c->e_int;
@@ -3246,6 +3184,9 @@ void engine_init(struct engine *e, struct space *s,
   part_create_mpi_types();
 #endif
 
+  /* Initialize the threadpool. */
+	threadpool_init(&e->threadpool, e->nr_threads);
+
   /* First of all, init the barrier and lock it. */
   if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)
     error("Failed to initialize barrier mutex.");
@@ -3260,18 +3201,7 @@ void engine_init(struct engine *e, struct space *s,
   /* Init the scheduler with enough tasks for the initial sorting tasks. */
   const int nr_tasks = 2 * s->tot_cells + 2 * e->nr_threads;
   scheduler_init(&e->sched, e->s, nr_tasks, nr_queues, scheduler_flag_steal,
-                 e->nodeID);
-
-  /* Create the sorting tasks. */
-  for (int i = 0; i < e->nr_threads; i++) {
-    scheduler_addtask(&e->sched, task_type_part_sort, task_subtype_none, i, 0,
-                      NULL, NULL, 0);
-
-    scheduler_addtask(&e->sched, task_type_gpart_sort, task_subtype_none, i, 0,
-                      NULL, NULL, 0);
-  }
-
-  scheduler_ranktasks(&e->sched);
+                 e->nodeID, &e->threadpool);
 
   /* Allocate and init the threads. */
   if ((e->runners = (struct runner *)malloc(sizeof(struct runner) *

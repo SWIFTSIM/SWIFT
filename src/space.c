@@ -349,7 +349,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells[k].gcount = 0;
       s->cells[k].init = NULL;
       s->cells[k].ghost = NULL;
-      s->cells[k].drift = NULL;
       s->cells[k].kick = NULL;
       s->cells[k].super = &s->cells[k];
     }
@@ -1274,7 +1273,7 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
       }
 
       /* Split the cell data. */
-      cell_split(c);
+      cell_split(c, c->parts - s->parts);
 
       /* Remove any progeny with zero parts. */
       for (int k = 0; k < 8; k++)
