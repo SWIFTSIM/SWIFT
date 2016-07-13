@@ -25,9 +25,9 @@
 #include <math.h>
 
 /* Local headers. */
+#include "adiabatic_index.h"
 #include "common_io.h"
 #include "error.h"
-#include "gamma.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 

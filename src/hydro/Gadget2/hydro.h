@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 
-#include "gamma.h"
+#include "adiabatic_index.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle

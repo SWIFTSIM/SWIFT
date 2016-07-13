@@ -37,9 +37,9 @@
 #include "units.h"
 
 /* Includes. */
+#include "adiabatic_index.h"
 #include "const.h"
 #include "error.h"
-#include "gamma.h"
 
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
