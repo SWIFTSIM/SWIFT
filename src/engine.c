@@ -2278,7 +2278,6 @@ void engine_collect_timestep(struct engine *e) {
   e->g_updates = g_updates;
 }
 
-
 /**
  * @brief Print the conserved quantities statistics to a log file
  *
@@ -3185,7 +3184,7 @@ void engine_init(struct engine *e, struct space *s,
 #endif
 
   /* Initialize the threadpool. */
-	threadpool_init(&e->threadpool, e->nr_threads);
+  threadpool_init(&e->threadpool, e->nr_threads);
 
   /* First of all, init the barrier and lock it. */
   if (pthread_mutex_init(&e->barrier_mutex, NULL) != 0)

@@ -16,7 +16,7 @@ TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1e-4  # The end time of the simulation (in internal units).
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-4  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -43,19 +43,3 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./cosmoVolume.hdf5     # The file to read
-
-# Parameters govering domain decomposition
-DomainDecomposition:
-  initial_type:       m     # The initial strategy ("g", "m", "w", or "v"). See documentation for details.
-  initial_grid_x:    10     # Grid size if the 'g' strategy is chosen.
-  initial_grid_y:    10
-  initial_grid_z:    10
-  repartition_type:   b     # The re-decomposition strategy ("n", "b", "v", "e" or "x"). See documentation for details.
-
-# External potential parameters
-PointMass:
-  position_x:      5.     # location of external point mass in internal units
-  position_y:      5.
-  position_z:      5.
-  mass:            1.     # mass of external point mass in internal units
- 

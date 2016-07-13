@@ -40,11 +40,11 @@ bin_PROGRAMS += swift_mpi swift_fixdt_mpi
 endif
 
 # engine_policy_setaffinity is available?
-# if HAVESETAFFINITY
-# ENGINE_POLICY_SETAFFINITY=| engine_policy_setaffinity
-# else
+if HAVESETAFFINITY
+ENGINE_POLICY_SETAFFINITY=| engine_policy_setaffinity
+else
 ENGINE_POLICY_SETAFFINITY=
-# endif
+endif
 
 # Sources for swift
 swift_SOURCES = main.c
