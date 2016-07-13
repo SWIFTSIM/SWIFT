@@ -12,32 +12,37 @@
 # The working directory should contain files 1_threads_cosma_stdout.txt - 64_threads_cosma_stdout.txt and 1_threads_knl_stdout.txt - 64_threads_knl_stdout.txt, i.e stdout for each run using a given number of threads
 
 import sys
+import glob
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 
-threadListMax=[1,2,4,8,16,24,32,64,128,192,256]
-skipToLine = (0,0,0) # Lines to skip before reading the wall clock times 
-version = ['Task Cleanup v0.3.0-247-g449de76a','Master v0.3.0-203-g6d9f54ae','KNL']
+#version = ['Task Cleanup v0.3.0-247-g449de76a','Master v0.3.0-203-g6d9f54ae','KNL']
+version = []
+branch = []
+revision = []
 linestyle = ('ro-','bo-','go-')
 cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
 kernel = 'Cubic Spline M4'
 platform = 'KNL'
+threadList = []
 
 # Work out how many data series there are
-if len(sys.argv) == 3:
+if len(sys.argv) == 2:
   inputFileNames = (sys.argv[1],"")
-  maxNumThreads = int(sys.argv[2])
   numOfSeries = 1
-elif len(sys.argv) == 4:
+elif len(sys.argv) == 3:
   inputFileNames = (sys.argv[1],sys.argv[2])
-  maxNumThreads = int(sys.argv[3])
   numOfSeries = 2
-elif len(sys.argv) == 5:
+elif len(sys.argv) == 4:
   inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3])
-  maxNumThreads = int(sys.argv[4])
   numOfSeries = 3
-
-threadList = threadListMax[0:maxNumThreads]
+elif len(sys.argv) == 5:
+  inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4])
+  numOfSeries = 4
+elif len(sys.argv) == 6:
+  inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
+  numOfSeries = 5
 
 # Parse file and return total time taken, speed up and parallel efficiency
 def parse_files():
@@ -49,33 +54,50 @@ def parse_files():
   parallelEff = []
 
   for i in range(0,numOfSeries): # Loop over each version
-      
-      # Get the names of the branch and Git revision first
-      with open(str(threadList[0]) + inputFileNames[i], 'r') as f:
-          found_end = False
-          for line in f:
-            if 'Revision:' in line:
-                  s = line.split() 
-                  l = list(s)
-                  version[i] = s[3] + " " + s[1]
-                  version[i] = version[i][:-1]
+ 
+    file_list = glob.glob(inputFileNames[i] + "*")
+    
+    threadList.append([])
 
-      times.append([])
-      totalTime.append([])
-      speedUp.append([])
-      parallelEff.append([])
-      for j in range(0,maxNumThreads): # Loop over no. of threads
-        times[i].append([])
-        file = str(threadList[j]) + inputFileNames[i]
-        times[i][j].append(np.loadtxt(file,skiprows=skipToLine[i],usecols=(5,)))
-        totalTime[i].append(np.sum(times[i][j]))
-      
-      serialTime.append(totalTime[i][0])
-      
-      for j in range(0,maxNumThreads): # Loop over no. of threads
-        speedUp[i].append(serialTime[i] / totalTime[i][j])
-        parallelEff[i].append(speedUp[i][j] / threadList[j])
-  
+    for fileName in file_list:
+      s = re.split(r'[_.]+',fileName)
+      threadList[i].append(int(s[1]))
+
+    sorted_indices = np.argsort(threadList[i])
+    threadList[i].sort()
+
+    file_list = [ file_list[j] for j in sorted_indices]
+
+    # Get the names of the branch and Git revision first
+    with open(file_list[0], 'r') as f:
+        found_end = False
+        for line in f:
+          if 'Branch:' in line:
+            s = line.split()
+            branch.append(s[2])
+          elif 'Revision:' in line:
+            s = line.split() 
+            revision.append(s[2])
+
+    version.append(branch[i] + " " + revision[i])                  
+    times.append([])
+    totalTime.append([])
+    speedUp.append([])
+    parallelEff.append([])
+
+    # Loop over all files for a given series
+    for j in range(0,len(file_list)):
+      times[i].append([])
+      times[i][j].append(np.loadtxt(file_list[j],usecols=(5,)))
+      totalTime[i].append(np.sum(times[i][j]))
+
+    serialTime.append(totalTime[i][0])
+    
+    # Loop over all files for a given series
+    for j in range(0,len(file_list)):
+      speedUp[i].append(serialTime[i] / totalTime[i][j])
+      parallelEff[i].append(speedUp[i][j] / threadList[i][j])
+
   return (times,totalTime,speedUp,parallelEff)
 
 def print_results(times,totalTime,parallelEff,version):
@@ -88,22 +110,28 @@ def print_results(times,totalTime,parallelEff,version):
     print "Wall clock time for: {} time steps".format(len(times[0][0][0]))
     print "------------------------------------"
     
-    for j in range(0,maxNumThreads):
-      print str(threadList[j]) + " threads: {}".format(totalTime[i][j])
+    for j in range(0,len(threadList[i])):
+      print str(threadList[i][j]) + " threads: {}".format(totalTime[i][j])
     
     print " "
     print "------------------------------------"
     print "Parallel Efficiency for: {} time steps".format(len(times[0][0][0]))
     print "------------------------------------"
     
-    for j in range(0,maxNumThreads):
-      print str(threadList[j]) + " threads: {}".format(parallelEff[i][j])
+    for j in range(0,len(threadList[i])):
+      print str(threadList[i][j]) + " threads: {}".format(parallelEff[i][j])
 
   return
 
 def plot_results(times,totalTime,speedUp,parallelEff):
   
-  fig, axarr = plt.subplots(2, 2)
+  font = {'family' : 'normal',
+          'weight' : 'bold',
+          'size'   : 15}
+
+  plt.rc('font', **font)
+
+  fig, axarr = plt.subplots(2, 2,figsize=(15,15))
   speedUpPlot = axarr[0, 0]
   parallelEffPlot = axarr[0, 1]
   totalTimePlot = axarr[1, 0]
@@ -111,15 +139,15 @@ def plot_results(times,totalTime,speedUp,parallelEff):
   
   # Plot speed up
   for i in range(0,numOfSeries):
-    speedUpPlot.plot(threadList,speedUp[i],linestyle[i],label=version[i])
+    speedUpPlot.plot(threadList[i],speedUp[i],linestyle[i],label=version[i])
   
-  speedUpPlot.plot(threadList,threadList,color='k',linestyle='--')
+  speedUpPlot.plot(threadList[i],threadList[i],color='k',linestyle='--')
   speedUpPlot.set_ylabel("Speed Up")
   speedUpPlot.set_xlabel("No. of Threads")
 
   # Plot parallel efficiency
   for i in range(0,numOfSeries):
-    parallelEffPlot.plot(threadList,parallelEff[i],linestyle[i])
+    parallelEffPlot.plot(threadList[i],parallelEff[i],linestyle[i])
   
   parallelEffPlot.set_xscale('log')
   parallelEffPlot.set_ylabel("Parallel Efficiency")
@@ -128,7 +156,7 @@ def plot_results(times,totalTime,speedUp,parallelEff):
 
   # Plot time to solution     
   for i in range(0,numOfSeries):
-    totalTimePlot.loglog(threadList,totalTime[i],linestyle[i],label=version[i])
+    totalTimePlot.loglog(threadList[i],totalTime[i],linestyle[i],label=version[i])
   
   totalTimePlot.set_xscale('log')
   totalTimePlot.set_xlabel("No. of Threads")
@@ -137,10 +165,10 @@ def plot_results(times,totalTime,speedUp,parallelEff):
   totalTimePlot.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
   emptyPlot.axis('off')
   
-  for i, txt in enumerate(threadList):
-    speedUpPlot.annotate(txt, (threadList[i],speedUp[0][i]))
-    parallelEffPlot.annotate(txt, (threadList[i],parallelEff[0][i]))
-    totalTimePlot.annotate(txt, (threadList[i],totalTime[0][i]))
+  for i, txt in enumerate(threadList[0]):
+    speedUpPlot.annotate(txt, (threadList[0][i],speedUp[0][i]))
+    parallelEffPlot.annotate(txt, (threadList[0][i],parallelEff[0][i]))
+    totalTimePlot.annotate(txt, (threadList[0][i],totalTime[0][i]))
 
   fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps of Cosmo Volume\n Cmd Line: {}, Kernel: {}, Platform: {}".format(len(times[0][0][0]),cmdLine,kernel,platform))
 
