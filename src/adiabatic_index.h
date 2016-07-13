@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GAMMA_H
-#define SWIFT_GAMMA_H
+#ifndef SWIFT_ADIABATIC_INDEX_H
+#define SWIFT_ADIABATIC_INDEX_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -104,4 +104,4 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
 #endif
 }
 
-#endif /* SWIFT_GAMMA_H */
+#endif /* SWIFT_ADIABATIC_INDEX_H */
