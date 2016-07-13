@@ -19,7 +19,7 @@
 #ifndef SWIFT_RUNNER_IACT_MINIMAL_H
 #define SWIFT_RUNNER_IACT_MINIMAL_H
 
-#include "gamma.h"
+#include "adiabatic_index.h"
 
 /**
  * @brief Minimal conservative implementation of SPH

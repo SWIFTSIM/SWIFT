@@ -20,7 +20,7 @@
 #ifndef SWIFT_RUNNER_IACT_H
 #define SWIFT_RUNNER_IACT_H
 
-#include "gamma.h"
+#include "adiabatic_index.h"
 
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
