@@ -102,9 +102,6 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
  */
 void writeSPHflavour(hid_t h_grpsph) {
 
-  /* Kernel function description */
-  writeAttribute_s(h_grpsph, "Kernel", kernel_name);
-
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No model");
