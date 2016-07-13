@@ -26,6 +26,7 @@
 
 /* Local headers. */
 #include "error.h"
+#include "gamma.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 
@@ -54,6 +55,7 @@ void hydro_props_init(struct hydro_props *p,
 
 void hydro_props_print(const struct hydro_props *p) {
 
+  message("Adiabatic index gamma: %f.", hydro_gamma);
   message("Hydrodynamic scheme: %s.", SPH_IMPLEMENTATION);
   message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours (eta=%f).",
           kernel_name, p->target_neighbours, p->delta_neighbours,

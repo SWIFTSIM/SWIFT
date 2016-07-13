@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "approx_math.h"
+#include "gamma.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -132,7 +133,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* p, struct xpart* xp, int ti_current, double timeBase) {
 
-  p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);
+  p->force.pressure = p->rho * p->u * hydro_gamma_minus_one;
 }
 
 /**
@@ -175,7 +176,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->u = xp->u_full;
 
   /* Need to recompute the pressure as well */
-  p->force.pressure = p->rho * p->u * (const_hydro_gamma - 1.f);
+  p->force.pressure = p->rho * p->u * hydro_gamma_minus_one;
 }
 
 /**

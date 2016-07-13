@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "approx_math.h"
+#include "gamma.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -138,12 +139,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute this particle's sound speed. */
   const float u = p->u;
-  const float fc = p->force.c =
-      sqrtf(const_hydro_gamma * (const_hydro_gamma - 1.0f) * u);
+  const float fc = p->force.c = sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
 
   /* Compute the P/Omega/rho2. */
   xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho;
-  p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (p->rho * xp->omega);
+  p->force.POrho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
 
   /* Balsara switch */
   p->force.balsara = normDiv_v / (normDiv_v + normCurl_v + 0.0001f * fc * ih);
@@ -207,7 +207,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     u = p->u *= expf(w);
 
   /* Predict gradient term */
-  p->force.POrho2 = u * (const_hydro_gamma - 1.0f) / (p->rho * xp->omega);
+  p->force.POrho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
 }
 
 /**
