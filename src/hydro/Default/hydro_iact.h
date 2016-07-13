@@ -914,7 +914,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   Pi_ij.v *= (wi_dr.v + wj_dr.v);
 
   /* Thermal conductivity */
-  v_sig_u.v = vec_sqrt(vec_set1(2.f * (const_hydro_gamma - 1.f)) *
+  v_sig_u.v = vec_sqrt(vec_set1(2.f * hydro_gamma_minus_one) *
                        vec_fabs(pirho.v * piu.v - pjrho.v * pju.v) /
                        (pirho.v + pjrho.v));
   tc.v = vec_set1(const_conductivity_alpha) * v_sig_u.v / (pirho.v + pjrho.v);

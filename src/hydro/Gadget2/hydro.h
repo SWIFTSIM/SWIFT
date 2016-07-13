@@ -247,7 +247,5 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 
   const float entropy = p->entropy + p->entropy_dt * dt;
 
-  return entropy * powf(p->rho, hydro_gamma - 1.f) *
-         (1.f / (hydro_gamma - 1.f));
-  return 1;
+  return entropy * pow_gamma_minus_one(p->rho) * hydro_one_over_gamma_minus_one;
 }

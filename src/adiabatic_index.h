@@ -35,16 +35,19 @@
 
 #define hydro_gamma 1.66666666666666667f
 #define hydro_gamma_minus_one 0.66666666666666667f
+#define hydro_one_over_gamma_minus_one 1.5f
 
 #elif defined(HYDRO_GAMMA_4_3)
 
 #define hydro_gamma 1.33333333333333333f
 #define hydro_gamma_minus_one 0.33333333333333333f
+#define hydro_one_over_gamma_minus_one 3.f
 
 #elif defined(HYDRO_GAMMA_2_1)
 
 #define hydro_gamma 2.f
 #define hydro_gamma_minus_one 1.f
+#define hydro_one_over_gamma_minus_one 1.f
 
 #endif
 
@@ -72,8 +75,39 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
   return x * x;
 
 #else
+
   error("The adiabatic index is not defined !");
   return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Returns the argument to the power given by the adiabatic index minus
+ * one
+ *
+ * Computes $x^(\gamma - 1)$.
+ */
+__attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
+    float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return cbrtf(x * x);
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return cbrtf(x);
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return x;
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
 #endif
 }
 
@@ -99,8 +133,10 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
   return 1.f / x;
 
 #else
+
   error("The adiabatic index is not defined !");
   return 0.f;
+
 #endif
 }
 

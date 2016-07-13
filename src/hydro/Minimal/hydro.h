@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#include "approx_math.h"
 #include "adiabatic_index.h"
+#include "approx_math.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
