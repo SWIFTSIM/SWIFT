@@ -39,7 +39,6 @@
 #include "engine.h"
 #include "error.h"
 #include "hydro_properties.h"
-#include "kernel_hydro.h"
 #include "part.h"
 #include "units.h"
 
