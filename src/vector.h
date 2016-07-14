@@ -40,7 +40,7 @@
   __attribute__((vector_size((elcount) * sizeof(type)))) type
 
 /* So what will the vector size be? */
-#ifdef __MIC__
+#ifdef HAVE_AVX512_F 
 #define VEC_HAVE_GATHER
 #define VEC_SIZE 16
 #define VEC_FLOAT __m512
