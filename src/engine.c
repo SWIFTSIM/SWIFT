@@ -1750,12 +1750,6 @@ void engine_maketasks(struct engine *e) {
   /* Add the communication tasks if MPI is being used. */
   if (e->policy & engine_policy_mpi) {
 
-    /* Create root tasks for send/recv. */
-    e->send_root = scheduler_addtask(&e->sched, task_type_comm_root,
-                                     task_subtype_none, 0, 0, NULL, NULL, 0);
-    e->recv_root = scheduler_addtask(&e->sched, task_type_comm_root,
-                                     task_subtype_none, 0, 0, NULL, NULL, 0);
-
     /* Loop over the proxies. */
     for (int pid = 0; pid < e->nr_proxies; pid++) {
 

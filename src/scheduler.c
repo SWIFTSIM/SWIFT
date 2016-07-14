@@ -1029,7 +1029,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   // ticks tic = getticks();
 
   /* Store the masks */
-  s->mask = mask | (1 << task_type_comm_root);
+  s->mask = mask;
   s->submask = submask | (1 << task_subtype_none);
 
   /* Clear all the waits and rids. */

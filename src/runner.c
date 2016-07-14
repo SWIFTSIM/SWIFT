@@ -1132,8 +1132,6 @@ void *runner_main(void *data) {
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
           break;
-        case task_type_comm_root:
-          break;
         default:
           error("Unknown task type.");
       }

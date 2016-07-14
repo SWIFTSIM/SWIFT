@@ -50,7 +50,7 @@ const char *taskID_names[task_type_count] = {
     "none",      "sort",          "self",     "pair",    "sub_self",
     "sub_pair",  "init",          "ghost",    "kick",    "kick_fixdt",
     "send",      "recv",          "grav_pp",  "grav_mm", "grav_up",
-    "grav_down", "grav_external", "comm_root"};
+    "grav_down", "grav_external"};
 
 const char *subtaskID_names[task_type_count] = {"none", "density", "force",
                                                 "grav", "t_end"};
