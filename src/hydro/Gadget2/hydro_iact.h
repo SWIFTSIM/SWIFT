@@ -104,6 +104,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
+ * @brief Density loop (Vectorized version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_vec_density(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {
+  error("A vectorised version of the Gadget2 density interaction function does not exist yet! Configure with '--disable-vec' to call the non-vectorised version.")
+}
+
+/**
  * @brief Density loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
@@ -149,6 +158,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += fac * curlvr[0];
   pi->density.rot_v[1] += fac * curlvr[1];
   pi->density.rot_v[2] += fac * curlvr[2];
+}
+
+/**
+ * @brief Density loop (non-symmetric vectorized version)
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
+                               struct part **pi, struct part **pj) {
+  error("A vectorised version of the Gadget2 non-symmetric density interaction function does not exist yet! Configure with '--disable-vec' to call the non-vectorised version.")
 }
 
 /**
@@ -249,6 +267,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 }
 
 /**
+ * @brief Force loop (Vectorized version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_vec_force(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {
+  error("A vectorised version of the Gadget2 force interaction function does not exist yet! Configure with '--disable-vec' to call the non-vectorised version.")
+}
+
+/**
  * @brief Force loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
@@ -336,6 +363,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Change in entropy */
   pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
+}
+
+/**
+ * @brief Force loop (Vectorized non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {
+  error("A vectorised version of the Gadget2 non-symmetric density interaction function does not exist yet! Configure with '--disable-vec' to call the non-vectorised version.")
 }
 
 #endif /* SWIFT_RUNNER_IACT_LEGACY_H */
