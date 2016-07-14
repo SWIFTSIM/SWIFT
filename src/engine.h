@@ -72,6 +72,8 @@ extern const char *engine_policy_names[];
 #define engine_tasksreweight 10
 #define engine_parts_size_grow 1.05
 #define engine_redistribute_alloc_margin 1.2
+#define engine_default_energy_file_name "energy"
+#define engine_default_timesteps_file_name "timesteps"
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -148,6 +150,9 @@ struct engine {
   FILE *file_stats;
   double timeLastStatistics;
   double deltaTimeStatistics;
+
+  /* Timesteps information */
+  FILE *file_timesteps;
 
   /* The current step number. */
   int step;
