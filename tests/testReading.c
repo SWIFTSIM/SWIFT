@@ -27,6 +27,7 @@ int main() {
 
   size_t Ngas = 0, Ngpart = 0;
   int periodic = -1;
+  int entropy = 1;
   int i, j, k, n;
   double dim[3];
   struct part *parts = NULL;
@@ -39,7 +40,7 @@ int main() {
 
   /* Read data */
   read_ic_single("input.hdf5", dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 0);
+                 &entropy, 0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);
