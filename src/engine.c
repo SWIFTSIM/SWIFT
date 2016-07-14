@@ -2959,16 +2959,23 @@ void engine_init(struct engine *e, struct space *s,
 
   /* Open some files */
   if (e->nodeID == 0) {
-    e->file_stats = fopen("energy.txt", "w");
+    char energyfileName[200] = "";
+    parser_get_param_string(params, "Statistics:energy_file_name", energyfileName);
+    sprintf(energyfileName + strlen(energyfileName),".txt");
+    e->file_stats = fopen(energyfileName, "w");
     fprintf(e->file_stats,
             "# %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
             "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x", "p_y",
             "p_z", "ang_x", "ang_y", "ang_z");
     fflush(e->file_stats);
     
-    e->file_timesteps = fopen("timesteps.txt", "w");
+    char timestepsfileName[200] = "";
+    parser_get_param_string(params, "Statistics:timestep_file_name", timestepsfileName);
+
+    sprintf(timestepsfileName + strlen(timestepsfileName),"_%d.txt",nr_nodes * nr_threads);
+    e->file_timesteps = fopen(timestepsfileName, "w");
     fprintf(e->file_timesteps,
-            "# Revision: %s, Branch: %s\n# Compiler: %s, Version:%s\n# Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic scheme: %s\n# Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours (eta=%f)\n", git_revision(), git_branch(), compiler_name(), compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION, kernel_name, e->hydro_properties->target_neighbours, e->hydro_properties->delta_neighbours,
+            "# Branch: %s\n# Revision: %s\n# Compiler: %s, Version: %s \n# Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f +/- %.2f\n# Eta: %f\n", git_branch(), git_revision(), compiler_name(), compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION, kernel_name, e->hydro_properties->target_neighbours, e->hydro_properties->delta_neighbours,
           e->hydro_properties->eta_neighbours);
 
     fprintf(e->file_timesteps,
