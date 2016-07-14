@@ -314,6 +314,9 @@ void writeCodeDescription(hid_t h_file) {
   writeAttribute_s(h_grpcode, "Git Branch", git_branch());
   writeAttribute_s(h_grpcode, "Git Revision", git_revision());
   writeAttribute_s(h_grpcode, "HDF5 library version", hdf5_version());
+#ifdef HAVE_FFTW
+  writeAttribute_s(h_grpcode, "FFTW library version", fftw3_version());
+#endif
 #ifdef WITH_MPI
   writeAttribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
