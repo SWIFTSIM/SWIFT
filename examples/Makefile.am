@@ -19,7 +19,7 @@
 MYFLAGS = -DTIMER
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -I../src $(HDF5_CPPFLAGS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS)
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
