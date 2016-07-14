@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, ri, r2, xi, xj, hi, hj, hi_inv, hj_inv, wi, wj, wi_dx, wj_dx;
   vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
@@ -263,7 +263,7 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
                                struct part **pi, struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, ri, r2, xi, hi, hi_inv, wi, wi_dx;
   vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
@@ -450,7 +450,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, r2, ri;
   vector xi, xj;
@@ -758,7 +758,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, r2, ri;
   vector xi, xj;
