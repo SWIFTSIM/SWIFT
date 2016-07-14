@@ -40,7 +40,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
   int count_i, count_j, cnj, cnj_new;
   const int ti_current = e->ti_current;
   struct multipole m;
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
@@ -107,7 +107,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
         r2 += dx[k] * dx[k];
       }
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525 )
       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e in
@@ -157,7 +157,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (k = 0; k < icount; k++)
@@ -335,7 +335,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
   double pix[3];
   float dx[3], r2;
   const int ti_current = r->e->ti_current;
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
@@ -376,7 +376,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
       }
 
 /* Compute the interaction. */
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525 )
       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e in
@@ -409,7 +409,7 @@ void runner_dopair_grav(struct runner *r, struct cell *restrict ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (k = 0; k < icount; k++)
@@ -434,7 +434,7 @@ void runner_doself_grav(struct runner *r, struct cell *restrict c) {
   double pix[3] = {0.0, 0.0, 0.0};
   float dx[3], r2;
   const int ti_current = r->e->ti_current;
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
@@ -466,7 +466,7 @@ void runner_doself_grav(struct runner *r, struct cell *restrict c) {
       }
 
 /* Compute the interaction. */
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
       // if ( pi->part->id == 3473472412525 || pj->part->id == 3473472412525 )
       //     message( "interacting particles pi=%lli and pj=%lli with r=%.3e." ,
@@ -497,7 +497,7 @@ void runner_doself_grav(struct runner *r, struct cell *restrict c) {
 
   } /* loop over the parts in c. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (k = 0; k < icount; k++)
