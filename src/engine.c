@@ -2960,7 +2960,7 @@ void engine_init(struct engine *e, struct space *s,
   /* Open some files */
   if (e->nodeID == 0) {
     char energyfileName[200] = "";
-    parser_get_param_string(params, "Statistics:energy_file_name", energyfileName);
+    parser_get_opt_param_string(params, "Statistics:energy_file_name", energyfileName, engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName),".txt");
     e->file_stats = fopen(energyfileName, "w");
     fprintf(e->file_stats,
@@ -2970,7 +2970,7 @@ void engine_init(struct engine *e, struct space *s,
     fflush(e->file_stats);
     
     char timestepsfileName[200] = "";
-    parser_get_param_string(params, "Statistics:timestep_file_name", timestepsfileName);
+    parser_get_opt_param_string(params, "Statistics:timestep_file_name", timestepsfileName, engine_default_timesteps_file_name);
 
     sprintf(timestepsfileName + strlen(timestepsfileName),"_%d.txt",nr_nodes * nr_threads);
     e->file_timesteps = fopen(timestepsfileName, "w");
