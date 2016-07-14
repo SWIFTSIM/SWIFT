@@ -32,8 +32,7 @@ Snapshots:
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-2 # Time between statistics output
-  energy_file_name:    energy
-  timestep_file_name:  timestep # No underscores ("_") allowed in file name 
+  
 
 # Parameters for the hydrodynamics scheme
 SPH:
