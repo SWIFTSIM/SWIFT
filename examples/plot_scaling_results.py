@@ -26,8 +26,8 @@ hydro_neighbours = []
 hydro_eta = []
 threadList = []
 linestyle = ('ro-','bo-','go-','yo-','mo-')
-cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
-platform = 'KNL'
+#cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
+#platform = 'KNL'
 
 # Work out how many data series there are
 if len(sys.argv) == 2:
@@ -192,7 +192,8 @@ def plot_results(times,totalTime,speedUp,parallelEff):
     parallelEffPlot.annotate(txt, (threadList[0][i],parallelEff[0][i]))
     totalTimePlot.annotate(txt, (threadList[0][i],totalTime[0][i]))
 
-  fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps of Cosmo Volume\n Cmd Line: {}, Platform: {}".format(len(times[0][0][0]),cmdLine,platform))
+  #fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps of Cosmo Volume\n Cmd Line: {}, Platform: {}".format(len(times[0][0][0]),cmdLine,platform))
+  fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps".format(len(times[0][0][0])))
 
   return
 

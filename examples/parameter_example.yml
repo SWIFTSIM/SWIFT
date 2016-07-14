@@ -33,8 +33,8 @@ Snapshots:
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-2 # Time between statistics output
-  energy_file_name:    energy # (Optional) File name for energy output
+  delta_time:          1e-2      # Time between statistics output
+  energy_file_name:    energy    # (Optional) File name for energy output
   timestep_file_name:  timesteps # (Optional) File name for timing information output. Note: No underscores "_" allowed in file name 
 
 # Parameters for the hydrodynamics scheme
