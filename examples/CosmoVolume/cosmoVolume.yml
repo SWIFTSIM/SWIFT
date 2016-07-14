@@ -14,9 +14,9 @@ Scheduler:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1.    # The end time of the simulation (in internal units).
+  time_end:   1e-5    # The end time of the simulation (in internal units).
   dt_min:     1e-7  # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+  dt_max:     1e-7  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
@@ -32,6 +32,8 @@ Snapshots:
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:          1e-2 # Time between statistics output
+  energy_file_name:    energy
+  timestep_file_name:  timestep # No underscores ("_") allowed in file name 
 
 # Parameters for the hydrodynamics scheme
 SPH:
