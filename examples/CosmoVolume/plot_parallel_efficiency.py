@@ -17,15 +17,17 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 
-#version = ['Task Cleanup v0.3.0-247-g449de76a','Master v0.3.0-203-g6d9f54ae','KNL']
 version = []
 branch = []
 revision = []
-linestyle = ('ro-','bo-','go-')
-cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
-kernel = 'Cubic Spline M4'
-platform = 'KNL'
+hydro_scheme = []
+hydro_kernel = []
+hydro_neighbours = []
+hydro_eta = []
 threadList = []
+linestyle = ('ro-','bo-','go-','yo-','mo-')
+cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
+platform = 'KNL'
 
 # Work out how many data series there are
 if len(sys.argv) == 2:
@@ -44,6 +46,35 @@ elif len(sys.argv) == 6:
   inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
   numOfSeries = 5
 
+# Get the names of the branch, Git revision, hydro scheme and hydro kernel
+def parse_header(inputFile):
+  with open(inputFile, 'r') as f:
+    found_end = False
+    for line in f:
+      if 'Branch:' in line:
+        s = line.split()
+        branch.append(s[2])
+      elif 'Revision:' in line:
+        s = line.split() 
+        revision.append(s[2])
+      elif 'Hydrodynamic scheme:' in line:
+        line = line[2:-1]
+        s = line.split()
+        line = s[2:]
+        hydro_scheme.append(" ".join(line))
+      elif 'Hydrodynamic kernel:' in line:
+        line = line[2:-1]
+        s = line.split()
+        line = s[2:5]
+        hydro_kernel.append(" ".join(line))
+      elif 'neighbours:' in line:
+        s = line.split() 
+        hydro_neighbours.append(s[4])
+      elif 'Eta:' in line:
+        s = line.split() 
+        hydro_eta.append(s[2])
+  return
+
 # Parse file and return total time taken, speed up and parallel efficiency
 def parse_files():
   
@@ -53,39 +84,36 @@ def parse_files():
   speedUp = []
   parallelEff = []
 
-  for i in range(0,numOfSeries): # Loop over each version
+  for i in range(0,numOfSeries): # Loop over each data series
  
+    # Get each file that starts with the cmd line arg
     file_list = glob.glob(inputFileNames[i] + "*")
     
     threadList.append([])
 
+    # Create a list of threads using the list of files
     for fileName in file_list:
       s = re.split(r'[_.]+',fileName)
       threadList[i].append(int(s[1]))
 
+    # Sort the thread list in ascending order and save the indices
     sorted_indices = np.argsort(threadList[i])
     threadList[i].sort()
 
+    # Sort the file list in ascending order acording to the thread number
     file_list = [ file_list[j] for j in sorted_indices]
 
-    # Get the names of the branch and Git revision first
-    with open(file_list[0], 'r') as f:
-        found_end = False
-        for line in f:
-          if 'Branch:' in line:
-            s = line.split()
-            branch.append(s[2])
-          elif 'Revision:' in line:
-            s = line.split() 
-            revision.append(s[2])
-
-    version.append(branch[i] + " " + revision[i])                  
+    parse_header(file_list[0])
+    
+    version.append(branch[i] + " " + revision[i] + "\n" + hydro_scheme[i] + 
+                   "\n" + hydro_kernel[i] + r", $N_{neigh}$=" + hydro_neighbours[i] + 
+                   r", $\eta$=" + hydro_eta[i] + "\n")                  
     times.append([])
     totalTime.append([])
     speedUp.append([])
     parallelEff.append([])
 
-    # Loop over all files for a given series
+    # Loop over all files for a given series and load the times
     for j in range(0,len(file_list)):
       times[i].append([])
       times[i][j].append(np.loadtxt(file_list[j],usecols=(5,)))
@@ -93,7 +121,7 @@ def parse_files():
 
     serialTime.append(totalTime[i][0])
     
-    # Loop over all files for a given series
+    # Loop over all files for a given series and calculate speed up and parallel efficiency
     for j in range(0,len(file_list)):
       speedUp[i].append(serialTime[i] / totalTime[i][j])
       parallelEff[i].append(speedUp[i][j] / threadList[i][j])
@@ -125,12 +153,6 @@ def print_results(times,totalTime,parallelEff,version):
 
 def plot_results(times,totalTime,speedUp,parallelEff):
   
-  font = {'family' : 'normal',
-          'weight' : 'bold',
-          'size'   : 15}
-
-  plt.rc('font', **font)
-
   fig, axarr = plt.subplots(2, 2,figsize=(15,15))
   speedUpPlot = axarr[0, 0]
   parallelEffPlot = axarr[0, 1]
@@ -162,7 +184,7 @@ def plot_results(times,totalTime,speedUp,parallelEff):
   totalTimePlot.set_xlabel("No. of Threads")
   totalTimePlot.set_ylabel("Time to Solution (ms)")
   
-  totalTimePlot.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+  totalTimePlot.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,prop={'size':14})
   emptyPlot.axis('off')
   
   for i, txt in enumerate(threadList[0]):
@@ -170,7 +192,7 @@ def plot_results(times,totalTime,speedUp,parallelEff):
     parallelEffPlot.annotate(txt, (threadList[0][i],parallelEff[0][i]))
     totalTimePlot.annotate(txt, (threadList[0][i],totalTime[0][i]))
 
-  fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps of Cosmo Volume\n Cmd Line: {}, Kernel: {}, Platform: {}".format(len(times[0][0][0]),cmdLine,kernel,platform))
+  fig.suptitle("Thread Speed Up, Parallel Efficiency and Time To Solution for {} Time Steps of Cosmo Volume\n Cmd Line: {}, Platform: {}".format(len(times[0][0][0]),cmdLine,platform))
 
   return
 
