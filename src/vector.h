@@ -25,6 +25,8 @@
 
 #include "../config.h"
 
+#ifdef WITH_VECTORIZATION
+
 /* Need to check whether compiler supports this (IBM does not)
    This will prevent the macros to be defined and switch off
    explicit vectorization if the compiled does not support it */
@@ -39,7 +41,6 @@
 
 /* So what will the vector size be? */
 #ifdef __MIC__
-#define VECTORIZE
 #define VEC_HAVE_GATHER
 #define VEC_SIZE 16
 #define VEC_FLOAT __m512
@@ -85,8 +86,7 @@
     .f[6] = a, .f[7] = a, .f[8] = a, .f[9] = a, .f[10] = a, .f[11] = a, \
     .f[12] = a, .f[13] = a, .f[14] = a, .f[15] = a                      \
   }
-#elif defined(NO__AVX__)
-#define VECTORIZE
+#elif defined(HAVE_AVX)
 #define VEC_SIZE 8
 #define VEC_FLOAT __m256
 #define VEC_DBL __m256d
@@ -118,12 +118,11 @@
     .f[0] = a, .f[1] = a, .f[2] = a, .f[3] = a, .f[4] = a, .f[5] = a, \
     .f[6] = a, .f[7] = a                                              \
   }
-#ifdef __AVX2__
+#ifdef HAVE_AVX2
 #define VEC_HAVE_GATHER
 #define vec_gather(base, offsets) _mm256_i32gather_ps(base, offsets.m, 1)
 #endif
-#elif defined(NO__SSE2__)
-#define VECTORIZE
+#elif defined(HAVE_SSE2)
 #define VEC_SIZE 4
 #define VEC_FLOAT __m128
 #define VEC_DBL __m128d
@@ -157,7 +156,6 @@
 #endif
 
 /* Define the composite types for element access. */
-#ifdef VECTORIZE
 typedef union {
   VEC_FLOAT v;
   VEC_DBL vd;
@@ -166,8 +164,12 @@ typedef union {
   double d[VEC_SIZE / 2];
   int i[VEC_SIZE];
 } vector;
-#endif
 
-#endif
+#else
+/* Needed for cache alignment. */
+#define VEC_SIZE 16
+#endif /* WITH_VECTORIZATION */
+
+#endif /* VEC_MACRO */
 
 #endif /* SWIFT_VECTOR_H */
