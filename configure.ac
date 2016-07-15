@@ -168,6 +168,20 @@ AC_ARG_ENABLE([optimization],
    [enable_opt="yes"]
 )
 
+#  Disable vectorisation for known compilers. This switches off optimizations
+#  that could be enabled above, so in general should be appended. Slightly odd
+#  implementation as want to describe as --disable-vec, but macro is enable
+#  (there is no enable action).
+AC_ARG_ENABLE([vec],
+   [AS_HELP_STRING([--disable-vec],
+     [Disable vectorization]
+   )],
+   [enable_vec="$enableval"],
+   [enable_vec="yes"]
+)
+
+HAVEVECTORIZATION=0
+
 if test "$enable_opt" = "yes" ; then
 
    # Add code optimisation flags and tuning to host. This is a funny macro
@@ -188,7 +202,28 @@ if test "$enable_opt" = "yes" ; then
            CFLAGS="$CFLAGS $SIMD_FLAGS"
        fi
    fi
+
+
+   if test "$enable_vec" = "no"; then
+      if test "$ax_cv_c_compiler_vendor" = "intel"; then
+      	 CFLAGS="$CFLAGS -no-vec -no-simd"
+      	 AC_MSG_RESULT([disabled Intel vectorization])
+      elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      	 CFLAGS="$CFLAGS -fno-tree-vectorize"
+      	 AC_MSG_RESULT([disabled GCC vectorization])
+      elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+         CFLAGS="$CFLAGS -fno-vectorize -fno-slp-vectorize"
+         AC_MSG_RESULT([disabled clang vectorization])
+      else
+         AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
+      fi
+   else
+      AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
+      HAVEVECTORIZATION=1
+   fi
 fi
+AM_CONDITIONAL([HAVEVECTORIZATION],[test -n "$HAVEVECTORIZATION"])
+
 
 # Add address sanitizer options to flags, if requested. Only useful for GCC
 # version 4.8 and later and clang.
@@ -216,36 +251,6 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
-#  Disable vectorisation for known compilers. This switches off optimizations
-#  that could be enabled above, so in general should be appended. Slightly odd
-#  implementation as want to describe as --disable-vec, but macro is enable
-#  (there is no enable action).
-AC_ARG_ENABLE([vec],
-   [AS_HELP_STRING([--disable-vec],
-     [Disable vectorization]
-   )],
-   [enable_vec="$enableval"],
-   [enable_vec="yes"]
-)
-if test "$enable_vec" = "no"; then
-   if test "$ax_cv_c_compiler_vendor" = "intel"; then
-      CFLAGS="$CFLAGS -no-vec -no-simd"
-      AC_MSG_RESULT([disabled Intel vectorization])
-   elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
-      CFLAGS="$CFLAGS -fno-tree-vectorize"
-      AC_MSG_RESULT([disabled GCC vectorization])
-   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -fno-vectorize -fno-slp-vectorize"
-      AC_MSG_RESULT([disabled clang vectorization])
-   else
-      AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
-   fi
-   HAVEVECTORIZATION=0
-else
-   AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
-   HAVEVECTORIZATION=1
-fi
-AM_CONDITIONAL([HAVEVECTORIZATION],[test -n "$HAVEVECTORIZATION"])
 
 # Autoconf stuff.
 AC_PROG_INSTALL
