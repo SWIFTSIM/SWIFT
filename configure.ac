@@ -240,7 +240,12 @@ if test "$enable_vec" = "no"; then
    else
       AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
    fi
+   HAVEVECTORIZATION=0
+else
+   AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
+   HAVEVECTORIZATION=1
 fi
+AM_CONDITIONAL([HAVEVECTORIZATION],[test -n "$HAVEVECTORIZATION"])
 
 # Autoconf stuff.
 AC_PROG_INSTALL

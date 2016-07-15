@@ -225,7 +225,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
   *W = w * kernel_constant * kernel_igamma3;
 }
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
 static const vector kernel_igamma_vec = FILL_VEC((float)kernel_igamma);
 

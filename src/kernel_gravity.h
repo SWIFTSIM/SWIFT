@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void kernel_grav_eval(float x,
   *W = w;
 }
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
 /**
  * @brief Computes the gravity cubic spline for a given distance x (Vectorized
@@ -155,7 +155,7 @@ __attribute__((always_inline)) INLINE static void blender_deval(float x,
   *dW_dx = dw_dx;
 }
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
 /**
  * @brief Computes the cubic spline blender and its derivative for a given
