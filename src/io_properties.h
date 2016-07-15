@@ -54,6 +54,16 @@ struct io_props {
 
   /* The size of the particles */
   size_t partSize;
+
+  /* The particle arrays */
+  struct part* parts;
+  struct gpart* gparts;
+
+  /* Conversion function for part */
+  float (*convert_part)(struct part*);
+
+  /* Conversion function for part */
+  float (*convert_gpart)(struct gpart*);
 };
 
 /**
@@ -68,7 +78,7 @@ struct io_props {
  *
  * @param name Name of the field to read
  * @param type The type of the data
- * @param dimension Dataset dimension (!D, 3D, ...)
+ * @param dimension Dataset dimension (1D, 3D, ...)
  * @param importance Is this dataset compulsory ?
  * @param units The units of the dataset
  * @param field Pointer to the field of the first particle
@@ -89,6 +99,10 @@ struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
   r.units = units;
   r.field = field;
   r.partSize = partSize;
+  r.parts = NULL;
+  r.gparts = NULL;
+  r.convert_part = NULL;
+  r.convert_gpart = NULL;
 
   return r;
 }
@@ -105,7 +119,7 @@ struct io_props io_make_input_field_(char name[FIELD_BUFFER_SIZE],
  *
  * @param name Name of the field to read
  * @param type The type of the data
- * @param dimension Dataset dimension (!D, 3D, ...)
+ * @param dimension Dataset dimension (1D, 3D, ...)
  * @param units The units of the dataset
  * @param field Pointer to the field of the first particle
  * @param partSize The size in byte of the particle
@@ -124,6 +138,100 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
   r.units = units;
   r.field = field;
   r.partSize = partSize;
+  r.parts = NULL;
+  r.gparts = NULL;
+  r.convert_part = NULL;
+  r.convert_gpart = NULL;
+
+  return r;
+}
+
+/**
+ * @brief Constructs an #io_props (with conversion) from its parameters
+ */
+#define io_make_output_field_convert_part(name, type, dim, units, part, field, \
+                                          convert)                             \
+  io_make_output_field_convert_part_(name, type, dim, units,                   \
+                                     (char*)(&(part[0]).field),                \
+                                     sizeof(part[0]), part, convert)
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param importance Is this dataset compulsory ?
+ * @param units The units of the dataset
+ * @param field Pointer to the field of the first particle
+ * @param partSize The size in byte of the particle
+ * @param parts The particle array
+ * @param functionPtr The function used to convert a particle to a float
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+struct io_props io_make_output_field_convert_part_(
+    char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
+    enum UnitConversionFactor units, char* field, size_t partSize,
+    struct part* parts, float (*functionPtr)(struct part*)) {
+
+  struct io_props r;
+  strcpy(r.name, name);
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = 0;
+  r.units = units;
+  r.field = field;
+  r.partSize = partSize;
+  r.parts = parts;
+  r.gparts = NULL;
+  r.convert_part = functionPtr;
+  r.convert_gpart = NULL;
+
+  return r;
+}
+
+/**
+ * @brief Constructs an #io_props (with conversion) from its parameters
+ */
+#define io_make_output_field_convert_part(name, type, dim, units, part, field, \
+                                          convert)                             \
+  io_make_output_field_convert_part_(name, type, dim, units,                   \
+                                     (char*)(&(part[0]).field),                \
+                                     sizeof(part[0]), part, convert)
+
+/**
+ * @brief Construct an #io_props from its parameters
+ *
+ * @param name Name of the field to read
+ * @param type The type of the data
+ * @param dimension Dataset dimension (1D, 3D, ...)
+ * @param importance Is this dataset compulsory ?
+ * @param units The units of the dataset
+ * @param field Pointer to the field of the first particle
+ * @param partSize The size in byte of the particle
+ * @param parts The particle array
+ * @param functionPtr The function used to convert a particle to a float
+ *
+ * Do not call this function directly. Use the macro defined above.
+ */
+struct io_props io_make_output_field_convert_gpart_(
+    char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
+    enum UnitConversionFactor units, char* field, size_t partSize,
+    struct gpart* gparts, float (*functionPtr)(struct gpart*)) {
+
+  struct io_props r;
+  strcpy(r.name, name);
+  r.type = type;
+  r.dimension = dimension;
+  r.importance = 0;
+  r.units = units;
+  r.field = field;
+  r.partSize = partSize;
+  r.parts = NULL;
+  r.gparts = gparts;
+  r.convert_part = NULL;
+  r.convert_gpart = functionPtr;
 
   return r;
 }

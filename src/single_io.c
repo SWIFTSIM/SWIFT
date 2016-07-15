@@ -38,9 +38,9 @@
 #include "common_io.h"
 #include "engine.h"
 #include "error.h"
-#include "hydro_properties.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "hydro_properties.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
@@ -181,9 +181,20 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Copy particle data to temporary buffer */
-  char* temp_c = temp;
-  for (size_t i = 0; i < N; ++i)
-    memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+  if (props.convert_part == NULL &&
+      props.convert_gpart == NULL) { /* No conversion */
+    char* temp_c = temp;
+    for (size_t i = 0; i < N; ++i)
+      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+  } else if (props.convert_part != NULL) { /* conversion (for parts)*/
+    float* temp_f = temp;
+    for (size_t i = 0; i < N; ++i)
+      temp_f[i] = props.convert_part(&props.parts[i]);
+  } else if (props.convert_part != NULL) { /* conversion (for gparts)*/
+    float* temp_f = temp;
+    for (size_t i = 0; i < N; ++i)
+      temp_f[i] = props.convert_gpart(&props.gparts[i]);
+  }
 
   /* Unit conversion if necessary */
   const double factor =
