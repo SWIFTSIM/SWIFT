@@ -461,6 +461,12 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
+AC_CONFIG_FILES([tests/testPair.sh], [chmod +x tests/testPair.sh])
+AC_CONFIG_FILES([tests/testPairPerturbed.sh], [chmod +x tests/testPairPerturbed.sh])
+AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
+AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
 # Report general configuration.
 AC_MSG_RESULT([
