@@ -39,6 +39,7 @@
 #include "common_io.h"
 #include "engine.h"
 #include "error.h"
+#include "hydro_properties.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
 #include "io_properties.h"
@@ -743,8 +744,10 @@ void write_output_serial(struct engine* e, const char* baseName,
     writeCodeDescription(h_file);
 
     /* Print the SPH parameters */
-    h_grp = H5Gcreate(h_file, "/SPH", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    h_grp = H5Gcreate(h_file, "/HydroScheme", H5P_DEFAULT, H5P_DEFAULT,
+                      H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating SPH group");
+    hydro_props_print_snapshot(h_grp, e->hydro_properties);
     writeSPHflavour(h_grp);
     H5Gclose(h_grp);
 

@@ -23,6 +23,10 @@
 /* Config parameters. */
 #include "../config.h"
 
+#if defined(HAVE_HDF5)
+#include <hdf5.h>
+#endif
+
 /* Local includes. */
 #include "const.h"
 #include "parser.h"
@@ -52,5 +56,9 @@ struct hydro_props {
 
 void hydro_props_print(const struct hydro_props *p);
 void hydro_props_init(struct hydro_props *p, const struct swift_params *params);
+
+#if defined(HAVE_HDF5)
+void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p);
+#endif
 
 #endif /* SWIFT_HYDRO_PROPERTIES */

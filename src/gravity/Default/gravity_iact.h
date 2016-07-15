@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav(
 __attribute__((always_inline)) INLINE static void runner_iact_vec_grav(
     float *R2, float *Dx, struct gpart **pi, struct gpart **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector ir, r, r2, dx[3];
   vector w, acc, ai, aj;

@@ -266,6 +266,24 @@ int main(int argc, char *argv[]) {
     message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
   }
 
+/* Temporary abort to handle absence of vectorized functions */
+#ifdef WITH_VECTORIZATION
+
+#ifdef GADGET2_SPH
+  error(
+      "Vectorized version of Gadget SPH routines not implemented yet. "
+      "Reconfigure with --disable-vec and recompile or use DEFAULT_SPH.");
+#endif
+
+#ifdef MINIMAL_SPH
+  error(
+      "Vectorized version of Minimal SPH routines not implemented yet. "
+      "Reconfigure with --disable-vec and recompile or use DEFAULT_SPH.");
+#endif
+
+#endif
+  /* End temporary fix */
+
   /* How vocal are we ? */
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 

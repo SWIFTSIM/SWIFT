@@ -54,11 +54,11 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 vector.h runner_doiact.h runner_doiact_grav.h units.h intrinsics.h minmax.h kick.h \
-		 timestep.h drift.h io_properties.h \
+		 timestep.h drift.h adiabatic_index.h io_properties.h \
 		 gravity.h gravity_io.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
-	 	 hydro.h hydro_io.h \
+                 hydro.h hydro_io.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
 		 hydro/Default/hydro.h hydro/Default/hydro_iact.h hydro/Default/hydro_io.h \
@@ -92,12 +92,12 @@ version_string.h: version_string.h.in $(AM_SOURCES) $(include_HEADERS) $(noinst_
 	    GIT_BRANCH=`$(GIT_CMD) branch | sed -n 's/^\* \(.*\)/\1/p'`; \
 	    sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	        -e "s,@GIT_REVISION\@,$${GIT_REVISION}," \
-	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" version_string.h.in > version_string.h; \
+	        -e "s|@GIT_BRANCH\@|$${GIT_BRANCH}|" $< > version_string.h; \
 	else \
 	    if test ! -f version_string.h; then \
 	        sed -e "s,@PACKAGE_VERSION\@,$(PACKAGE_VERSION)," \
 	            -e "s,@GIT_REVISION\@,unknown," \
-		    -e "s,@GIT_BRANCH\@,unknown," version_string.h.in > version_string.h; \
+		    -e "s,@GIT_BRANCH\@,unknown," $< > version_string.h; \
 	    fi; \
 	fi
 

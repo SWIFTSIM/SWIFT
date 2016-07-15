@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+#include "adiabatic_index.h"
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -132,11 +134,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
-  p->force.pressure =
-      (p->entropy + p->entropy_dt * dt) * powf(p->rho, const_hydro_gamma);
+  p->force.pressure = (p->entropy + p->entropy_dt * dt) * pow_gamma(p->rho);
 
   /* Compute the sound speed */
-  p->force.soundspeed = sqrtf(const_hydro_gamma * p->force.pressure / p->rho);
+  p->force.soundspeed = sqrtf(hydro_gamma * p->force.pressure / p->rho);
 }
 
 /**
@@ -179,10 +180,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
   p->force.pressure =
-      (p->entropy + p->entropy_dt * dt_entr) * powf(p->rho, const_hydro_gamma);
+      (p->entropy + p->entropy_dt * dt_entr) * pow_gamma(p->rho);
 
   /* Compute the new sound speed */
-  p->force.soundspeed = sqrtf(const_hydro_gamma * p->force.pressure / p->rho);
+  p->force.soundspeed = sqrtf(hydro_gamma * p->force.pressure / p->rho);
 }
 
 /**
@@ -195,8 +196,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p) {
 
-  p->entropy_dt *=
-      (const_hydro_gamma - 1.f) * powf(p->rho, -(const_hydro_gamma - 1.f));
+  p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
 }
 
 /**
@@ -232,8 +232,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p) {
 
-  p->entropy = (const_hydro_gamma - 1.f) * p->entropy *
-               powf(p->rho, -(const_hydro_gamma - 1.f));
+  p->entropy =
+      hydro_gamma_minus_one * p->entropy * pow_minus_gamma_minus_one(p->rho);
 }
 
 /**
@@ -247,6 +247,5 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 
   const float entropy = p->entropy + p->entropy_dt * dt;
 
-  return entropy * powf(p->rho, const_hydro_gamma - 1.f) *
-         (1.f / (const_hydro_gamma - 1.f));
+  return entropy * pow_gamma_minus_one(p->rho) * hydro_one_over_gamma_minus_one;
 }

@@ -18,7 +18,6 @@
  *
  ******************************************************************************/
 
-#define NO__AVX__
 #include "kernel_hydro.h"
 #include "vector.h"
 
@@ -53,6 +52,9 @@ int main() {
 
   printf("\nVector Output for VEC_SIZE=%d\n", VEC_SIZE);
   printf("-------------\n");
+
+#ifdef WITH_VECORIZATION
+
   for (int i = 0; i < numPoints; i += VEC_SIZE) {
 
     vector vx, vx_h;
@@ -84,5 +86,7 @@ int main() {
   }
 
   printf("\nAll values are consistent\n");
+
+#endif
   return 0;
 }

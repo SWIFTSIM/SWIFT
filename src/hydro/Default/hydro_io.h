@@ -88,9 +88,6 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
  */
 void writeSPHflavour(hid_t h_grpsph) {
 
-  /* Kernel function description */
-  writeAttribute_s(h_grpsph, "Kernel", kernel_name);
-
   /* Viscosity and thermal conduction */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
                    "Price (2008) without switch");

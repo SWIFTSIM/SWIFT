@@ -20,9 +20,6 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
-/* Hydrodynamical constants. */
-#define const_hydro_gamma (5.0f / 3.0f)
-
 /* SPH Viscosity constants. */
 #define const_viscosity_alpha 0.8f
 #define const_viscosity_alpha_min \
@@ -43,6 +40,11 @@
 #define const_theta_max 0.57735f
 #define const_G 6.672e-8f     /* Gravitational constant. */
 #define const_epsilon 0.0014f /* Gravity blending distance. */
+
+/* Hydrodynamical adiabatic index. */
+#define HYDRO_GAMMA_5_3
+//#define HYDRO_GAMMA_4_3
+//#define HYDRO_GAMMA_2_1
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL
