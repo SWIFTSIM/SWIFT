@@ -139,6 +139,9 @@ struct engine {
   /* Number of particles updated */
   size_t updates, g_updates;
 
+  /* The internal system of units */
+  const struct UnitSystem *internalUnits;
+
   /* Snapshot information */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
@@ -212,6 +215,7 @@ void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
+                 const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential);
