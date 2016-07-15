@@ -439,7 +439,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
 
     int num_fields = 0;
     struct io_props list[100];
-    size_t N;
+    size_t N = 0;
 
     /* Read particle fields into the structure */
     switch (ptype) {
@@ -631,7 +631,7 @@ void write_output_single(struct engine* e, const char* baseName,
 
     int num_fields = 0;
     struct io_props list[100];
-    size_t N;
+    size_t N = 0;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
