@@ -178,6 +178,16 @@ if test "$enable_opt" = "yes" ; then
    AX_CC_MAXOPT
    ac_test_CFLAGS="yes"
    CFLAGS="$old_CFLAGS $CFLAGS"
+
+   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
+   # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
+   # value from AX_CC_MAXOPT should be sufficient.
+   AX_EXT
+   if test "$SIMD_FLAGS" != ""; then
+       if test "$ax_cv_c_compiler_vendor" != "intel"; then
+           CFLAGS="$CFLAGS $SIMD_FLAGS"
+       fi
+   fi
 fi
 
 # Add address sanitizer options to flags, if requested. Only useful for GCC
@@ -232,17 +242,6 @@ if test "$enable_vec" = "no"; then
    fi
    HAVEVECTORIZATION=0
 else
-
-   # Check SSE & AVX support (some overlap with AX_CC_MAXOPT).
-   # Don't use the SIMD_FLAGS result with Intel compilers. The -x<code>
-   # value from AX_CC_MAXOPT should be sufficient.
-   AX_EXT
-   if test "$SIMD_FLAGS" != ""; then
-       if test "$ax_cv_c_compiler_vendor" != "intel"; then
-           CFLAGS="$CFLAGS $SIMD_FLAGS"
-       fi
-   fi
-
    AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
    HAVEVECTORIZATION=1
 fi
