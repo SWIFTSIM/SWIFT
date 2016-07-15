@@ -54,7 +54,7 @@
 /**
  * @brief Returns the argument to the power given by the adiabatic index
  *
- * Computes $x^\gamma$.
+ * Computes \f$x^\gamma\f$.
  */
 __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
 
@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
  * @brief Returns the argument to the power given by the adiabatic index minus
  * one
  *
- * Computes $x^(\gamma - 1)$.
+ * Computes \f$x^{(\gamma-1)}\f$.
  */
 __attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
     float x) {
@@ -115,7 +115,7 @@ __attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
  * @brief Returns one over the argument to the power given by the adiabatic
  * index minus one
  *
- * Computes $x^{-(\gamma - 1)}$.
+ * Computes \f$x^{-(\gamma-1)}\f$.
  */
 __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
     float x) {
