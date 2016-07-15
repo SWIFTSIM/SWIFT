@@ -69,8 +69,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     struct part **pj) {
   error(
       "A vectorised version of the Minimal density interaction function does "
-      "not exist yet! Configure with '--disable-vec' to call the "
-      "non-vectorised version.")
+      "not exist yet!");
 }
 
 /**
@@ -105,8 +104,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
                                struct part **pi, struct part **pj) {
   error(
       "A vectorised version of the Minimal non-symmetric density interaction "
-      "function does not exist yet! Configure with '--disable-vec' to call the "
-      "non-vectorised version.")
+      "function does not exist yet!");
 }
 
 /**
@@ -189,8 +187,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     struct part **pj) {
   error(
       "A vectorised version of the Minimal force interaction function does not "
-      "exist yet! Configure with '--disable-vec' to call the non-vectorised "
-      "version.")
+      "exist yet!");
 }
 
 /**
@@ -265,9 +262,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
   error(
-      "A vectorised version of the Minimal non-symmetric density interaction "
-      "function does not exist yet! Configure with '--disable-vec' to call the "
-      "non-vectorised version.")
+      "A vectorised version of the Minimal non-symmetric force interaction "
+      "function does not exist yet!");
 }
 
 #endif /* SWIFT_RUNNER_IACT_MINIMAL_H */

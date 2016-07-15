@@ -54,7 +54,7 @@ int main() {
   printf("-------------\n");
 
 #ifdef WITH_VECORIZATION
-  
+
   for (int i = 0; i < numPoints; i += VEC_SIZE) {
 
     vector vx, vx_h;

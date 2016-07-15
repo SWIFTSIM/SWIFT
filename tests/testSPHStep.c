@@ -64,7 +64,6 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
         ++part;
         part->ti_begin = 0;
         part->ti_end = 1;
-
       }
     }
   }
@@ -84,7 +83,7 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  
+
   return cell;
 }
 
@@ -100,7 +99,7 @@ int main() {
 #ifndef DEFAULT_SPH
   return 0;
 #else
-  
+
   int i, j, k, offset[3];
   struct part *p;
 
@@ -115,7 +114,7 @@ int main() {
 
   /* Get some randomness going */
   srand(0);
-  
+
   /* Create cells */
   struct cell *cells[27];
   for (i = 0; i < 3; i++)
@@ -147,7 +146,7 @@ int main() {
 
   struct engine e;
   e.s = &space;
-  
+
   struct runner r;
   r.e = &e;
 
@@ -157,7 +156,7 @@ int main() {
   e.timeOld = 0.;
   e.time = 0.1f;
   e.ti_current = 1;
-  
+
   /* The tracked particle */
   p = &(ci->parts[N * N * N / 2 + N * N / 2 + N / 2]);
 
@@ -169,20 +168,19 @@ int main() {
   }
 
   message("Sorting done");
-  
+
   /* Initialise the particles */
   for (j = 0; j < 27; ++j) {
     runner_do_init(&r, cells[j], 0);
   }
 
   message("Init done");
-  
+
   /* Compute density */
   runner_doself1_density(&r, ci);
   message("Self done");
   for (int j = 0; j < 27; ++j)
-    if (cells[j] != ci)
-      runner_dopair1_density(&r, ci, cells[j]);
+    if (cells[j] != ci) runner_dopair1_density(&r, ci, cells[j]);
 
   message("Density done");
 
@@ -203,6 +201,4 @@ int main() {
   return 0;
 
 #endif
-  
 }
-

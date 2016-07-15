@@ -247,7 +247,6 @@ int main(int argc, char *argv[]) {
   runner_do_sort(&runner, ci, 0x1FFF, 0);
   runner_do_sort(&runner, cj, 0x1FFF, 0);
 
-
   time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
@@ -260,7 +259,7 @@ int main(int argc, char *argv[]) {
     /* Run the test */
     runner_dopair1_density(&runner, ci, cj);
 #endif
-    
+
     toc = getticks();
     time += toc - tic;
 
