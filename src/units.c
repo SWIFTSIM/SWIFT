@@ -37,6 +37,7 @@
 #include "units.h"
 
 /* Includes. */
+#include "adiabatic_index.h"
 #include "const.h"
 #include "error.h"
 
@@ -188,14 +189,14 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
       break;
 
     case UNIT_CONV_ENTROPY:
-      baseUnitsExp[UNIT_MASS] = 1.f - const_hydro_gamma;
-      baseUnitsExp[UNIT_LENGTH] = 3.f * const_hydro_gamma - 1.f;
+      baseUnitsExp[UNIT_MASS] = 1.f - hydro_gamma;
+      baseUnitsExp[UNIT_LENGTH] = 3.f * hydro_gamma - 1.f;
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 
     case UNIT_CONV_ENTROPY_PER_UNIT_MASS:
-      baseUnitsExp[UNIT_MASS] = -const_hydro_gamma;
-      baseUnitsExp[UNIT_LENGTH] = 3.f * const_hydro_gamma - 1.f;
+      baseUnitsExp[UNIT_MASS] = -hydro_gamma;
+      baseUnitsExp[UNIT_LENGTH] = 3.f * hydro_gamma - 1.f;
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 

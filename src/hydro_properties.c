@@ -25,6 +25,8 @@
 #include <math.h>
 
 /* Local headers. */
+#include "adiabatic_index.h"
+#include "common_io.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -54,6 +56,7 @@ void hydro_props_init(struct hydro_props *p,
 
 void hydro_props_print(const struct hydro_props *p) {
 
+  message("Adiabatic index gamma: %f.", hydro_gamma);
   message("Hydrodynamic scheme: %s.", SPH_IMPLEMENTATION);
   message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours (eta=%f).",
           kernel_name, p->target_neighbours, p->delta_neighbours,
@@ -68,3 +71,21 @@ void hydro_props_print(const struct hydro_props *p) {
     message("Maximal iterations in ghost task set to %d (default is %d)",
             p->max_smoothing_iterations, hydro_props_default_max_iterations);
 }
+
+#if defined(HAVE_HDF5)
+void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
+
+  writeAttribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
+  writeAttribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
+  writeAttribute_s(h_grpsph, "Kernel function", kernel_name);
+  writeAttribute_f(h_grpsph, "Kernel target N_ngb", p->target_neighbours);
+  writeAttribute_f(h_grpsph, "Kernel delta N_ngb", p->delta_neighbours);
+  writeAttribute_f(h_grpsph, "Kernel eta", p->eta_neighbours);
+  writeAttribute_f(h_grpsph, "CFL parameter", p->CFL_condition);
+  writeAttribute_f(h_grpsph, "Volume log(max(delta h))", p->log_max_h_change);
+  writeAttribute_f(h_grpsph, "Volume max change time-step",
+                   powf(expf(p->log_max_h_change), 3.f));
+  writeAttribute_f(h_grpsph, "Max ghost iterations",
+                   p->max_smoothing_iterations);
+}
+#endif

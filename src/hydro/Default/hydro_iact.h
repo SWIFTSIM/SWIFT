@@ -20,6 +20,8 @@
 #ifndef SWIFT_RUNNER_IACT_H
 #define SWIFT_RUNNER_IACT_H
 
+#include "adiabatic_index.h"
+
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
@@ -408,7 +410,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
   /* Thermal conductivity */
-  v_sig_u = sqrtf(2.f * (const_hydro_gamma - 1.f) *
+  v_sig_u = sqrtf(2.f * hydro_gamma_minus_one *
                   fabs(rhoi * pi->u - rhoj * pj->u) / (rhoi + rhoj));
   tc = const_conductivity_alpha * v_sig_u / (rhoi + rhoj);
   tc *= (wi_dr + wj_dr);
@@ -608,7 +610,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   Pi_ij.v *= (wi_dr.v + wj_dr.v);
 
   /* Thermal conductivity */
-  v_sig_u.v = vec_sqrt(vec_set1(2.f * (const_hydro_gamma - 1.f)) *
+  v_sig_u.v = vec_sqrt(vec_set1(2.f * hydro_gamma_minus_one) *
                        vec_fabs(pirho.v * piu.v - pjrho.v * pju.v) /
                        (pirho.v + pjrho.v));
   tc.v = vec_set1(const_conductivity_alpha) * v_sig_u.v / (pirho.v + pjrho.v);
@@ -721,7 +723,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
   /* Thermal conductivity */
-  v_sig_u = sqrtf(2.f * (const_hydro_gamma - 1.f) *
+  v_sig_u = sqrtf(2.f * hydro_gamma_minus_one *
                   fabs(rhoi * pi->u - rhoj * pj->u) / (rhoi + rhoj));
   tc = const_conductivity_alpha * v_sig_u / (rhoi + rhoj);
   tc *= (wi_dr + wj_dr);
@@ -912,7 +914,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   Pi_ij.v *= (wi_dr.v + wj_dr.v);
 
   /* Thermal conductivity */
-  v_sig_u.v = vec_sqrt(vec_set1(2.f * (const_hydro_gamma - 1.f)) *
+  v_sig_u.v = vec_sqrt(vec_set1(2.f * hydro_gamma_minus_one) *
                        vec_fabs(pirho.v * piu.v - pjrho.v * pju.v) /
                        (pirho.v + pjrho.v));
   tc.v = vec_set1(const_conductivity_alpha) * v_sig_u.v / (pirho.v + pjrho.v);

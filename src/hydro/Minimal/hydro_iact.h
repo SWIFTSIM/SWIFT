@@ -19,6 +19,8 @@
 #ifndef SWIFT_RUNNER_IACT_MINIMAL_H
 #define SWIFT_RUNNER_IACT_MINIMAL_H
 
+#include "adiabatic_index.h"
+
 /**
  * @brief Minimal conservative implementation of SPH
  *
@@ -150,8 +152,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Compute sound speeds */
-  const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
+  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
+  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
   const float v_sig = ci + cj;
 
   /* SPH acceleration term */
@@ -233,8 +235,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Compute sound speeds */
-  const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
+  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
+  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
   const float v_sig = ci + cj;
 
   /* SPH acceleration term */
