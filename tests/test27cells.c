@@ -126,7 +126,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
@@ -240,7 +239,7 @@ int main(int argc, char *argv[]) {
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
   int vel = velocity_zero;
-
+  
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
@@ -331,6 +330,8 @@ int main(int argc, char *argv[]) {
         double offset[3] = {i * size, j * size, k * size};
         cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
                                              &partId, perturbation, vel);
+
+	runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
       }
     }
   }
@@ -345,6 +346,8 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+    
     /* Run all the pairs */
     for (int j = 0; j < 27; ++j)
       if (cells[j] != main_cell)
@@ -353,6 +356,8 @@ int main(int argc, char *argv[]) {
     /* And now the self-interaction */
     runner_doself1_density(&runner, main_cell);
 
+#endif
+    
     const ticks toc = getticks();
     time += toc - tic;
 
@@ -377,6 +382,8 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
     if (cells[j] != main_cell) pairs_all_density(&runner, main_cell, cells[j]);
@@ -384,6 +391,8 @@ int main(int argc, char *argv[]) {
   /* And now the self-interaction */
   self_all_density(&runner, main_cell);
 
+#endif
+  
   const ticks toc = getticks();
 
   /* Let's get physical ! */

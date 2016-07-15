@@ -648,8 +648,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     pi[k]->force.v_sig = vi_sig.f[k];
     pj[k]->force.v_sig = vj_sig.f[k];
     for (j = 0; j < 3; j++) {
-      pi[k]->a[j] -= pia[j].f[k];
-      pj[k]->a[j] += pja[j].f[k];
+      pi[k]->a_hydro[j] -= pia[j].f[k];
+      pj[k]->a_hydro[j] += pja[j].f[k];
     }
   }
 
@@ -945,7 +945,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     pi[k]->h_dt -= pih_dt.f[k];
     pi[k]->force.v_sig = vi_sig.f[k];
     pj[k]->force.v_sig = vj_sig.f[k];
-    for (j = 0; j < 3; j++) pi[k]->a[j] -= pia[j].f[k];
+    for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
   }
 
 #else

@@ -91,7 +91,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
@@ -245,6 +244,10 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
   cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
 
+  runner_do_sort(&runner, ci, 0x1FFF, 0);
+  runner_do_sort(&runner, cj, 0x1FFF, 0);
+
+
   time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
@@ -253,9 +256,11 @@ int main(int argc, char *argv[]) {
 
     tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
     /* Run the test */
     runner_dopair1_density(&runner, ci, cj);
-
+#endif
+    
     toc = getticks();
     time += toc - tic;
 
@@ -277,8 +282,10 @@ int main(int argc, char *argv[]) {
 
   tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
   /* Run the brute-force test */
   pairs_all_density(&runner, ci, cj);
+#endif
 
   toc = getticks();
 
