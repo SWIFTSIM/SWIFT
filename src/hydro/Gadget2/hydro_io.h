@@ -52,7 +52,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
-float convert_u(struct part* p) {
+float convert_u(struct engine* e, struct part* p) {
 
   return p->entropy * pow_gamma_minus_one(p->rho) *
          hydro_one_over_gamma_minus_one;

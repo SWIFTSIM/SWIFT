@@ -181,6 +181,7 @@ void readArray(hid_t grp, const struct io_props prop, size_t N,
 /**
  * @brief Writes a data array in given HDF5 group.
  *
+ * @param e The #engine we are writing from.
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
@@ -194,7 +195,7 @@ void readArray(hid_t grp, const struct io_props prop, size_t N,
  * the part array will be written once the structures have been stabilized.
  *
  */
-void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
+void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
                 long long N_total, int mpi_rank, long long offset,
                 const struct UnitSystem* internal_units,
@@ -222,13 +223,13 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
 
     float* temp_f = temp;
     for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_part(&props.parts[i]);
+      temp_f[i] = props.convert_part(e, &props.parts[i]);
 
   } else if (props.convert_gpart != NULL) { /* conversion (for gparts)*/
 
     float* temp_f = temp;
     for (size_t i = 0; i < N; ++i)
-      temp_f[i] = props.convert_gpart(&props.gparts[i]);
+      temp_f[i] = props.convert_gpart(e, &props.gparts[i]);
   }
 
   /* Unit conversion if necessary */
@@ -781,7 +782,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
     /* Write everything */
     for (int i = 0; i < num_fields; ++i)
-      writeArray(h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
+      writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
                  N_total[ptype], mpi_rank, offset[ptype], internal_units,
                  snapshot_units);
 

@@ -60,10 +60,10 @@ struct io_props {
   struct gpart* gparts;
 
   /* Conversion function for part */
-  float (*convert_part)(struct part*);
+  float (*convert_part)(struct engine*, struct part*);
 
   /* Conversion function for part */
-  float (*convert_gpart)(struct gpart*);
+  float (*convert_gpart)(struct engine*, struct gpart*);
 };
 
 /**
@@ -173,7 +173,7 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
 struct io_props io_make_output_field_convert_part_(
     char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
     enum UnitConversionFactor units, char* field, size_t partSize,
-    struct part* parts, float (*functionPtr)(struct part*)) {
+    struct part* parts, float (*functionPtr)(struct engine*, struct part*)) {
 
   struct io_props r;
   strcpy(r.name, name);
@@ -218,7 +218,7 @@ struct io_props io_make_output_field_convert_part_(
 struct io_props io_make_output_field_convert_gpart_(
     char name[FIELD_BUFFER_SIZE], enum DATA_TYPE type, int dimension,
     enum UnitConversionFactor units, char* field, size_t partSize,
-    struct gpart* gparts, float (*functionPtr)(struct gpart*)) {
+    struct gpart* gparts, float (*functionPtr)(struct engine*, struct gpart*)) {
 
   struct io_props r;
   strcpy(r.name, name);
