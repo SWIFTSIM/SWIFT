@@ -46,13 +46,6 @@ enum DATA_TYPE {
 };
 
 /**
- * @brief The two sorts of data present in the GADGET IC files: compulsory to
- *start a run or optional.
- *
- */
-enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0 };
-
-/**
  * @brief The different particle types present in a GADGET IC file
  *
  */
@@ -69,10 +62,12 @@ enum PARTICLE_TYPE {
 extern const char* particle_type_names[];
 
 #define FILENAME_BUFFER_SIZE 150
-#define PARTICLE_GROUP_BUFFER_SIZE 20
+#define FIELD_BUFFER_SIZE 200
+#define PARTICLE_GROUP_BUFFER_SIZE 50
 
 hid_t hdf5Type(enum DATA_TYPE type);
 size_t sizeOfType(enum DATA_TYPE type);
+int isDoublePrecision(enum DATA_TYPE type);
 
 void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
                        struct gpart* const dmparts, size_t Ndm);
@@ -99,11 +94,15 @@ void writeXMFoutputfooter(FILE* xmfFile, int outputCount, float time);
 void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
                          enum PARTICLE_TYPE ptype);
 void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype);
-void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
-                  char* name, size_t N, int dim, enum DATA_TYPE type);
+void writeXMFline(FILE* xmfFile, const char* fileName,
+                  const char* partTypeGroupName, const char* name, size_t N,
+                  int dim, enum DATA_TYPE type);
 
 void writeCodeDescription(hid_t h_file);
-void writeUnitSystem(hid_t h_file, struct UnitSystem* us);
+
+void readUnitSystem(hid_t h_file, struct UnitSystem* us);
+void writeUnitSystem(hid_t h_grp, const struct UnitSystem* us,
+                     const char* groupName);
 
 #endif /* defined HDF5 */
 

@@ -20,6 +20,8 @@
 #ifndef SWIFT_RUNNER_IACT_H
 #define SWIFT_RUNNER_IACT_H
 
+#include "adiabatic_index.h"
+
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
@@ -101,7 +103,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, ri, r2, xi, xj, hi, hj, hi_inv, hj_inv, wi, wj, wi_dx, wj_dx;
   vector rhoi, rhoj, rhoi_dh, rhoj_dh, wcounti, wcountj, wcounti_dh, wcountj_dh;
@@ -263,7 +265,7 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
                                struct part **pi, struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, ri, r2, xi, hi, hi_inv, wi, wi_dx;
   vector rhoi, rhoi_dh, wcounti, wcounti_dh, div_vi;
@@ -408,7 +410,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
   /* Thermal conductivity */
-  v_sig_u = sqrtf(2.f * (const_hydro_gamma - 1.f) *
+  v_sig_u = sqrtf(2.f * hydro_gamma_minus_one *
                   fabs(rhoi * pi->u - rhoj * pj->u) / (rhoi + rhoj));
   tc = const_conductivity_alpha * v_sig_u / (rhoi + rhoj);
   tc *= (wi_dr + wj_dr);
@@ -450,7 +452,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, r2, ri;
   vector xi, xj;
@@ -608,7 +610,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   Pi_ij.v *= (wi_dr.v + wj_dr.v);
 
   /* Thermal conductivity */
-  v_sig_u.v = vec_sqrt(vec_set1(2.f * (const_hydro_gamma - 1.f)) *
+  v_sig_u.v = vec_sqrt(vec_set1(2.f * hydro_gamma_minus_one) *
                        vec_fabs(pirho.v * piu.v - pjrho.v * pju.v) /
                        (pirho.v + pjrho.v));
   tc.v = vec_set1(const_conductivity_alpha) * v_sig_u.v / (pirho.v + pjrho.v);
@@ -648,8 +650,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     pi[k]->force.v_sig = vi_sig.f[k];
     pj[k]->force.v_sig = vj_sig.f[k];
     for (j = 0; j < 3; j++) {
-      pi[k]->a[j] -= pia[j].f[k];
-      pj[k]->a[j] += pja[j].f[k];
+      pi[k]->a_hydro[j] -= pia[j].f[k];
+      pj[k]->a_hydro[j] += pja[j].f[k];
     }
   }
 
@@ -721,7 +723,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   Pi_ij *= (pi->force.balsara + pj->force.balsara);
 
   /* Thermal conductivity */
-  v_sig_u = sqrtf(2.f * (const_hydro_gamma - 1.f) *
+  v_sig_u = sqrtf(2.f * hydro_gamma_minus_one *
                   fabs(rhoi * pi->u - rhoj * pj->u) / (rhoi + rhoj));
   tc = const_conductivity_alpha * v_sig_u / (rhoi + rhoj);
   tc *= (wi_dr + wj_dr);
@@ -758,7 +760,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
 
   vector r, r2, ri;
   vector xi, xj;
@@ -912,7 +914,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   Pi_ij.v *= (wi_dr.v + wj_dr.v);
 
   /* Thermal conductivity */
-  v_sig_u.v = vec_sqrt(vec_set1(2.f * (const_hydro_gamma - 1.f)) *
+  v_sig_u.v = vec_sqrt(vec_set1(2.f * hydro_gamma_minus_one) *
                        vec_fabs(pirho.v * piu.v - pjrho.v * pju.v) /
                        (pirho.v + pjrho.v));
   tc.v = vec_set1(const_conductivity_alpha) * v_sig_u.v / (pirho.v + pjrho.v);
@@ -945,7 +947,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     pi[k]->h_dt -= pih_dt.f[k];
     pi[k]->force.v_sig = vi_sig.f[k];
     pj[k]->force.v_sig = vj_sig.f[k];
-    for (j = 0; j < 3; j++) pi[k]->a[j] -= pia[j].f[k];
+    for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
   }
 
 #else

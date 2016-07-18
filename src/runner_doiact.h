@@ -113,7 +113,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
 
   error("Don't use in actual runs ! Slow code !");
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -169,7 +169,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2 || r2 < pj->h * pj->h * kernel_gamma2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
         IACT(r2, dx, hi, pj->h, pi, pj);
 
@@ -199,7 +199,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -215,7 +215,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 
   error("Don't use in actual runs ! Slow code !");
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -258,7 +258,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (r2 < hig2 || r2 < pj->h * pj->h * kernel_gamma2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
         IACT(r2, dx, hi, pj->h, pi, pj);
 
@@ -288,7 +288,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -317,7 +317,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   error("Don't use in actual runs ! Slow code !");
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -367,7 +367,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -397,7 +397,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -424,7 +424,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
   struct engine *e = r->e;
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -499,7 +499,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -564,7 +564,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -595,7 +595,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
     } /* loop over the parts in ci. */
   }
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -618,7 +618,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
                    struct part *restrict parts, int *restrict ind, int count) {
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -658,7 +658,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 > 0.0f && r2 < hig2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -688,7 +688,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -710,7 +710,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   struct engine *restrict e = r->e;
   const int ti_current = e->ti_current;
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount = 0;
   float r2q[VEC_SIZE] __attribute__((aligned(16)));
   float hiq[VEC_SIZE] __attribute__((aligned(16)));
@@ -783,7 +783,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Hit or miss? */
       if (r2 < hig2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
         IACT_NONSYM(r2, dx, hi, pj->h, pi, pj);
 
@@ -845,7 +845,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
       /* Hit or miss? */
       if (r2 < hjg2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
         IACT_NONSYM(r2, dx, hj, pi->h, pj, pi);
 
@@ -875,7 +875,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount > 0)
     for (int k = 0; k < icount; k++)
@@ -897,7 +897,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct engine *restrict e = r->e;
   const int ti_current = e->ti_current;
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
   float hiq1[VEC_SIZE] __attribute__((aligned(16)));
@@ -1009,7 +1009,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
@@ -1060,7 +1060,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Hit or miss? */
         if (r2 < hig2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           /* Does pj need to be updated too? */
           if (pj->ti_end <= ti_current)
@@ -1153,7 +1153,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Hit or miss? */
         if (r2 < hjg2 && r2 > hi * hi * kernel_gamma2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj);
 
@@ -1203,7 +1203,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
         /* Hit or miss? */
         if (r2 < hjg2 && r2 > hi * hi * kernel_gamma2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           /* Does pi need to be updated too? */
           if (pi->ti_end <= ti_current)
@@ -1261,7 +1261,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
 
   } /* loop over the parts in ci. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount1 > 0)
     for (int k = 0; k < icount1; k++)
@@ -1284,7 +1284,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   const int ti_current = r->e->ti_current;
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
   float hiq1[VEC_SIZE] __attribute__((aligned(16)));
@@ -1350,7 +1350,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hj * hj * kernel_gamma2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
@@ -1406,7 +1406,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || doj) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           /* Which parts need to be updated? */
           if (r2 < hig2 && doj)
@@ -1489,7 +1489,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
   } /* loop over all particles. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount1 > 0)
     for (int k = 0; k < icount1; k++)
@@ -1512,7 +1512,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   const int ti_current = r->e->ti_current;
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   int icount1 = 0;
   float r2q1[VEC_SIZE] __attribute__((aligned(16)));
   float hiq1[VEC_SIZE] __attribute__((aligned(16)));
@@ -1578,7 +1578,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi);
 
@@ -1632,7 +1632,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-#ifndef VECTORIZE
+#ifndef WITH_VECTORIZATION
 
           /* Does pj need to be updated too? */
           if (pj->ti_end <= ti_current)
@@ -1690,7 +1690,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
   } /* loop over all particles. */
 
-#ifdef VECTORIZE
+#ifdef WITH_VECTORIZATION
   /* Pick up any leftovers. */
   if (icount1 > 0)
     for (int k = 0; k < icount1; k++)

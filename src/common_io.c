@@ -58,6 +58,7 @@ const char* particle_type_names[NUM_PARTICLE_TYPES] = {
  *way.
  */
 hid_t hdf5Type(enum DATA_TYPE type) {
+
   switch (type) {
     case INT:
       return H5T_NATIVE_INT;
@@ -87,6 +88,7 @@ hid_t hdf5Type(enum DATA_TYPE type) {
  * @brief Returns the memory size of the data type
  */
 size_t sizeOfType(enum DATA_TYPE type) {
+
   switch (type) {
     case INT:
       return sizeof(int);
@@ -108,6 +110,24 @@ size_t sizeOfType(enum DATA_TYPE type) {
       return sizeof(char);
     default:
       error("Unknown type");
+      return 0;
+  }
+}
+
+/**
+ * @brief Return 1 if the type has double precision
+ *
+ * Returns an error if the type is not FLOAT or DOUBLE
+ */
+int isDoublePrecision(enum DATA_TYPE type) {
+  
+  switch (type) {
+    case FLOAT:
+      return 0;
+    case DOUBLE:
+      return 1;
+    default:
+      error("Invalid type");
       return 0;
   }
 }
@@ -274,14 +294,54 @@ void writeAttribute_s(hid_t grp, const char* name, const char* str) {
 }
 
 /**
+ * @brief Reads the Unit System from an IC file.
+ * @param h_file The (opened) HDF5 file from which to read.
+ * @param us The UnitSystem to fill.
+ *
+ * If the 'Units' group does not exist in the ICs, cgs units will be assumed
+ */
+void readUnitSystem(hid_t h_file, struct UnitSystem* us) {
+
+  hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
+
+  if (h_grp < 0) {
+    message("'Units' group not found in ICs. Assuming CGS unit system.");
+
+    /* Default to CGS */
+    us->UnitMass_in_cgs = 1.;
+    us->UnitLength_in_cgs = 1.;
+    us->UnitTime_in_cgs = 1.;
+    us->UnitCurrent_in_cgs = 1.;
+    us->UnitTemperature_in_cgs = 1.;
+
+    return;
+  }
+
+  /* Ok, Read the damn thing */
+  readAttribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
+                &us->UnitLength_in_cgs);
+  readAttribute(h_grp, "Unit mass in cgs (U_M)", DOUBLE, &us->UnitMass_in_cgs);
+  readAttribute(h_grp, "Unit time in cgs (U_t)", DOUBLE, &us->UnitTime_in_cgs);
+  readAttribute(h_grp, "Unit current in cgs (U_I)", DOUBLE,
+                &us->UnitCurrent_in_cgs);
+  readAttribute(h_grp, "Unit temperature in cgs (U_T)", DOUBLE,
+                &us->UnitTemperature_in_cgs);
+
+  /* Clean up */
+  H5Gclose(h_grp);
+}
+
+/**
  * @brief Writes the current Unit System
  * @param h_file The (opened) HDF5 file in which to write
- * @param us The UnitSystem used in the run
+ * @param us The UnitSystem to dump
+ * @param groupName The name of the HDF5 group to write to
  */
-void writeUnitSystem(hid_t h_file, struct UnitSystem* us) {
-  hid_t h_grpunit = 0;
+void writeUnitSystem(hid_t h_file, const struct UnitSystem* us,
+                     const char* groupName) {
 
-  h_grpunit = H5Gcreate1(h_file, "/Units", 0);
+  hid_t h_grpunit = 0;
+  h_grpunit = H5Gcreate1(h_file, groupName, 0);
   if (h_grpunit < 0) error("Error while creating Unit System group");
 
   writeAttribute_d(h_grpunit, "Unit mass in cgs (U_M)",
@@ -487,8 +547,9 @@ void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
  *
  * @todo Treat the types in a better way.
  */
-void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
-                  char* name, size_t N, int dim, enum DATA_TYPE type) {
+void writeXMFline(FILE* xmfFile, const char* fileName,
+                  const char* partTypeGroupName, const char* name, size_t N,
+                  int dim, enum DATA_TYPE type) {
   fprintf(xmfFile,
           "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",
           name, dim == 1 ? "Scalar" : "Vector");

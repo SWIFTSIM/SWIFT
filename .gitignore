@@ -51,9 +51,16 @@ tests/testTimeIntegration
 tests/testSPHStep
 tests/testKernel
 tests/testKernelGrav
+tests/testFFT
 tests/testParser
 tests/parser_output.yml
-tests/testFFT
+tests/test27cells.sh
+tests/test27cellsPerturbed.sh
+tests/testPair.sh
+tests/testPairPerturbed.sh
+tests/testParser.sh
+tests/testReading.sh
+
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf

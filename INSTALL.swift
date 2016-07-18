@@ -39,7 +39,7 @@ SWIFT has been successfully built and tested with the following compilers:
   - clang 3.4.x 
 
 More recent versions and slightly older ones should also be able to
-built the software.
+build the software.
 
 By default an attempt to choose suitable set of optimizing compiler flags
 will be made, targeted for the host machine of the build. If this doesn't
@@ -66,6 +66,14 @@ for instance. GCC address sanitizer flags can be included using the
     ./configure --enable-sanitizer
 
 option. Note this requires a GCC compiler version of at least 4.8.
+
+By default vectorization is switched on. The highest instruction set
+available on the platform will be automatically used. However, not all
+implementations of SPH available in the code have vectorized
+routines. Vectorization will have to be switched off for these. It can
+also be switched off for benchmarking purposes. To do so, you can use:
+
+    ./configure --disable-vec
 
 
                                  Dependencies

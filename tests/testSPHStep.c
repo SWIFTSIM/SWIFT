@@ -28,22 +28,23 @@
 struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   size_t count = N * N * N;
   struct cell *cell = malloc(sizeof(struct cell));
+  bzero(cell, sizeof(struct cell));
   struct part *part;
   struct xpart *xpart;
   float h;
   size_t x, y, z, size;
 
   size = count * sizeof(struct part);
-  if (posix_memalign((void **)&cell->parts, 32, size) != 0) {
+  if (posix_memalign((void **)&cell->parts, part_align, size) != 0) {
     error("couldn't allocate particles");
   }
 
   size = count * sizeof(struct xpart);
-  if (posix_memalign((void **)&cell->xparts, 32, size) != 0) {
+  if (posix_memalign((void **)&cell->xparts, xpart_align, size) != 0) {
     error("couldn't allocate extended particles");
   }
 
-  h = 1.127 * cellSize / N;
+  h = 1.2348 * cellSize / N;
 
   part = cell->parts;
   xpart = cell->xparts;
@@ -61,6 +62,8 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
         part->h = h;
         part->id = x * N * N + y * N + z + id_offset;
         ++part;
+        part->ti_begin = 0;
+        part->ti_end = 1;
       }
     }
   }
@@ -68,21 +71,34 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   cell->split = 0;
   cell->h_max = h;
   cell->count = count;
+  cell->gcount = 0;
+  cell->dx_max = 0.;
   cell->h[0] = cellSize;
   cell->h[1] = cellSize;
   cell->h[2] = cellSize;
 
+  cell->ti_end_min = 1;
+  cell->ti_end_max = 1;
+
+  cell->sorted = 0;
+  cell->sort = NULL;
+  cell->sortsize = 0;
+
   return cell;
 }
-
-#ifdef DEFAULT_SPH
 
 /* Just a forward declaration... */
 void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_doself2_force(struct runner *r, struct cell *ci);
+void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 
 /* Run a full time step integration for one cell */
 int main() {
+
+#ifndef DEFAULT_SPH
+  return 0;
+#else
 
   int i, j, k, offset[3];
   struct part *p;
@@ -91,6 +107,13 @@ int main() {
   float dim = 1.;
   float rho = 2.;
   float P = 1.;
+
+  /* Initialize CPU frequency, this also starts time. */
+  unsigned long long cpufreq = 0;
+  clocks_set_cpufreq(cpufreq);
+
+  /* Get some randomness going */
+  srand(0);
 
   /* Create cells */
   struct cell *cells[27];
@@ -117,7 +140,13 @@ int main() {
   struct cell *ci = cells[13];
 
   /* Create the infrastructure */
+  struct space space;
+  space.periodic = 0;
+  space.h_max = 1.;
+
   struct engine e;
+  e.s = &space;
+
   struct runner r;
   r.e = &e;
 
@@ -125,29 +154,44 @@ int main() {
   e.timeBegin = 0.;
   e.timeEnd = 1.;
   e.timeOld = 0.;
-  e.time = 0.;
-  e.dt_min = 0.;
-  e.dt_max = 1e10;
+  e.time = 0.1f;
+  e.ti_current = 1;
 
   /* The tracked particle */
   p = &(ci->parts[N * N * N / 2 + N * N / 2 + N / 2]);
 
   message("Studying particle p->id=%lld", p->id);
 
+  /* Sort the particles */
+  for (j = 0; j < 27; ++j) {
+    runner_do_sort(&r, cells[j], 0x1FFF, 0);
+  }
+
+  message("Sorting done");
+
   /* Initialise the particles */
   for (j = 0; j < 27; ++j) {
-    runner_doinit(&r, cells[j], 0);
+    runner_do_init(&r, cells[j], 0);
   }
+
+  message("Init done");
 
   /* Compute density */
   runner_doself1_density(&r, ci);
+  message("Self done");
+  for (int j = 0; j < 27; ++j)
+    if (cells[j] != ci) runner_dopair1_density(&r, ci, cells[j]);
+
+  message("Density done");
+
+  /* Ghost task */
   runner_do_ghost(&r, ci);
 
   message("h=%f rho=%f N_ngb=%f", p->h, p->rho, p->density.wcount);
   message("c=%f", p->force.c);
 
   runner_doself2_force(&r, ci);
-  runner_dokick(&r, ci, 1);
+  runner_do_kick(&r, ci, 1);
 
   message("ti_end=%d", p->ti_end);
 
@@ -155,10 +199,6 @@ int main() {
   free(ci->xparts);
 
   return 0;
-}
-
-#else
-
-int main() { return 0; }
 
 #endif
+}
