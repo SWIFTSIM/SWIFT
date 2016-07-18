@@ -67,6 +67,41 @@ void units_init(struct UnitSystem* us, const struct swift_params* params,
 }
 
 /**
+ * @brief Initialises the UnitSystem structure with the constants given in
+ * rhe parameter file. Uses a default if the values are not present in the file.
+ *
+ * @param us The UnitSystem to initialize.
+ * @param params The parsed parameter file.
+ * @param category The section of the parameter file to read from.
+ * @param def The default unit system to copy from if required.
+ */
+void units_init_default(struct UnitSystem* us,
+                        const struct swift_params* params, const char* category,
+                        const struct UnitSystem* def) {
+
+  if (!def) error("Default UnitSystem not allocated");
+
+  char buffer[200];
+  sprintf(buffer, "%s:UnitMass_in_cgs", category);
+  us->UnitMass_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitMass_in_cgs);
+  sprintf(buffer, "%s:UnitLength_in_cgs", category);
+  us->UnitLength_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitLength_in_cgs);
+  sprintf(buffer, "%s:UnitVelocity_in_cgs", category);
+  const double defaultVelocity = def->UnitLength_in_cgs / def->UnitTime_in_cgs;
+  const double unitVelocity =
+      parser_get_opt_param_double(params, buffer, defaultVelocity);
+  us->UnitTime_in_cgs = us->UnitLength_in_cgs / unitVelocity;
+  sprintf(buffer, "%s:UnitCurrent_in_cgs", category);
+  us->UnitCurrent_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitCurrent_in_cgs);
+  sprintf(buffer, "%s:UnitTemp_in_cgs", category);
+  us->UnitTemperature_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitTemperature_in_cgs);
+}
+
+/**
  * @brief Returns the base unit conversion factor for a given unit system
  * @param us The UnitSystem used
  * @param baseUnit The base unit

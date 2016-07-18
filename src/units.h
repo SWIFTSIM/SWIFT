@@ -94,6 +94,10 @@ enum UnitConversionFactor {
 
 void units_init(struct UnitSystem*, const struct swift_params*,
                 const char* category);
+void units_init_default(struct UnitSystem* us,
+                        const struct swift_params* params, const char* category,
+                        const struct UnitSystem* def);
+
 int units_are_equal(const struct UnitSystem* a, const struct UnitSystem* b);
 
 /* Base units */
