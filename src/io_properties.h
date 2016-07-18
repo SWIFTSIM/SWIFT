@@ -62,7 +62,7 @@ struct io_props {
   /* Conversion function for part */
   float (*convert_part)(struct engine*, struct part*);
 
-  /* Conversion function for part */
+  /* Conversion function for gpart */
   float (*convert_gpart)(struct engine*, struct gpart*);
 };
 
@@ -161,7 +161,6 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
  * @param name Name of the field to read
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
- * @param importance Is this dataset compulsory ?
  * @param units The units of the dataset
  * @param field Pointer to the field of the first particle
  * @param partSize The size in byte of the particle
@@ -194,11 +193,11 @@ struct io_props io_make_output_field_convert_part_(
 /**
  * @brief Constructs an #io_props (with conversion) from its parameters
  */
-#define io_make_output_field_convert_part(name, type, dim, units, part, field, \
-                                          convert)                             \
-  io_make_output_field_convert_part_(name, type, dim, units,                   \
-                                     (char*)(&(part[0]).field),                \
-                                     sizeof(part[0]), part, convert)
+#define io_make_output_field_convert_gpart(name, type, dim, units, part, \
+                                           field, convert)               \
+  io_make_output_field_convert_gpart_(name, type, dim, units,            \
+                                      (char*)(&(part[0]).field),         \
+                                      sizeof(part[0]), gpart, convert)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -206,12 +205,11 @@ struct io_props io_make_output_field_convert_part_(
  * @param name Name of the field to read
  * @param type The type of the data
  * @param dimension Dataset dimension (1D, 3D, ...)
- * @param importance Is this dataset compulsory ?
  * @param units The units of the dataset
  * @param field Pointer to the field of the first particle
  * @param partSize The size in byte of the particle
- * @param parts The particle array
- * @param functionPtr The function used to convert a particle to a float
+ * @param gparts The particle array
+ * @param functionPtr The function used to convert a g-particle to a float
  *
  * Do not call this function directly. Use the macro defined above.
  */
