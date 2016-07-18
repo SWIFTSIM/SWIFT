@@ -53,6 +53,7 @@ tests/testKernel
 tests/testKernelGrav
 tests/testParser
 tests/parser_output.yml
+tests/testFFT
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf
