@@ -70,12 +70,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   for (k = 0; k < 3; k++) curlvr[k] *= ri;
 
   /* Compute density of pi. */
-  h_inv = 1.0 / hi;
+  h_inv = 1.0f / hi;
   xi = r * h_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.0 * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (3.0f * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
@@ -83,12 +83,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   for (k = 0; k < 3; k++) pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
 
   /* Compute density of pj. */
-  h_inv = 1.0 / hj;
+  h_inv = 1.0f / hj;
   xj = r * h_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (3.0 * wj + xj * wj_dx);
+  pj->rho_dh -= mi * (3.0f * wj + xj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
 
@@ -245,12 +245,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
   for (k = 0; k < 3; k++) curlvr[k] *= ri;
 
-  h_inv = 1.0 / hi;
+  h_inv = 1.0f / hi;
   xi = r * h_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.0 * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (3.0f * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
