@@ -228,8 +228,6 @@ void test_nonsym_density_interaction(struct part *parts, int count) {
 /* And go... */
 int main(int argc, char *argv[]) {
   double h = 1.2348, spacing = 0.5;
-  char outputFileNameExtension[200] = "";
-  char vecOutputFileName[200] = "";
   double offset[3] = {0.0,0.0,0.0};
   int vel = velocity_zero;
   int count = VEC_SIZE + 1;
@@ -237,6 +235,37 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
+  char c;
+  while ((c = getopt(argc, argv, "s:h:v:")) != -1) {
+    switch (c) {
+      case 'h':
+        sscanf(optarg, "%lf", &h);
+        break;
+      case 's':
+        sscanf(optarg, "%lf", &spacing);
+        break;
+      case 'v':
+        sscanf(optarg, "%d", &vel);
+        break;
+      case '?':
+        error("Unknown option.");
+        break;
+    }
+  }
+
+  if (h < 0 || spacing < 0) {
+    printf(
+        "\nUsage: %s [OPTIONS...]\n"
+        "\nGenerates a particle array with equal particle separation."
+        "\nThese are then interacted using runner_iact_density and runner_iact_vec_density."
+        "\n\nOptions:"
+        "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
+        "\n-s spacing         - Spacing between particles"
+        "\n-v type (0,1,2,3)  - Velocity field: (zero, random, divergent, "
+        "rotating)",
+        argv[0]);
+    exit(1);
+  }
   /* Help users... */
   message("Smoothing length: h = %f", h);
   message("Kernel:               %s", kernel_name);
