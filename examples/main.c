@@ -358,8 +358,8 @@ int main(int argc, char *argv[]) {
                    &periodic, &flag_entropy_ICs, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #else
-  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
                  MPI_INFO_NULL, dry_run);
 #endif
 #else

@@ -120,7 +120,7 @@ size_t sizeOfType(enum DATA_TYPE type) {
  * Returns an error if the type is not FLOAT or DOUBLE
  */
 int isDoublePrecision(enum DATA_TYPE type) {
-  
+
   switch (type) {
     case FLOAT:
       return 0;

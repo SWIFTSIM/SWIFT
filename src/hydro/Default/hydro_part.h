@@ -80,7 +80,7 @@ struct part {
     float wcount_dh;
 
     /* Particle velocity curl. */
-    float curl_v[3];
+    float rot_v[3];
 
     /* Particle number density. */
     float wcount;

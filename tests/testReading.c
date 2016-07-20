@@ -33,14 +33,18 @@ int main() {
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
 
+  /* Default unit system */
+  struct UnitSystem us;
+  units_init_cgs(&us);
+
   /* Properties of the ICs */
   const double boxSize = 1.;
   const int L = 4;
   const double rho = 2.;
 
   /* Read data */
-  read_ic_single("input.hdf5", dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 &flag_entropy_ICs, 0);
+  read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, 0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);

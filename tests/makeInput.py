@@ -87,6 +87,15 @@ grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp = file.create_group("/RuntimePars")
 grp.attrs["PeriodicBoundariesOn"] = periodic
 
+#Units
+grp = file.create_group("/Units")
+grp.attrs["Unit length in cgs (U_L)"] = 1.
+grp.attrs["Unit mass in cgs (U_M)"] = 1.
+grp.attrs["Unit time in cgs (U_t)"] = 1.
+grp.attrs["Unit current in cgs (U_I)"] = 1.
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+
+
 #Particle group
 grp = file.create_group("/PartType0")
 ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')

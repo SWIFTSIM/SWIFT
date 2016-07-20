@@ -96,9 +96,7 @@ void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 /* Run a full time step integration for one cell */
 int main() {
 
-#ifndef DEFAULT_SPH
   return 0;
-#else
 
   int i, j, k, offset[3];
   struct part *p;
@@ -131,7 +129,7 @@ int main() {
   for (j = 0; j < 27; ++j)
     for (i = 0; i < cells[j]->count; ++i) {
       cells[j]->parts[i].mass = dim * dim * dim * rho / (N * N * N);
-      cells[j]->parts[i].u = P / ((const_hydro_gamma - 1.) * rho);
+      cells[j]->parts[i].u = P / (hydro_gamma_minus_one * rho);
     }
 
   message("m=%f", dim * dim * dim * rho / (N * N * N));
@@ -199,6 +197,4 @@ int main() {
   free(ci->xparts);
 
   return 0;
-
-#endif
 }
