@@ -96,10 +96,16 @@ void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 /* Run a full time step integration for one cell */
 int main() {
 
+#ifndef DEFAULT_SPH
   return 0;
+#else
 
   int i, j, k, offset[3];
   struct part *p;
+  struct hydro_props hp;
+  hp.target_neighbours = 48.;
+  hp.delta_neighbours = 1.;
+  hp.max_smoothing_iterations = 30;
 
   int N = 10;
   float dim = 1.;
@@ -144,6 +150,7 @@ int main() {
 
   struct engine e;
   e.s = &space;
+  e.hydro_properties = &hp;
 
   struct runner r;
   r.e = &e;
@@ -197,4 +204,5 @@ int main() {
   free(ci->xparts);
 
   return 0;
+#endif
 }
