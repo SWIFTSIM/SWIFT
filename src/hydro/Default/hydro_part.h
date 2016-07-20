@@ -69,43 +69,43 @@ struct part {
   float alpha;
 
   /* Store density/force specific stuff. */
-  // union {
+  union {
 
-  struct {
+    struct {
 
-    /* Particle velocity divergence. */
-    float div_v;
+      /* Particle velocity divergence. */
+      float div_v;
 
-    /* Derivative of particle number density. */
-    float wcount_dh;
+      /* Derivative of particle number density. */
+      float wcount_dh;
 
-    /* Particle velocity curl. */
-    float rot_v[3];
+      /* Particle velocity curl. */
+      float rot_v[3];
 
-    /* Particle number density. */
-    float wcount;
+      /* Particle number density. */
+      float wcount;
 
-  } density;
+    } density;
 
-  struct {
+    struct {
 
-    /* Balsara switch */
-    float balsara;
+      /* Balsara switch */
+      float balsara;
 
-    /* Aggregate quantities. */
-    float POrho2;
+      /* Aggregate quantities. */
+      float POrho2;
 
-    /* Change in particle energy over time. */
-    float u_dt;
+      /* Change in particle energy over time. */
+      float u_dt;
 
-    /* Signal velocity */
-    float v_sig;
+      /* Signal velocity */
+      float v_sig;
 
-    /* Sound speed */
-    float c;
+      /* Sound speed */
+      float c;
 
-  } force;
-  //};
+    } force;
+  };
 
   /* Particle mass. */
   float mass;

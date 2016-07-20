@@ -136,15 +136,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float ih = 1.0f / h;
-  const float ih2 = ih * ih;
-  const float ih4 = ih2 * ih2;
 
   /* Pre-compute some stuff for the balsara switch. */
-  const float normDiv_v = fabs(p->density.div_v / p->rho * ih4);
+  const float normDiv_v = fabs(p->density.div_v);
   const float normRot_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
                                 p->density.rot_v[1] * p->density.rot_v[1] +
-                                p->density.rot_v[2] * p->density.rot_v[2]) /
-                          p->rho * ih4;
+                                p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute this particle's sound speed. */
   const float u = p->u;
