@@ -87,8 +87,8 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
       p->div_v, p->density.rot_v[0],
       p->density.rot_v[1], p->density.rot_v[2]
 #elif defined(DEFAULT_SPH)
-      p->density.div_v, p->density.curl_v[0],
-      p->density.curl_v[1], p->density.curl_v[2]
+      p->density.div_v, p->density.rot_v[0],
+      p->density.rot_v[1], p->density.rot_v[2]
 #else
       0., 0., 0., 0.
 #endif
