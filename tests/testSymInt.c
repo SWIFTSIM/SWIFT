@@ -24,13 +24,6 @@
 #include <unistd.h>
 #include "swift.h"
 
-enum velocity_types {
-  velocity_zero,
-  velocity_random,
-  velocity_divergent,
-  velocity_rotating
-};
-
 char *serial_filename = "test_sym_serial.dat";
 char *vec_filename = "test_sym_vec.dat";
 
@@ -47,7 +40,7 @@ char *vec_filename = "test_sym_vec.dat";
  * @param vel The type of velocity field (0, random, divergent, rotating)
  */
 struct part *make_particles(int count, double *offset, double spacing, double h, 
-                            long long *partId, enum velocity_types vel) {
+                            long long *partId) {
  
   struct part *particles;
   if (posix_memalign((void **)&particles, part_align,
@@ -62,28 +55,9 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
     p->x[0] = offset[0] + spacing * i;
     p->x[1] = offset[1] + spacing * i;
     p->x[2] = offset[2] + spacing * i;
-    switch (vel) {
-      case velocity_zero:
-        p->v[0] = 0.f;
-        p->v[1] = 0.f;
-        p->v[2] = 0.f;
-        break;
-      case velocity_random:
-        p->v[0] = random_uniform(-0.05, 0.05);
-        p->v[1] = random_uniform(-0.05, 0.05);
-        p->v[2] = random_uniform(-0.05, 0.05);
-        break;
-      case velocity_divergent:
-        p->v[0] = p->x[0] - 1.5 * spacing;
-        p->v[1] = p->x[1] - 1.5 * spacing;
-        p->v[2] = p->x[2] - 1.5 * spacing;
-        break;
-      case velocity_rotating:
-        p->v[0] = p->x[1];
-        p->v[1] = -p->x[0];
-        p->v[2] = 0.f;
-        break;
-    }
+    p->v[0] = random_uniform(-0.05, 0.05);
+    p->v[1] = random_uniform(-0.05, 0.05);
+    p->v[2] = random_uniform(-0.05, 0.05);
     p->h = h;
     p->id = ++(*partId);
     p->mass = 1.0f;
@@ -106,9 +80,12 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
       p->x[2], p->v[0], p->v[1],
       p->v[2], p->rho, p->rho_dh,
       p->density.wcount, p->density.wcount_dh,
-#ifdef GADGET2_SPH
+#if defined(GADGET2_SPH)
       p->div_v, p->density.rot_v[0],
       p->density.rot_v[1], p->density.rot_v[2]
+#elif defined(DEFAULT_SPH)
+      p->density.div_v, p->density.curl_v[0],
+      p->density.curl_v[1], p->density.curl_v[2]
 #else
       0., 0., 0., 0.
 #endif
@@ -229,7 +206,6 @@ void test_sym_density_interaction(struct part *parts, int count) {
 int main(int argc, char *argv[]) {
   double h = 1.2348, spacing = 0.5;
   double offset[3] = {0.0,0.0,0.0};
-  int vel = velocity_zero;
   int count = VEC_SIZE + 1;
 
   /* Get some randomness going */
@@ -243,9 +219,6 @@ int main(int argc, char *argv[]) {
         break;
       case 's':
         sscanf(optarg, "%lf", &spacing);
-        break;
-      case 'v':
-        sscanf(optarg, "%d", &vel);
         break;
       case '?':
         error("Unknown option.");
@@ -266,18 +239,10 @@ int main(int argc, char *argv[]) {
         argv[0]);
     exit(1);
   }
-  /* Help users... */
-  message("Smoothing length: h = %f", h);
-  message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f",
-          h * h * h * 4.0 * M_PI * kernel_gamma3 / 3.0);
-  message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
-  message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
-  printf("\n");
-
+  
   /* Build the infrastructure */
   static long long partId = 0;
-  struct part *particles = make_particles(count,offset,spacing,h,&partId,vel);
+  struct part *particles = make_particles(count,offset,spacing,h,&partId);
 
   /* Call the test non-sym density test. */
   test_sym_density_interaction(particles,count);
