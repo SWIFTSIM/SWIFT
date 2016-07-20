@@ -28,8 +28,8 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    const struct part* p, const struct xpart* xp,
-    const struct hydro_props* hydro_properties) {
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct hydro_props *restrict hydro_properties) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
@@ -55,7 +55,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
-    struct part* p, struct xpart* xp) {}
+    struct part *restrict p, struct xpart *restrict xp) {}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -66,15 +66,15 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part* p) {
+    struct part *restrict p) {
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->rho_dh = 0.f;
   p->density.div_v = 0.f;
-  p->density.curl_v[0] = 0.f;
-  p->density.curl_v[1] = 0.f;
-  p->density.curl_v[2] = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -87,7 +87,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * @param time The current time
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part* p, float time) {
+    struct part *restrict p, float time) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -110,6 +110,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Compute the derivative term */
   p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh * irho);
+
+  /* Finish calculation of the velocity curl components */
+  p->density.rot_v[0] *= ih4 * irho;
+  p->density.rot_v[1] *= ih4 * irho;
+  p->density.rot_v[2] *= ih4 * irho;
+
+  /* Finish calculation of the velocity divergence */
+  p->density.div_v *= ih4 * irho;
 }
 
 /**
@@ -122,7 +130,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param time The current time
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* p, struct xpart* xp, int ti_current, double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp, int ti_current,
+    double timeBase) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -132,10 +141,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Pre-compute some stuff for the balsara switch. */
   const float normDiv_v = fabs(p->density.div_v / p->rho * ih4);
-  const float normCurl_v = sqrtf(p->density.curl_v[0] * p->density.curl_v[0] +
-                                 p->density.curl_v[1] * p->density.curl_v[1] +
-                                 p->density.curl_v[2] * p->density.curl_v[2]) /
-                           p->rho * ih4;
+  const float normRot_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                                p->density.rot_v[1] * p->density.rot_v[1] +
+                                p->density.rot_v[2] * p->density.rot_v[2]) /
+                          p->rho * ih4;
 
   /* Compute this particle's sound speed. */
   const float u = p->u;
@@ -146,7 +155,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.POrho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
 
   /* Balsara switch */
-  p->force.balsara = normDiv_v / (normDiv_v + normCurl_v + 0.0001f * fc * ih);
+  p->force.balsara = normDiv_v / (normDiv_v + normRot_v + 0.0001f * fc * ih);
 
   /* Viscosity parameter decay time */
   const float tau = h / (2.f * const_viscosity_length * p->force.c);
@@ -171,7 +180,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
-    struct part* p) {
+    struct part *restrict p) {
 
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
@@ -194,7 +203,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp, int t0, int t1,
+    double timeBase) {
   float u, w;
 
   const float dt = (t1 - t0) * timeBase;
@@ -218,7 +228,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part* p) {}
+    struct part *restrict p) {}
 
 /**
  * @brief Kick the additional variables
@@ -229,17 +239,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {}
+    struct part *restrict p, struct xpart *restrict xp, float dt,
+    float half_dt) {}
 
 /**
- * @brief Converts hydro quantity of a particle
+ *  @brief Converts hydro quantity of a particle at the start of a run
  *
  * Requires the density to be known
  *
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p) {}
+    struct part *restrict p) {}
 
 /**
  * @brief Returns the internal energy of a particle
@@ -248,7 +259,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part* p, float dt) {
+    const struct part *restrict p, float dt) {
 
   return p->u;
 }

@@ -38,9 +38,9 @@
 #include "common_io.h"
 #include "engine.h"
 #include "error.h"
-#include "hydro_properties.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "hydro_properties.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
@@ -609,6 +609,39 @@ void write_output_single(struct engine* e, const char* baseName,
 
   /* Print the system of Units used internally */
   writeUnitSystem(h_file, internal_units, "InternalCodeUnits");
+
+  /* Tell the user if a conversion will be needed */
+  if (e->verbose) {
+    if (units_are_equal(snapshot_units, internal_units)) {
+
+      message("Snapshot and internal units match. No conversion needed.");
+
+    } else {
+
+      message("Conversion needed from:");
+      message("(Snapshot) Unit system: U_M =      %e g.",
+              snapshot_units->UnitMass_in_cgs);
+      message("(Snapshot) Unit system: U_L =      %e cm.",
+              snapshot_units->UnitLength_in_cgs);
+      message("(Snapshot) Unit system: U_t =      %e s.",
+              snapshot_units->UnitTime_in_cgs);
+      message("(Snapshot) Unit system: U_I =      %e A.",
+              snapshot_units->UnitCurrent_in_cgs);
+      message("(Snapshot) Unit system: U_T =      %e K.",
+              snapshot_units->UnitTemperature_in_cgs);
+      message("to:");
+      message("(internal) Unit system: U_M = %e g.",
+              internal_units->UnitMass_in_cgs);
+      message("(internal) Unit system: U_L = %e cm.",
+              internal_units->UnitLength_in_cgs);
+      message("(internal) Unit system: U_t = %e s.",
+              internal_units->UnitTime_in_cgs);
+      message("(internal) Unit system: U_I = %e A.",
+              internal_units->UnitCurrent_in_cgs);
+      message("(internal) Unit system: U_T = %e K.",
+              internal_units->UnitTemperature_in_cgs);
+    }
+  }
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
