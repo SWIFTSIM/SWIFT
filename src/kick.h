@@ -33,9 +33,8 @@
  * @param new_dti The (integer) time-step for this kick.
  * @param timeBase The minimal allowed time-step size.
  */
-__attribute__((always_inline)) INLINE static void kick_gpart(struct gpart* gp,
-                                                             int new_dti,
-                                                             double timeBase) {
+__attribute__((always_inline)) INLINE static void kick_gpart(
+    struct gpart *restrict gp, int new_dti, double timeBase) {
 
   /* Compute the time step for this kick */
   const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
@@ -64,10 +63,9 @@ __attribute__((always_inline)) INLINE static void kick_gpart(struct gpart* gp,
  * @param new_dti The (integer) time-step for this kick.
  * @param timeBase The minimal allowed time-step size.
  */
-__attribute__((always_inline)) INLINE static void kick_part(struct part* p,
-                                                            struct xpart* xp,
-                                                            int new_dti,
-                                                            double timeBase) {
+__attribute__((always_inline)) INLINE static void kick_part(
+    struct part *restrict p, struct xpart *restrict xp, int new_dti,
+    double timeBase) {
 
   /* Compute the time step for this kick */
   const int ti_start = (p->ti_begin + p->ti_end) / 2;

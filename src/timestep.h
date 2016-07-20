@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE static int get_integer_timestep(
  * @param e The #engine (used to get some constants).
  */
 __attribute__((always_inline)) INLINE static int get_gpart_timestep(
-    const struct gpart *gp, const struct engine *e) {
+    const struct gpart *restrict gp, const struct engine *restrict e) {
 
   const float new_dt_external = gravity_compute_timestep_external(
       e->external_potential, e->physical_constants, gp);
@@ -94,7 +94,8 @@ __attribute__((always_inline)) INLINE static int get_gpart_timestep(
  * @param e The #engine (used to get some constants).
  */
 __attribute__((always_inline)) INLINE static int get_part_timestep(
-    const struct part *p, const struct xpart *xp, const struct engine *e) {
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct engine *restrict e) {
 
   /* Compute the next timestep (hydro condition) */
   const float new_dt_hydro = hydro_compute_timestep(p, xp, e->hydro_properties);

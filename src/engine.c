@@ -2672,7 +2672,7 @@ void engine_dump_snapshot(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  if (e->verbose) message("writing snapshot at t=%f.", e->time);
+  if (e->verbose) message("writing snapshot at t=%e.", e->time);
 
 /* Dump... */
 #if defined(WITH_MPI)
@@ -2808,7 +2808,7 @@ void engine_init(struct engine *e, struct space *s,
   e->ti_nextSnapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
   e->snapshotUnits = malloc(sizeof(struct UnitSystem));
-  units_init(e->snapshotUnits, params, "Snapshots");
+  units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->file_stats = NULL;
@@ -3228,6 +3228,6 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     const float next_snapshot_time =
         e->ti_nextSnapshot * e->timeBase + e->timeBegin;
     if (e->verbose)
-      message("Next output time set to t=%f.", next_snapshot_time);
+      message("Next output time set to t=%e.", next_snapshot_time);
   }
 }

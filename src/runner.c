@@ -119,7 +119,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   for (int i = 0; i < gcount; i++) {
 
     /* Get a direct pointer on the part. */
-    struct gpart *const g = &gparts[i];
+    struct gpart *restrict g = &gparts[i];
 
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
@@ -371,8 +371,8 @@ void runner_do_sort(struct runner *r, struct cell *c, int flags, int clock) {
  */
 void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
-  struct part *const parts = c->parts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct gpart *restrict gparts = c->gparts;
   const int count = c->count;
   const int gcount = c->gcount;
   const int ti_current = r->e->ti_current;
@@ -390,7 +390,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      struct part *const p = &parts[i];
+      struct part *restrict p = &parts[i];
 
       if (p->ti_end <= ti_current) {
 
@@ -403,7 +403,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < gcount; i++) {
 
       /* Get a direct pointer on the part. */
-      struct gpart *const gp = &gparts[i];
+      struct gpart *restrict gp = &gparts[i];
 
       if (gp->ti_end <= ti_current) {
 
@@ -588,9 +588,9 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
   const int ti_old = r->e->ti_old;
   const int ti_current = r->e->ti_current;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
@@ -611,7 +611,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
-      struct gpart *const gp = &gparts[k];
+      struct gpart *restrict gp = &gparts[k];
 
       /* Drift... */
       drift_gpart(gp, dt, timeBase, ti_old, ti_current);
@@ -628,8 +628,8 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
@@ -684,7 +684,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) {
 
         /* Recurse */
-        struct cell *cp = c->progeny[k];
+        struct cell *restrict cp = c->progeny[k];
         runner_do_drift(r, cp, 0);
 
         /* Collect */
@@ -734,9 +734,9 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
   const double timeBase = r->e->timeBase;
   const int count = c->count;
   const int gcount = c->gcount;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -757,7 +757,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
-      struct gpart *const gp = &gparts[k];
+      struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
       if (gp->id_or_neg_offset > 0) {
@@ -783,8 +783,8 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* First, finish the force loop */
       p->h_dt *= p->h * 0.333333333f;
@@ -812,7 +812,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        struct cell *const cp = c->progeny[k];
+        struct cell *restrict cp = c->progeny[k];
 
         /* Recurse */
         runner_do_kick_fixdt(r, cp, 0);
@@ -849,9 +849,9 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   const int ti_current = r->e->ti_current;
   const int count = c->count;
   const int gcount = c->gcount;
-  struct part *const parts = c->parts;
-  struct xpart *const xparts = c->xparts;
-  struct gpart *const gparts = c->gparts;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
+  struct gpart *restrict gparts = c->gparts;
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -869,7 +869,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
-      struct gpart *const gp = &gparts[k];
+      struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id_or_neg_offset > 0) {
@@ -901,8 +901,8 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* If particle needs to be kicked */
       if (p->ti_end <= ti_current) {
@@ -937,7 +937,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        struct cell *const cp = c->progeny[k];
+        struct cell *restrict cp = c->progeny[k];
 
         /* Recurse */
         runner_do_kick(r, cp, 0);
@@ -968,8 +968,8 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
 
-  const struct part *const parts = c->parts;
-  const struct gpart *const gparts = c->gparts;
+  const struct part *restrict parts = c->parts;
+  const struct gpart *restrict gparts = c->gparts;
   const size_t nr_parts = c->count;
   const size_t nr_gparts = c->gcount;
   // const int ti_current = r->e->ti_current;
