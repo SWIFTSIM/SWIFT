@@ -65,7 +65,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->rho_dh = 0.f;
-  p->div_v = 0.f;
+  p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rot_v[2] *= ih4 * irho;
 
   /* Finish calculation of the velocity divergence */
-  p->div_v *= ih4 * irho;
+  p->density.div_v *= ih4 * irho;
 }
 
 /**
@@ -128,17 +128,31 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp, int ti_current,
     double timeBase) {
 
+  const float fac_mu = 1.f; /* Will change with cosmological integration */
+
   /* Compute the norm of the curl */
-  p->force.curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                          p->density.rot_v[1] * p->density.rot_v[1] +
-                          p->density.rot_v[2] * p->density.rot_v[2]);
+  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                             p->density.rot_v[1] * p->density.rot_v[1] +
+                             p->density.rot_v[2] * p->density.rot_v[2]);
 
   /* Compute the pressure */
-  const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
-  p->force.pressure = (p->entropy + p->entropy_dt * dt) * pow_gamma(p->rho);
+  const float dt = (ti_current - (p->ti_begin + p->ti_end) * 0.5f) * timeBase;
+  const float pressure = (p->entropy + p->force.entropy_dt * dt) * pow_gamma(p->rho);
+  
+  /* Divide the pressure by the density and density gradient */
+  const float P_over_rho = pressure / (p->rho * p->rho) * p->rho_dh;
 
   /* Compute the sound speed */
-  p->force.soundspeed = sqrtf(hydro_gamma * p->force.pressure / p->rho);
+  const float soundspeed = sqrtf(hydro_gamma * pressure / p->rho);
+  
+  /* Compute the Balsara switch */
+  float balsara = fabsf(p->density.div_v) /
+      (fabsf(p->density.div_v) + curl_v + 0.0001f * p->force.soundspeed / fac_mu / p->h);
+  
+  /* Update variables. */
+  p->force.P_over_rho = P_over_rho;
+  p->force.soundspeed = soundspeed;
+  p->force.balsara = balsara;
 }
 
 /**
@@ -160,7 +174,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->h_dt = 0.0f;
 
   /* Reset the time derivatives. */
-  p->entropy_dt = 0.0f;
+  p->force.entropy_dt = 0.0f;
 
   /* Reset maximal signal velocity */
   p->force.v_sig = 0.0f;
@@ -181,11 +195,18 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
-  p->force.pressure =
-      (p->entropy + p->entropy_dt * dt_entr) * pow_gamma(p->rho);
+  const float pressure =
+            (p->entropy + p->force.entropy_dt * dt_entr) * pow_gamma(p->rho);
 
+  /* Divide the pressure by the density and density gradient */
+  const float P_over_rho = pressure / (p->rho * p->rho) * p->rho_dh;
+  
   /* Compute the new sound speed */
-  p->force.soundspeed = sqrtf(hydro_gamma * p->force.pressure / p->rho);
+  const float soundspeed = sqrtf(hydro_gamma * pressure / p->rho);
+
+  /* Update variables */
+  p->force.P_over_rho = P_over_rho;
+  p->force.soundspeed = soundspeed;
 }
 
 /**
@@ -198,7 +219,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p) {
 
-  p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
+  p->force.entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
 }
 
 /**
@@ -214,15 +235,15 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float half_dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
-  const float entropy_change = p->entropy_dt * dt;
+  const float entropy_change = p->force.entropy_dt * dt;
   if (entropy_change > -0.5f * p->entropy)
     p->entropy += entropy_change;
   else
     p->entropy *= 0.5f;
 
   /* Do not 'overcool' when timestep increases */
-  if (p->entropy + 0.5f * p->entropy_dt * dt < 0.5f * p->entropy)
-    p->entropy_dt = -0.5f * p->entropy / dt;
+  if (p->entropy + 0.5f * p->force.entropy_dt * dt < 0.5f * p->entropy)
+    p->force.entropy_dt = -0.5f * p->entropy / dt;
 }
 
 /**
@@ -248,7 +269,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part *restrict p, float dt) {
 
-  const float entropy = p->entropy + p->entropy_dt * dt;
+  const float entropy = p->entropy + p->force.entropy_dt * dt;
 
   return entropy * pow_gamma_minus_one(p->rho) * hydro_one_over_gamma_minus_one;
 }

@@ -86,8 +86,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   dv[2] = pi->v[2] - pj->v[2];
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
-  pi->div_v -= faci * dvdr;
-  pj->div_v -= facj * dvdr;
+  pi->density.div_v -= faci * dvdr;
+  pj->density.div_v -= facj * dvdr;
 
   /* Compute dv cross r */
   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
@@ -209,13 +209,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->div_v -= div_vi.f[k];
+    pi[k]->density.div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += curl_vi[j].f[k];
     pj[k]->rho += rhoj.f[k];
     pj[k]->rho_dh -= rhoj_dh.f[k];
     pj[k]->density.wcount += wcountj.f[k];
     pj[k]->density.wcount_dh -= wcountj_dh.f[k];
-    pj[k]->div_v -= div_vj.f[k];
+    pj[k]->density.div_v -= div_vj.f[k];
     for (j = 0; j < 3; j++) pj[k]->density.rot_v[j] += curl_vj[j].f[k];
   }
 
@@ -263,7 +263,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
   const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
-  pi->div_v -= fac * dvdr;
+  pi->density.div_v -= fac * dvdr;
 
   /* Compute dv cross r */
   curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
@@ -363,7 +363,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->div_v -= div_vi.f[k];
+    pi[k]->density.div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += curl_vi[j].f[k];
   }
 
@@ -393,8 +393,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float pressurei = pi->force.pressure;
-  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -411,8 +409,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
-  const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
+  const float P_over_rho_i = pi->force.P_over_rho;
+  const float P_over_rho_j = pj->force.P_over_rho;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -424,13 +422,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Balsara term */
-  const float balsara_i =
-      fabsf(pi->div_v) /
-      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001f * ci / fac_mu / hi);
-  const float balsara_j =
-      fabsf(pj->div_v) /
-      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001f * cj / fac_mu / hj);
-
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara;
+  
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
@@ -468,8 +462,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
-  pj->entropy_dt -= 0.5f * mi * visc_term * dvdr;
+  pi->force.entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pj->force.entropy_dt -= 0.5f * mi * visc_term * dvdr;
 }
 
 /**
@@ -501,8 +495,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float pressurei = pi->force.pressure;
-  const float pressurej = pj->force.pressure;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -519,8 +511,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
-  const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
+  const float P_over_rho_i = pi->force.P_over_rho;
+  const float P_over_rho_j = pj->force.P_over_rho;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -532,12 +524,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Balsara term */
-  const float balsara_i =
-      fabsf(pi->div_v) /
-      (fabsf(pi->div_v) + pi->force.curl_v + 0.0001f * ci / fac_mu / hi);
-  const float balsara_j =
-      fabsf(pj->div_v) /
-      (fabsf(pj->div_v) + pj->force.curl_v + 0.0001f * cj / fac_mu / hj);
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
@@ -570,7 +558,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pi->force.entropy_dt += 0.5f * mj * visc_term * dvdr;
 }
 
 /**
