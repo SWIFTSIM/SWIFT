@@ -27,8 +27,8 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    const struct part* p, const struct xpart* xp,
-    const struct hydro_props* hydro_properties) {
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct hydro_props *restrict hydro_properties) {
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
@@ -49,7 +49,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
-    struct part* p, struct xpart* xp) {}
+    struct part *restrict p, struct xpart *restrict xp) {}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part* p) {
+    struct part *restrict p) {
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  * @param ti_current The current time (on the integer timeline)
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part* p, int ti_current) {
+    struct part *restrict p, int ti_current) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -125,7 +125,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* p, struct xpart* xp, int ti_current, double timeBase) {
+    struct part *restrict p, struct xpart *restrict xp, int ti_current,
+    double timeBase) {
 
   /* Compute the norm of the curl */
   p->force.curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
@@ -149,7 +150,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
-    struct part* p) {
+    struct part *restrict p) {
 
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
@@ -175,7 +176,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
+    struct part *restrict p, const struct xpart *restrict xp, int t0, int t1,
+    double timeBase) {
 
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
@@ -194,7 +196,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part* p) {
+    struct part *restrict p) {
 
   p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
 }
@@ -208,7 +210,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt The half time-step for this kick
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {
+    struct part *restrict p, struct xpart *restrict xp, float dt,
+    float half_dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
   const float entropy_change = p->entropy_dt * dt;
@@ -223,14 +226,14 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 }
 
 /**
- * @brief Converts hydro quantity of a particle
+ *  @brief Converts hydro quantity of a particle at the start of a run
  *
  * Requires the density to be known
  *
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p) {
+    struct part *restrict p) {
 
   p->entropy =
       hydro_gamma_minus_one * p->entropy * pow_minus_gamma_minus_one(p->rho);
@@ -243,7 +246,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param dt Time since the last kick
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part* p, float dt) {
+    const struct part *restrict p, float dt) {
 
   const float entropy = p->entropy + p->entropy_dt * dt;
 
