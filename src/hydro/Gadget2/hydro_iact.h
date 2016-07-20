@@ -147,6 +147,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   }
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k]);
+#else
+  error("Unknown vector size.")
 #endif
 
   /* Get the radius and inverse radius. */
@@ -207,19 +209,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->div_v += div_vi.f[k];
+    pi[k]->div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += curl_vi[j].f[k];
     pj[k]->rho += rhoj.f[k];
     pj[k]->rho_dh -= rhoj_dh.f[k];
     pj[k]->density.wcount += wcountj.f[k];
     pj[k]->density.wcount_dh -= wcountj_dh.f[k];
-    pj[k]->div_v += div_vj.f[k];
+    pj[k]->div_v -= div_vj.f[k];
     for (j = 0; j < 3; j++) pj[k]->density.rot_v[j] += curl_vj[j].f[k];
   }
 
 #else
 
-  for (int k = 0; k < VEC_SIZE; k++)
     error("The Gadget2 serial version of runner_iact_density was called when the vectorised version should have been used.")
 
 #endif
@@ -315,6 +316,8 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   }
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k]);
+#else
+  error("Unknown vector size.")
 #endif
 
   /* Get the radius and inverse radius. */
@@ -360,18 +363,15 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->div_v += div_vi.f[k];
+    pi[k]->div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += curl_vi[j].f[k];
   }
 
 #else
 
-  for (int k = 0; k < VEC_SIZE; k++)
     error("The Gadget2 serial version of runner_iact_nonsym_density was called when the vectorised version should have been used.")
 
 #endif
-
-
 
 }
 
