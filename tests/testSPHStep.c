@@ -131,7 +131,7 @@ int main() {
   for (j = 0; j < 27; ++j)
     for (i = 0; i < cells[j]->count; ++i) {
       cells[j]->parts[i].mass = dim * dim * dim * rho / (N * N * N);
-      cells[j]->parts[i].u = P / ((const_hydro_gamma - 1.) * rho);
+      cells[j]->parts[i].u = P / (hydro_gamma_minus_one * rho);
     }
 
   message("m=%f", dim * dim * dim * rho / (N * N * N));
