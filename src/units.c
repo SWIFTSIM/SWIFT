@@ -41,6 +41,21 @@
 #include "const.h"
 #include "error.h"
 
+
+/**
+ * @brief Initialises the UnitSystem structure with CGS system
+ *
+ * @param us The UnitSystem to initialize
+ */
+void units_init_cgs(struct UnitSystem* us) {
+
+  us->UnitMass_in_cgs = 1.;
+  us->UnitLength_in_cgs = 1.;
+  us->UnitTime_in_cgs = 1.;
+  us->UnitCurrent_in_cgs = 1.;
+  us->UnitTemperature_in_cgs = 1.;
+}
+
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
  * rhe parameter file.
