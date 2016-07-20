@@ -72,9 +72,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->rho = 0.f;
   p->rho_dh = 0.f;
   p->density.div_v = 0.f;
-  p->density.curl_v[0] = 0.f;
-  p->density.curl_v[1] = 0.f;
-  p->density.curl_v[2] = 0.f;
+  p->density.rot_v[0] = 0.f;
+  p->density.rot_v[1] = 0.f;
+  p->density.rot_v[2] = 0.f;
 }
 
 /**
@@ -110,6 +110,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Compute the derivative term */
   p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh * irho);
+
+  /* Finish calculation of the velocity curl components */
+  p->density.rot_v[0] *= ih4 * irho;
+  p->density.rot_v[1] *= ih4 * irho;
+  p->density.rot_v[2] *= ih4 * irho;
+
+  /* Finish calculation of the velocity divergence */
+  p->density.div_v *= ih4 * irho;
 }
 
 /**
@@ -133,9 +141,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Pre-compute some stuff for the balsara switch. */
   const float normDiv_v = fabs(p->density.div_v / p->rho * ih4);
-  const float normCurl_v = sqrtf(p->density.curl_v[0] * p->density.curl_v[0] +
-                                 p->density.curl_v[1] * p->density.curl_v[1] +
-                                 p->density.curl_v[2] * p->density.curl_v[2]) /
+  const float normRot_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                                 p->density.rot_v[1] * p->density.rot_v[1] +
+                                 p->density.rot_v[2] * p->density.rot_v[2]) /
                            p->rho * ih4;
 
   /* Compute this particle's sound speed. */
@@ -147,7 +155,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.POrho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
 
   /* Balsara switch */
-  p->force.balsara = normDiv_v / (normDiv_v + normCurl_v + 0.0001f * fc * ih);
+  p->force.balsara = normDiv_v / (normDiv_v + normRot_v + 0.0001f * fc * ih);
 
   /* Viscosity parameter decay time */
   const float tau = h / (2.f * const_viscosity_length * p->force.c);

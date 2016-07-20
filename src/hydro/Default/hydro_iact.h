@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount_dh -= xi * wi_dx;
 
   pi->density.div_v += mj * dvdr * wi_dx;
-  for (k = 0; k < 3; k++) pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
+  for (k = 0; k < 3; k++) pi->density.rot_v[k] += mj * curlvr[k] * wi_dx;
 
   /* Compute density of pj. */
   h_inv = 1.0 / hj;
@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= xj * wj_dx;
 
   pj->density.div_v += mi * dvdr * wj_dx;
-  for (k = 0; k < 3; k++) pj->density.curl_v[k] += mi * curlvr[k] * wj_dx;
+  for (k = 0; k < 3; k++) pj->density.rot_v[k] += mi * curlvr[k] * wj_dx;
 }
 
 /**
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   vector dx[3], dv[3];
   vector vi[3], vj[3];
   vector dvdr, div_vi, div_vj;
-  vector curlvr[3], curl_vi[3], curl_vj[3];
+  vector curlvr[3], rot_vi[3], rot_vj[3];
   int k, j;
 
 #if VEC_SIZE == 8
@@ -178,14 +178,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   wcounti.v = wi.v;
   wcounti_dh.v = xi.v * wi_dx.v;
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
-  for (k = 0; k < 3; k++) curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
+  for (k = 0; k < 3; k++) rot_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
 
   rhoj.v = mi.v * wj.v;
   rhoj_dh.v = mi.v * (vec_set1(3.0f) * wj.v + xj.v * wj_dx.v);
   wcountj.v = wj.v;
   wcountj_dh.v = xj.v * wj_dx.v;
   div_vj.v = mi.v * dvdr.v * wj_dx.v;
-  for (k = 0; k < 3; k++) curl_vj[k].v = mi.v * curlvr[k].v * wj_dx.v;
+  for (k = 0; k < 3; k++) rot_vj[k].v = mi.v * curlvr[k].v * wj_dx.v;
 
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
@@ -193,13 +193,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
     pi[k]->density.div_v += div_vi.f[k];
-    for (j = 0; j < 3; j++) pi[k]->density.curl_v[j] += curl_vi[j].f[k];
+    for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += rot_vi[j].f[k];
     pj[k]->rho += rhoj.f[k];
     pj[k]->rho_dh -= rhoj_dh.f[k];
     pj[k]->density.wcount += wcountj.f[k];
     pj[k]->density.wcount_dh -= wcountj_dh.f[k];
     pj[k]->density.div_v += div_vj.f[k];
-    for (j = 0; j < 3; j++) pj[k]->density.curl_v[j] += curl_vj[j].f[k];
+    for (j = 0; j < 3; j++) pj[k]->density.rot_v[j] += rot_vj[j].f[k];
   }
 
 #else
@@ -255,7 +255,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount_dh -= xi * wi_dx;
 
   pi->density.div_v += mj * dvdr * wi_dx;
-  for (k = 0; k < 3; k++) pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
+  for (k = 0; k < 3; k++) pi->density.rot_v[k] += mj * curlvr[k] * wi_dx;
 }
 
 /**
@@ -273,7 +273,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   vector dx[3], dv[3];
   vector vi[3], vj[3];
   vector dvdr;
-  vector curlvr[3], curl_vi[3];
+  vector curlvr[3], rot_vi[3];
   int k, j;
 
 #if VEC_SIZE == 8
@@ -331,7 +331,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   wcounti.v = wi.v;
   wcounti_dh.v = xi.v * wi_dx.v;
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
-  for (k = 0; k < 3; k++) curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
+  for (k = 0; k < 3; k++) rot_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
 
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
@@ -339,7 +339,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
     pi[k]->density.div_v += div_vi.f[k];
-    for (j = 0; j < 3; j++) pi[k]->density.curl_v[j] += curl_vi[j].f[k];
+    for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += rot_vi[j].f[k];
   }
 
 #else
