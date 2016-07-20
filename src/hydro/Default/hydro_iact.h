@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
-  pi->density.div_v += mj * dvdr * wi_dx;
+  pi->density.div_v -= mj * dvdr * wi_dx;
   for (k = 0; k < 3; k++) pi->density.rot_v[k] += mj * curlvr[k] * wi_dx;
 
   /* Compute density of pj. */
@@ -92,7 +92,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
 
-  pj->density.div_v += mi * dvdr * wj_dx;
+  pj->density.div_v -= mi * dvdr * wj_dx;
   for (k = 0; k < 3; k++) pj->density.rot_v[k] += mi * curlvr[k] * wj_dx;
 }
 
@@ -192,13 +192,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->density.div_v += div_vi.f[k];
+    pi[k]->density.div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += rot_vi[j].f[k];
     pj[k]->rho += rhoj.f[k];
     pj[k]->rho_dh -= rhoj_dh.f[k];
     pj[k]->density.wcount += wcountj.f[k];
     pj[k]->density.wcount_dh -= wcountj_dh.f[k];
-    pj[k]->density.div_v += div_vj.f[k];
+    pj[k]->density.div_v -= div_vj.f[k];
     for (j = 0; j < 3; j++) pj[k]->density.rot_v[j] += rot_vj[j].f[k];
   }
 
@@ -254,7 +254,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
-  pi->density.div_v += mj * dvdr * wi_dx;
+  pi->density.div_v -= mj * dvdr * wi_dx;
   for (k = 0; k < 3; k++) pi->density.rot_v[k] += mj * curlvr[k] * wi_dx;
 }
 
@@ -338,7 +338,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->density.div_v += div_vi.f[k];
+    pi[k]->density.div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += rot_vi[j].f[k];
   }
 
