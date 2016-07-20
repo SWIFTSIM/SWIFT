@@ -96,9 +96,7 @@ void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 /* Run a full time step integration for one cell */
 int main() {
 
-#ifndef DEFAULT_SPH
   return 0;
-#else
 
   int i, j, k, offset[3];
   struct part *p;
@@ -199,6 +197,4 @@ int main() {
   free(ci->xparts);
 
   return 0;
-
-#endif
 }

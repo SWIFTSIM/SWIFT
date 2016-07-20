@@ -142,9 +142,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Pre-compute some stuff for the balsara switch. */
   const float normDiv_v = fabs(p->density.div_v / p->rho * ih4);
   const float normRot_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                                 p->density.rot_v[1] * p->density.rot_v[1] +
-                                 p->density.rot_v[2] * p->density.rot_v[2]) /
-                           p->rho * ih4;
+                                p->density.rot_v[1] * p->density.rot_v[1] +
+                                p->density.rot_v[2] * p->density.rot_v[2]) /
+                          p->rho * ih4;
 
   /* Compute this particle's sound speed. */
   const float u = p->u;

@@ -41,7 +41,6 @@
 #include "const.h"
 #include "error.h"
 
-
 /**
  * @brief Initialises the UnitSystem structure with CGS system
  *
