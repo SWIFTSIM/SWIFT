@@ -184,7 +184,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].rho_dh, main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
 #if defined(GADGET2_SPH)
-            main_cell->parts[pid].density.div_v, main_cell->parts[pid].density.rot_v[0],
+            main_cell->parts[pid].density.div_v,
+            main_cell->parts[pid].density.rot_v[0],
             main_cell->parts[pid].density.rot_v[1],
             main_cell->parts[pid].density.rot_v[2]
 #elif defined(DEFAULT_SPH)
