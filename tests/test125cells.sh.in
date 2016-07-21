@@ -1,0 +1,8 @@
+#!/bin/bash
+rm brute_force_125_standard.dat swift_dopair_125_standard.dat
+
+./test125cells -p 4 -r 1 -d 0 -f standard
+
+#python @srcdir@/difffloat.py brute_force_125_standard.dat swift_dopair_125_standard.dat @srcdir@/tolerance.dat 4
+
+exit $?
