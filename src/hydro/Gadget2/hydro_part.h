@@ -43,9 +43,9 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
-  /* Time derivative of the smoothing length */
-  float h_dt;
-
+  /* Particle mass. */
+  float mass;
+  
   /* Particle time of beginning of time-step. */
   int ti_begin;
 
@@ -58,12 +58,8 @@ struct part {
   /* Particle entropy. */
   float entropy;
 
-  /* Derivative of the density with respect to this particle's smoothing length.
-   */
+  /* Derivative of the density with respect to  smoothing length. */
   float rho_dh;
-
-  /* Particle mass. */
-  float mass;
 
   union {
 
@@ -88,7 +84,7 @@ struct part {
       /* Balsara switch */
       float balsara;
 
-      /* Pressure over density*/
+      /* Pressure over density squared (including drho/dh term) */
       float P_over_rho2;
 
       /* Particle sound speed. */
@@ -99,6 +95,9 @@ struct part {
       
       /* Entropy time derivative */
       float entropy_dt;
+
+      /* Time derivative of the smoothing length */
+      float h_dt;
 
     } force;
   };

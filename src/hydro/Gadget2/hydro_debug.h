@@ -35,5 +35,5 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->rho, p->force.P_over_rho2, p->entropy, p->force.entropy_dt,
       p->force.soundspeed, p->density.div_v, p->density.rot_v[0],
       p->density.rot_v[1], p->density.rot_v[2], p->force.balsara,
-      p->force.v_sig, p->h_dt, p->ti_begin, p->ti_end);
+      p->force.v_sig, p->force.h_dt, p->ti_begin, p->ti_end);
 }
