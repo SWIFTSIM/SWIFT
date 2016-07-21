@@ -134,7 +134,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k],
                       pj[4]->v[k], pj[5]->v[k], pj[6]->v[k], pj[7]->v[k]);
   }
-  /* Get each component of particle separation. (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
+  /* Get each component of particle separation.
+   * (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k], Dx[12 + k],
                       Dx[15 + k], Dx[18 + k], Dx[21 + k]);
@@ -154,7 +155,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
   ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is added below.*/
+  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
+   * added below.*/
   ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
   r.v = r2.v * ri.v;
 
@@ -221,10 +223,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
 #else
 
-    error("The Gadget2 serial version of runner_iact_density was called when the vectorised version should have been used.")
+  error(
+      "The Gadget2 serial version of runner_iact_density was called when the "
+      "vectorised version should have been used.")
 
 #endif
-
 }
 
 /**
@@ -304,7 +307,8 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k],
                       pj[4]->v[k], pj[5]->v[k], pj[6]->v[k], pj[7]->v[k]);
   }
-  /* Get each component of particle separation. (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
+  /* Get each component of particle separation.
+   * (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k], Dx[12 + k],
                       Dx[15 + k], Dx[18 + k], Dx[21 + k]);
@@ -323,7 +327,8 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
   ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is added below.*/
+  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
+   * added below.*/
   ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
   r.v = r2.v * ri.v;
 
@@ -369,10 +374,11 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
 #else
 
-    error("The Gadget2 serial version of runner_iact_nonsym_density was called when the vectorised version should have been used.")
+  error(
+      "The Gadget2 serial version of runner_iact_nonsym_density was called "
+      "when the vectorised version should have been used.")
 
 #endif
-
 }
 
 /**
@@ -409,8 +415,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pi->force.P_over_rho;
-  const float P_over_rho_j = pj->force.P_over_rho;
+  const float P_over_rho2_i = pi->force.P_over_rho2;
+  const float P_over_rho2_j = pj->force.P_over_rho2;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -424,7 +430,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-  
+
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
@@ -439,7 +445,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -511,8 +517,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pi->force.P_over_rho;
-  const float P_over_rho_j = pj->force.P_over_rho;
+  const float P_over_rho2_i = pi->force.P_over_rho2;
+  const float P_over_rho2_j = pj->force.P_over_rho2;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -541,7 +547,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
