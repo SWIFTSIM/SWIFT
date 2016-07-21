@@ -17,11 +17,17 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/* Local headers. */
 #include "swift.h"
 
 enum velocity_types {
@@ -253,6 +259,9 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+  /* Choke on FP-exceptions */
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+  
   /* Get some randomness going */
   srand(0);
 
