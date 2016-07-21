@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
 
   /* Choke on FP-exceptions */
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
-  
+
   /* Get some randomness going */
   srand(0);
 
