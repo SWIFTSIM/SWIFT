@@ -750,7 +750,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
-  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 }
 
 /**
@@ -946,7 +945,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     pi[k]->force.u_dt += piu_dt.f[k];
     pi[k]->force.h_dt -= pih_dt.f[k];
     pi[k]->force.v_sig = vi_sig.f[k];
-    pj[k]->force.v_sig = vj_sig.f[k];
     for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
   }
 
