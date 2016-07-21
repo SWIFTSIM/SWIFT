@@ -82,7 +82,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
  *
  * @param gp The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void gravity_init_part(
+__attribute__((always_inline)) INLINE static void gravity_init_gpart(
     struct gpart* gp) {
 
   /* Zero the acceleration */

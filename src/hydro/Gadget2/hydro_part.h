@@ -25,6 +25,8 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
+  
+
 
 } __attribute__((aligned(xpart_align)));
 
@@ -55,15 +57,12 @@ struct part {
   /* Particle density. */
   float rho;
 
-  /* Derivative of the density with respect to this particle's smoothing length.
-   */
-  float rho_dh;
-
   /* Particle entropy. */
   float entropy;
 
-  /* Entropy time derivative */
-  float entropy_dt;
+  /* Derivative of the density with respect to this particle's smoothing length.
+   */
+  float rho_dh;
 
   /* Particle mass. */
   float mass;
@@ -72,36 +71,39 @@ struct part {
 
     struct {
 
-      /* Number of neighbours */
+      /* Number of neighbours. */
       float wcount;
 
-      /* Number of neighbours spatial derivative */
+      /* Number of neighbours spatial derivative. */
       float wcount_dh;
 
-      /* Velocity curl components */
+      /* Particle velocity curl. */
       float rot_v[3];
+
+      /* Particle velocity divergence. */
+      float div_v;
 
     } density;
 
     struct {
 
-      /* Velocity curl norm*/
-      float curl_v;
+      /* Balsara switch */
+      float balsara;
 
-      /* Signal velocity */
+      /* Signal velocity. */
       float v_sig;
 
-      /* Particle pressure */
-      float pressure;
+      /* Pressure over density*/
+      float P_over_rho;
 
-      /* Particle sound speed */
+      /* Particle sound speed. */
       float soundspeed;
+
+      /* Entropy time derivative */
+      float entropy_dt;
 
     } force;
   };
-
-  /* Velocity divergence */
-  float div_v;
 
   /* Particle ID. */
   long long id;

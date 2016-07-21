@@ -638,11 +638,11 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
  */
 void cell_init_parts(struct cell *c, void *data) {
 
-  struct part *p = c->parts;
-  struct xpart *xp = c->xparts;
-  const int count = c->count;
+  struct part *restrict p = c->parts;
+  struct xpart *restrict xp = c->xparts;
+  const size_t count = c->count;
 
-  for (int i = 0; i < count; ++i) {
+  for (size_t i = 0; i < count; ++i) {
     p[i].ti_begin = 0;
     p[i].ti_end = 0;
     xp[i].v_full[0] = p[i].v[0];
@@ -665,13 +665,14 @@ void cell_init_parts(struct cell *c, void *data) {
  */
 void cell_init_gparts(struct cell *c, void *data) {
 
-  struct gpart *gp = c->gparts;
-  const int gcount = c->gcount;
+  struct gpart *restrict gp = c->gparts;
+  const size_t gcount = c->gcount;
 
-  for (int i = 0; i < gcount; ++i) {
+  for (size_t i = 0; i < gcount; ++i) {
     gp[i].ti_begin = 0;
     gp[i].ti_end = 0;
     gravity_first_init_gpart(&gp[i]);
+    gravity_init_gpart(&gp[i]);
   }
   c->ti_end_min = 0;
   c->ti_end_max = 0;

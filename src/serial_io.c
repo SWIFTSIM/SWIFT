@@ -261,6 +261,7 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile,
 /**
  * @brief Writes a data array in given HDF5 group.
  *
+ * @param e The #engine we are writing from.
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
@@ -276,7 +277,7 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile,
  * @param us The UnitSystem currently in use
  * @param convFactor The UnitConversionFactor for this arrayo
  */
-void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
+void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
                 long long N_total, int mpi_rank, long long offset,
                 const struct UnitSystem* internal_units,
@@ -298,9 +299,25 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Copy particle data to temporary buffer */
-  char* temp_c = temp;
-  for (size_t i = 0; i < N; ++i)
-    memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+  if (props.convert_part == NULL &&
+      props.convert_gpart == NULL) { /* No conversion */
+
+    char* temp_c = temp;
+    for (size_t i = 0; i < N; ++i)
+      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+
+  } else if (props.convert_part != NULL) { /* conversion (for parts)*/
+
+    float* temp_f = temp;
+    for (size_t i = 0; i < N; ++i)
+      temp_f[i] = props.convert_part(e, &props.parts[i]);
+
+  } else if (props.convert_gpart != NULL) { /* conversion (for gparts)*/
+
+    float* temp_f = temp;
+    for (size_t i = 0; i < N; ++i)
+      temp_f[i] = props.convert_gpart(e, &props.gparts[i]);
+  }
 
   /* Unit conversion if necessary */
   const double factor =
@@ -885,7 +902,7 @@ void write_output_serial(struct engine* e, const char* baseName,
 
         /* Write everything */
         for (int i = 0; i < num_fields; ++i)
-          writeArray(h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
+          writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
                      N_total[ptype], mpi_rank, offset[ptype], internal_units,
                      snapshot_units);
 

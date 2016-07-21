@@ -408,7 +408,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
       if (gp->ti_end <= ti_current) {
 
         /* Get ready for a density calculation */
-        gravity_init_part(gp);
+        gravity_init_gpart(gp);
       }
     }
   }
