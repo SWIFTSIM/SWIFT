@@ -106,8 +106,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= ih * ih2;
   p->rho_dh *= ih4;
-  p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
-  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma4);
+  p->density.wcount *= kernel_norm;
+  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
 
   const float irho = 1.f / p->rho;
 
