@@ -45,7 +45,7 @@ struct part {
 
   /* Particle mass. */
   float mass;
-  
+
   /* Particle time of beginning of time-step. */
   int ti_begin;
 
@@ -92,7 +92,7 @@ struct part {
 
       /* Signal velocity. */
       float v_sig;
-      
+
       /* Entropy time derivative */
       float entropy_dt;
 

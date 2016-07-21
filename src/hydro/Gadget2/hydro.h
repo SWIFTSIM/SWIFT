@@ -204,7 +204,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
       (p->entropy + p->force.entropy_dt * dt_entr) * pow_gamma(p->rho);
 
   const float irho = 1.f / p->rho;
-  
+
   /* Divide the pressure by the density and density gradient */
   const float P_over_rho2 = pressure * irho * irho * p->rho_dh;
 

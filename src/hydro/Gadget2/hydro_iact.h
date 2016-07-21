@@ -445,7 +445,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+  const float sph_term =
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -547,7 +548,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+  const float sph_term =
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
