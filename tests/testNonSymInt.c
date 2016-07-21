@@ -84,7 +84,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
       p->v[2], p->rho, p->rho_dh,
       p->density.wcount, p->density.wcount_dh,
 #if defined(GADGET2_SPH)
-      p->div_v, p->density.rot_v[0],
+      p->density.div_v, p->density.rot_v[0],
       p->density.rot_v[1], p->density.rot_v[2]
 #elif defined(DEFAULT_SPH)
       p->density.div_v, p->density.curl_v[0],
