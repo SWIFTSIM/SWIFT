@@ -409,8 +409,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pi->force.P_over_rho;
-  const float P_over_rho_j = pj->force.P_over_rho;
+  const float P_over_rho2_i = pi->force.P_over_rho2;
+  const float P_over_rho2_j = pj->force.P_over_rho2;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -439,7 +439,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -511,8 +511,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hj2_inv * hj2_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pi->force.P_over_rho;
-  const float P_over_rho_j = pj->force.P_over_rho;
+  const float P_over_rho2_i = pi->force.P_over_rho2;
+  const float P_over_rho2_j = pj->force.P_over_rho2;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -541,7 +541,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -567,9 +567,185 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
-  error(
-      "A vectorised version of the Gadget2 non-symmetric force interaction "
-      "function does not exist yet!");
+
+  #ifdef WITH_VECTORIZATION
+
+  vector r, r2, ri;
+  vector xi, xj;
+  vector hi, hj, hi_inv, hj_inv;
+  vector hi2_inv, hj2_inv;
+  vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
+  vector w;
+  vector piPOrho, pjPOrho, pirho, pjrho;
+  vector mj;
+  vector f;
+  vector dx[3];
+  vector vi[3], vj[3];
+  vector pia[3];
+  vector piu_dt;
+  vector pih_dt;
+  vector ci, cj, v_sig, vi_sig, vj_sig;
+  vector omega_ij, mu_ij, fac_mu, Pi_ij, balsara;
+  vector alpha_ij, v_sig_u, tc;
+  vector rho_ij, visc, visc_term, sph_term, acc, entropy_dt;
+  int j, k;
+
+  fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
+
+  /* Load stuff. */
+#if VEC_SIZE == 8
+  mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
+                 pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
+  piPOrho.v =
+      vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2, pi[2]->force.P_over_rho2,
+              pi[3]->force.P_over_rho2, pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+              pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+  pjPOrho.v =
+      vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2, pj[2]->force.P_over_rho2,
+              pj[3]->force.P_over_rho2, pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+              pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
+                    pi[5]->rho, pi[6]->rho, pi[7]->rho);
+  pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
+                    pj[5]->rho, pj[6]->rho, pj[7]->rho);
+  ci.v =
+      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed,
+              pi[4]->force.soundspeed, pi[5]->force.soundspeed, pi[6]->force.soundspeed, pi[7]->force.soundspeed);
+  cj.v =
+      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed,
+              pj[4]->force.soundspeed, pj[5]->force.soundspeed, pj[6]->force.soundspeed, pj[7]->force.soundspeed);
+  vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
+                     pi[3]->force.v_sig, pi[4]->force.v_sig, pi[5]->force.v_sig,
+                     pi[6]->force.v_sig, pi[7]->force.v_sig);
+  vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
+                     pj[3]->force.v_sig, pj[4]->force.v_sig, pj[5]->force.v_sig,
+                     pj[6]->force.v_sig, pj[7]->force.v_sig);
+  for (k = 0; k < 3; k++) {
+    vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k],
+                      pi[4]->v[k], pi[5]->v[k], pi[6]->v[k], pi[7]->v[k]);
+    vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k],
+                      pj[4]->v[k], pj[5]->v[k], pj[6]->v[k], pj[7]->v[k]);
+  }
+  for (k = 0; k < 3; k++)
+    dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k], Dx[12 + k],
+                      Dx[15 + k], Dx[18 + k], Dx[21 + k]);
+  balsara.v =
+      vec_set(pi[0]->force.balsara, pi[1]->force.balsara, pi[2]->force.balsara,
+              pi[3]->force.balsara, pi[4]->force.balsara, pi[5]->force.balsara,
+              pi[6]->force.balsara, pi[7]->force.balsara) +
+      vec_set(pj[0]->force.balsara, pj[1]->force.balsara, pj[2]->force.balsara,
+              pj[3]->force.balsara, pj[4]->force.balsara, pj[5]->force.balsara,
+              pj[6]->force.balsara, pj[7]->force.balsara);
+#elif VEC_SIZE == 4
+  mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
+  POrho_i.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+  POrho_j.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+  pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
+  pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
+  ci.v =
+      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed);
+  cj.v =
+      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed);
+  vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
+                     pi[3]->force.v_sig);
+  vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
+                     pj[3]->force.v_sig);
+  for (k = 0; k < 3; k++) {
+    vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k]);
+    vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k]);
+  }
+  for (k = 0; k < 3; k++)
+    dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k]);
+  balsara.v = vec_set(pi[0]->force.balsara, pi[1]->force.balsara,
+                      pi[2]->force.balsara, pi[3]->force.balsara) +
+              vec_set(pj[0]->force.balsara, pj[1]->force.balsara,
+                      pj[2]->force.balsara, pj[3]->force.balsara);
+#else
+  error("Unknown vector size.")
+#endif
+
+  /* Get the radius and inverse radius. */
+  r2.v = vec_load(R2);
+  ri.v = vec_rsqrt(r2.v);
+  ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
+  r.v = r2.v * ri.v;
+
+  /* Get the kernel for hi. */
+  hi.v = vec_load(Hi);
+  hi_inv.v = vec_rcp(hi.v);
+  hi_inv.v = hi_inv.v - hi_inv.v * (hi.v * hi_inv.v - vec_set1(1.0f));
+  hi2_inv.v = hi_inv.v * hi_inv.v;
+  xi.v = r.v * hi_inv.v;
+  kernel_deval_vec(&xi, &wi, &wi_dx);
+  wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
+
+  /* Get the kernel for hj. */
+  hj.v = vec_load(Hj);
+  hj_inv.v = vec_rcp(hj.v);
+  hj_inv.v = hj_inv.v - hj_inv.v * (hj.v * hj_inv.v - vec_set1(1.0f));
+  hj2_inv.v = hj_inv.v * hj_inv.v;
+  xj.v = r.v * hj_inv.v;
+  kernel_deval_vec(&xj, &wj, &wj_dx);
+  wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
+
+  /* Compute dv dot r. */
+  dvdr.v = ((vi[0].v - vj[0].v) * dx[0].v) + ((vi[1].v - vj[1].v) * dx[1].v) +
+           ((vi[2].v - vj[2].v) * dx[2].v);
+  //dvdr.v = dvdr.v * ri.v;
+
+  /* Compute the relative velocity. (This is 0 if the particles move away from
+   * each other and negative otherwise) */
+  omega_ij.v = vec_fmin(dvdr.v, vec_set1(0.0f));
+  mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
+  
+  /* Compute signal velocity */
+  v_sig.v = ci.v + cj.v - vec_set1(3.0f) * mu_ij.v;
+  
+  /* Now construct the full viscosity term */
+  rho_ij.v = vec_set1(0.5f) * (pirho.v + pjrho.v);
+  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v * mu_ij.v * 
+           balsara.v / rho_ij.v;
+
+  /* Now, convolve with the kernel */
+  visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
+  sph_term.v = (piPOrho.v * wi_dr.v + pjPOrho.v * wj_dr.v) * ri.v;
+
+  /* Eventually get the acceleration */
+  acc.v = visc_term.v + sph_term.v;
+  
+  /* Use the force, Luke! */
+  for (k = 0; k < 3; k++) {
+    f.v = dx[k].v * acc.v;
+    pia[k].v = mj.v * f.v;
+  }
+
+  /* Get the time derivative for h. */
+  pih_dt.v = mj.v * dvdr.v * ri.v / pirho.v * wi_dr.v;
+
+  /* compute the signal velocity (this is always symmetrical). */
+  vi_sig.v = vec_fmax(vi_sig.v, v_sig.v);
+  //vj_sig.v = vec_fmax(vj_sig.v, v_sig.v);
+
+  /* Change in entropy */
+  entropy_dt.v = vec_set1(0.5f) * mj.v * visc_term.v * dvdr.v;
+  
+  /* Store the forces back on the particles. */
+  for (k = 0; k < VEC_SIZE; k++) {
+    for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
+    //pi[k]->force.u_dt += piu_dt.f[k];
+    pi[k]->h_dt -= pih_dt.f[k];
+    pi[k]->force.v_sig = vi_sig.f[k];
+    pi[k]->force.entropy_dt += entropy_dt.f[k];
+    //pj[k]->force.v_sig = vj_sig.f[k];
+  }
+
+#else 
+
+  error("The Gadget2 serial version of runner_iact_nonsym_force was called when the vectorised version should have been used.")
+
+#endif
 }
 
 #endif /* SWIFT_RUNNER_IACT_LEGACY_H */
