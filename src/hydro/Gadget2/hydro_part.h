@@ -93,8 +93,8 @@ struct part {
       /* Signal velocity. */
       float v_sig;
 
-      /* Pressure over density*/
-      float P_over_rho;
+      /* Pressure over density sqaured*/
+      float P_over_rho2;
 
       /* Particle sound speed. */
       float soundspeed;
