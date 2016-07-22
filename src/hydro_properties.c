@@ -40,7 +40,7 @@ void hydro_props_init(struct hydro_props *p,
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
   const float eta3 = p->eta_neighbours * p->eta_neighbours * p->eta_neighbours;
-  p->target_neighbours = 4.0 * M_PI * kernel_gamma3 * eta3 / 3.0;
+  p->target_neighbours = eta3 * kernel_norm;
   p->delta_neighbours = parser_get_param_float(params, "SPH:delta_neighbours");
 
   /* Ghost stuff */
