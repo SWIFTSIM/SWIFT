@@ -55,6 +55,10 @@ struct part {
   /* Particle density. */
   float rho;
 
+  /* Derivative of the density with respect to this particle's smoothing length.
+   */
+  float rho_dh;
+
   /* Particle entropy. */
   float entropy;
 

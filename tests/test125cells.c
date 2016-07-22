@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,51 +17,53 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "swift.h"
 
-enum velocity_types {
-  velocity_zero,
-  velocity_random,
-  velocity_divergent,
-  velocity_rotating
-};
+/* Local headers. */
+#include "swift.h"
 
 /**
  * @brief Constructs a cell and all of its particle in a valid state prior to
- * a DOPAIR or DOSELF calcuation.
+ * a SPH time-step.
  *
  * @param n The cube root of the number of particles.
  * @param offset The position of the cell offset from (0,0,0).
  * @param size The cell size.
  * @param h The smoothing length of the particles in units of the inter-particle
- *separation.
+ * separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
  * @param pert The perturbation to apply to the particles in the cell in units
- *of the inter-particle separation.
- * @param vel The type of velocity field (0, random, divergent, rotating)
+ * of the inter-particle separation.
  */
-struct cell *make_cell(size_t n, double *offset, double size, double h,
-                       double density, long long *partId, double pert,
-                       enum velocity_types vel) {
+struct cell *make_cell(size_t n, const double offset[3], double size, double h,
+                       double density, long long *partId, double pert) {
+
   const size_t count = n * n * n;
   const double volume = size * size * size;
   struct cell *cell = malloc(sizeof(struct cell));
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->parts, part_align,
-                     count * sizeof(struct part)) != 0) {
+                     count * sizeof(struct part)) != 0)
     error("couldn't allocate particles, no. of particles: %d", (int)count);
-  }
+  if (posix_memalign((void **)&cell->xparts, xpart_align,
+                     count * sizeof(struct xpart)) != 0)
+    error("couldn't allocate particles, no. of x-particles: %d", (int)count);
   bzero(cell->parts, count * sizeof(struct part));
+  bzero(cell->xparts, count * sizeof(struct xpart));
 
   /* Construct the parts */
   struct part *part = cell->parts;
+  struct xpart *xpart = cell->xparts;
   for (size_t x = 0; x < n; ++x) {
     for (size_t y = 0; y < n; ++y) {
       for (size_t z = 0; z < n; ++z) {
@@ -74,33 +76,18 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->x[2] =
             offset[2] +
             size * (z + 0.5 + random_uniform(-0.5, 0.5) * pert) / (float)n;
-        switch (vel) {
-          case velocity_zero:
-            part->v[0] = 0.f;
-            part->v[1] = 0.f;
-            part->v[2] = 0.f;
-            break;
-          case velocity_random:
-            part->v[0] = random_uniform(-0.05, 0.05);
-            part->v[1] = random_uniform(-0.05, 0.05);
-            part->v[2] = random_uniform(-0.05, 0.05);
-            break;
-          case velocity_divergent:
-            part->v[0] = part->x[0] - 1.5 * size;
-            part->v[1] = part->x[1] - 1.5 * size;
-            part->v[2] = part->x[2] - 1.5 * size;
-            break;
-          case velocity_rotating:
-            part->v[0] = part->x[1];
-            part->v[1] = -part->x[0];
-            part->v[2] = 0.f;
-            break;
-        }
+        part->v[0] = 0.f;
+        part->v[1] = 0.f;
+        part->v[2] = 0.f;
         part->h = size * h / (float)n;
+        part->entropy = 1.f;
         part->id = ++(*partId);
         part->mass = density * volume / count;
         part->ti_begin = 0;
         part->ti_end = 1;
+        xpart->v_full[0] = part->v[0];
+        xpart->v_full[1] = part->v[1];
+        xpart->v_full[2] = part->v[2];
         ++part;
       }
     }
@@ -110,6 +97,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->split = 0;
   cell->h_max = h;
   cell->count = count;
+  cell->gcount = 0;
   cell->dx_max = 0.;
   cell->h[0] = size;
   cell->h[1] = size;
@@ -121,7 +109,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
 
-  shuffle_particles(cell->parts, cell->count);
+  // shuffle_particles(cell->parts, cell->count);
 
   cell->sorted = 0;
   cell->sort = NULL;
@@ -132,28 +120,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
 void clean_up(struct cell *ci) {
   free(ci->parts);
+  free(ci->xparts);
   free(ci->sort);
   free(ci);
-}
-
-/**
- * @brief Initializes all particles field to be ready for a density calculation
- */
-void zero_particle_fields(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
-    c->parts[pid].rho = 0.f;
-    c->parts[pid].rho_dh = 0.f;
-    hydro_init_part(&c->parts[pid]);
-  }
-}
-
-/**
- * @brief Ends the loop by adding the appropriate coefficients
- */
-void end_calculation(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
-    hydro_end_density(&c->parts[pid], 1);
-  }
 }
 
 /**
@@ -199,15 +168,15 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   }
 
   /* Write all other cells */
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      for (int k = 0; k < 3; ++k) {
-        struct cell *cj = cells[i * 9 + j * 3 + k];
+  for (int i = 0; i < 5; ++i) {
+    for (int j = 0; j < 5; ++j) {
+      for (int k = 0; k < 5; ++k) {
+        struct cell *cj = cells[i * 25 + j * 5 + k];
         if (cj == main_cell) continue;
 
         fprintf(file,
                 "# Offset: [%2d %2d %2d] -----------------------------------\n",
-                i - 1, j - 1, k - 1);
+                i - 2, j - 2, k - 2);
 
         for (size_t pjd = 0; pjd < cj->count; pjd++) {
           fprintf(
@@ -238,19 +207,24 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 /* Just a forward declaration... */
 void runner_dopair1_density(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself1_density(struct runner *r, struct cell *ci);
+void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_doself2_force(struct runner *r, struct cell *ci);
 
 /* And go... */
 int main(int argc, char *argv[]) {
+
   size_t runs = 0, particles = 0;
   double h = 1.2348, size = 1., rho = 1.;
   double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
-  int vel = velocity_zero;
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
+
+  /* Choke on FP-exceptions */
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
   /* Get some randomness going */
   srand(0);
@@ -279,9 +253,6 @@ int main(int argc, char *argv[]) {
       case 'f':
         strcpy(outputFileNameExtension, optarg);
         break;
-      case 'v':
-        sscanf(optarg, "%d", &vel);
-        break;
       case '?':
         error("Unknown option.");
         break;
@@ -298,7 +269,6 @@ int main(int argc, char *argv[]) {
         "\n-m rho             - Physical density in the cell"
         "\n-s size            - Physical size of the cell"
         "\n-d pert            - Perturbation to apply to the particles [0,1["
-        "\n-v type (0,1,2,3)  - Velocity field: (zero, random, divergent, "
         "rotating)"
         "\n-f fileName        - Part of the file name used to save the dumps\n",
         argv[0]);
@@ -311,8 +281,8 @@ int main(int argc, char *argv[]) {
   message("Neighbour target: N = %f",
           h * h * h * 4.0 * M_PI * kernel_gamma3 / 3.0);
   message("Density target: rho = %f", rho);
-  message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
-  message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
+  // message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
+  // message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
   printf("\n");
 
   /* Build the infrastructure */
@@ -320,7 +290,14 @@ int main(int argc, char *argv[]) {
   space.periodic = 0;
   space.h_max = h;
 
+  struct hydro_props hp;
+  hp.target_neighbours = h * h * h * 4.0 * M_PI * kernel_gamma3 / 3.0;
+  hp.delta_neighbours = 1;
+  hp.max_smoothing_iterations =
+      1; /* We construct correct h values, 1 is enough */
+
   struct engine engine;
+  engine.hydro_properties = &hp;
   engine.s = &space;
   engine.time = 0.1f;
   engine.ti_current = 1;
@@ -329,52 +306,117 @@ int main(int argc, char *argv[]) {
   runner.e = &engine;
 
   /* Construct some cells */
-  struct cell *cells[27];
+  struct cell *cells[125];
+  struct cell *inner_cells[27];
   struct cell *main_cell;
+  int count = 0;
   static long long partId = 0;
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      for (int k = 0; k < 3; ++k) {
-        double offset[3] = {i * size, j * size, k * size};
-        cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
-                                             &partId, perturbation, vel);
+  for (int i = 0; i < 5; ++i) {
+    for (int j = 0; j < 5; ++j) {
+      for (int k = 0; k < 5; ++k) {
 
-        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
+        /* Position of the cell */
+        const double offset[3] = {i * size, j * size, k * size};
+
+        /* Construct it */
+        cells[i * 25 + j * 5 + k] =
+            make_cell(particles, offset, size, h, rho, &partId, perturbation);
+
+        /* Store the inner cells */
+        if (i > 0 && i < 4 && j > 0 && j < 4 && k > 0 && k < 4) {
+          inner_cells[count] = cells[i * 25 + j * 5 + k];
+          count++;
+        }
       }
     }
   }
 
   /* Store the main cell for future use */
-  main_cell = cells[13];
+  main_cell = cells[62];
 
   ticks time = 0;
   for (size_t i = 0; i < runs; ++i) {
-    /* Zero the fields */
-    for (int j = 0; j < 27; ++j) zero_particle_fields(cells[j]);
 
     const ticks tic = getticks();
 
+    /* First, sort stuff */
+    for (int j = 0; j < 125; ++j) runner_do_sort(&runner, cells[j], 0x1FFF, 0);
+
+    /* Initialise the particles */
+    for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
+
+/* Do the density calculation */
 #if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
 
-    /* Run all the pairs */
-    for (int j = 0; j < 27; ++j)
-      if (cells[j] != main_cell)
-        runner_dopair1_density(&runner, main_cell, cells[j]);
+    /* Run all the pairs (only once !)*/
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 5; j++) {
+        for (int k = 0; k < 5; k++) {
 
-    /* And now the self-interaction */
-    runner_doself1_density(&runner, main_cell);
+          struct cell *ci = cells[i * 25 + j * 5 + k];
+
+          for (int ii = -1; ii < 2; ii++) {
+            int iii = i + ii;
+            if (iii < 0 || iii >= 5) continue;
+            iii = (iii + 5) % 5;
+            for (int jj = -1; jj < 2; jj++) {
+              int jjj = j + jj;
+              if (jjj < 0 || jjj >= 5) continue;
+              jjj = (jjj + 5) % 5;
+              for (int kk = -1; kk < 2; kk++) {
+                int kkk = k + kk;
+                if (kkk < 0 || kkk >= 5) continue;
+                kkk = (kkk + 5) % 5;
+
+                struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+
+                if (cj > ci) runner_dopair1_density(&runner, ci, cj);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    /* And now the self-interaction for the central cells*/
+    for (int j = 0; j < 27; ++j)
+      runner_doself1_density(&runner, inner_cells[j]);
 
 #endif
+
+    /* Ghost to finish everything on the central cells */
+    for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
+
+    message("N_ngb = %f", main_cell->parts[0].density.wcount);
+
+/* Do the force calculation */
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+
+    /* Do the pairs (for the central 27 cells) */
+    for (int i = 1; i < 4; i++) {
+      for (int j = 1; j < 4; j++) {
+        for (int k = 1; k < 4; k++) {
+
+          struct cell *cj = cells[i * 25 + j * 5 + k];
+
+          if (main_cell != cj) runner_dopair2_force(&runner, main_cell, cj);
+        }
+      }
+    }
+
+    /* And now the self-interaction for the main cell */
+    runner_doself2_force(&runner, main_cell);
+#endif
+
+    /* Finally, give a gentle kick */
+    runner_do_kick(&runner, main_cell, 0);
 
     const ticks toc = getticks();
     time += toc - tic;
 
-    /* Let's get physical ! */
-    end_calculation(main_cell);
-
     /* Dump if necessary */
     if (i % 50 == 0) {
-      sprintf(outputFileName, "swift_dopair_27_%s.dat",
+      sprintf(outputFileName, "swift_dopair_125_%s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, cells);
     }
@@ -385,36 +427,38 @@ int main(int argc, char *argv[]) {
 
   /* Now perform a brute-force version for accuracy tests */
 
-  /* Zero the fields */
-  for (int i = 0; i < 27; ++i) zero_particle_fields(cells[i]);
+  /*   /\* Zero the fields *\/ */
+  /*   for (int i = 0; i < 125; ++i) zero_particle_fields(cells[i]); */
 
-  const ticks tic = getticks();
+  /*   const ticks tic = getticks(); */
 
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+  /* #if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION) */
 
-  /* Run all the brute-force pairs */
-  for (int j = 0; j < 27; ++j)
-    if (cells[j] != main_cell) pairs_all_density(&runner, main_cell, cells[j]);
+  /*   /\* Run all the brute-force pairs *\/ */
+  /*   for (int j = 0; j < 125; ++j) */
+  /*     if (cells[j] != main_cell) pairs_all_density(&runner, main_cell,
+   * cells[j]); */
 
-  /* And now the self-interaction */
-  self_all_density(&runner, main_cell);
+  /*   /\* And now the self-interaction *\/ */
+  /*   self_all_density(&runner, main_cell); */
 
-#endif
+  /* #endif */
 
-  const ticks toc = getticks();
+  /*   const ticks toc = getticks(); */
 
-  /* Let's get physical ! */
-  end_calculation(main_cell);
+  /*   /\* Let's get physical ! *\/ */
+  /*   end_calculation(main_cell); */
 
-  /* Dump */
-  sprintf(outputFileName, "brute_force_27_%s.dat", outputFileNameExtension);
-  dump_particle_fields(outputFileName, main_cell, cells);
+  /*   /\* Dump *\/ */
+  /*   sprintf(outputFileName, "brute_force_125_%s.dat",
+   * outputFileNameExtension); */
+  /*   dump_particle_fields(outputFileName, main_cell, cells); */
 
-  /* Output timing */
-  message("Brute force calculation took : %15lli ticks.", toc - tic);
+  /*   /\* Output timing *\/ */
+  /*   message("Brute force calculation took : %15lli ticks.", toc - tic); */
 
   /* Clean things to make the sanitizer happy ... */
-  for (int i = 0; i < 27; ++i) clean_up(cells[i]);
+  for (int i = 0; i < 125; ++i) clean_up(cells[i]);
 
   return 0;
 }
