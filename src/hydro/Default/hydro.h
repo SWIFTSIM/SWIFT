@@ -145,17 +145,17 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute this particle's sound speed. */
   const float u = p->u;
-  const float fc = p->force.c = sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
+  const float fc = p->force.soundspeed = sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
 
   /* Compute the P/Omega/rho2. */
   xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho;
-  p->force.POrho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
+  p->force.P_over_rho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
 
   /* Balsara switch */
   p->force.balsara = normDiv_v / (normDiv_v + normRot_v + 0.0001f * fc * ih);
 
   /* Viscosity parameter decay time */
-  const float tau = h / (2.f * const_viscosity_length * p->force.c);
+  const float tau = h / (2.f * const_viscosity_length * p->force.soundspeed);
 
   /* Viscosity source term */
   const float S = fmaxf(-normDiv_v, 0.f);
@@ -214,7 +214,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     u = p->u *= expf(w);
 
   /* Predict gradient term */
-  p->force.POrho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
+  p->force.P_over_rho2 = u * hydro_gamma_minus_one / (p->rho * xp->omega);
 }
 
 /**
