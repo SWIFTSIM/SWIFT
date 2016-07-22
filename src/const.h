@@ -60,7 +60,8 @@
 //#define DEFAULT_SPH
 
 /* Gravity properties */
-#define EXTERNAL_POTENTIAL_POINTMASS
+/* #define EXTERNAL_POTENTIAL_POINTMASS */
+#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

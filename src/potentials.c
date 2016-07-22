@@ -48,6 +48,16 @@ void potential_init(const struct swift_params* parameter_file,
       parser_get_param_double(parameter_file, "PointMass:mass");
 
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
+#ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+  potential -> isothermal_potential.x = 
+	 parser_get_param_double(parameter_file, "IsothermalPotential:position_x");
+  potential -> isothermal_potential.y = 
+	 parser_get_param_double(parameter_file, "IsothermalPotential:position_y");
+  potential -> isothermal_potential.z = 
+	 parser_get_param_double(parameter_file, "IsothermalPotential:position_z");
+  potential -> isothermal_potential.vrot = 
+	 parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
+#endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
 }
 
 /**
@@ -62,4 +72,9 @@ void potential_print(const struct external_potential* potential) {
           potential->point_mass.x, potential->point_mass.y,
           potential->point_mass.z, potential->point_mass.mass);
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
+#ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+  message("Isothermal potential properties are (x,y,z) = (%e, %e, %e), vrot = %e",
+			 potential->isothermal_potential.x, potential->isothermal_potential.y,
+  			 potential->isothermal_potential.z, potential->isothermal_potential.vrot);
+#endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
 }
