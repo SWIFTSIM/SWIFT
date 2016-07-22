@@ -24,8 +24,8 @@
 #include <unistd.h>
 #include "swift.h"
 
-char *serial_filename = "test_nonsym_serial.dat";
-char *vec_filename = "test_nonsym_vec.dat";
+typedef void (*serial_interaction)(float, float *, float, float, struct part *, struct part *);
+typedef void (*vec_interaction)(float *, float *, float *, float *, struct part **, struct part **);
 
 /**
  * @brief Constructs an array of particles in a valid state prior to
@@ -68,6 +68,20 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
 }
 
 /**
+ * @brief Populates particle properties needed for the force calculation.
+ */
+void prepare_force(struct part *parts) {
+  
+  struct part p;
+  for (size_t i = 0; i < VEC_SIZE + 1; ++i) {
+    p = parts[i];
+    p.rho = i;
+    p.force.balsara = i;
+    p.force.P_over_rho2 = i;
+  }
+}
+
+/**
  * @brief Dumps all particle information to a file
  */
 void dump_indv_particle_fields(char *fileName, struct part *p) {
@@ -76,20 +90,21 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
   
   fprintf(
       file,
-      "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
-      "%13e %13e %13e\n",
+      "%6llu %10f %10f %10f %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e %13e %13e "
+      "%13e %13e %13e %10f\n",
       p->id, p->x[0], p->x[1],
       p->x[2], p->v[0], p->v[1],
-      p->v[2], p->rho, p->rho_dh,
-      p->density.wcount, p->density.wcount_dh,
+      p->v[2], p->a_hydro[0], p->a_hydro[1], 
+      p->a_hydro[2], p->rho, p->rho_dh,
+      p->density.wcount, p->density.wcount_dh, p->h_dt, p->force.v_sig,
 #if defined(GADGET2_SPH)
-      p->div_v, p->density.rot_v[0],
-      p->density.rot_v[1], p->density.rot_v[2]
+      p->density.div_v, p->density.rot_v[0],
+      p->density.rot_v[1], p->density.rot_v[2], p->force.entropy_dt
 #elif defined(DEFAULT_SPH)
       p->density.div_v, p->density.rot_v[0],
-      p->density.rot_v[1], p->density.rot_v[2]
+      p->density.rot_v[1], p->density.rot_v[2], 0.
 #else
-      0., 0., 0., 0.
+      0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
 #endif
       );
   fclose(file);
@@ -103,10 +118,10 @@ void write_header(char *fileName) {
   FILE *file = fopen(fileName, "w");
     /* Write header */
     fprintf(file,
-            "# %4s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s "
-            "%13s %13s %13s\n",
-            "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "rho", "rho_dh",
-            "wcount", "wcount_dh", "div_v", "curl_vx", "curl_vy", "curl_vz");
+            "# %4s %10s %10s %10s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s %13s %13s"
+            "%13s %13s %13s %13s\n",
+            "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "a_x", "a_y", "a_z", "rho", "rho_dh",
+            "wcount", "wcount_dh", "dh/dt", "v_sig", "div_v", "curl_vx", "curl_vy", "curl_vz", "dS/dt");
     fprintf(file,"\nPARTICLES BEFORE INTERACTION:\n");
     fclose(file);
 }
@@ -118,12 +133,20 @@ void write_header(char *fileName) {
  * @param count No. of particles to be interacted
  * 
  */
-void test_nonsym_density_interaction(struct part *parts, int count) {
+void test_interactions(struct part *parts, int count, serial_interaction serial_inter_func, vec_interaction vec_inter_func, char *filePrefix) {
   
   /* Use the first particle in the array as the one that gets updated. */
   struct part pi = parts[0];
 
   FILE *file;
+  char serial_filename[200] = "";
+  char vec_filename[200] = "";
+
+  strcpy(serial_filename,filePrefix);
+  strcpy(vec_filename,filePrefix);
+  sprintf(serial_filename + strlen(serial_filename), "_serial.dat");
+  sprintf(vec_filename + strlen(vec_filename), "_vec.dat");
+
   write_header(serial_filename);
   write_header(vec_filename); 
 
@@ -154,7 +177,7 @@ void test_nonsym_density_interaction(struct part *parts, int count) {
       r2 += dx[k] * dx[k];
     }
 
-    runner_iact_nonsym_density(r2, dx, pi.h, parts[i].h, &pi, &parts[i]);
+    serial_inter_func(r2, dx, pi.h, parts[i].h, &pi, &parts[i]);
   }    
 
   file = fopen(serial_filename, "a");
@@ -191,7 +214,7 @@ void test_nonsym_density_interaction(struct part *parts, int count) {
     dump_indv_particle_fields(vec_filename,pjq[i]);
   
   /* Perform vector interaction. */
-  runner_iact_nonsym_vec_density(r2q, dxq, hiq, hjq, piq, pjq);
+  vec_inter_func(r2q, dxq, hiq, hjq, piq, pjq);
   
   file = fopen(vec_filename, "a");
   fprintf(file,"\nPARTICLES AFTER INTERACTION:\n");
@@ -234,19 +257,30 @@ int main(int argc, char *argv[]) {
         "\nThese are then interacted using runner_iact_density and runner_iact_vec_density."
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
-        "\n-s spacing         - Spacing between particles"
-        "\n-v type (0,1,2,3)  - Velocity field: (zero, random, divergent, "
-        "rotating)",
+        "\n-s spacing         - Spacing between particles",
         argv[0]);
     exit(1);
   }
 
+  /* Define which interactions to call */
+  serial_interaction serial_inter_func = &runner_iact_nonsym_density;
+  vec_interaction vec_inter_func = &runner_iact_nonsym_vec_density;
+
   /* Build the infrastructure */
   static long long partId = 0;
-  struct part *particles = make_particles(count,offset,spacing,h,&partId);
+  struct part *density_particles = make_particles(count,offset,spacing,h,&partId);
+  struct part *force_particles = make_particles(count,offset,spacing,h,&partId);
+  prepare_force(force_particles);
 
   /* Call the test non-sym density test. */
-  test_nonsym_density_interaction(particles,count);
+  test_interactions(density_particles,count,serial_inter_func,vec_inter_func,"test_nonsym_density");
   
+  /* Re-assign function pointers. */
+  serial_inter_func = &runner_iact_nonsym_force;
+  vec_inter_func = &runner_iact_nonsym_vec_force;
+
+  /* Call the test non-sym force test. */
+  test_interactions(density_particles,count,serial_inter_func,vec_inter_func,"test_nonsym_force");
+
   return 0;
 }
