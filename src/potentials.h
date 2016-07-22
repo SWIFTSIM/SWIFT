@@ -42,12 +42,14 @@ struct external_potential {
   struct {
     double x, y, z;
     double mass;
+	 double timestep_mult;
   } point_mass;
 #endif
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
   struct {
 	 double x, y, z;
 	 double vrot;
+	 double timestep_mult;
   } isothermal_potential;
 #endif
 };
@@ -83,7 +85,8 @@ __attribute__((always_inline))
 
   //  error(" dx= %e dvx= %e rinv2= %e a2= %e dota_2= %e dt= %e", dx, g->v_full[1], rinv2, a_2, dota_2, 0.03f * sqrtf(a_2 / dota_2));
 
-  return EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR * sqrtf(a_2 / dota_2);
+  //return EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR * sqrtf(a_2 / dota_2);
+  return potential->isothermal_potential.timestep_mult * sqrtf(a_2 / dota_2);
 }
 /**
  * @brief Computes the gravitational acceleration of a particle due to a point
@@ -142,7 +145,8 @@ external_gravity_pointmass_timestep(const struct external_potential* potential,
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
 
-  return EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR * sqrtf(a_2 / dota_2);
+  /*  return EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR * sqrtf(a_2 / dota_2); */
+  return potential->point_mass.timestep_mult * sqrtf(a_2 / dota_2);
 }
 
 /**
