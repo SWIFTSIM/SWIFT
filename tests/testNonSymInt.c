@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include "swift.h"
 
+/* Typdef function pointers for serial and vectorised versions of the interaction functions. */
 typedef void (*serial_interaction)(float, float *, float, float, struct part *, struct part *);
 typedef void (*vec_interaction)(float *, float *, float *, float *, struct part **, struct part **);
 
@@ -72,12 +73,12 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
  */
 void prepare_force(struct part *parts) {
   
-  struct part p;
+  struct part *p;
   for (size_t i = 0; i < VEC_SIZE + 1; ++i) {
-    p = parts[i];
-    p.rho = i;
-    p.force.balsara = i;
-    p.force.P_over_rho2 = i;
+    p = &parts[i];
+    p->rho = i + 1;
+    p->force.balsara = i + 1;
+    p->force.P_over_rho2 = i + 1;
   }
 }
 
@@ -262,25 +263,44 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  /* Define which interactions to call */
-  serial_interaction serial_inter_func = &runner_iact_nonsym_density;
-  vec_interaction vec_inter_func = &runner_iact_nonsym_vec_density;
-
   /* Build the infrastructure */
   static long long partId = 0;
   struct part *density_particles = make_particles(count,offset,spacing,h,&partId);
   struct part *force_particles = make_particles(count,offset,spacing,h,&partId);
   prepare_force(force_particles);
 
-  /* Call the test non-sym density test. */
+  /* Define which interactions to call */
+  serial_interaction serial_inter_func = &runner_iact_nonsym_density;
+  vec_interaction vec_inter_func = &runner_iact_nonsym_vec_density;
+
+  /* Call the non-sym density test. */
   test_interactions(density_particles,count,serial_inter_func,vec_inter_func,"test_nonsym_density");
+  
+  density_particles = make_particles(count,offset,spacing,h,&partId);
+  
+  /* Re-assign function pointers. */
+  serial_inter_func = &runner_iact_density;
+  vec_inter_func = &runner_iact_vec_density;
+  
+  /* Call the symmetrical density test. */
+  test_interactions(density_particles,count,serial_inter_func,vec_inter_func,"test_sym_density");
   
   /* Re-assign function pointers. */
   serial_inter_func = &runner_iact_nonsym_force;
   vec_inter_func = &runner_iact_nonsym_vec_force;
 
   /* Call the test non-sym force test. */
-  test_interactions(density_particles,count,serial_inter_func,vec_inter_func,"test_nonsym_force");
+  test_interactions(force_particles,count,serial_inter_func,vec_inter_func,"test_nonsym_force");
+
+  force_particles = make_particles(count,offset,spacing,h,&partId);
+  prepare_force(force_particles);
+  
+  /* Re-assign function pointers. */
+  serial_inter_func = &runner_iact_force;
+  vec_inter_func = &runner_iact_vec_force;
+
+  /* Call the test symmetrical force test. */
+  test_interactions(force_particles,count,serial_inter_func,vec_inter_func,"test_sym_force");
 
   return 0;
 }
