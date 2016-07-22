@@ -11,3 +11,6 @@ integration.
 
 The particle load of the main EAGLE simulation can be reproduced by
 running these ICs on 8 cores.
+
+MD5 checksum of the ICs: 
+88877f5bb0ee21488c20b8f065fc74db  EAGLE_ICs_12.hdf5
