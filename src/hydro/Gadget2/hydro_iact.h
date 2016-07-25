@@ -469,8 +469,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->force.entropy_dt += 0.5f * mj * visc_term * dvdr;
-  pj->force.entropy_dt -= 0.5f * mi * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pj->entropy_dt -= 0.5f * mi * visc_term * dvdr;
 }
 
 /**
@@ -566,7 +566,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->force.entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
 }
 
 /**

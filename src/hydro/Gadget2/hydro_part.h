@@ -58,7 +58,10 @@ struct part {
   /* Particle entropy. */
   float entropy;
 
-  /* Derivative of the density with respect to  smoothing length. */
+  /* Entropy time derivative */
+  float entropy_dt;
+
+  /* Derivative of the density with respect to smoothing length. */
   float rho_dh;
 
   union {
@@ -92,9 +95,6 @@ struct part {
 
       /* Signal velocity. */
       float v_sig;
-
-      /* Entropy time derivative */
-      float entropy_dt;
 
       /* Time derivative of the smoothing length */
       float h_dt;
