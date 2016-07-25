@@ -42,64 +42,71 @@ struct external_potential {
   struct {
     double x, y, z;
     double mass;
-	 double timestep_mult;
+    double timestep_mult;
   } point_mass;
 #endif
+
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
   struct {
-	 double x, y, z;
-	 double vrot;
-	 double timestep_mult;
+    double x, y, z;
+    double vrot;
+    double timestep_mult;
   } isothermal_potential;
 #endif
 };
+
 /* Include external isothermal potential */
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 
-#define EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR  0.03f
 /**
  * @brief Computes the time-step due to the acceleration from a point mass
  *
- * @param phys_cont The physical constants in internal units.
- * @param gp Pointer to the g-particle data.
+ * @param potential The #external_potential used in the run.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
  */
-__attribute__((always_inline))
-    INLINE static float external_gravity_isothermalpotential_timestep(
-		  const struct external_potential* potential,
-        const struct phys_const* const phys_const,
-        const struct gpart* const g) {
+__attribute__((always_inline)) INLINE static float
+external_gravity_isothermalpotential_timestep(
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, const struct gpart* const g) {
 
-  const float dx    = g->x[0] - potential->isothermal_potential.x;
-  const float dy    = g->x[1] - potential->isothermal_potential.y;
-  const float dz    = g->x[2] - potential->isothermal_potential.z;
+  const float dx = g->x[0] - potential->isothermal_potential.x;
+  const float dy = g->x[1] - potential->isothermal_potential.y;
+  const float dz = g->x[2] - potential->isothermal_potential.z;
   const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
-  const float drdv  = dx * (g->v_full[0]) + dy * (g->v_full[1]) + dz * (g->v_full[2]);
+  const float drdv =
+      dx * (g->v_full[0]) + dy * (g->v_full[1]) + dz * (g->v_full[2]);
   const double vrot = potential->isothermal_potential.vrot;
 
-  const float dota_x = vrot * vrot * rinv2 * (g->v_full[0] - 2 * drdv * dx * rinv2);
-  const float dota_y = vrot * vrot * rinv2 * (g->v_full[1] - 2 * drdv * dy * rinv2);
-  const float dota_z = vrot * vrot * rinv2 * (g->v_full[2] - 2 * drdv * dz * rinv2);
+  const float dota_x =
+      vrot * vrot * rinv2 * (g->v_full[0] - 2 * drdv * dx * rinv2);
+  const float dota_y =
+      vrot * vrot * rinv2 * (g->v_full[1] - 2 * drdv * dy * rinv2);
+  const float dota_z =
+      vrot * vrot * rinv2 * (g->v_full[2] - 2 * drdv * dz * rinv2);
   const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
 
-  //  error(" dx= %e dvx= %e rinv2= %e a2= %e dota_2= %e dt= %e", dx, g->v_full[1], rinv2, a_2, dota_2, 0.03f * sqrtf(a_2 / dota_2));
-
-  //return EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR * sqrtf(a_2 / dota_2);
   return potential->isothermal_potential.timestep_mult * sqrtf(a_2 / dota_2);
 }
+
 /**
  * @brief Computes the gravitational acceleration of a particle due to a point
  * mass
  *
- * @param phys_cont The physical constants in internal units.
- * @param gp Pointer to the g-particle data.
+ * @param potential The #external_potential used in the run.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
  */
-__attribute__((always_inline)) INLINE static void external_gravity_isothermalpotential(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
+__attribute__((always_inline)) INLINE static void
+external_gravity_isothermalpotential(const struct external_potential* potential,
+                                     const struct phys_const* const phys_const,
+                                     struct gpart* g) {
 
-  const float dx    = g->x[0] - potential->isothermal_potential.x;
-  const float dy    = g->x[1] - potential->isothermal_potential.y;
-  const float dz    = g->x[2] - potential->isothermal_potential.z;
+  const float dx = g->x[0] - potential->isothermal_potential.x;
+  const float dy = g->x[1] - potential->isothermal_potential.y;
+  const float dz = g->x[2] - potential->isothermal_potential.z;
   const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
 
   const double vrot = potential->isothermal_potential.vrot;
@@ -108,12 +115,11 @@ __attribute__((always_inline)) INLINE static void external_gravity_isothermalpot
   g->a_grav[2] += -vrot * vrot * rinv2 * dz;
   // error(" %f %f %f %f", vrot, rinv2, dx, g->a_grav[0]);
 }
+
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
 
 /* Include exteral pointmass potential */
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-
-#define EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR 0.03f
 
 /**
  * @brief Computes the time-step due to the acceleration from a point mass
@@ -145,7 +151,6 @@ external_gravity_pointmass_timestep(const struct external_potential* potential,
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
 
-  /*  return EXTERNAL_GRAVITY_TIMESTEP_PREFACTOR * sqrtf(a_2 / dota_2); */
   return potential->point_mass.timestep_mult * sqrtf(a_2 / dota_2);
 }
 
@@ -174,10 +179,10 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
   g->a_grav[2] +=
       -G_newton * potential->point_mass.mass * dz * rinv * rinv * rinv;
 }
+
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
 
 /* Now, some generic functions, defined in the source file */
-
 void potential_init(const struct swift_params* parameter_file,
                     struct UnitSystem* us,
                     struct external_potential* potential);

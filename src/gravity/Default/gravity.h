@@ -43,7 +43,8 @@ gravity_compute_timestep_external(const struct external_potential* potential,
       fminf(dt, external_gravity_pointmass_timestep(potential, phys_const, gp));
 #endif
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-  dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential, phys_const, gp));
+  dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential,
+                                                               phys_const, gp));
 #endif
 
   return dt;

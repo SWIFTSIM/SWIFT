@@ -50,17 +50,20 @@ void potential_init(const struct swift_params* parameter_file,
       parser_get_param_double(parameter_file, "PointMass:timestep_mult");
 
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
+
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-  potential -> isothermal_potential.x = 
-	 parser_get_param_double(parameter_file, "IsothermalPotential:position_x");
-  potential -> isothermal_potential.y = 
-	 parser_get_param_double(parameter_file, "IsothermalPotential:position_y");
-  potential -> isothermal_potential.z = 
-	 parser_get_param_double(parameter_file, "IsothermalPotential:position_z");
-  potential -> isothermal_potential.vrot = 
-	 parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
-  potential -> isothermal_potential.timestep_mult = 
-	 parser_get_param_double(parameter_file, "IsothermalPotential:timestep_mult");
+
+  potential->isothermal_potential.x =
+      parser_get_param_double(parameter_file, "IsothermalPotential:position_x");
+  potential->isothermal_potential.y =
+      parser_get_param_double(parameter_file, "IsothermalPotential:position_y");
+  potential->isothermal_potential.z =
+      parser_get_param_double(parameter_file, "IsothermalPotential:position_z");
+  potential->isothermal_potential.vrot =
+      parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
+  potential->isothermal_potential.timestep_mult = parser_get_param_double(
+      parameter_file, "IsothermalPotential:timestep_mult");
+
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
 }
 
@@ -72,15 +75,23 @@ void potential_init(const struct swift_params* parameter_file,
 void potential_print(const struct external_potential* potential) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
-  message("Point mass properties are (x,y,z) = (%e, %e, %e), M = %e timestep multiplier = %e",
-          potential->point_mass.x, potential->point_mass.y,
-          potential->point_mass.z, potential->point_mass.mass,
-			 potential->point_mass.timestep_mult);
+
+  message(
+      "Point mass properties are (x,y,z) = (%e, %e, %e), M = %e timestep "
+      "multiplier = %e",
+      potential->point_mass.x, potential->point_mass.y, potential->point_mass.z,
+      potential->point_mass.mass, potential->point_mass.timestep_mult);
+
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
+
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-  message("Isothermal potential properties are (x,y,z) = (%e, %e, %e), vrot = %e timestep multiplier= %e",
-			 potential->isothermal_potential.x, potential->isothermal_potential.y,
-  			 potential->isothermal_potential.z, potential->isothermal_potential.vrot,
-			 potential->isothermal_potential.timestep_mult);
+
+  message(
+      "Isothermal potential properties are (x,y,z) = (%e, %e, %e), vrot = %e "
+      "timestep multiplier= %e",
+      potential->isothermal_potential.x, potential->isothermal_potential.y,
+      potential->isothermal_potential.z, potential->isothermal_potential.vrot,
+      potential->isothermal_potential.timestep_mult);
+
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
 }
