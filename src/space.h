@@ -66,7 +66,7 @@ struct space {
   double dim[3];
 
   /* Cell widths. */
-  double h[3], ih[3];
+  double width[3], iwidth[3];
 
   /* The minimum and maximum cutoff radii. */
   double h_max, cell_min;
