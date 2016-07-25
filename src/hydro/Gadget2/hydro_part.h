@@ -61,46 +61,46 @@ struct part {
   /* Derivative of the density with respect to smoothing length. */
   float rho_dh;
 
-  // union {
+  union {
 
-  struct {
+    struct {
 
-    /* Number of neighbours. */
-    float wcount;
+      /* Number of neighbours. */
+      float wcount;
 
-    /* Number of neighbours spatial derivative. */
-    float wcount_dh;
+      /* Number of neighbours spatial derivative. */
+      float wcount_dh;
 
-    /* Particle velocity curl. */
-    float rot_v[3];
+      /* Particle velocity curl. */
+      float rot_v[3];
 
-    /* Particle velocity divergence. */
-    float div_v;
+      /* Particle velocity divergence. */
+      float div_v;
 
-  } density;
+    } density;
 
-  struct {
+    struct {
 
-    /* Balsara switch */
-    float balsara;
+      /* Balsara switch */
+      float balsara;
 
-    /* Pressure over density squared (including drho/dh term) */
-    float P_over_rho2;
+      /* Pressure over density squared (including drho/dh term) */
+      float P_over_rho2;
 
-    /* Particle sound speed. */
-    float soundspeed;
+      /* Particle sound speed. */
+      float soundspeed;
 
-    /* Signal velocity. */
-    float v_sig;
+      /* Signal velocity. */
+      float v_sig;
 
-    /* Entropy time derivative */
-    float entropy_dt;
+      /* Entropy time derivative */
+      float entropy_dt;
 
-    /* Time derivative of the smoothing length */
-    float h_dt;
+      /* Time derivative of the smoothing length */
+      float h_dt;
 
-  } force;
-  //  };
+    } force;
+  };
 
   /* Particle ID. */
   long long id;

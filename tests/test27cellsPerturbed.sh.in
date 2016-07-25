@@ -1,8 +1,8 @@
 #!/bin/bash
 rm brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat
 
-./test27cells -p 6 -r 1 -d 0.1 -f perturbed
+./test27cells -n 6 -r 1 -d 0.1 -f perturbed
 
-python @srcdir@/difffloat.py brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat @srcdir@/tolerance.dat 6
+python @srcdir@/difffloat.py brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat @srcdir@/tolerance_27.dat 6
 
 exit $?
