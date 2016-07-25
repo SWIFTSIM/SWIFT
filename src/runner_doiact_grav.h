@@ -71,9 +71,9 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
   sort_j = &cj->gsort[sid * (cj->count + 1)];
 
   /* Get some other useful values. */
-  h_max =
-      sqrtf(ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] + ci->width[2] * ci->width[2]) *
-      const_theta_max;
+  h_max = sqrtf(ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] +
+                ci->width[2] * ci->width[2]) *
+          const_theta_max;
   count_i = ci->gcount;
   count_j = cj->gcount;
   parts_i = ci->gparts;
@@ -296,9 +296,9 @@ void runner_dograv_mm(struct runner *r, struct cell *restrict ci,
       dx[k] += shift[k];
     }
   }
-  theta =
-      sqrt((dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
-           (ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] + ci->width[2] * ci->width[2]));
+  theta = sqrt((dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
+               (ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] +
+                ci->width[2] * ci->width[2]));
 
   /* Do an MM or an MP/PM? */
   if (theta > const_theta_max * 4) {
@@ -558,7 +558,8 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
       if (dx[k] > 0.0f) dx[k] -= ci->width[k];
     }
     theta = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
-            (ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] + ci->width[2] * ci->width[2]);
+            (ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] +
+             ci->width[2] * ci->width[2]);
 
     /* Split the interaction? */
     if (theta < const_theta_max * const_theta_max) {

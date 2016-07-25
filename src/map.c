@@ -108,13 +108,15 @@ void map_cellcheck(struct cell *c, void *data) {
   for (int k = 0; k < c->count; k++) {
     struct part *p = &c->parts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
-        p->x[0] > c->loc[0] + c->width[0] || p->x[1] > c->loc[1] + c->width[1] ||
+        p->x[0] > c->loc[0] + c->width[0] ||
+        p->x[1] > c->loc[1] + c->width[1] ||
         p->x[2] > c->loc[2] + c->width[2]) {
       printf(
           "map_cellcheck: particle at [ %.16e %.16e %.16e ] outside of cell [ "
           "%.16e %.16e %.16e ] - [ %.16e %.16e %.16e ].\n",
           p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[1], c->loc[2],
-          c->loc[0] + c->width[0], c->loc[1] + c->width[1], c->loc[2] + c->width[2]);
+          c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+          c->loc[2] + c->width[2]);
       error("particle out of bounds!");
     }
   }
@@ -123,13 +125,15 @@ void map_cellcheck(struct cell *c, void *data) {
   for (int k = 0; k < c->gcount; k++) {
     struct gpart *p = &c->gparts[k];
     if (p->x[0] < c->loc[0] || p->x[1] < c->loc[1] || p->x[2] < c->loc[2] ||
-        p->x[0] > c->loc[0] + c->width[0] || p->x[1] > c->loc[1] + c->width[1] ||
+        p->x[0] > c->loc[0] + c->width[0] ||
+        p->x[1] > c->loc[1] + c->width[1] ||
         p->x[2] > c->loc[2] + c->width[2]) {
       printf(
           "map_cellcheck: g-particle at [ %.16e %.16e %.16e ] outside of cell "
           "[ %.16e %.16e %.16e ] - [ %.16e %.16e %.16e ].\n",
           p->x[0], p->x[1], p->x[2], c->loc[0], c->loc[1], c->loc[2],
-          c->loc[0] + c->width[0], c->loc[1] + c->width[1], c->loc[2] + c->width[2]);
+          c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+          c->loc[2] + c->width[2]);
       error("g-particle out of bounds!");
     }
   }

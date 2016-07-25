@@ -253,8 +253,9 @@ static void accumulate_counts(struct space *s, int *counts) {
       else if (parts[k].x[j] >= dim[j])
         parts[k].x[j] -= dim[j];
     }
-    const int cid = cell_getid(cdim, parts[k].x[0] * iwidth[0],
-                               parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);
+    const int cid =
+        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
+                   parts[k].x[2] * iwidth[2]);
     counts[cid]++;
   }
 }
@@ -847,8 +848,8 @@ void partition_initial_partition(struct partition *initial_partition,
             parts[k].x[j] -= dim[j];
         }
         const int cid =
-            cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
-                       parts[k].x[2] * iwidth[2]);
+            cell_getid(cdim, parts[k].x[0] * iwidth[0],
+                       parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);
         weights[cid]++;
       }
 

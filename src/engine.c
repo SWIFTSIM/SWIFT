@@ -299,8 +299,9 @@ void engine_redistribute(struct engine *e) {
       else if (parts[k].x[j] >= dim[j])
         parts[k].x[j] -= dim[j];
     }
-    const int cid = cell_getid(cdim, parts[k].x[0] * iwidth[0],
-                               parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);
+    const int cid =
+        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
+                   parts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
       error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
@@ -354,8 +355,9 @@ void engine_redistribute(struct engine *e) {
       else if (gparts[k].x[j] >= dim[j])
         gparts[k].x[j] -= dim[j];
     }
-    const int cid = cell_getid(cdim, gparts[k].x[0] * iwidth[0],
-                               gparts[k].x[1] * iwidth[1], gparts[k].x[2] * iwidth[2]);
+    const int cid =
+        cell_getid(cdim, gparts[k].x[0] * iwidth[0], gparts[k].x[1] * iwidth[1],
+                   gparts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
       error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
@@ -541,7 +543,8 @@ void engine_redistribute(struct engine *e) {
   /* Verify that all parts are in the right place. */
   for (int k = 0; k < nr_parts; k++) {
     int cid = cell_getid(cdim, parts_new[k].x[0] * iwidth[0],
-                         parts_new[k].x[1] * iwidth[1], parts_new[k].x[2] * iwidth[2]);
+                         parts_new[k].x[1] * iwidth[1],
+                         parts_new[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%i) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
