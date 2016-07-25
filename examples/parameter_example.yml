@@ -70,10 +70,11 @@ PointMass:
   position_y:      50.
   position_z:      50.
   mass:            1e10     # mass of external point mass in internal units
+  timestep_mult:   0.03     # Pre-factor for the time-step condition
 
 IsothermalPotential:
   position_x:      100.     # Location of centre of isothermal potential in internal units
   position_y:      100.
-  position_z:      100.	
+  position_z:      100.
   vrot:            200.     # Rotation speed of isothermal potential in internal units
   timestep_mult:   0.03     # Pre-factor for the time-step condition

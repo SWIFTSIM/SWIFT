@@ -7,4 +7,4 @@ then
     python makeIC.py 1000 1
 fi
 
-../../swift -g -t 2 externalGravity.yml
+../../swift -g -t 2 isothermal.yml
