@@ -209,7 +209,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
 #ifdef WITH_MPI
-  double oldh[3];
+  double oldwidth[3];
   double oldcdim[3];
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
@@ -305,7 +305,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
             "basic cell dimensions have increased - recalculating the "
             "global partition.");
 
-      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s)) {
+      if (!partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s)) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
