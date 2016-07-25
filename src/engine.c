@@ -265,7 +265,7 @@ void engine_redistribute(struct engine *e) {
   struct cell *cells = s->cells;
   const int nr_cells = s->nr_cells;
   const int *cdim = s->cdim;
-  const double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   struct part *parts = s->parts;
   struct xpart *xparts = s->xparts;
@@ -299,8 +299,8 @@ void engine_redistribute(struct engine *e) {
       else if (parts[k].x[j] >= dim[j])
         parts[k].x[j] -= dim[j];
     }
-    const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
-                               parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    const int cid = cell_getid(cdim, parts[k].x[0] * iwidth[0],
+                               parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
       error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
@@ -354,8 +354,8 @@ void engine_redistribute(struct engine *e) {
       else if (gparts[k].x[j] >= dim[j])
         gparts[k].x[j] -= dim[j];
     }
-    const int cid = cell_getid(cdim, gparts[k].x[0] * ih[0],
-                               gparts[k].x[1] * ih[1], gparts[k].x[2] * ih[2]);
+    const int cid = cell_getid(cdim, gparts[k].x[0] * iwidth[0],
+                               gparts[k].x[1] * iwidth[1], gparts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
       error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
@@ -540,8 +540,8 @@ void engine_redistribute(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (int k = 0; k < nr_parts; k++) {
-    int cid = cell_getid(cdim, parts_new[k].x[0] * ih[0],
-                         parts_new[k].x[1] * ih[1], parts_new[k].x[2] * ih[2]);
+    int cid = cell_getid(cdim, parts_new[k].x[0] * iwidth[0],
+                         parts_new[k].x[1] * iwidth[1], parts_new[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%i) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);

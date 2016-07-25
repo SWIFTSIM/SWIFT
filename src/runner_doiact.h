@@ -1727,7 +1727,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
+  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2011,7 +2011,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
+  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2286,13 +2286,13 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
     if (ci->progeny[k] != NULL) {
       // if ( parts[ ind[ 0 ] ].x[0] >= ci->progeny[k]->loc[0] &&
       //      parts[ ind[ 0 ] ].x[0] <= ci->progeny[k]->loc[0] +
-      // ci->progeny[k]->h[0] &&
+      // ci->progeny[k]->width[0] &&
       //      parts[ ind[ 0 ] ].x[1] >= ci->progeny[k]->loc[1] &&
       //      parts[ ind[ 0 ] ].x[1] <= ci->progeny[k]->loc[1] +
-      // ci->progeny[k]->h[1] &&
+      // ci->progeny[k]->width[1] &&
       //      parts[ ind[ 0 ] ].x[2] >= ci->progeny[k]->loc[2] &&
       //      parts[ ind[ 0 ] ].x[2] <= ci->progeny[k]->loc[2] +
-      // ci->progeny[k]->h[2] ) {
+      // ci->progeny[k]->width[2] ) {
       if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
           &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
         sub = ci->progeny[k];
@@ -2324,7 +2324,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   else {
 
     /* Get the cell dimensions. */
-    const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
+    const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
 
     /* Recurse? */
     if (ci->split && cj->split &&

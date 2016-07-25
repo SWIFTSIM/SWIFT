@@ -218,9 +218,9 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     oldcdim[0] = s->cdim[0];
     oldcdim[1] = s->cdim[1];
     oldcdim[2] = s->cdim[2];
-    oldh[0] = s->h[0];
-    oldh[1] = s->h[1];
-    oldh[2] = s->h[2];
+    oldwidth[0] = s->width[0];
+    oldwidth[1] = s->width[1];
+    oldwidth[2] = s->width[2];
 
     if ((oldnodeIDs = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
@@ -256,10 +256,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     /* Set the new cell dimensions only if smaller. */
     for (int k = 0; k < 3; k++) {
       s->cdim[k] = cdim[k];
-      s->h[k] = s->dim[k] / cdim[k];
-      s->ih[k] = 1.0 / s->h[k];
+      s->width[k] = s->dim[k] / cdim[k];
+      s->iwidth[k] = 1.0 / s->width[k];
     }
-    const float dmin = fminf(s->h[0], fminf(s->h[1], s->h[2]));
+    const float dmin = fminf(s->width[0], fminf(s->width[1], s->width[2]));
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
@@ -275,12 +275,12 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       for (int j = 0; j < cdim[1]; j++)
         for (int k = 0; k < cdim[2]; k++) {
           c = &s->cells[cell_getid(cdim, i, j, k)];
-          c->loc[0] = i * s->h[0];
-          c->loc[1] = j * s->h[1];
-          c->loc[2] = k * s->h[2];
-          c->h[0] = s->h[0];
-          c->h[1] = s->h[1];
-          c->h[2] = s->h[2];
+          c->loc[0] = i * s->width[0];
+          c->loc[1] = j * s->width[1];
+          c->loc[2] = k * s->width[2];
+          c->width[0] = s->width[0];
+          c->width[1] = s->width[1];
+          c->width[2] = s->width[2];
           c->dmin = dmin;
           c->depth = 0;
           c->count = 0;
@@ -386,7 +386,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells = s->cells;
 
-  const double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 
@@ -1251,13 +1251,13 @@ void space_do_split(struct space *s, struct cell *c) {
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
-      temp->h[0] = c->h[0] / 2;
-      temp->h[1] = c->h[1] / 2;
-      temp->h[2] = c->h[2] / 2;
+      temp->width[0] = c->width[0] / 2;
+      temp->width[1] = c->width[1] / 2;
+      temp->width[2] = c->width[2] / 2;
       temp->dmin = c->dmin / 2;
-      if (k & 4) temp->loc[0] += temp->h[0];
-      if (k & 2) temp->loc[1] += temp->h[1];
-      if (k & 1) temp->loc[2] += temp->h[2];
+      if (k & 4) temp->loc[0] += temp->width[0];
+      if (k & 2) temp->loc[1] += temp->width[1];
+      if (k & 1) temp->loc[2] += temp->width[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->h_max = 0.0;

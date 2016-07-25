@@ -72,7 +72,7 @@ void runner_dopair_grav_new(struct runner *r, struct cell *ci,
 
   /* Get some other useful values. */
   h_max =
-      sqrtf(ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]) *
+      sqrtf(ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] + ci->width[2] * ci->width[2]) *
       const_theta_max;
   count_i = ci->gcount;
   count_j = cj->gcount;
@@ -298,7 +298,7 @@ void runner_dograv_mm(struct runner *r, struct cell *restrict ci,
   }
   theta =
       sqrt((dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
-           (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]));
+           (ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] + ci->width[2] * ci->width[2]));
 
   /* Do an MM or an MP/PM? */
   if (theta > const_theta_max * 4) {
@@ -555,10 +555,10 @@ void runner_dosub_grav(struct runner *r, struct cell *ci, struct cell *cj,
     for (k = 0; k < 3; k++) {
       dx[k] = fabs(ci->loc[k] - cj->loc[k]);
       if (periodic && dx[k] > 0.5 * s->dim[k]) dx[k] = -dx[k] + s->dim[k];
-      if (dx[k] > 0.0f) dx[k] -= ci->h[k];
+      if (dx[k] > 0.0f) dx[k] -= ci->width[k];
     }
     theta = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) /
-            (ci->h[0] * ci->h[0] + ci->h[1] * ci->h[1] + ci->h[2] * ci->h[2]);
+            (ci->width[0] * ci->width[0] + ci->width[1] * ci->width[1] + ci->width[2] * ci->width[2]);
 
     /* Split the interaction? */
     if (theta < const_theta_max * const_theta_max) {

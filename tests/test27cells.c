@@ -111,9 +111,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->dx_max = 0.;
-  cell->h[0] = size;
-  cell->h[1] = size;
-  cell->h[2] = size;
+  cell->width[0] = size;
+  cell->width[1] = size;
+  cell->width[2] = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
