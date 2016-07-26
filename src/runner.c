@@ -787,9 +787,6 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
       struct xpart *restrict xp = &xparts[k];
 
       /* First, finish the force loop */
-      p->h_dt *= p->h * 0.333333333f;
-
-      /* And do the same of the extra variable */
       hydro_end_force(p);
       if (p->gpart != NULL) gravity_end_force(p->gpart);
 
@@ -908,9 +905,6 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
       if (p->ti_end <= ti_current) {
 
         /* First, finish the force loop */
-        p->h_dt *= p->h * 0.333333333f;
-
-        /* And do the same of the extra variable */
         hydro_end_force(p);
         if (p->gpart != NULL) gravity_end_force(p->gpart);
 

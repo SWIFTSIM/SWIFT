@@ -136,7 +136,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             ci->parts[pid].v[2], ci->parts[pid].rho, ci->parts[pid].rho_dh,
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
 #ifdef GADGET2_SPH
-            ci->parts[pid].div_v, ci->parts[pid].density.rot_v[0],
+            ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
 #else
             0., 0., 0., 0.
@@ -155,7 +155,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
 #ifdef GADGET2_SPH
-            cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
+            cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else
             0., 0., 0., 0.

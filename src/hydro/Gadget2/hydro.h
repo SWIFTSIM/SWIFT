@@ -65,7 +65,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->rho_dh = 0.f;
-  p->div_v = 0.f;
+  p->density.div_v = 0.f;
   p->density.rot_v[0] = 0.f;
   p->density.rot_v[1] = 0.f;
   p->density.rot_v[2] = 0.f;
@@ -97,8 +97,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= ih * ih2;
   p->rho_dh *= ih4;
-  p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
-  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma4);
+  p->density.wcount *= kernel_norm;
+  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
 
   const float irho = 1.f / p->rho;
 
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.rot_v[2] *= ih4 * irho;
 
   /* Finish calculation of the velocity divergence */
-  p->div_v *= ih4 * irho;
+  p->density.div_v *= ih4 * irho;
 }
 
 /**
@@ -128,17 +128,37 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp, int ti_current,
     double timeBase) {
 
+  const float fac_mu = 1.f; /* Will change with cosmological integration */
+
   /* Compute the norm of the curl */
-  p->force.curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                          p->density.rot_v[1] * p->density.rot_v[1] +
-                          p->density.rot_v[2] * p->density.rot_v[2]);
+  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
+                             p->density.rot_v[1] * p->density.rot_v[1] +
+                             p->density.rot_v[2] * p->density.rot_v[2]);
+
+  /* Compute the norm of div v */
+  const float abs_div_v = fabsf(p->density.div_v);
 
   /* Compute the pressure */
-  const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
-  p->force.pressure = (p->entropy + p->entropy_dt * dt) * pow_gamma(p->rho);
+  const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+  const float pressure =
+      (p->entropy + p->entropy_dt * half_dt) * pow_gamma(p->rho);
+
+  const float irho = 1.f / p->rho;
+
+  /* Divide the pressure by the density and density gradient */
+  const float P_over_rho2 = pressure * irho * irho * p->rho_dh;
 
   /* Compute the sound speed */
-  p->force.soundspeed = sqrtf(hydro_gamma * p->force.pressure / p->rho);
+  const float soundspeed = sqrtf(hydro_gamma * pressure * irho);
+
+  /* Compute the Balsara switch */
+  const float balsara =
+      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
+
+  /* Update variables. */
+  p->force.P_over_rho2 = P_over_rho2;
+  p->force.soundspeed = soundspeed;
+  p->force.balsara = balsara;
 }
 
 /**
@@ -157,10 +177,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
 
-  p->h_dt = 0.0f;
-
   /* Reset the time derivatives. */
   p->entropy_dt = 0.0f;
+  p->force.h_dt = 0.0f;
 
   /* Reset maximal signal velocity */
   p->force.v_sig = 0.0f;
@@ -181,11 +200,20 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
-  p->force.pressure =
+  const float pressure =
       (p->entropy + p->entropy_dt * dt_entr) * pow_gamma(p->rho);
 
+  const float irho = 1.f / p->rho;
+
+  /* Divide the pressure by the density and density gradient */
+  const float P_over_rho2 = pressure * irho * irho * p->rho_dh;
+
   /* Compute the new sound speed */
-  p->force.soundspeed = sqrtf(hydro_gamma * p->force.pressure / p->rho);
+  const float soundspeed = sqrtf(hydro_gamma * pressure * irho);
+
+  /* Update variables */
+  p->force.P_over_rho2 = P_over_rho2;
+  p->force.soundspeed = soundspeed;
 }
 
 /**
@@ -197,6 +225,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p) {
+
+  p->force.h_dt *= p->h * 0.333333333f;
 
   p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
 }

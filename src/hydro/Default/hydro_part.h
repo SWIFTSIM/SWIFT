@@ -46,9 +46,6 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
-  /* Change in smoothing length over time. */
-  float h_dt;
-
   /* Particle time of beginning of time-step. */
   int ti_begin;
 
@@ -103,6 +100,9 @@ struct part {
 
       /* Sound speed */
       float c;
+
+      /* Change in smoothing length over time. */
+      float h_dt;
 
     } force;
   };
