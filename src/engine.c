@@ -2428,31 +2428,26 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   /* Add the tasks corresponding to hydro operations to the masks */
   if (e->policy & engine_policy_hydro) {
-
     mask |= 1 << task_type_self;
     mask |= 1 << task_type_pair;
     mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_sub_self;
     mask |= 1 << task_type_ghost;
-
     submask |= 1 << task_subtype_density;
   }
 
   /* Add the tasks corresponding to self-gravity to the masks */
   if (e->policy & engine_policy_self_gravity) {
-
     /* Nothing here for now */
   }
 
   /* Add the tasks corresponding to external gravity to the masks */
   if (e->policy & engine_policy_external_gravity) {
-
     mask |= 1 << task_type_grav_external;
   }
 
   /* Add MPI tasks if need be */
   if (e->policy & engine_policy_mpi) {
-
     mask |= 1 << task_type_send;
     mask |= 1 << task_type_recv;
     submask |= 1 << task_subtype_tend;
