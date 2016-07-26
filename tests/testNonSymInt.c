@@ -78,8 +78,14 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
           "%13e %13e %13e\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->rho,
-          p->rho_dh, p->density.wcount, p->density.wcount_dh, p->density.div_v,
-          p->density.rot_v[0], p->density.rot_v[1], p->density.rot_v[2]);
+          p->rho_dh, p->density.wcount, p->density.wcount_dh,
+#ifdef MINIMAL_SPH
+	  0.f, 0.f, 0.f, 0.f
+#else
+	  p->density.div_v,
+          p->density.rot_v[0], p->density.rot_v[1], p->density.rot_v[2]
+#endif
+	  );
   fclose(file);
 }
 

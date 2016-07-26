@@ -97,6 +97,8 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->entropy = pressure / pow_gamma(density);
 #elif defined(DEFAULT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
+#elif defined(MINIMAL_SPH)
+  part->u = pressure / (hydro_gamma_minus_one * density);
 #else
   error("Need to define pressure here !");
 #endif
@@ -298,7 +300,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
-            main_cell->parts[pid].rho, main_cell->parts[pid].density.div_v,
+            main_cell->parts[pid].rho,
+#ifdef MINIMAL_SPH
+	    0.f,
+#else
+	    main_cell->parts[pid].density.div_v,
+#endif	    
             hydro_get_entropy(&main_cell->parts[pid], 0.f),
             hydro_get_internal_energy(&main_cell->parts[pid], 0.f),
             hydro_get_pressure(&main_cell->parts[pid], 0.f),
@@ -310,6 +317,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].entropy_dt, 0.f
 #elif defined(DEFAULT_SPH)
             0.f, main_cell->parts[pid].force.u_dt
+#elif defined(MINIMAL_SPH)
+            0.f, main_cell->parts[pid].u_dt
 #else
             0.f, 0.f
 #endif

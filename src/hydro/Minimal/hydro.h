@@ -246,3 +246,39 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 
   return p->u;
 }
+
+/**
+ * @brief Returns the pressure of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_pressure(
+    const struct part *restrict p, float dt) {
+
+  return p->u * p->rho * hydro_gamma_minus_one;
+}
+
+/**
+ * @brief Returns the entropy of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_entropy(
+    const struct part *restrict p, float dt) {
+
+  return hydro_gamma_minus_one * p->u * pow_minus_gamma_minus_one(p->rho);
+}
+
+/**
+ * @brief Returns the sound speed of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
+    const struct part *restrict p, float dt) {
+
+  return sqrt(p->u * hydro_gamma * hydro_gamma_minus_one);
+}
