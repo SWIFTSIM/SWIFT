@@ -42,6 +42,10 @@ gravity_compute_timestep_external(const struct external_potential* potential,
   dt =
       fminf(dt, external_gravity_pointmass_timestep(potential, phys_const, gp));
 #endif
+#ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+  dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential,
+                                                               phys_const, gp));
+#endif
 
   return dt;
 }
@@ -116,6 +120,9 @@ __attribute__((always_inline)) INLINE static void external_gravity(
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
   external_gravity_pointmass(potential, phys_const, gp);
+#endif
+#ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+  external_gravity_isothermalpotential(potential, phys_const, gp);
 #endif
 }
 

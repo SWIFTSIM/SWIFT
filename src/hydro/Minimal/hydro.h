@@ -106,8 +106,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= ih * ih2;
   p->rho_dh *= ih4;
-  p->density.wcount *= (4.0f / 3.0f * M_PI * kernel_gamma3);
-  p->density.wcount_dh *= ih * (4.0f / 3.0f * M_PI * kernel_gamma4);
+  p->density.wcount *= kernel_norm;
+  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
 
   const float irho = 1.f / p->rho;
 
@@ -155,7 +155,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
-  p->h_dt = 0.0f;
+  p->force.h_dt = 0.0f;
   p->force.v_sig = 0.0f;
 }
 
@@ -191,7 +191,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+
+  p->force.h_dt *= p->h * 0.333333333f;
+}
 
 /**
  * @brief Kick the additional variables

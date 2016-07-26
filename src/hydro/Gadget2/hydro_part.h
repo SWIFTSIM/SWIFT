@@ -25,8 +25,6 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
-  
-
 
 } __attribute__((aligned(xpart_align)));
 
@@ -45,8 +43,8 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
-  /* Time derivative of the smoothing length */
-  float h_dt;
+  /* Particle mass. */
+  float mass;
 
   /* Particle time of beginning of time-step. */
   int ti_begin;
@@ -60,12 +58,11 @@ struct part {
   /* Particle entropy. */
   float entropy;
 
-  /* Derivative of the density with respect to this particle's smoothing length.
-   */
-  float rho_dh;
+  /* Entropy time derivative */
+  float entropy_dt;
 
-  /* Particle mass. */
-  float mass;
+  /* Derivative of the density with respect to smoothing length. */
+  float rho_dh;
 
   union {
 
@@ -90,17 +87,17 @@ struct part {
       /* Balsara switch */
       float balsara;
 
-      /* Signal velocity. */
-      float v_sig;
-
-      /* Pressure over density sqaured*/
+      /* Pressure over density squared (including drho/dh term) */
       float P_over_rho2;
 
       /* Particle sound speed. */
       float soundspeed;
 
-      /* Entropy time derivative */
-      float entropy_dt;
+      /* Signal velocity. */
+      float v_sig;
+
+      /* Time derivative of the smoothing length */
+      float h_dt;
 
     } force;
   };

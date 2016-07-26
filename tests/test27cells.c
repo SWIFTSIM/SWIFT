@@ -111,9 +111,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->dx_max = 0.;
-  cell->h[0] = size;
-  cell->h[1] = size;
-  cell->h[2] = size;
+  cell->width[0] = size;
+  cell->width[1] = size;
+  cell->width[2] = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
@@ -184,7 +184,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].rho_dh, main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
 #if defined(GADGET2_SPH)
-            main_cell->parts[pid].density.div_v, main_cell->parts[pid].density.rot_v[0],
+            main_cell->parts[pid].density.div_v,
+            main_cell->parts[pid].density.rot_v[0],
             main_cell->parts[pid].density.rot_v[1],
             main_cell->parts[pid].density.rot_v[2]
 #elif defined(DEFAULT_SPH)

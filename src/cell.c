@@ -110,13 +110,13 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
-      temp->h[0] = c->h[0] / 2;
-      temp->h[1] = c->h[1] / 2;
-      temp->h[2] = c->h[2] / 2;
+      temp->width[0] = c->width[0] / 2;
+      temp->width[1] = c->width[1] / 2;
+      temp->width[2] = c->width[2] / 2;
       temp->dmin = c->dmin / 2;
-      if (k & 4) temp->loc[0] += temp->h[0];
-      if (k & 2) temp->loc[1] += temp->h[1];
-      if (k & 1) temp->loc[2] += temp->h[2];
+      if (k & 4) temp->loc[0] += temp->width[0];
+      if (k & 2) temp->loc[1] += temp->width[1];
+      if (k & 1) temp->loc[2] += temp->width[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->dx_max = 0.f;
@@ -425,7 +425,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
   double pivot[3];
 
   /* Init the pivots. */
-  for (int k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->h[k] / 2;
+  for (int k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->width[k] / 2;
 
   /* Split along the x-axis. */
   i = 0;

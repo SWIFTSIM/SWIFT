@@ -39,15 +39,15 @@ typedef void (*vec_interaction)(float *, float *, float *, float *, struct part 
  *separation.
  * @param partId The running counter of IDs.
  */
-struct part *make_particles(int count, double *offset, double spacing, double h, 
+struct part *make_particles(int count, double *offset, double spacing, double h,
                             long long *partId) {
- 
+
   struct part *particles;
   if (posix_memalign((void **)&particles, part_align,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
-   
+
   /* Construct the particles */
   struct part *p;
   for (size_t i = 0; i < VEC_SIZE + 1; ++i) {
@@ -60,7 +60,7 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
     p->v[0] = random_uniform(-0.05, 0.05);
     p->v[1] = random_uniform(-0.05, 0.05);
     p->v[2] = random_uniform(-0.05, 0.05);
-    
+
     p->h = h;
     p->id = ++(*partId);
     p->mass = 1.0f;
@@ -97,17 +97,17 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
       p->x[2], p->v[0], p->v[1],
       p->v[2], p->a_hydro[0], p->a_hydro[1], 
       p->a_hydro[2], p->rho, p->rho_dh,
-      p->density.wcount, p->density.wcount_dh, p->h_dt, p->force.v_sig,
+      p->density.wcount, p->density.wcount_dh, p->force.h_dt, p->force.v_sig,
 #if defined(GADGET2_SPH)
       p->density.div_v, p->density.rot_v[0],
-      p->density.rot_v[1], p->density.rot_v[2], p->force.entropy_dt
+      p->density.rot_v[1], p->density.rot_v[2], p->entropy_dt
 #elif defined(DEFAULT_SPH)
       p->density.div_v, p->density.rot_v[0],
       p->density.rot_v[1], p->density.rot_v[2], 0.
 #else
       0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
 #endif
-      );
+          );
   fclose(file);
 }
 
@@ -128,11 +128,12 @@ void write_header(char *fileName) {
 }
 
 /*
- * @brief Calls the serial and vectorised version of the non-symmetrical density interaction.
+ * @brief Calls the serial and vectorised version of the non-symmetrical density
+ * interaction.
  *
  * @param parts Particle array to be interacted
  * @param count No. of particles to be interacted
- * 
+ *
  */
 void test_interactions(struct part *parts, int count, serial_interaction serial_inter_func, vec_interaction vec_inter_func, char *filePrefix) {
   
@@ -149,27 +150,26 @@ void test_interactions(struct part *parts, int count, serial_interaction serial_
   sprintf(vec_filename + strlen(vec_filename), "_vec.dat");
 
   write_header(serial_filename);
-  write_header(vec_filename); 
+  write_header(vec_filename);
 
   /* Dump state of particles before serial interaction. */
-  dump_indv_particle_fields(serial_filename,&pi); 
-  for(size_t i = 1; i < count; i++)
-    dump_indv_particle_fields(serial_filename,&parts[i]); 
+  dump_indv_particle_fields(serial_filename, &pi);
+  for (size_t i = 1; i < count; i++)
+    dump_indv_particle_fields(serial_filename, &parts[i]);
 
   /* Make copy of pi to be used in vectorised version. */
   struct part pi_vec = pi;
   struct part pj_vec[VEC_SIZE];
-  for(int i=0; i<VEC_SIZE; i++)
-    pj_vec[i] = parts[i + 1];
-  
+  for (int i = 0; i < VEC_SIZE; i++) pj_vec[i] = parts[i + 1];
+
   float r2q[VEC_SIZE] __attribute__((aligned(sizeof(float) * VEC_SIZE)));
   float hiq[VEC_SIZE] __attribute__((aligned(sizeof(float) * VEC_SIZE)));
   float hjq[VEC_SIZE] __attribute__((aligned(sizeof(float) * VEC_SIZE)));
   float dxq[3 * VEC_SIZE] __attribute__((aligned(sizeof(float) * VEC_SIZE)));
   struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
-  
+
   /* Perform serial interaction */
-  for(int i=1; i<count; i++) {
+  for (int i = 1; i < count; i++) {
     /* Compute the pairwise distance. */
     float r2 = 0.0f;
     float dx[3];
@@ -182,16 +182,16 @@ void test_interactions(struct part *parts, int count, serial_interaction serial_
   }    
 
   file = fopen(serial_filename, "a");
-  fprintf(file,"\nPARTICLES AFTER INTERACTION:\n");
+  fprintf(file, "\nPARTICLES AFTER INTERACTION:\n");
   fclose(file);
 
   /* Dump result of serial interaction. */
-  dump_indv_particle_fields(serial_filename,&pi); 
-  for(size_t i = 1; i < count; i++)
-    dump_indv_particle_fields(serial_filename,&parts[i]); 
+  dump_indv_particle_fields(serial_filename, &pi);
+  for (size_t i = 1; i < count; i++)
+    dump_indv_particle_fields(serial_filename, &parts[i]);
 
   /* Setup arrays for vector interaction. */
-  for(int i=0; i<VEC_SIZE; i++) {
+  for (int i = 0; i < VEC_SIZE; i++) {
     /* Compute the pairwise distance. */
     float r2 = 0.0f;
     float dx[3];
@@ -210,27 +210,27 @@ void test_interactions(struct part *parts, int count, serial_interaction serial_
   }
 
   /* Dump state of particles before vector interaction. */
-  dump_indv_particle_fields(vec_filename,piq[0]); 
-  for(size_t i = 0; i < VEC_SIZE; i++)
-    dump_indv_particle_fields(vec_filename,pjq[i]);
-  
+  dump_indv_particle_fields(vec_filename, piq[0]);
+  for (size_t i = 0; i < VEC_SIZE; i++)
+    dump_indv_particle_fields(vec_filename, pjq[i]);
+
   /* Perform vector interaction. */
   vec_inter_func(r2q, dxq, hiq, hjq, piq, pjq);
   
   file = fopen(vec_filename, "a");
-  fprintf(file,"\nPARTICLES AFTER INTERACTION:\n");
+  fprintf(file, "\nPARTICLES AFTER INTERACTION:\n");
   fclose(file);
-  
+
   /* Dump result of serial interaction. */
-  dump_indv_particle_fields(vec_filename,piq[0]); 
-  for(size_t i = 0; i < VEC_SIZE; i++)
-    dump_indv_particle_fields(vec_filename,pjq[i]);
+  dump_indv_particle_fields(vec_filename, piq[0]);
+  for (size_t i = 0; i < VEC_SIZE; i++)
+    dump_indv_particle_fields(vec_filename, pjq[i]);
 }
 
 /* And go... */
 int main(int argc, char *argv[]) {
   double h = 1.2348, spacing = 0.5;
-  double offset[3] = {0.0,0.0,0.0};
+  double offset[3] = {0.0, 0.0, 0.0};
   int count = VEC_SIZE + 1;
 
   /* Get some randomness going */
@@ -255,7 +255,8 @@ int main(int argc, char *argv[]) {
     printf(
         "\nUsage: %s [OPTIONS...]\n"
         "\nGenerates a particle array with equal particle separation."
-        "\nThese are then interacted using runner_iact_density and runner_iact_vec_density."
+        "\nThese are then interacted using runner_iact_density and "
+        "runner_iact_vec_density."
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-s spacing         - Spacing between particles",

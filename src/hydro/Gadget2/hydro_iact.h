@@ -134,7 +134,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k],
                       pj[4]->v[k], pj[5]->v[k], pj[6]->v[k], pj[7]->v[k]);
   }
-  /* Get each component of particle separation. (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
+  /* Get each component of particle separation.
+   * (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k], Dx[12 + k],
                       Dx[15 + k], Dx[18 + k], Dx[21 + k]);
@@ -154,7 +155,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
   ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is added below.*/
+  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
+   * added below.*/
   ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
   r.v = r2.v * ri.v;
 
@@ -221,10 +223,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
 #else
 
-    error("The Gadget2 serial version of runner_iact_density was called when the vectorised version should have been used.")
+  error(
+      "The Gadget2 serial version of runner_iact_density was called when the "
+      "vectorised version should have been used.")
 
 #endif
-
 }
 
 /**
@@ -304,7 +307,8 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k],
                       pj[4]->v[k], pj[5]->v[k], pj[6]->v[k], pj[7]->v[k]);
   }
-  /* Get each component of particle separation. (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
+  /* Get each component of particle separation.
+   * (Dx={dx1,dy1,dz1,dx2,dy2,dz2,...,dxn,dyn,dzn})*/
   for (k = 0; k < 3; k++)
     dx[k].v = vec_set(Dx[0 + k], Dx[3 + k], Dx[6 + k], Dx[9 + k], Dx[12 + k],
                       Dx[15 + k], Dx[18 + k], Dx[21 + k]);
@@ -323,7 +327,8 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   /* Get the radius and inverse radius. */
   r2.v = vec_load(R2);
   ri.v = vec_rsqrt(r2.v);
-  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is added below.*/
+  /*vec_rsqrt does not have the level of accuracy we need, so an extra term is
+   * added below.*/
   ri.v = ri.v - vec_set1(0.5f) * ri.v * (r2.v * ri.v * ri.v - vec_set1(1.0f));
   r.v = r2.v * ri.v;
 
@@ -369,10 +374,11 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
 #else
 
-    error("The Gadget2 serial version of runner_iact_nonsym_density was called when the vectorised version should have been used.")
+  error(
+      "The Gadget2 serial version of runner_iact_nonsym_density was called "
+      "when the vectorised version should have been used.")
 
 #endif
-
 }
 
 /**
@@ -424,7 +430,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Balsara term */
   const float balsara_i = pi->force.balsara;
   const float balsara_j = pj->force.balsara;
-  
+
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
@@ -439,7 +445,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+  const float sph_term =
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -454,16 +461,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  pj->h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
   pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->force.entropy_dt += 0.5f * mj * visc_term * dvdr;
-  pj->force.entropy_dt -= 0.5f * mi * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pj->entropy_dt -= 0.5f * mi * visc_term * dvdr;
 }
 
 /**
@@ -629,12 +636,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
       pi[k]->a_hydro[j] -= pia[j].f[k];
       pj[k]->a_hydro[j] += pja[j].f[k];
     }
-    pi[k]->h_dt -= pih_dt.f[k];
-    pj[k]->h_dt -= pjh_dt.f[k];
+    pi[k]->force.h_dt -= pih_dt.f[k];
+    pj[k]->force.h_dt -= pjh_dt.f[k];
     pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
     pj[k]->force.v_sig = fmaxf(pj[k]->force.v_sig, v_sig.f[k]);
-    pi[k]->force.entropy_dt += entropy_dt.f[k] * mj.f[k];
-    pj[k]->force.entropy_dt -= entropy_dt.f[k] * mi.f[k];
+    pi[k]->entropy_dt += entropy_dt.f[k] * mj.f[k];
+    pj[k]->entropy_dt -= entropy_dt.f[k] * mi.f[k];
   }
 
 #else 
@@ -708,7 +715,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+  const float sph_term =
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -719,13 +727,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->a_hydro[2] -= mj * acc * dx[2];
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->force.entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
 }
 
 /**
@@ -884,9 +892,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
-    pi[k]->h_dt -= pih_dt.f[k];
+    pi[k]->force.h_dt -= pih_dt.f[k];
     pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig,v_sig.f[k]);
-    pi[k]->force.entropy_dt += entropy_dt.f[k];
+    pi[k]->entropy_dt += entropy_dt.f[k];
   }
 
 #else 
