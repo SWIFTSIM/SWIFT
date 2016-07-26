@@ -139,9 +139,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float abs_div_v = fabsf(p->density.div_v);
 
   /* Compute the pressure */
-  const float dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+  const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure =
-      (p->entropy + p->force.entropy_dt * dt) * pow_gamma(p->rho);
+      (p->entropy + p->entropy_dt * half_dt) * pow_gamma(p->rho);
 
   const float irho = 1.f / p->rho;
 
@@ -178,7 +178,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[2] = 0.0f;
 
   /* Reset the time derivatives. */
-  p->force.entropy_dt = 0.0f;
+  p->entropy_dt = 0.0f;
   p->force.h_dt = 0.0f;
 
   /* Reset maximal signal velocity */
@@ -201,7 +201,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure =
-      (p->entropy + p->force.entropy_dt * dt_entr) * pow_gamma(p->rho);
+      (p->entropy + p->entropy_dt * dt_entr) * pow_gamma(p->rho);
 
   const float irho = 1.f / p->rho;
 
@@ -228,8 +228,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * 0.333333333f;
 
-  p->force.entropy_dt *=
-      hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
+  p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
 }
 
 /**
@@ -245,15 +244,15 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float half_dt) {
 
   /* Do not decrease the entropy (temperature) by more than a factor of 2*/
-  const float entropy_change = p->force.entropy_dt * dt;
+  const float entropy_change = p->entropy_dt * dt;
   if (entropy_change > -0.5f * p->entropy)
     p->entropy += entropy_change;
   else
     p->entropy *= 0.5f;
 
   /* Do not 'overcool' when timestep increases */
-  if (p->entropy + 0.5f * p->force.entropy_dt * dt < 0.5f * p->entropy)
-    p->force.entropy_dt = -0.5f * p->entropy / dt;
+  if (p->entropy + 0.5f * p->entropy_dt * dt < 0.5f * p->entropy)
+    p->entropy_dt = -0.5f * p->entropy / dt;
 }
 
 /**
@@ -279,7 +278,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part *restrict p, float dt) {
 
-  const float entropy = p->entropy + p->force.entropy_dt * dt;
+  const float entropy = p->entropy + p->entropy_dt * dt;
 
   return entropy * pow_gamma_minus_one(p->rho) * hydro_one_over_gamma_minus_one;
 }

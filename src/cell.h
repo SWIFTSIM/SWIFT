@@ -68,7 +68,7 @@ struct cell {
   double loc[3];
 
   /* The cell dimensions. */
-  double h[3];
+  double width[3];
 
   /* Max radii in this cell. */
   double h_max;

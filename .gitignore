@@ -28,10 +28,13 @@ examples/*.xmf
 examples/used_parameters.yml
 examples/energy.txt
 examples/*/*.xmf
-examples/*/*.dat
 examples/*/*.hdf5
+examples/*/*.txt
 examples/*/used_parameters.yml
-examples/*/energy.txt
+examples/*/*/*.xmf
+examples/*/*/*.hdf5
+examples/*/*/*.txt
+examples/*/*/used_parameters.yml
 
 tests/testPair
 tests/brute_force_standard.dat
