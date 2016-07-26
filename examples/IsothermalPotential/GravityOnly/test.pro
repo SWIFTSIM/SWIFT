@@ -127,7 +127,7 @@ print,' relative Lz    change: (per cent) ',minmax(dl) * 100.
 if(iplot eq 1) then begin
 ; plot results on energy conservation for some particles
    nplot = min(10, nfollow)
-   wset,0
+   win,0
    xr = [min(tout), max(tout)]
    yr = [-2,2]*1d-2             ; in percent
    plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/nodata,xtitle='time',ytitle='dE/E, dL/L (%)'
@@ -137,7 +137,7 @@ if(iplot eq 1) then begin
    screen_to_png,'e-time.png'
 
 ;  plot orbits of those particles
-   wset,2
+   win,2
    xr = [-100,100]
    yr = xr
    plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/iso,/nodata,xtitle='x',ytitle='y'
@@ -146,7 +146,7 @@ if(iplot eq 1) then begin
    screen_to_png,'orbit.png'
 
 ; plot radial position of these particles
-   wset,4
+   win,4
    xr = [min(tout), max(tout)]
    yr = [0,80]
    plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/nodata,xtitle='t',ytitle='r'
@@ -155,7 +155,7 @@ for i=0,nplot-1 do begin dr = sqrt(reform(xout[i,*])^2 + reform(yout[i,*])^2) & 
    screen_to_png,'r-time.png'
 
 ; make histogram of energy changes at end
-   wset,6
+   win,6
    ohist,de,x,y,-0.05,0.05,0.001
    plot,x,y,psym=10,xtitle='de (%)'
    screen_to_png,'de-hist.png'
