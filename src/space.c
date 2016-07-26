@@ -168,7 +168,9 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (nr_parts > 0) {
     if (s->cells != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
-        if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+        if (s->cells[k].nodeID == engine_rank && s->cells[k].h_max > h_max) {
+          h_max = s->cells[k].h_max;
+        }
       }
     } else {
       for (size_t k = 0; k < nr_parts; k++) {
