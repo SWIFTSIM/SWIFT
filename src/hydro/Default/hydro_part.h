@@ -99,7 +99,7 @@ struct part {
       float v_sig;
 
       /* Sound speed */
-      float c;
+      float soundspeed;
 
       /* Change in smoothing length over time. */
       float h_dt;

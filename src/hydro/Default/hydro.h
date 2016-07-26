@@ -20,6 +20,8 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 
+#include <float.h>
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -145,7 +147,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute this particle's sound speed. */
   const float u = p->u;
-  const float fc = p->force.c = sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
+  const float fc = p->force.soundspeed = sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
 
   /* Compute the P/Omega/rho2. */
   xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho;
@@ -155,7 +157,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.balsara = normDiv_v / (normDiv_v + normRot_v + 0.0001f * fc * ih);
 
   /* Viscosity parameter decay time */
-  const float tau = h / (2.f * const_viscosity_length * p->force.c);
+  const float tau = h / (2.f * const_viscosity_length * p->force.soundspeed);
 
   /* Viscosity source term */
   const float S = fmaxf(-normDiv_v, 0.f);
@@ -261,4 +263,40 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part *restrict p, float dt) {
 
   return p->u;
+}
+
+/**
+ * @brief Returns the pressure of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_pressure(
+    const struct part *restrict p, float dt) {
+
+  return p->force.POrho2 * p->rho * p->rho / p->rho_dh;
+}
+
+/**
+ * @brief Returns the entropy of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_entropy(
+    const struct part *restrict p, float dt) {
+
+  return hydro_gamma_minus_one * p->u * pow_minus_gamma_minus_one(p->rho);
+}
+
+/**
+ * @brief Returns the sound speed of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
+    const struct part *restrict p, float dt) {
+
+  return p->force.soundspeed;
 }

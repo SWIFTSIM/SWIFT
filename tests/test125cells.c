@@ -95,6 +95,8 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
 
 #if defined(GADGET2_SPH)
   part->entropy = pressure / pow_gamma(density);
+#elif defined(DEFAULT_SPH)
+  part->u = pressure / (hydro_gamma_minus_one * density);
 #else
   error("Need to define pressure here !");
 #endif
@@ -188,6 +190,8 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
  * separation.
  * @param density The density of the fluid.
  * @param partId The running counter of IDs.
+ * @param vel The type of velocity field.
+ * @param press The type of pressure field.
  */
 struct cell *make_cell(size_t n, const double offset[3], double size, double h,
                        double density, long long *partId,
@@ -302,7 +306,14 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
             main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
             main_cell->parts[pid].force.v_sig,
-            main_cell->parts[pid].entropy_dt, 0.f);
+#if defined(GADGET2_SPH)
+            main_cell->parts[pid].entropy_dt, 0.f
+#elif defined(DEFAULT_SPH)
+	    0.f, main_cell->parts[pid].force.u_dt
+#else
+	    0.f, 0.f
+#endif
+	    );
   }
 
   if (with_solution) {
