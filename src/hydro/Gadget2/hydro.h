@@ -304,7 +304,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part *restrict p, float dt) {
 
-  return p->entropy + p->force.entropy_dt * dt;
+  return p->entropy + p->entropy_dt * dt;
 }
 
 /**

@@ -241,9 +241,9 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->count = count;
   cell->gcount = 0;
   cell->dx_max = 0.;
-  cell->h[0] = size;
-  cell->h[1] = size;
-  cell->h[2] = size;
+  cell->width[0] = size;
+  cell->width[1] = size;
+  cell->width[2] = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
@@ -302,7 +302,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
             main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
             main_cell->parts[pid].force.v_sig,
-            main_cell->parts[pid].force.entropy_dt, 0.f);
+            main_cell->parts[pid].entropy_dt, 0.f);
   }
 
   if (with_solution) {
