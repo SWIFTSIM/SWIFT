@@ -89,7 +89,7 @@ for i in range(n_lines_to_check):
         abs_diff = abs(data1[i,j] - data2[i,j])
 
         sum = abs(data1[i,j] + data2[i,j])
-        if abs(data1[i,j]) + abs(data2[i,j]) < 1e-7: continue
+        if abs(data1[i,j]) + abs(data2[i,j]) < 2.5e-7: continue
         if sum > 0:
             rel_diff = abs(data1[i,j] - data2[i,j]) / sum
         else:

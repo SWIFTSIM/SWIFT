@@ -309,11 +309,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(GADGET2_SPH)
             main_cell->parts[pid].entropy_dt, 0.f
 #elif defined(DEFAULT_SPH)
-	    0.f, main_cell->parts[pid].force.u_dt
+            0.f, main_cell->parts[pid].force.u_dt
 #else
-	    0.f, 0.f
+            0.f, 0.f
 #endif
-	    );
+            );
   }
 
   if (with_solution) {

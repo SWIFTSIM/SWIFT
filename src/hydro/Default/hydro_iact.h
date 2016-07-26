@@ -495,12 +495,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
                   pi[6]->u, pi[7]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u, pj[4]->u, pj[5]->u,
                   pj[6]->u, pj[7]->u);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed,
-              pi[4]->force.soundspeed, pi[5]->force.soundspeed, pi[6]->force.soundspeed, pi[7]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed,
-              pj[4]->force.soundspeed, pj[5]->force.soundspeed, pj[6]->force.soundspeed, pj[7]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed,
+                 pi[4]->force.soundspeed, pi[5]->force.soundspeed,
+                 pi[6]->force.soundspeed, pi[7]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed,
+                 pj[4]->force.soundspeed, pj[5]->force.soundspeed,
+                 pj[6]->force.soundspeed, pj[7]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig, pi[4]->force.v_sig, pi[5]->force.v_sig,
                      pi[6]->force.v_sig, pi[7]->force.v_sig);
@@ -538,10 +540,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   piu.v = vec_set(pi[0]->u, pi[1]->u, pi[2]->u, pi[3]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig);
   vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
@@ -800,12 +802,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
                   pi[6]->u, pi[7]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u, pj[4]->u, pj[5]->u,
                   pj[6]->u, pj[7]->u);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed,
-              pi[4]->force.soundspeed, pi[5]->force.soundspeed, pi[6]->force.soundspeed, pi[7]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed,
-              pj[4]->force.soundspeed, pj[5]->force.soundspeed, pj[6]->force.soundspeed, pj[7]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed,
+                 pi[4]->force.soundspeed, pi[5]->force.soundspeed,
+                 pi[6]->force.soundspeed, pi[7]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed,
+                 pj[4]->force.soundspeed, pj[5]->force.soundspeed,
+                 pj[6]->force.soundspeed, pj[7]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig, pi[4]->force.v_sig, pi[5]->force.v_sig,
                      pi[6]->force.v_sig, pi[7]->force.v_sig);
@@ -842,10 +846,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   piu.v = vec_set(pi[0]->u, pi[1]->u, pi[2]->u, pi[3]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig);
   vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,

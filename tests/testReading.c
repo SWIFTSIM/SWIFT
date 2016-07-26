@@ -95,6 +95,7 @@ int main() {
 
   /* Clean-up */
   free(parts);
+  free(gparts);
 
   return 0;
 }

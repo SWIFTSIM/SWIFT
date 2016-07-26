@@ -30,7 +30,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
       p->h, p->density.wcount, p->density.wcount_dh, p->mass, p->rho_dh, p->rho,
       hydro_get_pressure(p, 0.), p->force.P_over_rho2, p->entropy,
-      p->entropy_dt, p->force.soundspeed, p->density.div_v,
-      p->density.rot_v[0], p->density.rot_v[1], p->density.rot_v[2],
-      p->force.balsara, p->force.v_sig, p->force.h_dt, p->ti_begin, p->ti_end);
+      p->entropy_dt, p->force.soundspeed, p->density.div_v, p->density.rot_v[0],
+      p->density.rot_v[1], p->density.rot_v[2], p->force.balsara,
+      p->force.v_sig, p->force.h_dt, p->ti_begin, p->ti_end);
 }
