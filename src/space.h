@@ -68,8 +68,8 @@ struct space {
   /* Cell widths. */
   double h[3], ih[3];
 
-  /* The minimum and maximum cutoff radii. */
-  double h_max, cell_min;
+  /* The minimum cell width. */
+  double cell_min;
 
   /* Current maximum displacement for particles. */
   float dx_max;

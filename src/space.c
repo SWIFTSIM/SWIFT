@@ -162,7 +162,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   struct cell *restrict c;
   ticks tic = getticks();
 
-  /* Run through the parts and get the current h_max. */
+  /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
@@ -174,7 +174,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       for (size_t k = 0; k < nr_parts; k++) {
         if (s->parts[k].h > h_max) h_max = s->parts[k].h;
       }
-      s->h_max = h_max;
     }
   }
 
@@ -1289,12 +1288,6 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
             maxdepth = c->progeny[k]->maxdepth;
         }
 
-      /* Set the values for this cell. */
-      c->h_max = h_max;
-      c->ti_end_min = ti_end_min;
-      c->ti_end_max = ti_end_max;
-      c->maxdepth = maxdepth;
-
     }
 
     /* Otherwise, collect the data for this cell. */
@@ -1303,7 +1296,7 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
       /* Clear the progeny. */
       bzero(c->progeny, sizeof(struct cell *) * 8);
       c->split = 0;
-      c->maxdepth = c->depth;
+      maxdepth = c->depth;
 
       /* Get dt_min/dt_max. */
       for (int k = 0; k < count; k++) {
@@ -1327,10 +1320,13 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
         if (ti_end < ti_end_min) ti_end_min = ti_end;
         if (ti_end > ti_end_max) ti_end_max = ti_end;
       }
-      c->h_max = h_max;
-      c->ti_end_min = ti_end_min;
-      c->ti_end_max = ti_end_max;
     }
+
+    /* Set the values for this cell. */
+    c->h_max = h_max;
+    c->ti_end_min = ti_end_min;
+    c->ti_end_max = ti_end_max;
+    c->maxdepth = maxdepth;
 
     /* Set ownership according to the start of the parts array. */
     if (s->nr_parts > 0)
