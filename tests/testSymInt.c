@@ -37,7 +37,6 @@ char *vec_filename = "test_sym_vec.dat";
  * @param h The smoothing length of the particles in units of the inter-particle
  *separation.
  * @param partId The running counter of IDs.
- * @param vel The type of velocity field (0, random, divergent, rotating)
  */
 struct part *make_particles(int count, double *offset, double spacing, double h,
                             long long *partId) {
