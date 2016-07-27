@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if defined(DEFAULT_SPH) || defined(GADGET2_SPH)
 
     /* Run all the pairs */
     for (int j = 0; j < 27; ++j)
@@ -402,7 +402,7 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if defined(DEFAULT_SPH) || defined(GADGET2_SPH)
 
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
