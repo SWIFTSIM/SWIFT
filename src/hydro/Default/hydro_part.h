@@ -90,7 +90,7 @@ struct part {
       float balsara;
 
       /* Aggregate quantities. */
-      float POrho2;
+      float P_over_rho2;
 
       /* Change in particle energy over time. */
       float u_dt;
@@ -99,7 +99,7 @@ struct part {
       float v_sig;
 
       /* Sound speed */
-      float c;
+      float soundspeed;
 
       /* Change in smoothing length over time. */
       float h_dt;
