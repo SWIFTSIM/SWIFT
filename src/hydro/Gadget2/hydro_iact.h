@@ -542,10 +542,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
               pj[3]->force.balsara, pj[4]->force.balsara, pj[5]->force.balsara,
               pj[6]->force.balsara, pj[7]->force.balsara);
 #elif VEC_SIZE == 4
+  mi.v = vec_set(pi[0]->mass, pi[1]->mass, pi[2]->mass, pi[3]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
-  POrho_i.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
                        pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
-  POrho_j.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
                        pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
@@ -804,9 +805,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
               pj[6]->force.balsara, pj[7]->force.balsara);
 #elif VEC_SIZE == 4
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
-  POrho_i.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
                        pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
-  POrho_j.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
                        pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
