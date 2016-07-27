@@ -47,6 +47,7 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
                      count * sizeof(struct part)) != 0) {
     error("couldn't allocate particles, no. of particles: %d", (int)count);
   }
+  bzero(particles, count * sizeof(struct part));
 
   /* Construct the particles */
   struct part *p;
