@@ -2098,7 +2098,7 @@ void engine_collect_drift(struct cell *c) {
   if (c->drift != NULL) return;
 
   /* Counters for the different quantities. */
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
 
   /* Only do something is the cell is non-empty */
@@ -2120,6 +2120,7 @@ void engine_collect_drift(struct cell *c) {
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
+        entropy += cp->entropy;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
         mom[2] += cp->mom[2];
@@ -2135,6 +2136,7 @@ void engine_collect_drift(struct cell *c) {
   c->e_kin = e_kin;
   c->e_int = e_int;
   c->e_pot = e_pot;
+  c->entropy = entropy;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];
@@ -2151,7 +2153,7 @@ void engine_print_stats(struct engine *e) {
 
   const struct space *s = e->s;
 
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
 
   /* Collect the cell data. */
@@ -2167,6 +2169,7 @@ void engine_print_stats(struct engine *e) {
       e_kin += c->e_kin;
       e_int += c->e_int;
       e_pot += c->e_pot;
+      entropy += c->entropy;
       mom[0] += c->mom[0];
       mom[1] += c->mom[1];
       mom[2] += c->mom[2];
@@ -2178,8 +2181,8 @@ void engine_print_stats(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
-    double in[10] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
-    double out[10];
+    double in[11] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
+    double out[11];
     out[0] = e_kin;
     out[1] = e_int;
     out[2] = e_pot;
@@ -2190,7 +2193,8 @@ void engine_print_stats(struct engine *e) {
     out[7] = ang_mom[1];
     out[8] = ang_mom[2];
     out[9] = mass;
-    if (MPI_Allreduce(out, in, 10, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) !=
+    out[10] = entropy;
+    if (MPI_Reduce(out, in, 11, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
       error("Failed to aggregate stats.");
     e_kin = out[0];
@@ -2203,6 +2207,7 @@ void engine_print_stats(struct engine *e) {
     ang_mom[1] = out[7];
     ang_mom[2] = out[8];
     mass = out[9];
+    entropy = out[10];
   }
 #endif
 
@@ -2210,10 +2215,11 @@ void engine_print_stats(struct engine *e) {
 
   /* Print info */
   if (e->nodeID == 0) {
-    fprintf(e->file_stats,
-            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
-            e->time, mass, e_tot, e_kin, e_int, e_pot, mom[0], mom[1], mom[2],
-            ang_mom[0], ang_mom[1], ang_mom[2]);
+    fprintf(
+        e->file_stats,
+        " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+        e->time, mass, e_tot, e_kin, e_int, e_pot, entropy, mom[0], mom[1],
+        mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
     fflush(e->file_stats);
   }
 }
@@ -2973,10 +2979,11 @@ void engine_init(struct engine *e, struct space *s,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, "w");
-    fprintf(e->file_stats,
-            "# %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
-            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "p_x", "p_y",
-            "p_z", "ang_x", "ang_y", "ang_z");
+    fprintf(
+        e->file_stats,
+        "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
+        "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "Entropy", "p_x",
+        "p_y", "p_z", "ang_x", "ang_y", "ang_z");
     fflush(e->file_stats);
 
     char timestepsfileName[200] = "";

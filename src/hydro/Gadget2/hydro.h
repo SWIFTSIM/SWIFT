@@ -282,3 +282,15 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 
   return entropy * pow_gamma_minus_one(p->rho) * hydro_one_over_gamma_minus_one;
 }
+
+/**
+ * @brief Returns the entropy of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_entropy(
+    const struct part *restrict p, float dt) {
+
+  return p->entropy + p->entropy_dt * dt;
+}
