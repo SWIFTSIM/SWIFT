@@ -251,8 +251,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->entropy *= 0.5f;
 
   /* Do not 'overcool' when timestep increases */
-  if (p->entropy + 0.5f * p->entropy_dt * dt < 0.5f * p->entropy)
-    p->entropy_dt = -0.5f * p->entropy / dt;
+  if (p->entropy + p->entropy_dt * half_dt < 0.5f * p->entropy)
+    p->entropy_dt = -0.5f * p->entropy / half_dt;
 }
 
 /**
