@@ -24,9 +24,12 @@
 #include <unistd.h>
 #include "swift.h"
 
-/* Typdef function pointers for serial and vectorised versions of the interaction functions. */
-typedef void (*serial_interaction)(float, float *, float, float, struct part *, struct part *);
-typedef void (*vec_interaction)(float *, float *, float *, float *, struct part **, struct part **);
+/* Typdef function pointers for serial and vectorised versions of the
+ * interaction functions. */
+typedef void (*serial_interaction)(float, float *, float, float, struct part *,
+                                   struct part *);
+typedef void (*vec_interaction)(float *, float *, float *, float *,
+                                struct part **, struct part **);
 
 /**
  * @brief Constructs an array of particles in a valid state prior to
@@ -73,7 +76,7 @@ struct part *make_particles(int count, double *offset, double spacing, double h,
  * @brief Populates particle properties needed for the force calculation.
  */
 void prepare_force(struct part *parts) {
-  
+
   struct part *p;
   for (size_t i = 0; i < VEC_SIZE + 1; ++i) {
     p = &parts[i];
@@ -89,16 +92,15 @@ void prepare_force(struct part *parts) {
 void dump_indv_particle_fields(char *fileName, struct part *p) {
 
   FILE *file = fopen(fileName, "a");
-  
-  fprintf(
-      file,
-      "%6llu %10f %10f %10f %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e %13e %13e "
-      "%13e %13e %13e %10f\n",
-      p->id, p->x[0], p->x[1],
-      p->x[2], p->v[0], p->v[1],
-      p->v[2], p->a_hydro[0], p->a_hydro[1], 
-      p->a_hydro[2], p->rho, p->rho_dh,
-      p->density.wcount, p->density.wcount_dh, p->force.h_dt, p->force.v_sig,
+
+  fprintf(file,
+          "%6llu %10f %10f %10f %10f %10f %10f %10f %10f %10f %13e %13e %13e "
+          "%13e %13e %13e %13e "
+          "%13e %13e %13e\n",
+          p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
+          p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->rho, p->rho_dh,
+          p->density.wcount, p->density.wcount_dh, p->force.h_dt,
+          p->force.v_sig,
 #if defined(GADGET2_SPH)
           p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
           p->density.rot_v[2]
@@ -106,7 +108,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->density.div_v, p->density.curl_v[0], p->density.curl_v[1],
           p->density.curl_v[2]
 #else
-      0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
+          0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
 #endif
           );
   fclose(file);
@@ -118,14 +120,16 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
 void write_header(char *fileName) {
 
   FILE *file = fopen(fileName, "w");
-    /* Write header */
-    fprintf(file,
-            "# %4s %10s %10s %10s %10s %10s %10s %10s %10s %10s %13s %13s %13s %13s %13s %13s %13s"
-            "%13s %13s %13s %13s\n",
-            "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "a_x", "a_y", "a_z", "rho", "rho_dh",
-            "wcount", "wcount_dh", "dh/dt", "v_sig", "div_v", "curl_vx", "curl_vy", "curl_vz", "dS/dt");
-    fprintf(file,"\nPARTICLES BEFORE INTERACTION:\n");
-    fclose(file);
+  /* Write header */
+  fprintf(file,
+          "# %4s %10s %10s %10s %10s %10s %10s %10s %10s %10s %13s %13s %13s "
+          "%13s %13s %13s %13s"
+          "%13s %13s %13s %13s\n",
+          "ID", "pos_x", "pos_y", "pos_z", "v_x", "v_y", "v_z", "a_x", "a_y",
+          "a_z", "rho", "rho_dh", "wcount", "wcount_dh", "dh/dt", "v_sig",
+          "div_v", "curl_vx", "curl_vy", "curl_vz", "dS/dt");
+  fprintf(file, "\nPARTICLES BEFORE INTERACTION:\n");
+  fclose(file);
 }
 
 /*
@@ -136,8 +140,10 @@ void write_header(char *fileName) {
  * @param count No. of particles to be interacted
  *
  */
-void test_interactions(struct part *parts, int count, serial_interaction serial_inter_func, vec_interaction vec_inter_func, char *filePrefix) {
-  
+void test_interactions(struct part *parts, int count,
+                       serial_interaction serial_inter_func,
+                       vec_interaction vec_inter_func, char *filePrefix) {
+
   /* Use the first particle in the array as the one that gets updated. */
   struct part pi = parts[0];
   // const float hig2 = hi * hi * kernel_gamma2;
@@ -146,8 +152,8 @@ void test_interactions(struct part *parts, int count, serial_interaction serial_
   char serial_filename[200] = "";
   char vec_filename[200] = "";
 
-  strcpy(serial_filename,filePrefix);
-  strcpy(vec_filename,filePrefix);
+  strcpy(serial_filename, filePrefix);
+  strcpy(vec_filename, filePrefix);
   sprintf(serial_filename + strlen(serial_filename), "_serial.dat");
   sprintf(vec_filename + strlen(vec_filename), "_vec.dat");
 
@@ -181,7 +187,7 @@ void test_interactions(struct part *parts, int count, serial_interaction serial_
     }
 
     serial_inter_func(r2, dx, pi.h, parts[i].h, &pi, &parts[i]);
-  }    
+  }
 
   file = fopen(serial_filename, "a");
   fprintf(file, "\nPARTICLES AFTER INTERACTION:\n");
@@ -268,8 +274,10 @@ int main(int argc, char *argv[]) {
 
   /* Build the infrastructure */
   static long long partId = 0;
-  struct part *density_particles = make_particles(count,offset,spacing,h,&partId);
-  struct part *force_particles = make_particles(count,offset,spacing,h,&partId);
+  struct part *density_particles =
+      make_particles(count, offset, spacing, h, &partId);
+  struct part *force_particles =
+      make_particles(count, offset, spacing, h, &partId);
   prepare_force(force_particles);
 
   /* Define which interactions to call */
@@ -277,33 +285,37 @@ int main(int argc, char *argv[]) {
   vec_interaction vec_inter_func = &runner_iact_nonsym_vec_density;
 
   /* Call the non-sym density test. */
-  test_interactions(density_particles,count,serial_inter_func,vec_inter_func,"test_nonsym_density");
-  
-  density_particles = make_particles(count,offset,spacing,h,&partId);
-  
+  test_interactions(density_particles, count, serial_inter_func, vec_inter_func,
+                    "test_nonsym_density");
+
+  density_particles = make_particles(count, offset, spacing, h, &partId);
+
   /* Re-assign function pointers. */
   serial_inter_func = &runner_iact_density;
   vec_inter_func = &runner_iact_vec_density;
-  
+
   /* Call the symmetrical density test. */
-  test_interactions(density_particles,count,serial_inter_func,vec_inter_func,"test_sym_density");
-  
+  test_interactions(density_particles, count, serial_inter_func, vec_inter_func,
+                    "test_sym_density");
+
   /* Re-assign function pointers. */
   serial_inter_func = &runner_iact_nonsym_force;
   vec_inter_func = &runner_iact_nonsym_vec_force;
 
   /* Call the test non-sym force test. */
-  test_interactions(force_particles,count,serial_inter_func,vec_inter_func,"test_nonsym_force");
+  test_interactions(force_particles, count, serial_inter_func, vec_inter_func,
+                    "test_nonsym_force");
 
-  force_particles = make_particles(count,offset,spacing,h,&partId);
+  force_particles = make_particles(count, offset, spacing, h, &partId);
   prepare_force(force_particles);
-  
+
   /* Re-assign function pointers. */
   serial_inter_func = &runner_iact_force;
   vec_inter_func = &runner_iact_vec_force;
 
   /* Call the test symmetrical force test. */
-  test_interactions(force_particles,count,serial_inter_func,vec_inter_func,"test_sym_force");
+  test_interactions(force_particles, count, serial_inter_func, vec_inter_func,
+                    "test_sym_force");
 
   return 0;
 }

@@ -302,10 +302,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             main_cell->parts[pid].rho,
 #ifdef MINIMAL_SPH
-	    0.f,
+            0.f,
 #else
-	    main_cell->parts[pid].density.div_v,
-#endif	    
+            main_cell->parts[pid].density.div_v,
+#endif
             hydro_get_entropy(&main_cell->parts[pid], 0.f),
             hydro_get_internal_energy(&main_cell->parts[pid], 0.f),
             hydro_get_pressure(&main_cell->parts[pid], 0.f),
