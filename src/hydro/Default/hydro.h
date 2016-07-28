@@ -145,7 +145,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute this particle's sound speed. */
   const float u = p->u;
-  const float fc = p->force.soundspeed = sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
+  const float fc = p->force.soundspeed =
+      sqrtf(hydro_gamma * hydro_gamma_minus_one * u);
 
   /* Compute the P/Omega/rho2. */
   xp->omega = 1.0f + 0.3333333333f * h * p->rho_dh / p->rho;

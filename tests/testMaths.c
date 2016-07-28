@@ -22,24 +22,25 @@
 #include "approx_math.h"
 #include "vector.h"
 
-#include <stdio.h>
 #include <math.h>
+#include <stdio.h>
 
 int main() {
 
   const int numPoints = 60000;
-  
+
   for (int i = 0; i < numPoints; ++i) {
-    
-    const float x =  0.6f * (i / (float) numPoints) - 0.3f;
+
+    const float x = 0.6f * (i / (float)numPoints) - 0.3f;
     const float exp_correct = expf(x);
     const float exp_approx = approx_expf(x);
 
     const float abs = fabs(exp_correct - exp_approx);
-    const float rel = 0.5f * fabs(exp_correct - exp_approx) / fabs(exp_correct + exp_approx);
-    
-    printf("%2d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i, x, exp_correct,
-	   exp_approx, abs, rel);
+    const float rel =
+        0.5f * fabs(exp_correct - exp_approx) / fabs(exp_correct + exp_approx);
+
+    printf("%2d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i, x,
+           exp_correct, exp_approx, abs, rel);
 
     if (abs > 3e-6 && fabsf(x) <= 0.2) {
       printf("Absolute difference too large !\n");
@@ -58,7 +59,6 @@ int main() {
       printf("Relative difference too large !\n");
       return 1;
     }
-
   }
 
   printf("\nAll values are consistent\n");
