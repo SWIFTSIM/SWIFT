@@ -501,30 +501,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
-  /* Load stuff. */
+/* Load stuff. */
 #if VEC_SIZE == 8
   mi.v = vec_set(pi[0]->mass, pi[1]->mass, pi[2]->mass, pi[3]->mass,
                  pi[4]->mass, pi[5]->mass, pi[6]->mass, pi[7]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
-  piPOrho.v =
-      vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2, pi[2]->force.P_over_rho2,
-              pi[3]->force.P_over_rho2, pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
-              pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
-  pjPOrho.v =
-      vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2, pj[2]->force.P_over_rho2,
-              pj[3]->force.P_over_rho2, pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
-              pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                      pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                      pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                      pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                      pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
                     pj[5]->rho, pj[6]->rho, pj[7]->rho);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed,
-              pi[4]->force.soundspeed, pi[5]->force.soundspeed, pi[6]->force.soundspeed, pi[7]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed,
-              pj[4]->force.soundspeed, pj[5]->force.soundspeed, pj[6]->force.soundspeed, pj[7]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed,
+                 pi[4]->force.soundspeed, pi[5]->force.soundspeed,
+                 pi[6]->force.soundspeed, pi[7]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed,
+                 pj[4]->force.soundspeed, pj[5]->force.soundspeed,
+                 pj[6]->force.soundspeed, pj[7]->force.soundspeed);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k],
                       pi[4]->v[k], pi[5]->v[k], pi[6]->v[k], pi[7]->v[k]);
@@ -545,15 +547,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   mi.v = vec_set(pi[0]->mass, pi[1]->mass, pi[2]->mass, pi[3]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
   piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
   pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k]);
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k]);
@@ -595,20 +597,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   /* Compute dv dot r. */
   dvdr.v = ((vi[0].v - vj[0].v) * dx[0].v) + ((vi[1].v - vj[1].v) * dx[1].v) +
            ((vi[2].v - vj[2].v) * dx[2].v);
-  //dvdr.v = dvdr.v * ri.v;
+  // dvdr.v = dvdr.v * ri.v;
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_set1(0.0f));
   mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
-  
+
   /* Compute signal velocity */
   v_sig.v = ci.v + cj.v - vec_set1(3.0f) * mu_ij.v;
-  
+
   /* Now construct the full viscosity term */
   rho_ij.v = vec_set1(0.5f) * (pirho.v + pjrho.v);
-  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v * mu_ij.v * 
-           balsara.v / rho_ij.v;
+  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
+           mu_ij.v * balsara.v / rho_ij.v;
 
   /* Now, convolve with the kernel */
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
@@ -616,7 +618,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Eventually get the acceleration */
   acc.v = visc_term.v + sph_term.v;
-  
+
   /* Use the force, Luke! */
   for (k = 0; k < 3; k++) {
     f.v = dx[k].v * acc.v;
@@ -630,7 +632,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 
   /* Change in entropy */
   entropy_dt.v = vec_set1(0.5f) * visc_term.v * dvdr.v;
-  
+
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     for (j = 0; j < 3; j++) {
@@ -645,9 +647,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     pj[k]->entropy_dt -= entropy_dt.f[k] * mi.f[k];
   }
 
-#else 
+#else
 
-  error("The Gadget2 serial version of runner_iact_nonsym_force was called when the vectorised version should have been used.")
+  error(
+      "The Gadget2 serial version of runner_iact_nonsym_force was called when "
+      "the vectorised version should have been used.")
 
 #endif
 }
@@ -744,7 +748,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-  #ifdef WITH_VECTORIZATION
+#ifdef WITH_VECTORIZATION
 
   vector r, r2, ri;
   vector xi, xj;
@@ -765,28 +769,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   fac_mu.v = vec_set1(1.f); /* Will change with cosmological integration */
 
-  /* Load stuff. */
+/* Load stuff. */
 #if VEC_SIZE == 8
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
-  piPOrho.v =
-      vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2, pi[2]->force.P_over_rho2,
-              pi[3]->force.P_over_rho2, pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
-              pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
-  pjPOrho.v =
-      vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2, pj[2]->force.P_over_rho2,
-              pj[3]->force.P_over_rho2, pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
-              pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
+  piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                      pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                      pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+  pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                      pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                      pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
                     pj[5]->rho, pj[6]->rho, pj[7]->rho);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed,
-              pi[4]->force.soundspeed, pi[5]->force.soundspeed, pi[6]->force.soundspeed, pi[7]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed,
-              pj[4]->force.soundspeed, pj[5]->force.soundspeed, pj[6]->force.soundspeed, pj[7]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed,
+                 pi[4]->force.soundspeed, pi[5]->force.soundspeed,
+                 pi[6]->force.soundspeed, pi[7]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed,
+                 pj[4]->force.soundspeed, pj[5]->force.soundspeed,
+                 pj[6]->force.soundspeed, pj[7]->force.soundspeed);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k],
                       pi[4]->v[k], pi[5]->v[k], pi[6]->v[k], pi[7]->v[k]);
@@ -806,15 +812,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #elif VEC_SIZE == 4
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
   piPOrho.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
-                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+                      pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
   pjPOrho.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
-                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
+                      pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
-  ci.v =
-      vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed, pi[2]->force.soundspeed, pi[3]->force.soundspeed);
-  cj.v =
-      vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed, pj[2]->force.soundspeed, pj[3]->force.soundspeed);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k]);
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k]);
@@ -856,20 +862,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   /* Compute dv dot r. */
   dvdr.v = ((vi[0].v - vj[0].v) * dx[0].v) + ((vi[1].v - vj[1].v) * dx[1].v) +
            ((vi[2].v - vj[2].v) * dx[2].v);
-  //dvdr.v = dvdr.v * ri.v;
+  // dvdr.v = dvdr.v * ri.v;
 
   /* Compute the relative velocity. (This is 0 if the particles move away from
    * each other and negative otherwise) */
   omega_ij.v = vec_fmin(dvdr.v, vec_set1(0.0f));
   mu_ij.v = fac_mu.v * ri.v * omega_ij.v; /* This is 0 or negative */
-  
+
   /* Compute signal velocity */
   v_sig.v = ci.v + cj.v - vec_set1(3.0f) * mu_ij.v;
-  
+
   /* Now construct the full viscosity term */
   rho_ij.v = vec_set1(0.5f) * (pirho.v + pjrho.v);
-  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v * mu_ij.v * 
-           balsara.v / rho_ij.v;
+  visc.v = vec_set1(-0.25f) * vec_set1(const_viscosity_alpha) * v_sig.v *
+           mu_ij.v * balsara.v / rho_ij.v;
 
   /* Now, convolve with the kernel */
   visc_term.v = vec_set1(0.5f) * visc.v * (wi_dr.v + wj_dr.v) * ri.v;
@@ -877,7 +883,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Eventually get the acceleration */
   acc.v = visc_term.v + sph_term.v;
-  
+
   /* Use the force, Luke! */
   for (k = 0; k < 3; k++) {
     f.v = dx[k].v * acc.v;
@@ -889,18 +895,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 
   /* Change in entropy */
   entropy_dt.v = vec_set1(0.5f) * mj.v * visc_term.v * dvdr.v;
-  
+
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
     pi[k]->force.h_dt -= pih_dt.f[k];
-    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig,v_sig.f[k]);
+    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
     pi[k]->entropy_dt += entropy_dt.f[k];
   }
 
-#else 
+#else
 
-  error("The Gadget2 serial version of runner_iact_nonsym_force was called when the vectorised version should have been used.")
+  error(
+      "The Gadget2 serial version of runner_iact_nonsym_force was called when "
+      "the vectorised version should have been used.")
 
 #endif
 }
