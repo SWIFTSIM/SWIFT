@@ -21,12 +21,13 @@ AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) -DTIMER
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testSingle testPair.sh testPairPerturbed.sh \
-	test27cells.sh test27cellsPerturbed.sh testParser.sh testKernel testSPHStep
+TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
+	testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh \
+	testParser.sh testSPHStep 
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testMaths testReading testSingle testTimeIntegration \
-		 testSPHStep testPair test27cells testParser testKernel testInteractions
+check_PROGRAMS = testGreetings testMaths testReading testSingle testKernel testSymmetry \
+		 testTimeIntegration testSPHStep testPair test27cells testParser testInteractions
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -34,6 +35,10 @@ testGreetings_SOURCES = testGreetings.c
 testMaths_SOURCES = testMaths.c
 
 testReading_SOURCES = testReading.c
+
+testKernel_SOURCES = testKernel.c
+
+testSymmetry_SOURCES = testSymmetry.c
 
 testTimeIntegration_SOURCES = testTimeIntegration.c
 
@@ -46,8 +51,6 @@ testPair_SOURCES = testPair.c
 test27cells_SOURCES = test27cells.c
 
 testParser_SOURCES = testParser.c
-
-testKernel_SOURCES = testKernel.c
 
 testInteractions_SOURCES = testInteractions.c
 
