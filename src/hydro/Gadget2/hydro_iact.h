@@ -470,7 +470,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Change in entropy */
   pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
-  pj->entropy_dt -= 0.5f * mi * visc_term * dvdr;
+  pj->entropy_dt += 0.5f * mi * visc_term * dvdr;
 }
 
 /**
