@@ -672,7 +672,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       e_int += m * hydro_get_internal_energy(p, half_dt);
 
       /* Collect entropy */
-      entropy += hydro_get_entropy(p, half_dt);
+      entropy += m * hydro_get_entropy(p, half_dt);
     }
 
     /* Now, get the maximal particle motion from its square */
