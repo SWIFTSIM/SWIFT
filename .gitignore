@@ -53,6 +53,7 @@ tests/testSingle
 tests/testTimeIntegration
 tests/testSPHStep
 tests/testKernel
+tests/testMaths
 tests/testParser
 tests/parser_output.yml
 tests/test27cells.sh

@@ -21,15 +21,17 @@ AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) -DTIMER
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testReading.sh testSingle testPair.sh testPairPerturbed.sh \
+TESTS = testGreetings testMaths testReading.sh testSingle testPair.sh testPairPerturbed.sh \
 	test27cells.sh test27cellsPerturbed.sh testParser.sh testKernel testSPHStep
 
 # List of test programs to compile
-check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
+check_PROGRAMS = testGreetings testMaths testReading testSingle testTimeIntegration \
 		 testSPHStep testPair test27cells testParser testKernel testInteractions
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
+
+testMaths_SOURCES = testMaths.c
 
 testReading_SOURCES = testReading.c
 
