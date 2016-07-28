@@ -15,9 +15,9 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            uniformBox # Common part of the name of output files
-  time_first:          0.         # Time of the first output (in internal units)
-  delta_time:          1e-3       # Time difference between consecutive outputs (in internal units)
+  basename:            perturbedBox # Common part of the name of output files
+  time_first:          0.           # Time of the first output (in internal units)
+  delta_time:          1e-1         # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
