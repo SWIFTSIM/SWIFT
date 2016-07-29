@@ -593,7 +593,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0};
   double ang_mom[3] = {0.0, 0.0, 0.0};
 
@@ -670,6 +670,9 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
       e_pot += 0.;
       e_int += m * hydro_get_internal_energy(p, half_dt);
+
+      /* Collect entropy */
+      entropy += m * hydro_get_entropy(p, half_dt);
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -694,6 +697,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
+        entropy += cp->entropy;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
         mom[2] += cp->mom[2];
@@ -710,6 +714,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   c->e_kin = e_kin;
   c->e_int = e_int;
   c->e_pot = e_pot;
+  c->entropy = entropy;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];
