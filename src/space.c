@@ -1566,4 +1566,7 @@ void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells[i]);
   free(s->cells);
+  free(s->parts);
+  free(s->xparts);
+  free(s->gparts);
 }
