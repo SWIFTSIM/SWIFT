@@ -7,4 +7,4 @@ then
     python makeIC.py 50
 fi
 
-../swift -s -t 16 uniformBox.yml
+../swift -s -t 16 perturbedBox.yml
