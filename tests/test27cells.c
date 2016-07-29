@@ -17,11 +17,17 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/* Local headers. */
 #include "swift.h"
 
 enum velocity_types {
@@ -243,7 +249,7 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 /* And go... */
 int main(int argc, char *argv[]) {
   size_t runs = 0, particles = 0;
-  double h = 1.2348, size = 1., rho = 1.;
+  double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
@@ -253,11 +259,14 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+  /* Choke on FP-exceptions */
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+
   /* Get some randomness going */
   srand(0);
 
   char c;
-  while ((c = getopt(argc, argv, "m:s:h:p:r:t:d:f:v:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -265,7 +274,7 @@ int main(int argc, char *argv[]) {
       case 's':
         sscanf(optarg, "%lf", &size);
         break;
-      case 'p':
+      case 'n':
         sscanf(optarg, "%zu", &particles);
         break;
       case 'r':
@@ -291,9 +300,10 @@ int main(int argc, char *argv[]) {
 
   if (h < 0 || particles == 0 || runs == 0) {
     printf(
-        "\nUsage: %s -p PARTICLES_PER_AXIS -r NUMBER_OF_RUNS [OPTIONS...]\n"
-        "\nGenerates a cell pair, filled with particles on a Cartesian grid."
-        "\nThese are then interacted using runner_dopair1_density."
+        "\nUsage: %s -n PARTICLES_PER_AXIS -r NUMBER_OF_RUNS [OPTIONS...]\n"
+        "\nGenerates 27 cells, filled with particles on a Cartesian grid."
+        "\nThese are then interacted using runner_dopair1_density() and "
+        "runner_doself1_density()."
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-m rho             - Physical density in the cell"
@@ -307,13 +317,14 @@ int main(int argc, char *argv[]) {
   }
 
   /* Help users... */
+  message("Adiabatic index: ga = %f", hydro_gamma);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f",
-          h * h * h * 4.0 * M_PI * kernel_gamma3 / 3.0);
+  message("Neighbour target: N = %f", h * h * h * kernel_norm);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
+
   printf("\n");
 
   /* Build the infrastructure */

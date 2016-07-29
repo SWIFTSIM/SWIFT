@@ -39,7 +39,7 @@ int main() {
 
   /* Properties of the ICs */
   const double boxSize = 1.;
-  const int L = 4;
+  const size_t L = 4;
   const double rho = 2.;
 
   /* Read data */
@@ -95,6 +95,7 @@ int main() {
 
   /* Clean-up */
   free(parts);
+  free(gparts);
 
   return 0;
 }
