@@ -428,7 +428,6 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
   struct xpart *xp, *xparts = c->xparts;
   struct cell *finger;
   int redo, count = c->count;
-  int *pid;
   float h_corr;
   const int ti_current = r->e->ti_current;
   const double timeBase = r->e->timeBase;
@@ -450,8 +449,9 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
   }
 
   /* Init the IDs that have to be updated. */
-  if ((pid = (int *)alloca(sizeof(int) * count)) == NULL)
-    error("Call to alloca failed.");
+  int *pid = NULL;
+  if ((pid = malloc(sizeof(int) * count)) == NULL)
+    error("Can't allocate memory for pid.");
   for (int k = 0; k < count; k++) pid[k] = k;
 
   /* While there are particles that need to be updated... */
@@ -571,6 +571,9 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 
   if (count)
     message("Smoothing length failed to converge on %i particles.", count);
+
+  /* Be clean */
+  free(pid);
 
   TIMER_TOC(timer_do_ghost);
 }
