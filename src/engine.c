@@ -2864,19 +2864,21 @@ void engine_init(struct engine *e, struct space *s,
 
   if (verbose && with_aff) message("Affinity at entry: %s", buf);
 
-  int *cpuid = malloc(nr_affinity_cores * sizeof(int));
+  int *cpuid = NULL;
   cpu_set_t cpuset;
 
-  int skip = 0;
-  for (int k = 0; k < nr_affinity_cores; k++) {
-    int c;
-    for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
-      ;
-    cpuid[k] = c;
-    skip = c + 1;
-  }
-
   if (with_aff) {
+
+    cpuid = malloc(nr_affinity_cores * sizeof(int));
+
+    int skip = 0;
+    for (int k = 0; k < nr_affinity_cores; k++) {
+      int c;
+      for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
+        ;
+      cpuid[k] = c;
+      skip = c + 1;
+    }
 
 #if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
     if ((policy & engine_policy_cputight) != engine_policy_cputight) {
@@ -3240,4 +3242,15 @@ void engine_compute_next_snapshot_time(struct engine *e) {
     if (e->verbose)
       message("Next output time set to t=%e.", next_snapshot_time);
   }
+}
+
+/**
+ * @brief Frees up the memory allocated for this #engine
+ */
+void engine_clean(struct engine *e) {
+
+  free(e->snapshotUnits);
+  free(e->links);
+  scheduler_clean(&e->sched);
+  space_clean(e->s);
 }

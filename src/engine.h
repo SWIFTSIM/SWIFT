@@ -239,5 +239,6 @@ void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin();
 void engine_unpin();
+void engine_clean(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

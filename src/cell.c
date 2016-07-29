@@ -707,3 +707,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->force = NULL;
   c->nr_force = 0;
 }
+
+/**
+ * @brief Frees up the memory allocated for this #cell
+ */
+void cell_clean(struct cell *c) { free(c->sort); }

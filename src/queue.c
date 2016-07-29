@@ -296,3 +296,9 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   /* Take the money and run. */
   return res;
 }
+
+void queue_clean(struct queue *q) {
+
+  free(q->tid);
+  free(q->tid_incoming);
+}

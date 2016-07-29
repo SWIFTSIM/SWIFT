@@ -1298,3 +1298,16 @@ void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
     }
   }
 }
+
+/**
+ * @brief Frees up the memory allocated for this #scheduler
+ */
+void scheduler_clean(struct scheduler *s) {
+
+  free(s->tasks);
+  free(s->tasks_ind);
+  free(s->unlocks);
+  free(s->unlock_ind);
+  for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
+  free(s->queues);
+}
