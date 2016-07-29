@@ -200,8 +200,12 @@ int main() {
 
   message("ti_end=%d", p->ti_end);
 
-  free(ci->parts);
-  free(ci->xparts);
+  for (int j = 0; j < 27; ++j) {
+    free(cells[j]->parts);
+    free(cells[j]->xparts);
+    free(cells[j]->sort);
+    free(cells[j]);
+  }
 
   return 0;
 #endif

@@ -81,8 +81,14 @@ void prepare_force(struct part *parts) {
   for (size_t i = 0; i < VEC_SIZE + 1; ++i) {
     p = &parts[i];
     p->rho = i + 1;
+#if defined(GADGET2_SPH)
     p->force.balsara = i + 1;
     p->force.P_over_rho2 = i + 1;
+#elif defined(DEFAULT_SPH)
+    p->force.balsara = i + 1;
+    p->force.P_over_rho2 = i + 1;
+#else
+#endif
   }
 }
 
@@ -108,7 +114,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
           p->density.rot_v[2], 0.
 #else
-          0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
+          0., 0., 0., 0., 0.
 #endif
           );
   fclose(file);

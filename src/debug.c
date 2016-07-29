@@ -32,6 +32,7 @@
 /* Local includes. */
 #include "config.h"
 #include "const.h"
+#include "hydro.h"
 #include "inline.h"
 #include "part.h"
 
