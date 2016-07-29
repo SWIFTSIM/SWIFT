@@ -96,17 +96,17 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
   fprintf(file,
           "%6llu %10f %10f %10f %10f %10f %10f %10f %10f %10f %13e %13e %13e "
           "%13e %13e %13e %13e "
-          "%13e %13e %13e\n",
+          "%13e %13e %13e %10f\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
           p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->rho, p->rho_dh,
           p->density.wcount, p->density.wcount_dh, p->force.h_dt,
           p->force.v_sig,
 #if defined(GADGET2_SPH)
           p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
-          p->density.rot_v[2]
+          p->density.rot_v[2], p->entropy_dt
 #elif defined(DEFAULT_SPH)
-          p->density.div_v, p->density.curl_v[0], p->density.curl_v[1],
-          p->density.curl_v[2]
+          p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
+          p->density.rot_v[2], 0.
 #else
           0., 0., 0., 0., 0., 0., 0., 0., 0., 0.
 #endif
@@ -146,7 +146,6 @@ void test_interactions(struct part *parts, int count,
 
   /* Use the first particle in the array as the one that gets updated. */
   struct part pi = parts[0];
-  // const float hig2 = hi * hi * kernel_gamma2;
 
   FILE *file;
   char serial_filename[200] = "";
@@ -223,7 +222,7 @@ void test_interactions(struct part *parts, int count,
     dump_indv_particle_fields(vec_filename, pjq[i]);
 
   /* Perform vector interaction. */
-  runner_iact_nonsym_vec_density(r2q, dxq, hiq, hjq, piq, pjq);
+  vec_inter_func(r2q, dxq, hiq, hjq, piq, pjq);
 
   file = fopen(vec_filename, "a");
   fprintf(file, "\nPARTICLES AFTER INTERACTION:\n");

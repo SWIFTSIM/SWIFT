@@ -87,8 +87,8 @@ int main(int argc, char *argv[]) {
   p2.force.balsara = 0.0f;
   p1.u = 1.e-5 / (hydro_gamma_minus_one * p1.rho);
   p2.u = 1.e-5 / (hydro_gamma_minus_one * p2.rho) + 100.0f / (33 * p2.mass);
-  p1.force.POrho2 = p1.u * hydro_gamma_minus_one / p1.rho;
-  p2.force.POrho2 = p2.u * hydro_gamma_minus_one / p2.rho;
+  p1.force.P_over_rho2 = p1.u * hydro_gamma_minus_one / p1.rho;
+  p2.force.P_over_rho2 = p2.u * hydro_gamma_minus_one / p2.rho;
 
   /* Dump a header. */
   // printParticle_single(&p1, NULL);

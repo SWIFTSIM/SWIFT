@@ -193,7 +193,7 @@ int main() {
   runner_do_ghost(&r, ci);
 
   message("h=%f rho=%f N_ngb=%f", p->h, p->rho, p->density.wcount);
-  message("c=%f", p->force.soundspeed);
+  message("soundspeed=%f", p->force.soundspeed);
 
   runner_doself2_force(&r, ci);
   runner_do_kick(&r, ci, 1);
