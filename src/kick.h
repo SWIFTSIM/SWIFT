@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void kick_part(
   if (p->gpart != NULL) {
     a_tot[0] += p->gpart->a_grav[0];
     a_tot[1] += p->gpart->a_grav[1];
-    a_tot[1] += p->gpart->a_grav[2];
+    a_tot[2] += p->gpart->a_grav[2];
   }
 
   /* Kick particles in momentum space */
