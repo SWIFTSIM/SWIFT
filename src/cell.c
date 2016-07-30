@@ -711,4 +711,11 @@ void cell_clean_links(struct cell *c, void *data) {
 /**
  * @brief Frees up the memory allocated for this #cell
  */
-void cell_clean(struct cell *c) { free(c->sort); }
+void cell_clean(struct cell *c) {
+
+  free(c->sort);
+
+  /* Recurse */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k]) cell_clean(c->progeny[k]);
+}

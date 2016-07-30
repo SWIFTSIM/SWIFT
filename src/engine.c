@@ -3178,8 +3178,8 @@ void engine_init(struct engine *e, struct space *s,
 #if defined(HAVE_SETAFFINITY)
   if (with_aff) {
     free(cpuid);
-    free(buf);
   }
+  free(buf);
 #endif
 
   /* Wait for the runner threads to be in place. */
