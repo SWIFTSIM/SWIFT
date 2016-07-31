@@ -269,12 +269,6 @@ int main(int argc, char *argv[]) {
 /* Temporary abort to handle absence of vectorized functions */
 #ifdef WITH_VECTORIZATION
 
-#ifdef GADGET2_SPH
-  error(
-      "Vectorized version of Gadget SPH routines not implemented yet. "
-      "Reconfigure with --disable-vec and recompile or use DEFAULT_SPH.");
-#endif
-
 #ifdef MINIMAL_SPH
   error(
       "Vectorized version of Minimal SPH routines not implemented yet. "
@@ -358,8 +352,8 @@ int main(int argc, char *argv[]) {
                    &periodic, &flag_entropy_ICs, myrank, nr_nodes,
                    MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #else
-  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
                  MPI_INFO_NULL, dry_run);
 #endif
 #else

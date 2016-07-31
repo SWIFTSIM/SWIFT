@@ -60,7 +60,7 @@
 /* Orientation of the cell pairs */
 const double runner_shift[13][3] = {
     {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
-    {7.01067811865475e-01, 7.071067811865475e-01, 0.0},
+    {7.071067811865475e-01, 7.071067811865475e-01, 0.0},
     {5.773502691896258e-01, 5.773502691896258e-01, -5.773502691896258e-01},
     {7.071067811865475e-01, 0.0, 7.071067811865475e-01},
     {1.0, 0.0, 0.0},
@@ -395,7 +395,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      struct part *const p = &parts[i];
+      struct part *restrict p = &parts[i];
 
       if (p->ti_end <= ti_current) {
 
@@ -408,12 +408,12 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
     for (int i = 0; i < gcount; i++) {
 
       /* Get a direct pointer on the part. */
-      struct gpart *const gp = &gparts[i];
+      struct gpart *restrict gp = &gparts[i];
 
       if (gp->ti_end <= ti_current) {
 
         /* Get ready for a density calculation */
-        gravity_init_part(gp);
+        gravity_init_gpart(gp);
 
         if (gp->id_or_neg_offset == ICHECK)
           message("id=%lld a=[%f %f %f]\n", gp->id_or_neg_offset, gp->a_grav[0],
@@ -472,8 +472,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      struct part *const p = &parts[pid[i]];
-      struct xpart *const xp = &xparts[pid[i]];
+      struct part *restrict p = &parts[pid[i]];
+      struct xpart *restrict xp = &xparts[pid[i]];
 
       /* Is this part within the timestep? */
       if (p->ti_end <= ti_current) {
@@ -602,7 +602,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, mass = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0};
   double ang_mom[3] = {0.0, 0.0, 0.0};
 
@@ -620,7 +620,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
-      struct gpart *const gp = &gparts[k];
+      struct gpart *restrict gp = &gparts[k];
 
       /* Drift... */
       drift_gpart(gp, dt, timeBase, ti_old, ti_current);
@@ -637,8 +637,8 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
@@ -679,6 +679,9 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
       e_pot += 0.;
       e_int += m * hydro_get_internal_energy(p, half_dt);
+
+      /* Collect entropy */
+      entropy += m * hydro_get_entropy(p, half_dt);
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -693,7 +696,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) {
 
         /* Recurse */
-        struct cell *cp = c->progeny[k];
+        struct cell *restrict cp = c->progeny[k];
         runner_do_drift(r, cp, 0);
 
         /* Collect */
@@ -703,6 +706,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
+        entropy += cp->entropy;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
         mom[2] += cp->mom[2];
@@ -719,6 +723,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   c->e_kin = e_kin;
   c->e_int = e_int;
   c->e_pot = e_pot;
+  c->entropy = entropy;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];
   c->mom[2] = mom[2];
@@ -767,7 +772,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
-      struct gpart *const gp = &gparts[k];
+      struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart */
       if (gp->id_or_neg_offset > 0) {
@@ -793,13 +798,10 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* First, finish the force loop */
-      p->h_dt *= p->h * 0.333333333f;
-
-      /* And do the same of the extra variable */
       hydro_end_force(p);
       if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
 
@@ -822,7 +824,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        struct cell *const cp = c->progeny[k];
+        struct cell *restrict cp = c->progeny[k];
 
         /* Recurse */
         runner_do_kick_fixdt(r, cp, 0);
@@ -880,7 +882,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < gcount; k++) {
 
       /* Get a handle on the part. */
-      struct gpart *const gp = &gparts[k];
+      struct gpart *restrict gp = &gparts[k];
 
       /* If the g-particle has no counterpart and needs to be kicked */
       if (gp->id_or_neg_offset > 0) {
@@ -912,16 +914,13 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-      struct xpart *const xp = &xparts[k];
+      struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* If particle needs to be kicked */
       if (p->ti_end <= ti_current) {
 
         /* First, finish the force loop */
-        p->h_dt *= p->h * 0.333333333f;
-
-        /* And do the same of the extra variable */
         hydro_end_force(p);
         if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
 
@@ -948,7 +947,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
-        struct cell *const cp = c->progeny[k];
+        struct cell *restrict cp = c->progeny[k];
 
         /* Recurse */
         runner_do_kick(r, cp, 0);

@@ -240,6 +240,70 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   }
 }
 
+void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  float r2, hi, hj, hig2, hjg2, dx[3];
+  struct part *pi, *pj;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->count; ++i) {
+
+    pi = &ci->parts[i];
+    hi = pi->h;
+    hig2 = hi * hi * kernel_gamma2;
+
+    for (int j = 0; j < cj->count; ++j) {
+
+      pj = &cj->parts[j];
+      hj = pj->h;
+      hjg2 = hj * hj * kernel_gamma2;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = ci->parts[i].x[k] - cj->parts[j].x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2 || r2 < hjg2) {
+
+        /* Interact */
+        runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj);
+      }
+    }
+  }
+
+  /* Reverse double-for loop and checks every interaction */
+  for (int j = 0; j < cj->count; ++j) {
+
+    pj = &cj->parts[j];
+    hj = pj->h;
+    hjg2 = hj * hj * kernel_gamma2;
+
+    for (int i = 0; i < ci->count; ++i) {
+
+      pi = &ci->parts[i];
+      hi = pi->h;
+      hig2 = hi * hi * kernel_gamma2;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dx[k] = cj->parts[j].x[k] - ci->parts[i].x[k];
+        r2 += dx[k] * dx[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hjg2 || r2 < hig2) {
+
+        /* Interact */
+        runner_iact_nonsym_force(r2, dx, hj, pi->h, pj, pi);
+      }
+    }
+  }
+}
+
 void self_all_density(struct runner *r, struct cell *ci) {
   float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
   struct part *pi, *pj;
@@ -282,6 +346,42 @@ void self_all_density(struct runner *r, struct cell *ci) {
 
         /* Interact */
         runner_iact_nonsym_density(r2, dxi, hj, hi, pj, pi);
+      }
+    }
+  }
+}
+
+void self_all_force(struct runner *r, struct cell *ci) {
+  float r2, hi, hj, hig2, hjg2, dxi[3];  //, dxj[3];
+  struct part *pi, *pj;
+
+  /* Implements a double-for loop and checks every interaction */
+  for (int i = 0; i < ci->count; ++i) {
+
+    pi = &ci->parts[i];
+    hi = pi->h;
+    hig2 = hi * hi * kernel_gamma2;
+
+    for (int j = i + 1; j < ci->count; ++j) {
+
+      pj = &ci->parts[j];
+      hj = pj->h;
+      hjg2 = hj * hj * kernel_gamma2;
+
+      if (pi == pj) continue;
+
+      /* Pairwise distance */
+      r2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        dxi[k] = ci->parts[i].x[k] - ci->parts[j].x[k];
+        r2 += dxi[k] * dxi[k];
+      }
+
+      /* Hit or miss? */
+      if (r2 < hig2 || r2 < hjg2) {
+
+        /* Interact */
+        runner_iact_force(r2, dxi, hi, hj, pi, pj);
       }
     }
   }

@@ -173,8 +173,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += P_over_rho_j * mi * dvdr * r_inv * wj_dr;
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  pj->h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
@@ -251,7 +251,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += P_over_rho_i * mj * dvdr * r_inv * wi_dr;
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);

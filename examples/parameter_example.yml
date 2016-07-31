@@ -25,11 +25,11 @@ Snapshots:
   basename:   output      # Common part of the name of output files
   time_first: 0.          # Time of the first output (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
-  UnitMass_in_cgs:     1  # Unit system for the outputs (Grams)
-  UnitLength_in_cgs:   1  # Unit system for the outputs (Centimeters)
-  UnitVelocity_in_cgs: 1  # Unit system for the outputs (Centimeters per second)
-  UnitCurrent_in_cgs:  1  # Unit system for the outputs (Amperes)
-  UnitTemp_in_cgs:     1  # Unit system for the outputs (Kelvin)
+  UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
+  UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
+  UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
+  UnitCurrent_in_cgs:  1  # (Optional) Unit system for the outputs (Amperes)
+  UnitTemp_in_cgs:     1  # (Optional) Unit system for the outputs (Kelvin)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -54,7 +54,7 @@ InitialConditions:
   shift_y:    0.
   shift_z:    0.
 
-# Parameters govering domain decomposition
+# Parameters governing domain decomposition
 DomainDecomposition:
   initial_type:       m     # (Optional) The initial strategy ("g", "m", "w", or "v").
   initial_grid_x:    10     # (Optional) Grid size if the "g" strategy is chosen.
@@ -64,9 +64,17 @@ DomainDecomposition:
  
 # Parameters related to external potentials
   
-# Point mass external potential
+# Point mass external potentials
 PointMass:
   position_x:      50.     # location of external point mass in internal units
   position_y:      50.
   position_z:      50.
   mass:            1e10     # mass of external point mass in internal units
+  timestep_mult:   0.03     # Pre-factor for the time-step condition
+
+IsothermalPotential:
+  position_x:      100.     # Location of centre of isothermal potential in internal units
+  position_y:      100.
+  position_z:      100.
+  vrot:            200.     # Rotation speed of isothermal potential in internal units
+  timestep_mult:   0.03     # Pre-factor for the time-step condition

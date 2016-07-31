@@ -68,7 +68,7 @@ struct cell {
   double loc[3];
 
   /* The cell dimensions. */
-  double h[3];
+  double width[3];
 
   /* Max radii in this cell. */
   double h_max;
@@ -152,7 +152,7 @@ struct cell {
   double mom[3], ang_mom[3];
 
   /* Mass, potential, internal  and kinetic energy of particles in this cell. */
-  double mass, e_pot, e_int, e_kin;
+  double mass, e_pot, e_int, e_kin, entropy;
 
   /* Number of particles updated in this cell. */
   int updated, g_updated;

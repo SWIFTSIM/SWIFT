@@ -70,30 +70,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   for (k = 0; k < 3; k++) curlvr[k] *= ri;
 
   /* Compute density of pi. */
-  h_inv = 1.0 / hi;
+  h_inv = 1.0f / hi;
   xi = r * h_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.0 * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (3.0f * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
-  pi->density.div_v += mj * dvdr * wi_dx;
-  for (k = 0; k < 3; k++) pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
+  pi->density.div_v -= mj * dvdr * wi_dx;
+  for (k = 0; k < 3; k++) pi->density.rot_v[k] += mj * curlvr[k] * wi_dx;
 
   /* Compute density of pj. */
-  h_inv = 1.0 / hj;
+  h_inv = 1.0f / hj;
   xj = r * h_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (3.0 * wj + xj * wj_dx);
+  pj->rho_dh -= mi * (3.0f * wj + xj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
 
-  pj->density.div_v += mi * dvdr * wj_dx;
-  for (k = 0; k < 3; k++) pj->density.curl_v[k] += mi * curlvr[k] * wj_dx;
+  pj->density.div_v -= mi * dvdr * wj_dx;
+  for (k = 0; k < 3; k++) pj->density.rot_v[k] += mi * curlvr[k] * wj_dx;
 }
 
 /**
@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   vector dx[3], dv[3];
   vector vi[3], vj[3];
   vector dvdr, div_vi, div_vj;
-  vector curlvr[3], curl_vi[3], curl_vj[3];
+  vector curlvr[3], rot_vi[3], rot_vj[3];
   int k, j;
 
 #if VEC_SIZE == 8
@@ -178,28 +178,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   wcounti.v = wi.v;
   wcounti_dh.v = xi.v * wi_dx.v;
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
-  for (k = 0; k < 3; k++) curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
+  for (k = 0; k < 3; k++) rot_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
 
   rhoj.v = mi.v * wj.v;
   rhoj_dh.v = mi.v * (vec_set1(3.0f) * wj.v + xj.v * wj_dx.v);
   wcountj.v = wj.v;
   wcountj_dh.v = xj.v * wj_dx.v;
   div_vj.v = mi.v * dvdr.v * wj_dx.v;
-  for (k = 0; k < 3; k++) curl_vj[k].v = mi.v * curlvr[k].v * wj_dx.v;
+  for (k = 0; k < 3; k++) rot_vj[k].v = mi.v * curlvr[k].v * wj_dx.v;
 
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->density.div_v += div_vi.f[k];
-    for (j = 0; j < 3; j++) pi[k]->density.curl_v[j] += curl_vi[j].f[k];
+    pi[k]->density.div_v -= div_vi.f[k];
+    for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += rot_vi[j].f[k];
     pj[k]->rho += rhoj.f[k];
     pj[k]->rho_dh -= rhoj_dh.f[k];
     pj[k]->density.wcount += wcountj.f[k];
     pj[k]->density.wcount_dh -= wcountj_dh.f[k];
-    pj[k]->density.div_v += div_vj.f[k];
-    for (j = 0; j < 3; j++) pj[k]->density.curl_v[j] += curl_vj[j].f[k];
+    pj[k]->density.div_v -= div_vj.f[k];
+    for (j = 0; j < 3; j++) pj[k]->density.rot_v[j] += rot_vj[j].f[k];
   }
 
 #else
@@ -245,17 +245,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
   for (k = 0; k < 3; k++) curlvr[k] *= ri;
 
-  h_inv = 1.0 / hi;
+  h_inv = 1.0f / hi;
   xi = r * h_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.0 * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (3.0f * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
-  pi->density.div_v += mj * dvdr * wi_dx;
-  for (k = 0; k < 3; k++) pi->density.curl_v[k] += mj * curlvr[k] * wi_dx;
+  pi->density.div_v -= mj * dvdr * wi_dx;
+  for (k = 0; k < 3; k++) pi->density.rot_v[k] += mj * curlvr[k] * wi_dx;
 }
 
 /**
@@ -273,7 +273,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   vector dx[3], dv[3];
   vector vi[3], vj[3];
   vector dvdr;
-  vector curlvr[3], curl_vi[3];
+  vector curlvr[3], rot_vi[3];
   int k, j;
 
 #if VEC_SIZE == 8
@@ -331,15 +331,15 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   wcounti.v = wi.v;
   wcounti_dh.v = xi.v * wi_dx.v;
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
-  for (k = 0; k < 3; k++) curl_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
+  for (k = 0; k < 3; k++) rot_vi[k].v = mj.v * curlvr[k].v * wi_dx.v;
 
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
     pi[k]->rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
-    pi[k]->density.div_v += div_vi.f[k];
-    for (j = 0; j < 3; j++) pi[k]->density.curl_v[j] += curl_vi[j].f[k];
+    pi[k]->density.div_v -= div_vi.f[k];
+    for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += rot_vi[j].f[k];
   }
 
 #else
@@ -371,8 +371,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   mj = pj->mass;
   rhoi = pi->rho;
   rhoj = pj->rho;
-  POrho2i = pi->force.POrho2;
-  POrho2j = pj->force.POrho2;
+  POrho2i = pi->force.P_over_rho2;
+  POrho2j = pj->force.P_over_rho2;
 
   /* Get the kernel for hi. */
   hi_inv = 1.0f / hi;
@@ -398,7 +398,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   omega_ij = fminf(dvdr, 0.f);
 
   /* Compute signal velocity */
-  v_sig = pi->force.c + pj->force.c - 2.0f * omega_ij;
+  v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
 
   /* Compute viscosity parameter */
   alpha_ij = -0.5f * (pi->alpha + pj->alpha);
@@ -437,8 +437,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.u_dt += mi * tc * (pj->u - pi->u);
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr / rhoj * wi_dr;
-  pj->h_dt -= mi * dvdr / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr / rhoi * wj_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
@@ -479,14 +479,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
                  pi[4]->mass, pi[5]->mass, pi[6]->mass, pi[7]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
-  piPOrho2.v =
-      vec_set(pi[0]->force.POrho2, pi[1]->force.POrho2, pi[2]->force.POrho2,
-              pi[3]->force.POrho2, pi[4]->force.POrho2, pi[5]->force.POrho2,
-              pi[6]->force.POrho2, pi[7]->force.POrho2);
-  pjPOrho2.v =
-      vec_set(pj[0]->force.POrho2, pj[1]->force.POrho2, pj[2]->force.POrho2,
-              pj[3]->force.POrho2, pj[4]->force.POrho2, pj[5]->force.POrho2,
-              pj[6]->force.POrho2, pj[7]->force.POrho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                       pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                       pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                       pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                       pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
@@ -495,12 +495,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
                   pi[6]->u, pi[7]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u, pj[4]->u, pj[5]->u,
                   pj[6]->u, pj[7]->u);
-  ci.v =
-      vec_set(pi[0]->force.c, pi[1]->force.c, pi[2]->force.c, pi[3]->force.c,
-              pi[4]->force.c, pi[5]->force.c, pi[6]->force.c, pi[7]->force.c);
-  cj.v =
-      vec_set(pj[0]->force.c, pj[1]->force.c, pj[2]->force.c, pj[3]->force.c,
-              pj[4]->force.c, pj[5]->force.c, pj[6]->force.c, pj[7]->force.c);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed,
+                 pi[4]->force.soundspeed, pi[5]->force.soundspeed,
+                 pi[6]->force.soundspeed, pi[7]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed,
+                 pj[4]->force.soundspeed, pj[5]->force.soundspeed,
+                 pj[6]->force.soundspeed, pj[7]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig, pi[4]->force.v_sig, pi[5]->force.v_sig,
                      pi[6]->force.v_sig, pi[7]->force.v_sig);
@@ -530,18 +532,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
 #elif VEC_SIZE == 4
   mi.v = vec_set(pi[0]->mass, pi[1]->mass, pi[2]->mass, pi[3]->mass);
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
-  piPOrho2.v = vec_set(pi[0]->force.POrho2, pi[1]->force.POrho2,
-                       pi[2]->force.POrho2, pi[3]->force.POrho2);
-  pjPOrho2.v = vec_set(pj[0]->force.POrho2, pj[1]->force.POrho2,
-                       pj[2]->force.POrho2, pj[3]->force.POrho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   piu.v = vec_set(pi[0]->u, pi[1]->u, pi[2]->u, pi[3]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u);
-  ci.v =
-      vec_set(pi[0]->force.c, pi[1]->force.c, pi[2]->force.c, pi[3]->force.c);
-  cj.v =
-      vec_set(pj[0]->force.c, pj[1]->force.c, pj[2]->force.c, pj[3]->force.c);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig);
   vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
@@ -637,18 +639,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   piu_dt.v += mj.v * tc.v * (piu.v - pju.v);
   pju_dt.v += mi.v * tc.v * (pju.v - piu.v);
 
-  /* compute the signal velocity (this is always symmetrical). */
-  vi_sig.v = vec_fmax(vi_sig.v, v_sig.v);
-  vj_sig.v = vec_fmax(vj_sig.v, v_sig.v);
-
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->force.u_dt += piu_dt.f[k];
     pj[k]->force.u_dt += pju_dt.f[k];
-    pi[k]->h_dt -= pih_dt.f[k];
-    pj[k]->h_dt -= pjh_dt.f[k];
-    pi[k]->force.v_sig = vi_sig.f[k];
-    pj[k]->force.v_sig = vj_sig.f[k];
+    pi[k]->force.h_dt -= pih_dt.f[k];
+    pj[k]->force.h_dt -= pjh_dt.f[k];
+    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
+    pj[k]->force.v_sig = fmaxf(pj[k]->force.v_sig, v_sig.f[k]);
     for (j = 0; j < 3; j++) {
       pi[k]->a_hydro[j] -= pia[j].f[k];
       pj[k]->a_hydro[j] += pja[j].f[k];
@@ -684,8 +682,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   mj = pj->mass;
   rhoi = pi->rho;
   rhoj = pj->rho;
-  POrho2i = pi->force.POrho2;
-  POrho2j = pj->force.POrho2;
+  POrho2i = pi->force.P_over_rho2;
+  POrho2j = pj->force.P_over_rho2;
 
   /* Get the kernel for hi. */
   hi_inv = 1.0f / hi;
@@ -711,7 +709,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   omega_ij = fminf(dvdr, 0.f);
 
   /* Compute signal velocity */
-  v_sig = pi->force.c + pj->force.c - 2.0f * omega_ij;
+  v_sig = pi->force.soundspeed + pj->force.soundspeed - 2.0f * omega_ij;
 
   /* Compute viscosity parameter */
   alpha_ij = -0.5f * (pi->alpha + pj->alpha);
@@ -746,11 +744,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.u_dt += mj * tc * (pi->u - pj->u);
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr / rhoj * wi_dr;
+  pi->force.h_dt -= mj * dvdr / rhoj * wi_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
-  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 }
 
 /**
@@ -785,14 +782,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #if VEC_SIZE == 8
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass,
                  pj[4]->mass, pj[5]->mass, pj[6]->mass, pj[7]->mass);
-  piPOrho2.v =
-      vec_set(pi[0]->force.POrho2, pi[1]->force.POrho2, pi[2]->force.POrho2,
-              pi[3]->force.POrho2, pi[4]->force.POrho2, pi[5]->force.POrho2,
-              pi[6]->force.POrho2, pi[7]->force.POrho2);
-  pjPOrho2.v =
-      vec_set(pj[0]->force.POrho2, pj[1]->force.POrho2, pj[2]->force.POrho2,
-              pj[3]->force.POrho2, pj[4]->force.POrho2, pj[5]->force.POrho2,
-              pj[6]->force.POrho2, pj[7]->force.POrho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2,
+                       pi[4]->force.P_over_rho2, pi[5]->force.P_over_rho2,
+                       pi[6]->force.P_over_rho2, pi[7]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2,
+                       pj[4]->force.P_over_rho2, pj[5]->force.P_over_rho2,
+                       pj[6]->force.P_over_rho2, pj[7]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho, pi[4]->rho,
                     pi[5]->rho, pi[6]->rho, pi[7]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho, pj[4]->rho,
@@ -801,12 +798,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
                   pi[6]->u, pi[7]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u, pj[4]->u, pj[5]->u,
                   pj[6]->u, pj[7]->u);
-  ci.v =
-      vec_set(pi[0]->force.c, pi[1]->force.c, pi[2]->force.c, pi[3]->force.c,
-              pi[4]->force.c, pi[5]->force.c, pi[6]->force.c, pi[7]->force.c);
-  cj.v =
-      vec_set(pj[0]->force.c, pj[1]->force.c, pj[2]->force.c, pj[3]->force.c,
-              pj[4]->force.c, pj[5]->force.c, pj[6]->force.c, pj[7]->force.c);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed,
+                 pi[4]->force.soundspeed, pi[5]->force.soundspeed,
+                 pi[6]->force.soundspeed, pi[7]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed,
+                 pj[4]->force.soundspeed, pj[5]->force.soundspeed,
+                 pj[6]->force.soundspeed, pj[7]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig, pi[4]->force.v_sig, pi[5]->force.v_sig,
                      pi[6]->force.v_sig, pi[7]->force.v_sig);
@@ -835,18 +834,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
                       pj[4]->alpha, pj[5]->alpha, pj[6]->alpha, pj[7]->alpha);
 #elif VEC_SIZE == 4
   mj.v = vec_set(pj[0]->mass, pj[1]->mass, pj[2]->mass, pj[3]->mass);
-  piPOrho2.v = vec_set(pi[0]->force.POrho2, pi[1]->force.POrho2,
-                       pi[2]->force.POrho2, pi[3]->force.POrho2);
-  pjPOrho2.v = vec_set(pj[0]->force.POrho2, pj[1]->force.POrho2,
-                       pj[2]->force.POrho2, pj[3]->force.POrho2);
+  piPOrho2.v = vec_set(pi[0]->force.P_over_rho2, pi[1]->force.P_over_rho2,
+                       pi[2]->force.P_over_rho2, pi[3]->force.P_over_rho2);
+  pjPOrho2.v = vec_set(pj[0]->force.P_over_rho2, pj[1]->force.P_over_rho2,
+                       pj[2]->force.P_over_rho2, pj[3]->force.P_over_rho2);
   pirho.v = vec_set(pi[0]->rho, pi[1]->rho, pi[2]->rho, pi[3]->rho);
   pjrho.v = vec_set(pj[0]->rho, pj[1]->rho, pj[2]->rho, pj[3]->rho);
   piu.v = vec_set(pi[0]->u, pi[1]->u, pi[2]->u, pi[3]->u);
   pju.v = vec_set(pj[0]->u, pj[1]->u, pj[2]->u, pj[3]->u);
-  ci.v =
-      vec_set(pi[0]->force.c, pi[1]->force.c, pi[2]->force.c, pi[3]->force.c);
-  cj.v =
-      vec_set(pj[0]->force.c, pj[1]->force.c, pj[2]->force.c, pj[3]->force.c);
+  ci.v = vec_set(pi[0]->force.soundspeed, pi[1]->force.soundspeed,
+                 pi[2]->force.soundspeed, pi[3]->force.soundspeed);
+  cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
+                 pj[2]->force.soundspeed, pj[3]->force.soundspeed);
   vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
                      pi[3]->force.v_sig);
   vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
@@ -937,16 +936,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   /* Add the thermal conductivity */
   piu_dt.v += mj.v * tc.v * (piu.v - pju.v);
 
-  /* compute the signal velocity (this is always symmetrical). */
-  vi_sig.v = vec_fmax(vi_sig.v, v_sig.v);
-  vj_sig.v = vec_fmax(vj_sig.v, v_sig.v);
-
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->force.u_dt += piu_dt.f[k];
-    pi[k]->h_dt -= pih_dt.f[k];
-    pi[k]->force.v_sig = vi_sig.f[k];
-    pj[k]->force.v_sig = vj_sig.f[k];
+    pi[k]->force.h_dt -= pih_dt.f[k];
+    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
     for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
   }
 

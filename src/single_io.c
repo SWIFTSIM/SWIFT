@@ -38,9 +38,9 @@
 #include "common_io.h"
 #include "engine.h"
 #include "error.h"
-#include "hydro_properties.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "hydro_properties.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 #include "part.h"
@@ -152,6 +152,7 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
 /**
  * @brief Writes a data array in given HDF5 group.
  *
+ * @param e The #engine we are writing from.
  * @param grp The group in which to write.
  * @param fileName The name of the file in which the data is written
  * @param xmfFile The FILE used to write the XMF description
@@ -165,7 +166,7 @@ void readArray(hid_t h_grp, const struct io_props prop, size_t N,
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
+void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                 char* partTypeGroupName, const struct io_props props, size_t N,
                 const struct UnitSystem* internal_units,
                 const struct UnitSystem* snapshot_units) {
@@ -181,9 +182,25 @@ void writeArray(hid_t grp, char* fileName, FILE* xmfFile,
   if (temp == NULL) error("Unable to allocate memory for temporary buffer");
 
   /* Copy particle data to temporary buffer */
-  char* temp_c = temp;
-  for (size_t i = 0; i < N; ++i)
-    memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+  if (props.convert_part == NULL &&
+      props.convert_gpart == NULL) { /* No conversion */
+
+    char* temp_c = temp;
+    for (size_t i = 0; i < N; ++i)
+      memcpy(&temp_c[i * copySize], props.field + i * props.partSize, copySize);
+
+  } else if (props.convert_part != NULL) { /* conversion (for parts)*/
+
+    float* temp_f = temp;
+    for (size_t i = 0; i < N; ++i)
+      temp_f[i] = props.convert_part(e, &props.parts[i]);
+
+  } else if (props.convert_gpart != NULL) { /* conversion (for gparts)*/
+
+    float* temp_f = temp;
+    for (size_t i = 0; i < N; ++i)
+      temp_f[i] = props.convert_gpart(e, &props.gparts[i]);
+  }
 
   /* Unit conversion if necessary */
   const double factor =
@@ -348,7 +365,9 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   if (h_grp < 0) error("Error while opening file header\n");
 
   /* Read the relevant information and print status */
-  readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy);
+  int flag_entropy_temp[6];
+  readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
+  *flag_entropy = flag_entropy_temp[0];
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
   readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
@@ -610,6 +629,39 @@ void write_output_single(struct engine* e, const char* baseName,
   /* Print the system of Units used internally */
   writeUnitSystem(h_file, internal_units, "InternalCodeUnits");
 
+  /* Tell the user if a conversion will be needed */
+  if (e->verbose) {
+    if (units_are_equal(snapshot_units, internal_units)) {
+
+      message("Snapshot and internal units match. No conversion needed.");
+
+    } else {
+
+      message("Conversion needed from:");
+      message("(Snapshot) Unit system: U_M =      %e g.",
+              snapshot_units->UnitMass_in_cgs);
+      message("(Snapshot) Unit system: U_L =      %e cm.",
+              snapshot_units->UnitLength_in_cgs);
+      message("(Snapshot) Unit system: U_t =      %e s.",
+              snapshot_units->UnitTime_in_cgs);
+      message("(Snapshot) Unit system: U_I =      %e A.",
+              snapshot_units->UnitCurrent_in_cgs);
+      message("(Snapshot) Unit system: U_T =      %e K.",
+              snapshot_units->UnitTemperature_in_cgs);
+      message("to:");
+      message("(internal) Unit system: U_M = %e g.",
+              internal_units->UnitMass_in_cgs);
+      message("(internal) Unit system: U_L = %e cm.",
+              internal_units->UnitLength_in_cgs);
+      message("(internal) Unit system: U_t = %e s.",
+              internal_units->UnitTime_in_cgs);
+      message("(internal) Unit system: U_I = %e A.",
+              internal_units->UnitCurrent_in_cgs);
+      message("(internal) Unit system: U_T = %e K.",
+              internal_units->UnitTemperature_in_cgs);
+    }
+  }
+
   /* Loop over all particle types */
   for (int ptype = 0; ptype < NUM_PARTICLE_TYPES; ptype++) {
 
@@ -662,7 +714,7 @@ void write_output_single(struct engine* e, const char* baseName,
 
     /* Write everything */
     for (int i = 0; i < num_fields; ++i)
-      writeArray(h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
+      writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
                  internal_units, snapshot_units);
 
     /* Free temporary array */

@@ -81,14 +81,14 @@ int main(int argc, char *argv[]) {
   p2.rho = 1.0f;
   p2.mass = 9.7059e-4;
   p2.h = 0.222871287 / 2;
-  p1.force.c = 0.0040824829f;
+  p1.force.soundspeed = 0.0040824829f;
   p1.force.balsara = 0.0f;
-  p2.force.c = 58.8972740361f;
+  p2.force.soundspeed = 58.8972740361f;
   p2.force.balsara = 0.0f;
-  p1.u = 1.e-5 / ((const_hydro_gamma - 1.) * p1.rho);
-  p2.u = 1.e-5 / ((const_hydro_gamma - 1.) * p2.rho) + 100.0f / (33 * p2.mass);
-  p1.force.POrho2 = p1.u * (const_hydro_gamma - 1.0f) / p1.rho;
-  p2.force.POrho2 = p2.u * (const_hydro_gamma - 1.0f) / p2.rho;
+  p1.u = 1.e-5 / (hydro_gamma_minus_one * p1.rho);
+  p2.u = 1.e-5 / (hydro_gamma_minus_one * p2.rho) + 100.0f / (33 * p2.mass);
+  p1.force.P_over_rho2 = p1.u * hydro_gamma_minus_one / p1.rho;
+  p2.force.P_over_rho2 = p2.u * hydro_gamma_minus_one / p2.rho;
 
   /* Dump a header. */
   // printParticle_single(&p1, NULL);
