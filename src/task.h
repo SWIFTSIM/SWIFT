@@ -70,6 +70,16 @@ enum task_subtypes {
   task_subtype_count
 };
 
+/* The kind of action the task perform */
+enum task_actions {
+  task_action_none,
+  task_action_part,
+  task_action_gpart,
+  task_action_all,
+  task_action_multipole,
+  task_action_count
+};
+
 extern const char *subtaskID_names[];
 
 /* Data of a task. */
@@ -102,5 +112,6 @@ int task_lock(struct task *t);
 void task_print_mask(unsigned int mask);
 void task_print_submask(unsigned int submask);
 void task_do_rewait(struct task *t);
+enum task_actions task_acts_on(const struct task *t);
 
 #endif /* SWIFT_TASK_H */
