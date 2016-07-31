@@ -721,11 +721,11 @@ int cell_are_neighbours(const struct cell *restrict ci,
                         const struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->h[0] != cj->h[0]) error("Cells of different size !");
+  if (ci->width[0] != cj->width[0]) error("Cells of different size !");
 #endif
 
   /* Maximum allowed distance */
-  const double min_dist = 1.2 * ci->h[0]; /* 1.2 accounts for rounding errors */
+  const double min_dist = 1.2 * ci->width[0]; /* 1.2 accounts for rounding errors */
 
   /* (Manhattan) Distance between the cells */
   for (int k = 0; k < 3; k++) {
