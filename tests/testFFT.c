@@ -134,14 +134,14 @@ int main() {
 
   memcpy(forcegrid, workspace + (sendmin - meshmin[0]) * dimy * dimz,
          (sendmax - sendmin + 1) * dimy * dimz * sizeof(double));
-  
+
   /* for (size_t i = 0; i < fft_size; ++i) */
   /*   if (forcegrid[i] != workspace[i]) error("wrong"); */
 
   /* Prepare the density grid */
   double* rhogrid = fftw_malloc(fft_size * sizeof(double));
   bzero(rhogrid, fft_size * sizeof(double));
-  
+
   /* Now get the density */
   for (size_t slab_x = recvmin; slab_x <= recvmax; slab_x++) {
 
@@ -169,18 +169,16 @@ int main() {
   /*   } */
   /* } */
 
-
   /* FFT of the density field */
   fftw_complex* fftgrid = fftw_malloc(fft_size * sizeof(fftw_complex));
-  fftw_plan plan_forward = fftw_plan_dft_r2c_3d(PMGRID, PMGRID, PMGRID, rhogrid, fftgrid, FFTW_ESTIMATE);
+  fftw_plan plan_forward = fftw_plan_dft_r2c_3d(PMGRID, PMGRID, PMGRID, rhogrid,
+                                                fftgrid, FFTW_ESTIMATE);
   fftw_execute(plan_forward);
 
-
-  for(size_t i = 0; i < 640; i++) {
+  for (size_t i = 0; i < 640; i++) {
     message("workspace[%zd]= %f", i, fftgrid[i][0]);
   }
-  
-  
+
   /* Clean-up */
   fftw_destroy_plan(plan_forward);
   fftw_free(forcegrid);

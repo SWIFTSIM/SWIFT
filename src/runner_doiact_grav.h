@@ -145,7 +145,8 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grav_pp(
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci->width[0] != cj->width[0])  // MATTHIEU sanity check
-    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0], cj->width[0]);
+    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0],
+          cj->width[0]);
 #endif
 
   /* Anything to do here? */
@@ -253,8 +254,8 @@ __attribute__((always_inline)) INLINE static void runner_doself_grav_pp(
 
     if (gp->id_or_neg_offset == ICHECK)
       message("id=%lld loc=[ %f %f %f ] size= %f count= %d",
-              gp->id_or_neg_offset, c->loc[0], c->loc[1], c->loc[2], c->width[0],
-              c->gcount);
+              gp->id_or_neg_offset, c->loc[0], c->loc[1], c->loc[2],
+              c->width[0], c->gcount);
   }
 #endif
 
@@ -325,7 +326,8 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
 
   /* Bad stuff will happen if cell sizes are different */
   if (ci->width[0] != cj->width[0])
-    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0], cj->width[0]);
+    error("Non matching cell sizes !! h_i=%f h_j=%f", ci->width[0],
+          cj->width[0]);
 
   /* Sanity check */
   if (ci == cj)
@@ -336,10 +338,11 @@ static void runner_dopair_grav(struct runner *r, struct cell *ci,
   /* Are the cells direct neighbours? */
   if (!cell_are_neighbours(ci, cj))
     error(
-        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->width=%f cj->loc=[%f %f %f] "
+        "Non-neighbouring cells ! ci->x=[%f %f %f] ci->width=%f cj->loc=[%f %f "
+        "%f] "
         "cj->width=%f",
-        ci->loc[0], ci->loc[1], ci->loc[2], ci->width[0], cj->loc[0], cj->loc[1],
-        cj->loc[2], cj->width[0]);
+        ci->loc[0], ci->loc[1], ci->loc[2], ci->width[0], cj->loc[0],
+        cj->loc[1], cj->loc[2], cj->width[0]);
 
 #endif
 
@@ -488,7 +491,8 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
   struct cell *cells = e->s->cells;
   const int nr_cells = e->s->nr_cells;
   const int ti_current = e->ti_current;
-  const double max_d = const_gravity_a_smooth * const_gravity_r_cut * ci->width[0];
+  const double max_d =
+      const_gravity_a_smooth * const_gravity_r_cut * ci->width[0];
   const double max_d2 = max_d * max_d;
   const double pos_i[3] = {ci->loc[0], ci->loc[1], ci->loc[2]};
 

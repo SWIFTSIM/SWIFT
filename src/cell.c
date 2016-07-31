@@ -725,7 +725,8 @@ int cell_are_neighbours(const struct cell *restrict ci,
 #endif
 
   /* Maximum allowed distance */
-  const double min_dist = 1.2 * ci->width[0]; /* 1.2 accounts for rounding errors */
+  const double min_dist =
+      1.2 * ci->width[0]; /* 1.2 accounts for rounding errors */
 
   /* (Manhattan) Distance between the cells */
   for (int k = 0; k < 3; k++) {

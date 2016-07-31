@@ -42,7 +42,7 @@ struct external_potential {
   struct {
     double x, y, z;
     double mass;
-    double timestep_mult;
+    float timestep_mult;
   } point_mass;
 #endif
 
@@ -50,7 +50,7 @@ struct external_potential {
   struct {
     double x, y, z;
     double vrot;
-    double timestep_mult;
+    float timestep_mult;
   } isothermal_potential;
 #endif
 };
@@ -95,6 +95,8 @@ external_gravity_isothermalpotential_timestep(
  * @brief Computes the gravitational acceleration of a particle due to a point
  * mass
  *
+ * Note that the accelerations are multiplied by Newton's G constant later on.
+ *
  * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
@@ -104,15 +106,19 @@ external_gravity_isothermalpotential(const struct external_potential* potential,
                                      const struct phys_const* const phys_const,
                                      struct gpart* g) {
 
+  const float G_newton = phys_const->const_newton_G;
+
   const float dx = g->x[0] - potential->isothermal_potential.x;
   const float dy = g->x[1] - potential->isothermal_potential.y;
   const float dz = g->x[2] - potential->isothermal_potential.z;
   const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
 
   const double vrot = potential->isothermal_potential.vrot;
-  g->a_grav[0] += -vrot * vrot * rinv2 * dx;
-  g->a_grav[1] += -vrot * vrot * rinv2 * dy;
-  g->a_grav[2] += -vrot * vrot * rinv2 * dz;
+  const double term = -vrot * vrot * rinv2 / G_newton;
+
+  g->a_grav[0] += term * dx;
+  g->a_grav[1] += term * dy;
+  g->a_grav[2] += term * dz;
   // error(" %f %f %f %f", vrot, rinv2, dx, g->a_grav[0]);
 }
 
