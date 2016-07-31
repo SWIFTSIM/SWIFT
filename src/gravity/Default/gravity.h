@@ -99,8 +99,6 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
   gp->a_grav[0] = 0.f;
   gp->a_grav[1] = 0.f;
   gp->a_grav[2] = 0.f;
-
-  gp->mass_interacted = 0.f;
 }
 
 /**

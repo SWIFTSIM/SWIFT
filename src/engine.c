@@ -131,7 +131,7 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Is this the super-cell? */
-  if (super == NULL && (c->grav != NULL || (c->gcount > 0 && c->split))) {
+  if (super == NULL && (c->grav != NULL || (!c->split && c->gcount > 0))) {
 
     /* This is the super cell, i.e. the first with gravity tasks attached. */
     super = c;
@@ -193,7 +193,7 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Is this the super-cell? */
-  if (super == NULL && (c->density != NULL || (c->count > 0 && c->split))) {
+  if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
 
     /* This is the super cell, i.e. the first with density tasks attached. */
     super = c;
@@ -2499,7 +2499,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 void engine_step(struct engine *e) {
 
   double snapshot_drift_time = 0.;
-  struct space *s = e->s;
 
   TIMER_TIC2;
 
@@ -2627,42 +2626,6 @@ void engine_step(struct engine *e) {
   TIMER_TOC(timer_runners);
 
   TIMER_TOC2(timer_step);
-
-  /* Check that the multipoles are correct */
-  space_map_cells_pre(s, 1, cell_check_multipole, NULL);
-
-  FILE *file = fopen("grav_swift.dat", "w");
-  for (size_t k = 0; k < s->nr_gparts; ++k) {
-    fprintf(file, "%lld %f %f %f %e %e %e\n", s->gparts[k].id_or_neg_offset,
-            s->gparts[k].x[0], s->gparts[k].x[1], s->gparts[k].x[2],
-            s->gparts[k].a_grav[0], s->gparts[k].a_grav[1],
-            s->gparts[k].a_grav[2]);
-    if (s->gparts[k].id_or_neg_offset == 1)
-      message("interacting mass= %f (%f)", s->gparts[k].mass_interacted,
-              s->gparts[k].mass_interacted + s->gparts[k].mass);
-  }
-  fclose(file);
-
-  /* Check the gravity accelerations */
-  struct gpart *temp = malloc(s->nr_gparts * sizeof(struct gpart));
-  memcpy(temp, s->gparts, s->nr_gparts * sizeof(struct gpart));
-  const double rlr = const_gravity_a_smooth * s->cells[0].width[0];
-  gravity_n2(temp, s->nr_gparts, e->physical_constants, rlr);
-  file = fopen("grav_brute.dat", "w");
-  for (size_t k = 0; k < s->nr_gparts; ++k) {
-    fprintf(file, "%lld %f %f %f %e %e %e\n", temp[k].id_or_neg_offset,
-            temp[k].x[0], temp[k].x[1], temp[k].x[2], temp[k].a_grav[0],
-            temp[k].a_grav[1], temp[k].a_grav[2]);
-  }
-  fclose(file);
-
-  free(temp);
-
-  double mass = 0.f;
-  for (int i = 0; i < s->nr_cells; ++i) mass += s->cells[i].multipole.mass;
-  message("Total mass: %f", mass);
-
-  error("done");
 
   clocks_gettime(&time2);
 

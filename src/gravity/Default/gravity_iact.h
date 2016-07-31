@@ -85,13 +85,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp(
   gpi->a_grav[0] -= fidx[0];
   gpi->a_grav[1] -= fidx[1];
   gpi->a_grav[2] -= fidx[2];
-  gpi->mass_interacted += mj;
 
   const float fjdx[3] = {fj * dx[0], fj * dx[1], fj * dx[2]};
   gpj->a_grav[0] += fjdx[0];
   gpj->a_grav[1] += fjdx[1];
   gpj->a_grav[2] += fjdx[2];
-  gpj->mass_interacted += mi;
 }
 
 /**
@@ -134,7 +132,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pp_nonsym(
   gpi->a_grav[0] -= fdx[0];
   gpi->a_grav[1] -= fdx[1];
   gpi->a_grav[2] -= fdx[2];
-  gpi->mass_interacted += mj;
 }
 
 /**
@@ -161,7 +158,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   gp->a_grav[1] += mrinv3 * f_lr * dx[1];
   gp->a_grav[2] += mrinv3 * f_lr * dx[2];
 
-  gp->mass_interacted += multi->mass;
 #elif const_gravity_multipole_order == 2
   /* Terms up to 2nd order (quadrupole) */
 
@@ -187,7 +183,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
   gp->a_grav[1] -= f_lr * (C * dx[1] + D2 * qRy);
   gp->a_grav[2] -= f_lr * (C * dx[2] + D2 * qRz);
 
-  gp->mass_interacted += multi->mass;
 #else
 #error "Multipoles of order >2 not yet implemented."
 #endif
