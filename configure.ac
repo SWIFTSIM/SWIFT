@@ -452,14 +452,17 @@ AC_ARG_ENABLE([compiler-warnings],
 if test "$enable_warn" != "no"; then
    
     # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
-    # We will do this by hand instead
+    # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
           gnu | clang)
              CFLAGS="$CFLAGS -Wall"
           ;;
-	  intel )
+	  intel)
              CFLAGS="$CFLAGS -w2"
           ;;
+	  *)
+	     AX_CFLAGS_WARN_ALL
+	  ;;
     esac
     
     # Add a "choke on warning" flag if it exists
