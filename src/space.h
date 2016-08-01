@@ -159,6 +159,8 @@ void space_split(struct space *s, struct cell *cells, int verbose);
 void space_do_split(struct space *s, struct cell *c);
 void space_do_parts_sort();
 void space_do_gparts_sort();
+void space_init_parts(struct space *s);
+void space_init_gparts(struct space *s);
 void space_link_cleanup(struct space *s);
 void space_clean(struct space *s);
 
