@@ -447,12 +447,16 @@ int main(int argc, char *argv[]) {
   space.periodic = 0;
   space.h_max = h;
 
+  struct phys_const pc;
+  pc.const_newton_G = 1.f;
+
   struct hydro_props hp;
   hp.target_neighbours = h * h * h * kernel_norm;
   hp.delta_neighbours = 1.;
   hp.max_smoothing_iterations = 1;
 
   struct engine engine;
+  engine.physical_constants = &pc;
   engine.hydro_properties = &hp;
   engine.s = &space;
   engine.time = 0.1f;
