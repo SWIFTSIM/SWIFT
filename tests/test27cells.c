@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
         strcpy(outputFileNameExtension, optarg);
         break;
       case 'v':
-        sscanf(optarg, "%d", &vel);
+        sscanf(optarg, "%d", (int *)&vel);
         break;
       case '?':
         error("Unknown option.");
