@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
   double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
-  int vel = velocity_zero;
+  enum velocity_types vel = velocity_zero;
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
         strcpy(outputFileNameExtension, optarg);
         break;
       case 'v':
-        sscanf(optarg, "%d", &vel);
+        sscanf(optarg, "%d", (int *)&vel);
         break;
       case '?':
         error("Unknown option.");

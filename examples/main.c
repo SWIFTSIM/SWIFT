@@ -611,6 +611,10 @@ int main(int argc, char *argv[]) {
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
 
+  /* Clean everything */
+  engine_clean(&e);
+  free(params);
+
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");
 

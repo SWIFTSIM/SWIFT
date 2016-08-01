@@ -414,10 +414,6 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
         /* Get ready for a density calculation */
         gravity_init_gpart(gp);
-
-        if (gp->id_or_neg_offset == ICHECK)
-          message("id=%lld a=[%f %f %f]\n", gp->id_or_neg_offset, gp->a_grav[0],
-                  gp->a_grav[1], gp->a_grav[2]);
       }
     }
   }
@@ -456,9 +452,9 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
   }
 
   /* Init the IDs that have to be updated. */
-  int *pid;
-  if ((pid = (int *)alloca(sizeof(int) * count)) == NULL)
-    error("Call to alloca failed.");
+  int *pid = NULL;
+  if ((pid = malloc(sizeof(int) * count)) == NULL)
+    error("Can't allocate memory for pid.");
   for (int k = 0; k < count; k++) pid[k] = k;
 
   /* While there are particles that need to be updated... */
@@ -580,6 +576,9 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 
   if (count)
     message("Smoothing length failed to converge on %i particles.", count);
+
+  /* Be clean */
+  free(pid);
 
   TIMER_TOC(timer_do_ghost);
 }

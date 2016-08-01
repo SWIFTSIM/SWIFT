@@ -669,7 +669,8 @@ void write_output_single(struct engine* e, const char* baseName,
     if (numParticles[ptype] == 0) continue;
 
     /* Add the global information for that particle type to the XMF meta-file */
-    writeXMFgroupheader(xmfFile, fileName, numParticles[ptype], ptype);
+    writeXMFgroupheader(xmfFile, fileName, numParticles[ptype],
+                        (enum PARTICLE_TYPE)ptype);
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -724,7 +725,7 @@ void write_output_single(struct engine* e, const char* baseName,
     H5Gclose(h_grp);
 
     /* Close this particle group in the XMF file as well */
-    writeXMFgroupfooter(xmfFile, ptype);
+    writeXMFgroupfooter(xmfFile, (enum PARTICLE_TYPE)ptype);
   }
 
   /* Write LXMF file descriptor */

@@ -200,5 +200,6 @@ void cell_clean_links(struct cell *c, void *data);
 int cell_are_neighbours(const struct cell *restrict ci,
                         const struct cell *restrict cj);
 void cell_check_multipole(struct cell *c, void *data);
+void cell_clean(struct cell *c);
 
 #endif /* SWIFT_CELL_H */
