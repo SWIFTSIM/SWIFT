@@ -385,11 +385,11 @@ void units_cgs_conversion_string(char* buffer, const struct UnitSystem* us,
 double units_general_cgs_conversion_factor(const struct UnitSystem* us,
                                            const float baseUnitsExponants[5]) {
   double factor = 1.;
-  int i;
 
-  for (i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     if (baseUnitsExponants[i] != 0)
-      factor *= pow(units_get_base_unit(us, i), baseUnitsExponants[i]);
+      factor *= pow(units_get_base_unit(us, (enum BaseUnits)i),
+                    baseUnitsExponants[i]);
   return factor;
 }
 
@@ -440,13 +440,12 @@ void units_general_cgs_conversion_string(char* buffer,
                                          const struct UnitSystem* us,
                                          const float baseUnitsExponants[5]) {
   char temp[14];
-  double a_exp = units_general_a_factor(us, baseUnitsExponants);
-  double h_exp = units_general_h_factor(us, baseUnitsExponants);
-  int i;
+  const double a_exp = units_general_a_factor(us, baseUnitsExponants);
+  const double h_exp = units_general_h_factor(us, baseUnitsExponants);
 
   /* Check whether we are unitless or not */
   char isAllNonZero = 1;
-  for (i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     if (baseUnitsExponants[i] != 0.) isAllNonZero = 0;
 
   if (isAllNonZero) {
@@ -476,17 +475,20 @@ void units_general_cgs_conversion_string(char* buffer,
   strncat(buffer, temp, 12);
 
   /* Add conversion units */
-  for (i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     if (baseUnitsExponants[i] != 0) {
       if (baseUnitsExponants[i] == 0.)
         sprintf(temp, " ");
       else if (baseUnitsExponants[i] == 1.)
-        sprintf(temp, "%s ", units_get_base_unit_internal_symbol(i));
+        sprintf(temp, "%s ",
+                units_get_base_unit_internal_symbol((enum BaseUnits)i));
       else if (remainder(baseUnitsExponants[i], 1.) == 0)
-        sprintf(temp, "%s^%d ", units_get_base_unit_internal_symbol(i),
+        sprintf(temp, "%s^%d ",
+                units_get_base_unit_internal_symbol((enum BaseUnits)i),
                 (int)baseUnitsExponants[i]);
       else
-        sprintf(temp, "%s^%7.4f ", units_get_base_unit_internal_symbol(i),
+        sprintf(temp, "%s^%7.4f ",
+                units_get_base_unit_internal_symbol((enum BaseUnits)i),
                 baseUnitsExponants[i]);
       strncat(buffer, temp, 12);
     }
@@ -494,17 +496,19 @@ void units_general_cgs_conversion_string(char* buffer,
   /* Add CGS units */
   strncat(buffer, " [ ", 3);
 
-  for (i = 0; i < 5; ++i) {
+  for (int i = 0; i < 5; ++i) {
     if (baseUnitsExponants[i] != 0) {
       if (baseUnitsExponants[i] == 0.)
         continue;
       else if (baseUnitsExponants[i] == 1.)
-        sprintf(temp, "%s ", units_get_base_unit_cgs_symbol(i));
+        sprintf(temp, "%s ", units_get_base_unit_cgs_symbol((enum BaseUnits)i));
       else if (remainder(baseUnitsExponants[i], 1.) == 0)
-        sprintf(temp, "%s^%d ", units_get_base_unit_cgs_symbol(i),
+        sprintf(temp, "%s^%d ",
+                units_get_base_unit_cgs_symbol((enum BaseUnits)i),
                 (int)baseUnitsExponants[i]);
       else
-        sprintf(temp, "%s^%7.4f ", units_get_base_unit_cgs_symbol(i),
+        sprintf(temp, "%s^%7.4f ",
+                units_get_base_unit_cgs_symbol((enum BaseUnits)i),
                 baseUnitsExponants[i]);
       strncat(buffer, temp, 12);
     }
