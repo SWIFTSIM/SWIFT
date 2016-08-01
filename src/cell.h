@@ -197,5 +197,6 @@ void cell_init_parts(struct cell *c, void *data);
 void cell_init_gparts(struct cell *c, void *data);
 void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);
+void cell_clean(struct cell *c);
 
 #endif /* SWIFT_CELL_H */

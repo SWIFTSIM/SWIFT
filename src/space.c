@@ -1558,3 +1558,15 @@ void space_link_cleanup(struct space *s) {
   /* Recursively apply the cell link cleaning routine */
   space_map_cells_pre(s, 1, cell_clean_links, NULL);
 }
+
+/**
+ * @brief Frees up the memory allocated for this #space
+ */
+void space_clean(struct space *s) {
+
+  for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells[i]);
+  free(s->cells);
+  free(s->parts);
+  free(s->xparts);
+  free(s->gparts);
+}

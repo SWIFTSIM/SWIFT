@@ -124,5 +124,6 @@ void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
 void scheduler_do_rewait(struct task *t_begin, struct task *t_end,
                          unsigned int mask, unsigned int submask);
+void scheduler_clean(struct scheduler *s);
 
 #endif /* SWIFT_SCHEDULER_H */

@@ -950,8 +950,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     sortdt_i = sort_i;
     countdt_i = count_i;
   } else if (ci->ti_end_min <= ti_current) {
-    if ((sortdt_i = (struct entry *)alloca(sizeof(struct entry) * count_i)) ==
-        NULL)
+    if (posix_memalign((void *)&sortdt_i, VEC_SIZE * sizeof(float),
+                       sizeof(struct entry) * count_i) != 0)
       error("Failed to allocate dt sortlists.");
     for (int k = 0; k < count_i; k++)
       if (parts_i[sort_i[k].i].ti_end <= ti_current) {
@@ -963,8 +963,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     sortdt_j = sort_j;
     countdt_j = count_j;
   } else if (cj->ti_end_min <= ti_current) {
-    if ((sortdt_j = (struct entry *)alloca(sizeof(struct entry) * count_j)) ==
-        NULL)
+    if (posix_memalign((void *)&sortdt_j, VEC_SIZE * sizeof(float),
+                       sizeof(struct entry) * count_j) != 0)
       error("Failed to allocate dt sortlists.");
     for (int k = 0; k < count_j; k++)
       if (parts_j[sort_j[k].i].ti_end <= ti_current) {
@@ -1270,6 +1270,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
+  if (ci->ti_end_max > ti_current && ci->ti_end_min <= ti_current)
+    free(sortdt_i);
+  if (cj->ti_end_max > ti_current && cj->ti_end_min <= ti_current)
+    free(sortdt_j);
+
   TIMER_TOC(TIMER_DOPAIR);
 }
 
@@ -1309,7 +1314,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   /* Set up indt. */
   int *indt = NULL;
   int countdt = 0, firstdt = 0;
-  if ((indt = (int *)alloca(sizeof(int) * count)) == NULL)
+  if (posix_memalign((void *)&indt, VEC_SIZE * sizeof(int),
+                     count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
     if (parts[k].ti_end <= ti_current) {
@@ -1499,6 +1505,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
+  free(indt);
+
   TIMER_TOC(TIMER_DOSELF);
 }
 
@@ -1538,7 +1546,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   /* Set up indt. */
   int *indt = NULL;
   int countdt = 0, firstdt = 0;
-  if ((indt = (int *)alloca(sizeof(int) * count)) == NULL)
+  if (posix_memalign((void *)&indt, VEC_SIZE * sizeof(int),
+                     count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
     if (parts[k].ti_end <= ti_current) {
@@ -1700,6 +1709,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     for (int k = 0; k < icount2; k++)
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
+
+  free(indt);
 
   TIMER_TOC(TIMER_DOSELF);
 }

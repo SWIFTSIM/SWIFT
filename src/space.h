@@ -160,5 +160,6 @@ void space_do_split(struct space *s, struct cell *c);
 void space_do_parts_sort();
 void space_do_gparts_sort();
 void space_link_cleanup(struct space *s);
+void space_clean(struct space *s);
 
 #endif /* SWIFT_SPACE_H */
