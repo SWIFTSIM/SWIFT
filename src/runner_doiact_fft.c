@@ -24,7 +24,7 @@
 #include <pthread.h>
 
 #ifdef HAVE_FFTW
-#include <fftw.h>
+#include <fftw3.h>
 #endif
 
 /* This object's header. */

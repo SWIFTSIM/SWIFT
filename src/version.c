@@ -34,7 +34,7 @@
 #endif
 
 #ifdef HAVE_FFTW
-#include <fftw.h>
+#include <fftw3.h>
 #endif
 
 /* Some standard headers. */

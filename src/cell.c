@@ -792,7 +792,9 @@ void cell_check_multipole(struct cell *c, void *data) {
       error("Multipole I_yz are different (%12.15e vs. %12.15e)", ma.I_yz,
             mb.I_yz);
   }
-=======
+}
+
+/*
  * @brief Frees up the memory allocated for this #cell
  */
 void cell_clean(struct cell *c) {
@@ -802,5 +804,4 @@ void cell_clean(struct cell *c) {
   /* Recurse */
   for (int k = 0; k < 8; k++)
     if (c->progeny[k]) cell_clean(c->progeny[k]);
->>>>>>> master
 }
