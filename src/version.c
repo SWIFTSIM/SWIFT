@@ -33,6 +33,10 @@
 #include <hdf5.h>
 #endif
 
+#ifdef HAVE_FFTW
+#include <fftw3.h>
+#endif
+
 /* Some standard headers. */
 #include <stdio.h>
 #include <string.h>
@@ -239,6 +243,22 @@ const char *metis_version(void) {
 }
 
 /**
+ * @brief return the FFTW version used when SWIFT was built.
+ *
+ * @result description of the FFTW version.
+ */
+const char *fftw3_version(void) {
+
+  static char version[256] = {0};
+#if defined(HAVE_FFTW)
+  sprintf(version, "%s", "3.x (details not available)");
+#else
+  sprintf(version, "Unknown version");
+#endif
+  return version;
+}
+
+/**
  * @brief Prints a greeting message to the standard output containing code
  * version and revision number
  */
@@ -258,6 +278,9 @@ void greetings(void) {
   printf(" Compiler: %s, Version: %s\n", compiler_name(), compiler_version());
 #ifdef HAVE_HDF5
   printf(" HDF5 library version: %s\n", hdf5_version());
+#endif
+#ifdef HAVE_FFTW
+  printf(" FFTW library version: %s\n", fftw3_version());
 #endif
 #ifdef WITH_MPI
   printf(" MPI library: %s\n", mpi_version());

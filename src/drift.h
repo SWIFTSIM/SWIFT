@@ -26,6 +26,7 @@
 #include "const.h"
 #include "debug.h"
 #include "hydro.h"
+#include "part.h"
 
 /**
  * @brief Perform the 'drift' operation on a #gpart

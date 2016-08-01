@@ -22,12 +22,9 @@
 #ifndef SWIFT_TOOL_H
 #define SWIFT_TOOL_H
 
-/* Config parameters. */
-#include "../config.h"
-
-/* Includes. */
 #include "cell.h"
 #include "part.h"
+#include "physical_constants.h"
 #include "runner.h"
 
 void factor(int value, int *f1, int *f2);
@@ -47,5 +44,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic);
 
 double random_uniform(double a, double b);
 void shuffle_particles(struct part *parts, const int count);
+void gravity_n2(struct gpart *gparts, const int gcount,
+                const struct phys_const *constants, float rlr);
 
 #endif /* SWIFT_TOOL_H */
