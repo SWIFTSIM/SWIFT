@@ -27,7 +27,7 @@
  * @brief The two sorts of data present in the GADGET IC files: compulsory to
  * start a run or optional.
  */
-enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0 };
+enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0, UNUSED = -1 };
 
 /**
  * @brief The properties of a given dataset for i/o
@@ -134,7 +134,7 @@ struct io_props io_make_output_field_(char name[FIELD_BUFFER_SIZE],
   strcpy(r.name, name);
   r.type = type;
   r.dimension = dimension;
-  r.importance = 0;
+  r.importance = UNUSED;
   r.units = units;
   r.field = field;
   r.partSize = partSize;
@@ -178,7 +178,7 @@ struct io_props io_make_output_field_convert_part_(
   strcpy(r.name, name);
   r.type = type;
   r.dimension = dimension;
-  r.importance = 0;
+  r.importance = UNUSED;
   r.units = units;
   r.field = field;
   r.partSize = partSize;
@@ -222,7 +222,7 @@ struct io_props io_make_output_field_convert_gpart_(
   strcpy(r.name, name);
   r.type = type;
   r.dimension = dimension;
-  r.importance = 0;
+  r.importance = UNUSED;
   r.units = units;
   r.field = field;
   r.partSize = partSize;

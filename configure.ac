@@ -440,8 +440,8 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 AC_MSG_RESULT($rtc_ok)
 
 # Add warning flags by default, if these can be used. Option =error adds
-# -Werror to GCC and Intel.  Note do this last as compiler tests may become
-# errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
+# -Werror to GCC, clang and Intel.  Note do this last as compiler tests may 
+# become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
 AC_ARG_ENABLE([compiler-warnings],
    [AS_HELP_STRING([--enable-compiler-warnings],
      [Enable compile time warning flags, if compiler is known @<:@error/no/yes)@:>@]
@@ -449,12 +449,23 @@ AC_ARG_ENABLE([compiler-warnings],
    [enable_warn="$enableval"],
    [enable_warn="error"]
 )
-
 if test "$enable_warn" != "no"; then
-    AX_CFLAGS_WARN_ALL
+   
+    # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
+    # We will do this by hand instead
+    case "$ax_cv_c_compiler_vendor" in
+          gnu | clang)
+             CFLAGS="$CFLAGS -Wall"
+          ;;
+	  intel )
+             CFLAGS="$CFLAGS -w2"
+          ;;
+    esac
+    
+    # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
-          intel | gnu )
+          intel | gnu | clang)
              CFLAGS="$CFLAGS -Werror"
           ;;
        esac
