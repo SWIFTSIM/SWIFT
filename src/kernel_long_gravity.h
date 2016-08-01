@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,38 +16,35 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-/* Some standard headers. */
-#include <stdlib.h>
+#ifndef SWIFT_KERNEL_LONG_GRAVITY_H
+#define SWIFT_KERNEL_LONG_GRAVITY_H
 
-/* Gravity particle. */
-struct gpart {
+#include <math.h>
 
-  /* Particle position. */
-  double x[3];
+/* Includes. */
+#include "const.h"
+#include "inline.h"
+#include "vector.h"
 
-  /* Offset between current position and position at last tree rebuild. */
-  float x_diff[3];
+#define one_over_sqrt_pi ((float)(M_2_SQRTPI * 0.5))
 
-  /* Particle velocity. */
-  float v_full[3];
+/**
+ * @brief Computes the long-range correction term for the FFT calculation.
+ *
+ * @param u The ratio of the distance to the FFT cell scale $u = x/A$.
+ * @param W (return) The value of the kernel function.
+ */
+__attribute__((always_inline)) INLINE static void kernel_long_grav_eval(
+    float u, float *const W) {
 
-  /* Particle acceleration. */
-  float a_grav[3];
+  const float arg1 = u * 0.5f;
+  const float arg2 = u * one_over_sqrt_pi;
+  const float arg3 = -arg1 * arg1;
 
-  /* Particle mass. */
-  float mass;
+  const float term1 = erfc(arg1);
+  const float term2 = arg2 * expf(arg3);
 
-  /* Softening length */
-  float epsilon;
+  *W = term1 + term2;
+}
 
-  /* Particle time of beginning of time-step. */
-  int ti_begin;
-
-  /* Particle time of end of time-step. */
-  int ti_end;
-
-  /* Particle ID. If negative, it is the negative offset of the #part with
-     which this gpart is linked. */
-  long long id_or_neg_offset;
-
-} __attribute__((aligned(gpart_align)));
+#endif  // SWIFT_KERNEL_LONG_GRAVITY_H

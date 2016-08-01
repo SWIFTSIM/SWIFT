@@ -87,6 +87,10 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION force
 #include "runner_doiact.h"
 
+/* Import the gravity loop functions. */
+#include "runner_doiact_fft.h"
+#include "runner_doiact_grav.h"
+
 /**
  * @brief Calculate gravity acceleration from external potential
  *
@@ -115,7 +119,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   OUT;
 #endif
 
-  /* Loop over the parts in this cell. */
+  /* Loop over the gparts in this cell. */
   for (int i = 0; i < gcount; i++) {
 
     /* Get a direct pointer on the part. */
@@ -127,6 +131,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
       external_gravity(potential, constants, g);
     }
   }
+
   if (timer) TIMER_TOC(timer_dograv_external);
 }
 
@@ -424,11 +429,9 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_ghost(struct runner *r, struct cell *c) {
 
-  struct part *p, *parts = c->parts;
-  struct xpart *xp, *xparts = c->xparts;
-  struct cell *finger;
+  struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   int redo, count = c->count;
-  float h_corr;
   const int ti_current = r->e->ti_current;
   const double timeBase = r->e->timeBase;
   const float target_wcount = r->e->hydro_properties->target_neighbours;
@@ -465,14 +468,16 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
     for (int i = 0; i < count; i++) {
 
       /* Get a direct pointer on the part. */
-      p = &parts[pid[i]];
-      xp = &xparts[pid[i]];
+      struct part *restrict p = &parts[pid[i]];
+      struct xpart *restrict xp = &xparts[pid[i]];
 
       /* Is this part within the timestep? */
       if (p->ti_end <= ti_current) {
 
         /* Finish the density calculation */
         hydro_end_density(p, ti_current);
+
+        float h_corr = 0.f;
 
         /* If no derivative, double the smoothing length. */
         if (p->density.wcount_dh == 0.0f) h_corr = p->h;
@@ -526,7 +531,7 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
     if (count > 0) {
 
       /* Climb up the cell hierarchy. */
-      for (finger = c; finger != NULL; finger = finger->parent) {
+      for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
         /* Run through this cell's density interactions. */
         for (struct link *l = finger->density; l != NULL; l = l->next) {
@@ -745,6 +750,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
+  const double const_G = r->e->physical_constants->const_newton_G;
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -771,7 +777,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
       if (gp->id_or_neg_offset > 0) {
 
         /* First, finish the force calculation */
-        gravity_end_force(gp);
+        gravity_end_force(gp, const_G);
 
         /* Kick the g-particle forward */
         kick_gpart(gp, new_dti, timeBase);
@@ -796,7 +802,7 @@ void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer) {
 
       /* First, finish the force loop */
       hydro_end_force(p);
-      if (p->gpart != NULL) gravity_end_force(p->gpart);
+      if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
 
       /* Kick the particle forward */
       kick_part(p, xp, new_dti, timeBase);
@@ -857,6 +863,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   struct xpart *restrict xparts = c->xparts;
   struct gpart *restrict gparts = c->gparts;
+  const double const_G = r->e->physical_constants->const_newton_G;
 
   int updated = 0, g_updated = 0;
   int ti_end_min = max_nr_timesteps, ti_end_max = 0;
@@ -882,7 +889,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
         if (gp->ti_end <= ti_current) {
 
           /* First, finish the force calculation */
-          gravity_end_force(gp);
+          gravity_end_force(gp, const_G);
 
           /* Compute the next timestep */
           const int new_dti = get_gpart_timestep(gp, e);
@@ -914,7 +921,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
 
         /* First, finish the force loop */
         hydro_end_force(p);
-        if (p->gpart != NULL) gravity_end_force(p->gpart);
+        if (p->gpart != NULL) gravity_end_force(p->gpart, const_G);
 
         /* Compute the next timestep (hydro condition) */
         const int new_dti = get_part_timestep(p, xp, e);
@@ -1071,6 +1078,8 @@ void *runner_main(void *data) {
             runner_doself1_density(r, ci);
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
+          else if (t->subtype == task_subtype_grav)
+            runner_doself_grav(r, ci, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1079,6 +1088,8 @@ void *runner_main(void *data) {
             runner_dopair1_density(r, ci, cj);
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
+          else if (t->subtype == task_subtype_grav)
+            runner_dopair_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1090,6 +1101,8 @@ void *runner_main(void *data) {
             runner_dosub_self1_density(r, ci, 1);
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
+          else if (t->subtype == task_subtype_grav)
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1098,6 +1111,8 @@ void *runner_main(void *data) {
             runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
+          else if (t->subtype == task_subtype_grav)
+            runner_dosub_grav(r, ci, cj, 1);
           else
             error("Unknown task subtype.");
           break;
@@ -1128,6 +1143,17 @@ void *runner_main(void *data) {
           } else {
             runner_do_recv_cell(r, ci, 1);
           }
+          break;
+        case task_type_grav_mm:
+          runner_do_grav_mm(r, t->ci, 1);
+          break;
+        case task_type_grav_up:
+          runner_do_grav_up(r, t->ci);
+          break;
+        case task_type_grav_gather_m:
+          break;
+        case task_type_grav_fft:
+          runner_do_grav_fft(r);
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);

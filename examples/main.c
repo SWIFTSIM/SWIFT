@@ -399,8 +399,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
-  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic, talking,
-             dry_run);
+  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic,
+             with_self_gravity, talking, dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),

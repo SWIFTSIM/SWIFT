@@ -173,7 +173,8 @@ void scheduler_splittasks(struct scheduler *s) {
       if (ci->split) {
 
         /* Make a sub? */
-        if (scheduler_dosub && ci->count < space_subsize / ci->count) {
+        if (scheduler_dosub && (ci->count * ci->count < space_subsize ||
+                                ci->gcount * ci->gcount < space_subsize)) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
@@ -204,11 +205,10 @@ void scheduler_splittasks(struct scheduler *s) {
                                     ci->progeny[j], ci->progeny[k], 0);
         }
       }
-
     }
 
-    /* Pair interaction? */
-    else if (t->type == task_type_pair) {
+    /* Hydro Pair interaction? */
+    else if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
 
       /* Get a handle on the cells involved. */
       struct cell *ci = t->ci;
@@ -234,7 +234,7 @@ void scheduler_splittasks(struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
-            ci->count * sid_scale[sid] < space_subsize / cj->count &&
+            ci->count * cj->count * sid_scale[sid] < space_subsize &&
             sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
           /* Make this task a sub task. */
@@ -517,6 +517,17 @@ void scheduler_splittasks(struct scheduler *s) {
       }
 
     } /* pair interaction? */
+
+    /* Long-range gravity interaction ? */
+    else if (t->type == task_type_grav_mm) {
+
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+
+      /* Safety thing */
+      if (ci->gcount == 0) t->type = task_type_none;
+
+    } /* gravity interaction? */
 
   } /* loop over all tasks. */
 }

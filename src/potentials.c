@@ -47,7 +47,7 @@ void potential_init(const struct swift_params* parameter_file,
   potential->point_mass.mass =
       parser_get_param_double(parameter_file, "PointMass:mass");
   potential->point_mass.timestep_mult =
-      parser_get_param_double(parameter_file, "PointMass:timestep_mult");
+      parser_get_param_float(parameter_file, "PointMass:timestep_mult");
 
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
 
@@ -61,7 +61,7 @@ void potential_init(const struct swift_params* parameter_file,
       parser_get_param_double(parameter_file, "IsothermalPotential:position_z");
   potential->isothermal_potential.vrot =
       parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
-  potential->isothermal_potential.timestep_mult = parser_get_param_double(
+  potential->isothermal_potential.timestep_mult = parser_get_param_float(
       parameter_file, "IsothermalPotential:timestep_mult");
 
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */

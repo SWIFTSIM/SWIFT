@@ -426,7 +426,7 @@ void pairs_single_grav(double *dim, long long int pid,
       fdx[i] = dx[i];
     }
     r2 = fdx[0] * fdx[0] + fdx[1] * fdx[1] + fdx[2] * fdx[2];
-    runner_iact_grav(r2, fdx, &pi, &pj);
+    runner_iact_grav_pp(0.f, r2, fdx, &pi, &pj);
     a[0] += pi.a_grav[0];
     a[1] += pi.a_grav[1];
     a[2] += pi.a_grav[2];
@@ -599,4 +599,66 @@ void shuffle_particles(struct part *parts, const int count) {
 
   } else
     error("Array not big enough to shuffle!");
+}
+
+/**
+ * @brief Computes the forces between all g-particles using the N^2 algorithm
+ *
+ * Overwrites the accelerations of the gparts with the values.
+ * Do not use for actual runs.
+ *
+ * @brief gparts The array of particles.
+ * @brief gcount The number of particles.
+ */
+void gravity_n2(struct gpart *gparts, const int gcount,
+                const struct phys_const *constants, float rlr) {
+
+  const float rlr_inv = 1. / rlr;
+  const float max_d = const_gravity_r_cut * rlr;
+  const float max_d2 = max_d * max_d;
+
+  message("rlr_inv= %f", rlr_inv);
+  message("max_d: %f", max_d);
+
+  /* Reset everything */
+  for (int pid = 0; pid < gcount; pid++) {
+    struct gpart *restrict gpi = &gparts[pid];
+    gpi->a_grav[0] = 0.f;
+    gpi->a_grav[1] = 0.f;
+    gpi->a_grav[2] = 0.f;
+  }
+
+  /* Loop over all particles in ci... */
+  for (int pid = 0; pid < gcount; pid++) {
+
+    /* Get a hold of the ith part in ci. */
+    struct gpart *restrict gpi = &gparts[pid];
+
+    for (int pjd = pid + 1; pjd < gcount; pjd++) {
+
+      /* Get a hold of the jth part in ci. */
+      struct gpart *restrict gpj = &gparts[pjd];
+
+      /* Compute the pairwise distance. */
+      const float dx[3] = {gpi->x[0] - gpj->x[0],   // x
+                           gpi->x[1] - gpj->x[1],   // y
+                           gpi->x[2] - gpj->x[2]};  // z
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      if (r2 < max_d2 || 1) {
+
+        /* Apply the gravitational acceleration. */
+        runner_iact_grav_pp(rlr_inv, r2, dx, gpi, gpj);
+      }
+    }
+  }
+
+  /* Multiply by Newton's constant */
+  const double const_G = constants->const_newton_G;
+  for (int pid = 0; pid < gcount; pid++) {
+    struct gpart *restrict gpi = &gparts[pid];
+    gpi->a_grav[0] *= const_G;
+    gpi->a_grav[1] *= const_G;
+    gpi->a_grav[2] *= const_G;
+  }
 }
