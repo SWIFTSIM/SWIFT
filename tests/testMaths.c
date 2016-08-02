@@ -39,24 +39,29 @@ int main() {
     const float rel =
         0.5f * fabs(exp_correct - exp_approx) / fabs(exp_correct + exp_approx);
 
-    printf("%2d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i, x,
-           exp_correct, exp_approx, abs, rel);
+    int error = 0;
 
     if (abs > 3e-6 && fabsf(x) <= 0.2) {
       printf("Absolute difference too large !\n");
-      return 1;
+      error = 1;
     }
     if (abs > 1.2e-7 && fabsf(x) <= 0.1) {
       printf("Absolute difference too large !\n");
-      return 1;
+      error = 1;
     }
 
     if (rel > 1e-6 && fabsf(x) <= 0.2) {
       printf("Relative difference too large !\n");
-      return 1;
+      error = 1;
     }
     if (rel > 4e-8 && fabsf(x) <= 0.1) {
       printf("Relative difference too large !\n");
+      error = 1;
+    }
+
+    if(error) {
+      printf("%2d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i, x,
+	     exp_correct, exp_approx, abs, rel);
       return 1;
     }
   }
