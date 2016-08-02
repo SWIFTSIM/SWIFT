@@ -135,6 +135,53 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_dograv_external);
 }
 
+
+/**
+ * @brief Calculate change in entropy from cooling
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+  const int ti_current = r->e->ti_current;
+  const struct cooling_data *cooling = r->e->cooling;
+  const struct phys_const *constants = r->e->physical_constants;
+  const double timeBase = r->e->timeBase;
+  double dt;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_cooling(r, c->progeny[k], 0);
+    return;
+  }
+
+#ifdef TASK_VERBOSE
+  OUT;
+#endif
+
+  /* Loop over the gparts in this cell. */
+  for (int i = 0; i < count; i++) {
+
+    /* Get a direct pointer on the part. */
+    struct part *restrict p = &parts[i];
+
+    /* Is this part within the time step? */
+    if (p->ti_end <= ti_current) {
+      dt = (p->ti_end - p->ti_begin)*timeBase;
+      update_entropy(cooling, constants, p, dt);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_cooling);
+}
+
 /**
  * @brief Sort the entries in ascending order using QuickSort.
  *
@@ -1157,6 +1204,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
+          break;
+	case task_type_cooling:
+          runner_do_cooling(r, t->ci, 1);
           break;
         case task_type_part_sort:
           space_do_parts_sort();

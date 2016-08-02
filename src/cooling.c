@@ -64,7 +64,7 @@ void cooling_print(const struct cooling_data* cooling) {
 
 void update_entropy(const struct cooling_data* cooling,
 		   const struct phys_const* const phys_const, struct part* p, 
-		   float dt){
+		   double dt){
 
   /*updates the entropy of a particle after integrating the cooling equation*/
   float u_old;
@@ -80,7 +80,7 @@ void update_entropy(const struct cooling_data* cooling,
 }
 
 
-float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_data* cooling){
+float calculate_new_thermal_energy(float u_old, double dt, const struct cooling_data* cooling){
 #ifdef CONST_COOLING
   //This function integrates the cooling equation, given the initial thermal energy and the timestep dt.
   //Returns 0 if successful and 1 if not

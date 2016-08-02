@@ -97,5 +97,5 @@ void cooling_print(const struct cooling_data* cooling);
 float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_data* cooling);
 void update_entropy(const struct cooling_data* cooling,
 		   const struct phys_const* const phys_const, struct part* p, 
-		    float dt);
+		    double dt);
 #endif /* SWIFT_COOLING_H */
