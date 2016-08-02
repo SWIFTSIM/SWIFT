@@ -61,11 +61,12 @@ void cooling_print(const struct cooling_data* cooling) {
       cooling->const_cooling.cooling_tstep_mult);
 #endif /* CONST_COOLING */
 }
-int update_entropy(const struct cooling_data* cooling,
-		   const struct phys_const* const phys_const, struct part* p, float dt){
+
+void update_entropy(const struct cooling_data* cooling,
+		   const struct phys_const* const phys_const, struct part* p, 
+		   float dt){
 
   /*updates the entropy of a particle after integrating the cooling equation*/
-  int status == 0;
   float u_old;
   float u_new;
   float new_entropy;
@@ -73,34 +74,32 @@ int update_entropy(const struct cooling_data* cooling,
   float rho = p->rho;
 
   u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
-  status = calculate_new_thermal_energy(u_old,&u_new,dt,cooling):
-  
-  if (status == 0){
-    new_entropy = u_new/pow(rho,GAMMA_MINUS1) * GAMMA_MINUS1;
-    p->entropy = new_entropy
-  }
-  else
-    message("Error with cooling, particle's entropy has not been updated");
- 
-  return status;
+  u_new = calculate_new_thermal_energy(u_old,dt,cooling):
+  new_entropy = u_new/pow(rho,GAMMA_MINUS1) * GAMMA_MINUS1;
+  p->entropy = new_entropy
 }
 
-#ifdef CONST_COOLING
-int calculate_new_thermal_energy(float u_old, float* u_new, float dt, const struct cooling_data* cooling){
 
+float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_data* cooling){
+#ifdef CONST_COOLING
   //This function integrates the cooling equation, given the initial thermal energy and the timestep dt.
   //Returns 0 if successful and 1 if not
   int status = 0;
   float du_dt = cooling->const_cooling.lambda;
   float u_floor = cooling->const_cooling.min_energy;
-  if (u_old - du_dt*dt > min_energy):
-    *u_new = u_old - du_dt*dt;
-  else:
-    *u_new = min_energy
+  float u_new;
+  if (u_old - du_dt*dt > min_energy){
+    u_new = u_old - du_dt*dt;
+  }
+  else{
+    u_new = min_energy;
+  }
 
-  return status}
+  return u_new;
+#endif /*CONST_COOLING*/ 
+}
 
-#endif /*CONST_COOLING
+
   
 
   

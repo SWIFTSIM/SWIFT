@@ -61,7 +61,8 @@ struct cooling_data {
  */
 __attribute__((always_inline)) INLINE static float
 cooling_timestep(const struct cooling_data* cooling,
-		 const struct phys_const* const phys_const, const struct part* const p) {
+		 const struct phys_const* const phys_const, 
+		 const struct part* const p) {
 
   const float cooling_rate = get_cooling_rate( p->density, p->internal_energy, cooling );
   return  cooling->const_cooling.cooling_tstep_mult * p->internal_energy / cooling_rate;
@@ -93,5 +94,8 @@ void cooling_init(const struct swift_params* parameter_file,
                     struct cooling_data* cooling);
 
 void cooling_print(const struct cooling_data* cooling);
-
+float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_data* cooling);
+void update_entropy(const struct cooling_data* cooling,
+		   const struct phys_const* const phys_const, struct part* p, 
+		    float dt);
 #endif /* SWIFT_COOLING_H */
