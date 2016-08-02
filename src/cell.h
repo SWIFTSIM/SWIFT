@@ -136,6 +136,9 @@ struct cell {
   /* Task for external gravity */
   struct task *grav_external;
 
+  /* Task for cooling */
+  struct task *cooling_task;
+
   /* Number of tasks that are associated with this cell. */
   int nr_tasks;
 

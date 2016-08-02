@@ -68,7 +68,7 @@
 #include "units.h"
 #include "version.h"
 
-const char *engine_policy_names[13] = {"none",
+const char *engine_policy_names[14] = {"none",
                                        "rand",
                                        "steal",
                                        "keep",
@@ -80,7 +80,8 @@ const char *engine_policy_names[13] = {"none",
                                        "hydro",
                                        "self_gravity",
                                        "external_gravity",
-                                       "cosmology_integration"};
+                                       "cosmology_integration",
+                                       "cooling"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -191,6 +192,9 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
 
   struct scheduler *s = &e->sched;
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+  const int is_with_cooling =
+      (e->policy & engine_policy_cooling) ==
+      engine_policy_cooling;
 
   /* Is this the super-cell? */
   if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
@@ -225,6 +229,10 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
       /* Generate the ghost task. */
       c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
+
+      if (is_with_cooling)
+        c->cooling_task = scheduler_addtask(
+            s, task_type_cooling, task_subtype_none, 0, 0, c, NULL, 0);
     }
   }
 
@@ -1611,6 +1619,12 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       scheduler_addunlock(sched, t->ci->init, t);
       scheduler_addunlock(sched, t, t->ci->kick);
     }
+    
+    /* Cooling tasks should depend on kick and does not unlock anything since
+     it is the last task*/
+     else if (t->type == task_type_cooling) {
+      scheduler_addunlock(sched, t->ci->kick, t);
+    }
   }
 }
 
@@ -2612,6 +2626,11 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_grav_external;
   }
 
+   /* Add the tasks corresponding to cooling to the masks */
+  if (e->policy & engine_policy_cooling) {
+    mask |= 1 << task_type_cooling;
+  }
+
   /* Add MPI tasks if need be */
   if (e->policy & engine_policy_mpi) {
 
@@ -2937,7 +2956,9 @@ void engine_init(struct engine *e, struct space *s,
                  const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
-                 const struct external_potential *potential) {
+                 const struct external_potential *potential,
+		 const struct cooling_data *cooling) {
+
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -2986,6 +3007,7 @@ void engine_init(struct engine *e, struct space *s,
   e->physical_constants = physical_constants;
   e->hydro_properties = hydro;
   e->external_potential = potential;
+  e->cooling_data = cooling;
   e->parameter_file = params;
   engine_rank = nodeID;
 

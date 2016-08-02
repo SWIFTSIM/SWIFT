@@ -53,6 +53,7 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer);
 void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer);
 void runner_do_drift(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
+void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
 
 #endif /* SWIFT_RUNNER_H */

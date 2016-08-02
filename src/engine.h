@@ -61,7 +61,8 @@ enum engine_policy {
   engine_policy_hydro = (1 << 8),
   engine_policy_self_gravity = (1 << 9),
   engine_policy_external_gravity = (1 << 10),
-  engine_policy_cosmology = (1 << 11)
+  engine_policy_cosmology = (1 << 11),
+  engine_policy_cooling = (1 << 12)
 };
 
 extern const char *engine_policy_names[];
@@ -203,6 +204,9 @@ struct engine {
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
+
+  /* Properties of the cooling scheme */
+  const struct cooling_data *cooling_data;
 
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;

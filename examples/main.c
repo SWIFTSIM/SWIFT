@@ -143,6 +143,7 @@ int main(int argc, char *argv[]) {
   int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
+  int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_fp_exceptions = 0;
@@ -159,6 +160,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'c':
         with_cosmology = 1;
+        break;
+      case 'C':
+        with_cooling = 1;
         break;
       case 'd':
         dry_run = 1;
@@ -335,6 +339,11 @@ int main(int argc, char *argv[]) {
   if (with_external_gravity) potential_init(params, &us, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
+  /* Initialise the external potential properties */
+  struct cooling_data cooling;
+  if (with_cooling) cooling_init(params, &us, &cooling);
+  if (with_cooling && myrank == 0) cooling_print(&cooling);
+
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
@@ -441,6 +450,7 @@ int main(int argc, char *argv[]) {
   if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
+  if (with_cooling) engine_policies |= engine_policy_cooling;
 
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
