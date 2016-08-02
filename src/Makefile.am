@@ -42,7 +42,8 @@ endif
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
-    physical_constants.h physical_constants_cgs.h potentials.h version.h hydro_properties.h
+    physical_constants.h physical_constants_cgs.h potentials.h version.h hydro_properties.h \
+    cooling.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -50,7 +51,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potentials.c hydro_properties.c \
-    runner_doiact_fft.c
+    runner_doiact_fft.c cooling.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
