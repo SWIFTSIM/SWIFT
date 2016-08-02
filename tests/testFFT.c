@@ -21,6 +21,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef HAVE_FFTW
+
+int main() {
+
+  return 0;
+}
+
+#else
+
 #include <fftw3.h>
 
 /* Includes. */
@@ -187,3 +196,5 @@ int main() {
   free(gparts);
   return 0;
 }
+
+#endif
