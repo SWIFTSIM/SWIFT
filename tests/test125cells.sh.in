@@ -4,9 +4,22 @@ do
     for p in {0..2}
     do
 	echo ""
-	rm brute_force_125_standard.dat swift_dopair_125_standard.dat
+
+	rm -f brute_force_125_standard.dat swift_dopair_125_standard.dat
+
+	echo ./test125cells -n 6 -r 1 -v $v -p $p -f standard
+	echo "running"
 	./test125cells -n 6 -r 1 -v $v -p $p -f standard
-	python @srcdir@/difffloat.py brute_force_125_standard.dat swift_dopair_125_standard.dat @srcdir@/tolerance_125.dat 6
+	echo "done"
+
+	if [ -e brute_force_125_standard.dat ]
+	then
+	    python @srcdir@/difffloat.py brute_force_125_standard.dat swift_dopair_125_standard.dat @srcdir@/tolerance_125.dat 6
+	else
+	    echo exit 1
+	 #   exit 1
+        fi
+
     done
 done
 	

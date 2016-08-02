@@ -74,10 +74,11 @@ int main() {
       swift_w = 1 / (r * r * r);
     }
 
-    printf("%2d: r= %f h= %f u= %f Wg(r,h)= %f Ws(r,h)= %f\n", k, r, h, u,
-           gadget_w, swift_w);
-
     if (fabsf(gadget_w - swift_w) > 2e-7) {
+
+      printf("%2d: r= %f h= %f u= %f Wg(r,h)= %f Ws(r,h)= %f\n", k, r, h, u,
+	     gadget_w, swift_w);
+
       printf("Invalid value ! Gadget= %e, SWIFT= %e\n", gadget_w, swift_w);
       return 1;
     }
@@ -99,10 +100,11 @@ int main() {
 
     float gadget_w = erfc(u / 2) + u * exp(-u * u / 4) / sqrt(M_PI);
 
-    printf("%2d: r= %f r_lr= %f u= %f Ws(r)= %f Wg(r)= %f\n", k, r, a_smooth, u,
-           swift_w, gadget_w);
-
     if (fabsf(gadget_w - swift_w) > 2e-7) {
+
+      printf("%2d: r= %f r_lr= %f u= %f Ws(r)= %f Wg(r)= %f\n", k, r, a_smooth, u,
+	     swift_w, gadget_w);
+
       printf("Invalid value ! Gadget= %e, SWIFT= %e\n", gadget_w, swift_w);
       return 1;
     }

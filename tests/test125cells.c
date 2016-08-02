@@ -368,7 +368,7 @@ int main(int argc, char *argv[]) {
   clocks_set_cpufreq(cpufreq);
 
   /* Choke on FP-exceptions */
-  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+  //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
   /* Get some randomness going */
   srand(0);
