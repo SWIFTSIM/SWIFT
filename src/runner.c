@@ -42,6 +42,7 @@
 #include "atomic.h"
 #include "cell.h"
 #include "const.h"
+#include "cooling.h"
 #include "debug.h"
 #include "drift.h"
 #include "engine.h"
@@ -148,7 +149,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   struct part *restrict parts = c->parts;
   const int count = c->count;
   const int ti_current = r->e->ti_current;
-  const struct cooling_data *cooling = r->e->cooling;
+  const struct cooling_data *cooling = r->e->cooling_data;
   const struct phys_const *constants = r->e->physical_constants;
   const double timeBase = r->e->timeBase;
   double dt;

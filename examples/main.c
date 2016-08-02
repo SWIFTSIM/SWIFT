@@ -457,7 +457,7 @@ int main(int argc, char *argv[]) {
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
               engine_policies, talking, &us, &prog_const, &hydro_properties,
-              &potential);
+              &potential, &cooling);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

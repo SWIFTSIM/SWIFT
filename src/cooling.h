@@ -32,6 +32,7 @@
 /* Local includes. */
 #include "const.h"
 #include "error.h"
+#include "hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -64,28 +65,12 @@ cooling_timestep(const struct cooling_data* cooling,
 		 const struct phys_const* const phys_const, 
 		 const struct part* const p) {
 
-  const float cooling_rate = get_cooling_rate( p->density, p->internal_energy, cooling );
-  return  cooling->const_cooling.cooling_tstep_mult * p->internal_energy / cooling_rate;
+  const float cooling_rate = cooling->const_cooling.lambda;
+  const float internal_energy = hydro_get_internal_energy(p,0);// dt = 0 because using current entropy
+  return  cooling->const_cooling.cooling_tstep_mult * internal_energy / cooling_rate;
 }
 
-/* /\** */
-/*  * @brief Updates the internal energy of a particle due to cooling. */
-/*  * */
-/*  * @param cooling The #cooling_data used in the run. */
-/*  * @param phys_const The physical constants in internal units. */
-/*  * @param p Pointer to the particle data. */
-/*  *\/ */
-/* __attribute__((always_inline)) INLINE static float */
-/* cooling_update_entropy(const struct cooling_data* cooling, */
-/*                                      const struct phys_const* const phys_const, */
-/* 										       const dt, */
-/*                                      struct part* p) { */
-/*   const float old_entropy = p->Entropy */
-/*   const float cooling_rate = get_cooling_rate( p->density, p->internal_energy, cooling ); */
-/*   // do other quanitities need to be updated as well?? */
-/*   p->internal_energy -= dt * cooling_rate; */
-/* } */
-/* #endif /\* CONST_COOLING *\/ */
+#endif /* CONST_COOLING */
 
 
 /* Now, some generic functions, defined in the source file */

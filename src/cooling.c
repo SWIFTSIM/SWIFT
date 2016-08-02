@@ -24,7 +24,9 @@
 #include "../config.h"
 
 /* This object's header. */
-#include "potentials.h"
+#include "cooling.h"
+#include "hydro.h"
+#include "adiabatic_index.h"
 
 /**
  * @brief Initialises the cooling properties in the internal system
@@ -57,7 +59,7 @@ void cooling_print(const struct cooling_data* cooling) {
   message(
       "Cooling properties are (lambda, min_energy, tstep multiplier) %g %g %g ",
       cooling->const_cooling.lambda,
-      cooling->const_cooling.min_energy
+      cooling->const_cooling.min_energy,
       cooling->const_cooling.cooling_tstep_mult);
 #endif /* CONST_COOLING */
 }
@@ -73,14 +75,15 @@ void update_entropy(const struct cooling_data* cooling,
   float old_entropy = p->entropy;
   float rho = p->rho;
 
-  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
-  u_new = calculate_new_thermal_energy(u_old,dt,cooling):
-  new_entropy = u_new/pow(rho,GAMMA_MINUS1) * GAMMA_MINUS1;
-  p->entropy = new_entropy
+  //  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
+  u_old = hydro_get_internal_energy(p,0); // dt = 0 because using current entropy
+  u_new = calculate_new_thermal_energy(u_old,dt,cooling);
+  new_entropy = u_new*pow_minus_gamma_minus_one(rho) * hydro_gamma_minus_one;
+  p->entropy = new_entropy;
 }
 
 
-float calculate_new_thermal_energy(float u_old, double dt, const struct cooling_data* cooling){
+float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_data* cooling){
 #ifdef CONST_COOLING
   //This function integrates the cooling equation, given the initial thermal energy and the timestep dt.
   //Returns 0 if successful and 1 if not
@@ -88,11 +91,11 @@ float calculate_new_thermal_energy(float u_old, double dt, const struct cooling_
   float du_dt = cooling->const_cooling.lambda;
   float u_floor = cooling->const_cooling.min_energy;
   float u_new;
-  if (u_old - du_dt*dt > min_energy){
+  if (u_old - du_dt*dt > u_floor){
     u_new = u_old - du_dt*dt;
   }
   else{
-    u_new = min_energy;
+    u_new = u_floor;
   }
 
   return u_new;

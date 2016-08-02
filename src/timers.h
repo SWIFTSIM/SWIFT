@@ -57,6 +57,7 @@ enum {
   timer_qsteal,
   timer_runners,
   timer_step,
+  timer_do_cooling,
   timer_count,
 };
 
