@@ -184,6 +184,18 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
   }
 }
 
+void reset_particles(struct cell *c, enum velocity_field vel,
+                     enum pressure_field press, float size, float density) {
+
+  for (size_t i = 0; i < c->count; ++i) {
+
+    struct part *p = &c->parts[i];
+
+    set_velocity(p, vel, size);
+    set_energy_state(p, press, size, density);
+  }
+}
+
 /**
  * @brief Constructs a cell and all of its particle in a valid state prior to
  * a SPH time-step.
@@ -595,6 +607,9 @@ int main(int argc, char *argv[]) {
 
   /* Output timing */
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
+
+  for (int j = 0; j < 125; ++j)
+    reset_particles(cells[j], vel, press, size, rho);
 
   /* NOW BRUTE-FORCE CALCULATION */
 
