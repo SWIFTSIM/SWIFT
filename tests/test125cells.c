@@ -427,6 +427,7 @@ int main(int argc, char *argv[]) {
 
   /* Help users... */
   message("Adiabatic index: ga = %f", hydro_gamma);
+  message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
   message("Neighbour target: N = %f", h * h * h * kernel_norm);
@@ -451,6 +452,7 @@ int main(int argc, char *argv[]) {
   hp.target_neighbours = h * h * h * kernel_norm;
   hp.delta_neighbours = 1.;
   hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine engine;
   engine.hydro_properties = &hp;
@@ -507,8 +509,8 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
-/* Do the density calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+    /* Do the density calculation */
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Run all the pairs (only once !)*/
     for (int i = 0; i < 5; i++) {
@@ -550,8 +552,8 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
 
 /* Do the force calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
-
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+    
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
       for (int j = 1; j < 4; j++) {
@@ -593,8 +595,8 @@ int main(int argc, char *argv[]) {
   for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
 /* Do the density calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
-
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+  
   /* Run all the pairs (only once !)*/
   for (int i = 0; i < 5; i++) {
     for (int j = 0; j < 5; j++) {
@@ -634,8 +636,8 @@ int main(int argc, char *argv[]) {
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
 
 /* Do the force calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
-
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+  
   /* Do the pairs (for the central 27 cells) */
   for (int i = 1; i < 4; i++) {
     for (int j = 1; j < 4; j++) {
@@ -650,6 +652,7 @@ int main(int argc, char *argv[]) {
 
   /* And now the self-interaction for the main cell */
   self_all_force(&runner, main_cell);
+
 #endif
 
   /* Finally, give a gentle kick */

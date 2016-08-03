@@ -318,6 +318,7 @@ int main(int argc, char *argv[]) {
 
   /* Help users... */
   message("Adiabatic index: ga = %f", hydro_gamma);
+  message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
   message("Neighbour target: N = %f", h * h * h * kernel_norm);
@@ -366,7 +367,7 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
-#if defined(DEFAULT_SPH) || defined(GADGET2_SPH)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Run all the pairs */
     for (int j = 0; j < 27; ++j)
@@ -402,7 +403,7 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
-#if defined(DEFAULT_SPH) || defined(GADGET2_SPH)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
