@@ -238,7 +238,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         xpart->v_full[0] = part->v[0];
         xpart->v_full[1] = part->v[1];
         xpart->v_full[2] = part->v[2];
-	hydro_first_init_part(part, xpart);
+        hydro_first_init_part(part, xpart);
         ++part;
         ++xpart;
       }
@@ -344,7 +344,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               solution[pid].div_v, solution[pid].S, solution[pid].u,
               solution[pid].P, solution[pid].c, solution[pid].a_hydro[0],
               solution[pid].a_hydro[1], solution[pid].a_hydro[2],
-              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt, solution[pid].u_dt);
+              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt,
+              solution[pid].u_dt);
     }
   }
 
@@ -452,6 +453,9 @@ int main(int argc, char *argv[]) {
   space.periodic = 0;
   space.h_max = h;
 
+  struct phys_const prog_const;
+  prog_const.const_newton_G = 1.f;
+
   struct hydro_props hp;
   hp.target_neighbours = h * h * h * kernel_norm;
   hp.delta_neighbours = 1.;
@@ -460,6 +464,7 @@ int main(int argc, char *argv[]) {
 
   struct engine engine;
   engine.hydro_properties = &hp;
+  engine.physical_constants = &prog_const;
   engine.s = &space;
   engine.time = 0.1f;
   engine.ti_current = 1;
@@ -513,7 +518,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the particles */
     for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
-    /* Do the density calculation */
+/* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Run all the pairs (only once !)*/
@@ -557,7 +562,7 @@ int main(int argc, char *argv[]) {
 
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-    
+
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
       for (int j = 1; j < 4; j++) {
@@ -600,7 +605,7 @@ int main(int argc, char *argv[]) {
 
 /* Do the density calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-  
+
   /* Run all the pairs (only once !)*/
   for (int i = 0; i < 5; i++) {
     for (int j = 0; j < 5; j++) {
@@ -641,7 +646,7 @@ int main(int argc, char *argv[]) {
 
 /* Do the force calculation */
 #if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
-  
+
   /* Do the pairs (for the central 27 cells) */
   for (int i = 1; i < 4; i++) {
     for (int j = 1; j < 4; j++) {
