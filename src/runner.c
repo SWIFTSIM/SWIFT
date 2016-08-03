@@ -597,6 +597,9 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
     struct cell *c = &cells[ind];
     if (c == NULL) continue;
 
+    /* Only drift local particles. */
+    if (c->nodeID != e->nodeID) continue;
+
     struct part *const parts = c->parts;
     struct xpart *const xparts = c->xparts;
     struct gpart *const gparts = c->gparts;
@@ -613,9 +616,11 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
     /* No children? */
     if (!c->split) {
 
+
       /* Loop over all the g-particles in the cell */
       const int nr_gparts = c->gcount;
       for (size_t k = 0; k < nr_gparts; k++) {
+
 
         /* Get a handle on the gpart. */
         struct gpart *const gp = &gparts[k];
