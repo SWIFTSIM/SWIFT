@@ -11,3 +11,6 @@ Everything is ready to be run without cosmological integration.
 
 The particle load of the main EAGLE simulation can be reproduced by
 running these ICs on 64 cores.
+
+MD5 checksum of the ICs: 
+ada2c728db2bd2d77a20c4eef52dfaf1  EAGLE_ICs_25.hdf5

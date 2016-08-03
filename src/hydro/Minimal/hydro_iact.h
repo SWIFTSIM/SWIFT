@@ -19,6 +19,8 @@
 #ifndef SWIFT_RUNNER_IACT_MINIMAL_H
 #define SWIFT_RUNNER_IACT_MINIMAL_H
 
+#include "adiabatic_index.h"
+
 /**
  * @brief Minimal conservative implementation of SPH
  *
@@ -62,6 +64,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
+ * @brief Density loop (Vectorized version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_vec_density(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {
+  error(
+      "A vectorised version of the Minimal density interaction function does "
+      "not exist yet!");
+}
+
+/**
  * @brief Density loop (non-symmetric version)
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
@@ -83,6 +96,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->rho_dh -= mj * (3.f * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
+}
+
+/**
+ * @brief Density loop (non-symmetric vectorized version)
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
+                               struct part **pi, struct part **pj) {
+  error(
+      "A vectorised version of the Minimal non-symmetric density interaction "
+      "function does not exist yet!");
 }
 
 /**
@@ -128,8 +152,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Compute sound speeds */
-  const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
+  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
+  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
   const float v_sig = ci + cj;
 
   /* SPH acceleration term */
@@ -149,12 +173,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += P_over_rho_j * mi * dvdr * r_inv * wj_dr;
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  pj->h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
   pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
+}
+
+/**
+ * @brief Force loop (Vectorized version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_vec_force(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {
+  error(
+      "A vectorised version of the Minimal force interaction function does not "
+      "exist yet!");
 }
 
 /**
@@ -200,8 +235,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Compute sound speeds */
-  const float ci = sqrtf(const_hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(const_hydro_gamma * pressurej / rhoj);
+  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
+  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
   const float v_sig = ci + cj;
 
   /* SPH acceleration term */
@@ -216,10 +251,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += P_over_rho_i * mj * dvdr * r_inv * wi_dr;
 
   /* Get the time derivative for h. */
-  pi->h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
+}
+
+/**
+ * @brief Force loop (Vectorized non-symmetric version)
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {
+  error(
+      "A vectorised version of the Minimal non-symmetric force interaction "
+      "function does not exist yet!");
 }
 
 #endif /* SWIFT_RUNNER_IACT_MINIMAL_H */

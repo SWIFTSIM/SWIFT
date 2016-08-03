@@ -27,19 +27,24 @@ int main() {
 
   size_t Ngas = 0, Ngpart = 0;
   int periodic = -1;
+  int flag_entropy_ICs = -1;
   int i, j, k, n;
   double dim[3];
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
 
+  /* Default unit system */
+  struct UnitSystem us;
+  units_init_cgs(&us);
+
   /* Properties of the ICs */
   const double boxSize = 1.;
-  const int L = 4;
+  const size_t L = 4;
   const double rho = 2.;
 
   /* Read data */
-  read_ic_single("input.hdf5", dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 0);
+  read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, 0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);
@@ -90,6 +95,7 @@ int main() {
 
   /* Clean-up */
   free(parts);
+  free(gparts);
 
   return 0;
 }

@@ -47,19 +47,18 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",      "sort",          "self",     "pair",    "sub_self",
-    "sub_pair",  "init",          "ghost",    "kick",    "kick_fixdt",
-    "send",      "recv",          "grav_pp",  "grav_mm", "grav_up",
-    "grav_down", "grav_external"};
+    "none",    "sort",    "self",          "pair",       "sub_self",
+    "sub_pair","init",    "ghost",         "kick",       "kick_fixdt",
+    "send",    "recv",    "grav_gather_m", "grav_fft",   "grav_mm",
+    "grav_up", "grav_external"};
 
 const char *subtaskID_names[task_type_count] = {"none", "density", "force",
-                                                "grav", "t_end"};
+                                                "grav", "tend"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
  */
-
-size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
+size_t task_cell_overlap_part(const struct cell *ci, const struct cell *cj) {
   if (ci == NULL || cj == NULL) return 0;
   if (ci->parts <= cj->parts &&
       ci->parts + ci->count >= cj->parts + cj->count) {
@@ -72,33 +71,151 @@ size_t task_cell_overlap(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
+ * @brief Computes the overlap between the gparts array of two given cells.
+ */
+size_t task_cell_overlap_gpart(const struct cell *ci, const struct cell *cj) {
+  if (ci == NULL || cj == NULL) return 0;
+  if (ci->gparts <= cj->gparts &&
+      ci->gparts + ci->gcount >= cj->gparts + cj->gcount) {
+    return cj->gcount;
+  } else if (cj->gparts <= ci->gparts &&
+             cj->gparts + cj->gcount >= ci->gparts + ci->gcount) {
+    return ci->gcount;
+  }
+  return 0;
+}
+
+/**
+ * @brief Returns the #task_actions for a given task.
+ *
+ * @param t The #task.
+ */
+enum task_actions task_acts_on(const struct task *t) {
+
+  switch (t->type) {
+
+    case task_type_none:
+      return task_action_none;
+      break;
+
+    case task_type_sort:
+    case task_type_ghost:
+      return task_action_part;
+      break;
+
+    case task_type_self:
+    case task_type_pair:
+    case task_type_sub_self:
+    case task_type_sub_pair:
+      switch (t->subtype) {
+
+        case task_subtype_density:
+        case task_subtype_force:
+          return task_action_part;
+          break;
+
+        case task_subtype_grav:
+          return task_action_gpart;
+          break;
+
+        default:
+          error("Unknow task_action for task");
+          return task_action_none;
+          break;
+      }
+      break;
+
+    case task_type_init:
+    case task_type_kick:
+    case task_type_kick_fixdt:
+    case task_type_send:
+    case task_type_recv:
+      return task_action_all;
+      break;
+
+    case task_type_grav_gather_m:
+    case task_type_grav_fft:
+    case task_type_grav_mm:
+    case task_type_grav_up:
+      return task_action_multipole;
+      break;
+
+    case task_type_grav_external:
+      return task_action_gpart;
+      break;
+
+    default:
+      error("Unknown task_action for task");
+      return task_action_none;
+      break;
+  }
+}
+
+/**
  * @brief Compute the Jaccard similarity of the data used by two
  *        different tasks.
  *
  * @param ta The first #task.
  * @param tb The second #task.
  */
-
 float task_overlap(const struct task *ta, const struct task *tb) {
+
+  if (ta == NULL || tb == NULL) return 0.f;
+
+  const enum task_actions ta_act = task_acts_on(ta);
+  const enum task_actions tb_act = task_acts_on(tb);
+
   /* First check if any of the two tasks are of a type that don't
      use cells. */
-  if (ta == NULL || tb == NULL || ta->type == task_type_none ||
-      tb->type == task_type_none)
-    return 0.0f;
+  if (ta_act == task_action_none || tb_act == task_action_none) return 0.f;
 
-  /* Compute the union of the cell data. */
-  size_t size_union = 0;
-  if (ta->ci != NULL) size_union += ta->ci->count;
-  if (ta->cj != NULL) size_union += ta->cj->count;
-  if (tb->ci != NULL) size_union += tb->ci->count;
-  if (tb->cj != NULL) size_union += tb->cj->count;
+  const int ta_part = (ta_act == task_action_part || ta_act == task_action_all);
+  const int ta_gpart =
+      (ta_act == task_action_gpart || ta_act == task_action_all);
+  const int tb_part = (tb_act == task_action_part || tb_act == task_action_all);
+  const int tb_gpart =
+      (tb_act == task_action_gpart || tb_act == task_action_all);
 
-  /* Compute the intersection of the cell data. */
-  const size_t size_intersect =
-      task_cell_overlap(ta->ci, tb->ci) + task_cell_overlap(ta->ci, tb->cj) +
-      task_cell_overlap(ta->cj, tb->ci) + task_cell_overlap(ta->cj, tb->cj);
+  /* In the case where both tasks act on parts */
+  if (ta_part && tb_part) {
 
-  return ((float)size_intersect) / (size_union - size_intersect);
+    /* Compute the union of the cell data. */
+    size_t size_union = 0;
+    if (ta->ci != NULL) size_union += ta->ci->count;
+    if (ta->cj != NULL) size_union += ta->cj->count;
+    if (tb->ci != NULL) size_union += tb->ci->count;
+    if (tb->cj != NULL) size_union += tb->cj->count;
+
+    /* Compute the intersection of the cell data. */
+    const size_t size_intersect = task_cell_overlap_part(ta->ci, tb->ci) +
+                                  task_cell_overlap_part(ta->ci, tb->cj) +
+                                  task_cell_overlap_part(ta->cj, tb->ci) +
+                                  task_cell_overlap_part(ta->cj, tb->cj);
+
+    return ((float)size_intersect) / (size_union - size_intersect);
+  }
+
+  /* In the case where both tasks act on gparts */
+  else if (ta_gpart && tb_gpart) {
+
+    /* Compute the union of the cell data. */
+    size_t size_union = 0;
+    if (ta->ci != NULL) size_union += ta->ci->gcount;
+    if (ta->cj != NULL) size_union += ta->cj->gcount;
+    if (tb->ci != NULL) size_union += tb->ci->gcount;
+    if (tb->cj != NULL) size_union += tb->cj->gcount;
+
+    /* Compute the intersection of the cell data. */
+    const size_t size_intersect = task_cell_overlap_gpart(ta->ci, tb->ci) +
+                                  task_cell_overlap_gpart(ta->ci, tb->cj) +
+                                  task_cell_overlap_gpart(ta->cj, tb->ci) +
+                                  task_cell_overlap_gpart(ta->cj, tb->cj);
+
+    return ((float)size_intersect) / (size_union - size_intersect);
+  }
+
+  /* Else, no overlap */
+  return 0.f;
 }
 
 /**
@@ -106,26 +223,41 @@ float task_overlap(const struct task *ta, const struct task *tb) {
  *
  * @param t The #task.
  */
-
 void task_unlock(struct task *t) {
 
+  const int type = t->type;
+  const int subtype = t->subtype;
+  struct cell *ci = t->ci, *cj = t->cj;
+
   /* Act based on task type. */
-  switch (t->type) {
+  switch (type) {
+
+    case task_type_sort:
+      cell_unlocktree(ci);
+      break;
+
     case task_type_self:
     case task_type_sub_self:
-    case task_type_sort:
-      cell_unlocktree(t->ci);
+      if (subtype == task_subtype_grav) {
+        cell_gunlocktree(ci);
+      } else {
+        cell_unlocktree(ci);
+      }
       break;
+
     case task_type_pair:
     case task_type_sub_pair:
-      cell_unlocktree(t->ci);
-      cell_unlocktree(t->cj);
+      if (subtype == task_subtype_grav) {
+        cell_gunlocktree(ci);
+        cell_gunlocktree(cj);
+      } else {
+        cell_unlocktree(ci);
+        cell_unlocktree(cj);
+      }
       break;
-    case task_type_grav_pp:
+
     case task_type_grav_mm:
-    case task_type_grav_down:
-      cell_gunlocktree(t->ci);
-      if (t->cj != NULL) cell_gunlocktree(t->cj);
+      cell_gunlocktree(ci);
       break;
     default:
       break;
@@ -137,7 +269,6 @@ void task_unlock(struct task *t) {
  *
  * @param t the #task.
  */
-
 int task_lock(struct task *t) {
 
   const int type = t->type;
@@ -198,6 +329,10 @@ int task_lock(struct task *t) {
           return 0;
         }
       }
+      break;
+
+    case task_type_grav_mm:
+      cell_glocktree(ci);
       break;
 
     default:

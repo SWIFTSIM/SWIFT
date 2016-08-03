@@ -76,9 +76,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->dx_max = 0.;
-  cell->h[0] = n;
-  cell->h[1] = n;
-  cell->h[2] = n;
+  cell->width[0] = n;
+  cell->width[1] = n;
+  cell->width[2] = n;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
@@ -91,7 +91,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
@@ -137,7 +136,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             ci->parts[pid].v[2], ci->parts[pid].rho, ci->parts[pid].rho_dh,
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
 #ifdef GADGET2_SPH
-            ci->parts[pid].div_v, ci->parts[pid].density.rot_v[0],
+            ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
 #else
             0., 0., 0., 0.
@@ -156,7 +155,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
 #ifdef GADGET2_SPH
-            cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
+            cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else
             0., 0., 0., 0.
@@ -245,6 +244,9 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
   cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
 
+  runner_do_sort(&runner, ci, 0x1FFF, 0);
+  runner_do_sort(&runner, cj, 0x1FFF, 0);
+
   time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
@@ -253,8 +255,10 @@ int main(int argc, char *argv[]) {
 
     tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
     /* Run the test */
     runner_dopair1_density(&runner, ci, cj);
+#endif
 
     toc = getticks();
     time += toc - tic;
@@ -277,8 +281,10 @@ int main(int argc, char *argv[]) {
 
   tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
   /* Run the brute-force test */
   pairs_all_density(&runner, ci, cj);
+#endif
 
   toc = getticks();
 

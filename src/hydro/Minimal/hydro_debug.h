@@ -28,6 +28,6 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
       xp->u_full, p->u, p->u_dt, p->force.v_sig, p->force.pressure, p->h,
-      p->h_dt, (int)p->density.wcount, p->mass, p->rho_dh, p->rho, p->ti_begin,
-      p->ti_end);
+      p->force.h_dt, (int)p->density.wcount, p->mass, p->rho_dh, p->rho,
+      p->ti_begin, p->ti_end);
 }

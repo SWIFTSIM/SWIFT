@@ -204,11 +204,17 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "Must have at least 3 cells in each spatial dimension when periodicity "
         "is switched on.");
 
+  /* Check if we have enough cells for gravity. */
+  if (s->gravity && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
+    error(
+        "Must have at least 8 cells in each spatial dimension when gravity "
+        "is switched on.");
+
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
 #ifdef WITH_MPI
-  double oldh[3];
+  double oldwidth[3];
   double oldcdim[3];
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
@@ -217,9 +223,9 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     oldcdim[0] = s->cdim[0];
     oldcdim[1] = s->cdim[1];
     oldcdim[2] = s->cdim[2];
-    oldh[0] = s->h[0];
-    oldh[1] = s->h[1];
-    oldh[2] = s->h[2];
+    oldwidth[0] = s->width[0];
+    oldwidth[1] = s->width[1];
+    oldwidth[2] = s->width[2];
 
     if ((oldnodeIDs = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
@@ -255,10 +261,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     /* Set the new cell dimensions only if smaller. */
     for (int k = 0; k < 3; k++) {
       s->cdim[k] = cdim[k];
-      s->h[k] = s->dim[k] / cdim[k];
-      s->ih[k] = 1.0 / s->h[k];
+      s->width[k] = s->dim[k] / cdim[k];
+      s->iwidth[k] = 1.0 / s->width[k];
     }
-    const float dmin = fminf(s->h[0], fminf(s->h[1], s->h[2]));
+    const float dmin = fminf(s->width[0], fminf(s->width[1], s->width[2]));
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
@@ -274,12 +280,12 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       for (int j = 0; j < cdim[1]; j++)
         for (int k = 0; k < cdim[2]; k++) {
           c = &s->cells[cell_getid(cdim, i, j, k)];
-          c->loc[0] = i * s->h[0];
-          c->loc[1] = j * s->h[1];
-          c->loc[2] = k * s->h[2];
-          c->h[0] = s->h[0];
-          c->h[1] = s->h[1];
-          c->h[2] = s->h[2];
+          c->loc[0] = i * s->width[0];
+          c->loc[1] = j * s->width[1];
+          c->loc[2] = k * s->width[2];
+          c->width[0] = s->width[0];
+          c->width[1] = s->width[1];
+          c->width[2] = s->width[2];
           c->dmin = dmin;
           c->depth = 0;
           c->count = 0;
@@ -304,7 +310,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
             "basic cell dimensions have increased - recalculating the "
             "global partition.");
 
-      if (!partition_space_to_space(oldh, oldcdim, oldnodeIDs, s)) {
+      if (!partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s)) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
@@ -384,7 +390,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells = s->cells;
 
-  const double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 
@@ -1257,13 +1263,13 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
         temp->loc[0] = c->loc[0];
         temp->loc[1] = c->loc[1];
         temp->loc[2] = c->loc[2];
-        temp->h[0] = c->h[0] / 2;
-        temp->h[1] = c->h[1] / 2;
-        temp->h[2] = c->h[2] / 2;
+        temp->width[0] = c->width[0] / 2;
+        temp->width[1] = c->width[1] / 2;
+        temp->width[2] = c->width[2] / 2;
         temp->dmin = c->dmin / 2;
-        if (k & 4) temp->loc[0] += temp->h[0];
-        if (k & 2) temp->loc[1] += temp->h[1];
-        if (k & 1) temp->loc[2] += temp->h[2];
+        if (k & 4) temp->loc[0] += temp->width[0];
+        if (k & 2) temp->loc[1] += temp->width[1];
+        if (k & 1) temp->loc[2] += temp->width[2];
         temp->depth = c->depth + 1;
         temp->split = 0;
         temp->h_max = 0.0;
@@ -1425,7 +1431,8 @@ struct cell *space_getcell(struct space *s) {
  * @param Npart The number of Gas particles in the space.
  * @param Ngpart The number of Gravity particles in the space.
  * @param periodic flag whether the domain is periodic or not.
- * @param verbose Print messages to stdout or not
+ * @param gravity flag whether we are doing gravity or not.
+ * @param verbose Print messages to stdout or not.
  * @param dry_run If 1, just initialise stuff, don't do anything with the parts.
  *
  * Makes a grid of edge length > r_max and fills the particles
@@ -1436,8 +1443,8 @@ struct cell *space_getcell(struct space *s) {
 
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
-                size_t Npart, size_t Ngpart, int periodic, int verbose,
-                int dry_run) {
+                size_t Npart, size_t Ngpart, int periodic, int gravity,
+                int verbose, int dry_run) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1447,6 +1454,7 @@ void space_init(struct space *s, const struct swift_params *params,
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
   s->periodic = periodic;
+  s->gravity = gravity;
   s->nr_parts = Npart;
   s->size_parts = Npart;
   s->parts = parts;
@@ -1561,4 +1569,16 @@ void space_link_cleanup(struct space *s) {
 
   /* Recursively apply the cell link cleaning routine */
   space_map_cells_pre(s, 1, cell_clean_links, NULL);
+}
+
+/**
+ * @brief Frees up the memory allocated for this #space
+ */
+void space_clean(struct space *s) {
+
+  for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells[i]);
+  free(s->cells);
+  free(s->parts);
+  free(s->xparts);
+  free(s->gparts);
 }

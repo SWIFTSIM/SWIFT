@@ -606,8 +606,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
           /* Create the sort for ci. */
           lock_lock(&ci->lock);
           if (ci->sorts == NULL)
-            ci->sorts = scheduler_addtask(s, task_type_sort, 0, 1 << sid, 0, ci,
-                                          NULL, 0);
+            ci->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
+                                          1 << sid, 0, ci, NULL, 0);
           else
             ci->sorts->flags |= (1 << sid);
           lock_unlock_blind(&ci->lock);
@@ -616,8 +616,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
           /* Create the sort for cj. */
           lock_lock(&cj->lock);
           if (cj->sorts == NULL)
-            cj->sorts = scheduler_addtask(s, task_type_sort, 0, 1 << sid, 0, cj,
-                                          NULL, 0);
+            cj->sorts = scheduler_addtask(s, task_type_sort, task_subtype_none,
+                                          1 << sid, 0, cj, NULL, 0);
           else
             cj->sorts->flags |= (1 << sid);
           lock_unlock_blind(&cj->lock);
@@ -650,9 +650,9 @@ void scheduler_splittasks(struct scheduler *s) {
  * @param tight
  */
 
-struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
-                               int flags, int wait, struct cell *ci,
-                               struct cell *cj, int tight) {
+struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
+                               enum task_subtypes subtype, int flags, int wait,
+                               struct cell *ci, struct cell *cj, int tight) {
 
   /* Get the next free task. */
   const int ind = atomic_inc(&s->tasks_next);
@@ -1408,4 +1408,17 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
   }
 
   fclose(file);
+}
+
+/**
+ * @brief Frees up the memory allocated for this #scheduler
+ */
+void scheduler_clean(struct scheduler *s) {
+
+  free(s->tasks);
+  free(s->tasks_ind);
+  free(s->unlocks);
+  free(s->unlock_ind);
+  for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
+  free(s->queues);
 }

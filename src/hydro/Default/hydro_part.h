@@ -46,9 +46,6 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
-  /* Change in smoothing length over time. */
-  float h_dt;
-
   /* Particle time of beginning of time-step. */
   int ti_begin;
 
@@ -69,43 +66,46 @@ struct part {
   float alpha;
 
   /* Store density/force specific stuff. */
-  // union {
+  union {
 
-  struct {
+    struct {
 
-    /* Particle velocity divergence. */
-    float div_v;
+      /* Particle velocity divergence. */
+      float div_v;
 
-    /* Derivative of particle number density. */
-    float wcount_dh;
+      /* Derivative of particle number density. */
+      float wcount_dh;
 
-    /* Particle velocity curl. */
-    float curl_v[3];
+      /* Particle velocity curl. */
+      float rot_v[3];
 
-    /* Particle number density. */
-    float wcount;
+      /* Particle number density. */
+      float wcount;
 
-  } density;
+    } density;
 
-  struct {
+    struct {
 
-    /* Balsara switch */
-    float balsara;
+      /* Balsara switch */
+      float balsara;
 
-    /* Aggregate quantities. */
-    float POrho2;
+      /* Aggregate quantities. */
+      float P_over_rho2;
 
-    /* Change in particle energy over time. */
-    float u_dt;
+      /* Change in particle energy over time. */
+      float u_dt;
 
-    /* Signal velocity */
-    float v_sig;
+      /* Signal velocity */
+      float v_sig;
 
-    /* Sound speed */
-    float c;
+      /* Sound speed */
+      float soundspeed;
 
-  } force;
-  //};
+      /* Change in smoothing length over time. */
+      float h_dt;
+
+    } force;
+  };
 
   /* Particle mass. */
   float mass;

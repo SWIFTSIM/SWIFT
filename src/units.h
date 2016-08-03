@@ -92,15 +92,21 @@ enum UnitConversionFactor {
   UNIT_CONV_TEMPERATURE
 };
 
+void units_init_cgs(struct UnitSystem*);
 void units_init(struct UnitSystem*, const struct swift_params*,
                 const char* category);
+void units_init_default(struct UnitSystem* us,
+                        const struct swift_params* params, const char* category,
+                        const struct UnitSystem* def);
+
+int units_are_equal(const struct UnitSystem* a, const struct UnitSystem* b);
+
+/* Base units */
 double units_get_base_unit(const struct UnitSystem*, enum BaseUnits);
-const char* units_get_base_unit_symbol(enum BaseUnits);
-const char* units_get_base_unit_CGS_symbol(enum BaseUnits);
-double units_general_conversion_factor(const struct UnitSystem* us,
-                                       const float baseUnitsExponants[5]);
-double units_conversion_factor(const struct UnitSystem* us,
-                               enum UnitConversionFactor unit);
+const char* units_get_base_unit_internal_symbol(enum BaseUnits);
+const char* units_get_base_unit_cgs_symbol(enum BaseUnits);
+
+/* Cosmology factors */
 float units_general_h_factor(const struct UnitSystem* us,
                              const float baseUnitsExponants[5]);
 float units_h_factor(const struct UnitSystem* us,
@@ -109,9 +115,24 @@ float units_general_a_factor(const struct UnitSystem* us,
                              const float baseUnitsExponants[5]);
 float units_a_factor(const struct UnitSystem* us,
                      enum UnitConversionFactor unit);
-void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
-                                     const float baseUnitsExponants[5]);
-void units_conversion_string(char* buffer, const struct UnitSystem* us,
-                             enum UnitConversionFactor unit);
+
+/* Conversion to CGS */
+double units_general_cgs_conversion_factor(const struct UnitSystem* us,
+                                           const float baseUnitsExponants[5]);
+double units_cgs_conversion_factor(const struct UnitSystem* us,
+                                   enum UnitConversionFactor unit);
+void units_general_cgs_conversion_string(char* buffer,
+                                         const struct UnitSystem* us,
+                                         const float baseUnitsExponants[5]);
+void units_cgs_conversion_string(char* buffer, const struct UnitSystem* us,
+                                 enum UnitConversionFactor unit);
+
+/* Conversion between systems */
+double units_general_conversion_factor(const struct UnitSystem* from,
+                                       const struct UnitSystem* to,
+                                       const float baseUnitsExponants[5]);
+double units_conversion_factor(const struct UnitSystem* from,
+                               const struct UnitSystem* to,
+                               enum UnitConversionFactor unit);
 
 #endif /* SWIFT_UNITS_H */

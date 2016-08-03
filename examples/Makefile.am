@@ -19,12 +19,12 @@
 MYFLAGS = -DTIMER
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -I../src $(HDF5_CPPFLAGS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS)
 
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
 # Extra libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS)
+EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(METIS_LIBS) $(MPI_THREAD_LIBS)

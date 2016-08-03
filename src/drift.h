@@ -26,6 +26,7 @@
 #include "const.h"
 #include "debug.h"
 #include "hydro.h"
+#include "part.h"
 
 /**
  * @brief Perform the 'drift' operation on a #gpart
@@ -37,7 +38,8 @@
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart* gp, float dt, double timeBase, int ti_old, int ti_current) {
+    struct gpart *restrict gp, float dt, double timeBase, int ti_old,
+    int ti_current) {
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt;
   gp->x[1] += gp->v_full[1] * dt;
@@ -60,8 +62,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_part(
-    struct part* p, struct xpart* xp, float dt, double timeBase, int ti_old,
-    int ti_current) {
+    struct part *restrict p, struct xpart *restrict xp, float dt,
+    double timeBase, int ti_old, int ti_current) {
   /* Useful quantity */
   const float h_inv = 1.0f / p->h;
 
@@ -76,7 +78,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[2] += p->a_hydro[2] * dt;
 
   /* Predict smoothing length */
-  const float w1 = p->h_dt * h_inv * dt;
+  const float w1 = p->force.h_dt * h_inv * dt;
   if (fabsf(w1) < 0.2f)
     p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else

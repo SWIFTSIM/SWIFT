@@ -168,6 +168,20 @@ AC_ARG_ENABLE([optimization],
    [enable_opt="yes"]
 )
 
+#  Disable vectorisation for known compilers. This switches off optimizations
+#  that could be enabled above, so in general should be appended. Slightly odd
+#  implementation as want to describe as --disable-vec, but macro is enable
+#  (there is no enable action).
+AC_ARG_ENABLE([vec],
+   [AS_HELP_STRING([--disable-vec],
+     [Disable vectorization]
+   )],
+   [enable_vec="$enableval"],
+   [enable_vec="yes"]
+)
+
+HAVEVECTORIZATION=0
+
 if test "$enable_opt" = "yes" ; then
 
    # Add code optimisation flags and tuning to host. This is a funny macro
@@ -188,7 +202,28 @@ if test "$enable_opt" = "yes" ; then
            CFLAGS="$CFLAGS $SIMD_FLAGS"
        fi
    fi
+
+
+   if test "$enable_vec" = "no"; then
+      if test "$ax_cv_c_compiler_vendor" = "intel"; then
+      	 CFLAGS="$CFLAGS -no-vec -no-simd"
+      	 AC_MSG_RESULT([disabled Intel vectorization])
+      elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      	 CFLAGS="$CFLAGS -fno-tree-vectorize"
+      	 AC_MSG_RESULT([disabled GCC vectorization])
+      elif test "$ax_cv_c_compiler_vendor" = "clang"; then
+         CFLAGS="$CFLAGS -fno-vectorize -fno-slp-vectorize"
+         AC_MSG_RESULT([disabled clang vectorization])
+      else
+         AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
+      fi
+   else
+      AC_DEFINE([WITH_VECTORIZATION],1,[Enable vectorization])
+      HAVEVECTORIZATION=1
+   fi
 fi
+AM_CONDITIONAL([HAVEVECTORIZATION],[test -n "$HAVEVECTORIZATION"])
+
 
 # Add address sanitizer options to flags, if requested. Only useful for GCC
 # version 4.8 and later and clang.
@@ -216,31 +251,6 @@ if test "$enable_san" = "yes"; then
    fi
 fi
 
-#  Disable vectorisation for known compilers. This switches off optimizations
-#  that could be enabled above, so in general should be appended. Slightly odd
-#  implementation as want to describe as --disable-vec, but macro is enable
-#  (there is no enable action).
-AC_ARG_ENABLE([vec],
-   [AS_HELP_STRING([--disable-vec],
-     [Disable vectorization]
-   )],
-   [enable_vec="$enableval"],
-   [enable_vec="yes"]
-)
-if test "$enable_vec" = "no"; then
-   if test "$ax_cv_c_compiler_vendor" = "intel"; then
-      CFLAGS="$CFLAGS -no-vec -no-simd"
-      AC_MSG_RESULT([disabled Intel vectorization])
-   elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
-      CFLAGS="$CFLAGS -fno-tree-vectorize"
-      AC_MSG_RESULT([disabled GCC vectorization])
-   elif test "$ax_cv_c_compiler_vendor" = "clang"; then
-      CFLAGS="$CFLAGS -fno-vectorize -fno-slp-vectorize"
-      AC_MSG_RESULT([disabled clang vectorization])
-   else
-      AC_MSG_WARN([Do not know how to disable vectorization for this compiler])
-   fi
-fi
 
 # Autoconf stuff.
 AC_PROG_INSTALL
@@ -407,6 +417,17 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes"; then
   fi
 fi
 
+# Check for FFTW
+have_fftw3="no"
+AC_CHECK_HEADER([fftw3.h])
+if test "$ac_cv_header_fftw3_h" = "yes"; then
+   AC_CHECK_LIB([fftw3],[fftw_malloc], [AC_DEFINE([HAVE_FFTW],
+   [1],[Defined if FFTW 3.x exists.])] )
+   FFTW_LIBS="-lfftw3"
+   have_fftw3="yes"
+fi
+AC_SUBST([FFTW_LIBS])
+
 # Check for Intel intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h])
 
@@ -430,8 +451,8 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 AC_MSG_RESULT($rtc_ok)
 
 # Add warning flags by default, if these can be used. Option =error adds
-# -Werror to GCC and Intel.  Note do this last as compiler tests may become
-# errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
+# -Werror to GCC, clang and Intel.  Note do this last as compiler tests may 
+# become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
 AC_ARG_ENABLE([compiler-warnings],
    [AS_HELP_STRING([--enable-compiler-warnings],
      [Enable compile time warning flags, if compiler is known @<:@error/no/yes)@:>@]
@@ -439,12 +460,26 @@ AC_ARG_ENABLE([compiler-warnings],
    [enable_warn="$enableval"],
    [enable_warn="error"]
 )
-
 if test "$enable_warn" != "no"; then
-    AX_CFLAGS_WARN_ALL
+   
+    # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
+    # We will do this by hand instead and only default to the macro for unknown compilers
+    case "$ax_cv_c_compiler_vendor" in
+          gnu | clang)
+             CFLAGS="$CFLAGS -Wall"
+          ;;
+	  intel)
+             CFLAGS="$CFLAGS -w2"
+          ;;
+	  *)
+	     AX_CFLAGS_WARN_ALL
+	  ;;
+    esac
+    
+    # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
-          intel | gnu )
+          intel | gnu | clang)
              CFLAGS="$CFLAGS -Werror"
           ;;
        esac
@@ -461,6 +496,13 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
+AC_CONFIG_FILES([tests/testReading.sh], [chmod +x tests/testReading.sh])
+AC_CONFIG_FILES([tests/testPair.sh], [chmod +x tests/testPair.sh])
+AC_CONFIG_FILES([tests/testPairPerturbed.sh], [chmod +x tests/testPairPerturbed.sh])
+AC_CONFIG_FILES([tests/test27cells.sh], [chmod +x tests/test27cells.sh])
+AC_CONFIG_FILES([tests/test27cellsPerturbed.sh], [chmod +x tests/test27cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
+AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 
 # Report general configuration.
 AC_MSG_RESULT([
@@ -472,6 +514,7 @@ AC_MSG_RESULT([
    HDF5 enabled    : $with_hdf5
     - parallel     : $have_parallel_hdf5
    Metis enabled   : $have_metis
+   FFTW3 enabled   : $have_fftw3
    libNUMA enabled : $have_numa
    Using tcmalloc  : $have_tcmalloc
    CPU profiler    : $have_profiler
