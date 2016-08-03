@@ -59,9 +59,9 @@ int main() {
       error = 1;
     }
 
-    if(error) {
+    if (error) {
       printf("%2d: x= %f exp(x)= %e approx_exp(x)=%e abs=%e rel=%e\n", i, x,
-	     exp_correct, exp_approx, abs, rel);
+             exp_correct, exp_approx, abs, rel);
       return 1;
     }
   }
