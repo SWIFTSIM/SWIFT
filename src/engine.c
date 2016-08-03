@@ -1039,7 +1039,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     struct xpart *xparts_new = NULL;
     if (posix_memalign((void **)&parts_new, part_align,
                        sizeof(struct part) * s->size_parts) != 0 ||
-        posix_memalign((void **)&xparts_new, part_align,
+        posix_memalign((void **)&xparts_new, xpart_align,
                        sizeof(struct xpart) * s->size_parts) != 0)
       error("Failed to allocate new part data.");
     memcpy(parts_new, s->parts, sizeof(struct part) * offset_parts);
