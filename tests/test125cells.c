@@ -178,6 +178,9 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
     solution[i].a_hydro[2] = -gradP[2] / solution[i].rho;
 
     solution[i].v_sig = 2.f * solution[i].c;
+
+    solution[i].S_dt = 0.f;
+    solution[i].u_dt = -(solution[i].P / solution[i].rho) * solution[i].div_v;
   }
 }
 
@@ -235,6 +238,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         xpart->v_full[0] = part->v[0];
         xpart->v_full[1] = part->v[1];
         xpart->v_full[2] = part->v[2];
+	hydro_first_init_part(part, xpart);
         ++part;
         ++xpart;
       }
@@ -340,7 +344,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               solution[pid].div_v, solution[pid].S, solution[pid].u,
               solution[pid].P, solution[pid].c, solution[pid].a_hydro[0],
               solution[pid].a_hydro[1], solution[pid].a_hydro[2],
-              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt, 0.f);
+              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt, solution[pid].u_dt);
     }
   }
 
@@ -368,7 +372,7 @@ int main(int argc, char *argv[]) {
   clocks_set_cpufreq(cpufreq);
 
   /* Choke on FP-exceptions */
-  //feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
   /* Get some randomness going */
   srand(0);
