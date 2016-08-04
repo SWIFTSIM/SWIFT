@@ -25,8 +25,8 @@ import math
 import random
 
 # Generates N particles in a spherical distribution centred on [0,0,0], to be moved in an isothermal potential
-# usage: python makeIC.py 1000 0 : generate 1000 particles on circular orbits
-#        python makeIC.py 1000 1 : generate 1000 particles with Lz/L uniform in [0,1]
+# usage: python makeIC.py 1000 0 1: generate 1000 particles on circular orbits
+#        python makeIC.py 1000 1 1: generate 1000 particles with Lz/L uniform in [0,1]
 # all particles move in the xy plane, and start at y=0
 
 # physical constants in cgs
@@ -64,6 +64,7 @@ G       = const_G
 
 N       = int(sys.argv[1])  # Number of particles
 icirc   = int(sys.argv[2])  # if = 0, all particles are on circular orbits, if = 1, Lz/Lcirc uniform in ]0,1[
+three_d = int(sys.argv[3])  # if = 0, particles distributed in 3 dimensions, if 1, all along one straight line
 L       = N**(1./3.)
 
 # these are not used but necessary for I/O
@@ -119,23 +120,44 @@ ctheta = -1. + 2 * numpy.random.rand(N)
 stheta = numpy.sqrt(1.-ctheta**2)
 phi    =  2 * math.pi * numpy.random.rand(N)
 r      = numpy.zeros((numPart, 3))
-#r[:,0] = radius * stheta * numpy.cos(phi)
-#r[:,1] = radius * stheta * numpy.sin(phi)
-#r[:,2] = radius * ctheta
-r[:,0] = radius
+
+if (three_d == 0):
+    r[:,0] = radius * stheta * numpy.cos(phi)
+    r[:,1] = radius * stheta * numpy.sin(phi)
+    r[:,2] = radius * ctheta
+else:
+    r[:,0] = radius
 #
+
 speed  = vrot
 v      = numpy.zeros((numPart, 3))
-omega  = speed / radius
-period = 2.*math.pi/omega
-print 'period = minimum = ',min(period), ' maximum = ',max(period)
 
-omegav = omega
-if (icirc != 0):
-    omegav = omega * numpy.random.rand(N)
+if(three_d == 0):
+    #make N random angular momentum vectors
+    omega = numpy.random.rand(N,3)
+    #cross with r to get velocities perpendicular to displacement vector
+    v = numpy.cross(omega,r)
+    #rescale v
+    mag_v = numpy.zeros(N)
+    for i in range(N):
+        mag_v[i] = numpy.sqrt(v[i,0]**2 + v[i,1]**2 + v[i,2]**2)
+        v[i,:] /= mag_v[i]
+    v *= speed
+    if (icirc != 0):
+        for i in range(N):
+            v[i,:] *= numpy.random.rand()
+    
+else:
+    omega  = speed / radius
+    period = 2.*math.pi/omega
+    print 'period = minimum = ',min(period), ' maximum = ',max(period)
 
-v[:,0] = -omegav * r[:,1]
-v[:,1] =  omegav * r[:,0]
+    omegav = omega
+    if (icirc != 0):
+        omegav = omega * numpy.random.rand(N)
+        
+    v[:,0] = -omegav * r[:,1]
+    v[:,1] =  omegav * r[:,0]
 
 ds = grp1.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v

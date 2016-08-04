@@ -58,6 +58,7 @@ void print_help_message() {
   printf("Valid options are:\n");
   printf("  %2s %8s %s\n", "-a", "", "Pin runners using processor affinity");
   printf("  %2s %8s %s\n", "-c", "", "Run with cosmological time integration");
+  printf("  %2s %8s %s\n", "-C", "", "Run with cooling");
   printf(
       "  %2s %8s %s\n", "-d", "",
       "Dry run. Read the parameter file, allocate memory but does not read ");
@@ -154,7 +155,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acdef:gGhn:st:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdef:gGhn:st:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
