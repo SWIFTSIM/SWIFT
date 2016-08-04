@@ -1306,7 +1306,9 @@ void engine_make_hydroloop_tasks(struct engine *e) {
  * For each hydrodynamic task, construct the links with the corresponding cell.
  * Similarly, construct the dependencies for all the sorting tasks.
  *
- * @param e The #engine.
+ * @param map_data The #engine.
+ * @param num_elements Number of tasks to process.
+ * @param extra_data Pointer to the tasks.
  */
 
 void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
@@ -1560,7 +1562,9 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * This function is a mapper function to be used via the #threadpool_map
  * function.
  *
- * @param e The #engine.
+ * @param map_data The #engine.
+ * @param num_elements Number of tasks to process.
+ * @param extra_data Pointer to the tasks.
  */
 void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                               void *extra_data) {

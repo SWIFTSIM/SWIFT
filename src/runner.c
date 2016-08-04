@@ -586,7 +586,7 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 /**
  * @brief Mapper function to drift particles and g-particles forward in time.
  *
- * @param map_data An array of #cells.
+ * @param map_data An array of #cell%s.
  * @param num_elements Chunk size.
  * @param extra_data Pointer to an #engine.
  */

@@ -101,9 +101,11 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 }
 
 /**
- * @brief Split tasks that may be too large.
+ * @brief Mapper function to split tasks that may be too large.
  *
- * @param s The #scheduler we are working in.
+ * @param map_data the tasks to process
+ * @param num_elements the number of tasks.
+ * @param extra_data The #scheduler we are working in.
  */
 
 void scheduler_splittasks_mapper(void *map_data, int num_elements,
@@ -1340,6 +1342,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
  * @param nr_queues The number of queues in this scheduler.
  * @param flags The #scheduler flags.
  * @param nodeID The MPI rank
+ * @param tp Parallel processing threadpool.
  */
 
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
