@@ -455,7 +455,8 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
         t->type != task_type_sub_self && t->type != task_type_sub_self &&
-        t->type != task_type_kick && t->type != task_type_init)
+        t->type != task_type_ghost && t->type != task_type_kick &&
+        t->type != task_type_init)
       continue;
 
     /* Get the task weight. This can be slightly negative on multiple board
