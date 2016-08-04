@@ -1354,6 +1354,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       }
     } else if (t->type == task_type_sub_pair) {
       atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
@@ -1400,14 +1401,13 @@ void engine_count_and_link_tasks_serial(struct engine *e) {
       }
     } else if (t->type == task_type_sub_self) {
       atomic_inc(&t->ci->nr_tasks);
-      if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
       }
     } else if (t->type == task_type_sub_pair) {
       atomic_inc(&t->ci->nr_tasks);
-      if (t->cj != NULL) atomic_inc(&t->cj->nr_tasks);
+      atomic_inc(&t->cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
@@ -1730,12 +1730,14 @@ void engine_make_extra_hydroloop_tasks_serial(struct engine *e) {
           scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
                             t->flags, 0, t->ci, t->cj, 0);
 
-      /* Add the link between the new loop and both cells */
+      /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->force, t2);
       atomic_inc(&t->ci->nr_force);
-      if (t->cj != NULL) {
-        engine_addlink(e, &t->cj->force, t2);
-        atomic_inc(&t->cj->nr_force);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
       }
     }
 
@@ -1996,9 +1998,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const struct cell *ci = t->ci;
       const struct cell *cj = t->cj;
 
-      /* Set this task's skip. */
-      t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
-
       /* Too much particle movement? */
       if (t->tight &&
           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
@@ -2006,8 +2005,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            cj->dx_max > space_maxreldx * cj->h_max))
         *rebuild_space = 1;
 
+      /* Set this task's skip. */
+      if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) == 1)
+          continue;
+
       /* Set the sort flags. */
-      if (!t->skip && t->type == task_type_pair) {
+      if (t->type == task_type_pair) {
         if (!(ci->sorted & (1 << t->flags))) {
           atomic_or(&ci->sorts->flags, (1 << t->flags));
           ci->sorts->skip = 0;
@@ -2016,6 +2019,61 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           atomic_or(&cj->sorts->flags, (1 << t->flags));
           cj->sorts->skip = 0;
         }
+      }
+
+      /* Activate the send/recv flags. */
+      if (ci->nodeID != engine_rank) {
+
+        /* Activate the tasks to recv foreign cell ci's data. */
+        ci->recv_xv->skip = 0;
+        ci->recv_rho->skip = 0;
+        ci->recv_ti->skip = 0;
+
+        /* Look for the local cell cj's send tasks. */
+        struct link *l = NULL;
+        for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_xv task.");
+        l->t->skip = 0;
+
+        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_rho task.");
+        l->t->skip = 0;
+
+        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_ti task.");
+        l->t->skip = 0;
+
+      } else if (cj->nodeID != engine_rank) {
+
+        /* Activate the tasks to recv foreign cell cj's data. */
+        cj->recv_xv->skip = 0;
+        cj->recv_rho->skip = 0;
+        cj->recv_ti->skip = 0;
+        /* Look for the local cell ci's send tasks. */
+        struct link *l = NULL;
+        for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_xv task.");
+        l->t->skip = 0;
+
+        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_rho task.");
+        l->t->skip = 0;
+
+        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_ti task.");
+        l->t->skip = 0;
       }
     }
 
@@ -2072,9 +2130,6 @@ int engine_marktasks_serial(struct engine *e) {
       const struct cell *ci = t->ci;
       const struct cell *cj = t->cj;
 
-      /* Set this task's skip. */
-      t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end);
-
       /* Too much particle movement? */
       if (t->tight &&
           (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
@@ -2082,8 +2137,12 @@ int engine_marktasks_serial(struct engine *e) {
            cj->dx_max > space_maxreldx * cj->h_max))
         return 1;
 
+      /* Set this task's skip. */
+      if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) == 1)
+          continue;
+
       /* Set the sort flags. */
-      if (!t->skip && t->type == task_type_pair) {
+      if (t->type == task_type_pair) {
         if (!(ci->sorted & (1 << t->flags))) {
           ci->sorts->flags |= (1 << t->flags);
           ci->sorts->skip = 0;
@@ -2094,6 +2153,60 @@ int engine_marktasks_serial(struct engine *e) {
         }
       }
 
+      /* Activate the send/recv flags. */
+      if (ci->nodeID != engine_rank) {
+
+        /* Activate the tasks to recv foreign cell ci's data. */
+        ci->recv_xv->skip = 0;
+        ci->recv_rho->skip = 0;
+        ci->recv_ti->skip = 0;
+
+        /* Look for the local cell cj's send tasks. */
+        struct link *l = NULL;
+        for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_xv task.");
+        l->t->skip = 0;
+
+        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_rho task.");
+        l->t->skip = 0;
+
+        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_ti task.");
+        l->t->skip = 0;
+
+      } else if (cj->nodeID != engine_rank) {
+
+        /* Activate the tasks to recv foreign cell cj's data. */
+        cj->recv_xv->skip = 0;
+        cj->recv_rho->skip = 0;
+        cj->recv_ti->skip = 0;
+        /* Look for the local cell ci's send tasks. */
+        struct link *l = NULL;
+        for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_xv task.");
+        l->t->skip = 0;
+
+        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_rho task.");
+        l->t->skip = 0;
+
+        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next)
+          ;
+        if (l == NULL) error("Missing link to send_ti task.");
+        l->t->skip = 0;
+      }
     }
 
     /* Kick? */
