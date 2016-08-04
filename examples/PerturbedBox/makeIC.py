@@ -19,6 +19,7 @@
  ##############################################################################
 
 import h5py
+import sys
 import random
 from numpy import *
 
@@ -26,13 +27,13 @@ from numpy import *
 # at a constant density and pressure in a cubic box
 
 # Parameters
-periodic= 1      # 1 For periodic box
+periodic= 1          # 1 For periodic box
 boxSize = 1.
-L = 50           # Number of particles along one axis
-rho = 1.         # Density
-P = 1.           # Pressure
-gamma = 5./3.    # Gas adiabatic index
-pert = 0.01      # Perturbation scale (in units of the interparticle separation)
+L = int(sys.argv[1]) # Number of particles along one axis
+rho = 1.             # Density
+P = 1.               # Pressure
+gamma = 5./3.        # Gas adiabatic index
+pert = 0.01          # Perturbation scale (in units of the interparticle separation)
 fileName = "perturbedBox.hdf5" 
 
 

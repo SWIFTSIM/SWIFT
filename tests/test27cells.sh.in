@@ -1,8 +1,20 @@
 #!/bin/bash
-rm brute_force_27_standard.dat swift_dopair_27_standard.dat
 
-./test27cells -p 6 -r 1 -d 0 -f standard
+for v in {0..3}
+do
+    echo ""
 
-python @srcdir@/difffloat.py brute_force_27_standard.dat swift_dopair_27_standard.dat @srcdir@/tolerance.dat 6
+    rm -f brute_force_27_standard.dat swift_dopair_27_standard.dat
+
+    ./test27cells -n 6 -r 1 -d 0 -f standard -v $v
+
+    if [ -e brute_force_27_standard.dat ]
+    then
+	python @srcdir@/difffloat.py brute_force_27_standard.dat swift_dopair_27_standard.dat @srcdir@/tolerance_27_normal.dat 6
+    else
+	exit 1
+    fi
+
+done
 
 exit $?

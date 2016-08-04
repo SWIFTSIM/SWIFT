@@ -154,6 +154,9 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_root \
   ((float)(kernel_coeffs[kernel_degree]) * kernel_constant * kernel_igamma3)
 
+/* Kernel normalisation constant (volume term) */
+#define kernel_norm ((float)(4.0 * M_PI * kernel_gamma3 / 3.0))
+
 /**
  * @brief Computes the kernel function and its derivative.
  *

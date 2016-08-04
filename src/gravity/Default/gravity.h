@@ -43,7 +43,8 @@ gravity_compute_timestep_external(const struct external_potential* potential,
       fminf(dt, external_gravity_pointmass_timestep(potential, phys_const, gp));
 #endif
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-  dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential, phys_const, gp));
+  dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential,
+                                                               phys_const, gp));
 #endif
 #ifdef EXTERNAL_POTENTIAL_DISK_PATCH
   dt = fmin(dt, external_gravity_disk_patch_timestep(potential, phys_const, gp));
@@ -54,8 +55,6 @@ gravity_compute_timestep_external(const struct external_potential* potential,
 /**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
- * This function only branches towards the potential chosen by the user.
- *
  * @param phys_const The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
@@ -63,7 +62,13 @@ __attribute__((always_inline)) INLINE static float
 gravity_compute_timestep_self(const struct phys_const* const phys_const,
                               const struct gpart* const gp) {
 
-  float dt = FLT_MAX;
+  const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
+                    gp->a_grav[1] * gp->a_grav[1] +
+                    gp->a_grav[2] * gp->a_grav[2];
+
+  const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
+
+  const float dt = sqrt(2.f * const_gravity_eta * gp->epsilon / ac);
 
   return dt;
 }
@@ -77,7 +82,9 @@ gravity_compute_timestep_self(const struct phys_const* const phys_const,
  * @param gp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
-    struct gpart* gp) {}
+    struct gpart* gp) {
+  gp->epsilon = 0.;  // MATTHIEU
+}
 
 /**
  * @brief Prepares a g-particle for the gravity calculation
@@ -102,9 +109,16 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * Multiplies the forces and accelerations by the appropiate constants
  *
  * @param gp The particle to act upon
+ * @param const_G Newton's constant
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp) {}
+    struct gpart* gp, double const_G) {
+
+  /* Let's get physical... */
+  gp->a_grav[0] *= const_G;
+  gp->a_grav[1] *= const_G;
+  gp->a_grav[2] *= const_G;
+}
 
 /**
  * @brief Computes the gravitational acceleration induced by external potentials

@@ -19,7 +19,7 @@
 AM_CFLAGS = -DTIMER $(HDF5_CPPFLAGS)
 
 # Assign a "safe" version number
-AM_LDFLAGS = $(HDF5_LDFLAGS) -version-info 0:0:0
+AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS) -version-info 0:0:0
 
 # The git command, if available.
 GIT_CMD = @GIT_CMD@
@@ -48,17 +48,18 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
-    kernel_hydro.c kernel_gravity.c tools.c part.c partition.c clocks.c parser.c \
-    physical_constants.c potentials.c hydro_properties.c
+    kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
+    physical_constants.c potentials.c hydro_properties.c \
+    runner_doiact_fft.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
-		 vector.h runner_doiact.h runner_doiact_grav.h units.h intrinsics.h minmax.h kick.h \
-		 timestep.h drift.h adiabatic_index.h io_properties.h \
+		 kernel_long_gravity.h vector.h runner_doiact.h runner_doiact_grav.h runner_doiact_fft.h \
+                 units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
 		 gravity.h gravity_io.h \
 		 gravity/Default/gravity.h gravity/Default/gravity_iact.h gravity/Default/gravity_io.h \
 		 gravity/Default/gravity_debug.h gravity/Default/gravity_part.h  \
-                 hydro.h hydro_io.h \
+	 	 hydro.h hydro_io.h \
 		 hydro/Minimal/hydro.h hydro/Minimal/hydro_iact.h hydro/Minimal/hydro_io.h \
                  hydro/Minimal/hydro_debug.h hydro/Minimal/hydro_part.h \
 		 hydro/Default/hydro.h hydro/Default/hydro_iact.h hydro/Default/hydro_io.h \

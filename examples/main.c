@@ -269,12 +269,6 @@ int main(int argc, char *argv[]) {
 /* Temporary abort to handle absence of vectorized functions */
 #ifdef WITH_VECTORIZATION
 
-#ifdef GADGET2_SPH
-  error(
-      "Vectorized version of Gadget SPH routines not implemented yet. "
-      "Reconfigure with --disable-vec and recompile or use DEFAULT_SPH.");
-#endif
-
 #ifdef MINIMAL_SPH
   error(
       "Vectorized version of Minimal SPH routines not implemented yet. "
@@ -405,8 +399,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
-  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic, talking,
-             dry_run);
+  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic,
+             with_self_gravity, talking, dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -616,6 +610,10 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
+
+  /* Clean everything */
+  engine_clean(&e);
+  free(params);
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");

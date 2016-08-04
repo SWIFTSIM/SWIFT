@@ -117,8 +117,8 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
 
   /* Limit change in h */
   const float dt_h_change =
-      (p->h_dt != 0.0f)
-          ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->h_dt)
+      (p->force.h_dt != 0.0f)
+          ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
 
   new_dt = fminf(new_dt, dt_h_change);

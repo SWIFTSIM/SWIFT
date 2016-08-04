@@ -365,7 +365,9 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   if (h_grp < 0) error("Error while opening file header\n");
 
   /* Read the relevant information and print status */
-  readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy);
+  int flag_entropy_temp[6];
+  readAttribute(h_grp, "Flag_Entropy_ICs", INT, flag_entropy_temp);
+  *flag_entropy = flag_entropy_temp[0];
   readAttribute(h_grp, "BoxSize", DOUBLE, boxSize);
   readAttribute(h_grp, "NumPart_Total", UINT, numParticles);
   readAttribute(h_grp, "NumPart_Total_HighWord", UINT, numParticles_highWord);
@@ -667,7 +669,8 @@ void write_output_single(struct engine* e, const char* baseName,
     if (numParticles[ptype] == 0) continue;
 
     /* Add the global information for that particle type to the XMF meta-file */
-    writeXMFgroupheader(xmfFile, fileName, numParticles[ptype], ptype);
+    writeXMFgroupheader(xmfFile, fileName, numParticles[ptype],
+                        (enum PARTICLE_TYPE)ptype);
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -722,7 +725,7 @@ void write_output_single(struct engine* e, const char* baseName,
     H5Gclose(h_grp);
 
     /* Close this particle group in the XMF file as well */
-    writeXMFgroupfooter(xmfFile, ptype);
+    writeXMFgroupfooter(xmfFile, (enum PARTICLE_TYPE)ptype);
   }
 
   /* Write LXMF file descriptor */

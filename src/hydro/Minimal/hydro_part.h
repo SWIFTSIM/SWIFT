@@ -54,8 +54,6 @@ struct part {
 
   float h; /*!< Particle smoothing length. */
 
-  float h_dt; /*!< Time derivative of smoothing length  */
-
   int ti_begin; /*!< Time at the beginning of time-step. */
 
   int ti_end; /*!< Time at the end of time-step. */
@@ -91,13 +89,15 @@ struct part {
      * neighbours.
      *
      * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost and kick tasks.
+     * loop over neighbours and the ghost, drift and kick tasks.
      */
     struct {
 
       float pressure; /*!< Particle pressure. */
 
       float v_sig; /*!< Particle signal velocity */
+
+      float h_dt; /*!< Time derivative of smoothing length  */
 
     } force;
   };

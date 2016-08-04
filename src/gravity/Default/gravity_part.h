@@ -37,15 +37,14 @@ struct gpart {
   /* Particle mass. */
   float mass;
 
+  /* Softening length */
+  float epsilon;
+
   /* Particle time of beginning of time-step. */
   int ti_begin;
 
   /* Particle time of end of time-step. */
   int ti_end;
-
-  /* /\* current time of x, and of v_full *\/ */
-  /* float tx; */
-  /* float tv; */
 
   /* Particle ID. If negative, it is the negative offset of the #part with
      which this gpart is linked. */

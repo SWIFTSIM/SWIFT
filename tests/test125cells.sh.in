@@ -1,0 +1,22 @@
+#!/bin/bash
+for v in {0..3}
+do
+    for p in {0..2}
+    do
+	echo ""
+
+	rm -f brute_force_125_standard.dat swift_dopair_125_standard.dat
+
+	./test125cells -n 6 -r 1 -v $v -p $p -f standard
+
+	if [ -e brute_force_125_standard.dat ]
+	then
+	    python @srcdir@/difffloat.py brute_force_125_standard.dat swift_dopair_125_standard.dat @srcdir@/tolerance_125.dat 6
+	else
+	    exit 1
+        fi
+
+    done
+done
+	
+exit $?

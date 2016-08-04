@@ -26,6 +26,7 @@
 #include "const.h"
 #include "debug.h"
 #include "hydro.h"
+#include "part.h"
 
 /**
  * @brief Perform the 'drift' operation on a #gpart
@@ -77,7 +78,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[2] += p->a_hydro[2] * dt;
 
   /* Predict smoothing length */
-  const float w1 = p->h_dt * h_inv * dt;
+  const float w1 = p->force.h_dt * h_inv * dt;
   if (fabsf(w1) < 0.2f)
     p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
   else

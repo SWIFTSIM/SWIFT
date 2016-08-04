@@ -61,9 +61,9 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
             offset[2] * cellSize + z * cellSize / N + cellSize / (2 * N);
         part->h = h;
         part->id = x * N * N + y * N + z + id_offset;
-        ++part;
         part->ti_begin = 0;
         part->ti_end = 1;
+        ++part;
       }
     }
   }
@@ -73,9 +73,9 @@ struct cell *make_cell(size_t N, float cellSize, int offset[3], int id_offset) {
   cell->count = count;
   cell->gcount = 0;
   cell->dx_max = 0.;
-  cell->h[0] = cellSize;
-  cell->h[1] = cellSize;
-  cell->h[2] = cellSize;
+  cell->width[0] = cellSize;
+  cell->width[1] = cellSize;
+  cell->width[2] = cellSize;
 
   cell->ti_end_min = 1;
   cell->ti_end_max = 1;
@@ -193,15 +193,19 @@ int main() {
   runner_do_ghost(&r, ci);
 
   message("h=%f rho=%f N_ngb=%f", p->h, p->rho, p->density.wcount);
-  message("c=%f", p->force.c);
+  message("soundspeed=%f", p->force.soundspeed);
 
   runner_doself2_force(&r, ci);
   runner_do_kick(&r, ci, 1);
 
   message("ti_end=%d", p->ti_end);
 
-  free(ci->parts);
-  free(ci->xparts);
+  for (int j = 0; j < 27; ++j) {
+    free(cells[j]->parts);
+    free(cells[j]->xparts);
+    free(cells[j]->sort);
+    free(cells[j]);
+  }
 
   return 0;
 #endif

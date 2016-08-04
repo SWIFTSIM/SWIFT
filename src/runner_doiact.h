@@ -121,8 +121,7 @@ void DOPAIR_NAIVE(struct runner *r, struct cell *restrict ci,
   float dxq[3 * VEC_SIZE] __attribute__((aligned(16)));
   struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
 #endif
-
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Anything to do here? */
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
@@ -224,7 +223,7 @@ void DOSELF_NAIVE(struct runner *r, struct cell *restrict c) {
   struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
 #endif
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Anything to do here? */
   if (c->ti_end_min > ti_current) return;
@@ -326,7 +325,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
 #endif
 
-  TIMER_TIC
+  TIMER_TIC;
 
   const int count_j = cj->count;
   struct part *restrict parts_j = cj->parts;
@@ -433,7 +432,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
 #endif
 
-  TIMER_TIC
+  TIMER_TIC;
 
   const int count_j = cj->count;
   struct part *restrict parts_j = cj->parts;
@@ -627,7 +626,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
   struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
 #endif
 
-  TIMER_TIC
+  TIMER_TIC;
 
   const int count_i = ci->count;
   struct part *restrict parts_j = ci->parts;
@@ -719,7 +718,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *piq[VEC_SIZE], *pjq[VEC_SIZE];
 #endif
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Anything to do here? */
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
@@ -912,7 +911,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
   struct part *piq2[VEC_SIZE], *pjq2[VEC_SIZE];
 #endif
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Anything to do here? */
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
@@ -951,8 +950,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     sortdt_i = sort_i;
     countdt_i = count_i;
   } else if (ci->ti_end_min <= ti_current) {
-    if ((sortdt_i = (struct entry *)alloca(sizeof(struct entry) * count_i)) ==
-        NULL)
+    if (posix_memalign((void *)&sortdt_i, VEC_SIZE * sizeof(float),
+                       sizeof(struct entry) * count_i) != 0)
       error("Failed to allocate dt sortlists.");
     for (int k = 0; k < count_i; k++)
       if (parts_i[sort_i[k].i].ti_end <= ti_current) {
@@ -964,8 +963,8 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
     sortdt_j = sort_j;
     countdt_j = count_j;
   } else if (cj->ti_end_min <= ti_current) {
-    if ((sortdt_j = (struct entry *)alloca(sizeof(struct entry) * count_j)) ==
-        NULL)
+    if (posix_memalign((void *)&sortdt_j, VEC_SIZE * sizeof(float),
+                       sizeof(struct entry) * count_j) != 0)
       error("Failed to allocate dt sortlists.");
     for (int k = 0; k < count_j; k++)
       if (parts_j[sort_j[k].i].ti_end <= ti_current) {
@@ -1271,6 +1270,11 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
+  if (ci->ti_end_max > ti_current && ci->ti_end_min <= ti_current)
+    free(sortdt_i);
+  if (cj->ti_end_max > ti_current && cj->ti_end_min <= ti_current)
+    free(sortdt_j);
+
   TIMER_TOC(TIMER_DOPAIR);
 }
 
@@ -1298,7 +1302,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   float dxq2[3 * VEC_SIZE] __attribute__((aligned(16)));
   struct part *piq2[VEC_SIZE], *pjq2[VEC_SIZE];
 #endif
-  TIMER_TIC
+
+  TIMER_TIC;
 
   if (c->ti_end_min > ti_current) return;
   if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
@@ -1309,7 +1314,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
   /* Set up indt. */
   int *indt = NULL;
   int countdt = 0, firstdt = 0;
-  if ((indt = (int *)alloca(sizeof(int) * count)) == NULL)
+  if (posix_memalign((void *)&indt, VEC_SIZE * sizeof(int),
+                     count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
     if (parts[k].ti_end <= ti_current) {
@@ -1499,6 +1505,8 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
+  free(indt);
+
   TIMER_TOC(TIMER_DOSELF);
 }
 
@@ -1526,7 +1534,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   float dxq2[3 * VEC_SIZE] __attribute__((aligned(16)));
   struct part *piq2[VEC_SIZE], *pjq2[VEC_SIZE];
 #endif
-  TIMER_TIC
+
+  TIMER_TIC;
 
   if (c->ti_end_min > ti_current) return;
   if (c->ti_end_max < ti_current) error("Cell in an impossible time-zone");
@@ -1537,7 +1546,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
   /* Set up indt. */
   int *indt = NULL;
   int countdt = 0, firstdt = 0;
-  if ((indt = (int *)alloca(sizeof(int) * count)) == NULL)
+  if (posix_memalign((void *)&indt, VEC_SIZE * sizeof(int),
+                     count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
     if (parts[k].ti_end <= ti_current) {
@@ -1700,6 +1710,8 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
       IACT(r2q2[k], &dxq2[3 * k], hiq2[k], hjq2[k], piq2[k], pjq2[k]);
 #endif
 
+  free(indt);
+
   TIMER_TOC(TIMER_DOSELF);
 }
 
@@ -1721,13 +1733,13 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   struct space *s = r->e->s;
   const int ti_current = r->e->ti_current;
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Should we even bother? */
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
+  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -1962,7 +1974,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
   const int ti_current = r->e->ti_current;
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Should we even bother? */
   if (ci->ti_end_min > ti_current) return;
@@ -2005,13 +2017,13 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   struct space *s = r->e->s;
   const int ti_current = r->e->ti_current;
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Should we even bother? */
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
+  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2246,7 +2258,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
 
   const int ti_current = r->e->ti_current;
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Should we even bother? */
   if (ci->ti_end_min > ti_current) return;
@@ -2278,7 +2290,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   struct space *s = r->e->s;
   const int ti_current = r->e->ti_current;
 
-  TIMER_TIC
+  TIMER_TIC;
 
   /* Find out in which sub-cell of ci the parts are. */
   struct cell *sub = NULL;
@@ -2286,13 +2298,13 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
     if (ci->progeny[k] != NULL) {
       // if ( parts[ ind[ 0 ] ].x[0] >= ci->progeny[k]->loc[0] &&
       //      parts[ ind[ 0 ] ].x[0] <= ci->progeny[k]->loc[0] +
-      // ci->progeny[k]->h[0] &&
+      // ci->progeny[k]->width[0] &&
       //      parts[ ind[ 0 ] ].x[1] >= ci->progeny[k]->loc[1] &&
       //      parts[ ind[ 0 ] ].x[1] <= ci->progeny[k]->loc[1] +
-      // ci->progeny[k]->h[1] &&
+      // ci->progeny[k]->width[1] &&
       //      parts[ ind[ 0 ] ].x[2] >= ci->progeny[k]->loc[2] &&
       //      parts[ ind[ 0 ] ].x[2] <= ci->progeny[k]->loc[2] +
-      // ci->progeny[k]->h[2] ) {
+      // ci->progeny[k]->width[2] ) {
       if (&parts[ind[0]] >= &ci->progeny[k]->parts[0] &&
           &parts[ind[0]] < &ci->progeny[k]->parts[ci->progeny[k]->count]) {
         sub = ci->progeny[k];
@@ -2324,7 +2336,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   else {
 
     /* Get the cell dimensions. */
-    const float h = fmin(ci->h[0], fmin(ci->h[1], ci->h[2]));
+    const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
 
     /* Recurse? */
     if (ci->split && cj->split &&
