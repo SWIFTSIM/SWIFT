@@ -88,11 +88,11 @@ float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_d
   //This function integrates the cooling equation, given the initial thermal energy and the timestep dt.
   //Returns 0 if successful and 1 if not
   int status = 0;
-  float du_dt = cooling->const_cooling.lambda;
+  float du_dt = -cooling->const_cooling.lambda;
   float u_floor = cooling->const_cooling.min_energy;
   float u_new;
   if (u_old - du_dt*dt > u_floor){
-    u_new = u_old - du_dt*dt;
+    u_new = u_old + du_dt*dt;
   }
   else{
     u_new = u_floor;

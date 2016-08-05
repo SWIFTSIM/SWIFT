@@ -41,3 +41,10 @@ PointMass:
   position_y:      50.
   position_z:      50.	
   mass:            1e10     # mass of external point mass in internal units
+
+  # Cooling parameters (Constant cooling)
+
+Cooling:
+  lambda:             0.1
+  min_energy:         0.0
+  cooling_tstep_mult: 1.0

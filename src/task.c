@@ -101,6 +101,7 @@ enum task_actions task_acts_on(const struct task *t) {
 
     case task_type_sort:
     case task_type_ghost:
+    case task_type_cooling:
       return task_action_part;
       break;
 

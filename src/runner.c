@@ -167,14 +167,14 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   OUT;
 #endif
 
-  /* Loop over the gparts in this cell. */
+  /* Loop over the parts in this cell. */
   for (int i = 0; i < count; i++) {
 
     /* Get a direct pointer on the part. */
     struct part *restrict p = &parts[i];
 
-    /* Is this part within the time step? */
-    if (p->ti_end <= ti_current) {
+    /* Kick has already updated ti_end, so need to check ti_begin */
+    if (p->ti_begin == ti_current) {
       dt = (p->ti_end - p->ti_begin)*timeBase;
       update_entropy(cooling, constants, p, dt);
     }
