@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
  * @brief Modifies the thermal state of a particle to the imposed internal
  * energy
  *
- * This overrides the current state of the particle but does not change the
+ * This overrides the current state of the particle but does *not* change its
  * time-derivatives
  *
  * @param p The particle
@@ -90,7 +90,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 /**
  * @brief Modifies the thermal state of a particle to the imposed entropy
  *
- * This overrides the current state of the particle but does not change the
+ * This overrides the current state of the particle but does *not* change its
  * time-derivatives
  *
  * @param p The particle
