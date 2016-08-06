@@ -42,8 +42,8 @@
 //#define HYDRO_GAMMA_2_1
 
 /* Equation of state choice */
-#define IDEAL_GAS
-//#define ISOTHERMAL_GAS
+#define EOS_IDEAL_GAS
+//#define EOS_ISOTHERMAL_GAS
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL

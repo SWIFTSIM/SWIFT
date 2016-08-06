@@ -78,6 +78,37 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
 }
 
 /**
+ * @brief Modifies the thermal state of a particle to the imposed internal
+ * energy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param u The new internal energy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
+    struct part *restrict p, float u) {
+
+  p->u = u;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed entropy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param S The new entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_entropy(
+    struct part *restrict p, float S) {
+
+  p->u = gas_internal_energy_from_entropy(p->rho, S);
+}
+
+/**
  * @brief Computes the hydro time-step of a given particle
  *
  * This function returns the time-step of a particle given its hydro-dynamical

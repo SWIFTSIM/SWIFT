@@ -32,7 +32,7 @@
 #include "inline.h"
 
 /* ------------------------------------------------------------------------- */
-#if defined(IDEAL_GAS)
+#if defined(EOS_IDEAL_GAS)
 
 /**
  * @brief Returns the internal energy given density and entropy
@@ -120,7 +120,7 @@ gas_soundspeed_from_internal_energy(float density, float u) {
 }
 
 /* ------------------------------------------------------------------------- */
-#elif defined(ISOTHERMAL_GAS)
+#elif defined(EOS_ISOTHERMAL_GAS)
 
 /**
  * @brief Returns the internal energy given density and entropy
