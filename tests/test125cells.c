@@ -178,6 +178,21 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
     solution[i].a_hydro[2] = -gradP[2] / solution[i].rho;
 
     solution[i].v_sig = 2.f * solution[i].c;
+
+    solution[i].S_dt = 0.f;
+    solution[i].u_dt = -(solution[i].P / solution[i].rho) * solution[i].div_v;
+  }
+}
+
+void reset_particles(struct cell *c, enum velocity_field vel,
+                     enum pressure_field press, float size, float density) {
+
+  for (size_t i = 0; i < c->count; ++i) {
+
+    struct part *p = &c->parts[i];
+
+    set_velocity(p, vel, size);
+    set_energy_state(p, press, size, density);
   }
 }
 
@@ -232,9 +247,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->ti_begin = 0;
         part->ti_end = 1;
 
-        xpart->v_full[0] = part->v[0];
-        xpart->v_full[1] = part->v[1];
-        xpart->v_full[2] = part->v[2];
+        hydro_first_init_part(part, xpart);
         ++part;
         ++xpart;
       }
@@ -340,7 +353,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               solution[pid].div_v, solution[pid].S, solution[pid].u,
               solution[pid].P, solution[pid].c, solution[pid].a_hydro[0],
               solution[pid].a_hydro[1], solution[pid].a_hydro[2],
-              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt, 0.f);
+              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt,
+              solution[pid].u_dt);
     }
   }
 
@@ -427,6 +441,7 @@ int main(int argc, char *argv[]) {
 
   /* Help users... */
   message("Adiabatic index: ga = %f", hydro_gamma);
+  message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
   message("Neighbour target: N = %f", h * h * h * kernel_norm);
@@ -447,17 +462,18 @@ int main(int argc, char *argv[]) {
   space.periodic = 0;
   space.h_max = h;
 
-  struct phys_const pc;
-  pc.const_newton_G = 1.f;
+  struct phys_const prog_const;
+  prog_const.const_newton_G = 1.f;
 
   struct hydro_props hp;
   hp.target_neighbours = h * h * h * kernel_norm;
   hp.delta_neighbours = 1.;
   hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine engine;
-  engine.physical_constants = &pc;
   engine.hydro_properties = &hp;
+  engine.physical_constants = &prog_const;
   engine.s = &space;
   engine.time = 0.1f;
   engine.ti_current = 1;
@@ -512,7 +528,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
 /* Do the density calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Run all the pairs (only once !)*/
     for (int i = 0; i < 5; i++) {
@@ -554,7 +570,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
 
 /* Do the force calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
@@ -589,6 +605,9 @@ int main(int argc, char *argv[]) {
   /* Output timing */
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
 
+  for (int j = 0; j < 125; ++j)
+    reset_particles(cells[j], vel, press, size, rho);
+
   /* NOW BRUTE-FORCE CALCULATION */
 
   const ticks tic = getticks();
@@ -597,7 +616,7 @@ int main(int argc, char *argv[]) {
   for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
 /* Do the density calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Run all the pairs (only once !)*/
   for (int i = 0; i < 5; i++) {
@@ -638,7 +657,7 @@ int main(int argc, char *argv[]) {
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
 
 /* Do the force calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Do the pairs (for the central 27 cells) */
   for (int i = 1; i < 4; i++) {
@@ -654,6 +673,7 @@ int main(int argc, char *argv[]) {
 
   /* And now the self-interaction for the main cell */
   self_all_force(&runner, main_cell);
+
 #endif
 
   /* Finally, give a gentle kick */
