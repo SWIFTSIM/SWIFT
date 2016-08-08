@@ -19,6 +19,7 @@
  *
  ******************************************************************************/
 
+#include "adiabatic_index.h"
 #include "riemann.h"
 
 #define USE_GRADIENTS
@@ -26,7 +27,7 @@
 /* #define PRINT_ID 0 */
 
 /* this corresponds to task_subtype_hydro_loop1 */
-__attribute__((always_inline)) INLINE static void runner_iact_hydro_loop1(
+__attribute__((always_inline)) INLINE static void runner_iact_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   float r = sqrtf(r2);
@@ -194,9 +195,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_hydro_loop1(
 }
 
 /* this corresponds to task_subtype_hydro_loop1 */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_hydro_loop1(float r2, float *dx, float hi, float hj,
-                               struct part *pi, struct part *pj) {
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   float r;
   float xi;
@@ -296,7 +296,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_hydro_loop2(
   int k, l;
   float Bi[3][3];
   float Bj[3][3];
-  GFLOAT Wi[5], Wj[5];
+  float Wi[5], Wj[5];
 
   /* Initialize local variables */
   for (k = 0; k < 3; k++) {
@@ -497,7 +497,7 @@ runner_iact_nonsym_hydro_loop2(float r2, float *dx, float hi, float hj,
   float wi, wi_dx;
   int k, l;
   float Bi[3][3];
-  GFLOAT Wi[5], Wj[5];
+  float Wi[5], Wj[5];
 
   /* Initialize local variables */
   for (k = 0; k < 3; k++) {
@@ -619,13 +619,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float xij_i[3], xfac, xijdotdx;
   float vmax, dvdotdx;
   float vi[3], vj[3], vij[3];
-  GFLOAT Wi[5], Wj[5];  //, Whalf[5];
+  float Wi[5], Wj[5];  //, Whalf[5];
 #ifdef USE_GRADIENTS
-  GFLOAT dWi[5], dWj[5];
+  float dWi[5], dWj[5];
   float xij_j[3];
 #endif
-  //    GFLOAT rhoe;
-  //    GFLOAT flux[5][3];
+  //    float rhoe;
+  //    float flux[5][3];
   float dti, dtj, mindt;
   float n_unit[3];
 
@@ -658,8 +658,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   //    }
 
   /* calculate the maximal signal velocity */
-  vmax = sqrtf(const_hydro_gamma * Wi[4] / Wi[0]) +
-         sqrtf(const_hydro_gamma * Wj[4] / Wj[0]);
+  vmax =
+      sqrtf(hydro_gamma * Wi[4] / Wi[0]) + sqrtf(hydro_gamma * Wj[4] / Wj[0]);
   dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
             (Wi[3] - Wj[3]) * dx[2];
   if (dvdotdx > 0.) {
@@ -790,14 +790,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 #ifdef PER_FACE_LIMITER
 
   float xij_i_norm;
-  GFLOAT phi_i, phi_j;
-  GFLOAT delta1, delta2;
-  GFLOAT phiminus, phiplus;
-  GFLOAT phimin, phimax;
-  GFLOAT phibar;
+  float phi_i, phi_j;
+  float delta1, delta2;
+  float phiminus, phiplus;
+  float phimin, phimax;
+  float phibar;
   /* free parameters, values from Hopkins */
-  GFLOAT psi1 = 0.5, psi2 = 0.25;
-  GFLOAT phi_mid0, phi_mid;
+  float psi1 = 0.5, psi2 = 0.25;
+  float phi_mid0, phi_mid;
 
   for (k = 0; k < 10; k++) {
     if (k < 5) {
@@ -877,13 +877,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
                            Wi[2] * pi->primitives.gradients.v[2][1] +
                            Wi[3] * pi->primitives.gradients.v[2][2] +
                            pi->primitives.gradients.P[2] / Wi[0]);
-  dWi[4] -= 0.5 * mindt *
-            (Wi[1] * pi->primitives.gradients.P[0] +
-             Wi[2] * pi->primitives.gradients.P[1] +
-             Wi[3] * pi->primitives.gradients.P[2] +
-             const_hydro_gamma * Wi[4] * (pi->primitives.gradients.v[0][0] +
-                                          pi->primitives.gradients.v[1][1] +
-                                          pi->primitives.gradients.v[2][2]));
+  dWi[4] -=
+      0.5 * mindt * (Wi[1] * pi->primitives.gradients.P[0] +
+                     Wi[2] * pi->primitives.gradients.P[1] +
+                     Wi[3] * pi->primitives.gradients.P[2] +
+                     hydro_gamma * Wi[4] * (pi->primitives.gradients.v[0][0] +
+                                            pi->primitives.gradients.v[1][1] +
+                                            pi->primitives.gradients.v[2][2]));
 
   dWj[0] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.rho[0] +
                            Wj[2] * pj->primitives.gradients.rho[1] +
@@ -903,13 +903,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
                            Wj[2] * pj->primitives.gradients.v[2][1] +
                            Wj[3] * pj->primitives.gradients.v[2][2] +
                            pj->primitives.gradients.P[2] / Wj[0]);
-  dWj[4] -= 0.5 * mindt *
-            (Wj[1] * pj->primitives.gradients.P[0] +
-             Wj[2] * pj->primitives.gradients.P[1] +
-             Wj[3] * pj->primitives.gradients.P[2] +
-             const_hydro_gamma * Wj[4] * (pj->primitives.gradients.v[0][0] +
-                                          pj->primitives.gradients.v[1][1] +
-                                          pj->primitives.gradients.v[2][2]));
+  dWj[4] -=
+      0.5 * mindt * (Wj[1] * pj->primitives.gradients.P[0] +
+                     Wj[2] * pj->primitives.gradients.P[1] +
+                     Wj[3] * pj->primitives.gradients.P[2] +
+                     hydro_gamma * Wj[4] * (pj->primitives.gradients.v[0][0] +
+                                            pj->primitives.gradients.v[1][1] +
+                                            pj->primitives.gradients.v[2][2]));
 
   //    printf("WL: %g %g %g %g %g\n", Wi[0], Wi[1], Wi[2], Wi[3], Wi[4]);
   //    printf("WR: %g %g %g %g %g\n", Wj[0], Wj[1], Wj[2], Wj[3], Wj[4]);
@@ -969,7 +969,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     error("Negative density or pressure!\n");
   }
 
-  GFLOAT totflux[5];
+  float totflux[5];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
 
   /* Update conserved variables */
@@ -1014,16 +1014,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 }
 
 /* this corresponds to task_subtype_fluxes */
-__attribute__((always_inline)) INLINE static void runner_iact_hydro_loop3(
+__attribute__((always_inline)) INLINE static void runner_iact_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1);
 }
 
 /* this corresponds to task_subtype_fluxes */
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_hydro_loop3(float r2, float *dx, float hi, float hj,
-                               struct part *pi, struct part *pj) {
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0);
 }
+
+/* PLACEHOLDERS */
+__attribute__((always_inline)) INLINE static void runner_iact_vec_density(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
+                               struct part **pi, struct part **pj) {}
+
+__attribute__((always_inline)) INLINE static void runner_iact_vec_force(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {}
+
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
+    float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
+    struct part **pj) {}

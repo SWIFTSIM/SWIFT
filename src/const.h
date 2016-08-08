@@ -51,8 +51,9 @@
 
 /* SPH variant to use */
 //#define MINIMAL_SPH
-#define GADGET2_SPH
+//#define GADGET2_SPH
 //#define DEFAULT_SPH
+#define GIZMO_SPH
 
 /* Self gravity stuff. */
 #define const_gravity_multipole_order 2

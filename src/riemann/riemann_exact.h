@@ -50,12 +50,11 @@
  * @param W The left or right state vector
  * @param a The left or right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_fb(GFLOAT p,
-                                                               GFLOAT* W,
-                                                               GFLOAT a) {
+__attribute__((always_inline)) INLINE static float riemann_fb(float p, float* W,
+                                                              float a) {
 
-  GFLOAT fval = 0.;
-  GFLOAT A, B;
+  float fval = 0.;
+  float A, B;
   if (p > W[4]) {
     A = const_riemann_tdgp1 / W[0];
     B = const_riemann_gm1dgp1 * W[4];
@@ -78,9 +77,8 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_fb(GFLOAT p,
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_f(
-    GFLOAT p, GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL,
-    GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_f(
+    float p, float* WL, float* WR, float vL, float vR, float aL, float aR) {
 
   return riemann_fb(p, WL, aL) + riemann_fb(p, WR, aR) + (vR - vL);
 }
@@ -92,12 +90,12 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_f(
  * @param W The left or right state vector
  * @param a The left or right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_fprimeb(GFLOAT p,
-                                                                    GFLOAT* W,
-                                                                    GFLOAT a) {
+__attribute__((always_inline)) INLINE static float riemann_fprimeb(float p,
+                                                                   float* W,
+                                                                   float a) {
 
-  GFLOAT fval = 0.;
-  GFLOAT A, B;
+  float fval = 0.;
+  float A, B;
   if (p > W[4]) {
     A = const_riemann_tdgp1 / W[0];
     B = const_riemann_gm1dgp1 * W[4];
@@ -117,8 +115,8 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_fprimeb(GFLOAT p,
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_fprime(
-    GFLOAT p, GFLOAT* WL, GFLOAT* WR, GFLOAT aL, GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_fprime(
+    float p, float* WL, float* WR, float aL, float aR) {
 
   return riemann_fprimeb(p, WL, aL) + riemann_fprimeb(p, WR, aR);
 }
@@ -129,10 +127,10 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_fprime(
  * @param p The current guess for the pressure
  * @param W The left or right state vector
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_gb(GFLOAT p,
-                                                               GFLOAT* W) {
+__attribute__((always_inline)) INLINE static float riemann_gb(float p,
+                                                              float* W) {
 
-  GFLOAT A, B;
+  float A, B;
   A = const_riemann_tdgp1 / W[0];
   B = const_riemann_gm1dgp1 * W[4];
   return sqrtf(A / (p + B));
@@ -151,11 +149,11 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_gb(GFLOAT p,
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_guess_p(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL, GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_guess_p(
+    float* WL, float* WR, float vL, float vR, float aL, float aR) {
 
-  GFLOAT pguess, pmin, pmax, qmax;
-  GFLOAT ppv;
+  float pguess, pmin, pmax, qmax;
+  float ppv;
 
   pmin = fminf(WL[4], WR[4]);
   pmax = fmaxf(WL[4], WR[4]);
@@ -202,14 +200,14 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_guess_p(
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_solve_brent(
-    GFLOAT lower_limit, GFLOAT upper_limit, GFLOAT lowf, GFLOAT upf,
-    GFLOAT error_tol, GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL,
-    GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_solve_brent(
+    float lower_limit, float upper_limit, float lowf, float upf,
+    float error_tol, float* WL, float* WR, float vL, float vR, float aL,
+    float aR) {
 
-  GFLOAT a, b, c, d, s;
-  GFLOAT fa, fb, fc, fs;
-  GFLOAT tmp, tmp2;
+  float a, b, c, d, s;
+  float fa, fb, fc, fs;
+  float tmp, tmp2;
   int mflag;
   int i;
 
@@ -309,11 +307,11 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_solve_brent(
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL, GFLOAT aR,
-    GFLOAT* Whalf, float* n_unit) {
+    float* WL, float* WR, float vL, float vR, float aL, float aR, float* Whalf,
+    float* n_unit) {
 
-  GFLOAT SL, SR;
-  GFLOAT vhalf;
+  float SL, SR;
+  float vhalf;
 
   if (!WR[0] && !WL[0]) {
     /* if both states are vacuum, the solution is also vacuum */
@@ -456,20 +454,20 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT* Whalf, float* n_unit) {
+    float* WL, float* WR, float* Whalf, float* n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
-  GFLOAT vL, vR, vhalf;
+  float vL, vR, vhalf;
   /* sound speeds */
-  GFLOAT aL, aR;
+  float aL, aR;
   /* variables used for finding pstar */
-  GFLOAT p, pguess, fp, fpguess;
+  float p, pguess, fp, fpguess;
   /* variables used for sampling the solution */
-  GFLOAT u;
-  GFLOAT pdpR, SR;
-  GFLOAT SHR, STR;
-  GFLOAT pdpL, SL;
-  GFLOAT SHL, STL;
+  float u;
+  float pdpR, SR;
+  float SHR, STR;
+  float pdpL, SL;
+  float SHL, STL;
   int errorFlag = 0;
 
   /* sanity checks */
@@ -661,10 +659,10 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    GFLOAT* Wi, GFLOAT* Wj, float* n_unit, float* vij, GFLOAT* totflux) {
+    float* Wi, float* Wj, float* n_unit, float* vij, float* totflux) {
 
-  GFLOAT Whalf[5];
-  GFLOAT flux[5][3];
+  float Whalf[5];
+  float flux[5][3];
   float vtot[3];
   float rhoe;
 

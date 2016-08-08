@@ -20,13 +20,15 @@
 #ifndef SWIFT_RIEMANN_HLLC_H
 #define SWIFT_RIEMANN_HLLC_H
 
-__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    GFLOAT *WL, GFLOAT *WR, float *n, float *vij, GFLOAT *totflux) {
+#include "adiabatic_index.h"
 
-  GFLOAT uL, uR, aL, aR;
-  GFLOAT rhobar, abar, pPVRS, pstar, qL, qR, SL, SR, Sstar;
-  GFLOAT v2, eL, eR;
-  GFLOAT UstarL[5], UstarR[5];
+__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+    float *WL, float *WR, float *n, float *vij, float *totflux) {
+
+  float uL, uR, aL, aR;
+  float rhobar, abar, pPVRS, pstar, qL, qR, SL, SR, Sstar;
+  float v2, eL, eR;
+  float UstarL[5], UstarR[5];
 
   /* Handle pure vacuum */
   if (!WL[0] && !WR[0]) {
@@ -41,14 +43,14 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   /* STEP 0: obtain velocity in interface frame */
   uL = WL[1] * n[0] + WL[2] * n[1] + WL[3] * n[2];
   uR = WR[1] * n[0] + WR[2] * n[1] + WR[3] * n[2];
-  aL = sqrtf(const_hydro_gamma * WL[4] / WL[0]);
-  aR = sqrtf(const_hydro_gamma * WR[4] / WR[0]);
+  aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
   if (!WL[0] || !WR[0]) {
     error("Vacuum not yet supported");
   }
-  if (2. * aL / (const_hydro_gamma - 1.) + 2. * aR / (const_hydro_gamma - 1.) <
+  if (2. * aL / hydro_gamma_minus_one + 2. * aR / hydro_gamma_minus_one <
       fabs(uL - uR)) {
     error("Vacuum not yet supported");
   }
@@ -64,14 +66,12 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   qL = 1.;
   if (pstar > WL[4]) {
     qL = sqrtf(1. +
-               0.5 * (const_hydro_gamma + 1.) / const_hydro_gamma *
-                   (pstar / WL[4] - 1.));
+               0.5 * (hydro_gamma + 1.) / hydro_gamma * (pstar / WL[4] - 1.));
   }
   qR = 1.;
   if (pstar > WR[4]) {
     qR = sqrtf(1. +
-               0.5 * (const_hydro_gamma + 1.) / const_hydro_gamma *
-                   (pstar / WR[4] - 1.));
+               0.5 * (hydro_gamma + 1.) / hydro_gamma * (pstar / WR[4] - 1.));
   }
   SL = uL - aL * qL;
   SR = uR + aR * qR;
@@ -88,7 +88,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     totflux[2] = WL[0] * WL[2] * uL + WL[4] * n[1];
     totflux[3] = WL[0] * WL[2] * uL + WL[4] * n[2];
     v2 = WL[1] * WL[1] + WL[2] * WL[2] + WL[3] * WL[3];
-    eL = WL[4] / (const_hydro_gamma - 1.) / WL[0] + 0.5 * v2;
+    eL = WL[4] / hydro_gamma_minus_one / WL[0] + 0.5 * v2;
     totflux[4] = WL[0] * eL * uL + WL[4] * uL;
     if (SL < 0.) {
       /* add flux FstarL */
@@ -118,7 +118,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     totflux[2] = WR[0] * WR[2] * uR + WR[4] * n[1];
     totflux[3] = WR[0] * WR[3] * uR + WR[4] * n[2];
     v2 = WR[1] * WR[1] + WR[2] * WR[2] + WR[3] * WR[3];
-    eR = WR[4] / (const_hydro_gamma - 1.) / WR[0] + 0.5 * v2;
+    eR = WR[4] / hydro_gamma_minus_one / WR[0] + 0.5 * v2;
     totflux[4] = WR[0] * eR * uR + WR[4] * uR;
     if (SR > 0.) {
       /* add flux FstarR */

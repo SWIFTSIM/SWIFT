@@ -17,6 +17,9 @@
  *
  ******************************************************************************/
 
+#include <float.h>
+#include "adiabatic_index.h"
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -25,9 +28,12 @@
  *
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
-    struct part* p, struct xpart* xp) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    const struct hydro_props* restrict hydro_properties) {
 
-  return const_cfl * p->h / fabs(p->timestepvars.vmax);
+  const float CFL_condition = hydro_properties->CFL_condition;
+
+  return CFL_condition * p->h / fabsf(p->timestepvars.vmax);
 }
 
 /**
@@ -59,7 +65,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     p->primitives.v[1] = p->conserved.momentum[1] / p->conserved.mass;
     p->primitives.v[2] = p->conserved.momentum[2] / p->conserved.mass;
     p->primitives.P =
-        (const_hydro_gamma - 1.) *
+        hydro_gamma_minus_one *
         (p->conserved.energy -
          0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0] +
                 p->conserved.momentum[1] * p->conserved.momentum[1] +
@@ -158,15 +164,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   float detE, volume;
   float E[3][3];
-  GFLOAT m, momentum[3], energy;
+  float m, momentum[3], energy;
 
 #ifndef THERMAL_ENERGY
-  GFLOAT momentum2;
+  float momentum2;
 #endif
 
 #if defined(SPH_GRADIENTS) && defined(SLOPE_LIMITER)
-  GFLOAT gradrho[3], gradv[3][3], gradP[3];
-  GFLOAT gradtrue, gradmax, gradmin, alpha;
+  float gradrho[3], gradv[3][3], gradP[3];
+  float gradtrue, gradmax, gradmin, alpha;
 #endif
 
   /* Final operation on the geometry. */
@@ -374,9 +380,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     p->primitives.v[2] = momentum[2] / m;
 #ifndef THERMAL_ENERGY
     p->primitives.P =
-        (const_hydro_gamma - 1.) * (energy - 0.5 * momentum2 / m) / volume;
+        hydro_gamma_minus_one * (energy - 0.5 * momentum2 / m) / volume;
 #else
-    p->primitives.P = (const_hydro_gamma - 1.) * energy / volume;
+    p->primitives.P = hydro_gamma_minus_one * energy / volume;
 #endif
   }
 }
@@ -392,8 +398,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 #ifndef SPH_GRADIENTS
   float h, ih, ih2, ih3;
 #ifdef SLOPE_LIMITER
-  GFLOAT gradrho[3], gradv[3][3], gradP[3];
-  GFLOAT gradtrue, gradmax, gradmin, alpha;
+  float gradrho[3], gradv[3][3], gradP[3];
+  float gradtrue, gradmax, gradmin, alpha;
 #endif
 
   /* add kernel normalization to gradients */
@@ -575,10 +581,10 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p) {
 
   float volume;
-  GFLOAT m;
-  GFLOAT momentum[3];
+  float m;
+  float momentum[3];
 #ifndef THERMAL_ENERGY
-  GFLOAT momentum2;
+  float momentum2;
 #endif
   volume = p->geometry.volume;
 
@@ -587,7 +593,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->primitives.v[1] = p->v[1];
   p->primitives.v[2] = p->v[2];
   /* P actually contains internal energy at this point */
-  p->primitives.P *= (const_hydro_gamma - 1.) * p->primitives.rho;
+  p->primitives.P *= hydro_gamma_minus_one * p->primitives.rho;
 
   p->conserved.mass = m = p->primitives.rho * volume;
   p->conserved.momentum[0] = momentum[0] = m * p->primitives.v[0];
@@ -597,9 +603,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   momentum2 = momentum[0] * momentum[0] + momentum[1] * momentum[1] +
               momentum[2] * momentum[2];
   p->conserved.energy =
-      p->primitives.P / (const_hydro_gamma - 1.) * volume + 0.5 * momentum2 / m;
+      p->primitives.P / hydro_gamma_minus_one * volume + 0.5 * momentum2 / m;
 #else
-  p->conserved.energy = p->primitives.P / (const_hydro_gamma - 1.) * volume;
+  p->conserved.energy = p->primitives.P / hydro_gamma_minus_one * volume;
 #endif
 }
 
@@ -614,7 +620,51 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p) {}
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part* p, struct xpart* xp, float dt, float half_dt) {}
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    struct part* p) {
-  return 0.f;
+    const struct part* restrict p, float dt) {
+
+  return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+}
+
+/**
+ * @brief Returns the entropy of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_entropy(
+    const struct part* restrict p, float dt) {
+
+  return p->primitives.P / pow_gamma(p->primitives.rho);
+}
+
+/**
+ * @brief Returns the sound speed of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
+    const struct part* restrict p, float dt) {
+
+  return sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+}
+
+/**
+ * @brief Returns the pressure of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_pressure(
+    const struct part* restrict p, float dt) {
+
+  return p->primitives.P;
 }

@@ -43,6 +43,8 @@
 #include "./hydro/Gadget2/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
+#elif defined(GIZMO_SPH)
+#include "./hydro/Gizmo/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

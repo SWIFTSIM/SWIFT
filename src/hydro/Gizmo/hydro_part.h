@@ -19,22 +19,14 @@
  *
  ******************************************************************************/
 
-/* Some standard headers. */
-#include <stdlib.h>
-
-#define GFLOAT float
-
 /* Extra particle data not needed during the computation. */
 struct xpart {
 
-  /* Old position, at last tree rebuild. */
-  double x_old[3];
+  /* Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
 
   /* Velocity at the last full step. */
   float v_full[3];
-
-  /* Entropy at the half-step. */
-  float u_hdt;
 
   /* Old density. */
   float omega;
@@ -47,16 +39,11 @@ struct part {
   /* Particle position. */
   double x[3];
 
-  /* Particle velocity. */
+  /* Particle predicted velocity. */
   float v[3];
 
   /* Particle acceleration. */
   float a_hydro[3];
-
-  float mass;  // MATTHIEU
-  float h_dt;
-  float rho;
-  float rho_dh;
 
   /* Particle cutoff radius. */
   float h;
@@ -67,76 +54,86 @@ struct part {
   /* Particle time of end of time-step. */
   int ti_end;
 
-  /* The primitive hydrodynamical variables */
+  /* The primitive hydrodynamical variables. */
   struct {
 
-    /* fluid velocity */
-    GFLOAT v[3];
+    /* Fluid velocity. */
+    float v[3];
 
-    /* density */
-    GFLOAT rho;
+    /* Density. */
+    float rho;
 
-    /* pressure */
-    GFLOAT P;
+    /* Pressure. */
+    float P;
 
+    /* Gradients of the primitive variables. */
     struct {
 
-      GFLOAT rho[3];
+      /* Density gradients. */
+      float rho[3];
 
-      GFLOAT v[3][3];
+      /* Fluid velocity gradients. */
+      float v[3][3];
 
-      GFLOAT P[3];
+      /* Pressure gradients. */
+      float P[3];
 
     } gradients;
 
+    /* Quantities needed by the slope limiter. */
     struct {
 
-      /* extreme values among the neighbours */
-      GFLOAT rho[2];
+      /* Extreme values of the density among the neighbours. */
+      float rho[2];
 
-      GFLOAT v[3][2];
+      /* Extreme values of the fluid velocity among the neighbours. */
+      float v[3][2];
 
-      GFLOAT P[2];
+      /* Extreme values of the pressure among the neighbours. */
+      float P[2];
 
-      /* maximal distance to all neighbouring faces */
+      /* Maximal distance to all neighbouring faces. */
       float maxr;
 
     } limiter;
 
   } primitives;
 
-  /* The conserved hydrodynamical variables */
+  /* The conserved hydrodynamical variables. */
   struct {
 
-    /* fluid momentum */
-    GFLOAT momentum[3];
+    /* Fluid momentum. */
+    float momentum[3];
 
-    /* fluid mass */
-    GFLOAT mass;
+    /* Fluid mass (this field already exists outside of this struct as well). */
+    float mass;
 
-    /* fluid energy */
-    GFLOAT energy;
+    /* Fluid total energy (= internal energy + fluid kinetic energy). */
+    float energy;
 
   } conserved;
 
-  /* Geometrical quantities used for hydro */
+  /* Geometrical quantities used for hydro. */
   struct {
 
-    /* volume of the particle */
+    /* Volume of the particle. */
     float volume;
 
-    /* gradient matrix */
+    /* Geometrical shear matrix used to calculate second order accurate
+       gradients */
     float matrix_E[3][3];
 
   } geometry;
 
+  /* Variables used for timestep calculation (currently not used). */
   struct {
 
+    /* Maximum fluid velocity among all neighbours. */
     float vmax;
 
   } timestepvars;
 
-  /* Quantities used during the density loop */
+  /* Quantities used during the volume (=density) loop. */
   struct {
 
     /* Particle velocity divergence. */
@@ -153,10 +150,21 @@ struct part {
 
   } density;
 
+  /* Particle mass (this field is also part of the conserved quantities...). */
+  float mass;
+
   /* Particle ID. */
   unsigned long long id;
 
   /* Associated gravitas. */
   struct gpart *gpart;
+
+  /* Variables needed for the code to compile (should be removed/replaced). */
+  float rho;
+  struct {
+    float h_dt;
+    float v_sig;
+  } force;
+  float rho_dh;
 
 } __attribute__((aligned(part_align)));

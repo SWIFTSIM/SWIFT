@@ -99,6 +99,8 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
+#elif defined(GIZMO_SPH)
+  part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
 #endif

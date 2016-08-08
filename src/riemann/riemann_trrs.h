@@ -50,14 +50,14 @@
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT* Whalf, float* n_unit) {
-  GFLOAT aL, aR;
-  GFLOAT PLR;
-  GFLOAT vL, vR;
-  GFLOAT ustar, pstar;
-  GFLOAT vhalf;
-  GFLOAT pdpR, SHR, STR;
-  GFLOAT pdpL, SHL, STL;
+    float* WL, float* WR, float* Whalf, float* n_unit) {
+  float aL, aR;
+  float PLR;
+  float vL, vR;
+  float ustar, pstar;
+  float vhalf;
+  float pdpR, SHR, STR;
+  float pdpL, SHL, STL;
 
   /* calculate the velocities along the interface normal */
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
