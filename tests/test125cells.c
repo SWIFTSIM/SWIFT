@@ -328,15 +328,16 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_soundspeed(&main_cell->parts[pid], 0.f),
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
             main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
-            main_cell->parts[pid].force.v_sig,
 #if defined(GADGET2_SPH)
-            main_cell->parts[pid].entropy_dt, 0.f
+            main_cell->parts[pid].force.v_sig, main_cell->parts[pid].entropy_dt,
+            0.f
 #elif defined(DEFAULT_SPH)
-            0.f, main_cell->parts[pid].force.u_dt
+            main_cell->parts[pid].force.v_sig, 0.f,
+            main_cell->parts[pid].force.u_dt
 #elif defined(MINIMAL_SPH)
-            0.f, main_cell->parts[pid].u_dt
+            main_cell->parts[pid].force.v_sig, 0.f, main_cell->parts[pid].u_dt
 #else
-            0.f, 0.f
+            0.f, 0.f, 0.f
 #endif
             );
   }
