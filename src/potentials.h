@@ -119,9 +119,6 @@ FINLINE static float external_gravity_disk_patch_timestep(
 		if(dt3 < dt * dt * dt) dt = pow(dt3, 1./3.);
 	 }
 
-  //  if(potential->disk_patch_potential.timestep_mult * dt < 1e-3 * dt_dyn)
-  //	message(" i= %lld  t_dyn= %e dt_vel= %e dt_accel= %e dt_jerk= %e",  g->id_or_neg_offset, dt_dyn, dt1, dt2, dt3);
-
   return potential->disk_patch_potential.timestep_mult * dt;
 }
 /**
@@ -190,9 +187,10 @@ external_gravity_isothermalpotential_timestep(
     const struct phys_const* const phys_const, const struct gpart* const g) {
         const struct gpart* const g) {
 
-  const float dx = g->x[0] - potential->isothermal_potential.x;
-  const float dy = g->x[1] - potential->isothermal_potential.y;
-  const float dz = g->x[2] - potential->isothermal_potential.z;
+  const float dx    = g->x[0] - potential->isothermal_potential.x;
+  const float dy    = g->x[1] - potential->isothermal_potential.y;
+  const float dz    = g->x[2] - potential->isothermal_potential.z;
+
   const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
   const float drdv =
       dx * (g->v_full[0]) + dy * (g->v_full[1]) + dz * (g->v_full[2]);
@@ -221,13 +219,13 @@ external_gravity_isothermalpotential_timestep(
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
+FINLINE static void external_gravity_isothermalpotential(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
 __attribute__((always_inline)) INLINE static void
 external_gravity_isothermalpotential(const struct external_potential* potential,
                                      const struct phys_const* const phys_const,
                                      struct gpart* g) {
 
   const float G_newton = phys_const->const_newton_G;
-
   const float dx = g->x[0] - potential->isothermal_potential.x;
   const float dy = g->x[1] - potential->isothermal_potential.y;
   const float dz = g->x[2] - potential->isothermal_potential.z;
@@ -239,7 +237,7 @@ external_gravity_isothermalpotential(const struct external_potential* potential,
   g->a_grav[0] += term * dx;
   g->a_grav[1] += term * dy;
   g->a_grav[2] += term * dz;
-  // error(" %f %f %f %f", vrot, rinv2, dx, g->a_grav[0]);
+
 }
 
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
