@@ -20,9 +20,6 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
-/* some math constants */
-#define M_PI 3.14159265358979323846
-
 /* SPH Viscosity constants. */
 #define const_viscosity_alpha 0.8f
 #define const_viscosity_alpha_min \
@@ -67,7 +64,7 @@
 //#define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 #define EXTERNAL_POTENTIAL_DISK_PATCH
-#define ISOTHERMAL_GLASS
+//#define ISOTHERMAL_GLASS
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

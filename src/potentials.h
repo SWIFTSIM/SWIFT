@@ -127,21 +127,48 @@ FINLINE static float external_gravity_disk_patch_timestep(
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-FINLINE static void external_gravity_disk_patch_potential(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
+FINLINE static void external_gravity_disk_patch_potential(const double time, const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
 
-  const float dz    = g->x[2] - potential->disk_patch_potential.z_disk;
+  const float G_newton = phys_const->const_newton_G;
+  const float surface_density= potential->disk_patch_potential.surface_density;
+  const float scale_height   = potential->disk_patch_potential.z_disk;
+  const double const_G       = phys_const->const_newton_G;
+  const float t_dyn          = sqrt(scale_height / (const_G * surface_density));
+
+
+  const float dz = g->x[2] - potential->disk_patch_potential.z_disk;
   g->a_grav[0]  += 0;
   g->a_grav[1]  += 0;
 
-  /* const float z_accel =  2 * M_PI * phys_const->const_newton_G * potential->disk_patch_potential.surface_density */
-  /* 	 * tanh(fabs(dz) / potential->disk_patch_potential.scale_height); */
-  /* impose *no* graitational acceleration */
-  const float z_accel = 0.;
+#ifdef ISOTHERMAL_GLASS
+  float reduction_factor = 1.;
+  if(time < 5 * t_dyn)
+	 reduction_factor = time / (5 * t_dyn);
+#else
+  const float reduction_factor = 1.;
+#endif
+  const float z_accel =  reduction_factor * 2 * phys_const->const_newton_G * M_PI * potential->disk_patch_potential.surface_density
+  	 * tanh(fabs(dz) / potential->disk_patch_potential.scale_height);
 
   if (dz > 0)
-	 g->a_grav[2] -= z_accel;
+	 g->a_grav[2] -= z_accel / G_newton; /* returned acceleraton is multiplied by G later on */
   if (dz < 0)
-	 g->a_grav[2] += z_accel;
+	 g->a_grav[2] += z_accel / G_newton;
+
+
+  if(abs(g->id_or_neg_offset) == 1)
+	 message(" time= %e, rf= %e, az= %e", time, reduction_factor, g->a_grav[2]);
+
+#ifdef ISOTHERMAL_GLASS
+  /* TT: add viscous drag */
+  
+  g->a_grav[0]  -= g->v_full[0] / (2. * t_dyn) / const_G;
+  g->a_grav[1]  -= g->v_full[1] / (2. * t_dyn) / const_G;
+  g->a_grav[2]  -= g->v_full[2] / (2. * t_dyn) / const_G;
+
+#endif  
+
+
 }
 #endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 

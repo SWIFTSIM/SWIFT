@@ -140,6 +140,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+
+
+#ifdef ISOTHERMAL_GLASS
+#define UTHERM 20.2615290634
+  p->entropy = (hydro_gamma-1) * UTHERM / pow(p->rho, hydro_gamma-1);
+  p->entropy_dt =0;
+#endif
   const float pressure =
       (p->entropy + p->entropy_dt * half_dt) * pow_gamma(p->rho);
 

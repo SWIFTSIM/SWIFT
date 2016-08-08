@@ -110,6 +110,13 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
         gravity_compute_timestep_self(e->physical_constants, p->gpart);
 
     new_dt_grav = fminf(new_dt_external, new_dt_self);
+
+	 if(p->id == -1)
+		{
+		  printParticle_single(p, xp);
+		  message(" dt_hydro= %e, dt_grav_external= %e dt_grav_self=%e ",new_dt_hydro,new_dt_external,new_dt_self);
+		}
+  
   }
 
   /* Final time-step is minimum of hydro and gravity */
@@ -122,6 +129,9 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
           : FLT_MAX;
 
   new_dt = fminf(new_dt, dt_h_change);
+  if(p->id == -1)
+	 message(" new_dt= %e", new_dt);
+
 
   /* Limit timestep within the allowed range */
   new_dt = fminf(new_dt, e->dt_max);

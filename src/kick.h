@@ -46,31 +46,11 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   gp->ti_begin = gp->ti_end;
   gp->ti_end = gp->ti_begin + new_dti;
 
-
-#ifdef ISOTHERMAL_GLASS
-  /* TT: add viscous drag */
-  float a_tot[3] = {gp->a_grav[0], gp->a_grav[1], gp->a_grav[2]};
-  const float surface_density= 10.;
-  const float scale_height   = 100;
-  const float t_dyn          = sqrt(scale_height / (const_G * surface_density));
-  const double time          = ti_start * timeBase;
-  a_tot[0] -= gp->v_full[0] / (0.05 * t_dyn);
-  a_tot[1] -= gp->v_full[1] / (0.05 * t_dyn);
-  a_tot[2] -= gp->v_full[2] / (0.05 * t_dyn);
-
-  /* Kick particles in momentum space */
-  gp->v_full[0] += a_tot[0] * dt;
-  gp->v_full[1] += a_tot[1] * dt;
-  gp->v_full[2] += a_tot[2] * dt;
-
-#else
-
   /* Kick particles in momentum space */
   gp->v_full[0] += gp->a_grav[0] * dt;
   gp->v_full[1] += gp->a_grav[1] * dt;
   gp->v_full[2] += gp->a_grav[2] * dt;
 
-#endif
   /* Extra kick work */
   gravity_kick_extra(gp, dt, half_dt);
 }
@@ -108,17 +88,6 @@ __attribute__((always_inline)) INLINE static void kick_part(
     a_tot[1] += p->gpart->a_grav[1];
     a_tot[2] += p->gpart->a_grav[2];
   }
-
-#ifdef ISOTHERMAL_GLASS
-  /* TT: add viscous drag */
-  const float surface_density= 10.;
-  const float scale_height   = 100;
-  const float t_dyn          = sqrt(scale_height / (const_G * surface_density));
-  const double time          = ti_start * timeBase;
-  a_tot[0] -= p->gpart->v_full[0] / (0.05 * t_dyn);
-  a_tot[1] -= p->gpart->v_full[1] / (0.05 * t_dyn);
-  a_tot[2] -= p->gpart->v_full[2] / (0.05 * t_dyn);
-#endif
 
   /* Kick particles in momentum space */
   xp->v_full[0] += a_tot[0] * dt;

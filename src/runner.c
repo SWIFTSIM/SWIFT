@@ -105,7 +105,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   const int ti_current = r->e->ti_current;
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
-
+  const double time = r->e->time;
   TIMER_TIC;
 
   /* Recurse? */
@@ -128,7 +128,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
 
-      external_gravity(potential, constants, g);
+      external_gravity(time, potential, constants, g);
     }
   }
 

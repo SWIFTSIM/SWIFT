@@ -57,7 +57,7 @@ print "UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs
 
 # parameters of potential
 surface_density = 10.
-scale_height    = 400.
+scale_height    = 100.
 gamma           = 5./3.
 
 # derived units
@@ -69,7 +69,7 @@ v_disp                 = numpy.sqrt(2 * utherm)
 soundspeed             = numpy.sqrt(utherm / (gamma * (gamma-1.)))
 t_dyn                  = numpy.sqrt(scale_height / (const_G * surface_density))
 t_cross                = scale_height / soundspeed
-print 'dynamical time = ',t_dyn,' sound crossing time = ',t_cross,' sound speed= ',soundspeed,' 3D velocity dispersion = ',v_disp
+print 'dynamical time = ',t_dyn,' sound crossing time = ',t_cross,' sound speed= ',soundspeed,' 3D velocity dispersion = ',v_disp,' thermal_energy= ',utherm
 
 
 # Parameters
@@ -117,22 +117,25 @@ for ix in range(0,ntile):
 glass_p = numpy.concatenate(glass_p, axis=0)
 glass_h = numpy.concatenate(glass_h, axis=0)
 
+# random shuffle of glas ICs
+numpy.random.seed(12345)
+indx   = numpy.random.rand(numpy.shape(glass_h)[0])
+indx   = numpy.argsort(indx)
+glass_p = glass_p[indx, :]
+glass_h = glass_h[indx]
 
-# use some of these
-numGas = 5000
-
-
-# use these as ICs
+# select numGas of them
+numGas = 8192
 pos    = glass_p[0:numGas,:]
 h      = glass_h[0:numGas]
 numGas = numpy.shape(pos)[0]
-print ' numGas = ', numGas
-
 
 # compute furthe properties of ICs
 column_density = surface_density * numpy.tanh(boxSize/2./scale_height)
 enclosed_mass  = column_density * boxSize * boxSize
 pmass          = enclosed_mass / numGas
+meanrho        = enclosed_mass / boxSize**3
+print 'pmass= ',pmass,' mean(rho) = ', meanrho,' entropy= ', (gamma-1) * utherm / meanrho**(gamma-1)
 
 # desired density
 rho            = surface_density / (2. * scale_height) / numpy.cosh(abs(pos[:,2])/scale_height)**2

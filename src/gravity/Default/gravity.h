@@ -62,16 +62,18 @@ __attribute__((always_inline)) INLINE static float
 gravity_compute_timestep_self(const struct phys_const* const phys_const,
                               const struct gpart* const gp) {
 
-  const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
-                    gp->a_grav[1] * gp->a_grav[1] +
-                    gp->a_grav[2] * gp->a_grav[2];
+  /* const float ac2 = gp->a_grav[0] * gp->a_grav[0] + */
+  /*                   gp->a_grav[1] * gp->a_grav[1] + */
+  /*                   gp->a_grav[2] * gp->a_grav[2]; */
 
-  const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
+  /* const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN; */
 
-  const float dt = sqrt(2.f * const_gravity_eta * gp->epsilon / ac);
+  /* const float dt = sqrt(2.f * const_gravity_eta * gp->epsilon / ac); */
 
-  return dt;
+  /* return dt; */
+  return FLT_MAX;
 }
+
 
 /**
  * @brief Initialises the g-particles for the first time
@@ -130,6 +132,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  * @param gp The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void external_gravity(
+	 const double time,																					 
     const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* gp) {
 
@@ -140,7 +143,7 @@ __attribute__((always_inline)) INLINE static void external_gravity(
   external_gravity_isothermalpotential(potential, phys_const, gp);
 #endif
 #ifdef EXTERNAL_POTENTIAL_DISK_PATCH
-  external_gravity_disk_patch_potential(potential, phys_const, gp);
+  external_gravity_disk_patch_potential(time, potential, phys_const, gp);
 #endif
 }
 
