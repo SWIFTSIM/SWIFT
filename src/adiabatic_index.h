@@ -124,8 +124,8 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float inv_cbrt = 1.f / cbrtf(x); /* x^(-1/3) */
-  return inv_cbrt * inv_cbrt;            /* x^(-2/3) */
+  const float cbrt_inv = 1.f / cbrtf(x); /* x^(-1/3) */
+  return cbrt_inv * cbrt_inv;            /* x^(-2/3) */
 
 #elif defined(HYDRO_GAMMA_4_3)
 
