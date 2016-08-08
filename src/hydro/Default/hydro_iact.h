@@ -468,7 +468,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   vector pia[3], pja[3];
   vector piu_dt, pju_dt;
   vector pih_dt, pjh_dt;
-  vector ci, cj, v_sig, vi_sig, vj_sig;
+  vector ci, cj, v_sig;
   vector omega_ij, Pi_ij, balsara;
   vector pialpha, pjalpha, alpha_ij, v_sig_u, tc;
   int j, k;
@@ -503,12 +503,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
                  pj[2]->force.soundspeed, pj[3]->force.soundspeed,
                  pj[4]->force.soundspeed, pj[5]->force.soundspeed,
                  pj[6]->force.soundspeed, pj[7]->force.soundspeed);
-  vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
-                     pi[3]->force.v_sig, pi[4]->force.v_sig, pi[5]->force.v_sig,
-                     pi[6]->force.v_sig, pi[7]->force.v_sig);
-  vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
-                     pj[3]->force.v_sig, pj[4]->force.v_sig, pj[5]->force.v_sig,
-                     pj[6]->force.v_sig, pj[7]->force.v_sig);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k],
                       pi[4]->v[k], pi[5]->v[k], pi[6]->v[k], pi[7]->v[k]);
@@ -544,10 +538,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
                  pi[2]->force.soundspeed, pi[3]->force.soundspeed);
   cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
                  pj[2]->force.soundspeed, pj[3]->force.soundspeed);
-  vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
-                     pi[3]->force.v_sig);
-  vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
-                     pj[3]->force.v_sig);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k]);
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k]);
@@ -773,7 +763,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   vector pia[3];
   vector piu_dt;
   vector pih_dt;
-  vector ci, cj, v_sig, vi_sig, vj_sig;
+  vector ci, cj, v_sig;
   vector omega_ij, Pi_ij, balsara;
   vector pialpha, pjalpha, alpha_ij, v_sig_u, tc;
   int j, k;
@@ -806,12 +796,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
                  pj[2]->force.soundspeed, pj[3]->force.soundspeed,
                  pj[4]->force.soundspeed, pj[5]->force.soundspeed,
                  pj[6]->force.soundspeed, pj[7]->force.soundspeed);
-  vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
-                     pi[3]->force.v_sig, pi[4]->force.v_sig, pi[5]->force.v_sig,
-                     pi[6]->force.v_sig, pi[7]->force.v_sig);
-  vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
-                     pj[3]->force.v_sig, pj[4]->force.v_sig, pj[5]->force.v_sig,
-                     pj[6]->force.v_sig, pj[7]->force.v_sig);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k],
                       pi[4]->v[k], pi[5]->v[k], pi[6]->v[k], pi[7]->v[k]);
@@ -846,10 +830,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
                  pi[2]->force.soundspeed, pi[3]->force.soundspeed);
   cj.v = vec_set(pj[0]->force.soundspeed, pj[1]->force.soundspeed,
                  pj[2]->force.soundspeed, pj[3]->force.soundspeed);
-  vi_sig.v = vec_set(pi[0]->force.v_sig, pi[1]->force.v_sig, pi[2]->force.v_sig,
-                     pi[3]->force.v_sig);
-  vj_sig.v = vec_set(pj[0]->force.v_sig, pj[1]->force.v_sig, pj[2]->force.v_sig,
-                     pj[3]->force.v_sig);
   for (k = 0; k < 3; k++) {
     vi[k].v = vec_set(pi[0]->v[k], pi[1]->v[k], pi[2]->v[k], pi[3]->v[k]);
     vj[k].v = vec_set(pj[0]->v[k], pj[1]->v[k], pj[2]->v[k], pj[3]->v[k]);

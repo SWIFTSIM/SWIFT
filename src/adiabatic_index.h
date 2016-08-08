@@ -49,6 +49,10 @@
 #define hydro_gamma_minus_one 1.f
 #define hydro_one_over_gamma_minus_one 1.f
 
+#else
+
+#error "An adiabatic index needs to be chosen in const.h !"
+
 #endif
 
 /**
