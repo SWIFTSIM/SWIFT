@@ -19,6 +19,94 @@
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
+#include "equation_of_state.h"
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * For implementations where the main thermodynamic variable
+ * is not internal energy, this function computes the internal
+ * energy from the thermodynamic variable.
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    const struct part *restrict p, float dt) {
+
+  return p->u;
+}
+
+/**
+ * @brief Returns the pressure of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_pressure(
+    const struct part *restrict p, float dt) {
+
+  return gas_pressure_from_internal_energy(p->rho, p->u);
+}
+
+/**
+ * @brief Returns the entropy of a particle
+ *
+ * For implementations where the main thermodynamic variable
+ * is not entropy, this function computes the entropy from
+ * the thermodynamic variable.
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_entropy(
+    const struct part *restrict p, float dt) {
+
+  return gas_entropy_from_internal_energy(p->rho, p->u);
+}
+
+/**
+ * @brief Returns the sound speed of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
+    const struct part *restrict p, float dt) {
+
+  return gas_soundspeed_from_internal_energy(p->rho, p->u);
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed internal
+ * energy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param u The new internal energy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
+    struct part *restrict p, float u) {
+
+  p->u = u;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed entropy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param S The new entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_entropy(
+    struct part *restrict p, float S) {
+
+  p->u = gas_internal_energy_from_entropy(p->rho, S);
+}
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -230,55 +318,3 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p) {}
-
-/**
- * @brief Returns the internal energy of a particle
- *
- * For implementations where the main thermodynamic variable
- * is not internal energy, this function computes the internal
- * energy from the thermodynamic variable.
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part *restrict p, float dt) {
-
-  return p->u;
-}
-
-/**
- * @brief Returns the pressure of a particle
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_pressure(
-    const struct part *restrict p, float dt) {
-
-  return p->u * p->rho * hydro_gamma_minus_one;
-}
-
-/**
- * @brief Returns the entropy of a particle
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_entropy(
-    const struct part *restrict p, float dt) {
-
-  return hydro_gamma_minus_one * p->u * pow_minus_gamma_minus_one(p->rho);
-}
-
-/**
- * @brief Returns the sound speed of a particle
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
-    const struct part *restrict p, float dt) {
-
-  return sqrt(p->u * hydro_gamma * hydro_gamma_minus_one);
-}

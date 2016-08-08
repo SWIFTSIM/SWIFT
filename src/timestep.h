@@ -108,7 +108,7 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
         e->external_potential, e->physical_constants, p->gpart);
     /* const float new_dt_self = */
     /*     gravity_compute_timestep_self(e->physical_constants, p->gpart); */
-    const float new_dt_self = FLT_MAX; // MATTHIEU
+    const float new_dt_self = FLT_MAX;  // MATTHIEU
 
     new_dt_grav = fminf(new_dt_external, new_dt_self);
   }
