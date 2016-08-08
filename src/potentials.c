@@ -65,6 +65,17 @@ void potential_init(const struct swift_params* parameter_file,
       parameter_file, "IsothermalPotential:timestep_mult");
 
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  potential -> disk_patch_potential.surface_density = 
+	 parser_get_param_double(parameter_file, "Disk-PatchPotential:surface_density");
+  potential -> disk_patch_potential.scale_height = 
+	 parser_get_param_double(parameter_file, "Disk-PatchPotential:scale_height");
+  potential -> disk_patch_potential.z_disk = 
+	 parser_get_param_double(parameter_file, "Disk-PatchPotential:z_disk");
+  potential -> disk_patch_potential.timestep_mult = 
+	 parser_get_param_double(parameter_file, "Disk-PatchPotential:timestep_mult");
+#endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
+
 }
 
 /**
@@ -94,4 +105,11 @@ void potential_print(const struct external_potential* potential) {
       potential->isothermal_potential.timestep_mult);
 
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  message("Disk-patch potential properties are surface_density = %e disk height= %e scale height= %e timestep multiplier= %e",
+			 potential->disk_patch_potential.surface_density,
+			 potential->disk_patch_potential.z_disk,
+			 potential->disk_patch_potential.scale_height,
+			 potential->disk_patch_potential.timestep_mult);
+#endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 }

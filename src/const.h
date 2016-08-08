@@ -65,8 +65,9 @@
 #define const_gravity_eta 0.025f
 
 /* External gravity properties */
-#define EXTERNAL_POTENTIAL_POINTMASS
+//#define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+#define EXTERNAL_POTENTIAL_DISK_PATCH
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

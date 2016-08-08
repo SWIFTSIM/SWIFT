@@ -46,7 +46,9 @@ gravity_compute_timestep_external(const struct external_potential* potential,
   dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential,
                                                                phys_const, gp));
 #endif
-
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  dt = fmin(dt, external_gravity_disk_patch_timestep(potential, phys_const, gp));
+#endif
   return dt;
 }
 
@@ -110,7 +112,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * @param const_G Newton's constant
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, double const_G) {
+	struct gpart* gp, const double const_G) {
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
@@ -136,6 +138,9 @@ __attribute__((always_inline)) INLINE static void external_gravity(
 #endif
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
   external_gravity_isothermalpotential(potential, phys_const, gp);
+#endif
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  external_gravity_disk_patch_potential(potential, phys_const, gp);
 #endif
 }
 

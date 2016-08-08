@@ -34,6 +34,7 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
+#include "math.h"
 
 /* External Potential Properties */
 struct external_potential {
@@ -53,9 +54,66 @@ struct external_potential {
     float timestep_mult;
   } isothermal_potential;
 #endif
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  struct {
+	 double surface_density;
+	 double scale_height;
+	 double z_disk;
+	 double timestep_mult;
+  } disk_patch_potential;
+#endif
 };
 
-/* Include external isothermal potential */
+/* external potential: disk_patch */
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+/**
+ * @brief Computes the time-step due to the acceleration from a hydrostatic disk (Creasy, Theuns & Bower, 2013)
+ *
+ * @param phys_cont The physical constants in internal units.
+ * @param gp Pointer to the g-particle data.
+ */
+__attribute__((always_inline))
+    INLINE static float external_gravity_disk_patch_timestep(
+		  const struct external_potential* potential,
+        const struct phys_const* const phys_const,
+        const struct gpart* const g) {
+
+  const float dz = fabs(g->x[2] - potential->disk_patch_potential.z_disk);
+  const float z_accel =  2 * M_PI * phys_const->const_newton_G * potential->disk_patch_potential.surface_density
+	 * tanh(dz / potential->disk_patch_potential.scale_height);
+  const float dz_accel_over_dt = 2 * M_PI * phys_const->const_newton_G * potential->disk_patch_potential.surface_density /
+	 potential->disk_patch_potential.scale_height / cosh(dz / potential->disk_patch_potential.scale_height) / cosh(dz / potential->disk_patch_potential.scale_height) * fabs(g->v_full[2]);
+
+  /* demand that time step * derivative of acceleration < fraction of acceleration */
+  const float dt1 = potential->disk_patch_potential.timestep_mult * z_accel / dz_accel_over_dt;
+	 
+  /* demand that dt^2 * acceleration < fraction of scale height of disk */
+  const float dt2 = potential->disk_patch_potential.timestep_mult * potential->disk_patch_potential.scale_height / fabs(z_accel);
+  
+  float dt = dt1;
+  if(dt2 < dt) dt = dt2;
+  return dt2;
+}
+/**
+ * @brief Computes the gravitational acceleration from a hydrostatic disk (Creasy, Theuns & Bower, 2013)
+ *
+ * @param phys_cont The physical constants in internal units.
+ * @param gp Pointer to the g-particle data.
+ */
+__attribute__((always_inline)) INLINE static void external_gravity_disk_patch_potential(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
+
+  const float dz    = g->x[2] - potential->disk_patch_potential.z_disk;
+  g->a_grav[0]  = 0;
+  g->a_grav[1]  = 0;
+  const float z_accel =  2 * M_PI * phys_const->const_newton_G * potential->disk_patch_potential.surface_density
+	 * tanh(fabs(dz) / potential->disk_patch_potential.scale_height);
+  if (dz > 0)
+	 g->a_grav[2] -= z_accel;
+  if (dz < 0)
+	 g->a_grav[2] += z_accel;
+}
+#endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
+
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 
 /**
