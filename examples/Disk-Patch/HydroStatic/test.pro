@@ -8,7 +8,7 @@ iplot = 1 ; if iplot = 1, make plot of E/Lz conservation, else, simply compare f
 @physunits
 
 indir    = './'
-basefile = 'Disk-Patch_'
+basefile = 'Disk-Patch-dynamic_'
 
 ; set properties of potential
 uL   = phys.pc                  ; unit of length
@@ -21,7 +21,7 @@ scale_height    = 100.
 
 ; derived units
 constG   = 10.^(alog10(phys.g)+alog10(uM)-2d0*alog10(uV)-alog10(uL)) ;
-pcentre  = [0.,0.,300.] * pc / uL
+pcentre  = [0.,0.,200.] * pc / uL
 
 ;
 infile = indir + basefile + '*'
@@ -39,7 +39,7 @@ id      = h5rd(inf,'PartType0/ParticleIDs')
 nfollow = n_elements(id)
 
 ; follow a subset
-nfollow  = min(4000, nfollow)   ; number of particles to follow
+; nfollow  = min(4000, nfollow)   ; number of particles to follow
 
 ;
 if (iplot eq 1) then begin
@@ -171,7 +171,7 @@ if(iplot eq 1) then begin
 
 ;   plot evolution of density for some particles close to disk
    wset, 6
-   rr = (surface_density/(2.d0*scale_height)) * 1./cosh(abs(zout)/100.)^2 ; desired density
+   rr = (surface_density/(2.d0*scale_height)) * 1./cosh(abs(zout)/scale_height)^2 ; desired density
    gd = where(abs(zout[*,0]) lt 50, ng)
    plot,[0],[0],xr=[0, max(tout)], yr=10.^[-1,1], /xs, /ys, /nodata, /yl
    nplot = min(40, ng)

@@ -225,7 +225,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the pressure */
   const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure = hydro_get_pressure(p, half_dt);
-
   const float irho = 1.f / p->rho;
 
   /* Divide the pressure by the density and density gradient */
