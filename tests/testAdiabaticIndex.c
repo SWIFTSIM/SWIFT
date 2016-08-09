@@ -87,6 +87,18 @@ void check_functions() {
   val_a = pow(x, 2.0f * hydro_gamma / (hydro_gamma - 1.0f));
   val_b = pow_two_gamma_over_gamma_minus_one(x);
   check_value(val_a, val_b, "x^((2 gamma)/(gamma-1))");
+
+  val_a = pow(x, 0.5f * (hydro_gamma - 1.0f) / hydro_gamma);
+  val_b = pow_gamma_minus_one_over_two_gamma(x);
+  check_value(val_a, val_b, "x^((gamma-1)/(2 gamma))");
+
+  val_a = pow(x, -0.5f * (hydro_gamma + 1.0f) / hydro_gamma);
+  val_b = pow_minus_gamma_plus_one_over_two_gamma(x);
+  check_value(val_a, val_b, "x^(-(gamma+1)/(2 gamma))");
+
+  val_a = pow(x, 1.0f / hydro_gamma);
+  val_b = pow_one_over_gamma(x);
+  check_value(val_a, val_b, "x^(1/gamma)");
 }
 
 /**

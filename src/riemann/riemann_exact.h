@@ -32,16 +32,6 @@
 #include <float.h>
 #include "adiabatic_index.h"
 
-/* frequently used combinations of hydro_gamma */
-#define const_riemann_gp1d2g (0.5f * (hydro_gamma + 1.0f) / hydro_gamma)
-#define const_riemann_gm1d2g (0.5f * hydro_gamma_minus_one / hydro_gamma)
-#define const_riemann_gm1dgp1 (hydro_gamma_minus_one / (hydro_gamma + 1.0f))
-#define const_riemann_tdgp1 (2.0f / (hydro_gamma + 1.0f))
-#define const_riemann_tdgm1 (2.0f / hydro_gamma_minus_one)
-#define const_riemann_gm1d2 (0.5f * hydro_gamma_minus_one)
-#define const_riemann_tgdgm1 (2.0f * hydro_gamma / hydro_gamma_minus_one)
-#define const_riemann_ginv (1.0f / hydro_gamma)
-
 /**
  * @brief Functions (4.6) and (4.7) in Toro.
  *
@@ -55,12 +45,12 @@ __attribute__((always_inline)) INLINE static float riemann_fb(float p, float* W,
   float fval = 0.;
   float A, B;
   if (p > W[4]) {
-    A = const_riemann_tdgp1 / W[0];
-    B = const_riemann_gm1dgp1 * W[4];
+    A = hydro_two_over_gamma_plus_one / W[0];
+    B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
     fval = (p - W[4]) * sqrtf(A / (p + B));
   } else {
-    fval =
-        const_riemann_tdgm1 * a * (powf(p / W[4], const_riemann_gm1d2g) - 1.0f);
+    fval = hydro_two_over_gamma_minus_one * a *
+           (pow_gamma_minus_one_over_two_gamma(p / W[4]) - 1.0f);
   }
   return fval;
 }
@@ -96,11 +86,11 @@ __attribute__((always_inline)) INLINE static float riemann_fprimeb(float p,
   float fval = 0.;
   float A, B;
   if (p > W[4]) {
-    A = const_riemann_tdgp1 / W[0];
-    B = const_riemann_gm1dgp1 * W[4];
+    A = hydro_two_over_gamma_plus_one / W[0];
+    B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
     fval = (1.0f - 0.5f * (p - W[4]) / (B + p)) * sqrtf(A / (p + B));
   } else {
-    fval = 1.0f / (W[0] * a) * powf(p / W[4], -const_riemann_gp1d2g);
+    fval = 1.0f / W[0] / a * pow_minus_gamma_plus_one_over_two_gamma(p / W[4]);
   }
   return fval;
 }
@@ -130,8 +120,8 @@ __attribute__((always_inline)) INLINE static float riemann_gb(float p,
                                                               float* W) {
 
   float A, B;
-  A = const_riemann_tdgp1 / W[0];
-  B = const_riemann_gm1dgp1 * W[4];
+  A = hydro_two_over_gamma_plus_one / W[0];
+  B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
   return sqrtf(A / (p + B));
 }
 
@@ -165,10 +155,10 @@ __attribute__((always_inline)) INLINE static float riemann_guess_p(
   } else {
     if (ppv < pmin) {
       /* two rarefactions */
-      pguess = powf((aL + aR - const_riemann_gm1d2 * (vR - vL)) /
-                        (aL / powf(WL[4], const_riemann_gm1d2g) +
-                         aR / powf(WR[4], const_riemann_gm1d2g)),
-                    const_riemann_tgdgm1);
+      pguess = pow_two_gamma_over_gamma_minus_one(
+          (aL + aR - hydro_gamma_minus_one_over_two * (vR - vL)) /
+          (aL / pow_gamma_minus_one_over_two_gamma(WL[4]) +
+           aR / pow_gamma_minus_one_over_two_gamma(WR[4])));
     } else {
       /* two shocks */
       pguess = (riemann_gb(ppv, WL) * WL[4] + riemann_gb(ppv, WR) * WR[4] - vR +
@@ -327,15 +317,19 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
     Whalf[3] = WL[3];
     /* vacuum right state */
     if (vL < aL) {
-      SL = vL + const_riemann_tdgm1 * aL;
+      SL = vL + hydro_two_over_gamma_minus_one * aL;
       if (SL > 0.0f) {
         Whalf[0] =
-            WL[0] * powf(const_riemann_tdgp1 + const_riemann_gm1dgp1 / aL * vL,
-                         const_riemann_tdgm1);
-        vhalf = const_riemann_tdgp1 * (aL + const_riemann_gm1d2 * vL) - vL;
+            WL[0] * pow_two_over_gamma_minus_one(
+                        hydro_two_over_gamma_plus_one +
+                        hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+        vhalf = hydro_two_over_gamma_plus_one *
+                    (aL + hydro_gamma_minus_one_over_two * vL) -
+                vL;
         Whalf[4] =
-            WL[4] * powf(const_riemann_tdgp1 + const_riemann_gm1dgp1 / aL * vL,
-                         const_riemann_tgdgm1);
+            WL[4] * pow_two_gamma_over_gamma_minus_one(
+                        hydro_two_over_gamma_plus_one +
+                        hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
       } else {
         Whalf[0] = 0.0f;
         Whalf[1] = 0.0f;
@@ -356,7 +350,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
       Whalf[3] = WR[3];
       /* vacuum left state */
       if (-aR < vR) {
-        SR = vR - const_riemann_tdgm1 * aR;
+        SR = vR - hydro_two_over_gamma_minus_one * aR;
         if (SR >= 0.0f) {
           Whalf[0] = 0.0f;
           Whalf[1] = 0.0f;
@@ -365,13 +359,17 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[4] = 0.0f;
           return;
         } else {
-          Whalf[0] = WR[0] *
-                     powf(const_riemann_tdgp1 - const_riemann_gm1dgp1 / aR * vR,
-                          const_riemann_tdgm1);
-          vhalf = const_riemann_tdgp1 * (-aR + const_riemann_gm1d2 * vR) - vR;
-          Whalf[4] = WR[4] *
-                     powf(const_riemann_tdgp1 - const_riemann_gm1dgp1 / aR * vR,
-                          const_riemann_tgdgm1);
+          Whalf[0] =
+              WR[0] * pow_two_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one -
+                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+          vhalf = hydro_two_over_gamma_plus_one *
+                      (-aR + hydro_gamma_minus_one_over_two * vR) -
+                  vR;
+          Whalf[4] =
+              WR[4] * pow_two_gamma_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one -
+                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
         }
       } else {
         Whalf[0] = WR[0];
@@ -380,8 +378,8 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
       }
     } else {
       /* vacuum generation */
-      SR = vR - const_riemann_tdgm1 * aR;
-      SL = vL + const_riemann_tdgm1 * aL;
+      SR = vR - hydro_two_over_gamma_minus_one * aR;
+      SL = vL + hydro_two_over_gamma_minus_one * aL;
       if (SR > 0.0f && SL < 0.0f) {
         Whalf[0] = 0.0f;
         Whalf[1] = 0.0f;
@@ -395,13 +393,17 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[2] = WL[2];
           Whalf[3] = WL[3];
           if (aL > vL) {
-            Whalf[0] = WL[0] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (aL + const_riemann_gm1d2 * vL) - vL;
-            Whalf[4] = WL[4] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tgdgm1);
+            Whalf[0] = WL[0] *
+                       pow_two_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one +
+                           hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+            vhalf = hydro_two_over_gamma_plus_one *
+                        (aL + hydro_gamma_minus_one_over_two * vL) -
+                    vL;
+            Whalf[4] = WL[4] *
+                       pow_two_gamma_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one +
+                           hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
           } else {
             Whalf[0] = WL[0];
             vhalf = 0.0f;
@@ -412,13 +414,17 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[2] = WR[2];
           Whalf[3] = WR[3];
           if (-aR < vR) {
-            Whalf[0] = WR[0] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (-aR + const_riemann_gm1d2 * vR) - vR;
-            Whalf[4] = WR[4] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tgdgm1);
+            Whalf[0] = WR[0] *
+                       pow_two_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one -
+                           hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+            vhalf = hydro_two_over_gamma_plus_one *
+                        (-aR + hydro_gamma_minus_one_over_two * vR) -
+                    vR;
+            Whalf[4] = WR[4] *
+                       pow_two_gamma_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one -
+                           hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
           } else {
             Whalf[0] = WR[0];
             vhalf = 0.0f;
@@ -568,11 +574,13 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
       pdpR = p / WR[4];
       if (p > WR[4]) {
         /* shockwave */
-        SR =
-            vR + aR * sqrtf(const_riemann_gp1d2g * pdpR + const_riemann_gm1d2g);
+        SR = vR +
+             aR * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpR +
+                        hydro_gamma_minus_one_over_two_gamma);
         if (SR > 0.0f) {
-          Whalf[0] = WR[0] * (pdpR + const_riemann_gm1dgp1) /
-                     (const_riemann_gm1dgp1 * pdpR + 1.0f);
+          Whalf[0] = WR[0] *
+                     (pdpR + hydro_gamma_minus_one_over_gamma_plus_one) /
+                     (hydro_gamma_minus_one_over_gamma_plus_one * pdpR + 1.0f);
           vhalf = u - vR;
           Whalf[4] = p;
         } else {
@@ -584,17 +592,21 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
         /* rarefaction wave */
         SHR = vR + aR;
         if (SHR > 0.0f) {
-          STR = u + aR * powf(pdpR, const_riemann_gm1d2g);
+          STR = u + aR * pow_gamma_minus_one_over_two_gamma(pdpR);
           if (STR <= 0.0f) {
-            Whalf[0] = WR[0] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (-aR + const_riemann_gm1d2 * vR) - vR;
-            Whalf[4] = WR[4] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tgdgm1);
+            Whalf[0] = WR[0] *
+                       pow_two_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one -
+                           hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+            vhalf = hydro_two_over_gamma_plus_one *
+                        (-aR + hydro_gamma_minus_one_over_two * vR) -
+                    vR;
+            Whalf[4] = WR[4] *
+                       pow_two_gamma_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one -
+                           hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
           } else {
-            Whalf[0] = WR[0] * powf(pdpR, const_riemann_ginv);
+            Whalf[0] = WR[0] * pow_one_over_gamma(pdpR);
             vhalf = u - vR;
             Whalf[4] = p;
           }
@@ -611,11 +623,13 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
       pdpL = p / WL[4];
       if (p > WL[4]) {
         /* shockwave */
-        SL =
-            vL - aL * sqrtf(const_riemann_gp1d2g * pdpL + const_riemann_gm1d2g);
+        SL = vL -
+             aL * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpL +
+                        hydro_gamma_minus_one_over_two_gamma);
         if (SL < 0.0f) {
-          Whalf[0] = WL[0] * (pdpL + const_riemann_gm1dgp1) /
-                     (const_riemann_gm1dgp1 * pdpL + 1.0f);
+          Whalf[0] = WL[0] *
+                     (pdpL + hydro_gamma_minus_one_over_gamma_plus_one) /
+                     (hydro_gamma_minus_one_over_gamma_plus_one * pdpL + 1.0f);
           vhalf = u - vL;
           Whalf[4] = p;
         } else {
@@ -627,17 +641,21 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
         /* rarefaction wave */
         SHL = vL - aL;
         if (SHL < 0.0f) {
-          STL = u - aL * powf(pdpL, const_riemann_gm1d2g);
+          STL = u - aL * pow_gamma_minus_one_over_two_gamma(pdpL);
           if (STL > 0.0f) {
-            Whalf[0] = WL[0] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (aL + const_riemann_gm1d2 * vL) - vL;
-            Whalf[4] = WL[4] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tgdgm1);
+            Whalf[0] = WL[0] *
+                       pow_two_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one +
+                           hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+            vhalf = hydro_two_over_gamma_plus_one *
+                        (aL + hydro_gamma_minus_one_over_two * vL) -
+                    vL;
+            Whalf[4] = WL[4] *
+                       pow_two_gamma_over_gamma_minus_one(
+                           hydro_two_over_gamma_plus_one +
+                           hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
           } else {
-            Whalf[0] = WL[0] * powf(pdpL, const_riemann_ginv);
+            Whalf[0] = WL[0] * pow_one_over_gamma(pdpL);
             vhalf = u - vL;
             Whalf[4] = p;
           }

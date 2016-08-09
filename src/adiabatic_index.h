@@ -269,4 +269,100 @@ pow_two_gamma_over_gamma_minus_one(float x) {
 #endif
 }
 
+/**
+ * @brief Return the argument to the power given by the adiabatic index minus
+ * one  divided by two times the adiabatic index
+ *
+ * Computes \f$x^{\frac{\gamma - 1}{2\gamma}}\f$.
+ *
+ * @param x Argument
+ * @return Argument to the power the adiabatic index minus one divided by two
+ * times the adiabatic index
+ */
+__attribute__((always_inline)) INLINE static float
+pow_gamma_minus_one_over_two_gamma(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, 0.2f); /* x^0.2 */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return powf(x, 0.125f); /* x^0.125 */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return powf(x, 0.25f); /* x^0.25 */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Return the inverse argument to the power given by the adiabatic index
+ * plus one divided by two times the adiabatic index
+ *
+ * Computes \f$x^{-\frac{\gamma + 1}{2\gamma}}\f$.
+ *
+ * @param x Argument
+ * @return Inverse argument to the power the adiabatic index plus one divided by
+ * two times the adiabatic index
+ */
+__attribute__((always_inline)) INLINE static float
+pow_minus_gamma_plus_one_over_two_gamma(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, -0.8f); /* x^-0.8 */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return powf(x, -0.875f); /* x^-0.875 */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return powf(x, -0.75f); /* x^-0.75 */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Return the argument to the power one over the adiabatic index
+ *
+ * Computes \f$x^{\frac{1}{\gamma}}\f$.
+ *
+ * @param x Argument
+ * @return Argument to the power one over the adiabatic index
+ */
+__attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, 0.6f); /* x^(3/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return powf(x, 0.75f); /* x^(3/4) */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return sqrtf(x); /* x^(1/2) */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
 #endif /* SWIFT_ADIABATIC_INDEX_H */
