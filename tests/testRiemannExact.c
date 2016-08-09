@@ -17,8 +17,10 @@
  *
  ******************************************************************************/
 
+#include <string.h>
 #include "error.h"
 #include "riemann/riemann_exact.h"
+#include "tools.h"
 
 /**
  * @brief Check that a and b are consistent (up to some error)
@@ -212,12 +214,109 @@ void check_riemann_exact() {
 }
 
 /**
+ * @brief Check the symmetry of the TRRS Riemann solver
+ */
+void check_riemann_symmetry() {
+  float WL[5], WR[5], Whalf1[5], Whalf2[5], n_unit1[3], n_unit2[3], n_norm,
+      vij[3], totflux1[5], totflux2[5];
+
+  WL[0] = random_uniform(0.1f, 1.0f);
+  WL[1] = random_uniform(-10.0f, 10.0f);
+  WL[2] = random_uniform(-10.0f, 10.0f);
+  WL[3] = random_uniform(-10.0f, 10.0f);
+  WL[4] = random_uniform(0.1f, 1.0f);
+  WR[0] = random_uniform(0.1f, 1.0f);
+  WR[1] = random_uniform(-10.0f, 10.0f);
+  WR[2] = random_uniform(-10.0f, 10.0f);
+  WR[3] = random_uniform(-10.0f, 10.0f);
+  WR[4] = random_uniform(0.1f, 1.0f);
+
+  n_unit1[0] = random_uniform(-1.0f, 1.0f);
+  n_unit1[1] = random_uniform(-1.0f, 1.0f);
+  n_unit1[2] = random_uniform(-1.0f, 1.0f);
+
+  n_norm = sqrtf(n_unit1[0] * n_unit1[0] + n_unit1[1] * n_unit1[1] +
+                 n_unit1[2] * n_unit1[2]);
+  n_unit1[0] /= n_norm;
+  n_unit1[1] /= n_norm;
+  n_unit1[2] /= n_norm;
+
+  n_unit2[0] = -n_unit1[0];
+  n_unit2[1] = -n_unit1[1];
+  n_unit2[2] = -n_unit1[2];
+
+  riemann_solver_solve(WL, WR, Whalf1, n_unit1);
+  riemann_solver_solve(WR, WL, Whalf2, n_unit2);
+
+  if (memcmp(Whalf1, Whalf2, 5 * sizeof(float))) {
+    message(
+        "Solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
+        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
+        Whalf1[0], Whalf1[1], Whalf1[2], Whalf1[3], Whalf1[4], Whalf2[0],
+        Whalf2[1], Whalf2[2], Whalf2[3], Whalf2[4]);
+    message("Asymmetry in solution!\n");
+    /* This asymmetry is to be expected, since we do an iteration. Are the
+       results at least consistent? */
+    check_value(Whalf1[0], Whalf2[0], "Rho solution");
+    check_value(Whalf1[1], Whalf2[1], "V[0] solution");
+    check_value(Whalf1[2], Whalf2[2], "V[1] solution");
+    check_value(Whalf1[3], Whalf2[3], "V[2] solution");
+    check_value(Whalf1[4], Whalf2[4], "Pressure solution");
+  } else {
+    message(
+        "Solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
+        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
+        Whalf1[0], Whalf1[1], Whalf1[2], Whalf1[3], Whalf1[4], Whalf2[0],
+        Whalf2[1], Whalf2[2], Whalf2[3], Whalf2[4]);
+  }
+
+  vij[0] = random_uniform(-10.0f, 10.0f);
+  vij[1] = random_uniform(-10.0f, 10.0f);
+  vij[2] = random_uniform(-10.0f, 10.0f);
+
+  riemann_solve_for_flux(WL, WR, n_unit1, vij, totflux1);
+  riemann_solve_for_flux(WR, WL, n_unit2, vij, totflux2);
+
+  /* we expect the fluxes to have a different sign, so we reverse one of them */
+  totflux2[0] = -totflux2[0];
+  totflux2[1] = -totflux2[1];
+  totflux2[2] = -totflux2[2];
+  totflux2[3] = -totflux2[3];
+  totflux2[4] = -totflux2[4];
+
+  if (memcmp(totflux1, totflux2, 5 * sizeof(float))) {
+    message(
+        "Flux solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
+        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
+        totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
+        totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
+    message("Asymmetry in flux solution!");
+    /* This asymmetry is to be expected, since we do an iteration. Are the
+       results at least consistent? */
+    check_value(totflux1[0], totflux2[0], "Mass flux");
+    check_value(totflux1[1], totflux2[1], "Momentum[0] flux");
+    check_value(totflux1[2], totflux2[2], "Momentum[1] flux");
+    check_value(totflux1[3], totflux2[3], "Momentum[2] flux");
+    check_value(totflux1[4], totflux2[4], "Energy flux");
+  } else {
+    message(
+        "Flux solver symmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
+        "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
+        totflux1[0], totflux1[1], totflux1[2], totflux1[3], totflux1[4],
+        totflux2[0], totflux2[1], totflux2[2], totflux2[3], totflux2[4]);
+  }
+}
+
+/**
  * @brief Check the exact Riemann solver
  */
 int main() {
 
   /* check the exact Riemann solver */
   check_riemann_exact();
+
+  /* symmetry test */
+  check_riemann_symmetry();
 
   return 0;
 }

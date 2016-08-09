@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
        (not rotated to interface frame) */
     totflux[1] = WL[0] * WL[1] * uL + WL[4] * n[0];
     totflux[2] = WL[0] * WL[2] * uL + WL[4] * n[1];
-    totflux[3] = WL[0] * WL[2] * uL + WL[4] * n[2];
+    totflux[3] = WL[0] * WL[3] * uL + WL[4] * n[2];
     v2 = WL[1] * WL[1] + WL[2] * WL[2] + WL[3] * WL[3];
     eL = WL[4] / hydro_gamma_minus_one / WL[0] + 0.5 * v2;
     totflux[4] = WL[0] * eL * uL + WL[4] * uL;
