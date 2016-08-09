@@ -22,8 +22,8 @@
 #include "adiabatic_index.h"
 #include "riemann.h"
 
-#define USE_GRADIENTS
-#define PER_FACE_LIMITER
+//#define USE_GRADIENTS
+//#define PER_FACE_LIMITER
 /* #define PRINT_ID 0 */
 
 /* this corresponds to task_subtype_hydro_loop1 */
@@ -940,7 +940,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     printf("mindt: %g\n", mindt);
     printf("WL: %g %g %g %g %g\n", pi->primitives.rho, pi->primitives.v[0],
            pi->primitives.v[1], pi->primitives.v[2], pi->primitives.P);
+#ifdef USE_GRADIENTS
     printf("dWL: %g %g %g %g %g\n", dWi[0], dWi[1], dWi[2], dWi[3], dWi[4]);
+#endif
     printf("gradWL[0]: %g %g %g\n", pi->primitives.gradients.rho[0],
            pi->primitives.gradients.rho[1], pi->primitives.gradients.rho[2]);
     printf("gradWL[1]: %g %g %g\n", pi->primitives.gradients.v[0][0],
@@ -954,7 +956,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     printf("WL': %g %g %g %g %g\n", Wi[0], Wi[1], Wi[2], Wi[3], Wi[4]);
     printf("WR: %g %g %g %g %g\n", pj->primitives.rho, pj->primitives.v[0],
            pj->primitives.v[1], pj->primitives.v[2], pj->primitives.P);
+#ifdef USE_GRADIENTS
     printf("dWR: %g %g %g %g %g\n", dWj[0], dWj[1], dWj[2], dWj[3], dWj[4]);
+#endif
     printf("gradWR[0]: %g %g %g\n", pj->primitives.gradients.rho[0],
            pj->primitives.gradients.rho[1], pj->primitives.gradients.rho[2]);
     printf("gradWR[1]: %g %g %g\n", pj->primitives.gradients.v[0][0],

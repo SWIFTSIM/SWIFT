@@ -164,6 +164,5 @@ struct part {
   struct {
     float h_dt;
   } force;
-  float rho_dh;
 
 } __attribute__((aligned(part_align)));
