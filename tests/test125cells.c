@@ -448,7 +448,7 @@ int main(int argc, char *argv[]) {
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f", h * h * h * kernel_norm);
+  message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
@@ -461,6 +461,11 @@ int main(int argc, char *argv[]) {
 
   printf("\n");
 
+#if !defined(HYDRO_DIMENSION_3D)
+  message("test125cells only useful in 3D. Change parameters in const.h !");
+  return 1;
+#endif
+  
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
