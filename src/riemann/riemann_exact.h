@@ -29,19 +29,17 @@
 #ifndef SWIFT_RIEMANN_EXACT_H
 #define SWIFT_RIEMANN_EXACT_H
 
-/* frequently used combinations of const_hydro_gamma */
-#define const_riemann_gp1d2g \
-  (0.5f * (const_hydro_gamma + 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1d2g \
-  (0.5f * (const_hydro_gamma - 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1dgp1 \
-  ((const_hydro_gamma - 1.0f) / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgp1 (2.0f / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgm1 (2.0f / (const_hydro_gamma - 1.0f))
-#define const_riemann_gm1d2 (0.5f * (const_hydro_gamma - 1.0f))
-#define const_riemann_tgdgm1 \
-  (2.0f * const_hydro_gamma / (const_hydro_gamma - 1.0f))
-#define const_riemann_ginv (1.0f / const_hydro_gamma)
+#include "adiabatic_index.h"
+
+/* frequently used combinations of hydro_gamma */
+#define const_riemann_gp1d2g (0.5f * (hydro_gamma + 1.0f) / hydro_gamma)
+#define const_riemann_gm1d2g (0.5f * hydro_gamma_minus_one / hydro_gamma)
+#define const_riemann_gm1dgp1 (hydro_gamma_minus_one / (hydro_gamma + 1.0f))
+#define const_riemann_tdgp1 (2.0f / (hydro_gamma + 1.0f))
+#define const_riemann_tdgm1 (2.0f / hydro_gamma_minus_one)
+#define const_riemann_gm1d2 (0.5f * hydro_gamma_minus_one)
+#define const_riemann_tgdgm1 (2.0f * hydro_gamma / hydro_gamma_minus_one)
+#define const_riemann_ginv (1.0f / hydro_gamma)
 
 /**
  * @brief Functions (4.6) and (4.7) in Toro.
@@ -498,8 +496,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
   /* calculate sound speeds */
-  aL = sqrtf(const_hydro_gamma * WL[4] / WL[0]);
-  aR = sqrtf(const_hydro_gamma * WR[4] / WR[0]);
+  aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   if (!WL[0] || !WR[0]) {
     /* vacuum: we need a vacuum riemann solver */
@@ -508,8 +506,7 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   }
 
   /* check vacuum generation condition */
-  if (2.0f * aL / (const_hydro_gamma - 1.0f) +
-          2.0f * aR / (const_hydro_gamma - 1.0f) <
+  if (2.0f * aL / hydro_gamma_minus_one + 2.0f * aR / hydro_gamma_minus_one <
       fabs(vL - vR)) {
     /* vacuum generation: need a vacuum riemann solver */
     riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
@@ -688,7 +685,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   /* eqn. (15) */
   /* F_P = \rho e ( \vec{v} - \vec{v_{ij}} ) + P \vec{v} */
   /* \rho e = P / (\gamma-1) + 1/2 \rho \vec{v}^2 */
-  rhoe = Whalf[4] / (const_hydro_gamma - 1.0f) +
+  rhoe = Whalf[4] / hydro_gamma_minus_one +
          0.5f * Whalf[0] *
              (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
   flux[4][0] = rhoe * Whalf[1] + Whalf[4] * vtot[0];

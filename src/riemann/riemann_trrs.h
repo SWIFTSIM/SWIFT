@@ -20,19 +20,17 @@
 #ifndef SWIFT_RIEMANN_TRRS_H
 #define SWIFT_RIEMANN_TRRS_H
 
-/* frequently used combinations of const_hydro_gamma */
-#define const_riemann_gp1d2g \
-  (0.5f * (const_hydro_gamma + 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1d2g \
-  (0.5f * (const_hydro_gamma - 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1dgp1 \
-  ((const_hydro_gamma - 1.0f) / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgp1 (2.0f / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgm1 (2.0f / (const_hydro_gamma - 1.0f))
-#define const_riemann_gm1d2 (0.5f * (const_hydro_gamma - 1.0f))
-#define const_riemann_tgdgm1 \
-  (2.0f * const_hydro_gamma / (const_hydro_gamma - 1.0f))
-#define const_riemann_ginv (1.0f / const_hydro_gamma)
+#include "adiabatic_index.h"
+
+/* frequently used combinations of hydro_gamma */
+#define const_riemann_gp1d2g (0.5f * (hydro_gamma + 1.0f) / hydro_gamma)
+#define const_riemann_gm1d2g (0.5f * hydro_gamma_minus_one / hydro_gamma)
+#define const_riemann_gm1dgp1 (hydro_gamma_minus_one / (hydro_gamma + 1.0f))
+#define const_riemann_tdgp1 (2.0f / (hydro_gamma + 1.0f))
+#define const_riemann_tdgm1 (2.0f / hydro_gamma_minus_one)
+#define const_riemann_gm1d2 (0.5f * hydro_gamma_minus_one)
+#define const_riemann_tgdgm1 (2.0f * hydro_gamma / hydro_gamma_minus_one)
+#define const_riemann_ginv (1.0f / hydro_gamma)
 
 /**
  * @brief Solve the Riemann problem using the Two Rarefaction Riemann Solver
@@ -64,8 +62,8 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
   /* calculate the sound speeds */
-  aL = sqrtf(const_hydro_gamma * WL[4] / WL[0]);
-  aR = sqrtf(const_hydro_gamma * WR[4] / WR[0]);
+  aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   /* calculate the velocity and pressure in the intermediate state */
   PLR = pow(WL[4] / WR[4], const_riemann_gm1d2g);
@@ -139,6 +137,55 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+}
+
+__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+    float* Wi, float* Wj, float* n_unit, float* vij, float* totflux) {
+
+  float Whalf[5];
+  float flux[5][3];
+  float vtot[3];
+  float rhoe;
+
+  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+
+  flux[0][0] = Whalf[0] * Whalf[1];
+  flux[0][1] = Whalf[0] * Whalf[2];
+  flux[0][2] = Whalf[0] * Whalf[3];
+
+  vtot[0] = Whalf[1] + vij[0];
+  vtot[1] = Whalf[2] + vij[1];
+  vtot[2] = Whalf[3] + vij[2];
+  flux[1][0] = Whalf[0] * vtot[0] * Whalf[1] + Whalf[4];
+  flux[1][1] = Whalf[0] * vtot[0] * Whalf[2];
+  flux[1][2] = Whalf[0] * vtot[0] * Whalf[3];
+  flux[2][0] = Whalf[0] * vtot[1] * Whalf[1];
+  flux[2][1] = Whalf[0] * vtot[1] * Whalf[2] + Whalf[4];
+  flux[2][2] = Whalf[0] * vtot[1] * Whalf[3];
+  flux[3][0] = Whalf[0] * vtot[2] * Whalf[1];
+  flux[3][1] = Whalf[0] * vtot[2] * Whalf[2];
+  flux[3][2] = Whalf[0] * vtot[2] * Whalf[3] + Whalf[4];
+
+  /* eqn. (15) */
+  /* F_P = \rho e ( \vec{v} - \vec{v_{ij}} ) + P \vec{v} */
+  /* \rho e = P / (\gamma-1) + 1/2 \rho \vec{v}^2 */
+  rhoe = Whalf[4] / hydro_gamma_minus_one +
+         0.5f * Whalf[0] *
+             (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
+  flux[4][0] = rhoe * Whalf[1] + Whalf[4] * vtot[0];
+  flux[4][1] = rhoe * Whalf[2] + Whalf[4] * vtot[1];
+  flux[4][2] = rhoe * Whalf[3] + Whalf[4] * vtot[2];
+
+  totflux[0] =
+      flux[0][0] * n_unit[0] + flux[0][1] * n_unit[1] + flux[0][2] * n_unit[2];
+  totflux[1] =
+      flux[1][0] * n_unit[0] + flux[1][1] * n_unit[1] + flux[1][2] * n_unit[2];
+  totflux[2] =
+      flux[2][0] * n_unit[0] + flux[2][1] * n_unit[1] + flux[2][2] * n_unit[2];
+  totflux[3] =
+      flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
+  totflux[4] =
+      flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
 }
 
 #endif /* SWIFT_RIEMANN_TRRS_H */

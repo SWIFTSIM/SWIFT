@@ -163,7 +163,6 @@ struct part {
   float rho;
   struct {
     float h_dt;
-    float v_sig;
   } force;
   float rho_dh;
 
