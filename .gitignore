@@ -72,6 +72,7 @@ tests/testParser.sh
 tests/testReading.sh
 tests/testAdiabaticIndex
 tests/testRiemannExact
+tests/testRiemannTRRS
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf

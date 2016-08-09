@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 #include "error.h"
-#include "riemann/riemann_exact.h"
+#include "riemann/riemann_trrs.h"
 
 /**
  * @brief Check that a and b are consistent (up to some error)
@@ -85,9 +85,9 @@ void check_riemann_solution(struct riemann_statevector* WL,
 }
 
 /**
- * @brief Check the exact Riemann solver on the Toro test problems
+ * @brief Check the TRRS Riemann solver on the Toro test problems
  */
-void check_riemann_exact() {
+void check_riemann_trrs() {
   struct riemann_statevector WL, WR, Whalf;
 
   /* Test 1 */
@@ -98,17 +98,17 @@ void check_riemann_exact() {
   WR.v = 0.0f;
   WR.P = 0.1f;
 #if defined(HYDRO_GAMMA_5_3)
-  Whalf.rho = 0.47969f;
-  Whalf.v = 0.841194f;
-  Whalf.P = 0.293945f;
+  Whalf.rho = 0.481167f;
+  Whalf.v = 0.838085f;
+  Whalf.P = 0.295456f;
 #elif defined(HYDRO_GAMMA_4_3)
-  Whalf.rho = 0.411437f;
-  Whalf.v = 0.953205f;
-  Whalf.P = 0.306011f;
+  Whalf.rho = 0.41586f;
+  Whalf.v = 0.942546f;
+  Whalf.P = 0.310406f;
 #elif defined(HYDRO_GAMMA_2_1)
-  Whalf.rho = 0.534767f;
-  Whalf.v = 0.760062f;
-  Whalf.P = 0.285975f;
+  Whalf.rho = 0.53478f;
+  Whalf.v = 0.760037f;
+  Whalf.P = 0.285989f;
 #else
 #error "Unsupported adiabatic index!"
 #endif
@@ -130,9 +130,9 @@ void check_riemann_exact() {
   Whalf.v = 0.0f;
   Whalf.P = 0.00304838f;
 #elif defined(HYDRO_GAMMA_2_1)
-  Whalf.rho = 0.0f;
+  Whalf.rho = 0.013932f;
   Whalf.v = 0.0f;
-  Whalf.P = 0.0f;
+  Whalf.P = 7.76405e-5f;
 #else
 #error "Unsupported adiabatic index!"
 #endif
@@ -146,17 +146,17 @@ void check_riemann_exact() {
   WR.v = 0.0f;
   WR.P = 0.01f;
 #if defined(HYDRO_GAMMA_5_3)
-  Whalf.rho = 0.615719f;
-  Whalf.v = 18.2812f;
-  Whalf.P = 445.626f;
+  Whalf.rho = 0.919498f;
+  Whalf.v = 3.37884f;
+  Whalf.P = 869.464f;
 #elif defined(HYDRO_GAMMA_4_3)
-  Whalf.rho = 0.563517f;
-  Whalf.v = 19.9735f;
-  Whalf.P = 465.453f;
+  Whalf.rho = 0.941258f;
+  Whalf.v = 2.19945f;
+  Whalf.P = 922.454f;
 #elif defined(HYDRO_GAMMA_2_1)
-  Whalf.rho = 0.656768f;
-  Whalf.v = 16.9572f;
-  Whalf.P = 431.345f;
+  Whalf.rho = 0.902032f;
+  Whalf.v = 4.49417f;
+  Whalf.P = 813.662f;
 #else
 #error "Unsupported adiabatic index!"
 #endif
@@ -170,17 +170,17 @@ void check_riemann_exact() {
   WR.v = 0.0f;
   WR.P = 100.0f;
 #if defined(HYDRO_GAMMA_5_3)
-  Whalf.rho = 0.61577f;
-  Whalf.v = -5.78022f;
-  Whalf.P = 44.5687f;
+  Whalf.rho = 0.857525f;
+  Whalf.v = -1.93434f;
+  Whalf.P = 77.4007f;
 #elif defined(HYDRO_GAMMA_4_3)
-  Whalf.rho = 0.563567f;
-  Whalf.v = -6.31525f;
-  Whalf.P = 46.5508f;
+  Whalf.rho = 0.880649f;
+  Whalf.v = -1.45215f;
+  Whalf.P = 84.4119f;
 #elif defined(HYDRO_GAMMA_2_1)
-  Whalf.rho = 0.656819f;
-  Whalf.v = -5.36146f;
-  Whalf.P = 43.1412f;
+  Whalf.rho = 0.843058f;
+  Whalf.v = -2.31417f;
+  Whalf.P = 71.0747f;
 #else
 #error "Unsupported adiabatic index!"
 #endif
@@ -194,17 +194,17 @@ void check_riemann_exact() {
   WR.v = -6.19633f;
   WR.P = 46.0950f;
 #if defined(HYDRO_GAMMA_5_3)
-  Whalf.rho = 12.743f;
-  Whalf.v = 8.56045f;
-  Whalf.P = 1841.82f;
+  Whalf.rho = 5.99924f;
+  Whalf.v = 19.5975f;
+  Whalf.P = 460.894f;
 #elif defined(HYDRO_GAMMA_4_3)
   Whalf.rho = 5.99924f;
   Whalf.v = 19.5975f;
   Whalf.P = 460.894f;
 #elif defined(HYDRO_GAMMA_2_1)
-  Whalf.rho = 11.5089f;
-  Whalf.v = 8.42099f;
-  Whalf.P = 2026.27f;
+  Whalf.rho = 5.99924f;
+  Whalf.v = 19.5975f;
+  Whalf.P = 460.894f;
 #else
 #error "Unsupported adiabatic index!"
 #endif
@@ -212,12 +212,12 @@ void check_riemann_exact() {
 }
 
 /**
- * @brief Check the exact Riemann solver
+ * @brief Check the TRRS Riemann solver
  */
 int main() {
 
-  /* check the exact Riemann solver */
-  check_riemann_exact();
+  /* check the TRRS Riemann solver */
+  check_riemann_trrs();
 
   return 0;
 }
