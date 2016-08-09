@@ -21,7 +21,7 @@
 #include "error.h"
 
 void check_value(float a, float b, const char* s) {
-  if (fabsf(a - b) > 1.e-6f) {
+  if (fabsf(a - b) > 1.e-5f) {
     error("Values are inconsistent: %g %g (%s)!", a, b, s);
   } else {
     message("Values are consistent: %g %g (%s).", a, b, s);
@@ -57,9 +57,28 @@ void check_constants() {
   check_value(val, hydro_one_over_gamma, "1/gamma");
 }
 
+void check_functions() {
+  float val_a, val_b;
+  const float x = 0.4;
+
+  val_a = pow(x, -hydro_gamma);
+  val_b = pow_minus_gamma(x);
+  check_value(val_a, val_b, "x^(-gamma)");
+
+  val_a = pow(x, 2.0f / (hydro_gamma - 1.0f));
+  val_b = pow_two_over_gamma_minus_one(x);
+  check_value(val_a, val_b, "x^(2/(gamma-1))");
+
+  val_a = pow(x, 2.0f * hydro_gamma / (hydro_gamma - 1.0f));
+  val_b = pow_two_gamma_over_gamma_minus_one(x);
+  check_value(val_a, val_b, "x^((2 gamma)/(gamma-1))");
+}
+
 int main() {
 
   check_constants();
+
+  check_functions();
 
   return 0;
 }

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016   Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ *                      Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -158,6 +159,107 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
 #elif defined(HYDRO_GAMMA_2_1)
 
   return 1.f / x;
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Returns one over the argument to the power given by the adiabatic
+ * index
+ *
+ * Computes \f$x^{-\gamma}\f$.
+ *
+ * @param x Argument
+ * @return One over the argument to the power given by the adiabatic index
+ */
+__attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
+  const float cbrt_inv2 = cbrt_inv * cbrt_inv; /* x^(-2/3) */
+  return cbrt_inv * cbrt_inv2 * cbrt_inv2;     /* x^(-5/3) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
+  const float cbrt_inv2 = cbrt_inv * cbrt_inv; /* x^(-2/3) */
+  return cbrt_inv2 * cbrt_inv2;                /* x^(-4/3) */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  const float inv = 1.f / x;
+  return inv * inv;
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Return the argument to the power given by two divided by the adiabatic
+ * index minus one
+ *
+ * Computes \f$x^{\frac{2}{\gamma - 1}}\f$.
+ *
+ * @param x Argument
+ * @return Argument to the power two divided by the adiabatic index minus one
+ */
+__attribute__((always_inline)) INLINE static float pow_two_over_gamma_minus_one(
+    float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return x * x * x; /* x^3 */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return x * x * x * x * x * x; /* x^6 */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return x * x; /* x^2 */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Return the argument to the power given by two times the adiabatic
+ * index divided by the adiabatic index minus one
+ *
+ * Computes \f$x^{\frac{2\gamma}{\gamma - 1}}\f$.
+ *
+ * @param x Argument
+ * @return Argument to the power two times the adiabatic index divided by the
+ * adiabatic index minus one
+ */
+__attribute__((always_inline)) INLINE static float
+pow_two_gamma_over_gamma_minus_one(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return x * x * x * x * x; /* x^5 */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return x * x * x * x * x * x * x * x; /* x^8 */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return x * x * x * x; /* x^4 */
 
 #else
 
