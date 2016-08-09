@@ -465,7 +465,7 @@ int main(int argc, char *argv[]) {
   message("test125cells only useful in 3D. Change parameters in const.h !");
   return 1;
 #endif
-  
+
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
