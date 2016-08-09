@@ -21,6 +21,7 @@
 #define SWIFT_RIEMANN_TRRS_H
 
 #include "adiabatic_index.h"
+#include "riemann_vacuum.h"
 
 /**
  * @brief Solve the Riemann problem using the Two Rarefaction Riemann Solver
@@ -54,6 +55,10 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   /* calculate the sound speeds */
   aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
   aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+
+  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit)) {
+    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
+  }
 
   /* calculate the velocity and pressure in the intermediate state */
   PLR = pow_gamma_minus_one_over_two_gamma(WL[4] / WR[4]);
