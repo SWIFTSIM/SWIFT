@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.f * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   kernel_deval(xj, &wj, &wj_dx);
 
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (3.f * wj + xj * wj_dx);
+  pj->rho_dh -= mi * (hydro_dimension * wj + xj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
 }
@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   kernel_deval(xi, &wi, &wi_dx);
 
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.f * wi + xi * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + xi * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 }
@@ -128,19 +128,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hi2_inv = hi_inv * hi_inv;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hi2_inv * hi2_inv * wi_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hj2_inv = hj_inv * hj_inv;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hj2_inv * hj2_inv * wj_dx;
+  const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
   const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
@@ -211,19 +211,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hi2_inv = hi_inv * hi_inv;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hi2_inv * hi2_inv * wi_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hj2_inv = hj_inv * hj_inv;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hj2_inv * hj2_inv * wj_dx;
+  const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
   const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;

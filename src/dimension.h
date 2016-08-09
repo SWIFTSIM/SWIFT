@@ -105,8 +105,15 @@ __attribute__((always_inline)) INLINE static float pow_dimension_plus_one(
 #endif
 }
 
+/* ------------------------------------------------------------------------- */
 #ifdef WITH_VECTORIZATION
 
+/**
+ * @brief Returns the argument to the power given by the dimension (vector
+ * version)
+ *
+ * Computes \f$x^d\f$.
+ */
 __attribute__((always_inline)) INLINE static vector pow_dimension_vec(
     vector x) {
 
@@ -130,6 +137,12 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_vec(
 #endif
 }
 
+/**
+ * @brief Returns the argument to the power given by the dimension plus one
+ * (vector version)
+ *
+ * Computes \f$x^{d+1}\f$.
+ */
 __attribute__((always_inline)) INLINE static vector pow_dimension_plus_one_vec(
     vector x) {
 
