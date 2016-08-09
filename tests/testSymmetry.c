@@ -46,6 +46,59 @@ int main(int argc, char *argv[]) {
   pi.id = 1;
   pj.id = 2;
 
+#if defined(GIZMO_SPH)
+  /* Give the primitive variables sensible values, since the Riemann solver does
+     not like negative densities and pressures */
+  pi.primitives.rho = random_uniform(0.1f, 1.0f);
+  pi.primitives.v[0] = random_uniform(-10.0f, 10.0f);
+  pi.primitives.v[1] = random_uniform(-10.0f, 10.0f);
+  pi.primitives.v[2] = random_uniform(-10.0f, 10.0f);
+  pi.primitives.P = random_uniform(0.1f, 1.0f);
+  /*  pj.primitives.rho = random_uniform(0.1f, 1.0f);
+    pj.primitives.v[0] = random_uniform(-10.0f, 10.0f);
+    pj.primitives.v[1] = random_uniform(-10.0f, 10.0f);
+    pj.primitives.v[2] = random_uniform(-10.0f, 10.0f);
+    pj.primitives.P = random_uniform(0.1f, 1.0f);*/
+  /* make the values for pj the same, since otherwise we suffer from the swap of
+     left and right states in the Riemann solver */
+  pj.primitives.rho = pi.primitives.rho;
+  pj.primitives.v[0] = pi.primitives.v[0];
+  pj.primitives.v[1] = pi.primitives.v[1];
+  pj.primitives.v[2] = pi.primitives.v[2];
+  pj.primitives.P = pi.primitives.P;
+  /* make gradients zero */
+  pi.primitives.gradients.rho[0] = 0.0f;
+  pi.primitives.gradients.rho[1] = 0.0f;
+  pi.primitives.gradients.rho[2] = 0.0f;
+  pi.primitives.gradients.v[0][0] = 0.0f;
+  pi.primitives.gradients.v[0][1] = 0.0f;
+  pi.primitives.gradients.v[0][2] = 0.0f;
+  pi.primitives.gradients.v[1][0] = 0.0f;
+  pi.primitives.gradients.v[1][1] = 0.0f;
+  pi.primitives.gradients.v[1][2] = 0.0f;
+  pi.primitives.gradients.v[2][0] = 0.0f;
+  pi.primitives.gradients.v[2][1] = 0.0f;
+  pi.primitives.gradients.v[2][2] = 0.0f;
+  pi.primitives.gradients.P[0] = 0.0f;
+  pi.primitives.gradients.P[1] = 0.0f;
+  pi.primitives.gradients.P[2] = 0.0f;
+  pj.primitives.gradients.rho[0] = 0.0f;
+  pj.primitives.gradients.rho[1] = 0.0f;
+  pj.primitives.gradients.rho[2] = 0.0f;
+  pj.primitives.gradients.v[0][0] = 0.0f;
+  pj.primitives.gradients.v[0][1] = 0.0f;
+  pj.primitives.gradients.v[0][2] = 0.0f;
+  pj.primitives.gradients.v[1][0] = 0.0f;
+  pj.primitives.gradients.v[1][1] = 0.0f;
+  pj.primitives.gradients.v[1][2] = 0.0f;
+  pj.primitives.gradients.v[2][0] = 0.0f;
+  pj.primitives.gradients.v[2][1] = 0.0f;
+  pj.primitives.gradients.v[2][2] = 0.0f;
+  pj.primitives.gradients.P[0] = 0.0f;
+  pj.primitives.gradients.P[1] = 0.0f;
+  pj.primitives.gradients.P[2] = 0.0f;
+#endif
+
   /* Make an xpart companion */
   struct xpart xpi, xpj;
   bzero(&xpi, sizeof(struct xpart));
@@ -104,8 +157,16 @@ int main(int argc, char *argv[]) {
   i_ok = memcmp(&pi, &pi2, sizeof(struct part));
   j_ok = memcmp(&pj, &pj2, sizeof(struct part));
 
-  if (i_ok) error("Particles 'pi' do not match after force");
-  if (j_ok) error("Particles 'pj' do not match after force");
+  if (i_ok) {
+    printParticle_single(&pi, &xpi);
+    printParticle_single(&pi2, &xpi);
+    error("Particles 'pi' do not match after force");
+  }
+  if (j_ok) {
+    printParticle_single(&pj, &xpj);
+    printParticle_single(&pj2, &xpj);
+    error("Particles 'pj' do not match after force");
+  }
 
   return 0;
 }
