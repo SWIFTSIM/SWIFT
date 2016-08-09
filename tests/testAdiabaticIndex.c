@@ -20,6 +20,13 @@
 #include "adiabatic_index.h"
 #include "error.h"
 
+/**
+ * @brief Check that a and b are consistent (up to some absolute error)
+ *
+ * @param a First value
+ * @param b Second value
+ * @param s String used to identify this check in messages
+ */
 void check_value(float a, float b, const char* s) {
   if (fabsf(a - b) > 1.e-5f) {
     error("Values are inconsistent: %g %g (%s)!", a, b, s);
@@ -28,6 +35,10 @@ void check_value(float a, float b, const char* s) {
   }
 }
 
+/**
+ * @brief Check that the pre-defined adiabatic index constants contain correct
+ * values
+ */
 void check_constants() {
   float val;
 
@@ -57,6 +68,10 @@ void check_constants() {
   check_value(val, hydro_one_over_gamma, "1/gamma");
 }
 
+/**
+ * @brief Check that the adiabatic index power functions return the correct
+ * values
+ */
 void check_functions() {
   float val_a, val_b;
   const float x = 0.4;
@@ -74,10 +89,15 @@ void check_functions() {
   check_value(val_a, val_b, "x^((2 gamma)/(gamma-1))");
 }
 
+/**
+ * @brief Check adiabatic index constants and power functions
+ */
 int main() {
 
+  /* check the values of the adiabatic index constants */
   check_constants();
 
+  /* check the adiabatic index power functions */
   check_functions();
 
   return 0;

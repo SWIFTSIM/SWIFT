@@ -24,13 +24,13 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS
 TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
         testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh  \
         testParser.sh testSPHStep test125cells.sh testKernelGrav testFFT \
-        testRiemann
+        testAdiabaticIndex testRiemannExact
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
 		 testSPHStep testPair test27cells test125cells testParser \
                  testKernel testKernelGrav testFFT testInteractions testMaths testSymmetry \
-                 testRiemann
+                 testAdiabaticIndex testRiemannExact
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
@@ -63,7 +63,9 @@ testFFT_SOURCES = testFFT.c
 
 testInteractions_SOURCES = testInteractions.c
 
-testRiemann_SOURCES = testRiemann.c
+testAdiabaticIndex_SOURCES = testAdiabaticIndex.c
+
+testRiemannExact_SOURCES = testRiemannExact.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \

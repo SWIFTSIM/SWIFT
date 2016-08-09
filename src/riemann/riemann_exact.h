@@ -29,6 +29,7 @@
 #ifndef SWIFT_RIEMANN_EXACT_H
 #define SWIFT_RIEMANN_EXACT_H
 
+#include <float.h>
 #include "adiabatic_index.h"
 
 /* frequently used combinations of hydro_gamma */

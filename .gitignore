@@ -70,7 +70,8 @@ tests/testPair.sh
 tests/testPairPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
-tests/testRiemann
+tests/testAdiabaticIndex
+tests/testRiemannExact
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf
