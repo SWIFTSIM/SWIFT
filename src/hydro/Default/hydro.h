@@ -19,8 +19,88 @@
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
+#include "equation_of_state.h"
 
 #include <float.h>
+
+/**
+ * @brief Returns the internal energy of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
+    const struct part *restrict p, float dt) {
+
+  return p->u;
+}
+
+/**
+ * @brief Returns the pressure of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_pressure(
+    const struct part *restrict p, float dt) {
+
+  return gas_pressure_from_internal_energy(p->rho, p->u);
+}
+
+/**
+ * @brief Returns the entropy of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_entropy(
+    const struct part *restrict p, float dt) {
+
+  return gas_entropy_from_internal_energy(p->rho, p->u);
+}
+
+/**
+ * @brief Returns the sound speed of a particle
+ *
+ * @param p The particle of interest
+ * @param dt Time since the last kick
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
+    const struct part *restrict p, float dt) {
+
+  return p->force.soundspeed;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed internal
+ * energy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param u The new internal energy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
+    struct part *restrict p, float u) {
+
+  p->u = u;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed entropy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param S The new entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_entropy(
+    struct part *restrict p, float S) {
+
+  p->u = gas_internal_energy_from_entropy(p->rho, S);
+}
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -253,51 +333,3 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p) {}
-
-/**
- * @brief Returns the internal energy of a particle
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
-    const struct part *restrict p, float dt) {
-
-  return p->u;
-}
-
-/**
- * @brief Returns the pressure of a particle
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_pressure(
-    const struct part *restrict p, float dt) {
-
-  return p->force.P_over_rho2 * p->rho * p->rho / p->rho_dh;
-}
-
-/**
- * @brief Returns the entropy of a particle
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_entropy(
-    const struct part *restrict p, float dt) {
-
-  return hydro_gamma_minus_one * p->u * pow_minus_gamma_minus_one(p->rho);
-}
-
-/**
- * @brief Returns the sound speed of a particle
- *
- * @param p The particle of interest
- * @param dt Time since the last kick
- */
-__attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
-    const struct part *restrict p, float dt) {
-
-  return p->force.soundspeed;
-}

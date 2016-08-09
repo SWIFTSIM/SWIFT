@@ -144,10 +144,7 @@ void pairs_single_density(double *dim, long long int pid,
   p = parts[k];
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
-  p.rho = 0.0;
-  p.density.wcount = 0.0;
-  // p.icount = 0;
-  p.rho_dh = 0.0;
+  hydro_init_part(&p);
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -487,25 +484,24 @@ void density_dump(int N) {
  */
 void engine_single_density(double *dim, long long int pid,
                            struct part *restrict parts, int N, int periodic) {
-  int i, k;
   double r2, dx[3];
-  float fdx[3], ih;
+  float fdx[3];
   struct part p;
 
   /* Find "our" part. */
+  int k;
   for (k = 0; k < N && parts[k].id != pid; k++)
     ;
   if (k == N) error("Part not found.");
   p = parts[k];
 
   /* Clear accumulators. */
-  ih = 1.0f / p.h;
   hydro_init_part(&p);
 
   /* Loop over all particle pairs (force). */
-  for (k = 0; k < N; k++) {
+  for (int k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
-    for (i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       dx[i] = p.x[i] - parts[k].x[i];
       if (periodic) {
         if (dx[i] < -dim[i] / 2)
@@ -522,10 +518,7 @@ void engine_single_density(double *dim, long long int pid,
   }
 
   /* Dump the result. */
-  p.rho = ih * ih * ih * (p.rho + p.mass * kernel_root);
-  p.rho_dh = p.rho_dh * ih * ih * ih * ih;
-  p.density.wcount =
-      (p.density.wcount + kernel_root) * (4.0f / 3.0 * M_PI * kernel_gamma3);
+  hydro_end_density(&p, 0);
   message("part %lli (h=%e) has wcount=%e, rho=%e, rho_dh=%e.", p.id, p.h,
           p.density.wcount, p.rho, p.rho_dh);
   fflush(stdout);
