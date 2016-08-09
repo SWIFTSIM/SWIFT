@@ -24,6 +24,7 @@
 
 /* Includes. */
 #include "const.h"
+#include "dimension.h"
 #include "error.h"
 #include "inline.h"
 #include "vector.h"
@@ -35,8 +36,16 @@
 #define kernel_name "Cubic spline (M4)"
 #define kernel_degree 3 /* Degree of the polynomial */
 #define kernel_ivals 2  /* Number of branches */
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(1.825742))
 #define kernel_constant ((float)(16. * M_1_PI))
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_gamma ((float)(1.778002))
+#define kernel_constant ((float)(80. * M_1_PI / 7.))
+#elif defined(HYDRO_DIMENSION_1D)
+#define kernel_gamma ((float)(1.732051))
+#define kernel_constant ((float)(8. / 3.))
+#endif
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {3.f,  -3.f, 0.f,  0.5f, /* 0 < u < 0.5 */
                                     -1.f, 3.f,  -3.f, 1.f,  /* 0.5 < u < 1 */
@@ -47,10 +56,18 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 
 /* Coefficients for the kernel. */
 #define kernel_name "Quartic spline (M5)"
-#define kernel_degree 4
-#define kernel_ivals 5
+#define kernel_degree 4 /* Degree of the polynomial */
+#define kernel_ivals 5  /* Number of branches */
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.018932))
 #define kernel_constant ((float)(15625. * M_1_PI / 512.))
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_gamma ((float)(1.977173))
+#define kernel_constant ((float)(46875. * M_1_PI / 2398.))
+#elif defined(HYDRO_DIMENSION_1D)
+#define kernel_gamma ((float)(1.936492))
+#define kernel_constant ((float)(3125. / 768.))
+#endif
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         6.f,  0.f,  -2.4f, 0.f,   0.368f, /* 0 < u < 0.2 */
@@ -65,10 +82,18 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 
 /* Coefficients for the kernel. */
 #define kernel_name "Quintic spline (M6)"
-#define kernel_degree 5
-#define kernel_ivals 3
+#define kernel_degree 5 /* Degree of the polynomial */
+#define kernel_ivals 3  /* Number of branches */
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.195775))
 #define kernel_constant ((float)(2187. * M_1_PI / 40.))
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_gamma ((float)(2.158131))
+#define kernel_constant ((float)(15309. * M_1_PI / 478.))
+#elif defined(HYDRO_DIMENSION_1D)
+#define kernel_gamma ((float)(2.121321))
+#define kernel_constant ((float)(243. / 40.))
+#endif
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         -10.f,        10.f,      0.f,
@@ -85,10 +110,17 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 
 /* Coefficients for the kernel. */
 #define kernel_name "Wendland C2"
-#define kernel_degree 5
-#define kernel_ivals 1
+#define kernel_degree 5 /* Degree of the polynomial */
+#define kernel_ivals 1  /* Number of branches */
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(1.936492))
 #define kernel_constant ((float)(21. * M_1_PI / 2.))
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_gamma ((float)(1.897367))
+#define kernel_constant ((float)(7. * M_1_PI))
+#elif defined(HYDRO_DIMENSION_1D)
+#error "Wendland C2 kernel not defined in 1D."
+#endif
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         4.f, -15.f, 20.f, -10.f, 0.f, 1.f,  /* 0 < u < 1 */
@@ -99,10 +131,17 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 
 /* Coefficients for the kernel. */
 #define kernel_name "Wendland C4"
-#define kernel_degree 8
+#define kernel_degree 8 /* Degree of the polynomial */
 #define kernel_ivals 1
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.207940))
 #define kernel_constant ((float)(495. * M_1_PI / 32.))
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_gamma ((float)(2.171239))
+#define kernel_constant ((float)(9. * M_1_PI))
+#elif defined(HYDRO_DIMENSION_1D)
+#error "Wendland C4 kernel not defined in 1D."
+#endif
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         11.666667f, -64.f,       140.f, -149.333333f, 70.f,
@@ -115,10 +154,17 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 
 /* Coefficients for the kernel. */
 #define kernel_name "Wendland C6"
-#define kernel_degree 11
-#define kernel_ivals 1
+#define kernel_degree 11 /* Degree of the polynomial */
+#define kernel_ivals 1   /* Number of branches */
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.449490))
 #define kernel_constant ((float)(1365. * M_1_PI / 64.))
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_gamma ((float)(2.415230))
+#define kernel_constant ((float)(78. * M_1_PI / 7.))
+#elif defined(HYDRO_DIMENSION_1D)
+#error "Wendland C6 kernel not defined in 1D."
+#endif
 static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
     __attribute__((aligned(16))) = {
         32.f, -231.f, 704.f, -1155.f, 1056.f, -462.f,
@@ -151,16 +197,32 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 #define kernel_ivals_f ((float)(kernel_ivals))
 
 /* Kernel self contribution (i.e. W(0,h)) */
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_root \
   ((float)(kernel_coeffs[kernel_degree]) * kernel_constant * kernel_igamma3)
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_root \
+  ((float)(kernel_coeffs[kernel_degree]) * kernel_constant * kernel_igamma2)
+#elif defined(HYDRO_DIMENSION_1D)
+#define kernel_root \
+  ((float)(kernel_coeffs[kernel_degree]) * kernel_constant * kernel_igamma)
+#endif
 
 /* Kernel normalisation constant (volume term) */
+#if defined(HYDRO_DIMENSION_3D)
 #define kernel_norm ((float)(4.0 * M_PI * kernel_gamma3 / 3.0))
+#elif defined(HYDRO_DIMENSION_2D)
+#define kernel_norm ((float)(M_PI * kernel_gamma2))
+#elif defined(HYDRO_DIMENSION_1D)
+#define kernel_norm ((float)(2.0 * kernel_gamma))
+#endif
+
+/* ------------------------------------------------------------------------- */
 
 /**
  * @brief Computes the kernel function and its derivative.
  *
- * Return 0 if $u > \\gamma = H/h$
+ * Returns garbage if $u > \\gamma = H/h$
  *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
@@ -200,6 +262,8 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
 /**
  * @brief Computes the kernel function.
  *
+ * Returns garbage if $u > \\gamma = H/h$
+ *
  * @param u The ratio of the distance to the smoothing length $u = x/h$.
  * @param W (return) The value of the kernel function $W(x,h)$.
  */
@@ -227,6 +291,8 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
   /* Return everything */
   *W = w * kernel_constant * kernel_igamma3;
 }
+
+/* ------------------------------------------------------------------------- */
 
 #ifdef WITH_VECTORIZATION
 

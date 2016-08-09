@@ -36,6 +36,11 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
+/* Dimensionality of the problem */
+//#define HYDRO_DIMENSION_3D
+#define HYDRO_DIMENSION_2D
+//#define HYDRO_DIMENSION_1D
+
 /* Hydrodynamical adiabatic index. */
 #define HYDRO_GAMMA_5_3
 //#define HYDRO_GAMMA_4_3

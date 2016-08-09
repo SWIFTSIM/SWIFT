@@ -58,7 +58,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.f * wi + ui * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
@@ -71,7 +71,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (3.f * wj + uj * wj_dx);
+  pj->rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
@@ -191,7 +191,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   /* Compute density of pi. */
   rhoi.v = mj.v * wi.v;
-  rhoi_dh.v = mj.v * (vec_set1(3.0f) * wi.v + xi.v * wi_dx.v);
+  rhoi_dh.v = mj.v * (vec_set1(hydro_dimension) * wi.v + xi.v * wi_dx.v);
   wcounti.v = wi.v;
   wcounti_dh.v = xi.v * wi_dx.v;
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
@@ -199,7 +199,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
 
   /* Compute density of pj. */
   rhoj.v = mi.v * wj.v;
-  rhoj_dh.v = mi.v * (vec_set1(3.0f) * wj.v + xj.v * wj_dx.v);
+  rhoj_dh.v = mi.v * (vec_set1(hydro_dimension) * wj.v + xj.v * wj_dx.v);
   wcountj.v = wj.v;
   wcountj_dh.v = xj.v * wj_dx.v;
   div_vj.v = mi.v * dvdr.v * wj_dx.v;
@@ -253,7 +253,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (3.f * wi + u * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + u * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
@@ -356,7 +356,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 
   /* Compute density of pi. */
   rhoi.v = mj.v * wi.v;
-  rhoi_dh.v = mj.v * (vec_set1(3.0f) * wi.v + xi.v * wi_dx.v);
+  rhoi_dh.v = mj.v * (vec_set1(hydro_dimension) * wi.v + xi.v * wi_dx.v);
   wcounti.v = wi.v;
   wcounti_dh.v = xi.v * wi_dx.v;
   div_vi.v = mj.v * dvdr.v * wi_dx.v;
@@ -402,17 +402,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hi2_inv = hi_inv * hi_inv;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
-  const float wi_dr = hi2_inv * hi2_inv * wi_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hj2_inv = hj_inv * hj_inv;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hj2_inv * hj2_inv * wj_dx;
+  const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
@@ -485,7 +485,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   vector r, r2, ri;
   vector xi, xj;
   vector hi, hj, hi_inv, hj_inv;
-  vector hi2_inv, hj2_inv;
+  vector hid_inv, hjd_inv;
   vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
   vector piPOrho, pjPOrho, pirho, pjrho;
   vector mi, mj;
@@ -580,19 +580,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   hi.v = vec_load(Hi);
   hi_inv.v = vec_rcp(hi.v);
   hi_inv.v = hi_inv.v - hi_inv.v * (hi.v * hi_inv.v - vec_set1(1.0f));
-  hi2_inv.v = hi_inv.v * hi_inv.v;
+  hid_inv = pow_dimension_plus_one_vec(hi_inv); /* 1/h^(d+1) */
   xi.v = r.v * hi_inv.v;
   kernel_deval_vec(&xi, &wi, &wi_dx);
-  wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
+  wi_dr.v = hid_inv.v * wi_dx.v;
 
   /* Get the kernel for hj. */
   hj.v = vec_load(Hj);
   hj_inv.v = vec_rcp(hj.v);
   hj_inv.v = hj_inv.v - hj_inv.v * (hj.v * hj_inv.v - vec_set1(1.0f));
-  hj2_inv.v = hj_inv.v * hj_inv.v;
+  hjd_inv = pow_dimension_plus_one_vec(hj_inv); /* 1/h^(d+1) */
   xj.v = r.v * hj_inv.v;
   kernel_deval_vec(&xj, &wj, &wj_dx);
-  wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
+  wj_dr.v = hjd_inv.v * wj_dx.v;
 
   /* Compute dv dot r. */
   dvdr.v = ((vi[0].v - vj[0].v) * dx[0].v) + ((vi[1].v - vj[1].v) * dx[1].v) +
@@ -677,17 +677,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hi2_inv = hi_inv * hi_inv;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
-  const float wi_dr = hi2_inv * hi2_inv * wi_dx;
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hj2_inv = hj_inv * hj_inv;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hj2_inv * hj2_inv * wj_dx;
+  const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
@@ -753,7 +753,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   vector r, r2, ri;
   vector xi, xj;
   vector hi, hj, hi_inv, hj_inv;
-  vector hi2_inv, hj2_inv;
+  vector hid_inv, hjd_inv;
   vector wi, wj, wi_dx, wj_dx, wi_dr, wj_dr, dvdr;
   vector piPOrho, pjPOrho, pirho, pjrho;
   vector mj;
@@ -845,19 +845,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   hi.v = vec_load(Hi);
   hi_inv.v = vec_rcp(hi.v);
   hi_inv.v = hi_inv.v - hi_inv.v * (hi.v * hi_inv.v - vec_set1(1.0f));
-  hi2_inv.v = hi_inv.v * hi_inv.v;
+  hid_inv = pow_dimension_plus_one_vec(hi_inv);
   xi.v = r.v * hi_inv.v;
   kernel_deval_vec(&xi, &wi, &wi_dx);
-  wi_dr.v = hi2_inv.v * hi2_inv.v * wi_dx.v;
+  wi_dr.v = hid_inv.v * wi_dx.v;
 
   /* Get the kernel for hj. */
   hj.v = vec_load(Hj);
   hj_inv.v = vec_rcp(hj.v);
   hj_inv.v = hj_inv.v - hj_inv.v * (hj.v * hj_inv.v - vec_set1(1.0f));
-  hj2_inv.v = hj_inv.v * hj_inv.v;
+  hjd_inv = pow_dimension_plus_one_vec(hj_inv);
   xj.v = r.v * hj_inv.v;
   kernel_deval_vec(&xj, &wj, &wj_dx);
-  wj_dr.v = hj2_inv.v * hj2_inv.v * wj_dx.v;
+  wj_dr.v = hjd_inv.v * wj_dx.v;
 
   /* Compute dv dot r. */
   dvdr.v = ((vi[0].v - vj[0].v) * dx[0].v) + ((vi[1].v - vj[1].v) * dx[1].v) +
