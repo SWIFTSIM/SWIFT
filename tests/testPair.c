@@ -106,8 +106,6 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (size_t pid = 0; pid < c->count; pid++) {
-    c->parts[pid].rho = 0.f;
-    c->parts[pid].rho_dh = 0.f;
     hydro_init_part(&c->parts[pid]);
   }
 }
@@ -133,9 +131,14 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             "%13e %13e %13e\n",
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
-            ci->parts[pid].v[2], ci->parts[pid].rho, ci->parts[pid].rho_dh,
+            ci->parts[pid].v[2], ci->parts[pid].rho,
+#if defined(GIZMO_SPH)
+            0.f,
+#else
+            cj->parts[pid].rho_dh,
+#endif
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
-#ifdef GADGET2_SPH
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
             ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
 #else
@@ -152,9 +155,14 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             "%13e %13e %13e\n",
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-            cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+            cj->parts[pjd].v[2], cj->parts[pjd].rho,
+#if defined(GIZMO_SPH)
+            0.f,
+#else
+            cj->parts[pjd].rho_dh,
+#endif
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-#ifdef GADGET2_SPH
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
             cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else
