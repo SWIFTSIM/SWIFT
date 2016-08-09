@@ -20,9 +20,21 @@
 #ifndef SWIFT_KERNEL_HYDRO_H
 #define SWIFT_KERNEL_HYDRO_H
 
+/**
+ * @file kernel_hydro.h
+ * @brief Kernel functions for SPH (scalar and vector version).
+ *
+ * All constants and kernel coefficients are taken from table 1 of
+ * Dehnen & Aly, MNRAS, 425, pp. 1062-1082 (2012).
+ */
+
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <math.h>
 
-/* Includes. */
+/* Local headers. */
 #include "const.h"
 #include "dimension.h"
 #include "error.h"

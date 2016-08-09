@@ -19,6 +19,12 @@
 #ifndef SWIFT_DIMENSION_H
 #define SWIFT_DIMENSION_H
 
+/**
+ * @file dimension.h
+ * @brief Defines the dimensionality \f$d\f$ of the problem and (fast)
+ * mathematical functions involving it
+ */
+
 /* Config parameters. */
 #include "../config.h"
 
