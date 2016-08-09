@@ -354,7 +354,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
       Whalf[2] = WR[2];
       Whalf[3] = WR[3];
       /* vacuum left state */
-      if (-vR < aR) {
+      if (-aR < vR) {
         SR = vR - const_riemann_tdgm1 * aR;
         if (SR >= 0.0f) {
           Whalf[0] = 0.0f;
@@ -410,7 +410,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[1] = WR[1];
           Whalf[2] = WR[2];
           Whalf[3] = WR[3];
-          if (-vR < aR) {
+          if (-aR < vR) {
             Whalf[0] = WR[0] * powf(const_riemann_tdgp1 -
                                         const_riemann_gm1dgp1 / aR * vR,
                                     const_riemann_tdgm1);
