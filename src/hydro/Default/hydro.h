@@ -194,12 +194,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * irho);
 
   /* Finish calculation of the velocity curl components */
-  p->density.rot_v[0] *= hydro_dimension_inv * irho;
-  p->density.rot_v[1] *= hydro_dimension_inv * irho;
-  p->density.rot_v[2] *= hydro_dimension_inv * irho;
+  p->density.rot_v[0] *= h_inv_dim_plus_one * irho;
+  p->density.rot_v[1] *= h_inv_dim_plus_one * irho;
+  p->density.rot_v[2] *= h_inv_dim_plus_one * irho;
 
   /* Finish calculation of the velocity divergence */
-  p->density.div_v *= hydro_dimension_inv * irho;
+  p->density.div_v *= h_inv_dim_plus_one * irho;
 }
 
 /**
