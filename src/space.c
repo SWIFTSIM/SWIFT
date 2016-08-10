@@ -41,6 +41,7 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "const.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
@@ -1418,21 +1419,57 @@ struct cell *space_getcell(struct space *s) {
   return c;
 }
 
+/**
+ * @brief Initialises all the particles by setting them into a valid state
+ *
+ * Calls hydro_first_init_part() on all the particles
+ */
 void space_init_parts(struct space *s) {
 
   const size_t nr_parts = s->nr_parts;
   struct part *restrict p = s->parts;
   struct xpart *restrict xp = s->xparts;
 
-  for (size_t i = 0; i < nr_parts; ++i) hydro_first_init_part(&p[i], &xp[i]);
+  for (size_t i = 0; i < nr_parts; ++i) {
+
+#ifdef HYDRO_DIMENSION_2D
+    p[i].x[2] = 0.f;
+    p[i].v[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+    p[i].x[1] = p[i].x[2] = 0.f;
+    p[i].v[1] = p[i].v[2] = 0.f;
+#endif
+
+    hydro_first_init_part(&p[i], &xp[i]);
+  }
 }
 
+/**
+ * @brief Initialises all the g-particles by setting them into a valid state
+ *
+ * Calls gravity_first_init_gpart() on all the particles
+ */
 void space_init_gparts(struct space *s) {
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *restrict gp = s->gparts;
 
-  for (size_t i = 0; i < nr_gparts; ++i) gravity_first_init_gpart(&gp[i]);
+  for (size_t i = 0; i < nr_gparts; ++i) {
+
+#ifdef HYDRO_DIMENSION_2D
+    gp[i].x[2] = 0.f;
+    gp[i].v_full[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+    gp[i].x[1] = gp[i].x[2] = 0.f;
+    gp[i].v_full[1] = gp[i].v_full[2] = 0.f;
+#endif
+
+    gravity_first_init_gpart(&gp[i]);
+  }
 }
 
 /**
