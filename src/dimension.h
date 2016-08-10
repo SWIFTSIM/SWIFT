@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE static vector pow_dimension_plus_one_vec(
 
 #if defined(HYDRO_DIMENSION_3D)
 
-  const vector x2 = x.v * x.v;
+  const vector x2 = (vector) (x.v * x.v);
   return (vector)(x2.v * x2.v);
 
 #elif defined(HYDRO_DIMENSION_2D)
