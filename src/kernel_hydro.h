@@ -144,7 +144,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* Coefficients for the kernel. */
 #define kernel_name "Wendland C4"
 #define kernel_degree 8 /* Degree of the polynomial */
-#define kernel_ivals 1
+#define kernel_ivals 1  /* Number of branches */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.207940))
 #define kernel_constant ((float)(495. * M_1_PI / 32.))
@@ -312,15 +312,17 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
 
 #ifdef WITH_VECTORIZATION
 
-static const vector kernel_igamma_vec = FILL_VEC((float)kernel_igamma);
+static const vector kernel_gamma_inv_vec = FILL_VEC((float)kernel_gamma_inv);
 
 static const vector kernel_ivals_vec = FILL_VEC((float)kernel_ivals);
 
 static const vector kernel_constant_vec = FILL_VEC((float)kernel_constant);
 
-static const vector kernel_igamma3_vec = FILL_VEC((float)kernel_igamma3);
+static const vector kernel_gamma_inv_dim_vec =
+    FILL_VEC((float)kernel_gamma_inv_dim);
 
-static const vector kernel_igamma4_vec = FILL_VEC((float)kernel_igamma4);
+static const vector kernel_gamma_inv_dim_plus_one_vec =
+    FILL_VEC((float)kernel_gamma_inv_dim_plus_one);
 
 /**
  * @brief Computes the kernel function and its derivative (Vectorised version).
@@ -336,7 +338,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
 
   /* Go to the range [0,1[ from [0,H[ */
   vector x;
-  x.v = u->v * kernel_igamma_vec.v;
+  x.v = u->v * kernel_gamma_inv_vec.v;
 
   /* Load x and get the interval id. */
   vector ind;
@@ -359,8 +361,9 @@ __attribute__((always_inline)) INLINE static void kernel_deval_vec(
   }
 
   /* Return everything */
-  w->v = w->v * kernel_constant_vec.v * kernel_igamma3_vec.v;
-  dw_dx->v = dw_dx->v * kernel_constant_vec.v * kernel_igamma4_vec.v;
+  w->v = w->v * kernel_constant_vec.v * kernel_gamma_inv_dim_vec.v;
+  dw_dx->v =
+      dw_dx->v * kernel_constant_vec.v * kernel_gamma_inv_dim_plus_one_vec.v;
 }
 
 #endif
