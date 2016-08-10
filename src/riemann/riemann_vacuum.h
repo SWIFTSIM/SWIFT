@@ -59,12 +59,6 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
   float SL, SR;
   float vhalf;
 
-  message(
-      "WL: [%g, %g, %g, %g, %g]\nWR: [%g, %g, %g, %g, %g]\nvL: %g, vR: %g"
-      ", aL: %g, aR: %g",
-      WL[0], WL[1], WL[2], WL[3], WL[4], WR[0], WR[1], WR[2], WR[3], WR[4], vL,
-      vR, aL, aR);
-
   if (!WR[0] && !WL[0]) {
     /* if both states are vacuum, the solution is also vacuum */
     Whalf[0] = 0.0f;
@@ -140,12 +134,10 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
         Whalf[4] = WR[4];
       }
     } else {
-      message("Vacuum generation");
       /* vacuum generation */
       SR = vR - hydro_two_over_gamma_minus_one * aR;
       SL = vL + hydro_two_over_gamma_minus_one * aL;
       if (SR > 0.0f && SL < 0.0f) {
-        message("Vacuum");
         Whalf[0] = 0.0f;
         Whalf[1] = 0.0f;
         Whalf[2] = 0.0f;
@@ -158,7 +150,6 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[2] = WL[2];
           Whalf[3] = WL[3];
           if (aL > vL) {
-            message("Left fan");
             Whalf[0] = WL[0] *
                        pow_two_over_gamma_minus_one(
                            hydro_two_over_gamma_plus_one +
@@ -171,7 +162,6 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
                            hydro_two_over_gamma_plus_one +
                            hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
           } else {
-            message("Left state");
             Whalf[0] = WL[0];
             vhalf = 0.0f;
             Whalf[4] = WL[4];
@@ -181,7 +171,6 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[2] = WR[2];
           Whalf[3] = WR[3];
           if (-aR < vR) {
-            message("Right fan");
             Whalf[0] = WR[0] *
                        pow_two_over_gamma_minus_one(
                            hydro_two_over_gamma_plus_one -
@@ -194,7 +183,6 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
                            hydro_two_over_gamma_plus_one -
                            hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
           } else {
-            message("Right state");
             Whalf[0] = WR[0];
             vhalf = 0.0f;
             Whalf[4] = WR[4];

@@ -47,7 +47,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
-    struct part* p, struct xpart* xp) {}
+    struct part* p, struct xpart* xp) {
+
+  p->primitives.v[0] = p->v[0];
+  p->primitives.v[1] = p->v[1];
+  p->primitives.v[2] = p->v[2];
+}
 
 /**
  * @brief Prepares a particle for the volume calculation.
@@ -179,11 +184,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     momentum2 = (momentum[0] * momentum[0] + momentum[1] * momentum[1] +
                  momentum[2] * momentum[2]);
 #endif
-    energy = p->conserved.energy;
     p->primitives.rho = m / volume;
     p->primitives.v[0] = momentum[0] / m;
     p->primitives.v[1] = momentum[1] / m;
     p->primitives.v[2] = momentum[2] / m;
+    energy = p->conserved.energy;
 #ifndef THERMAL_ENERGY
     p->primitives.P =
         hydro_gamma_minus_one * (energy - 0.5 * momentum2 / m) / volume;
@@ -363,20 +368,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_fluxes(
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
     struct part* p) {
 
-  /* figure out what to put here */
-}
-
-/**
- * @brief Finishes the fluxes calculation.
- *
- * Multiplies the forces and accelerationsby the appropiate constants
- *
- * @param p The particle to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_end_fluxes(
-    struct part* p) {
-
-  /* do nothing */
+  /* Reset the acceleration. */
+  p->a_hydro[0] = 0.0f;
+  p->a_hydro[1] = 0.0f;
+  p->a_hydro[2] = 0.0f;
 }
 
 /**
@@ -397,14 +392,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 #endif
   volume = p->geometry.volume;
 
-  /* set hydro velocities */
-  p->primitives.v[0] = p->v[0];
-  p->primitives.v[1] = p->v[1];
-  p->primitives.v[2] = p->v[2];
+  p->conserved.mass = m = p->mass;
+  p->primitives.rho = m / volume;
+
   /* P actually contains internal energy at this point */
   p->primitives.P *= hydro_gamma_minus_one * p->primitives.rho;
 
-  p->conserved.mass = m = p->primitives.rho * volume;
   p->conserved.momentum[0] = momentum[0] = m * p->primitives.v[0];
   p->conserved.momentum[1] = momentum[1] = m * p->primitives.v[1];
   p->conserved.momentum[2] = momentum[2] = m * p->primitives.v[2];
@@ -418,13 +411,27 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 #endif
 }
 
-// MATTHIEU
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {}
+
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part* p) {}
+    struct part* p) {
+
+  /* Set the hydro acceleration, based on the new momentum and mass */
+  /* NOTE: the momentum and mass are only correct for active particles, since
+           only active particles have received flux contributions from all their
+           neighbours. Since this method is only called for active particles,
+           this is indeed the case. */
+  p->a_hydro[0] = p->conserved.momentum[0] / p->conserved.mass - p->v[0];
+  p->a_hydro[1] = p->conserved.momentum[1] / p->conserved.mass - p->v[1];
+  p->a_hydro[2] = p->conserved.momentum[2] / p->conserved.mass - p->v[2];
+}
+
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {}
+    struct part* p, struct xpart* xp, float dt, float half_dt) {
+
+  /* Nothing needs to be done in this case */
+}
 
 /**
  * @brief Returns the internal energy of a particle
