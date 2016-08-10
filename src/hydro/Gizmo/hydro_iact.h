@@ -125,13 +125,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float xij_i[3], xfac, xijdotdx;
   float vmax, dvdotdx;
   float vi[3], vj[3], vij[3];
-  float Wi[5], Wj[5];  //, Whalf[5];
-#ifdef USE_GRADIENTS
-  float dWi[5], dWj[5];
-  float xij_j[3];
-#endif
-  //    float rhoe;
-  //    float flux[5][3];
+  float Wi[5], Wj[5];
   float dti, dtj, mindt;
   float n_unit[3];
 
@@ -158,10 +152,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[4] = pj->primitives.P;
   dti = pi->ti_end - pi->ti_begin;  // MATTHIEU
   dtj = pj->ti_end - pj->ti_begin;
-
-  //    if(dti > 1.e-7 || dtj > 1.e-7){
-  //        message("Timestep too large: %g %g!", dti, dtj);
-  //    }
 
   /* calculate the maximal signal velocity */
   vmax =
@@ -252,192 +242,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[2] -= vij[1];
   Wj[3] -= vij[2];
 
-#ifdef USE_GRADIENTS
-  /* perform gradient reconstruction in space and time */
-  /* space */
-  /* Compute interface position (relative to pj, since we don't need the actual
-   * position) */
-  /* eqn. (8) */
-  xfac = hj / (hi + hj);
-  for (k = 0; k < 3; k++) xij_j[k] = xfac * dx[k];
-
-  dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
-           pi->primitives.gradients.rho[1] * xij_i[1] +
-           pi->primitives.gradients.rho[2] * xij_i[2];
-  dWi[1] = pi->primitives.gradients.v[0][0] * xij_i[0] +
-           pi->primitives.gradients.v[0][1] * xij_i[1] +
-           pi->primitives.gradients.v[0][2] * xij_i[2];
-  dWi[2] = pi->primitives.gradients.v[1][0] * xij_i[0] +
-           pi->primitives.gradients.v[1][1] * xij_i[1] +
-           pi->primitives.gradients.v[1][2] * xij_i[2];
-  dWi[3] = pi->primitives.gradients.v[2][0] * xij_i[0] +
-           pi->primitives.gradients.v[2][1] * xij_i[1] +
-           pi->primitives.gradients.v[2][2] * xij_i[2];
-  dWi[4] = pi->primitives.gradients.P[0] * xij_i[0] +
-           pi->primitives.gradients.P[1] * xij_i[1] +
-           pi->primitives.gradients.P[2] * xij_i[2];
-
-  dWj[0] = pj->primitives.gradients.rho[0] * xij_j[0] +
-           pj->primitives.gradients.rho[1] * xij_j[1] +
-           pj->primitives.gradients.rho[2] * xij_j[2];
-  dWj[1] = pj->primitives.gradients.v[0][0] * xij_j[0] +
-           pj->primitives.gradients.v[0][1] * xij_j[1] +
-           pj->primitives.gradients.v[0][2] * xij_j[2];
-  dWj[2] = pj->primitives.gradients.v[1][0] * xij_j[0] +
-           pj->primitives.gradients.v[1][1] * xij_j[1] +
-           pj->primitives.gradients.v[1][2] * xij_j[2];
-  dWj[3] = pj->primitives.gradients.v[2][0] * xij_j[0] +
-           pj->primitives.gradients.v[2][1] * xij_j[1] +
-           pj->primitives.gradients.v[2][2] * xij_j[2];
-  dWj[4] = pj->primitives.gradients.P[0] * xij_j[0] +
-           pj->primitives.gradients.P[1] * xij_j[1] +
-           pj->primitives.gradients.P[2] * xij_j[2];
-
-#ifdef PER_FACE_LIMITER
-
-  float xij_i_norm;
-  float phi_i, phi_j;
-  float delta1, delta2;
-  float phiminus, phiplus;
-  float phimin, phimax;
-  float phibar;
-  /* free parameters, values from Hopkins */
-  float psi1 = 0.5, psi2 = 0.25;
-  float phi_mid0, phi_mid;
-
-  for (k = 0; k < 10; k++) {
-    if (k < 5) {
-      phi_i = Wi[k];
-      phi_j = Wj[k];
-      phi_mid0 = Wi[k] + dWi[k];
-      xij_i_norm = sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] +
-                         xij_i[2] * xij_i[2]);
-    } else {
-      phi_i = Wj[k - 5];
-      phi_j = Wi[k - 5];
-      phi_mid0 = Wj[k - 5] + dWj[k - 5];
-      xij_i_norm = sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] +
-                         xij_j[2] * xij_j[2]);
-    }
-
-    delta1 = psi1 * fabs(phi_i - phi_j);
-    delta2 = psi2 * fabs(phi_i - phi_j);
-
-    phimin = fmin(phi_i, phi_j);
-    phimax = fmax(phi_i, phi_j);
-
-    phibar = phi_i + xij_i_norm / r * (phi_j - phi_i);
-
-    /* if sign(phimax+delta1) == sign(phimax) */
-    if ((phimax + delta1) * phimax > 0.0f) {
-      phiplus = phimax + delta1;
-    } else {
-      phiplus = phimax / (1.0f + delta1 / fabs(phimax));
-    }
-
-    /* if sign(phimin-delta1) == sign(phimin) */
-    if ((phimin - delta1) * phimin > 0.0f) {
-      phiminus = phimin - delta1;
-    } else {
-      phiminus = phimin / (1.0f + delta1 / fabs(phimin));
-    }
-
-    if (phi_i == phi_j) {
-      phi_mid = phi_i;
-    } else {
-      if (phi_i < phi_j) {
-        phi_mid = fmax(phiminus, fmin(phibar + delta2, phi_mid0));
-      } else {
-        phi_mid = fmin(phiplus, fmax(phibar - delta2, phi_mid0));
-      }
-    }
-
-    if (k < 5) {
-      dWi[k] = phi_mid - phi_i;
-    } else {
-      dWj[k - 5] = phi_mid - phi_i;
-    }
-  }
-
-#endif
-
-  //    printf("dWL: %g %g %g %g %g\n", dWi[0], dWi[1], dWi[2], dWi[3], dWi[4]);
-  //    printf("dWR: %g %g %g %g %g\n", dWj[0], dWj[1], dWj[2], dWj[3], dWj[4]);
-
-  /* time */
-  dWi[0] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.rho[0] +
-                           Wi[2] * pi->primitives.gradients.rho[1] +
-                           Wi[3] * pi->primitives.gradients.rho[2] +
-                           Wi[0] * (pi->primitives.gradients.v[0][0] +
-                                    pi->primitives.gradients.v[1][1] +
-                                    pi->primitives.gradients.v[2][2]));
-  dWi[1] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.v[0][0] +
-                           Wi[2] * pi->primitives.gradients.v[0][1] +
-                           Wi[3] * pi->primitives.gradients.v[0][2] +
-                           pi->primitives.gradients.P[0] / Wi[0]);
-  dWi[2] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.v[1][0] +
-                           Wi[2] * pi->primitives.gradients.v[1][1] +
-                           Wi[3] * pi->primitives.gradients.v[1][2] +
-                           pi->primitives.gradients.P[1] / Wi[0]);
-  dWi[3] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.v[2][0] +
-                           Wi[2] * pi->primitives.gradients.v[2][1] +
-                           Wi[3] * pi->primitives.gradients.v[2][2] +
-                           pi->primitives.gradients.P[2] / Wi[0]);
-  dWi[4] -=
-      0.5 * mindt * (Wi[1] * pi->primitives.gradients.P[0] +
-                     Wi[2] * pi->primitives.gradients.P[1] +
-                     Wi[3] * pi->primitives.gradients.P[2] +
-                     hydro_gamma * Wi[4] * (pi->primitives.gradients.v[0][0] +
-                                            pi->primitives.gradients.v[1][1] +
-                                            pi->primitives.gradients.v[2][2]));
-
-  dWj[0] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.rho[0] +
-                           Wj[2] * pj->primitives.gradients.rho[1] +
-                           Wj[3] * pj->primitives.gradients.rho[2] +
-                           Wj[0] * (pj->primitives.gradients.v[0][0] +
-                                    pj->primitives.gradients.v[1][1] +
-                                    pj->primitives.gradients.v[2][2]));
-  dWj[1] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.v[0][0] +
-                           Wj[2] * pj->primitives.gradients.v[0][1] +
-                           Wj[3] * pj->primitives.gradients.v[0][2] +
-                           pj->primitives.gradients.P[0] / Wj[0]);
-  dWj[2] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.v[1][0] +
-                           Wj[2] * pj->primitives.gradients.v[1][1] +
-                           Wj[3] * pj->primitives.gradients.v[1][2] +
-                           pj->primitives.gradients.P[1] / Wj[0]);
-  dWj[3] -= 0.5 * mindt * (Wj[1] * pj->primitives.gradients.v[2][0] +
-                           Wj[2] * pj->primitives.gradients.v[2][1] +
-                           Wj[3] * pj->primitives.gradients.v[2][2] +
-                           pj->primitives.gradients.P[2] / Wj[0]);
-  dWj[4] -=
-      0.5 * mindt * (Wj[1] * pj->primitives.gradients.P[0] +
-                     Wj[2] * pj->primitives.gradients.P[1] +
-                     Wj[3] * pj->primitives.gradients.P[2] +
-                     hydro_gamma * Wj[4] * (pj->primitives.gradients.v[0][0] +
-                                            pj->primitives.gradients.v[1][1] +
-                                            pj->primitives.gradients.v[2][2]));
-
-  //    printf("WL: %g %g %g %g %g\n", Wi[0], Wi[1], Wi[2], Wi[3], Wi[4]);
-  //    printf("WR: %g %g %g %g %g\n", Wj[0], Wj[1], Wj[2], Wj[3], Wj[4]);
-
-  //    printf("dWL: %g %g %g %g %g\n", dWi[0], dWi[1], dWi[2], dWi[3], dWi[4]);
-  //    printf("dWR: %g %g %g %g %g\n", dWj[0], dWj[1], dWj[2], dWj[3], dWj[4]);
-
-  Wi[0] += dWi[0];
-  Wi[1] += dWi[1];
-  Wi[2] += dWi[2];
-  Wi[3] += dWi[3];
-  Wi[4] += dWi[4];
-
-  Wj[0] += dWj[0];
-  Wj[1] += dWj[1];
-  Wj[2] += dWj[2];
-  Wj[3] += dWj[3];
-  Wj[4] += dWj[4];
-#endif
-
-  /* apply slope limiter interface by interface */
-  /* ... to be done ... */
+  hydro_gradients_predict(pi, pj, hi, hj, dx, r, xij_i, Wi, Wj, mindt);
 
   /* we don't need to rotate, we can use the unit vector in the Riemann problem
    * itself (see GIZMO) */
