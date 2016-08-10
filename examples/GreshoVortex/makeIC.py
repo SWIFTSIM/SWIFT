@@ -23,32 +23,32 @@ import random
 from numpy import *
 import sys
 
-# Generates a swift IC file for the Gresho Vortex in a periodic box
+# Generates a swift IC file for the Gresho-Chan vortex in a periodic box
 
 # Parameters
-inputFile = "glass_256.hdf5"
-periodic= 1      # 1 For periodic box
 gamma = 5./3.     # Gas adiabatic index
-rho = 1           # Gas density
+rho0 = 1           # Gas density
 P0 = 0.           # Constant additional pressure (should have no impact on the dynamics)
 fileOutputName = "greshoVortex.hdf5" 
-
-
+fileGlass = "glassPlane_128.hdf5"
 #---------------------------------------------------
-fileInput = h5py.File(inputFile, "r")
-header = fileInput["/Header"]
-boxSize = header.attrs["BoxSize"][0]
+
+# Get position and smoothing lengths from the glass
+fileInput = h5py.File(fileGlass, 'r')
 coords = fileInput["/PartType0/Coordinates"][:,:]
 h = fileInput["/PartType0/SmoothingLength"][:]
 ids = fileInput["/PartType0/ParticleIDs"][:]
-numPart = size(ids)
+boxSize = fileInput["/Header"].attrs["BoxSize"][0]
+numPart = size(h)
+fileInput.close()
 
-m = ones(shape(ids)) * boxSize**2 / numPart
-u = zeros(shape(m))
-v = zeros(shape(coords))
-
+# Now generate the rest
+m = ones(numPart) * rho0 * boxSize**2 / numPart
+u = zeros(numPart)
+v = zeros((numPart, 3))
 
 for i in range(numPart):
+    
     x = coords[i,0]
     y = coords[i,1]
     z = coords[i,2]
@@ -74,7 +74,7 @@ for i in range(numPart):
         P = P + 9. + 12.5*r2 - 20.*r + 4.*log(r/0.2)
     else:
         P = P + 3. + 4.*log(2.)
-    u[i] = P / ((gamma - 1.)*rho)
+    u[i] = P / ((gamma - 1.)*rho0)
     
 
 
@@ -94,7 +94,7 @@ grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 
 #Runtime parameters
 grp = fileOutput.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = periodic
+grp.attrs["PeriodicBoundariesOn"] = 1
 
 #Units
 grp = fileOutput.create_group("/Units")
