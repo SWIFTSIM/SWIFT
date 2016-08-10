@@ -195,6 +195,24 @@ void reset_particles(struct cell *c, enum velocity_field vel,
 
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
+
+#if defined(GIZMO_SPH)
+    p->geometry.volume = p->mass / density;
+    p->primitives.rho = density;
+    p->primitives.v[0] = p->v[0];
+    p->primitives.v[1] = p->v[1];
+    p->primitives.v[2] = p->v[2];
+    p->conserved.mass = p->mass;
+    p->conserved.momentum[0] = p->conserved.mass * p->v[0];
+    p->conserved.momentum[1] = p->conserved.mass * p->v[1];
+    p->conserved.momentum[2] = p->conserved.mass * p->v[2];
+    p->conserved.energy =
+        p->primitives.P / hydro_gamma_minus_one * p->geometry.volume +
+        0.5f * (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                p->conserved.momentum[1] * p->conserved.momentum[1] +
+                p->conserved.momentum[2] * p->conserved.momentum[2]) /
+            p->conserved.mass;
+#endif
   }
 }
 
@@ -255,7 +273,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         hydro_first_init_part(part, xpart);
 
 #if defined(GIZMO_SPH)
-        part->geometry.volume = volume;
+        part->geometry.volume = part->mass / density;
         part->primitives.rho = density;
         part->primitives.v[0] = part->v[0];
         part->primitives.v[1] = part->v[1];
@@ -265,7 +283,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->conserved.momentum[1] = part->conserved.mass * part->v[1];
         part->conserved.momentum[2] = part->conserved.mass * part->v[2];
         part->conserved.energy =
-            part->primitives.P / hydro_gamma_minus_one * volume +
+            part->primitives.P / hydro_gamma_minus_one * part->geometry.volume +
             0.5f * (part->conserved.momentum[0] * part->conserved.momentum[0] +
                     part->conserved.momentum[1] * part->conserved.momentum[1] +
                     part->conserved.momentum[2] * part->conserved.momentum[2]) /
