@@ -90,6 +90,9 @@ int main(int argc, char *argv[]) {
   pj.primitives.gradients.P[0] = 0.0f;
   pj.primitives.gradients.P[1] = 0.0f;
   pj.primitives.gradients.P[2] = 0.0f;
+  /* set time step to reasonable value */
+  pi.force.dt = 0.001;
+  pj.force.dt = 0.001;
 #endif
 
   /* Make an xpart companion */

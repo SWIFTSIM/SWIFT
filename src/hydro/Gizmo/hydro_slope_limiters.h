@@ -40,8 +40,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_init(
     struct part *p) {}
 
-__attribute__((always_inline)) INLINE static void hydro_slope_limit_cell_collect(
-    struct part* pi, struct part* pj, float r) {}
+__attribute__((always_inline)) INLINE static void
+hydro_slope_limit_cell_collect(struct part *pi, struct part *pj, float r) {}
 
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     struct part *p) {}
