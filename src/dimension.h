@@ -38,16 +38,19 @@
 
 #define hydro_dimension 3.f
 #define hydro_dimension_inv 0.3333333333f
+#define hydro_dimention_unit_sphere ((float)(4. * M_PI / 3.))
 
 #elif defined(HYDRO_DIMENSION_2D)
 
 #define hydro_dimension 2.f
 #define hydro_dimension_inv 0.5f
+#define hydro_dimention_unit_sphere ((float)M_PI)
 
 #elif defined(HYDRO_DIMENSION_1D)
 
 #define hydro_dimension 1.f
 #define hydro_dimension_inv 1.f
+#define hydro_dimention_unit_sphere 2.f
 
 #else
 
