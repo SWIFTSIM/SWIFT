@@ -65,7 +65,7 @@ void *threadpool_runner(void *data) {
       const int num_elements = task_ind + tp->map_data_chunk > tp->map_data_size
                                    ? tp->map_data_size - task_ind
                                    : tp->map_data_chunk;
-      tp->map_function(tp->map_data + tp->map_data_stride * task_ind,
+      tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
                        num_elements, tp->map_extra_data);
     }
   }

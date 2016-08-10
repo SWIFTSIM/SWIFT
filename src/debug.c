@@ -33,8 +33,8 @@
 /* Local includes. */
 #include "cell.h"
 #include "const.h"
-#include "hydro.h"
 #include "engine.h"
+#include "hydro.h"
 #include "inline.h"
 #include "part.h"
 #include "space.h"
@@ -149,42 +149,43 @@ void printgParticle_single(struct gpart *gp) {
  */
 int checkSpacehmax(struct space *s) {
 
-    /* Loop over local cells. */
-    float cell_h_max = 0.0f;
-    for (int k = 0; k < s->nr_cells; k++) {
-      if (s->cells[k].nodeID == s->e->nodeID && s->cells[k].h_max > cell_h_max) {
-        cell_h_max = s->cells[k].h_max;
+  /* Loop over local cells. */
+  float cell_h_max = 0.0f;
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells[k].nodeID == s->e->nodeID && s->cells[k].h_max > cell_h_max) {
+      cell_h_max = s->cells[k].h_max;
+    }
+  }
+
+  /* Now all particles. */
+  float part_h_max = 0.0f;
+  for (int k = 0; k < s->nr_parts; k++) {
+    if (s->parts[k].h > part_h_max) {
+      part_h_max = s->parts[k].h;
+    }
+  }
+
+  /*  If within some epsilon we are OK. */
+  if (abs(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
+
+  /* There is a problem. Hunt it down. */
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells[k].nodeID == s->e->nodeID) {
+      if (s->cells[k].h_max > part_h_max) {
+        message("cell %d is inconsistent (%f > %f)", k, s->cells[k].h_max,
+                part_h_max);
       }
     }
+  }
 
-    /* Now all particles. */
-    float part_h_max = 0.0f;
-    for (int k = 0; k < s->nr_parts; k++) {
-      if (s->parts[k].h > part_h_max) {
-          part_h_max = s->parts[k].h;
-      }
+  for (int k = 0; k < s->nr_parts; k++) {
+    if (s->parts[k].h > cell_h_max) {
+      message("part %lld is inconsistent (%f > %f)", s->parts[k].id,
+              s->parts[k].h, cell_h_max);
     }
+  }
 
-    /*  If within some epsilon we are OK. */
-    if (abs(cell_h_max - part_h_max) <= FLT_EPSILON)
-        return 1;
-
-    /* There is a problem. Hunt it down. */
-    for (int k = 0; k < s->nr_cells; k++) {
-      if (s->cells[k].nodeID == s->e->nodeID) {
-        if (s->cells[k].h_max > part_h_max) {
-          message("cell %d is inconsistent (%f > %f)", k, s->cells[k].h_max, part_h_max);
-        }
-      }
-    }
-
-    for (int k = 0; k < s->nr_parts; k++) {
-      if (s->parts[k].h > cell_h_max) {
-        message("part %lld is inconsistent (%f > %f)", s->parts[k].id, s->parts[k].h, cell_h_max);
-      }
-    }
-
-    return 0;
+  return 0;
 }
 
 #ifdef HAVE_METIS
