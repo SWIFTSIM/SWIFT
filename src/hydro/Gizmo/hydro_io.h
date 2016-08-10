@@ -66,7 +66,7 @@ float convert_u(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -86,31 +86,15 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
                                  primitives.rho);
+  list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_VOLUME, parts,
+                                 geometry.volume);
 }
 
 /**
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void writeSPHflavour(hid_t h_grpsph) {
-
-  /* Viscosity and thermal conduction */
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "Price (2008) without switch");
-  writeAttribute_f(h_grpsph, "Thermal Conductivity alpha",
-                   const_conductivity_alpha);
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Morris & Monaghan (1997), Rosswog, Davies, Thielemann & "
-                   "Piran (2000) with additional Balsara (1995) switch");
-  writeAttribute_f(h_grpsph, "Viscosity alpha_min", const_viscosity_alpha_min);
-  writeAttribute_f(h_grpsph, "Viscosity alpha_max", const_viscosity_alpha_max);
-  writeAttribute_f(h_grpsph, "Viscosity beta", 2.f);
-  writeAttribute_f(h_grpsph, "Viscosity decay length", const_viscosity_length);
-
-  /* Time integration properties */
-  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
-                   const_max_u_change);
-}
+void writeSPHflavour(hid_t h_grpsph) {}
 
 /**
  * @brief Are we writing entropy in the internal energy field ?
