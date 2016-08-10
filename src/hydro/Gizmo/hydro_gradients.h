@@ -31,6 +31,8 @@
 #include "hydro_gradients_none.h"
 #endif
 
+#include "hydro_slope_limiters.h"
+
 /**
  * @brief Gradients reconstruction. Is the same for all gradient types (although
  * gradients_none does nothing, since all gradients are zero -- are they?).
@@ -84,69 +86,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
            pj->primitives.gradients.P[1] * xij_j[1] +
            pj->primitives.gradients.P[2] * xij_j[2];
 
-  float xij_i_norm;
-  float phi_i, phi_j;
-  float delta1, delta2;
-  float phiminus, phiplus;
-  float phimin, phimax;
-  float phibar;
-  /* free parameters, values from Hopkins */
-  float psi1 = 0.5, psi2 = 0.25;
-  float phi_mid0, phi_mid;
-
-  for (k = 0; k < 10; k++) {
-    if (k < 5) {
-      phi_i = Wi[k];
-      phi_j = Wj[k];
-      phi_mid0 = Wi[k] + dWi[k];
-      xij_i_norm = sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] +
-                         xij_i[2] * xij_i[2]);
-    } else {
-      phi_i = Wj[k - 5];
-      phi_j = Wi[k - 5];
-      phi_mid0 = Wj[k - 5] + dWj[k - 5];
-      xij_i_norm = sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] +
-                         xij_j[2] * xij_j[2]);
-    }
-
-    delta1 = psi1 * fabs(phi_i - phi_j);
-    delta2 = psi2 * fabs(phi_i - phi_j);
-
-    phimin = fmin(phi_i, phi_j);
-    phimax = fmax(phi_i, phi_j);
-
-    phibar = phi_i + xij_i_norm / r * (phi_j - phi_i);
-
-    /* if sign(phimax+delta1) == sign(phimax) */
-    if ((phimax + delta1) * phimax > 0.0f) {
-      phiplus = phimax + delta1;
-    } else {
-      phiplus = phimax / (1.0f + delta1 / fabs(phimax));
-    }
-
-    /* if sign(phimin-delta1) == sign(phimin) */
-    if ((phimin - delta1) * phimin > 0.0f) {
-      phiminus = phimin - delta1;
-    } else {
-      phiminus = phimin / (1.0f + delta1 / fabs(phimin));
-    }
-
-    if (phi_i == phi_j) {
-      phi_mid = phi_i;
-    } else {
-      if (phi_i < phi_j) {
-        phi_mid = fmax(phiminus, fmin(phibar + delta2, phi_mid0));
-      } else {
-        phi_mid = fmin(phiplus, fmax(phibar - delta2, phi_mid0));
-      }
-    }
-
-    if (k < 5) {
-      dWi[k] = phi_mid - phi_i;
-    } else {
-      dWj[k - 5] = phi_mid - phi_i;
-    }
-  }
+  hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
 
   /* time */
   dWi[0] -= 0.5 * mindt * (Wi[1] * pi->primitives.gradients.rho[0] +
