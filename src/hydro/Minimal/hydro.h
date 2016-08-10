@@ -145,6 +145,11 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
+  p->ti_begin = 0;
+  p->ti_end = 0;
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
 }
 

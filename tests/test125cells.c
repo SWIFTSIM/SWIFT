@@ -247,9 +247,6 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->ti_begin = 0;
         part->ti_end = 1;
 
-        xpart->v_full[0] = part->v[0];
-        xpart->v_full[1] = part->v[1];
-        xpart->v_full[2] = part->v[2];
         hydro_first_init_part(part, xpart);
         ++part;
         ++xpart;

@@ -2411,17 +2411,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
-  if (e->nodeID == 0) message("Initialising particles");
-
-  /* Make sure all particles are ready to go */
-  /* i.e. clean-up any stupid state in the ICs */
-  if (e->policy & engine_policy_hydro) {
-    space_map_cells_pre(s, 0, cell_init_parts, NULL);
-  }
-  if ((e->policy & engine_policy_self_gravity) ||
-      (e->policy & engine_policy_external_gravity)) {
-    space_map_cells_pre(s, 0, cell_init_gparts, NULL);
-  }
+  if (e->nodeID == 0) message("Running initialisation fake time-step.");
 
   engine_prepare(e);
 
