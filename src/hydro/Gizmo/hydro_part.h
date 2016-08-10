@@ -150,6 +150,17 @@ struct part {
 
   } density;
 
+  /* Quantities used during the force loop. */
+  struct {
+
+    /* Needed to compile the code. */
+    float h_dt;
+
+    /* Physical time step of the particle. */
+    float dt;
+
+  } force;
+
   /* Particle mass (this field is also part of the conserved quantities...). */
   float mass;
 
@@ -161,8 +172,5 @@ struct part {
 
   /* Variables needed for the code to compile (should be removed/replaced). */
   float rho;
-  struct {
-    float h_dt;
-  } force;
 
 } __attribute__((aligned(part_align)));

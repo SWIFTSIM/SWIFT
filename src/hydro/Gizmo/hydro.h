@@ -191,6 +191,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     p->primitives.P = hydro_gamma_minus_one * energy / volume;
 #endif
   }
+
+  /* Set the physical time step */
+  p->force.dt = (p->ti_end - p->ti_begin) * timeBase;
 }
 
 /**

@@ -150,8 +150,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   Wj[2] = pj->primitives.v[1];
   Wj[3] = pj->primitives.v[2];
   Wj[4] = pj->primitives.P;
-  dti = pi->ti_end - pi->ti_begin;  // MATTHIEU
-  dtj = pj->ti_end - pj->ti_begin;
+
+  dti = pi->force.dt;
+  dtj = pj->force.dt;
 
   /* calculate the maximal signal velocity */
   vmax =
