@@ -331,7 +331,8 @@ int main() {
   check_riemann_exact();
 
   /* symmetry test */
-  check_riemann_symmetry();
+  int i;
+  for (i = 0; i < 100; ++i) check_riemann_symmetry();
 
   return 0;
 }
