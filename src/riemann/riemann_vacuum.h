@@ -24,16 +24,15 @@
  * @brief Check if the given input states are vacuum or will generate vacuum
  */
 __attribute__((always_inline)) INLINE static int riemann_is_vacuum(
-    float* WL, float* WR, float vL, float vR, float aL, float aR, float* Whalf,
-    float* n_unit) {
+    float* WL, float* WR, float vL, float vR, float aL, float aR) {
 
   /* vacuum */
   if (!WL[0] || !WR[0]) {
     return 1;
   }
   /* vacuum generation */
-  if (2.0f * aL / hydro_gamma_minus_one + 2.0f * aR / hydro_gamma_minus_one <
-      fabs(vL - vR)) {
+  if (2.0f * aL / hydro_gamma_minus_one + 2.0f * aR / hydro_gamma_minus_one <=
+      vR - vL) {
     return 1;
   }
 
@@ -59,6 +58,12 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
 
   float SL, SR;
   float vhalf;
+
+  message(
+      "WL: [%g, %g, %g, %g, %g]\nWR: [%g, %g, %g, %g, %g]\nvL: %g, vR: %g"
+      ", aL: %g, aR: %g",
+      WL[0], WL[1], WL[2], WL[3], WL[4], WR[0], WR[1], WR[2], WR[3], WR[4], vL,
+      vR, aL, aR);
 
   if (!WR[0] && !WL[0]) {
     /* if both states are vacuum, the solution is also vacuum */
@@ -135,10 +140,12 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
         Whalf[4] = WR[4];
       }
     } else {
+      message("Vacuum generation");
       /* vacuum generation */
       SR = vR - hydro_two_over_gamma_minus_one * aR;
       SL = vL + hydro_two_over_gamma_minus_one * aL;
       if (SR > 0.0f && SL < 0.0f) {
+        message("Vacuum");
         Whalf[0] = 0.0f;
         Whalf[1] = 0.0f;
         Whalf[2] = 0.0f;
@@ -151,6 +158,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[2] = WL[2];
           Whalf[3] = WL[3];
           if (aL > vL) {
+            message("Left fan");
             Whalf[0] = WL[0] *
                        pow_two_over_gamma_minus_one(
                            hydro_two_over_gamma_plus_one +
@@ -163,6 +171,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
                            hydro_two_over_gamma_plus_one +
                            hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
           } else {
+            message("Left state");
             Whalf[0] = WL[0];
             vhalf = 0.0f;
             Whalf[4] = WL[4];
@@ -172,6 +181,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
           Whalf[2] = WR[2];
           Whalf[3] = WR[3];
           if (-aR < vR) {
+            message("Right fan");
             Whalf[0] = WR[0] *
                        pow_two_over_gamma_minus_one(
                            hydro_two_over_gamma_plus_one -
@@ -184,6 +194,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
                            hydro_two_over_gamma_plus_one -
                            hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
           } else {
+            message("Right state");
             Whalf[0] = WR[0];
             vhalf = 0.0f;
             Whalf[4] = WR[4];
@@ -197,6 +208,59 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+}
+
+/**
+ * @brief Solve the vacuum Riemann problem and return the fluxes
+ */
+__attribute__((always_inline)) INLINE static void riemann_solve_vacuum_flux(
+    float* WL, float* WR, float vL, float vR, float aL, float aR, float* n_unit,
+    float* vij, float* totflux) {
+
+  float Whalf[5];
+  float flux[5][3];
+  float vtot[3];
+  float rhoe;
+
+  riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
+
+  flux[0][0] = Whalf[0] * Whalf[1];
+  flux[0][1] = Whalf[0] * Whalf[2];
+  flux[0][2] = Whalf[0] * Whalf[3];
+
+  vtot[0] = Whalf[1] + vij[0];
+  vtot[1] = Whalf[2] + vij[1];
+  vtot[2] = Whalf[3] + vij[2];
+  flux[1][0] = Whalf[0] * vtot[0] * Whalf[1] + Whalf[4];
+  flux[1][1] = Whalf[0] * vtot[0] * Whalf[2];
+  flux[1][2] = Whalf[0] * vtot[0] * Whalf[3];
+  flux[2][0] = Whalf[0] * vtot[1] * Whalf[1];
+  flux[2][1] = Whalf[0] * vtot[1] * Whalf[2] + Whalf[4];
+  flux[2][2] = Whalf[0] * vtot[1] * Whalf[3];
+  flux[3][0] = Whalf[0] * vtot[2] * Whalf[1];
+  flux[3][1] = Whalf[0] * vtot[2] * Whalf[2];
+  flux[3][2] = Whalf[0] * vtot[2] * Whalf[3] + Whalf[4];
+
+  /* eqn. (15) */
+  /* F_P = \rho e ( \vec{v} - \vec{v_{ij}} ) + P \vec{v} */
+  /* \rho e = P / (\gamma-1) + 1/2 \rho \vec{v}^2 */
+  rhoe = Whalf[4] / hydro_gamma_minus_one +
+         0.5f * Whalf[0] *
+             (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
+  flux[4][0] = rhoe * Whalf[1] + Whalf[4] * vtot[0];
+  flux[4][1] = rhoe * Whalf[2] + Whalf[4] * vtot[1];
+  flux[4][2] = rhoe * Whalf[3] + Whalf[4] * vtot[2];
+
+  totflux[0] =
+      flux[0][0] * n_unit[0] + flux[0][1] * n_unit[1] + flux[0][2] * n_unit[2];
+  totflux[1] =
+      flux[1][0] * n_unit[0] + flux[1][1] * n_unit[1] + flux[1][2] * n_unit[2];
+  totflux[2] =
+      flux[2][0] * n_unit[0] + flux[2][1] * n_unit[1] + flux[2][2] * n_unit[2];
+  totflux[3] =
+      flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
+  totflux[4] =
+      flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
 }
 
 #endif /* SWIFT_RIEMANN_VACUUM_H */

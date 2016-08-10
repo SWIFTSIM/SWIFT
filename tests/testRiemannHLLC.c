@@ -22,6 +22,8 @@
 #include "riemann/riemann_hllc.h"
 #include "tools.h"
 
+int consistent_with_zero(float val) { return fabs(val) < 1.e-4; }
+
 /**
  * @brief Check the symmetry of the TRRS Riemann solver
  */
@@ -61,14 +63,11 @@ void check_riemann_symmetry() {
   riemann_solve_for_flux(WL, WR, n_unit1, vij, totflux1);
   riemann_solve_for_flux(WR, WL, n_unit2, vij, totflux2);
 
-  /* we expect the fluxes to have a different sign, so we reverse one of them */
-  totflux2[0] = -totflux2[0];
-  totflux2[1] = -totflux2[1];
-  totflux2[2] = -totflux2[2];
-  totflux2[3] = -totflux2[3];
-  totflux2[4] = -totflux2[4];
-
-  if (memcmp(totflux1, totflux2, 5 * sizeof(float))) {
+  if (!consistent_with_zero(totflux1[0] + totflux2[0]) ||
+      !consistent_with_zero(totflux1[1] + totflux2[1]) ||
+      !consistent_with_zero(totflux1[2] + totflux2[2]) ||
+      !consistent_with_zero(totflux1[3] + totflux2[3]) ||
+      !consistent_with_zero(totflux1[4] + totflux2[4])) {
     message(
         "Flux solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
         "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",

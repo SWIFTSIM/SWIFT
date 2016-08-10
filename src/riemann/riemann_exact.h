@@ -349,164 +349,152 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
   aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
-  if (!WL[0] || !WR[0]) {
-    /* vacuum: we need a vacuum riemann solver */
+  /* check vacuum (generation) condition */
+  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
     riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
     return;
   }
 
-  /* check vacuum generation condition */
-  if (2.0f * aL / hydro_gamma_minus_one + 2.0f * aR / hydro_gamma_minus_one <
-      fabs(vL - vR)) {
-    /* vacuum generation: need a vacuum riemann solver */
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
-  } else {
-    /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
-    /* We normally use a Newton-Raphson iteration to find the zeropoint
-       of riemann_f(p), but if pstar is close to 0, we risk negative p values.
-       Since riemann_f(p) is undefined for negative pressures, we don't
-       want this to happen.
-       We therefore use Brent's method if riemann_f(0) is larger than some
-       value. -5 makes the iteration fail safe while almost never invoking
-       the expensive Brent solver. */
-    p = 0.;
-    /* obtain a first guess for p */
-    pguess = riemann_guess_p(WL, WR, vL, vR, aL, aR);
-    fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
-    fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
-    /* ok, pstar is close to 0, better use Brent's method... */
-    /* we use Newton-Raphson until we find a suitable interval */
-    if (fp * fpguess >= 0.0f) {
-      /* Newton-Raphson until convergence or until suitable interval is found
-         to use Brent's method */
-      unsigned int counter = 0;
-      while (fabs(p - pguess) > 1.e-6f * 0.5f * (p + pguess) &&
-             fpguess < 0.0f) {
-        p = pguess;
-        pguess = pguess - fpguess / riemann_fprime(pguess, WL, WR, aL, aR);
-        fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
-        counter++;
-        if (counter > 1000) {
-          error("Stuck in Newton-Raphson!\n");
-        }
+  /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
+  /* We normally use a Newton-Raphson iteration to find the zeropoint
+     of riemann_f(p), but if pstar is close to 0, we risk negative p values.
+     Since riemann_f(p) is undefined for negative pressures, we don't
+     want this to happen.
+     We therefore use Brent's method if riemann_f(0) is larger than some
+     value. -5 makes the iteration fail safe while almost never invoking
+     the expensive Brent solver. */
+  p = 0.;
+  /* obtain a first guess for p */
+  pguess = riemann_guess_p(WL, WR, vL, vR, aL, aR);
+  fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
+  fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
+  /* ok, pstar is close to 0, better use Brent's method... */
+  /* we use Newton-Raphson until we find a suitable interval */
+  if (fp * fpguess >= 0.0f) {
+    /* Newton-Raphson until convergence or until suitable interval is found
+       to use Brent's method */
+    unsigned int counter = 0;
+    while (fabs(p - pguess) > 1.e-6f * 0.5f * (p + pguess) && fpguess < 0.0f) {
+      p = pguess;
+      pguess = pguess - fpguess / riemann_fprime(pguess, WL, WR, aL, aR);
+      fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
+      counter++;
+      if (counter > 1000) {
+        error("Stuck in Newton-Raphson!\n");
       }
     }
-    /* As soon as there is a suitable interval: use Brent's method */
-    if (1.e6 * fabs(p - pguess) > 0.5f * (p + pguess) && fpguess > 0.0f) {
-      p = 0.0f;
-      fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
-      /* use Brent's method to find the zeropoint */
-      p = riemann_solve_brent(p, pguess, fp, fpguess, 1.e-6, WL, WR, vL, vR, aL,
-                              aR);
+  }
+  /* As soon as there is a suitable interval: use Brent's method */
+  if (1.e6 * fabs(p - pguess) > 0.5f * (p + pguess) && fpguess > 0.0f) {
+    p = 0.0f;
+    fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
+    /* use Brent's method to find the zeropoint */
+    p = riemann_solve_brent(p, pguess, fp, fpguess, 1.e-6, WL, WR, vL, vR, aL,
+                            aR);
+  } else {
+    p = pguess;
+  }
+
+  /* calculate the velocity in the intermediate state */
+  u = 0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
+
+  /* sample the solution */
+  /* This corresponds to the flow chart in Fig. 4.14 in Toro */
+  if (u < 0.0f) {
+    /* advect velocity components */
+    Whalf[1] = WR[1];
+    Whalf[2] = WR[2];
+    Whalf[3] = WR[3];
+    pdpR = p / WR[4];
+    if (p > WR[4]) {
+      /* shockwave */
+      SR = vR +
+           aR * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpR +
+                      hydro_gamma_minus_one_over_two_gamma);
+      if (SR > 0.0f) {
+        Whalf[0] = WR[0] * (pdpR + hydro_gamma_minus_one_over_gamma_plus_one) /
+                   (hydro_gamma_minus_one_over_gamma_plus_one * pdpR + 1.0f);
+        vhalf = u - vR;
+        Whalf[4] = p;
+      } else {
+        Whalf[0] = WR[0];
+        vhalf = 0.0f;
+        Whalf[4] = WR[4];
+      }
     } else {
-      p = pguess;
-    }
-
-    /* calculate the velocity in the intermediate state */
-    u = 0.5f * (vL + vR) +
-        0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
-
-    /* sample the solution */
-    /* This corresponds to the flow chart in Fig. 4.14 in Toro */
-    if (u < 0.0f) {
-      /* advect velocity components */
-      Whalf[1] = WR[1];
-      Whalf[2] = WR[2];
-      Whalf[3] = WR[3];
-      pdpR = p / WR[4];
-      if (p > WR[4]) {
-        /* shockwave */
-        SR = vR +
-             aR * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpR +
-                        hydro_gamma_minus_one_over_two_gamma);
-        if (SR > 0.0f) {
-          Whalf[0] = WR[0] *
-                     (pdpR + hydro_gamma_minus_one_over_gamma_plus_one) /
-                     (hydro_gamma_minus_one_over_gamma_plus_one * pdpR + 1.0f);
+      /* rarefaction wave */
+      SHR = vR + aR;
+      if (SHR > 0.0f) {
+        STR = u + aR * pow_gamma_minus_one_over_two_gamma(pdpR);
+        if (STR <= 0.0f) {
+          Whalf[0] =
+              WR[0] * pow_two_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one -
+                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+          vhalf = hydro_two_over_gamma_plus_one *
+                      (-aR + hydro_gamma_minus_one_over_two * vR) -
+                  vR;
+          Whalf[4] =
+              WR[4] * pow_two_gamma_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one -
+                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+        } else {
+          Whalf[0] = WR[0] * pow_one_over_gamma(pdpR);
           vhalf = u - vR;
           Whalf[4] = p;
-        } else {
-          Whalf[0] = WR[0];
-          vhalf = 0.0f;
-          Whalf[4] = WR[4];
         }
       } else {
-        /* rarefaction wave */
-        SHR = vR + aR;
-        if (SHR > 0.0f) {
-          STR = u + aR * pow_gamma_minus_one_over_two_gamma(pdpR);
-          if (STR <= 0.0f) {
-            Whalf[0] = WR[0] *
-                       pow_two_over_gamma_minus_one(
-                           hydro_two_over_gamma_plus_one -
-                           hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
-            vhalf = hydro_two_over_gamma_plus_one *
-                        (-aR + hydro_gamma_minus_one_over_two * vR) -
-                    vR;
-            Whalf[4] = WR[4] *
-                       pow_two_gamma_over_gamma_minus_one(
-                           hydro_two_over_gamma_plus_one -
-                           hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
-          } else {
-            Whalf[0] = WR[0] * pow_one_over_gamma(pdpR);
-            vhalf = u - vR;
-            Whalf[4] = p;
-          }
-        } else {
-          Whalf[0] = WR[0];
-          vhalf = 0.0f;
-          Whalf[4] = WR[4];
-        }
+        Whalf[0] = WR[0];
+        vhalf = 0.0f;
+        Whalf[4] = WR[4];
+      }
+    }
+  } else {
+    Whalf[1] = WL[1];
+    Whalf[2] = WL[2];
+    Whalf[3] = WL[3];
+    pdpL = p / WL[4];
+    if (p > WL[4]) {
+      /* shockwave */
+      SL = vL -
+           aL * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpL +
+                      hydro_gamma_minus_one_over_two_gamma);
+      if (SL < 0.0f) {
+        Whalf[0] = WL[0] * (pdpL + hydro_gamma_minus_one_over_gamma_plus_one) /
+                   (hydro_gamma_minus_one_over_gamma_plus_one * pdpL + 1.0f);
+        vhalf = u - vL;
+        Whalf[4] = p;
+      } else {
+        Whalf[0] = WL[0];
+        vhalf = 0.0f;
+        Whalf[4] = WL[4];
       }
     } else {
-      Whalf[1] = WL[1];
-      Whalf[2] = WL[2];
-      Whalf[3] = WL[3];
-      pdpL = p / WL[4];
-      if (p > WL[4]) {
-        /* shockwave */
-        SL = vL -
-             aL * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpL +
-                        hydro_gamma_minus_one_over_two_gamma);
-        if (SL < 0.0f) {
-          Whalf[0] = WL[0] *
-                     (pdpL + hydro_gamma_minus_one_over_gamma_plus_one) /
-                     (hydro_gamma_minus_one_over_gamma_plus_one * pdpL + 1.0f);
+      /* rarefaction wave */
+      SHL = vL - aL;
+      if (SHL < 0.0f) {
+        STL = u - aL * pow_gamma_minus_one_over_two_gamma(pdpL);
+        if (STL > 0.0f) {
+          Whalf[0] =
+              WL[0] * pow_two_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one +
+                          hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+          vhalf = hydro_two_over_gamma_plus_one *
+                      (aL + hydro_gamma_minus_one_over_two * vL) -
+                  vL;
+          Whalf[4] =
+              WL[4] * pow_two_gamma_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one +
+                          hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+        } else {
+          Whalf[0] = WL[0] * pow_one_over_gamma(pdpL);
           vhalf = u - vL;
           Whalf[4] = p;
-        } else {
-          Whalf[0] = WL[0];
-          vhalf = 0.0f;
-          Whalf[4] = WL[4];
         }
       } else {
-        /* rarefaction wave */
-        SHL = vL - aL;
-        if (SHL < 0.0f) {
-          STL = u - aL * pow_gamma_minus_one_over_two_gamma(pdpL);
-          if (STL > 0.0f) {
-            Whalf[0] = WL[0] *
-                       pow_two_over_gamma_minus_one(
-                           hydro_two_over_gamma_plus_one +
-                           hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
-            vhalf = hydro_two_over_gamma_plus_one *
-                        (aL + hydro_gamma_minus_one_over_two * vL) -
-                    vL;
-            Whalf[4] = WL[4] *
-                       pow_two_gamma_over_gamma_minus_one(
-                           hydro_two_over_gamma_plus_one +
-                           hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
-          } else {
-            Whalf[0] = WL[0] * pow_one_over_gamma(pdpL);
-            vhalf = u - vL;
-            Whalf[4] = p;
-          }
-        } else {
-          Whalf[0] = WL[0];
-          vhalf = 0.0f;
-          Whalf[4] = WL[4];
-        }
+        Whalf[0] = WL[0];
+        vhalf = 0.0f;
+        Whalf[4] = WL[4];
       }
     }
   }

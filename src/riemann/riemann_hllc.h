@@ -21,6 +21,7 @@
 #define SWIFT_RIEMANN_HLLC_H
 
 #include "adiabatic_index.h"
+#include "riemann_vacuum.h"
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
     float *WL, float *WR, float *n, float *vij, float *totflux) {
@@ -47,12 +48,9 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
   /* Handle vacuum: vacuum does not require iteration and is always exact */
-  if (!WL[0] || !WR[0]) {
-    error("Vacuum not yet supported");
-  }
-  if (2. * aL / hydro_gamma_minus_one + 2. * aR / hydro_gamma_minus_one <
-      fabs(uL - uR)) {
-    error("Vacuum not yet supported");
+  if (riemann_is_vacuum(WL, WR, uL, uR, aL, aR)) {
+    riemann_solve_vacuum_flux(WL, WR, uL, uR, aL, aR, n, vij, totflux);
+    return;
   }
 
   /* STEP 1: pressure estimate */

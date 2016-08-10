@@ -56,8 +56,9 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
   aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
-  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit)) {
+  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
     riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
+    return;
   }
 
   /* calculate the velocity and pressure in the intermediate state */

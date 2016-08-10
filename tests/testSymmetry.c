@@ -54,18 +54,11 @@ int main(int argc, char *argv[]) {
   pi.primitives.v[1] = random_uniform(-10.0f, 10.0f);
   pi.primitives.v[2] = random_uniform(-10.0f, 10.0f);
   pi.primitives.P = random_uniform(0.1f, 1.0f);
-  /*  pj.primitives.rho = random_uniform(0.1f, 1.0f);
-    pj.primitives.v[0] = random_uniform(-10.0f, 10.0f);
-    pj.primitives.v[1] = random_uniform(-10.0f, 10.0f);
-    pj.primitives.v[2] = random_uniform(-10.0f, 10.0f);
-    pj.primitives.P = random_uniform(0.1f, 1.0f);*/
-  /* make the values for pj the same, since otherwise we suffer from the swap of
-     left and right states in the Riemann solver */
-  pj.primitives.rho = pi.primitives.rho;
-  pj.primitives.v[0] = pi.primitives.v[0];
-  pj.primitives.v[1] = pi.primitives.v[1];
-  pj.primitives.v[2] = pi.primitives.v[2];
-  pj.primitives.P = pi.primitives.P;
+  pj.primitives.rho = random_uniform(0.1f, 1.0f);
+  pj.primitives.v[0] = random_uniform(-10.0f, 10.0f);
+  pj.primitives.v[1] = random_uniform(-10.0f, 10.0f);
+  pj.primitives.v[2] = random_uniform(-10.0f, 10.0f);
+  pj.primitives.P = random_uniform(0.1f, 1.0f);
   /* make gradients zero */
   pi.primitives.gradients.rho[0] = 0.0f;
   pi.primitives.gradients.rho[1] = 0.0f;
@@ -153,9 +146,43 @@ int main(int argc, char *argv[]) {
   dx[2] = -dx[2];
   runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
 
-  /* Check that the particles are the same */
+/* Check that the particles are the same */
+#if defined(GIZMO_SPH)
+  i_ok = 0;
+  j_ok = 0;
+  for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
+    float a = *(((float *)&pi) + i);
+    float b = *(((float *)&pi2) + i);
+    float c = *(((float *)&pj) + i);
+    float d = *(((float *)&pj2) + i);
+
+    int a_is_b;
+    if ((a + b)) {
+      a_is_b = (fabs((a - b) / (a + b)) > 1.e-4);
+    } else {
+      a_is_b = !(a == 0.0f);
+    }
+    int c_is_d;
+    if ((c + d)) {
+      c_is_d = (fabs((c - d) / (c + d)) > 1.e-4);
+    } else {
+      c_is_d = !(c == 0.0f);
+    }
+
+    if (a_is_b) {
+      message("%.8e, %.8e, %lu", a, b, i);
+    }
+    if (c_is_d) {
+      message("%.8e, %.8e, %lu", c, d, i);
+    }
+
+    i_ok |= a_is_b;
+    j_ok |= c_is_d;
+  }
+#else
   i_ok = memcmp(&pi, &pi2, sizeof(struct part));
   j_ok = memcmp(&pj, &pj2, sizeof(struct part));
+#endif
 
   if (i_ok) {
     printParticle_single(&pi, &xpi);

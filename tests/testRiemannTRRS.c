@@ -22,6 +22,22 @@
 #include "riemann/riemann_trrs.h"
 #include "tools.h"
 
+int opposite(float a, float b) {
+  if ((a - b)) {
+    return fabs((a + b) / (a - b)) < 1.e-4;
+  } else {
+    return a == 0.0f;
+  }
+}
+
+int equal(float a, float b) {
+  if ((a + b)) {
+    return fabs((a - b) / (a + b)) < 1.e-4;
+  } else {
+    return a == 0.0f;
+  }
+}
+
 /**
  * @brief Check that a and b are consistent (up to some error)
  *
@@ -248,7 +264,9 @@ void check_riemann_symmetry() {
   riemann_solver_solve(WL, WR, Whalf1, n_unit1);
   riemann_solver_solve(WR, WL, Whalf2, n_unit2);
 
-  if (memcmp(Whalf1, Whalf2, 5 * sizeof(float))) {
+  if (!equal(Whalf1[0], Whalf2[0]) || !equal(Whalf1[1], Whalf2[1]) ||
+      !equal(Whalf1[2], Whalf2[2]) || !equal(Whalf1[3], Whalf2[3]) ||
+      !equal(Whalf1[4], Whalf2[4])) {
     message(
         "Solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
         "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
@@ -270,14 +288,11 @@ void check_riemann_symmetry() {
   riemann_solve_for_flux(WL, WR, n_unit1, vij, totflux1);
   riemann_solve_for_flux(WR, WL, n_unit2, vij, totflux2);
 
-  /* we expect the fluxes to have a different sign, so we reverse one of them */
-  totflux2[0] = -totflux2[0];
-  totflux2[1] = -totflux2[1];
-  totflux2[2] = -totflux2[2];
-  totflux2[3] = -totflux2[3];
-  totflux2[4] = -totflux2[4];
-
-  if (memcmp(totflux1, totflux2, 5 * sizeof(float))) {
+  if (!opposite(totflux1[0], totflux2[0]) ||
+      !opposite(totflux1[1], totflux2[1]) ||
+      !opposite(totflux1[2], totflux2[2]) ||
+      !opposite(totflux1[3], totflux2[3]) ||
+      !opposite(totflux1[4], totflux2[4])) {
     message(
         "Solver asymmetric: [%.3e,%.3e,%.3e,%.3e,%.3e] == "
         "[%.3e,%.3e,%.3e,%.3e,%.3e]\n",
