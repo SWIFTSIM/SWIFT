@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
+#include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 
@@ -54,8 +55,12 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 
 float convert_u(struct engine* e, struct part* p) {
 
-  return p->entropy * pow_gamma_minus_one(p->rho) *
-         hydro_one_over_gamma_minus_one;
+  return hydro_get_internal_energy(p, 0);
+}
+
+float convert_P(struct engine* e, struct part* p) {
+
+  return hydro_get_pressure(p, 0);
 }
 
 /**
@@ -68,7 +73,7 @@ float convert_u(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -90,6 +95,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   list[8] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
                                               UNIT_CONV_ENERGY_PER_UNIT_MASS,
                                               parts, rho, convert_u);
+  list[9] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
 }
 
 /**

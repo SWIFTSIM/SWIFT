@@ -20,6 +20,8 @@
 #include "adiabatic_index.h"
 #include "dimension.h"
 #include "equation_of_state.h"
+#include "hydro_properties.h"
+#include "kernel_hydro.h"
 
 /**
  * @brief Returns the internal energy of a particle
