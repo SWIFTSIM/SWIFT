@@ -253,6 +253,25 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         xpart->v_full[1] = part->v[1];
         xpart->v_full[2] = part->v[2];
         hydro_first_init_part(part, xpart);
+
+#if defined(GIZMO_SPH)
+        part->geometry.volume = volume;
+        part->primitives.rho = density;
+        part->primitives.v[0] = part->v[0];
+        part->primitives.v[1] = part->v[1];
+        part->primitives.v[2] = part->v[2];
+        part->conserved.mass = part->mass;
+        part->conserved.momentum[0] = part->conserved.mass * part->v[0];
+        part->conserved.momentum[1] = part->conserved.mass * part->v[1];
+        part->conserved.momentum[2] = part->conserved.mass * part->v[2];
+        part->conserved.energy =
+            part->primitives.P / hydro_gamma_minus_one * volume +
+            0.5f * (part->conserved.momentum[0] * part->conserved.momentum[0] +
+                    part->conserved.momentum[1] * part->conserved.momentum[1] +
+                    part->conserved.momentum[2] * part->conserved.momentum[2]) /
+                part->conserved.mass;
+#endif
+
         ++part;
         ++xpart;
       }

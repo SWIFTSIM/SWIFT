@@ -38,6 +38,12 @@ hydro_gradients_init_density_loop(struct part *p) {
                 p->conserved.momentum[2] * p->conserved.momentum[2]) /
              p->conserved.mass) /
         p->geometry.volume;
+  } else {
+    p->primitives.rho = 0.0f;
+    p->primitives.v[0] = 0.0f;
+    p->primitives.v[1] = 0.0f;
+    p->primitives.v[2] = 0.0f;
+    p->primitives.P = 0.0f;
   }
 
   p->primitives.gradients.rho[0] = 0.0f;

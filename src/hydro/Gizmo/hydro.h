@@ -62,6 +62,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part* p) {
 
+  /* We need to do this before we reset the volume */
+  hydro_gradients_init_density_loop(p);
+
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
   p->geometry.volume = 0.0f;
@@ -74,8 +77,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
-
-  hydro_gradients_init_density_loop(p);
 }
 
 /**
