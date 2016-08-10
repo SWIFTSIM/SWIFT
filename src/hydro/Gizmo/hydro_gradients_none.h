@@ -18,11 +18,23 @@
  ******************************************************************************/
 
 /**
+ * @brief Initialize variables before the density loop
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_init_density_loop(struct part *p) {}
+
+/**
  * @brief Gradient calculations done during the density loop
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
     struct part *pi, struct part *pj, float wi_dx, float wj_dx, float *dx,
     float r, int mode) {}
+
+/**
+ * @brief Calculations done before the force loop
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_prepare_force_loop(struct part *p, float ih2, float volume) {}
 
 /**
  * @brief Gradient calculations done during the gradient loop

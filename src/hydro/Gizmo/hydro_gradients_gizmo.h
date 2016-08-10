@@ -18,11 +18,54 @@
  ******************************************************************************/
 
 /**
+ * @brief Initialize variables before the density loop
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_init_density_loop(struct part *p) {}
+
+/**
  * @brief Gradient calculations done during the density loop
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
     struct part *pi, struct part *pj, float wi_dx, float wj_dx, float *dx,
     float r, int mode) {}
+
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_prepare_force_loop(struct part *p, float ih2, volume) {
+
+  p->primitives.gradients.rho[0] = 0.0f;
+  p->primitives.gradients.rho[1] = 0.0f;
+  p->primitives.gradients.rho[2] = 0.0f;
+
+  p->primitives.gradients.v[0][0] = 0.0f;
+  p->primitives.gradients.v[0][1] = 0.0f;
+  p->primitives.gradients.v[0][2] = 0.0f;
+
+  p->primitives.gradients.v[1][0] = 0.0f;
+  p->primitives.gradients.v[1][1] = 0.0f;
+  p->primitives.gradients.v[1][2] = 0.0f;
+
+  p->primitives.gradients.v[2][0] = 0.0f;
+  p->primitives.gradients.v[2][1] = 0.0f;
+  p->primitives.gradients.v[2][2] = 0.0f;
+
+  p->primitives.gradients.P[0] = 0.0f;
+  p->primitives.gradients.P[1] = 0.0f;
+  p->primitives.gradients.P[2] = 0.0f;
+
+  p->primitives.limiter.rho[0] = FLT_MAX;
+  p->primitives.limiter.rho[1] = -FLT_MAX;
+  p->primitives.limiter.v[0][0] = FLT_MAX;
+  p->primitives.limiter.v[0][1] = -FLT_MAX;
+  p->primitives.limiter.v[1][0] = FLT_MAX;
+  p->primitives.limiter.v[1][1] = -FLT_MAX;
+  p->primitives.limiter.v[2][0] = FLT_MAX;
+  p->primitives.limiter.v[2][1] = -FLT_MAX;
+  p->primitives.limiter.P[0] = FLT_MAX;
+  p->primitives.limiter.P[1] = -FLT_MAX;
+
+  p->primitives.limiter.maxr = -FLT_MAX;
+}
 
 /**
  * @brief Gradient calculations done during the gradient loop

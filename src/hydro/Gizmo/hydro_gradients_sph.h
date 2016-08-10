@@ -18,6 +18,62 @@
  ******************************************************************************/
 
 /**
+ * @brief Initialize variables before the density loop
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_init_density_loop(struct part *p) {
+
+  /* use the old volumes to estimate new primitive variables to be used for the
+     gradient calculation */
+  if (p->conserved.mass) {
+    p->primitives.rho = p->conserved.mass / p->geometry.volume;
+    p->primitives.v[0] = p->conserved.momentum[0] / p->conserved.mass;
+    p->primitives.v[1] = p->conserved.momentum[1] / p->conserved.mass;
+    p->primitives.v[2] = p->conserved.momentum[2] / p->conserved.mass;
+    p->primitives.P =
+        hydro_gamma_minus_one *
+        (p->conserved.energy -
+         0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                p->conserved.momentum[1] * p->conserved.momentum[1] +
+                p->conserved.momentum[2] * p->conserved.momentum[2]) /
+             p->conserved.mass) /
+        p->geometry.volume;
+  }
+
+  p->primitives.gradients.rho[0] = 0.0f;
+  p->primitives.gradients.rho[1] = 0.0f;
+  p->primitives.gradients.rho[2] = 0.0f;
+
+  p->primitives.gradients.v[0][0] = 0.0f;
+  p->primitives.gradients.v[0][1] = 0.0f;
+  p->primitives.gradients.v[0][2] = 0.0f;
+
+  p->primitives.gradients.v[1][0] = 0.0f;
+  p->primitives.gradients.v[1][1] = 0.0f;
+  p->primitives.gradients.v[1][2] = 0.0f;
+  p->primitives.gradients.v[2][0] = 0.0f;
+  p->primitives.gradients.v[2][1] = 0.0f;
+  p->primitives.gradients.v[2][2] = 0.0f;
+
+  p->primitives.gradients.P[0] = 0.0f;
+  p->primitives.gradients.P[1] = 0.0f;
+  p->primitives.gradients.P[2] = 0.0f;
+
+  p->primitives.limiter.rho[0] = FLT_MAX;
+  p->primitives.limiter.rho[1] = -FLT_MAX;
+  p->primitives.limiter.v[0][0] = FLT_MAX;
+  p->primitives.limiter.v[0][1] = -FLT_MAX;
+  p->primitives.limiter.v[1][0] = FLT_MAX;
+  p->primitives.limiter.v[1][1] = -FLT_MAX;
+  p->primitives.limiter.v[2][0] = FLT_MAX;
+  p->primitives.limiter.v[2][1] = -FLT_MAX;
+  p->primitives.limiter.P[0] = FLT_MAX;
+  p->primitives.limiter.P[1] = -FLT_MAX;
+
+  p->primitives.limiter.maxr = -FLT_MAX;
+}
+
+/**
  * @brief Gradient calculations done during the density loop
  */
 __attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
@@ -148,6 +204,120 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
         fmax(pi->primitives.P, pj->primitives.limiter.P[1]);
 
     pj->primitives.limiter.maxr = fmax(r, pj->primitives.limiter.maxr);
+  }
+}
+
+/**
+ * @brief Calculations done before the force loop
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_prepare_force_loop(struct part *p, float ih2, float volume) {
+
+  float gradrho[3], gradv[3][3], gradP[3];
+  float gradtrue, gradmax, gradmin, alpha;
+
+  /* finalize gradients by multiplying with volume */
+  p->primitives.gradients.rho[0] *= ih2 * ih2 * volume;
+  p->primitives.gradients.rho[1] *= ih2 * ih2 * volume;
+  p->primitives.gradients.rho[2] *= ih2 * ih2 * volume;
+
+  p->primitives.gradients.v[0][0] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[0][1] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[0][2] *= ih2 * ih2 * volume;
+
+  p->primitives.gradients.v[1][0] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[1][1] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[1][2] *= ih2 * ih2 * volume;
+
+  p->primitives.gradients.v[2][0] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[2][1] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[2][2] *= ih2 * ih2 * volume;
+
+  p->primitives.gradients.P[0] *= ih2 * ih2 * volume;
+  p->primitives.gradients.P[1] *= ih2 * ih2 * volume;
+  p->primitives.gradients.P[2] *= ih2 * ih2 * volume;
+
+  /* slope limiter */
+  gradrho[0] = p->primitives.gradients.rho[0];
+  gradrho[1] = p->primitives.gradients.rho[1];
+  gradrho[2] = p->primitives.gradients.rho[2];
+
+  gradv[0][0] = p->primitives.gradients.v[0][0];
+  gradv[0][1] = p->primitives.gradients.v[0][1];
+  gradv[0][2] = p->primitives.gradients.v[0][2];
+
+  gradv[1][0] = p->primitives.gradients.v[1][0];
+  gradv[1][1] = p->primitives.gradients.v[1][1];
+  gradv[1][2] = p->primitives.gradients.v[1][2];
+
+  gradv[2][0] = p->primitives.gradients.v[2][0];
+  gradv[2][1] = p->primitives.gradients.v[2][1];
+  gradv[2][2] = p->primitives.gradients.v[2][2];
+
+  gradP[0] = p->primitives.gradients.P[0];
+  gradP[1] = p->primitives.gradients.P[1];
+  gradP[2] = p->primitives.gradients.P[2];
+
+  gradtrue = sqrtf(gradrho[0] * gradrho[0] + gradrho[1] * gradrho[1] +
+                   gradrho[2] * gradrho[2]); /* gradtrue might be zero. In this
+    case, there is no gradient and we don't
+    need to slope limit anything... */
+  if (gradtrue) {
+    gradtrue *= p->primitives.limiter.maxr;
+    gradmax = p->primitives.limiter.rho[1] - p->primitives.rho;
+    gradmin = p->primitives.rho - p->primitives.limiter.rho[0];
+    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    p->primitives.gradients.rho[0] *= alpha;
+    p->primitives.gradients.rho[1] *= alpha;
+    p->primitives.gradients.rho[2] *= alpha;
+  }
+
+  gradtrue = sqrtf(gradv[0][0] * gradv[0][0] + gradv[0][1] * gradv[0][1] +
+                   gradv[0][2] * gradv[0][2]);
+  if (gradtrue) {
+    gradtrue *= p->primitives.limiter.maxr;
+    gradmax = p->primitives.limiter.v[0][1] - p->primitives.v[0];
+    gradmin = p->primitives.v[0] - p->primitives.limiter.v[0][0];
+    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    p->primitives.gradients.v[0][0] *= alpha;
+    p->primitives.gradients.v[0][1] *= alpha;
+    p->primitives.gradients.v[0][2] *= alpha;
+  }
+
+  gradtrue = sqrtf(gradv[1][0] * gradv[1][0] + gradv[1][1] * gradv[1][1] +
+                   gradv[1][2] * gradv[1][2]);
+  if (gradtrue) {
+    gradtrue *= p->primitives.limiter.maxr;
+    gradmax = p->primitives.limiter.v[1][1] - p->primitives.v[1];
+    gradmin = p->primitives.v[1] - p->primitives.limiter.v[1][0];
+    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    p->primitives.gradients.v[1][0] *= alpha;
+    p->primitives.gradients.v[1][1] *= alpha;
+    p->primitives.gradients.v[1][2] *= alpha;
+  }
+
+  gradtrue = sqrtf(gradv[2][0] * gradv[2][0] + gradv[2][1] * gradv[2][1] +
+                   gradv[2][2] * gradv[2][2]);
+  if (gradtrue) {
+    gradtrue *= p->primitives.limiter.maxr;
+    gradmax = p->primitives.limiter.v[2][1] - p->primitives.v[2];
+    gradmin = p->primitives.v[2] - p->primitives.limiter.v[2][0];
+    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    p->primitives.gradients.v[2][0] *= alpha;
+    p->primitives.gradients.v[2][1] *= alpha;
+    p->primitives.gradients.v[2][2] *= alpha;
+  }
+
+  gradtrue =
+      sqrtf(gradP[0] * gradP[0] + gradP[1] * gradP[1] + gradP[2] * gradP[2]);
+  if (gradtrue) {
+    gradtrue *= p->primitives.limiter.maxr;
+    gradmax = p->primitives.limiter.P[1] - p->primitives.P;
+    gradmin = p->primitives.P - p->primitives.limiter.P[0];
+    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    p->primitives.gradients.P[0] *= alpha;
+    p->primitives.gradients.P[1] *= alpha;
+    p->primitives.gradients.P[2] *= alpha;
   }
 }
 

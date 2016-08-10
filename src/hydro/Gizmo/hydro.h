@@ -19,6 +19,7 @@
 
 #include <float.h>
 #include "adiabatic_index.h"
+#include "hydro_gradients.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -56,25 +57,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part* p) {
 
-#ifdef SPH_GRADIENTS
-  /* use the old volumes to estimate new primitive variables to be used for the
-     gradient calculation */
-  if (p->conserved.mass) {
-    p->primitives.rho = p->conserved.mass / p->geometry.volume;
-    p->primitives.v[0] = p->conserved.momentum[0] / p->conserved.mass;
-    p->primitives.v[1] = p->conserved.momentum[1] / p->conserved.mass;
-    p->primitives.v[2] = p->conserved.momentum[2] / p->conserved.mass;
-    p->primitives.P =
-        hydro_gamma_minus_one *
-        (p->conserved.energy -
-         0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                p->conserved.momentum[1] * p->conserved.momentum[1] +
-                p->conserved.momentum[2] * p->conserved.momentum[2]) /
-             p->conserved.mass) /
-        p->geometry.volume;
-  }
-#endif
-
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
   p->geometry.volume = 0.0f;
@@ -88,40 +70,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
 
-#ifdef SPH_GRADIENTS
-  p->primitives.gradients.rho[0] = 0.0f;
-  p->primitives.gradients.rho[1] = 0.0f;
-  p->primitives.gradients.rho[2] = 0.0f;
-
-  p->primitives.gradients.v[0][0] = 0.0f;
-  p->primitives.gradients.v[0][1] = 0.0f;
-  p->primitives.gradients.v[0][2] = 0.0f;
-
-  p->primitives.gradients.v[1][0] = 0.0f;
-  p->primitives.gradients.v[1][1] = 0.0f;
-  p->primitives.gradients.v[1][2] = 0.0f;
-
-  p->primitives.gradients.v[2][0] = 0.0f;
-  p->primitives.gradients.v[2][1] = 0.0f;
-  p->primitives.gradients.v[2][2] = 0.0f;
-
-  p->primitives.gradients.P[0] = 0.0f;
-  p->primitives.gradients.P[1] = 0.0f;
-  p->primitives.gradients.P[2] = 0.0f;
-
-  p->primitives.limiter.rho[0] = FLT_MAX;
-  p->primitives.limiter.rho[1] = -FLT_MAX;
-  p->primitives.limiter.v[0][0] = FLT_MAX;
-  p->primitives.limiter.v[0][1] = -FLT_MAX;
-  p->primitives.limiter.v[1][0] = FLT_MAX;
-  p->primitives.limiter.v[1][1] = -FLT_MAX;
-  p->primitives.limiter.v[2][0] = FLT_MAX;
-  p->primitives.limiter.v[2][1] = -FLT_MAX;
-  p->primitives.limiter.P[0] = FLT_MAX;
-  p->primitives.limiter.P[1] = -FLT_MAX;
-
-  p->primitives.limiter.maxr = -FLT_MAX;
-#endif
+  hydro_gradients_init_density_loop(p);
 }
 
 /**
@@ -132,18 +81,18 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_end_volume(
-    struct part* p) {
+__attribute__((always_inline)) INLINE static void hydro_end_density(
+    struct part* restrict p, float time) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float ih = 1.0f / h;
 
   /* Final operation on the density. */
-  p->density.wcount =
-      (p->density.wcount + kernel_root) * (4.0f / 3.0 * M_PI * kernel_gamma3);
-  p->density.wcount_dh =
-      p->density.wcount_dh * ih * (4.0f / 3.0 * M_PI * kernel_gamma3);
+  p->density.wcount += kernel_root;
+  p->density.wcount *= kernel_norm;
+
+  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
 }
 
 /**
@@ -154,8 +103,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_volume(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
-    struct part* p, struct xpart* xp) {
+__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+    struct part* restrict p, struct xpart* restrict xp, int ti_current,
+    double timeBase) {
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -168,11 +118,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
 #ifndef THERMAL_ENERGY
   float momentum2;
-#endif
-
-#if defined(SPH_GRADIENTS) && defined(SLOPE_LIMITER)
-  float gradrho[3], gradv[3][3], gradP[3];
-  float gradtrue, gradmax, gradmin, alpha;
 #endif
 
   /* Final operation on the geometry. */
@@ -221,146 +166,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     p->geometry.matrix_E[2][2] = 0.0f;
   }
 
-#ifdef SPH_GRADIENTS
-  /* finalize gradients by multiplying with volume */
-  p->primitives.gradients.rho[0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.rho[1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.rho[2] *= ih2 * ih2 * volume;
-
-  p->primitives.gradients.v[0][0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[0][1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[0][2] *= ih2 * ih2 * volume;
-
-  p->primitives.gradients.v[1][0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[1][1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[1][2] *= ih2 * ih2 * volume;
-
-  p->primitives.gradients.v[2][0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[2][1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[2][2] *= ih2 * ih2 * volume;
-
-  p->primitives.gradients.P[0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.P[1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.P[2] *= ih2 * ih2 * volume;
-
-/* slope limiter */
-#ifdef SLOPE_LIMITER
-  gradrho[0] = p->primitives.gradients.rho[0];
-  gradrho[1] = p->primitives.gradients.rho[1];
-  gradrho[2] = p->primitives.gradients.rho[2];
-
-  gradv[0][0] = p->primitives.gradients.v[0][0];
-  gradv[0][1] = p->primitives.gradients.v[0][1];
-  gradv[0][2] = p->primitives.gradients.v[0][2];
-
-  gradv[1][0] = p->primitives.gradients.v[1][0];
-  gradv[1][1] = p->primitives.gradients.v[1][1];
-  gradv[1][2] = p->primitives.gradients.v[1][2];
-
-  gradv[2][0] = p->primitives.gradients.v[2][0];
-  gradv[2][1] = p->primitives.gradients.v[2][1];
-  gradv[2][2] = p->primitives.gradients.v[2][2];
-
-  gradP[0] = p->primitives.gradients.P[0];
-  gradP[1] = p->primitives.gradients.P[1];
-  gradP[2] = p->primitives.gradients.P[2];
-
-  gradtrue = sqrtf(gradrho[0] * gradrho[0] + gradrho[1] * gradrho[1] +
-                   gradrho[2] * gradrho[2]);
-  /* gradtrue might be zero. In this case, there is no gradient and we don't
-     need to slope limit anything... */
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.rho[1] - p->primitives.rho;
-    gradmin = p->primitives.rho - p->primitives.limiter.rho[0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.rho[0] *= alpha;
-    p->primitives.gradients.rho[1] *= alpha;
-    p->primitives.gradients.rho[2] *= alpha;
-  }
-
-  gradtrue = sqrtf(gradv[0][0] * gradv[0][0] + gradv[0][1] * gradv[0][1] +
-                   gradv[0][2] * gradv[0][2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[0][1] - p->primitives.v[0];
-    gradmin = p->primitives.v[0] - p->primitives.limiter.v[0][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[0][0] *= alpha;
-    p->primitives.gradients.v[0][1] *= alpha;
-    p->primitives.gradients.v[0][2] *= alpha;
-  }
-
-  gradtrue = sqrtf(gradv[1][0] * gradv[1][0] + gradv[1][1] * gradv[1][1] +
-                   gradv[1][2] * gradv[1][2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[1][1] - p->primitives.v[1];
-    gradmin = p->primitives.v[1] - p->primitives.limiter.v[1][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[1][0] *= alpha;
-    p->primitives.gradients.v[1][1] *= alpha;
-    p->primitives.gradients.v[1][2] *= alpha;
-  }
-
-  gradtrue = sqrtf(gradv[2][0] * gradv[2][0] + gradv[2][1] * gradv[2][1] +
-                   gradv[2][2] * gradv[2][2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[2][1] - p->primitives.v[2];
-    gradmin = p->primitives.v[2] - p->primitives.limiter.v[2][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[2][0] *= alpha;
-    p->primitives.gradients.v[2][1] *= alpha;
-    p->primitives.gradients.v[2][2] *= alpha;
-  }
-
-  gradtrue =
-      sqrtf(gradP[0] * gradP[0] + gradP[1] * gradP[1] + gradP[2] * gradP[2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.P[1] - p->primitives.P;
-    gradmin = p->primitives.P - p->primitives.limiter.P[0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.P[0] *= alpha;
-    p->primitives.gradients.P[1] *= alpha;
-    p->primitives.gradients.P[2] *= alpha;
-  }
-#endif  // SLOPE_LIMITER
-#else   // SPH_GRADIENTS
-  p->primitives.gradients.rho[0] = 0.0f;
-  p->primitives.gradients.rho[1] = 0.0f;
-  p->primitives.gradients.rho[2] = 0.0f;
-
-  p->primitives.gradients.v[0][0] = 0.0f;
-  p->primitives.gradients.v[0][1] = 0.0f;
-  p->primitives.gradients.v[0][2] = 0.0f;
-
-  p->primitives.gradients.v[1][0] = 0.0f;
-  p->primitives.gradients.v[1][1] = 0.0f;
-  p->primitives.gradients.v[1][2] = 0.0f;
-
-  p->primitives.gradients.v[2][0] = 0.0f;
-  p->primitives.gradients.v[2][1] = 0.0f;
-  p->primitives.gradients.v[2][2] = 0.0f;
-
-  p->primitives.gradients.P[0] = 0.0f;
-  p->primitives.gradients.P[1] = 0.0f;
-  p->primitives.gradients.P[2] = 0.0f;
-
-  p->primitives.limiter.rho[0] = FLT_MAX;
-  p->primitives.limiter.rho[1] = -FLT_MAX;
-  p->primitives.limiter.v[0][0] = FLT_MAX;
-  p->primitives.limiter.v[0][1] = -FLT_MAX;
-  p->primitives.limiter.v[1][0] = FLT_MAX;
-  p->primitives.limiter.v[1][1] = -FLT_MAX;
-  p->primitives.limiter.v[2][0] = FLT_MAX;
-  p->primitives.limiter.v[2][1] = -FLT_MAX;
-  p->primitives.limiter.P[0] = FLT_MAX;
-  p->primitives.limiter.P[1] = -FLT_MAX;
-
-  p->primitives.limiter.maxr = -FLT_MAX;
-#endif  // SPH_GRADIENTS
+  hydro_gradients_prepare_force_loop(p, ih2, volume);
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
@@ -610,10 +416,6 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 }
 
 // MATTHIEU
-__attribute__((always_inline)) INLINE static void hydro_end_density(
-    struct part* p, float time) {}
-__attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* p, struct xpart* xp, int ti_current, double timeBase) {}
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {}
 __attribute__((always_inline)) INLINE static void hydro_end_force(
