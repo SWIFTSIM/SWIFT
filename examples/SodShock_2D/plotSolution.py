@@ -30,7 +30,7 @@
 # Parameters
 gas_gamma = 5./3.      # Polytropic index
 rho_L = 1.             # Density left state
-rho_R = 0.125          # Density right state
+rho_R = 0.140625       # Density right state
 v_L = 0.               # Velocity left state
 v_R = 0.               # Velocity right state
 P_L = 1.               # Pressure left state
@@ -272,7 +272,7 @@ ylim(0.8, 3.8)
 # Information -------------------------------------
 subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Sod shock with  $\\gamma=%.3f$ in 1D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
+text(-0.49, 0.9, "Sod shock with  $\\gamma=%.3f$ in 2D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
 text(-0.49, 0.8, "Left:~~ $(P_L, \\rho_L, v_L) = (%.3f, %.3f, %.3f)$"%(P_L, rho_L, v_L), fontsize=10)
 text(-0.49, 0.7, "Right: $(P_R, \\rho_R, v_R) = (%.3f, %.3f, %.3f)$"%(P_R, rho_R, v_R), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
