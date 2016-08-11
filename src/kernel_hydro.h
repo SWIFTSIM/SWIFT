@@ -252,7 +252,7 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
 
   //#if kernel_ivals == 1
   ///* Only one branch in this case */
-  //const float *const coeffs = &kernel_coeffs[0];
+  // const float *const coeffs = &kernel_coeffs[0];
   //#else
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
@@ -290,7 +290,7 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
 
   //#if kernel_ivals == 1
   ///* Only one branch in this case */
-  //const float *const coeffs = &kernel_coeffs[0];
+  // const float *const coeffs = &kernel_coeffs[0];
   //#else
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
