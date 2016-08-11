@@ -2011,10 +2011,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Set this task's skip. */
       if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) == 1)
-          continue;
+        continue;
 
       /* Set the sort flags. */
-      if (t->type == task_type_pair) {
+      if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
         if (!(ci->sorted & (1 << t->flags))) {
           atomic_or(&ci->sorts->flags, (1 << t->flags));
           ci->sorts->skip = 0;
@@ -2108,6 +2108,14 @@ int engine_marktasks_serial(struct engine *e) {
   const int ti_end = e->ti_current;
   const int nr_tasks = e->sched.nr_tasks;
 
+  /* Skip all sends and recvs, we will unmark if needed. */
+  for (int ind = 0; ind < nr_tasks; ind++) {
+    struct task *t = &tasks[tid[ind]];
+    if (t->type == task_type_send || t->type == task_type_recv) {
+      t->skip = 1;
+    }
+  }
+
   for (int ind = 0; ind < nr_tasks; ind++) {
     struct task *t = &tasks[tid[ind]];
 
@@ -2143,10 +2151,10 @@ int engine_marktasks_serial(struct engine *e) {
 
       /* Set this task's skip. */
       if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) == 1)
-          continue;
+        continue;
 
       /* Set the sort flags. */
-      if (t->type == task_type_pair) {
+      if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
         if (!(ci->sorted & (1 << t->flags))) {
           ci->sorts->flags |= (1 << t->flags);
           ci->sorts->skip = 0;
@@ -2257,6 +2265,20 @@ int engine_marktasks(struct engine *e) {
     int extra_data[2] = {e->ti_current, rebuild_space};
     threadpool_map(&e->threadpool, engine_marktasks_sorts_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), 10000, NULL);
+
+#ifdef WITH_MPI
+    if (e->policy & engine_policy_mpi) {
+
+      /* Skip all sends and recvs, we will unmark if needed. */
+      for (int k = 0; k < s->nr_tasks; k++) {
+        struct task *t = &s->tasks[k];
+        if (t->type == task_type_send || t->type == task_type_recv) {
+          t->skip = 1;
+        }
+      }
+    }
+#endif
+
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), 10000, extra_data);
     rebuild_space = extra_data[1];
@@ -2717,6 +2739,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   /* Ready to go */
   e->step = -1;
   e->wallclock_time = (float)clocks_diff(&time1, &time2);
+
+  if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
 /**
