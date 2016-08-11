@@ -247,9 +247,6 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->ti_begin = 0;
         part->ti_end = 1;
 
-        xpart->v_full[0] = part->v[0];
-        xpart->v_full[1] = part->v[1];
-        xpart->v_full[2] = part->v[2];
         hydro_first_init_part(part, xpart);
         ++part;
         ++xpart;
@@ -448,7 +445,7 @@ int main(int argc, char *argv[]) {
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f", h * h * h * kernel_norm);
+  message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
@@ -460,6 +457,11 @@ int main(int argc, char *argv[]) {
     message("P field divergent");
 
   printf("\n");
+
+#if !defined(HYDRO_DIMENSION_3D)
+  message("test125cells only useful in 3D. Change parameters in const.h !");
+  return 1;
+#endif
 
   /* Build the infrastructure */
   struct space space;
