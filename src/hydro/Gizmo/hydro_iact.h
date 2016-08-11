@@ -287,20 +287,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Update conserved variables */
   /* eqn. (16) */
-  pi->conserved.mass -= mindt * Anorm * totflux[0];
-  pi->conserved.momentum[0] -= mindt * Anorm * totflux[1];
-  pi->conserved.momentum[1] -= mindt * Anorm * totflux[2];
-  pi->conserved.momentum[2] -= mindt * Anorm * totflux[3];
-  pi->conserved.energy -= mindt * Anorm * totflux[4];
+  pi->conserved.mass -= pi->force.dt * Anorm * totflux[0];
+  pi->conserved.momentum[0] -= pi->force.dt * Anorm * totflux[1];
+  pi->conserved.momentum[1] -= pi->force.dt * Anorm * totflux[2];
+  pi->conserved.momentum[2] -= pi->force.dt * Anorm * totflux[3];
+  pi->conserved.energy -= pi->force.dt * Anorm * totflux[4];
 
 #ifdef THERMAL_ENERGY
   float ekin = 0.5 * (pi->primitives.v[0] * pi->primitives.v[0] +
                       pi->primitives.v[1] * pi->primitives.v[1] +
                       pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.energy += mindt * Anorm * totflux[1] * pi->primitives.v[0];
-  pi->conserved.energy += mindt * Anorm * totflux[2] * pi->primitives.v[1];
-  pi->conserved.energy += mindt * Anorm * totflux[3] * pi->primitives.v[2];
-  pi->conserved.energy -= mindt * Anorm * totflux[0] * ekin;
+  pi->conserved.energy += pi->force.dt * Anorm * totflux[1] * pi->primitives.v[0];
+  pi->conserved.energy += pi->force.dt * Anorm * totflux[2] * pi->primitives.v[1];
+  pi->conserved.energy += pi->force.dt * Anorm * totflux[3] * pi->primitives.v[2];
+  pi->conserved.energy -= pi->force.dt * Anorm * totflux[0] * ekin;
 #endif
 
   /* the non symmetric version is never called when using mindt, whether this
@@ -308,20 +308,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
    * should always be executed or only in the symmetric case is currently
    * unclear */
   if (mode == 1) {
-    pj->conserved.mass += mindt * Anorm * totflux[0];
-    pj->conserved.momentum[0] += mindt * Anorm * totflux[1];
-    pj->conserved.momentum[1] += mindt * Anorm * totflux[2];
-    pj->conserved.momentum[2] += mindt * Anorm * totflux[3];
-    pj->conserved.energy += mindt * Anorm * totflux[4];
+    pj->conserved.mass += pj->force.dt * Anorm * totflux[0];
+    pj->conserved.momentum[0] += pj->force.dt * Anorm * totflux[1];
+    pj->conserved.momentum[1] += pj->force.dt * Anorm * totflux[2];
+    pj->conserved.momentum[2] += pj->force.dt * Anorm * totflux[3];
+    pj->conserved.energy += pj->force.dt * Anorm * totflux[4];
 
 #ifdef THERMAL_ENERGY
     ekin = 0.5 * (pj->primitives.v[0] * pj->primitives.v[0] +
                   pj->primitives.v[1] * pj->primitives.v[1] +
                   pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.energy -= mindt * Anorm * totflux[1] * pj->primitives.v[0];
-    pj->conserved.energy -= mindt * Anorm * totflux[2] * pj->primitives.v[1];
-    pj->conserved.energy -= mindt * Anorm * totflux[3] * pj->primitives.v[2];
-    pj->conserved.energy += mindt * Anorm * totflux[0] * ekin;
+    pj->conserved.energy -= pj->force.dt * Anorm * totflux[1] * pj->primitives.v[0];
+    pj->conserved.energy -= pj->force.dt * Anorm * totflux[2] * pj->primitives.v[1];
+    pj->conserved.energy -= pj->force.dt * Anorm * totflux[3] * pj->primitives.v[2];
+    pj->conserved.energy += pj->force.dt * Anorm * totflux[0] * ekin;
 #endif
   }
 }

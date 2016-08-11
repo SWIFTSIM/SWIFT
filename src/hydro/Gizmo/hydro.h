@@ -99,23 +99,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount *= kernel_norm;
 
   p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
-}
 
-/**
- * @brief Prepare a particle for the force calculation.
- *
- * Computes viscosity term, conduction term and smoothing length gradient terms.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part* restrict p, struct xpart* restrict xp, int ti_current,
-    double timeBase) {
-
-  /* Some smoothing length multiples. */
-  const float h = p->h;
-  const float ih = 1.0f / h;
   const float ihdim = pow_dimension(ih);
 
   float volume;
@@ -168,6 +152,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     p->primitives.P = hydro_gamma_minus_one * energy / volume;
 #endif
   }
+}
+
+/**
+ * @brief Prepare a particle for the force calculation.
+ *
+ * Computes viscosity term, conduction term and smoothing length gradient terms.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_force(
+    struct part* restrict p, struct xpart* restrict xp, int ti_current,
+    double timeBase) {
 
   /* Set the physical time step */
   p->force.dt = (p->ti_end - p->ti_begin) * timeBase;

@@ -20,7 +20,7 @@
 #ifndef SWIFT_HYDRO_GRADIENTS_H
 #define SWIFT_HYDRO_GRADIENTS_H
 
-//#define SPH_GRADIENTS
+#define SPH_GRADIENTS
 
 #include "hydro_slope_limiters.h"
 
