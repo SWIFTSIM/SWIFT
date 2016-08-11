@@ -250,15 +250,15 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
 
-#if kernel_ivals == 1
-  /* Only one branch in this case */
-  const float *const coeffs = &kernel_coeffs[0];
-#else
+  //#if kernel_ivals == 1
+  ///* Only one branch in this case */
+  //const float *const coeffs = &kernel_coeffs[0];
+  //#else
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
-#endif
+  //#endif
 
   /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
@@ -288,15 +288,15 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
 
-#if kernel_ivals == 1
-  /* Only one branch in this case */
-  const float *const coeffs = &kernel_coeffs[0];
-#else
+  //#if kernel_ivals == 1
+  ///* Only one branch in this case */
+  //const float *const coeffs = &kernel_coeffs[0];
+  //#else
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
-#endif
+  //#endif
 
   /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
