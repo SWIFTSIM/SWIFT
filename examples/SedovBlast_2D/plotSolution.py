@@ -239,16 +239,16 @@ plot(r_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 xlim(0, 1.3 * r_shock)
-ylim(0, 120)
+ylim(-2, 22)
 
 # Entropy profile ---------------------------------
 subplot(235)
 plot(r, S, '.', color='r', ms=1.)
 plot(r_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=-5)
+ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 xlim(0, 1.3 * r_shock)
-ylim(0, 1000)
+ylim(-5, 50)
 
 # Information -------------------------------------
 subplot(236, frameon=False)
