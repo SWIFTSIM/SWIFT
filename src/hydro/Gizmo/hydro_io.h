@@ -70,7 +70,7 @@ float convert_A(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 12;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -98,6 +98,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, primitives.P, convert_A);
   list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
                                   parts, primitives.P);
+  list[12] = io_make_output_field("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
+                                  parts, conserved.energy);
 }
 
 /**

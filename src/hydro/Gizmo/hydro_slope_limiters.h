@@ -20,8 +20,8 @@
 #ifndef SWIFT_HYDRO_SLOPE_LIMITERS_H
 #define SWIFT_HYDRO_SLOPE_LIMITERS_H
 
-//#define PER_FACE_LIMITER
-//#define CELL_WIDE_LIMITER
+#define PER_FACE_LIMITER
+#define CELL_WIDE_LIMITER
 
 #ifdef PER_FACE_LIMITER
 #include "hydro_slope_limiters_face.h"

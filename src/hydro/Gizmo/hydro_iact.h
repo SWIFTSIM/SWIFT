@@ -135,8 +135,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
       Bi[k][l] = pi->geometry.matrix_E[k][l];
       Bj[k][l] = pj->geometry.matrix_E[k][l];
     }
-    vi[k] = pi->v[k]; /* particle velocities */
-    vj[k] = pj->v[k];
+    vi[k] = pi->force.v_full[k]; /* particle velocities */
+    vj[k] = pj->force.v_full[k];
   }
   Vi = pi->geometry.volume;
   Vj = pj->geometry.volume;

@@ -171,6 +171,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Set the physical time step */
   p->force.dt = (p->ti_end - p->ti_begin) * timeBase;
+  /* Set the actual velocity of the particle */
+  p->force.v_full[0] = xp->v_full[0];
+  p->force.v_full[1] = xp->v_full[1];
+  p->force.v_full[2] = xp->v_full[2];
 }
 
 /**
@@ -389,18 +393,26 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p) {
 
-  return;
   /* Set the hydro acceleration, based on the new momentum and mass */
   /* NOTE: the momentum and mass are only correct for active particles, since
            only active particles have received flux contributions from all their
            neighbours. Since this method is only called for active particles,
            this is indeed the case. */
-  p->a_hydro[0] =
-      (p->conserved.momentum[0] / p->conserved.mass - p->v[0]) / p->force.dt;
-  p->a_hydro[1] =
-      (p->conserved.momentum[1] / p->conserved.mass - p->v[1]) / p->force.dt;
-  p->a_hydro[2] =
-      (p->conserved.momentum[2] / p->conserved.mass - p->v[2]) / p->force.dt;
+  if (p->force.dt) {
+    p->a_hydro[0] =
+        (p->conserved.momentum[0] / p->conserved.mass - p->primitives.v[0]) /
+        p->force.dt;
+    p->a_hydro[1] =
+        (p->conserved.momentum[1] / p->conserved.mass - p->primitives.v[1]) /
+        p->force.dt;
+    p->a_hydro[2] =
+        (p->conserved.momentum[2] / p->conserved.mass - p->primitives.v[2]) /
+        p->force.dt;
+  } else {
+    p->a_hydro[0] = 0.0f;
+    p->a_hydro[1] = 0.0f;
+    p->a_hydro[2] = 0.0f;
+  }
 }
 
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(

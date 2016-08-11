@@ -23,29 +23,6 @@
 __attribute__((always_inline)) INLINE static void
 hydro_gradients_init_density_loop(struct part *p) {
 
-  /* use the old volumes to estimate new primitive variables to be used for the
-     gradient calculation */
-  if (p->conserved.mass) {
-    p->primitives.rho = p->conserved.mass / p->geometry.volume;
-    p->primitives.v[0] = p->conserved.momentum[0] / p->conserved.mass;
-    p->primitives.v[1] = p->conserved.momentum[1] / p->conserved.mass;
-    p->primitives.v[2] = p->conserved.momentum[2] / p->conserved.mass;
-    p->primitives.P =
-        hydro_gamma_minus_one *
-        (p->conserved.energy -
-         0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                p->conserved.momentum[1] * p->conserved.momentum[1] +
-                p->conserved.momentum[2] * p->conserved.momentum[2]) /
-             p->conserved.mass) /
-        p->geometry.volume;
-  } else {
-    p->primitives.rho = 0.0f;
-    p->primitives.v[0] = 0.0f;
-    p->primitives.v[1] = 0.0f;
-    p->primitives.v[2] = 0.0f;
-    p->primitives.P = 0.0f;
-  }
-
   p->primitives.gradients.rho[0] = 0.0f;
   p->primitives.gradients.rho[1] = 0.0f;
   p->primitives.gradients.rho[2] = 0.0f;

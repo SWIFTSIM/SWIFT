@@ -159,6 +159,9 @@ struct part {
     /* Physical time step of the particle. */
     float dt;
 
+    /* Actual velocity of the particle. */
+    float v_full[3];
+
   } force;
 
   /* Particle mass (this field is also part of the conserved quantities...). */
