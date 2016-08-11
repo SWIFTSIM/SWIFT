@@ -76,6 +76,7 @@ scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
+git = sim["Code"].attrs["Git Revision"]
 
 x = sim["/PartType0/Coordinates"][:,0]
 v = sim["/PartType0/Velocities"][:,0]
@@ -226,46 +227,46 @@ figure()
 
 # Velocity profile --------------------------------
 subplot(231)
-plot(x, v, '.', color='r')
+plot(x, v, '.', color='r', ms=4.0)
 plot(x_s, v_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("$x$", labelpad=0)
-ylabel("$v_x$", labelpad=0)
+xlabel("${\\rm{Position}}~x$", labelpad=0)
+ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 xlim(-0.5, 0.5)
 ylim(-0.1, 0.95)
 
 # Density profile --------------------------------
 subplot(232)
-plot(x, rho, '.', color='r')
+plot(x, rho, '.', color='r', ms=4.0)
 plot(x_s, rho_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("$x$", labelpad=0)
-ylabel("$\\rho$", labelpad=0)
+xlabel("${\\rm{Position}}~x$", labelpad=0)
+ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 xlim(-0.5, 0.5)
 ylim(0.05, 1.1)
 
 # Pressure profile --------------------------------
 subplot(233)
-plot(x, P, '.', color='r')
+plot(x, P, '.', color='r', ms=4.0)
 plot(x_s, P_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("$x$", labelpad=0)
-ylabel("$P$", labelpad=0)
+xlabel("${\\rm{Position}}~x$", labelpad=0)
+ylabel("${\\rm{Pressure}}~P$", labelpad=0)
 xlim(-0.5, 0.5)
 ylim(0.01, 1.1)
 
 # Internal energy profile -------------------------
 subplot(234)
-plot(x, u, '.', color='r')
+plot(x, u, '.', color='r', ms=4.0)
 plot(x_s, u_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("$x$", labelpad=0)
-ylabel("$u$", labelpad=0)
+xlabel("${\\rm{Position}}~x$", labelpad=0)
+ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 xlim(-0.5, 0.5)
 ylim(0.8, 2.2)
 
 # Entropy profile ---------------------------------
 subplot(235)
-plot(x, S, '.', color='r')
+plot(x, S, '.', color='r', ms=4.0)
 plot(x_s, s_s, '--', color='k', alpha=0.8, lw=1.2)
-xlabel("$x$", labelpad=0)
-ylabel("$S$", labelpad=0)
+xlabel("${\\rm{Position}}~x$", labelpad=0)
+ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 xlim(-0.5, 0.5)
 ylim(0.8, 3.8)
 
@@ -276,9 +277,10 @@ text(-0.49, 0.9, "Sod shock with  $\\gamma=%.3f$ in 1D at $t=%.2f$"%(gas_gamma,t
 text(-0.49, 0.8, "Left:~~ $(P_L, \\rho_L, v_L) = (%.3f, %.3f, %.3f)$"%(P_L, rho_L, v_L), fontsize=10)
 text(-0.49, 0.7, "Right: $(P_R, \\rho_R, v_R) = (%.3f, %.3f, %.3f)$"%(P_R, rho_R, v_R), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
-text(-0.49, 0.5, scheme, fontsize=10)
-text(-0.49, 0.4, kernel, fontsize=10)
-text(-0.49, 0.3, "$%.2f$ neighbours ($\\eta=%.3f$)"%(neighbours, eta), fontsize=10)
+text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
+text(-0.49, 0.4, scheme, fontsize=10)
+text(-0.49, 0.3, kernel, fontsize=10)
+text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)"%(neighbours, eta), fontsize=10)
 xlim(-0.5, 0.5)
 ylim(0, 1)
 xticks([])

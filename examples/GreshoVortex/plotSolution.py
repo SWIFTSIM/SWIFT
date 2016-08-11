@@ -41,9 +41,9 @@ params = {'axes.labelsize': 10,
 'xtick.labelsize': 10,
 'ytick.labelsize': 10,
 'text.usetex': True,
-'figure.figsize' : (6.45,6.45),
-'figure.subplot.left'    : 0.07,
-'figure.subplot.right'   : 0.985,
+ 'figure.figsize' : (9.90,6.45),
+'figure.subplot.left'    : 0.045,
+'figure.subplot.right'   : 0.99,
 'figure.subplot.bottom'  : 0.05,
 'figure.subplot.top'     : 0.99,
 'figure.subplot.wspace'  : 0.15,
@@ -87,6 +87,9 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
+eta = sim["/HydroScheme"].attrs["Kernel eta"]
+git = sim["Code"].attrs["Git Revision"]
 
 pos = sim["/PartType0/Coordinates"][:,:]
 x = pos[:,0] - boxSize / 2
@@ -96,29 +99,19 @@ r = sqrt(x**2 + y**2)
 v_r = (x * vel[:,0] + y * vel[:,1]) / r
 v_phi = (-y * vel[:,0] + x * vel[:,1]) / r
 v_norm = sqrt(vel[:,0]**2 + vel[:,1]**2)
+rho = sim["/PartType0/Density"][:]
 u = sim["/PartType0/InternalEnergy"][:]
+S = sim["/PartType0/Entropy"][:]
+P = sim["/PartType0/Pressure"][:]
 
 # Plot the interesting quantities
 figure()
 
-# Internal energy profile --------------------------------
-subplot(221)
-
-plot(r, u, 'x', color='r')
-plot(solution_r, solution_u, '--', color='k', alpha=0.8, lw=1.2)
-plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
-plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
-xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
-text(0.02, 8.97, "%s"%scheme, fontsize=9, backgroundcolor="w")
-text(0.02, 8.82, "%s"%kernel, fontsize=9, backgroundcolor="w")
-xlim(0,R_max)
-ylim(7.3, 9.1)
 
 # Azimuthal velocity profile -----------------------------
-subplot(222)
+subplot(231)
 
-plot(r, v_phi, 'x', color='r')
+plot(r, v_phi, '.', color='r', ms=0.5)
 plot(solution_r, solution_v_phi, '--', color='k', alpha=0.8, lw=1.2)
 plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
@@ -126,30 +119,80 @@ xlabel("${\\rm{Radius}}~r$", labelpad=0)
 ylabel("${\\rm{Azimuthal~velocity}}~v_\\phi$", labelpad=0)
 xlim(0,R_max)
 ylim(-0.1, 1.2)
-text(0.75, 1, "$t=%.3f$"%(time), ha="right", va="bottom")
 
-# Radial velocity profile --------------------------------
-subplot(223)
+# Radial density profile --------------------------------
+subplot(232)
 
-plot(r, v_r, 'x', color='r', label="$\\texttt{SWIFT}$")
-plot(solution_r, solution_v_r, '--', color='k', alpha=0.8, lw=1.2,  label="$\\rm{Solution}$")
+plot(r, rho, '.', color='r', ms=0.5)
+plot(solution_r, solution_rho, '--', color='k', alpha=0.8, lw=1.2)
 plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
 xlabel("${\\rm{Radius}}~r$", labelpad=0)
-ylabel("${\\rm{Radial~velocity}}~v_r$", labelpad=-5)
-legend(loc="upper right", fontsize=10, frameon=False, numpoints=1, handletextpad=0.1, handlelength=1.2)
+ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 xlim(0,R_max)
-ylim(-0.2, 0.2)
-yticks([-0.2, -0.1, 0., 0.1, 0.2])
+ylim(rho0-0.3, rho0 + 0.3)
+#yticks([-0.2, -0.1, 0., 0.1, 0.2])
 
+# Radial pressure profile --------------------------------
+subplot(233)
+
+plot(r, P, '.', color='r', ms=0.5)
+plot(solution_r, solution_P, '--', color='k', alpha=0.8, lw=1.2)
+plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
+plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
+xlabel("${\\rm{Radius}}~r$", labelpad=0)
+ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+xlim(0, R_max)
+ylim(4.9 + P0, P0 + 6.1)
+
+# Internal energy profile --------------------------------
+subplot(234)
+
+plot(r, u, '.', color='r', ms=0.5)
+plot(solution_r, solution_u, '--', color='k', alpha=0.8, lw=1.2)
+plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
+plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
+xlabel("${\\rm{Radius}}~r$", labelpad=0)
+ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+xlim(0,R_max)
+ylim(7.3, 9.1)
+
+
+# Radial entropy profile --------------------------------
+subplot(235)
+
+plot(r, S, '.', color='r', ms=0.5)
+plot(solution_r, solution_s, '--', color='k', alpha=0.8, lw=1.2)
+plot([0.2, 0.2], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
+plot([0.4, 0.4], [-100, 100], ':', color='k', alpha=0.4, lw=1.2)
+xlabel("${\\rm{Radius}}~r$", labelpad=0)
+ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+xlim(0, R_max)
+ylim(4.9 + P0, P0 + 6.1)
 
 # Image --------------------------------------------------
-subplot(224)
-scatter(pos[:,0], pos[:,1], c=v_norm, cmap="PuBu", edgecolors='face', s=4, vmin=0, vmax=1)
-text(0.95, 0.95, "$|v|$", ha="right", va="top")
-xlim(0,1)
-ylim(0,1)
-xlabel("$x$", labelpad=0)
-ylabel("$y$", labelpad=0)
+#subplot(234)
+#scatter(pos[:,0], pos[:,1], c=v_norm, cmap="PuBu", edgecolors='face', s=4, vmin=0, vmax=1)
+#text(0.95, 0.95, "$|v|$", ha="right", va="top")
+#xlim(0,1)
+#ylim(0,1)
+#xlabel("$x$", labelpad=0)
+#ylabel("$y$", labelpad=0)
 
-savefig("greshoVortex_%03d.png"%snap)
+# Information -------------------------------------
+subplot(236, frameon=False)
+
+text(-0.49, 0.9, "Gresho-Chan vortex with  $\\gamma=%.3f$ at $t=%.2f$"%(gas_gamma,time), fontsize=10)
+text(-0.49, 0.8, "Background $\\rho_0=%.3f$"%rho0, fontsize=10)
+text(-0.49, 0.7, "Background $P_0=%.3f$"%P0, fontsize=10)
+plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
+text(-0.49, 0.5, "$\\textsc{Swift}$ %s"%git, fontsize=10)
+text(-0.49, 0.4, scheme, fontsize=10)
+text(-0.49, 0.3, kernel, fontsize=10)
+text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)"%(neighbours, eta), fontsize=10)
+xlim(-0.5, 0.5)
+ylim(0, 1)
+xticks([])
+yticks([])
+
+savefig("GreshoVortex.png", dpi=200)

@@ -16,10 +16,4 @@ fi
 ../swift -s -t 1 gresho.yml
 
 # Plot the solution
-for i in {0..100}
-do
-    python plotSolution.py $i
-done
-
-# Make a movie
-mencoder mf://*.png -mf w=645:h=645:fps=12:type=png -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o gresho.avi
+python plotSolution.py 11
