@@ -20,7 +20,7 @@
 #ifndef SWIFT_HYDRO_GRADIENTS_H
 #define SWIFT_HYDRO_GRADIENTS_H
 
-#define SPH_GRADIENTS
+//#define SPH_GRADIENTS
 
 #include "hydro_slope_limiters.h"
 
@@ -167,12 +167,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
                      hydro_gamma * Wj[4] * (pj->primitives.gradients.v[0][0] +
                                             pj->primitives.gradients.v[1][1] +
                                             pj->primitives.gradients.v[2][2]));
-
-  //    printf("WL: %g %g %g %g %g\n", Wi[0], Wi[1], Wi[2], Wi[3], Wi[4]);
-  //    printf("WR: %g %g %g %g %g\n", Wj[0], Wj[1], Wj[2], Wj[3], Wj[4]);
-
-  //    printf("dWL: %g %g %g %g %g\n", dWi[0], dWi[1], dWi[2], dWi[3], dWi[4]);
-  //    printf("dWR: %g %g %g %g %g\n", dWj[0], dWj[1], dWj[2], dWj[3], dWj[4]);
 
   Wi[0] += dWi[0];
   Wi[1] += dWi[1];

@@ -113,8 +113,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   float r = sqrtf(r2);
   float xi, xj;
-  float hi_inv, hi_inv2;
-  float hj_inv, hj_inv2;
+  float hi_inv, hi_inv_dim;
+  float hj_inv, hj_inv_dim;
   float wi, wj, wi_dx, wj_dx;
   int k, l;
   float A[3];
@@ -177,13 +177,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Compute kernel of pi. */
   hi_inv = 1.0 / hi;
-  hi_inv2 = hi_inv * hi_inv;
+  hi_inv_dim = pow_dimension(hi_inv);
   xi = r * hi_inv;
   kernel_deval(xi, &wi, &wi_dx);
 
   /* Compute kernel of pj. */
   hj_inv = 1.0 / hj;
-  hj_inv2 = hj_inv * hj_inv;
+  hj_inv_dim = pow_dimension(hj_inv);
   xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
@@ -193,9 +193,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   for (k = 0; k < 3; k++) {
     /* we add a minus sign since dx is pi->x - pj->x */
     A[k] = -Vi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) * wi *
-               hi_inv * hi_inv2 -
+               hi_inv_dim -
            Vj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) * wj *
-               hj_inv * hj_inv2;
+               hj_inv_dim;
     Anorm += A[k] * A[k];
   }
 
@@ -208,13 +208,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* compute the normal vector of the interface */
   Anorm = sqrtf(Anorm);
   for (k = 0; k < 3; k++) n_unit[k] = A[k] / Anorm;
-
-#ifdef PRINT_ID
-  if (pi->id == PRINT_ID || pj->id == PRINT_ID) {
-    printf("pi: %g %g %g\npj: %g %g %g\nA = %g %g %g\n", pi->x[0], pi->x[1],
-           pi->x[2], pj->x[0], pj->x[1], pj->x[2], A[0], A[1], A[2]);
-  }
-#endif
 
   /* Compute interface position (relative to pi, since we don't need the actual
    * position) */

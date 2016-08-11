@@ -27,7 +27,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-#define HLLC_SOLVER
+#define EXACT_SOLVER
 
 #ifdef EXACT_SOLVER
 #include "riemann/riemann_exact.h"

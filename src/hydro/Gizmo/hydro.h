@@ -116,7 +116,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float ih = 1.0f / h;
-  const float ih2 = ih * ih;
   const float ihdim = pow_dimension(ih);
 
   float volume;
@@ -144,7 +143,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
 
-  hydro_gradients_prepare_force_loop(p, ih2, volume);
+  hydro_gradients_prepare_force_loop(p, ih, volume);
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
@@ -390,14 +389,18 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p) {
 
+  return;
   /* Set the hydro acceleration, based on the new momentum and mass */
   /* NOTE: the momentum and mass are only correct for active particles, since
            only active particles have received flux contributions from all their
            neighbours. Since this method is only called for active particles,
            this is indeed the case. */
-  p->a_hydro[0] = p->conserved.momentum[0] / p->conserved.mass - p->v[0];
-  p->a_hydro[1] = p->conserved.momentum[1] / p->conserved.mass - p->v[1];
-  p->a_hydro[2] = p->conserved.momentum[2] / p->conserved.mass - p->v[2];
+  p->a_hydro[0] =
+      (p->conserved.momentum[0] / p->conserved.mass - p->v[0]) / p->force.dt;
+  p->a_hydro[1] =
+      (p->conserved.momentum[1] / p->conserved.mass - p->v[1]) / p->force.dt;
+  p->a_hydro[2] =
+      (p->conserved.momentum[2] / p->conserved.mass - p->v[2]) / p->force.dt;
 }
 
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(

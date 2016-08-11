@@ -157,28 +157,30 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
  * @brief Calculations done before the force loop
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_prepare_force_loop(struct part *p, float ih2, float volume) {
+hydro_gradients_prepare_force_loop(struct part *p, float ih, float volume) {
+
+  const float ihdimp1 = pow_dimension_plus_one(ih);
 
   /* finalize gradients by multiplying with volume */
-  p->primitives.gradients.rho[0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.rho[1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.rho[2] *= ih2 * ih2 * volume;
+  p->primitives.gradients.rho[0] *= ihdimp1 * volume;
+  p->primitives.gradients.rho[1] *= ihdimp1 * volume;
+  p->primitives.gradients.rho[2] *= ihdimp1 * volume;
 
-  p->primitives.gradients.v[0][0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[0][1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[0][2] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[0][0] *= ihdimp1 * volume;
+  p->primitives.gradients.v[0][1] *= ihdimp1 * volume;
+  p->primitives.gradients.v[0][2] *= ihdimp1 * volume;
 
-  p->primitives.gradients.v[1][0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[1][1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[1][2] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[1][0] *= ihdimp1 * volume;
+  p->primitives.gradients.v[1][1] *= ihdimp1 * volume;
+  p->primitives.gradients.v[1][2] *= ihdimp1 * volume;
 
-  p->primitives.gradients.v[2][0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[2][1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.v[2][2] *= ih2 * ih2 * volume;
+  p->primitives.gradients.v[2][0] *= ihdimp1 * volume;
+  p->primitives.gradients.v[2][1] *= ihdimp1 * volume;
+  p->primitives.gradients.v[2][2] *= ihdimp1 * volume;
 
-  p->primitives.gradients.P[0] *= ih2 * ih2 * volume;
-  p->primitives.gradients.P[1] *= ih2 * ih2 * volume;
-  p->primitives.gradients.P[2] *= ih2 * ih2 * volume;
+  p->primitives.gradients.P[0] *= ihdimp1 * volume;
+  p->primitives.gradients.P[1] *= ihdimp1 * volume;
+  p->primitives.gradients.P[2] *= ihdimp1 * volume;
 
   hydro_slope_limit_cell(p);
 }

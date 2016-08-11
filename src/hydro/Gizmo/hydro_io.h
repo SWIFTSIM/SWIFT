@@ -56,6 +56,10 @@ float convert_u(struct engine* e, struct part* p) {
   return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
 }
 
+float convert_A(struct engine* e, struct part* p) {
+  return p->primitives.P / pow_gamma(p->primitives.rho);
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -66,7 +70,7 @@ float convert_u(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -90,6 +94,10 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  geometry.volume);
   list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
                                  parts, primitives.gradients.rho);
+  list[10] = io_make_output_field_convert_part(
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, primitives.P, convert_A);
+  list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
+                                  parts, primitives.P);
 }
 
 /**
