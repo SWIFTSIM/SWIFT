@@ -18,7 +18,7 @@
  # 
  ##############################################################################
 
-# Computes the analytical solution of the 3D Sedov blast wave.
+# Computes the analytical solution of the 2D Sedov blast wave.
 # The script works for a given initial box and dumped energy and computes the solution at a later time t.
 
 # Parameters
@@ -84,6 +84,8 @@ S = sim["/PartType0/Entropy"][:]
 P = sim["/PartType0/Pressure"][:]
 rho = sim["/PartType0/Density"][:]
 
+
+# Now, work our the solution....
 
 from scipy.special import gamma as Gamma
 from numpy import *
@@ -190,6 +192,8 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     rho *= rho0
     return r, p, rho, u, r_s, p_s, rho_s, u_s, shock_speed
 
+
+# The main properties of the solution
 r_s, P_s, rho_s, v_s, r_shock, _, _, _, _ = sedov(time, E_0, rho_0, gas_gamma, 1000, 2)
 
 # Append points for after the shock
@@ -201,6 +205,8 @@ v_s = np.insert(v_s, np.size(v_s), [0, 0])
 # Additional arrays
 u_s = P_s / (rho_s * (gas_gamma - 1.))  #internal energy
 s_s = P_s / rho_s**gas_gamma # entropic function
+
+
 
 # Plot the interesting quantities
 figure()

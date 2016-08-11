@@ -31,8 +31,6 @@ E0= 1.             # Energy of the explosion
 N_inject = 21      # Number of particles in which to inject energy
 fileName = "sedov.hdf5" 
 
-#L = 101
-
 #---------------------------------------------------
 glass = h5py.File("glassPlane_128.hdf5", "r")
 
@@ -50,10 +48,9 @@ m = zeros(numPart)
 u = zeros(numPart)
 r = zeros(numPart)
 
-for i in range(numPart):
-        r[i] = sqrt((pos[i,0] - 0.5)**2 + (pos[i,1] - 0.5)**2)
-        m[i] = rho0 * vol / numPart    
-        u[i] = P0 / (rho0 * (gamma - 1))
+r = sqrt((pos[:,0] - 0.5)**2 + (pos[:,1] - 0.5)**2)
+m[:] = rho0 * vol / numPart    
+u[:] = P0 / (rho0 * (gamma - 1))
 
 # Make the central particle detonate
 index = argsort(r)
