@@ -66,7 +66,7 @@ float convert_u(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -88,6 +88,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  primitives.rho);
   list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_VOLUME, parts,
                                  geometry.volume);
+  list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
+                                 parts, primitives.gradients.rho);
 }
 
 /**
