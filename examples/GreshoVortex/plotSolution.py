@@ -93,7 +93,7 @@ git = sim["Code"].attrs["Git Revision"]
 
 pos = sim["/PartType0/Coordinates"][:,:]
 x = pos[:,0] - boxSize / 2
-y = pos[:, 1] - boxSize / 2
+y = pos[:,1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:,:]
 r = sqrt(x**2 + y**2)
 v_r = (x * vel[:,0] + y * vel[:,1]) / r

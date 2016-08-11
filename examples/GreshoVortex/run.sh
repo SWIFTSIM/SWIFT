@@ -1,7 +1,7 @@
 #!/bin/bash
 
  # Generate the initial conditions if they are not present.
-if [ ! -e glass_128.hdf5 ]
+if [ ! -e glassPlane_128.hdf5 ]
 then
     echo "Fetching initial glass file for the Gresho-Chan vortex example..."
     ./getGlass.sh
