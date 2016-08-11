@@ -455,9 +455,6 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
   }
 
-  /* Write the state of the system before starting time integration. */
-  if (!dry_run) engine_dump_snapshot(&e);
-
 /* Init the runner history. */
 #ifdef HIST
   for (k = 0; k < runner_hist_N; k++) runner_hist_bins[k] = 0;
@@ -492,6 +489,9 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the particles */
   engine_init_particles(&e, flag_entropy_ICs);
+
+  /* Write the state of the system before starting time integration. */
+  engine_dump_snapshot(&e);
 
   /* Legend */
   if (myrank == 0)
