@@ -76,6 +76,7 @@ tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
 tests/testRiemannHLLC
+tests/testMatrixInversion
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf

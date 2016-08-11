@@ -117,9 +117,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float h = p->h;
   const float ih = 1.0f / h;
   const float ih2 = ih * ih;
+  const float ihdim = pow_dimension(ih);
 
-  float detE, volume;
-  float E[3][3];
+  float volume;
   float m, momentum[3], energy;
 
 #ifndef THERMAL_ENERGY
@@ -129,48 +129,20 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
-  volume = ih * ih2 * (p->geometry.volume + kernel_root);
+  volume = ihdim * (p->geometry.volume + kernel_root);
   p->geometry.volume = volume = 1. / volume;
   /* we multiply with the smoothing kernel normalization */
-  p->geometry.matrix_E[0][0] = E[0][0] = ih * ih2 * p->geometry.matrix_E[0][0];
-  p->geometry.matrix_E[0][1] = E[0][1] = ih * ih2 * p->geometry.matrix_E[0][1];
-  p->geometry.matrix_E[0][2] = E[0][2] = ih * ih2 * p->geometry.matrix_E[0][2];
-  p->geometry.matrix_E[1][0] = E[1][0] = ih * ih2 * p->geometry.matrix_E[1][0];
-  p->geometry.matrix_E[1][1] = E[1][1] = ih * ih2 * p->geometry.matrix_E[1][1];
-  p->geometry.matrix_E[1][2] = E[1][2] = ih * ih2 * p->geometry.matrix_E[1][2];
-  p->geometry.matrix_E[2][0] = E[2][0] = ih * ih2 * p->geometry.matrix_E[2][0];
-  p->geometry.matrix_E[2][1] = E[2][1] = ih * ih2 * p->geometry.matrix_E[2][1];
-  p->geometry.matrix_E[2][2] = E[2][2] = ih * ih2 * p->geometry.matrix_E[2][2];
+  p->geometry.matrix_E[0][0] = ihdim * p->geometry.matrix_E[0][0];
+  p->geometry.matrix_E[0][1] = ihdim * p->geometry.matrix_E[0][1];
+  p->geometry.matrix_E[0][2] = ihdim * p->geometry.matrix_E[0][2];
+  p->geometry.matrix_E[1][0] = ihdim * p->geometry.matrix_E[1][0];
+  p->geometry.matrix_E[1][1] = ihdim * p->geometry.matrix_E[1][1];
+  p->geometry.matrix_E[1][2] = ihdim * p->geometry.matrix_E[1][2];
+  p->geometry.matrix_E[2][0] = ihdim * p->geometry.matrix_E[2][0];
+  p->geometry.matrix_E[2][1] = ihdim * p->geometry.matrix_E[2][1];
+  p->geometry.matrix_E[2][2] = ihdim * p->geometry.matrix_E[2][2];
 
-  /* invert the E-matrix */
-  /* code shamelessly stolen from the public version of GIZMO */
-  /* But since we should never invert a matrix, this code has to be replaced */
-  detE = E[0][0] * E[1][1] * E[2][2] + E[0][1] * E[1][2] * E[2][0] +
-         E[0][2] * E[1][0] * E[2][1] - E[0][2] * E[1][1] * E[2][0] -
-         E[0][1] * E[1][0] * E[2][2] - E[0][0] * E[1][2] * E[2][1];
-  /* check for zero determinant */
-  if ((detE != 0) && !isnan(detE)) {
-    p->geometry.matrix_E[0][0] = (E[1][1] * E[2][2] - E[1][2] * E[2][1]) / detE;
-    p->geometry.matrix_E[0][1] = (E[0][2] * E[2][1] - E[0][1] * E[2][2]) / detE;
-    p->geometry.matrix_E[0][2] = (E[0][1] * E[1][2] - E[0][2] * E[1][1]) / detE;
-    p->geometry.matrix_E[1][0] = (E[1][2] * E[2][0] - E[1][0] * E[2][2]) / detE;
-    p->geometry.matrix_E[1][1] = (E[0][0] * E[2][2] - E[0][2] * E[2][0]) / detE;
-    p->geometry.matrix_E[1][2] = (E[0][2] * E[1][0] - E[0][0] * E[1][2]) / detE;
-    p->geometry.matrix_E[2][0] = (E[1][0] * E[2][1] - E[1][1] * E[2][0]) / detE;
-    p->geometry.matrix_E[2][1] = (E[0][1] * E[2][0] - E[0][0] * E[2][1]) / detE;
-    p->geometry.matrix_E[2][2] = (E[0][0] * E[1][1] - E[0][1] * E[1][0]) / detE;
-  } else {
-    /* if the E-matrix is not well behaved, we cannot use it */
-    p->geometry.matrix_E[0][0] = 0.0f;
-    p->geometry.matrix_E[0][1] = 0.0f;
-    p->geometry.matrix_E[0][2] = 0.0f;
-    p->geometry.matrix_E[1][0] = 0.0f;
-    p->geometry.matrix_E[1][1] = 0.0f;
-    p->geometry.matrix_E[1][2] = 0.0f;
-    p->geometry.matrix_E[2][0] = 0.0f;
-    p->geometry.matrix_E[2][1] = 0.0f;
-    p->geometry.matrix_E[2][2] = 0.0f;
-  }
+  invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
 
   hydro_gradients_prepare_force_loop(p, ih2, volume);
 
