@@ -469,7 +469,7 @@ if test "$enable_warn" != "no"; then
              CFLAGS="$CFLAGS -Wall"
           ;;
 	  intel)
-             CFLAGS="$CFLAGS -w2"
+             CFLAGS="$CFLAGS -w2 -Wunused-variable"
           ;;
 	  *)
 	     AX_CFLAGS_WARN_ALL

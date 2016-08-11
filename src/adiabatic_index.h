@@ -20,6 +20,12 @@
 #ifndef SWIFT_ADIABATIC_INDEX_H
 #define SWIFT_ADIABATIC_INDEX_H
 
+/**
+ * @file adiabatic_index.h
+ * @brief Defines the adiabatic index (polytropix index) \f$\gamma\f$ of the
+ * problem and (fast) mathematical functions involving it.
+ */
+
 /* Config parameters. */
 #include "../config.h"
 

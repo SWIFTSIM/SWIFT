@@ -18,7 +18,10 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
+#include "dimension.h"
 #include "equation_of_state.h"
+#include "hydro_properties.h"
+#include "kernel_hydro.h"
 
 /**
  * @brief Returns the internal energy of a particle
@@ -133,7 +136,14 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp) {}
+    struct part *restrict p, struct xpart *restrict xp) {
+
+  p->ti_begin = 0;
+  p->ti_end = 0;
+  xp->v_full[0] = p->v[0];
+  xp->v_full[1] = p->v[1];
+  xp->v_full[2] = p->v[2];
+}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -169,33 +179,33 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float ih = 1.0f / h;
-  const float ih2 = ih * ih;
-  const float ih4 = ih2 * ih2;
+  const float h_inv = 1.0f / h;                       /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= 3.0f * p->mass * kernel_root;
+  p->rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->density.wcount += kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
-  p->rho *= ih * ih2;
-  p->rho_dh *= ih4;
+  p->rho *= h_inv_dim;
+  p->rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= kernel_norm;
-  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
+  p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
 
   const float irho = 1.f / p->rho;
 
   /* Compute the derivative term */
-  p->rho_dh = 1.f / (1.f + 0.33333333f * p->h * p->rho_dh * irho);
+  p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * irho);
 
   /* Finish calculation of the velocity curl components */
-  p->density.rot_v[0] *= ih4 * irho;
-  p->density.rot_v[1] *= ih4 * irho;
-  p->density.rot_v[2] *= ih4 * irho;
+  p->density.rot_v[0] *= h_inv_dim_plus_one * irho;
+  p->density.rot_v[1] *= h_inv_dim_plus_one * irho;
+  p->density.rot_v[2] *= h_inv_dim_plus_one * irho;
 
   /* Finish calculation of the velocity divergence */
-  p->density.div_v *= ih4 * irho;
+  p->density.div_v *= h_inv_dim_plus_one * irho;
 }
 
 /**
@@ -308,7 +318,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p) {
 
-  p->force.h_dt *= p->h * 0.333333333f;
+  p->force.h_dt *= p->h * hydro_dimension_inv;
 
   p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
 }

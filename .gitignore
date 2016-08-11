@@ -29,6 +29,7 @@ examples/used_parameters.yml
 examples/energy.txt
 examples/*/*.xmf
 examples/*/*.hdf5
+examples/*/*.png
 examples/*/*.txt
 examples/*/used_parameters.yml
 examples/*/*/*.xmf

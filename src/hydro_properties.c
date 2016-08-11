@@ -27,6 +27,7 @@
 /* Local headers. */
 #include "adiabatic_index.h"
 #include "common_io.h"
+#include "dimension.h"
 #include "error.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
@@ -39,8 +40,7 @@ void hydro_props_init(struct hydro_props *p,
 
   /* Kernel properties */
   p->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
-  const float eta3 = p->eta_neighbours * p->eta_neighbours * p->eta_neighbours;
-  p->target_neighbours = eta3 * kernel_norm;
+  p->target_neighbours = pow_dimension(p->eta_neighbours) * kernel_norm;
   p->delta_neighbours = parser_get_param_float(params, "SPH:delta_neighbours");
 
   /* Ghost stuff */
@@ -51,21 +51,26 @@ void hydro_props_init(struct hydro_props *p,
   p->CFL_condition = parser_get_param_float(params, "SPH:CFL_condition");
   const float max_volume_change = parser_get_opt_param_float(
       params, "SPH:max_volume_change", hydro_props_default_volume_change);
-  p->log_max_h_change = logf(powf(max_volume_change, 0.33333333333f));
+  p->log_max_h_change = logf(powf(max_volume_change, hydro_dimension_inv));
 }
 
 void hydro_props_print(const struct hydro_props *p) {
 
   message("Adiabatic index gamma: %f.", hydro_gamma);
-  message("Hydrodynamic scheme: %s.", SPH_IMPLEMENTATION);
+
+  message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,
+          (int)hydro_dimension);
+
   message("Hydrodynamic kernel: %s with %.2f +/- %.2f neighbours (eta=%f).",
           kernel_name, p->target_neighbours, p->delta_neighbours,
           p->eta_neighbours);
+
   message("Hydrodynamic integration: CFL parameter: %.4f.", p->CFL_condition);
+
   message(
       "Hydrodynamic integration: Max change of volume: %.2f "
       "(max|dlog(h)/dt|=%f).",
-      powf(expf(p->log_max_h_change), 3.f), p->log_max_h_change);
+      powf(expf(p->log_max_h_change), hydro_dimension), p->log_max_h_change);
 
   if (p->max_smoothing_iterations != hydro_props_default_max_iterations)
     message("Maximal iterations in ghost task set to %d (default is %d)",
@@ -76,6 +81,7 @@ void hydro_props_print(const struct hydro_props *p) {
 void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
 
   writeAttribute_f(h_grpsph, "Adiabatic index", hydro_gamma);
+  writeAttribute_i(h_grpsph, "Dimension", (int)hydro_dimension);
   writeAttribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
   writeAttribute_s(h_grpsph, "Kernel function", kernel_name);
   writeAttribute_f(h_grpsph, "Kernel target N_ngb", p->target_neighbours);

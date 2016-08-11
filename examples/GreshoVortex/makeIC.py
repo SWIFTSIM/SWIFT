@@ -21,93 +21,83 @@
 import h5py
 import random
 from numpy import *
+import sys
 
-# Generates a swift IC file for the Gresho Vortex in a periodic box
+# Generates a swift IC file for the Gresho-Chan vortex in a periodic box
 
 # Parameters
-periodic= 1      # 1 For periodic box
-factor = 3
-boxSize = [ 1.0 , 1.0, 1.0/factor ]
-L = 120           # Number of particles along one axis
 gamma = 5./3.     # Gas adiabatic index
-eta = 1.2349      # 48 ngbs with cubic spline kernel
-rho = 1           # Gas density
+rho0 = 1           # Gas density
 P0 = 0.           # Constant additional pressure (should have no impact on the dynamics)
-fileName = "greshoVortex.hdf5" 
-vol = boxSize[0] * boxSize[1] * boxSize[2]
-
-
+fileOutputName = "greshoVortex.hdf5" 
+fileGlass = "glassPlane_128.hdf5"
 #---------------------------------------------------
 
-numPart = L**3 / factor
-mass = boxSize[0]*boxSize[1]*boxSize[2] * rho / numPart
+# Get position and smoothing lengths from the glass
+fileInput = h5py.File(fileGlass, 'r')
+coords = fileInput["/PartType0/Coordinates"][:,:]
+h = fileInput["/PartType0/SmoothingLength"][:]
+ids = fileInput["/PartType0/ParticleIDs"][:]
+boxSize = fileInput["/Header"].attrs["BoxSize"][0]
+numPart = size(h)
+fileInput.close()
 
-#Generate particles
-coords = zeros((numPart, 3))
-v      = zeros((numPart, 3))
-m      = zeros((numPart, 1))
-h      = zeros((numPart, 1))
-u      = zeros((numPart, 1))
-ids    = zeros((numPart, 1), dtype='L')
+# Now generate the rest
+m = ones(numPart) * rho0 * boxSize**2 / numPart
+u = zeros(numPart)
+v = zeros((numPart, 3))
 
-partId=0
-for i in range(L):
-    for j in range(L):
-        for k in range(L/factor):
-            index = i*L*L/factor + j*L/factor + k
-            x = i * boxSize[0] / L + boxSize[0] / (2*L)
-            y = j * boxSize[0] / L + boxSize[0] / (2*L)
-            z = k * boxSize[0] / L + boxSize[0] / (2*L)
-            r2 = (x - boxSize[0] / 2)**2 + (y - boxSize[1] / 2)**2
-            r = sqrt(r2)
-            coords[index,0] = x
-            coords[index,1] = y
-            coords[index,2] = z
-            v_phi = 0.
-            if r < 0.2:
-                v_phi = 5.*r
-            elif r < 0.4:
-                v_phi = 2. - 5.*r
-            else:
-                v_phi = 0.
-            v[index,0] = -v_phi * (y - boxSize[0] / 2) / r
-            v[index,1] =  v_phi * (x - boxSize[0] / 2) / r
-            v[index,2] = 0.
-            m[index] = mass
-            h[index] = eta * boxSize[0] / L
-            P = P0
-            if r < 0.2:
-                P = P + 5. + 12.5*r2
-            elif r < 0.4:
-                P = P + 9. + 12.5*r2 - 20.*r + 4.*log(r/0.2)
-            else:
-                P = P + 3. + 4.*log(2.)
-            u[index] = P / ((gamma - 1.)*rho)
-            ids[index] = partId + 1
-            partId = partId + 1
+for i in range(numPart):
+    
+    x = coords[i,0]
+    y = coords[i,1]
+    z = coords[i,2]
 
+    r2 = (x - boxSize / 2)**2 + (y - boxSize / 2)**2
+    r = sqrt(r2)
+
+    v_phi = 0.
+    if r < 0.2:
+        v_phi = 5.*r
+    elif r < 0.4:
+        v_phi = 2. - 5.*r
+    else:
+        v_phi = 0.
+    v[i,0] = -v_phi * (y - boxSize / 2) / r
+    v[i,1] =  v_phi * (x - boxSize / 2) / r
+    v[i,2] = 0.
+
+    P = P0
+    if r < 0.2:
+        P = P + 5. + 12.5*r2
+    elif r < 0.4:
+        P = P + 9. + 12.5*r2 - 20.*r + 4.*log(r/0.2)
+    else:
+        P = P + 3. + 4.*log(2.)
+    u[i] = P / ((gamma - 1.)*rho0)
+    
 
 
 #File
-file = h5py.File(fileName, 'w')
+fileOutput = h5py.File(fileOutputName, 'w')
 
 # Header
-grp = file.create_group("/Header")
+grp = fileOutput.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
+grp.attrs["NumFileOutputsPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 
 #Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = periodic
+grp = fileOutput.create_group("/RuntimePars")
+grp.attrs["PeriodicBoundariesOn"] = 1
 
 #Units
-grp = file.create_group("/Units")
+grp = fileOutput.create_group("/Units")
 grp.attrs["Unit length in cgs (U_L)"] = 1.
 grp.attrs["Unit mass in cgs (U_M)"] = 1.
 grp.attrs["Unit time in cgs (U_t)"] = 1.
@@ -115,20 +105,20 @@ grp.attrs["Unit current in cgs (U_I)"] = 1.
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
-grp = file.create_group("/PartType0")
+grp = fileOutput.create_group("/PartType0")
 ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
 ds[()] = coords
 ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v
-ds = grp.create_dataset('Masses', (numPart,1), 'f')
-ds[()] = m
+ds = grp.create_dataset('Masses', (numPart, 1), 'f')
+ds[()] = m.reshape((numPart,1))
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
-ds[()] = h
+ds[()] = h.reshape((numPart,1))
 ds = grp.create_dataset('InternalEnergy', (numPart,1), 'f')
-ds[()] = u
+ds[()] = u.reshape((numPart,1))
 ds = grp.create_dataset('ParticleIDs', (numPart,1), 'L')
-ds[()] = ids[:]
+ds[()] = ids.reshape((numPart,1))
 
-file.close()
+fileOutput.close()
 
 
