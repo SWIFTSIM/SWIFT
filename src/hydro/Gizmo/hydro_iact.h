@@ -293,15 +293,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   pi->conserved.momentum[2] -= pi->force.dt * Anorm * totflux[3];
   pi->conserved.energy -= pi->force.dt * Anorm * totflux[4];
 
-#ifdef THERMAL_ENERGY
-  float ekin = 0.5 * (pi->primitives.v[0] * pi->primitives.v[0] +
-                      pi->primitives.v[1] * pi->primitives.v[1] +
-                      pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.energy += pi->force.dt * Anorm * totflux[1] * pi->primitives.v[0];
-  pi->conserved.energy += pi->force.dt * Anorm * totflux[2] * pi->primitives.v[1];
-  pi->conserved.energy += pi->force.dt * Anorm * totflux[3] * pi->primitives.v[2];
+  float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
+                       pi->primitives.v[1] * pi->primitives.v[1] +
+                       pi->primitives.v[2] * pi->primitives.v[2]);
+  pi->conserved.energy +=
+      pi->force.dt * Anorm * totflux[1] * pi->primitives.v[0];
+  pi->conserved.energy +=
+      pi->force.dt * Anorm * totflux[2] * pi->primitives.v[1];
+  pi->conserved.energy +=
+      pi->force.dt * Anorm * totflux[3] * pi->primitives.v[2];
   pi->conserved.energy -= pi->force.dt * Anorm * totflux[0] * ekin;
-#endif
 
   /* the non symmetric version is never called when using mindt, whether this
    * piece of code
@@ -314,15 +315,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     pj->conserved.momentum[2] += pj->force.dt * Anorm * totflux[3];
     pj->conserved.energy += pj->force.dt * Anorm * totflux[4];
 
-#ifdef THERMAL_ENERGY
-    ekin = 0.5 * (pj->primitives.v[0] * pj->primitives.v[0] +
-                  pj->primitives.v[1] * pj->primitives.v[1] +
-                  pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.energy -= pj->force.dt * Anorm * totflux[1] * pj->primitives.v[0];
-    pj->conserved.energy -= pj->force.dt * Anorm * totflux[2] * pj->primitives.v[1];
-    pj->conserved.energy -= pj->force.dt * Anorm * totflux[3] * pj->primitives.v[2];
+    ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
+                   pj->primitives.v[1] * pj->primitives.v[1] +
+                   pj->primitives.v[2] * pj->primitives.v[2]);
+    pj->conserved.energy -=
+        pj->force.dt * Anorm * totflux[1] * pj->primitives.v[0];
+    pj->conserved.energy -=
+        pj->force.dt * Anorm * totflux[2] * pj->primitives.v[1];
+    pj->conserved.energy -=
+        pj->force.dt * Anorm * totflux[3] * pj->primitives.v[2];
     pj->conserved.energy += pj->force.dt * Anorm * totflux[0] * ekin;
-#endif
   }
 }
 

@@ -21,6 +21,8 @@
 #include "adiabatic_index.h"
 #include "hydro_gradients.h"
 
+#define THERMAL_ENERGY
+
 /**
  * @brief Computes the hydro time-step of a given particle
  *
