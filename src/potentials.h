@@ -36,8 +36,6 @@
 #include "physical_constants.h"
 #include "units.h"
 #include "math.h"
-#define FINLINE __attribute__((always_inline)) INLINE
-/* #define FINLINE */
 /* External Potential Properties */
 struct external_potential {
 
@@ -61,6 +59,7 @@ struct external_potential {
 	 double surface_density;
 	 double scale_height;
 	 double z_disk;
+	 double dynamical_time;
 	 double timestep_mult;
   } disk_patch_potential;
 #endif
@@ -74,16 +73,15 @@ struct external_potential {
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-FINLINE static float external_gravity_disk_patch_timestep(
+__attribute__((always_inline)) INLINE static float external_gravity_disk_patch_timestep(
 		  const struct external_potential* potential,
         const struct phys_const* const phys_const,
         const struct gpart* const g) {
 
   
   /* initilize time step to disk dynamical time */
-  const float dt_dyn = sqrt(potential->disk_patch_potential.scale_height / (phys_const->const_newton_G * potential->disk_patch_potential.surface_density));
+  const float dt_dyn = potential->disk_patch_potential.dynamical_time;
   float dt = dt_dyn;
-
 
   /* absolute value of height above disk */
   const float dz = fabs(g->x[2] - potential->disk_patch_potential.z_disk);
@@ -127,27 +125,23 @@ FINLINE static float external_gravity_disk_patch_timestep(
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
-FINLINE static void external_gravity_disk_patch_potential(const double time, const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
+__attribute__((always_inline)) INLINE static void external_gravity_disk_patch_potential(const double time, const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
 
   const float G_newton = phys_const->const_newton_G;
-  const float surface_density= potential->disk_patch_potential.surface_density;
-  const float scale_height   = potential->disk_patch_potential.z_disk;
-  const double const_G       = phys_const->const_newton_G;
-  const float t_dyn          = sqrt(scale_height / (const_G * surface_density));
-
-
+  const float t_dyn = potential->disk_patch_potential.dynamical_time;
   const float dz = g->x[2] - potential->disk_patch_potential.z_disk;
   g->a_grav[0]  += 0;
   g->a_grav[1]  += 0;
 
-#ifdef ISOTHERMAL_GLASS
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH_ICS
   float reduction_factor = 1.;
   if(time < 5 * t_dyn)
 	 reduction_factor = time / (5 * t_dyn);
 #else
   const float reduction_factor = 1.;
 #endif
-  const float z_accel =  reduction_factor * 2 * phys_const->const_newton_G * M_PI * potential->disk_patch_potential.surface_density
+
+  const float z_accel =  reduction_factor * 2 * G_newton * M_PI * potential->disk_patch_potential.surface_density
   	 * tanh(fabs(dz) / potential->disk_patch_potential.scale_height);
 
   if (dz > 0)
@@ -159,16 +153,12 @@ FINLINE static void external_gravity_disk_patch_potential(const double time, con
   if(abs(g->id_or_neg_offset) == 1)
 	 message(" time= %e, rf= %e, az= %e", time, reduction_factor, g->a_grav[2]);
 
-#ifdef ISOTHERMAL_GLASS
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH_ICS
   /* TT: add viscous drag */
-  
-  g->a_grav[0]  -= g->v_full[0] / (2. * t_dyn) / const_G;
-  g->a_grav[1]  -= g->v_full[1] / (2. * t_dyn) / const_G;
-  g->a_grav[2]  -= g->v_full[2] / (2. * t_dyn) / const_G;
-
+  g->a_grav[0]  -= g->v_full[0] / (2 * t_dyn) / G_newton;
+  g->a_grav[1]  -= g->v_full[1] / (2 * t_dyn) / G_newton;
+  g->a_grav[2]  -= g->v_full[2] / (2 * t_dyn) / G_newton;
 #endif  
-
-
 }
 #endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 
@@ -219,7 +209,7 @@ external_gravity_isothermalpotential_timestep(
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
-FINLINE static void external_gravity_isothermalpotential(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
+__attribute__((always_inline)) INLINE static void external_gravity_isothermalpotential(const struct external_potential* potential, const struct phys_const* const phys_const, struct gpart* g) {
 __attribute__((always_inline)) INLINE static void
 external_gravity_isothermalpotential(const struct external_potential* potential,
                                      const struct phys_const* const phys_const,
@@ -252,7 +242,7 @@ external_gravity_isothermalpotential(const struct external_potential* potential,
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
-FINLINE static float external_gravity_pointmass_timestep(const struct external_potential* potential,
+__attribute__((always_inline)) INLINE static float external_gravity_pointmass_timestep(const struct external_potential* potential,
 																					  const struct phys_const* const phys_const,
                                     const struct gpart* const g) {
 
@@ -287,7 +277,7 @@ FINLINE static float external_gravity_pointmass_timestep(const struct external_p
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
-FINLINE static void external_gravity_pointmass(
+__attribute__((always_inline)) INLINE static void external_gravity_pointmass(
     const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
@@ -306,6 +296,7 @@ FINLINE static void external_gravity_pointmass(
 
 /* Now, some generic functions, defined in the source file */
 void potential_init(const struct swift_params* parameter_file,
+						  const struct phys_const* const phys_const,
                     struct UnitSystem* us,
                     struct external_potential* potential);
 

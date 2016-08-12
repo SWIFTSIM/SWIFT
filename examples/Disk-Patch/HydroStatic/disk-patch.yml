@@ -20,7 +20,7 @@ Statistics:
 # Parameters governing the snapshots
 Snapshots:
   basename:            Disk-Patch-dynamic # Common part of the name of output files
-  time_first:          968.         # Time of the first output (in internal units)
+  time_first:          968.       # Time of the first output (in internal units)
   delta_time:         24.         # Time difference between consecutive outputs (in internal units)
 
 # Parameters for the hydrodynamics scheme

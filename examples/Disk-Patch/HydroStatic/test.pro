@@ -8,7 +8,7 @@ iplot = 1 ; if iplot = 1, make plot of E/Lz conservation, else, simply compare f
 @physunits
 
 indir    = './'
-basefile = 'Disk-Patch-dynamic_'
+basefile = 'Disk-Patch_'
 
 ; set properties of potential
 uL   = phys.pc                  ; unit of length
@@ -121,72 +121,21 @@ x0 = reform(xout[0,*])
 y0 = reform(xout[1,*])
 z0 = reform(xout[2,*])
 
-; calculate relative energy change
-de    = 0.0 * eout
-dl    = 0.0 * lout
-nsave = isave
-for ifile=1, nsave-1 do de[*,ifile] = (eout[*,ifile]-eout[*,0])/eout[*,0]
-for ifile=1, nsave-1 do dl[*,ifile] = (lout[*,ifile] - lout[*,0])/lout[*,0]
 
+; plot density profile and compare to analytic profile
+nplot = nfollow
 
-; calculate statistics of energy changes
-print,' relatve energy change: (per cent) ',minmax(de) * 100.
-print,' relative Lz    change: (per cent) ',minmax(dl) * 100.
+                                ; plot density profile
+wset,0
+xr   = [0, 3*scale_height]
+nbins = 100
+zpos  = findgen(nbins)/float(nbins-1) * max(xr)
+dens  = (surface_density/(2.d0*scale_height)) * 1./cosh(zpos/scale_height)^2
+plot,[0],[0],xr=xr,/xs,yr=[0,max(dens)*1.4],/ys,/nodata,xtitle='|z|',ytitle='density'
+oplot,zpos,dens,color=black,thick=3
+;oplot,abs(zout[*,1]),rout[*,1],psym=3 ; initial profile
+oplot,abs(zout[*,nsave-1]),rout[*,nsave-1],psym=3,color=red
 
-; plot enery and Lz conservation for some particles
-if(iplot eq 1) then begin
-   nplot = nfollow
-
-   ; plot density profile
-   wset,0
-   xr   = [0, 3*scale_height]
-   nbins = 100
-   zpos  = findgen(nbins)/float(nbins-1) * max(xr)
-   dens  = (surface_density/(2.d0*scale_height)) * 1./cosh(zpos/scale_height)^2
-   plot,[0],[0],xr=xr,/xs,yr=[0,max(dens)*1.4],/ys,/nodata,xtitle='|z|',ytitle='density'
-   oplot,zpos,dens,color=black,thick=3
-   oplot,abs(zout[*,1]),rout[*,1],psym=3
-   oplot,abs(zout[*,nsave-1]),rout[*,nsave-1],psym=3,color=red
-
-;; ; plot results on energy conservation for some particles
-;;    nplot = min(100, nfollow)
-;;    win,0
-;;    xr = [min(tout), max(tout)]
-;;    yr = [-2,2]*1d-2             ; in percent
-;;    plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/nodata,xtitle='time',ytitle='dE/E, dL/L (%)'
-;;    for i=0,nplot-1 do oplot,tout,de[i,*]
-;;    for i=0,nplot-1 do oplot,tout,dl[i,*],color=red
-;;    legend,['dE/E','dL/L'],linestyle=[0,0],color=[black,red],box=0,/bottom,/left
-;;    screen_to_png,'e-time.png'
-
-;  plot vertical oscillation
-   wset,2
-   xr = [min(tout), max(tout)]
-   yr = [-3,3]*scale_height
-   plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/nodata,xtitle='t',ytitle='z(t)'
-   color = floor(findgen(nplot)*255/float(nplot))
-   for i=0,nplot-1,50 do oplot,tout,zout[i,*],color=color(i)
-   screen_to_png,'orbit.png'
-
-
-;   plot evolution of density for some particles close to disk
-   wset, 6
-   rr = (surface_density/(2.d0*scale_height)) * 1./cosh(abs(zout)/scale_height)^2 ; desired density
-   gd = where(abs(zout[*,0]) lt 50, ng)
-   plot,[0],[0],xr=[0, max(tout)], yr=10.^[-1,1], /xs, /ys, /nodata, /yl
-   nplot = min(40, ng)
-   color = floor(findgen(nplot)/float(nplot)*255)
-   for i=0, nplot-1 do oplot,tout[1:*],rout[gd[i],1:*]/rr[gd[i], 1:*], color=color[i],psym=-4
-
-
-;; ; make histogram of energy changes at end
-;;    win,6
-;;    ohist,de,x,y,-0.05,0.05,0.001
-;;    plot,x,y,psym=10,xtitle='de (%)'
-;;    screen_to_png,'de-hist.png'
-
-
-endif
 
 end
 

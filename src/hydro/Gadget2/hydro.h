@@ -308,8 +308,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p) {
 
   p->force.h_dt *= p->h * 0.333333333f;
+  p->entropy     = hydro_update_entropy(p->rho, p->entropy);
+  p->entropy_dt *= hydro_update_entropy_rate(p->rho, p->entropy);
 
-  p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
+	 
+/* #ifdef EOS_ISOTHERMAL_GAS */
+/*   p->entropy_dt = 0; */
+/*   float dummy = 1; */
+/*   p->entropy    = gas_entropy_from_internal_energy(p->rho, dummy); */
+/* #else */
+/*   p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho); */
+/* #endif */
 }
 
 /**

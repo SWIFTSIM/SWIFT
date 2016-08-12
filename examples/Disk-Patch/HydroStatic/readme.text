@@ -4,9 +4,13 @@ equations from Creasey, Theuns & Bower 2013.
 
 Run the swift using setting
 #define EXTERNAL_POTENTIAL_DISK_PATCH
-#define ISOTHERMAL_GLASS
-in const.h, geneate the initial conditions (a copy of the glass), and
-run this for 15 dynamical times
+#define EXTERNAL_POTENTIAL_DISK_PATCH_ICs
+#define ISOTHERMAL_GLASS (20.2615290634))
+undefine EOS_IDEAL_GAS
+in const.h.
+
+Generate ICs (pythin makeIC.py)
+run this using disk-patch-icc.py 
 (1) imposing the gas remains isothermal
 (2) particles suffer a viscous force
 (3) the gravitational force increases from 0 to its full value in 5
@@ -16,5 +20,5 @@ dynamica times
 Then, use the output as new initial conditions, run using
 #define EXTERNAL_POTENTIAL_DISK_PATCH
 only, and see whether it stays in hydrotatic equilibrium
-
+Use disk-patch.yml as parameter file
 

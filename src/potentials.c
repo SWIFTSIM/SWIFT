@@ -33,6 +33,7 @@
  * @param potential The external potential properties to initialize
  */
 void potential_init(const struct swift_params* parameter_file,
+						  const struct phys_const* const phys_const,
                     struct UnitSystem* us,
                     struct external_potential* potential) {
 
@@ -74,6 +75,7 @@ void potential_init(const struct swift_params* parameter_file,
 	 parser_get_param_double(parameter_file, "Disk-PatchPotential:z_disk");
   potential -> disk_patch_potential.timestep_mult = 
 	 parser_get_param_double(parameter_file, "Disk-PatchPotential:timestep_mult");
+  potential -> disk_patch_potential.dynamical_time = sqrt(potential->disk_patch_potential.scale_height / (phys_const->const_newton_G * potential->disk_patch_potential.surface_density));
 #endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 
 }
@@ -111,5 +113,8 @@ void potential_print(const struct external_potential* potential) {
 			 potential->disk_patch_potential.z_disk,
 			 potential->disk_patch_potential.scale_height,
 			 potential->disk_patch_potential.timestep_mult);
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH_ICS
+  message("Disk-patch potential: imposing growth of gravity over time, and adding viscous force to gravity");
+#endif
 #endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 }

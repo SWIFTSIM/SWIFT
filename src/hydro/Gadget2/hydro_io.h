@@ -20,6 +20,7 @@
 #include "adiabatic_index.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
+#include "equation_of_state.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -54,8 +55,10 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 
 float convert_u(struct engine* e, struct part* p) {
 
-  return p->entropy * pow_gamma_minus_one(p->rho) *
-         hydro_one_over_gamma_minus_one;
+  return gas_internal_energy_from_entropy(p->rho, p->entropy);
+
+  /* return p->entropy * pow_gamma_minus_one(p->rho) * */
+  /*        hydro_one_over_gamma_minus_one; */
 }
 
 /**
