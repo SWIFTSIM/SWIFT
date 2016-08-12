@@ -23,11 +23,23 @@
 #include "hydro_gradients.h"
 #include "riemann.h"
 
-//#define USE_GRADIENTS
-//#define PER_FACE_LIMITER
-/* #define PRINT_ID 0 */
-
-/* this corresponds to task_subtype_hydro_loop1 */
+/**
+ * @brief Calculate the volume interaction between particle i and particle j
+ *
+ * The volume is in essence the same as the weighted number of neighbours in a
+ * classical SPH density calculation.
+ *
+ * We also calculate the components of the matrix E, which is used for second
+ * order accurate gradient calculations and for the calculation of the interface
+ * surface areas.
+ *
+ * @param r2 Squared distance between particle i and particle j.
+ * @param dx Distance vector between the particles (dx = pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -62,11 +74,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->geometry.volume += wj;
   for (k = 0; k < 3; k++)
     for (l = 0; l < 3; l++) pj->geometry.matrix_E[k][l] += dx[k] * dx[l] * wj;
-
-  hydro_gradients_density_loop(pi, pj, wi_dx, wj_dx, dx, r, 1);
 }
 
-/* this corresponds to task_subtype_hydro_loop1 */
+/**
+ * @brief Calculate the volume interaction between particle i and particle j:
+ * non-symmetric version
+ *
+ * The volume is in essence the same as the weighted number of neighbours in a
+ * classical SPH density calculation.
+ *
+ * We also calculate the components of the matrix E, which is used for second
+ * order accurate gradient calculations and for the calculation of the interface
+ * surface areas.
+ *
+ * @param r2 Squared distance between particle i and particle j.
+ * @param dx Distance vector between the particles (dx = pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
@@ -90,22 +117,72 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->geometry.volume += wi;
   for (k = 0; k < 3; k++)
     for (l = 0; l < 3; l++) pi->geometry.matrix_E[k][l] += dx[k] * dx[l] * wi;
-
-  hydro_gradients_density_loop(pi, pj, wi_dx, 0.0f, dx, r, 0);
 }
 
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j
+ *
+ * This method wraps around hydro_gradients_collect, which can be an empty
+ * method, in which case no gradients are used.
+ *
+ * @param r2 Squared distance between particle i and particle j.
+ * @param dx Distance vector between the particles (dx = pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  hydro_gradients_gradient_loop(r2, dx, hi, hj, pi, pj, 1);
+  hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
 
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j:
+ * non-symmetric version
+ *
+ * This method wraps around hydro_gradients_nonsym_collect, which can be an
+ * empty method, in which case no gradients are used.
+ *
+ * @param r2 Squared distance between particle i and particle j.
+ * @param dx Distance vector between the particles (dx = pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  hydro_gradients_gradient_loop(r2, dx, hi, hj, pi, pj, 0);
+  hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }
 
+/**
+ * @brief Common part of the flux calculation between particle i and j
+ *
+ * Since the only difference between the symmetric and non-symmetric version
+ * of the flux calculation  is in the update of the conserved variables at the
+ * very end (which is not done for particle j if mode is 0 and particle j is
+ * active), both runner_iact_force and runner_iact_nonsym_force call this
+ * method, with an appropriate mode.
+ *
+ * This method calculates the surface area of the interface between particle i
+ * and particle j, as well as the interface position and velocity. These are
+ * then used to reconstruct and predict the primitive variables, which are then
+ * fed to a Riemann solver that calculates a flux. This flux is used to update
+ * the conserved variables of particle i or both particles.
+ *
+ * This method also calculates the maximal velocity used to calculate the time
+ * step.
+ *
+ * @param r2 Squared distance between particle i and particle j.
+ * @param dx Distance vector between the particles (dx = pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
     int mode) {
@@ -327,21 +404,45 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   }
 }
 
-/* this corresponds to task_subtype_fluxes */
+/**
+ * @brief Flux calculation between particle i and particle j
+ *
+ * This method calls runner_iact_fluxes_common with mode 1.
+ *
+ * @param r2 Squared distance between particle i and particle j.
+ * @param dx Distance vector between the particles (dx = pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 1);
 }
 
-/* this corresponds to task_subtype_fluxes */
+/**
+ * @brief Flux calculation between particle i and particle j: non-symmetric
+ * version
+ *
+ * This method calls runner_iact_fluxes_common with mode 0.
+ *
+ * @param r2 Squared distance between particle i and particle j.
+ * @param dx Distance vector between the particles (dx = pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   runner_iact_fluxes_common(r2, dx, hi, hj, pi, pj, 0);
 }
 
-/* PLACEHOLDERS */
+//// EMPTY VECTORIZED VERSIONS (gradients methods are missing...)
+
 __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {}

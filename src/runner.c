@@ -428,7 +428,39 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_init);
 }
 
-void runner_do_extra_ghost(struct runner *r, struct cell *c) {}
+/**
+ * @brief Intermediate task after the gradient loop that does final operations
+ * on the gradient quantities and optionally slope limits the gradients
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+void runner_do_extra_ghost(struct runner *r, struct cell *c) {
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+  const int ti_current = r->e->ti_current;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_extra_ghost(r, c->progeny[k]);
+    return;
+  } else {
+
+    /* Loop over the parts in this cell. */
+    for (int i = 0; i < count; i++) {
+
+      /* Get a direct pointer on the part. */
+      struct part *restrict p = &parts[i];
+
+      if (p->ti_end <= ti_current) {
+
+        /* Get ready for a force calculation */
+        hydro_end_gradient(p);
+      }
+    }
+  }
+}
 
 /**
  * @brief Intermediate task after the density to check that the smoothing

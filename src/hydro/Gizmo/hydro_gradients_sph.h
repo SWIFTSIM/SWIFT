@@ -18,10 +18,12 @@
  ******************************************************************************/
 
 /**
- * @brief Initialize variables before the density loop
+ * @brief Initialize gradient variables
+ *
+ * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_gradients_init_density_loop(struct part *p) {
+__attribute__((always_inline)) INLINE static void hydro_gradients_init(
+    struct part *p) {
 
   p->primitives.gradients.rho[0] = 0.0f;
   p->primitives.gradients.rho[1] = 0.0f;
@@ -46,11 +48,25 @@ hydro_gradients_init_density_loop(struct part *p) {
 }
 
 /**
- * @brief Gradient calculations done during the density loop
+ * @brief Gradient calculations done during the neighbour loop
+ *
+ * @param r2 Squared distance between the two particles.
+ * @param dx Distance vector (pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
  */
-__attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
-    struct part *pi, struct part *pj, float wi_dx, float wj_dx, float *dx,
-    float r, int mode) {
+__attribute__((always_inline)) INLINE static void hydro_gradients_collect(
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+
+  float wi, wi_dx, xi, hi_inv;
+  float wj, wj_dx, xj, hj_inv;
+  float r = sqrtf(r2);
+
+  hi_inv = 1.0f / hi;
+  xi = r * hi_inv;
+  kernel_deval(xi, &wi, &wi_dx);
 
   /* very basic gradient estimate */
   pi->primitives.gradients.rho[0] -=
@@ -90,53 +106,122 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 
-  if (mode == 1) {
-    /* signs are the same as before, since we swap i and j twice */
-    pj->primitives.gradients.rho[0] -=
-        wj_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) / r;
-    pj->primitives.gradients.rho[1] -=
-        wj_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) / r;
-    pj->primitives.gradients.rho[2] -=
-        wj_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) / r;
+  hj_inv = 1.0f / hj;
+  xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
 
-    pj->primitives.gradients.v[0][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
-    pj->primitives.gradients.v[0][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
-    pj->primitives.gradients.v[0][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+  /* signs are the same as before, since we swap i and j twice */
+  pj->primitives.gradients.rho[0] -=
+      wj_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) / r;
+  pj->primitives.gradients.rho[1] -=
+      wj_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) / r;
+  pj->primitives.gradients.rho[2] -=
+      wj_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) / r;
 
-    pj->primitives.gradients.v[1][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
-    pj->primitives.gradients.v[1][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
-    pj->primitives.gradients.v[1][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
-    pj->primitives.gradients.v[2][0] -=
-        wj_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
-    pj->primitives.gradients.v[2][1] -=
-        wj_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
-    pj->primitives.gradients.v[2][2] -=
-        wj_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+  pj->primitives.gradients.v[0][0] -=
+      wj_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+  pj->primitives.gradients.v[0][1] -=
+      wj_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+  pj->primitives.gradients.v[0][2] -=
+      wj_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
 
-    pj->primitives.gradients.P[0] -=
-        wj_dx * dx[0] * (pi->primitives.P - pj->primitives.P) / r;
-    pj->primitives.gradients.P[1] -=
-        wj_dx * dx[1] * (pi->primitives.P - pj->primitives.P) / r;
-    pj->primitives.gradients.P[2] -=
-        wj_dx * dx[2] * (pi->primitives.P - pj->primitives.P) / r;
+  pj->primitives.gradients.v[1][0] -=
+      wj_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+  pj->primitives.gradients.v[1][1] -=
+      wj_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+  pj->primitives.gradients.v[1][2] -=
+      wj_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+  pj->primitives.gradients.v[2][0] -=
+      wj_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+  pj->primitives.gradients.v[2][1] -=
+      wj_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+  pj->primitives.gradients.v[2][2] -=
+      wj_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
 
-    hydro_slope_limit_cell_collect(pj, pi, r);
-  }
+  pj->primitives.gradients.P[0] -=
+      wj_dx * dx[0] * (pi->primitives.P - pj->primitives.P) / r;
+  pj->primitives.gradients.P[1] -=
+      wj_dx * dx[1] * (pi->primitives.P - pj->primitives.P) / r;
+  pj->primitives.gradients.P[2] -=
+      wj_dx * dx[2] * (pi->primitives.P - pj->primitives.P) / r;
+
+  hydro_slope_limit_cell_collect(pj, pi, r);
 }
 
 /**
- * @brief Calculations done before the force loop
+ * @brief Gradient calculations done during the neighbour loop: non-symmetric
+ * version
+ *
+ * @param r2 Squared distance between the two particles.
+ * @param dx Distance vector (pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_prepare_force_loop(struct part *p, float ih, float volume) {
+hydro_gradients_nonsym_collect(float r2, float *dx, float hi, float hj,
+                               struct part *pi, struct part *pj) {
 
+  float wi, wi_dx, xi, hi_inv;
+  float r = sqrtf(r2);
+
+  hi_inv = 1.0f / hi;
+  xi = r * hi_inv;
+  kernel_deval(xi, &wi, &wi_dx);
+
+  /* very basic gradient estimate */
+  pi->primitives.gradients.rho[0] -=
+      wi_dx * dx[0] * (pi->primitives.rho - pj->primitives.rho) / r;
+  pi->primitives.gradients.rho[1] -=
+      wi_dx * dx[1] * (pi->primitives.rho - pj->primitives.rho) / r;
+  pi->primitives.gradients.rho[2] -=
+      wi_dx * dx[2] * (pi->primitives.rho - pj->primitives.rho) / r;
+
+  pi->primitives.gradients.v[0][0] -=
+      wi_dx * dx[0] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+  pi->primitives.gradients.v[0][1] -=
+      wi_dx * dx[1] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+  pi->primitives.gradients.v[0][2] -=
+      wi_dx * dx[2] * (pi->primitives.v[0] - pj->primitives.v[0]) / r;
+
+  pi->primitives.gradients.v[1][0] -=
+      wi_dx * dx[0] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+  pi->primitives.gradients.v[1][1] -=
+      wi_dx * dx[1] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+  pi->primitives.gradients.v[1][2] -=
+      wi_dx * dx[2] * (pi->primitives.v[1] - pj->primitives.v[1]) / r;
+
+  pi->primitives.gradients.v[2][0] -=
+      wi_dx * dx[0] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+  pi->primitives.gradients.v[2][1] -=
+      wi_dx * dx[1] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+  pi->primitives.gradients.v[2][2] -=
+      wi_dx * dx[2] * (pi->primitives.v[2] - pj->primitives.v[2]) / r;
+
+  pi->primitives.gradients.P[0] -=
+      wi_dx * dx[0] * (pi->primitives.P - pj->primitives.P) / r;
+  pi->primitives.gradients.P[1] -=
+      wi_dx * dx[1] * (pi->primitives.P - pj->primitives.P) / r;
+  pi->primitives.gradients.P[2] -=
+      wi_dx * dx[2] * (pi->primitives.P - pj->primitives.P) / r;
+
+  hydro_slope_limit_cell_collect(pi, pj, r);
+}
+
+/**
+ * @brief Finalize the gradient variables after all data have been collected
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
+    struct part *p) {
+
+  const float h = p->h;
+  const float ih = 1.0f / h;
   const float ihdimp1 = pow_dimension_plus_one(ih);
+
+  float volume = p->geometry.volume;
 
   /* finalize gradients by multiplying with volume */
   p->primitives.gradients.rho[0] *= ihdimp1 * volume;
@@ -161,10 +246,3 @@ hydro_gradients_prepare_force_loop(struct part *p, float ih, float volume) {
 
   hydro_slope_limit_cell(p);
 }
-
-/**
- * @brief Gradient calculations done during the gradient loop
- */
-__attribute__((always_inline)) INLINE static void hydro_gradients_gradient_loop(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-    int mode) {}

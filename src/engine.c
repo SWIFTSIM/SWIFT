@@ -1827,7 +1827,11 @@ void engine_maketasks(struct engine *e) {
      is the number of cells (s->tot_cells) times the number of neighbours (27)
      times the number of interaction types (2, density and force). */
   if (e->links != NULL) free(e->links);
+#ifdef EXTRA_HYDRO_LOOP
+  e->size_links = s->tot_cells * 27 * 3;
+#else
   e->size_links = s->tot_cells * 27 * 2;
+#endif
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
@@ -2716,7 +2720,7 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_ghost;
     mask |= 1 << task_type_extra_ghost; /* Adding unnecessary things to the mask
-                                            does not harm */
+                                             does not harm */
 
     submask |= 1 << task_subtype_density;
     submask |= 1 << task_subtype_gradient;

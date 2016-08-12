@@ -21,14 +21,12 @@
 #include "adiabatic_index.h"
 #include "hydro_gradients.h"
 
-#define THERMAL_ENERGY
-
 /**
  * @brief Computes the hydro time-step of a given particle
  *
- * @param p Pointer to the particle data
- * @param xp Pointer to the extended particle data
- *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param hydro_properties Pointer to the hydro parameters.
  */
 __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     const struct part* restrict p, const struct xpart* restrict xp,
@@ -45,6 +43,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * This function is called only once just after the ICs have been
  * read in to do some conversions.
  *
+ * In this case, we copy the particle velocities into the corresponding
+ * primitive variable field. We do this because the particle velocities in GIZMO
+ * can be independent of the actual fluid velocity. The latter is stored as a
+ * primitive variable and integrated using the linear momentum, a conserved
+ * variable.
+ *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
@@ -59,13 +63,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 /**
  * @brief Prepares a particle for the volume calculation.
  *
+ * Simply makes sure all necessary variables are initialized to zero.
+ *
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part* p) {
-
-  /* We need to do this before we reset the volume */
-  hydro_gradients_init_density_loop(p);
 
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
@@ -82,12 +85,24 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 }
 
 /**
- * @brief Finishes the density calculation.
+ * @brief Finishes the volume calculation.
  *
  * Multiplies the density and number of neighbours by the appropiate constants
- * and add the self-contribution term.
+ * and adds the self-contribution term. Calculates the volume and uses it to
+ * update the primitive variables (based on the conserved variables). The latter
+ * should only be done for active particles. This is okay, since this method is
+ * only called for active particles.
  *
- * @param p The particle to act upon
+ * Multiplies the components of the matrix E with the appropriate constants and
+ * inverts it. Initializes the variables used during the gradient loop. This
+ * cannot be done in hydro_prepare_force, since that method is called for all
+ * particles, and not just the active ones. If we would initialize the
+ * variables there, gradients for passive particles would be zero, while we
+ * actually use the old gradients in the flux calculation between active and
+ * passive particles.
+ *
+ * @param p The particle to act upon.
+ * @param The current physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_density(
     struct part* restrict p, float time) {
@@ -107,10 +122,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   float volume;
   float m, momentum[3], energy;
 
-#ifndef THERMAL_ENERGY
-  float momentum2;
-#endif
-
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
@@ -129,7 +140,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
 
-  hydro_gradients_prepare_force_loop(p, ih, volume);
+  hydro_gradients_init(p);
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
@@ -138,31 +149,30 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     momentum[0] = p->conserved.momentum[0];
     momentum[1] = p->conserved.momentum[1];
     momentum[2] = p->conserved.momentum[2];
-#ifndef THERMAL_ENERGY
-    momentum2 = (momentum[0] * momentum[0] + momentum[1] * momentum[1] +
-                 momentum[2] * momentum[2]);
-#endif
     p->primitives.rho = m / volume;
     p->primitives.v[0] = momentum[0] / m;
     p->primitives.v[1] = momentum[1] / m;
     p->primitives.v[2] = momentum[2] / m;
     energy = p->conserved.energy;
-#ifndef THERMAL_ENERGY
-    p->primitives.P =
-        hydro_gamma_minus_one * (energy - 0.5 * momentum2 / m) / volume;
-#else
     p->primitives.P = hydro_gamma_minus_one * energy / volume;
-#endif
   }
 }
 
 /**
- * @brief Prepare a particle for the force calculation.
+ * @brief Prepare a particle for the gradient calculation.
  *
- * Computes viscosity term, conduction term and smoothing length gradient terms.
+ * The name of this method is confusing, as this method is really called after
+ * the density loop and before the gradient loop.
  *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
+ * We use it to set the physical timestep for the particle and to copy the
+ * actual velocities, which we need to boost our interfaces during the flux
+ * calculation. We also initialize the variables used for the time step
+ * calculation.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param ti_current Current integer time.
+ * @param timeBase Conversion factor between integer time and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp, int ti_current,
@@ -170,6 +180,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Set the physical time step */
   p->force.dt = (p->ti_end - p->ti_begin) * timeBase;
+
+  /* Initialize time step criterion variables */
+  p->timestepvars.vmax = 0.0f;
+
   /* Set the actual velocity of the particle */
   p->force.v_full[0] = xp->v_full[0];
   p->force.v_full[1] = xp->v_full[1];
@@ -179,166 +193,24 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 /**
  * @brief Finishes the gradient calculation.
  *
- * @param p The particle to act upon
+ * Just a wrapper around hydro_gradients_finalize, which can be an empty method,
+ * in which case no gradients are used.
+ *
+ * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part* p) {
 
-#ifndef SPH_GRADIENTS
-  float h, ih, ih2, ih3;
-#ifdef SLOPE_LIMITER
-  float gradrho[3], gradv[3][3], gradP[3];
-  float gradtrue, gradmax, gradmin, alpha;
-#endif
-
-  /* add kernel normalization to gradients */
-  h = p->h;
-  ih = 1.0f / h;
-  ih2 = ih * ih;
-  ih3 = ih * ih2;
-
-  p->primitives.gradients.rho[0] *= ih3;
-  p->primitives.gradients.rho[1] *= ih3;
-  p->primitives.gradients.rho[2] *= ih3;
-
-  p->primitives.gradients.v[0][0] *= ih3;
-  p->primitives.gradients.v[0][1] *= ih3;
-  p->primitives.gradients.v[0][2] *= ih3;
-  p->primitives.gradients.v[1][0] *= ih3;
-  p->primitives.gradients.v[1][1] *= ih3;
-  p->primitives.gradients.v[1][2] *= ih3;
-  p->primitives.gradients.v[2][0] *= ih3;
-  p->primitives.gradients.v[2][1] *= ih3;
-  p->primitives.gradients.v[2][2] *= ih3;
-
-  p->primitives.gradients.P[0] *= ih3;
-  p->primitives.gradients.P[1] *= ih3;
-  p->primitives.gradients.P[2] *= ih3;
-
-/* slope limiter */
-#ifdef SLOPE_LIMITER
-  gradrho[0] = p->primitives.gradients.rho[0];
-  gradrho[1] = p->primitives.gradients.rho[1];
-  gradrho[2] = p->primitives.gradients.rho[2];
-
-  gradv[0][0] = p->primitives.gradients.v[0][0];
-  gradv[0][1] = p->primitives.gradients.v[0][1];
-  gradv[0][2] = p->primitives.gradients.v[0][2];
-
-  gradv[1][0] = p->primitives.gradients.v[1][0];
-  gradv[1][1] = p->primitives.gradients.v[1][1];
-  gradv[1][2] = p->primitives.gradients.v[1][2];
-
-  gradv[2][0] = p->primitives.gradients.v[2][0];
-  gradv[2][1] = p->primitives.gradients.v[2][1];
-  gradv[2][2] = p->primitives.gradients.v[2][2];
-
-  gradP[0] = p->primitives.gradients.P[0];
-  gradP[1] = p->primitives.gradients.P[1];
-  gradP[2] = p->primitives.gradients.P[2];
-
-  gradtrue = gradrho[0] * gradrho[0] + gradrho[1] * gradrho[1] +
-             gradrho[2] * gradrho[2];
-  /* gradtrue might be zero. In this case, there is no gradient and we don't
-     need to slope limit anything... */
-  if (gradtrue) {
-    gradtrue = sqrtf(gradtrue);
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.rho[1] - p->primitives.rho;
-    gradmin = p->primitives.rho - p->primitives.limiter.rho[0];
-    /* gradmin and gradmax might be negative if the value of the current
-       particle is larger/smaller than all neighbouring values */
-    gradmax = fabs(gradmax);
-    gradmin = fabs(gradmin);
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.rho[0] *= alpha;
-    p->primitives.gradients.rho[1] *= alpha;
-    p->primitives.gradients.rho[2] *= alpha;
-  }
-
-  gradtrue = gradv[0][0] * gradv[0][0] + gradv[0][1] * gradv[0][1] +
-             gradv[0][2] * gradv[0][2];
-  if (gradtrue) {
-    gradtrue = sqrtf(gradtrue);
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[0][1] - p->primitives.v[0];
-    gradmin = p->primitives.v[0] - p->primitives.limiter.v[0][0];
-    gradmax = fabs(gradmax);
-    gradmin = fabs(gradmin);
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[0][0] *= alpha;
-    p->primitives.gradients.v[0][1] *= alpha;
-    p->primitives.gradients.v[0][2] *= alpha;
-  }
-
-  gradtrue = gradv[1][0] * gradv[1][0] + gradv[1][1] * gradv[1][1] +
-             gradv[1][2] * gradv[1][2];
-  if (gradtrue) {
-    gradtrue = sqrtf(gradtrue);
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[1][1] - p->primitives.v[1];
-    gradmin = p->primitives.v[1] - p->primitives.limiter.v[1][0];
-    gradmax = fabs(gradmax);
-    gradmin = fabs(gradmin);
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[1][0] *= alpha;
-    p->primitives.gradients.v[1][1] *= alpha;
-    p->primitives.gradients.v[1][2] *= alpha;
-  }
-
-  gradtrue = gradv[2][0] * gradv[2][0] + gradv[2][1] * gradv[2][1] +
-             gradv[2][2] * gradv[2][2];
-  if (gradtrue) {
-    gradtrue = sqrtf(gradtrue);
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[2][1] - p->primitives.v[2];
-    gradmin = p->primitives.v[2] - p->primitives.limiter.v[2][0];
-    gradmax = fabs(gradmax);
-    gradmin = fabs(gradmin);
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[2][0] *= alpha;
-    p->primitives.gradients.v[2][1] *= alpha;
-    p->primitives.gradients.v[2][2] *= alpha;
-  }
-
-  gradtrue = gradP[0] * gradP[0] + gradP[1] * gradP[1] + gradP[2] * gradP[2];
-  if (gradtrue) {
-    gradtrue = sqrtf(gradtrue);
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.P[1] - p->primitives.P;
-    gradmin = p->primitives.P - p->primitives.limiter.P[0];
-    gradmax = fabs(gradmax);
-    gradmin = fabs(gradmin);
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.P[0] *= alpha;
-    p->primitives.gradients.P[1] *= alpha;
-    p->primitives.gradients.P[2] *= alpha;
-  }
-#endif  // SLOPE_LIMITER
-
-#endif  // SPH_GRADIENTS
-}
-
-/**
- * @brief Prepare a particle for the fluxes calculation.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- */
-__attribute__((always_inline)) INLINE static void hydro_prepare_fluxes(
-    struct part* p, struct xpart* xp) {
-
-  /* initialize variables used for timestep calculation */
-  p->timestepvars.vmax = 0.0f;
+  hydro_gradients_finalize(p);
 }
 
 /**
  * @brief Reset acceleration fields of a particle
  *
- * Resets all hydro acceleration and time derivative fields in preparation
- * for the sums taking place in the variaous force tasks
+ * This is actually not necessary for GIZMO, since we just set the accelerations
+ * after the flux calculation.
  *
- * @param p The particle to act upon
+ * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
     struct part* p) {
@@ -350,11 +222,20 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 }
 
 /**
- * @brief Converts hydro quantity of a particle
+ * @brief Converts the hydrodynamic variables from the initial condition file to
+ * conserved variables that can be used during the integration
  *
- * Requires the volume to be known
+ * Requires the volume to be known.
  *
- * @param p The particle to act upon
+ * The initial condition file contains a mixture of primitive and conserved
+ * variables. Mass is a conserved variable, and we just copy the particle
+ * mass into the corresponding conserved quantity. We need the volume to
+ * also derive a density, which is then used to convert the internal energy
+ * to a pressure. However, we do not actually use these variables anymore.
+ * We do need to initialize the linear momentum, based on the mass and the
+ * velocity of the particle.
+ *
+ * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p) {
@@ -362,9 +243,6 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   float volume;
   float m;
   float momentum[3];
-#ifndef THERMAL_ENERGY
-  float momentum2;
-#endif
   volume = p->geometry.volume;
 
   p->conserved.mass = m = p->mass;
@@ -376,19 +254,35 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->conserved.momentum[0] = momentum[0] = m * p->primitives.v[0];
   p->conserved.momentum[1] = momentum[1] = m * p->primitives.v[1];
   p->conserved.momentum[2] = momentum[2] = m * p->primitives.v[2];
-#ifndef THERMAL_ENERGY
-  momentum2 = momentum[0] * momentum[0] + momentum[1] * momentum[1] +
-              momentum[2] * momentum[2];
-  p->conserved.energy =
-      p->primitives.P / hydro_gamma_minus_one * volume + 0.5 * momentum2 / m;
-#else
   p->conserved.energy = p->primitives.P / hydro_gamma_minus_one * volume;
-#endif
 }
 
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * Not used for GIZMO.
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param t0 Integer start time of the drift interval.
+ * @param t1 Integer end time of the drift interval.
+ * @param timeBase Conversion factor between integer and physical time.
+ */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {}
 
+/**
+ * @brief Set the particle acceleration after the flux loop
+ *
+ * We use the new conserved variables to calculate the new velocity of the
+ * particle, and use that to derive the change of the velocity over the particle
+ * time step.
+ *
+ * If the particle time step is zero, we set the accelerations to zero. This
+ * should only happen at the start of the simulation.
+ *
+ * @param p Particle to act upon.
+ */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p) {
 
@@ -414,17 +308,25 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   }
 }
 
+/**
+ * @brief Extra operations done during the kick
+ *
+ * Not used for GIZMO.
+ *
+ * @param p Particle to act upon.
+ * @param xp Extended particle data to act upon.
+ * @param dt Physical time step.
+ * @param half_dt Half the physical time step.
+ */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {
-
-  /* Nothing needs to be done in this case */
-}
+    struct part* p, struct xpart* xp, float dt, float half_dt) {}
 
 /**
  * @brief Returns the internal energy of a particle
  *
- * @param p The particle of interest
- * @param dt Time since the last kick
+ * @param p The particle of interest.
+ * @param dt Time since the last kick.
+ * @return Internal energy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part* restrict p, float dt) {
@@ -435,8 +337,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 /**
  * @brief Returns the entropy of a particle
  *
- * @param p The particle of interest
- * @param dt Time since the last kick
+ * @param p The particle of interest.
+ * @param dt Time since the last kick.
+ * @return Entropy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part* restrict p, float dt) {
@@ -447,8 +350,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
 /**
  * @brief Returns the sound speed of a particle
  *
- * @param p The particle of interest
- * @param dt Time since the last kick
+ * @param p The particle of interest.
+ * @param dt Time since the last kick.
+ * @param Sound speed of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part* restrict p, float dt) {
@@ -461,6 +365,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
  *
  * @param p The particle of interest
  * @param dt Time since the last kick
+ * @param Pressure of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part* restrict p, float dt) {

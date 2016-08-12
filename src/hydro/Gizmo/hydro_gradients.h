@@ -20,43 +20,70 @@
 #ifndef SWIFT_HYDRO_GRADIENTS_H
 #define SWIFT_HYDRO_GRADIENTS_H
 
-#define SPH_GRADIENTS
+//#define SPH_GRADIENTS
+#define GIZMO_GRADIENTS
 
 #include "hydro_slope_limiters.h"
 
 #if defined(SPH_GRADIENTS)
+
+#define HYDRO_GRADIENT_IMPLEMENTATION "SPH gradients (Price 2012)"
 #include "hydro_gradients_sph.h"
+
 #elif defined(GIZMO_GRADIENTS)
+
+#define HYDRO_GRADIENT_IMPLEMENTATION "GIZMO gradients (Hopkins 2015)"
 #include "hydro_gradients_gizmo.h"
+
 #else
 
 /* No gradients. Perfectly acceptable, but we have to provide empty functions */
+#define HYDRO_GRADIENT_IMPLEMENTATION "No gradients (first order scheme)"
 
 /**
- * @brief Initialize variables before the density loop
+ * @brief Initialize gradient variables
+ *
+ * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_gradients_init_density_loop(struct part *p) {}
+__attribute__((always_inline)) INLINE static void hydro_gradients_init(
+    struct part* p) {}
 
 /**
- * @brief Gradient calculations done during the density loop
+ * @brief Gradient calculations done during the neighbour loop
+ *
+ * @param r2 Squared distance between the two particles.
+ * @param dx Distance vector (pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
  */
-__attribute__((always_inline)) INLINE static void hydro_gradients_density_loop(
-    struct part *pi, struct part *pj, float wi_dx, float wj_dx, float *dx,
-    float r, int mode) {}
+__attribute__((always_inline)) INLINE static void hydro_gradients_collect(
+    float r2, float* dx, float hi, float hj, struct part* pi, struct part* pj) {
+}
 
 /**
- * @brief Calculations done before the force loop
+ * @brief Gradient calculations done during the neighbour loop: non-symmetric
+ * version
+ *
+ * @param r2 Squared distance between the two particles.
+ * @param dx Distance vector (pi->x - pj->x).
+ * @param hi Smoothing length of particle i.
+ * @param hj Smoothing length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_gradients_prepare_force_loop(struct part *p, float ih2, float volume) {}
+__attribute__((always_inline)) INLINE static void hydro_gradients_collect(
+    float r2, float* dx, float hi, float hj, struct part* pi, struct part* pj) {
+}
 
 /**
- * @brief Gradient calculations done during the gradient loop
+ * @brief Finalize the gradient variables after all data have been collected
+ *
+ * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void hydro_gradients_gradient_loop(
-    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj,
-    int mode) {}
+__attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
+    struct part* p) {}
 
 #endif
 

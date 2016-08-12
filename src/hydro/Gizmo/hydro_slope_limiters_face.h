@@ -17,72 +17,105 @@
  *
  ******************************************************************************/
 
+/**
+ * @brief Slope limit a single quantity at the interface
+ *
+ * @param phi_i Value of the quantity at the particle position.
+ * @param phi_j Value of the quantity at the neighbouring particle position.
+ * @param phi_mid0 Extrapolated value of the quantity at the interface position.
+ * @param xij_norm Distance between the particle position and the interface
+ * position.
+ * @param r Distance between the particle and its neighbour.
+ * @return The slope limited difference between the quantity at the particle
+ * position and the quantity at the interface position.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
+                                float xij_norm, float r) {
+
+  float delta1, delta2, phimin, phimax, phibar, phiplus, phiminus, phi_mid;
+  const float psi1 = 0.5f;
+  const float psi2 = 0.25f;
+
+  delta1 = psi1 * fabs(phi_i - phi_j);
+  delta2 = psi2 * fabs(phi_i - phi_j);
+
+  phimin = fmin(phi_i, phi_j);
+  phimax = fmax(phi_i, phi_j);
+
+  phibar = phi_i + xij_norm / r * (phi_j - phi_i);
+
+  /* if sign(phimax+delta1) == sign(phimax) */
+  if ((phimax + delta1) * phimax > 0.0f) {
+    phiplus = phimax + delta1;
+  } else {
+    phiplus = phimax / (1.0f + delta1 / fabs(phimax));
+  }
+
+  /* if sign(phimin-delta1) == sign(phimin) */
+  if ((phimin - delta1) * phimin > 0.0f) {
+    phiminus = phimin - delta1;
+  } else {
+    phiminus = phimin / (1.0f + delta1 / fabs(phimin));
+  }
+
+  if (phi_i == phi_j) {
+    phi_mid = phi_i;
+  } else {
+    if (phi_i < phi_j) {
+      phi_mid = fmax(phiminus, fmin(phibar + delta2, phi_mid0));
+    } else {
+      phi_mid = fmin(phiplus, fmax(phibar - delta2, phi_mid0));
+    }
+  }
+
+  return phi_mid - phi_i;
+}
+
+/**
+ * @brief Slope limit the slopes at the interface between two particles
+ *
+ * @param Wi Hydrodynamic variables of particle i.
+ * @param Wj Hydrodynamic variables of particle j.
+ * @param dWi Difference between the hydrodynamic variables of particle i at the
+ * position of particle i and at the interface position.
+ * @param dWj Difference between the hydrodynamic variables of particle j at the
+ * position of particle j and at the interface position.
+ * @param xij_i Relative position vector of the interface w.r.t. particle i.
+ * @param xij_j Relative position vector of the interface w.r.t. partilce j.
+ * @param r Distance between particle i and particle j.
+ */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
     float *Wi, float *Wj, float *dWi, float *dWj, float *xij_i, float *xij_j,
     float r) {
 
-  float xij_i_norm;
-  float phi_i, phi_j;
-  float delta1, delta2;
-  float phiminus, phiplus;
-  float phimin, phimax;
-  float phibar;
-  /* free parameters, values from Hopkins */
-  float psi1 = 0.5, psi2 = 0.25;
-  float phi_mid0, phi_mid;
-  int k;
+  float xij_i_norm, xij_j_norm;
 
-  for (k = 0; k < 10; k++) {
-    if (k < 5) {
-      phi_i = Wi[k];
-      phi_j = Wj[k];
-      phi_mid0 = Wi[k] + dWi[k];
-      xij_i_norm = sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] +
-                         xij_i[2] * xij_i[2]);
-    } else {
-      phi_i = Wj[k - 5];
-      phi_j = Wi[k - 5];
-      phi_mid0 = Wj[k - 5] + dWj[k - 5];
-      xij_i_norm = sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] +
-                         xij_j[2] * xij_j[2]);
-    }
+  xij_i_norm =
+      sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
 
-    delta1 = psi1 * fabs(phi_i - phi_j);
-    delta2 = psi2 * fabs(phi_i - phi_j);
+  xij_j_norm =
+      sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
 
-    phimin = fmin(phi_i, phi_j);
-    phimax = fmax(phi_i, phi_j);
+  dWi[0] = hydro_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
+                                           xij_i_norm, r);
+  dWi[1] = hydro_slope_limit_face_quantity(Wi[1], Wj[1], Wi[1] + dWi[1],
+                                           xij_i_norm, r);
+  dWi[2] = hydro_slope_limit_face_quantity(Wi[2], Wj[2], Wi[2] + dWi[2],
+                                           xij_i_norm, r);
+  dWi[3] = hydro_slope_limit_face_quantity(Wi[3], Wj[3], Wi[3] + dWi[3],
+                                           xij_i_norm, r);
+  dWi[4] = hydro_slope_limit_face_quantity(Wi[4], Wj[4], Wi[4] + dWi[4],
+                                           xij_i_norm, r);
 
-    phibar = phi_i + xij_i_norm / r * (phi_j - phi_i);
-
-    /* if sign(phimax+delta1) == sign(phimax) */
-    if ((phimax + delta1) * phimax > 0.0f) {
-      phiplus = phimax + delta1;
-    } else {
-      phiplus = phimax / (1.0f + delta1 / fabs(phimax));
-    }
-
-    /* if sign(phimin-delta1) == sign(phimin) */
-    if ((phimin - delta1) * phimin > 0.0f) {
-      phiminus = phimin - delta1;
-    } else {
-      phiminus = phimin / (1.0f + delta1 / fabs(phimin));
-    }
-
-    if (phi_i == phi_j) {
-      phi_mid = phi_i;
-    } else {
-      if (phi_i < phi_j) {
-        phi_mid = fmax(phiminus, fmin(phibar + delta2, phi_mid0));
-      } else {
-        phi_mid = fmin(phiplus, fmax(phibar - delta2, phi_mid0));
-      }
-    }
-
-    if (k < 5) {
-      dWi[k] = phi_mid - phi_i;
-    } else {
-      dWj[k - 5] = phi_mid - phi_i;
-    }
-  }
+  dWj[0] = hydro_slope_limit_face_quantity(Wj[0], Wi[0], Wj[0] + dWj[0],
+                                           xij_j_norm, r);
+  dWj[1] = hydro_slope_limit_face_quantity(Wj[1], Wi[1], Wj[1] + dWj[1],
+                                           xij_j_norm, r);
+  dWj[2] = hydro_slope_limit_face_quantity(Wj[2], Wi[2], Wj[2] + dWj[2],
+                                           xij_j_norm, r);
+  dWj[3] = hydro_slope_limit_face_quantity(Wj[3], Wi[3], Wj[3] + dWj[3],
+                                           xij_j_norm, r);
+  dWj[4] = hydro_slope_limit_face_quantity(Wj[4], Wi[4], Wj[4] + dWj[4],
+                                           xij_j_norm, r);
 }

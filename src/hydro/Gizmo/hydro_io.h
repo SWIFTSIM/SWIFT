@@ -18,6 +18,8 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
+#include "hydro_gradients.h"
+#include "hydro_slope_limiters.h"
 #include "io_properties.h"
 
 /**
@@ -106,7 +108,17 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
  * @brief Writes the current model of SPH to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-void writeSPHflavour(hid_t h_grpsph) {}
+void writeSPHflavour(hid_t h_grpsph) {
+  /* Gradient information */
+  writeAttribute_s(h_grpsph, "Gradient reconstruction model",
+                   HYDRO_GRADIENT_IMPLEMENTATION);
+
+  /* Slope limiter information */
+  writeAttribute_s(h_grpsph, "Cell wide slope limiter model",
+                   HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
+  writeAttribute_s(h_grpsph, "Piecewise slope limiter model",
+                   HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
+}
 
 /**
  * @brief Are we writing entropy in the internal energy field ?
