@@ -2715,9 +2715,8 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_sub_self;
     mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_ghost;
-    mask |=
-        1 << task_type_extra_ghost; /* Adding unnecessary things to the mask
-                                       does not harm */
+    mask |= 1 << task_type_extra_ghost; /* Adding unnecessary things to the mask
+                                            does not harm */
 
     submask |= 1 << task_subtype_density;
     submask |= 1 << task_subtype_gradient;

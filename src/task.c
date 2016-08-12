@@ -111,6 +111,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_sort:
     case task_type_ghost:
+    case task_type_extra_ghost:
       return task_action_part;
       break;
 
@@ -121,6 +122,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       switch (t->subtype) {
 
         case task_subtype_density:
+        case task_subtype_gradient:
         case task_subtype_force:
           return task_action_part;
           break;
