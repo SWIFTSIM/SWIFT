@@ -41,7 +41,7 @@
 #elif defined(GIZMO_SPH)
 #include "./hydro/Gizmo/hydro.h"
 #include "./hydro/Gizmo/hydro_iact.h"
-#define SPH_IMPLEMENTATION "Mesh-free hydrodynamics as in GIZMO (Hopkins 2015)"
+#define SPH_IMPLEMENTATION "GIZMO (Hopkins 2015)"
 #else
 #error "Invalid choice of SPH variant"
 #endif
