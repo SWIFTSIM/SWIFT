@@ -19,9 +19,14 @@ uV   = 1d5                      ; unit of velocity
 surface_density = 10.
 scale_height    = 100.
 z_disk          = 200.;
+gamma           = 5./3.
+
 ; derived units
 constG   = 10.^(alog10(phys.g)+alog10(uM)-2d0*alog10(uV)-alog10(uL)) ;
 pcentre  = [0.,0.,z_disk] * pc / uL
+utherm     = !pi * constG * surface_density * scale_height / (gamma-1.)
+soundspeed = sqrt(gamma * (gamma-1.) * utherm)
+t_dyn      = sqrt(scale_height / (constG * surface_density))
 
 ;
 infile = indir + basefile + '*'
@@ -48,7 +53,7 @@ rbins = (surface_density/(2.*scale_height)) / cosh(abs(zbins)/scale_height)^2
 ; plot analytic profile
 wset,0
 plot,[0],[0],xr=[0,2*scale_height],yr=[0,max(rbins)],/nodata,xtitle='|z|',ytitle=textoidl('\rho')
-oplot,zbins,rbins
+oplot,zbins,rbins,color=blue
 
 ifile  = 0
 nskip   = nfiles - 1
@@ -56,8 +61,10 @@ isave  = 0
 nplot  = 8192 ; randomly plot particles
 color = floor(findgen(nfiles)/float(nfiles-1)*255)
 ;for ifile=0,nfiles-1,nskip do begin
-tsave = [0.]
-for ifile=0,nfiles-1,nskip do begin
+tsave  = [0.]
+toplot = [1,nfiles-1]
+for iplot=0,1 do begin
+   ifile  = toplot[iplot]
    inf    = indir + basefile + strtrim(string(ifile,'(i3.3)'),1) + '.hdf5'
    time   = h5ra(inf, 'Header','Time')
    tsave  = [tsave, time]
@@ -86,19 +93,37 @@ for ifile=0,nfiles-1,nskip do begin
    
    ip = floor(randomu(ifile+1,nplot)*n_elements(rho))
    color = red
-   if(ifile eq 0) then color=black
+   if(ifile eq 1) then begin
+      color=black
+   endif else begin
+      color=red
+   endelse
    oplot,abs(p[2,ip]), rho[ip], psym=3, color=color
 
    isave = isave + 1
    
 endfor
-tsave = tsave[1:*]
+
+; time in units of dynamical time
+tsave = tsave[1:*] / t_dyn
 
 label = ['']
-for i=0,n_elements(tsave)-1 do label=[label,'t='+string(tsave[i],format='(f8.0)')]
+for i=0,n_elements(tsave)-1 do label=[label,'time/t_dynamic='+string(tsave[i],format='(f8.0)')]
 label = label[1:*]
-legend,[label[0],label[1]],linestyle=[0,0],color=[black,red],box=0,/top,/right
+legend,['analytic',label[0],label[1]],linestyle=[0,0,0],color=[blue,black,red],box=0,/top,/right
 
+; make histograms of particle velocities
+xr    = 1d-3 * [-1,1]
+bsize = 1.d-5
+ohist,v[0,*]/soundspeed,x,vx,xr[0],xr[1],bsize
+ohist,v[1,*]/soundspeed,y,vy,xr[0],xr[1],bsize
+ohist,v[2,*]/soundspeed,z,vz,xr[0],xr[1],bsize
+wset,2
+plot,x,vx,psym=10,xtitle='velocity/soundspeed',ytitle='pdf',/nodata,xr=xr,/xs
+oplot,x,vx,psym=10,color=black
+oplot,y,vy,psym=10,color=blue
+oplot,z,vz,psym=10,color=red
+legend,['vx/c','vy/c','vz/c'],linestyle=[0,0,0],color=[black,blue,red],box=0,/top,/right
 end
 
 
