@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "const.h"
 #include "debug.h"
+#include "dimension.h"
 #include "hydro.h"
 #include "part.h"
 
@@ -85,7 +86,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
     p->h *= expf(w1);
 
   /* Predict density */
-  const float w2 = -3.0f * w1;
+  const float w2 = -hydro_dimension * w1;
   if (fabsf(w2) < 0.2f)
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
   else

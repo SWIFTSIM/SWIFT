@@ -43,6 +43,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "error.h"
+#include "inline.h"
 #include "lock.h"
 
 /* Task type names. */
@@ -58,8 +59,11 @@ const char *subtaskID_names[task_type_count] = {"none", "density", "force",
 /**
  * @brief Computes the overlap between the parts array of two given cells.
  */
-size_t task_cell_overlap_part(const struct cell *ci, const struct cell *cj) {
+__attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
+    const struct cell *ci, const struct cell *cj) {
+
   if (ci == NULL || cj == NULL) return 0;
+
   if (ci->parts <= cj->parts &&
       ci->parts + ci->count >= cj->parts + cj->count) {
     return cj->count;
@@ -67,14 +71,18 @@ size_t task_cell_overlap_part(const struct cell *ci, const struct cell *cj) {
              cj->parts + cj->count >= ci->parts + ci->count) {
     return ci->count;
   }
+
   return 0;
 }
 
 /**
  * @brief Computes the overlap between the gparts array of two given cells.
  */
-size_t task_cell_overlap_gpart(const struct cell *ci, const struct cell *cj) {
+__attribute__((always_inline)) INLINE static size_t task_cell_overlap_gpart(
+    const struct cell *ci, const struct cell *cj) {
+
   if (ci == NULL || cj == NULL) return 0;
+
   if (ci->gparts <= cj->gparts &&
       ci->gparts + ci->gcount >= cj->gparts + cj->gcount) {
     return cj->gcount;
@@ -82,6 +90,7 @@ size_t task_cell_overlap_gpart(const struct cell *ci, const struct cell *cj) {
              cj->gparts + cj->gcount >= ci->gparts + ci->gcount) {
     return ci->gcount;
   }
+
   return 0;
 }
 
@@ -90,7 +99,8 @@ size_t task_cell_overlap_gpart(const struct cell *ci, const struct cell *cj) {
  *
  * @param t The #task.
  */
-enum task_actions task_acts_on(const struct task *t) {
+__attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
+    const struct task *t) {
 
   switch (t->type) {
 

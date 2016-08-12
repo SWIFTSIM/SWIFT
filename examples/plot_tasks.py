@@ -56,8 +56,8 @@ pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init", "ghost",
-             "drift", "kick", "kick_fixdt", "send", "recv", "grav_pp", "grav_mm",
-             "grav_up", "grav_down", "grav_external", "part_sort", "gpart_sort",
+             "drift", "kick", "kick_fixdt", "send", "recv", "grav_gather_m", "grav_fft",
+             "grav_mm", "grav_up", "grav_external", "part_sort", "gpart_sort",
              "split_cell", "rewait", "count"]
 
 TASKCOLOURS = {"none": "black",
@@ -73,10 +73,10 @@ TASKCOLOURS = {"none": "black",
                "kick_fixdt": "green",
                "send": "yellow",
                "recv": "magenta",
-               "grav_pp": "mediumorchid",
+               "grav_gather_m": "mediumorchid",
+               "grav_fft": "mediumnightblue",
                "grav_mm": "mediumturquoise",
                "grav_up": "mediumvioletred",
-               "grav_down": "mediumnightblue",
                "grav_external": "darkred",
                "part_sort": "steelblue",
                "gpart_sort": "teal" ,
@@ -84,12 +84,13 @@ TASKCOLOURS = {"none": "black",
                "rewait": "olive",
                "count": "powerblue"}
 
-SUBTYPES = ["none", "density", "force", "grav", "count"]
+SUBTYPES = ["none", "density", "force", "grav", "tend", "count"]
 
 SUBCOLOURS = {"none": "black",
               "density": "red",
               "force": "blue",
               "grav": "indigo",
+              "tend": "grey"
               "count": "purple"}
 
 #  Show docs if help is requested.

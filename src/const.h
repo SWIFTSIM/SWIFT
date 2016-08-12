@@ -36,10 +36,19 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
+/* Dimensionality of the problem */
+#define HYDRO_DIMENSION_3D
+//#define HYDRO_DIMENSION_2D
+//#define HYDRO_DIMENSION_1D
+
 /* Hydrodynamical adiabatic index. */
 #define HYDRO_GAMMA_5_3
 //#define HYDRO_GAMMA_4_3
 //#define HYDRO_GAMMA_2_1
+
+/* Equation of state choice */
+#define EOS_IDEAL_GAS
+//#define EOS_ISOTHERMAL_GAS
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL

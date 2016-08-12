@@ -107,6 +107,5 @@ int task_lock(struct task *t);
 void task_print_mask(unsigned int mask);
 void task_print_submask(unsigned int submask);
 void task_do_rewait(struct task *t);
-enum task_actions task_acts_on(const struct task *t);
 
 #endif /* SWIFT_TASK_H */
