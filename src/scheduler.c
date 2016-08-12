@@ -215,7 +215,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
         /* Replace by a single sub-task? */
         if (scheduler_dosub &&
-            ci->count * sid_scale[sid] < space_subsize / cj->count &&
+            ci->count * cj->count * sid_scale[sid] < space_subsize &&
             sid != 0 && sid != 2 && sid != 6 && sid != 8) {
 
           /* Make this task a sub task. */
