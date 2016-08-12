@@ -644,7 +644,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
     pj[k]->force.v_sig = fmaxf(pj[k]->force.v_sig, v_sig.f[k]);
     pi[k]->entropy_dt += entropy_dt.f[k] * mj.f[k];
-    pj[k]->entropy_dt -= entropy_dt.f[k] * mi.f[k];
+    pj[k]->entropy_dt += entropy_dt.f[k] * mi.f[k];
   }
 
 #else
