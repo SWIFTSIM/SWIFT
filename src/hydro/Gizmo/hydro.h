@@ -202,6 +202,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part* p) {
 
   hydro_gradients_finalize(p);
+
+  /* Initialize fluxes */
+  p->conserved.flux.mass = 0.0f;
+  p->conserved.flux.momentum[0] = 0.0f;
+  p->conserved.flux.momentum[1] = 0.0f;
+  p->conserved.flux.momentum[2] = 0.0f;
+  p->conserved.flux.energy = 0.0f;
 }
 
 /**
@@ -269,7 +276,20 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {}
+    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
+
+  return;
+  float dt = (t1 - t0) * timeBase;
+
+  p->primitives.rho =
+      (p->conserved.mass + p->conserved.flux.mass * dt / p->force.dt) /
+      p->geometry.volume;
+  p->primitives.v[0] += p->a_hydro[0] * dt;
+  p->primitives.v[1] += p->a_hydro[1] * dt;
+  p->primitives.v[2] += p->a_hydro[2] * dt;
+  float u = p->conserved.energy + p->conserved.flux.energy * dt / p->force.dt;
+  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u;
+}
 
 /**
  * @brief Set the particle acceleration after the flux loop

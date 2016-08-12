@@ -250,6 +250,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* The flux will be exchanged using the smallest time step of the two
    * particles */
   mindt = fminf(dti, dtj);
+  //  dti = mindt;
+  //  dtj = mindt;
 
   /* Compute kernel of pi. */
   hi_inv = 1.0 / hi;
@@ -363,44 +365,69 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Update conserved variables */
   /* eqn. (16) */
-  pi->conserved.mass -= pi->force.dt * Anorm * totflux[0];
-  pi->conserved.momentum[0] -= pi->force.dt * Anorm * totflux[1];
-  pi->conserved.momentum[1] -= pi->force.dt * Anorm * totflux[2];
-  pi->conserved.momentum[2] -= pi->force.dt * Anorm * totflux[3];
-  pi->conserved.energy -= pi->force.dt * Anorm * totflux[4];
+  pi->conserved.mass -= dti * Anorm * totflux[0];
+  pi->conserved.momentum[0] -= dti * Anorm * totflux[1];
+  pi->conserved.momentum[1] -= dti * Anorm * totflux[2];
+  pi->conserved.momentum[2] -= dti * Anorm * totflux[3];
+  pi->conserved.energy -= dti * Anorm * totflux[4];
+
+  pi->conserved.flux.mass -= dti * Anorm * totflux[0];
+  pi->conserved.flux.momentum[0] -= dti * Anorm * totflux[1];
+  pi->conserved.flux.momentum[1] -= dti * Anorm * totflux[2];
+  pi->conserved.flux.momentum[2] -= dti * Anorm * totflux[3];
+  pi->conserved.flux.energy -= dti * Anorm * totflux[4];
 
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.energy +=
-      pi->force.dt * Anorm * totflux[1] * pi->primitives.v[0];
-  pi->conserved.energy +=
-      pi->force.dt * Anorm * totflux[2] * pi->primitives.v[1];
-  pi->conserved.energy +=
-      pi->force.dt * Anorm * totflux[3] * pi->primitives.v[2];
-  pi->conserved.energy -= pi->force.dt * Anorm * totflux[0] * ekin;
+  pi->conserved.energy += dti * Anorm * totflux[1] * pi->primitives.v[0];
+  pi->conserved.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
+  pi->conserved.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
+  pi->conserved.energy -= dti * Anorm * totflux[0] * ekin;
 
-  /* the non symmetric version is never called when using mindt, whether this
-   * piece of code
-   * should always be executed or only in the symmetric case is currently
-   * unclear */
+  pi->conserved.flux.energy += dti * Anorm * totflux[1] * pi->primitives.v[0];
+  pi->conserved.flux.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
+  pi->conserved.flux.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
+  pi->conserved.flux.energy -= dti * Anorm * totflux[0] * ekin;
+
+  /* here is how it works:
+     Mode will only be 1 if both particles are ACTIVE and they are in the same
+     cell. In this case, this method IS the flux calculation for particle j, and
+     we HAVE TO UPDATE it.
+     Mode 0 can mean several things: it can mean that particle j is INACTIVE, in
+     which case we NEED TO UPDATE it, since otherwise the flux is lost from the
+     system and the conserved variable is not conserved.
+     It can also mean that particle j sits in another cell and is ACTIVE. In
+     this case, the flux exchange for particle j is done TWICE and we SHOULD NOT
+     UPDATE particle j.
+     ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
+  */
+  //  if (mode == 1 || pj->ti_end >  pi->ti_end) {
   if (mode == 1) {
-    pj->conserved.mass += pj->force.dt * Anorm * totflux[0];
-    pj->conserved.momentum[0] += pj->force.dt * Anorm * totflux[1];
-    pj->conserved.momentum[1] += pj->force.dt * Anorm * totflux[2];
-    pj->conserved.momentum[2] += pj->force.dt * Anorm * totflux[3];
-    pj->conserved.energy += pj->force.dt * Anorm * totflux[4];
+    pj->conserved.mass += dtj * Anorm * totflux[0];
+    pj->conserved.momentum[0] += dtj * Anorm * totflux[1];
+    pj->conserved.momentum[1] += dtj * Anorm * totflux[2];
+    pj->conserved.momentum[2] += dtj * Anorm * totflux[3];
+    pj->conserved.energy += dtj * Anorm * totflux[4];
+
+    pj->conserved.flux.mass += dtj * Anorm * totflux[0];
+    pj->conserved.flux.momentum[0] += dtj * Anorm * totflux[1];
+    pj->conserved.flux.momentum[1] += dtj * Anorm * totflux[2];
+    pj->conserved.flux.momentum[2] += dtj * Anorm * totflux[3];
+    pj->conserved.flux.energy += dtj * Anorm * totflux[4];
 
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.energy -=
-        pj->force.dt * Anorm * totflux[1] * pj->primitives.v[0];
-    pj->conserved.energy -=
-        pj->force.dt * Anorm * totflux[2] * pj->primitives.v[1];
-    pj->conserved.energy -=
-        pj->force.dt * Anorm * totflux[3] * pj->primitives.v[2];
-    pj->conserved.energy += pj->force.dt * Anorm * totflux[0] * ekin;
+    pj->conserved.energy -= dtj * Anorm * totflux[1] * pj->primitives.v[0];
+    pj->conserved.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
+    pj->conserved.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
+    pj->conserved.energy += dtj * Anorm * totflux[0] * ekin;
+
+    pj->conserved.flux.energy -= dtj * Anorm * totflux[1] * pj->primitives.v[0];
+    pj->conserved.flux.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
+    pj->conserved.flux.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
+    pj->conserved.flux.energy += dtj * Anorm * totflux[0] * ekin;
   }
 }
 

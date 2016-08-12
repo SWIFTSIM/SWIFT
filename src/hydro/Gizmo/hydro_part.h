@@ -111,6 +111,20 @@ struct part {
     /* Fluid total energy (= internal energy + fluid kinetic energy). */
     float energy;
 
+    /* Fluxes. */
+    struct {
+
+      /* Mass flux. */
+      float mass;
+
+      /* Momentum flux. */
+      float momentum[3];
+
+      /* Energy flux. */
+      float energy;
+
+    } flux;
+
   } conserved;
 
   /* Geometrical quantities used for hydro. */
