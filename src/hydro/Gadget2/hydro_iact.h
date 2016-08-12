@@ -469,8 +469,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
-  pj->entropy_dt += 0.5f * mi * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr;
+  pj->entropy_dt += mi * visc_term * dvdr;
 }
 
 /**
@@ -631,7 +631,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
   pjh_dt.v = mi.v * dvdr.v * ri.v / pirho.v * wj_dr.v;
 
   /* Change in entropy */
-  entropy_dt.v = vec_set1(0.5f) * visc_term.v * dvdr.v;
+  entropy_dt.v = visc_term.v * dvdr.v;
 
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
@@ -738,7 +738,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += 0.5f * mj * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * dvdr;
 }
 
 /**
@@ -894,7 +894,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   pih_dt.v = mj.v * dvdr.v * ri.v / pjrho.v * wi_dr.v;
 
   /* Change in entropy */
-  entropy_dt.v = vec_set1(0.5f) * mj.v * visc_term.v * dvdr.v;
+  entropy_dt.v = mj.v * visc_term.v * dvdr.v;
 
   /* Store the forces back on the particles. */
   for (k = 0; k < VEC_SIZE; k++) {
