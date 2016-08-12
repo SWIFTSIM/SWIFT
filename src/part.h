@@ -47,6 +47,7 @@
 #include "./hydro/Default/hydro_part.h"
 #elif defined(GIZMO_SPH)
 #include "./hydro/Gizmo/hydro_part.h"
+#define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of SPH variant"
 #endif

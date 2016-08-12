@@ -41,6 +41,7 @@ enum task_types {
   task_type_sub_pair,
   task_type_init,
   task_type_ghost,
+  task_type_extra_ghost,
   task_type_drift,
   task_type_kick,
   task_type_kick_fixdt,
@@ -64,6 +65,7 @@ extern const char *taskID_names[];
 enum task_subtypes {
   task_subtype_none = 0,
   task_subtype_density,
+  task_subtype_gradient,
   task_subtype_force,
   task_subtype_grav,
   task_subtype_tend,

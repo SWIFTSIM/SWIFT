@@ -82,6 +82,13 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION density
 #include "runner_doiact.h"
 
+#ifdef EXTRA_HYDRO_LOOP
+/* Import the gradient loop functions. */
+#undef FUNCTION
+#define FUNCTION gradient
+#include "runner_doiact.h"
+#endif
+
 /* Import the force loop functions. */
 #undef FUNCTION
 #define FUNCTION force
@@ -421,8 +428,11 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_init);
 }
 
+void runner_do_extra_ghost(struct runner *r, struct cell *c) {}
+
 /**
- * @brief Intermediate task between density and force
+ * @brief Intermediate task after the density to check that the smoothing
+ * lengths are correct.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -1074,8 +1084,11 @@ void *runner_main(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_density)
-            runner_doself1_density(r, ci);
+          if (t->subtype == task_subtype_density) runner_doself1_density(r, ci);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_doself1_gradient(r, ci);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
           else if (t->subtype == task_subtype_grav)
@@ -1086,6 +1099,10 @@ void *runner_main(void *data) {
         case task_type_pair:
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dopair1_gradient(r, ci, cj);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
@@ -1099,6 +1116,10 @@ void *runner_main(void *data) {
         case task_type_sub_self:
           if (t->subtype == task_subtype_density)
             runner_dosub_self1_density(r, ci, 1);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dosub_self1_gradient(r, ci, 1);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_grav)
@@ -1109,6 +1130,10 @@ void *runner_main(void *data) {
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)
             runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dosub_pair1_gradient(r, ci, cj, t->flags, 1);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
@@ -1121,6 +1146,9 @@ void *runner_main(void *data) {
           break;
         case task_type_ghost:
           runner_do_ghost(r, ci);
+          break;
+        case task_type_extra_ghost:
+          runner_do_extra_ghost(r, ci);
           break;
         case task_type_drift:
           runner_do_drift(r, ci, 1);

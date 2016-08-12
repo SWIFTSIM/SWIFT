@@ -94,15 +94,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   hydro_gradients_density_loop(pi, pj, wi_dx, 0.0f, dx, r, 0);
 }
 
-__attribute__((always_inline)) INLINE static void runner_iact_hydro_loop2(
+__attribute__((always_inline)) INLINE static void runner_iact_gradient(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   hydro_gradients_gradient_loop(r2, dx, hi, hj, pi, pj, 1);
 }
 
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_hydro_loop2(float r2, float *dx, float hi, float hj,
-                               struct part *pi, struct part *pj) {
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
+    float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   hydro_gradients_gradient_loop(r2, dx, hi, hj, pi, pj, 0);
 }

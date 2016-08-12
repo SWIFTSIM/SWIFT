@@ -118,11 +118,11 @@ struct cell {
   int sortsize, gsortsize;
 
   /* The tasks computing this cell's density. */
-  struct link *density, *force, *grav;
-  int nr_density, nr_force, nr_grav;
+  struct link *density, *gradient, *force, *grav;
+  int nr_density, nr_gradient, nr_force, nr_grav;
 
   /* The hierarchical tasks. */
-  struct task *ghost, *init, *drift, *kick;
+  struct task *extra_ghost, *ghost, *init, *drift, *kick;
 
   /* Task receiving data. */
   struct task *recv_xv, *recv_rho, *recv_ti;

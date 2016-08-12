@@ -48,14 +48,14 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",       "sort",    "self",          "pair",          "sub_self",
-    "sub_pair",   "init",    "ghost",         "drift",         "kick",
-    "kick_fixdt", "send",    "recv",          "grav_gather_m", "grav_fft",
-    "grav_mm",    "grav_up", "grav_external", "part_sort",     "gpart_sort",
-    "split_cell", "rewait"};
+    "none",       "sort",       "self",    "pair",          "sub_self",
+    "sub_pair",   "init",       "ghost",   "extra_ghost",   "drift",
+    "kick",       "kick_fixdt", "send",    "recv",          "grav_gather_m",
+    "grav_fft",   "grav_mm",    "grav_up", "grav_external", "part_sort",
+    "gpart_sort", "split_cell", "rewait"};
 
-const char *subtaskID_names[task_subtype_count] = {"none", "density", "force",
-                                                   "grav", "tend"};
+const char *subtaskID_names[task_subtype_count] = {
+    "none", "density", "gradient", "force", "grav", "tend"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
