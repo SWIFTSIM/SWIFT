@@ -202,13 +202,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part* p) {
 
   hydro_gradients_finalize(p);
-
-  /* Initialize fluxes */
-  p->conserved.flux.mass = 0.0f;
-  p->conserved.flux.momentum[0] = 0.0f;
-  p->conserved.flux.momentum[1] = 0.0f;
-  p->conserved.flux.momentum[2] = 0.0f;
-  p->conserved.flux.energy = 0.0f;
 }
 
 /**
@@ -339,7 +332,23 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt Half the physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {}
+    struct part* p, struct xpart* xp, float dt, float half_dt) {
+
+  p->conserved.mass += p->conserved.flux.mass;
+  p->conserved.momentum[0] += p->conserved.flux.momentum[0];
+  p->conserved.momentum[1] += p->conserved.flux.momentum[1];
+  p->conserved.momentum[2] += p->conserved.flux.momentum[2];
+  p->conserved.energy += p->conserved.flux.energy;
+
+  /* reset fluxes */
+  /* we can only do this here, since we need to keep the fluxes for inactive
+     particles */
+  p->conserved.flux.mass = 0.0f;
+  p->conserved.flux.momentum[0] = 0.0f;
+  p->conserved.flux.momentum[1] = 0.0f;
+  p->conserved.flux.momentum[2] = 0.0f;
+  p->conserved.flux.energy = 0.0f;
+}
 
 /**
  * @brief Returns the internal energy of a particle

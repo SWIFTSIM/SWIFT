@@ -250,8 +250,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   /* The flux will be exchanged using the smallest time step of the two
    * particles */
   mindt = fminf(dti, dtj);
-  //  dti = mindt;
-  //  dtj = mindt;
+  dti = mindt;
+  dtj = mindt;
 
   /* Compute kernel of pi. */
   hi_inv = 1.0 / hi;
@@ -365,12 +365,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Update conserved variables */
   /* eqn. (16) */
-  pi->conserved.mass -= dti * Anorm * totflux[0];
-  pi->conserved.momentum[0] -= dti * Anorm * totflux[1];
-  pi->conserved.momentum[1] -= dti * Anorm * totflux[2];
-  pi->conserved.momentum[2] -= dti * Anorm * totflux[3];
-  pi->conserved.energy -= dti * Anorm * totflux[4];
-
   pi->conserved.flux.mass -= dti * Anorm * totflux[0];
   pi->conserved.flux.momentum[0] -= dti * Anorm * totflux[1];
   pi->conserved.flux.momentum[1] -= dti * Anorm * totflux[2];
@@ -380,11 +374,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.energy += dti * Anorm * totflux[1] * pi->primitives.v[0];
-  pi->conserved.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
-  pi->conserved.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
-  pi->conserved.energy -= dti * Anorm * totflux[0] * ekin;
-
   pi->conserved.flux.energy += dti * Anorm * totflux[1] * pi->primitives.v[0];
   pi->conserved.flux.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
   pi->conserved.flux.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
@@ -402,14 +391,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      UPDATE particle j.
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
-  //  if (mode == 1 || pj->ti_end >  pi->ti_end) {
-  if (mode == 1) {
-    pj->conserved.mass += dtj * Anorm * totflux[0];
-    pj->conserved.momentum[0] += dtj * Anorm * totflux[1];
-    pj->conserved.momentum[1] += dtj * Anorm * totflux[2];
-    pj->conserved.momentum[2] += dtj * Anorm * totflux[3];
-    pj->conserved.energy += dtj * Anorm * totflux[4];
-
+  if (mode == 1 || pj->ti_end > pi->ti_end) {
     pj->conserved.flux.mass += dtj * Anorm * totflux[0];
     pj->conserved.flux.momentum[0] += dtj * Anorm * totflux[1];
     pj->conserved.flux.momentum[1] += dtj * Anorm * totflux[2];
@@ -419,11 +401,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.energy -= dtj * Anorm * totflux[1] * pj->primitives.v[0];
-    pj->conserved.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
-    pj->conserved.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
-    pj->conserved.energy += dtj * Anorm * totflux[0] * ekin;
-
     pj->conserved.flux.energy -= dtj * Anorm * totflux[1] * pj->primitives.v[0];
     pj->conserved.flux.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
     pj->conserved.flux.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
