@@ -472,8 +472,8 @@ int main(int argc, char *argv[]) {
   prog_const.const_newton_G = 1.f;
 
   struct hydro_props hp;
-  hp.target_neighbours = h * h * h * kernel_norm;
-  hp.delta_neighbours = 1.;
+  hp.target_neighbours = pow_dimension(h) * kernel_norm;
+  hp.delta_neighbours = 2.;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
 
