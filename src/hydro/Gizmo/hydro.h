@@ -19,6 +19,7 @@
 
 #include <float.h>
 #include "adiabatic_index.h"
+#include "approx_math.h"
 #include "hydro_gradients.h"
 
 /**
@@ -219,6 +220,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
+
+  /* Reset the time derivatives. */
+  p->force.h_dt = 0.0f;
 }
 
 /**
@@ -273,10 +277,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   return;
   float dt = (t1 - t0) * timeBase;
+  float h_inv = 1.0f / p->h;
+  float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
 
-  p->primitives.rho =
-      (p->conserved.mass + p->conserved.flux.mass * dt / p->force.dt) /
-      p->geometry.volume;
+  // p->primitives.rho =
+  //    (p->conserved.mass + p->conserved.flux.mass * dt / p->force.dt) /
+  //    p->geometry.volume;
+  if (fabsf(w) < 0.2f) {
+    p->primitives.rho *= approx_expf(w);
+  } else {
+    p->primitives.rho *= expf(w);
+  }
   p->primitives.v[0] += p->a_hydro[0] * dt;
   p->primitives.v[1] += p->a_hydro[1] * dt;
   p->primitives.v[2] += p->a_hydro[2] * dt;
@@ -298,6 +309,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p) {
+
+  p->force.h_dt *= p->h * hydro_dimension_inv;
 
   /* Set the hydro acceleration, based on the new momentum and mass */
   /* NOTE: the momentum and mass are only correct for active particles, since

@@ -265,6 +265,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
+  /* Compute h_dt */
+  // float dvdr = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
+  // (Wi[3]-Wj[3])*dx[2];
+  // float ri = 1.0f/r;
+  // float hidp1 = pow_dimension_plus_one(hi_inv);
+  // float hjdp1 = pow_dimension_plus_one(hj_inv);
+  // float wi_dr = hidp1 * wi_dx;
+  // float wj_dr = hjdp1 * wj_dx;
+  // dvdr *= ri;
+  // pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
+  // if(mode == 1){
+  //  pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
+  //}
+
   /* Compute area */
   /* eqn. (7) */
   Anorm = 0.0f;

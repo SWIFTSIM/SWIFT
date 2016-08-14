@@ -167,7 +167,7 @@ struct part {
   /* Quantities used during the force loop. */
   struct {
 
-    /* Needed to compile the code. */
+    /* Needed to drift the primitive variables. */
     float h_dt;
 
     /* Physical time step of the particle. */
