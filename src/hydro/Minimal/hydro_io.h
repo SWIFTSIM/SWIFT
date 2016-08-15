@@ -107,8 +107,9 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No model");
-  writeAttribute_s(h_grpsph, "Viscosity Model", "No model");
+  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  writeAttribute_s(h_grpsph, "Viscosity Model",
+                   "Minimal treatment as in Monaghan (1992)");
 
   /* Time integration properties */
   writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",

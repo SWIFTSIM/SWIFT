@@ -22,10 +22,12 @@
 #include "adiabatic_index.h"
 
 /**
+ * @file hydro_iact.h
  * @brief Minimal conservative implementation of SPH
  *
- * The thermal variable is the internal energy (u). No viscosity nor
- * thermal conduction terms are implemented.
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term without switche is implemented. No thermal conduction
+ * terms is implemented.
  */
 
 /**
