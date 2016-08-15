@@ -38,6 +38,7 @@
  */
 void cooling_init(const struct swift_params* parameter_file,
                     struct UnitSystem* us,
+		  const struct phys_const* const phys_const,
                     struct cooling_data* cooling) {
 
 #ifdef CONST_COOLING
@@ -47,12 +48,21 @@ void cooling_init(const struct swift_params* parameter_file,
 #endif /* CONST_COOLING */
 
 #ifdef CREASEY_COOLING
-  cooling->creasey_cooling.lambda = parser_get_param_double(parameter_file, "CreaseyCooling:lambda");
-  cooling->creasey_cooling.min_energy = parser_get_param_double(parameter_file, "CreaseyCooling:min_energy");
+  cooling->creasey_cooling.lambda = parser_get_param_double(parameter_file, "CreaseyCooling:Lambda");
+  cooling->creasey_cooling.min_temperature = parser_get_param_double(parameter_file, "CreaseyCooling:minimum_temperature");
+  cooling->creasey_cooling.mean_molecular_weight =  parser_get_param_double(parameter_file, "CreaseyCooling:mean_molecular_weight");
+  cooling->creasey_cooling.hydrogen_mass_abundance =  parser_get_param_double(parameter_file, "CreaseyCooling:hydrogen_mass_abundance");
   cooling->creasey_cooling.cooling_tstep_mult = parser_get_param_double(parameter_file, "CreaseyCooling:cooling_tstep_mult");
+
+  /*convert minimum temperature into minimum internal energy*/
+  double k_b = phys_const->const_boltzmann_k;
+  double T_min = cooling->creasey_cooling.min_temperature;
+  double mu = cooling->creasey_cooling.mean_molecular_weight;
+  double m_p = phys_const->const_proton_mass;
+
+  cooling->creasey_cooling.min_internal_energy = k_b * T_min / (hydro_gamma_minus_one * mu * m_p);  
+
 #endif /* CREASEY_COOLING */
-
-
 }
 
 /**
@@ -62,7 +72,7 @@ void cooling_init(const struct swift_params* parameter_file,
  */
 void cooling_print(const struct cooling_data* cooling) {
 
-#ifdef CONST_COOLING */
+#ifdef CONST_COOLING 
   message(
       "Cooling properties are (lambda, min_energy, tstep multiplier) %g %g %g ",
       cooling->const_cooling.lambda,
@@ -72,16 +82,17 @@ void cooling_print(const struct cooling_data* cooling) {
 
 #ifdef CREASEY_COOLING
   message(
-      "Cooling properties for Creasey cooling are (lambda, min_energy, tstep multiplier) %g %g %g ",
+      "Cooling properties for Creasey cooling are (lambda, min_temperature, hydrogen_mass_abundance, mean_molecular_weight, tstep multiplier) %g %g %g %g %g",
       cooling->creasey_cooling.lambda,
-      cooling->creasey_cooling.min_energy,
+      cooling->creasey_cooling.min_temperature,
+      cooling->creasey_cooling.hydrogen_mass_abundance,
+      cooling->creasey_cooling.mean_molecular_weight,
       cooling->creasey_cooling.cooling_tstep_mult);
 #endif /* CREASEY_COOLING */
 }
 
-void update_entropy(const struct cooling_data* cooling,
-		   const struct phys_const* const phys_const, struct part* p, 
-		   double dt){
+void update_entropy(const struct phys_const* const phys_const, const struct UnitSystem* us,
+		    const struct cooling_data* cooling, struct part* p, double dt){
 
   /*updates the entropy of a particle after integrating the cooling equation*/
   float u_old;
@@ -92,7 +103,7 @@ void update_entropy(const struct cooling_data* cooling,
 
   //  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
   u_old = hydro_get_internal_energy(p,0); // dt = 0 because using current entropy
-  u_new = calculate_new_thermal_energy(u_old,rho,dt,phys_const,cooling);
+  u_new = calculate_new_thermal_energy(u_old,rho,dt,cooling,phys_const,us);
   new_entropy = u_new*pow_minus_gamma_minus_one(rho) * hydro_gamma_minus_one;
   p->entropy = new_entropy;
 }
@@ -101,8 +112,9 @@ void update_entropy(const struct cooling_data* cooling,
   thermal energy, density and the timestep dt. Returns the final internal energy*/
 
 float calculate_new_thermal_energy(float u_old, float rho, float dt, 
-				   const struct phys_const* const phys_const, 
-				   const struct cooling_data* cooling){
+				   const struct cooling_data* cooling,
+				   const struct phys_const* const phys_const,
+				   const struct UnitSystem* us){
 #ifdef CONST_COOLING
   /*du/dt = -lambda, independent of density*/
   float du_dt = -cooling->const_cooling.lambda;
@@ -117,19 +129,33 @@ float calculate_new_thermal_energy(float u_old, float rho, float dt,
 #endif /*CONST_COOLING*/
 
 #ifdef CREASEY_COOLING
-  /* rho*du/dt = -lambda*n_H^2, where rho = m_p * n_H*/
-  float m_p = phys_const->const_proton_mass;
-  float n_H = rho / m_p;
-  float lambda = cooling->creasey_cooling.lambda;
-  float du_dt = -lambda * n_H * n_H / rho;
-  float u_floor = cooling->creasey_cooling.min_energy;
+  /* rho*du/dt = -lambda*n_H^2 */
   float u_new;
-  if (u_old - du_dt*dt > u_floor){
-    u_new = u_old + du_dt*dt;
+  float m_p = phys_const->const_proton_mass;
+  float X_H = cooling->creasey_cooling.hydrogen_mass_abundance;
+  float lambda = cooling->creasey_cooling.lambda; //this is always in cgs
+  float u_floor = cooling->creasey_cooling.min_internal_energy;
+
+  /*convert from internal code units to cgs*/
+  float dt_cgs =  dt * units_cgs_conversion_factor(us,UNIT_CONV_TIME);
+  float rho_cgs = rho * units_cgs_conversion_factor(us,UNIT_CONV_DENSITY);
+  float m_p_cgs = m_p * units_cgs_conversion_factor(us,UNIT_CONV_MASS);
+  float n_H_cgs = rho_cgs / m_p_cgs;
+  float u_old_cgs =  u_old * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  float u_floor_cgs =  u_floor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  float du_dt = -lambda * n_H_cgs * n_H_cgs / rho;
+  float u_new_cgs;
+
+  if (u_old_cgs - du_dt*dt_cgs > u_floor_cgs){
+    u_new_cgs = u_old_cgs + du_dt*dt_cgs;
   }
   else{
-    u_new = u_floor;
+    u_new_cgs = u_floor_cgs;
   }
+
+  /*convert back to internal code units when returning new internal energy*/
+
+  u_new = u_new_cgs / units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);  
 #endif /*CREASEY_COOLING*/
   return u_new;
 }

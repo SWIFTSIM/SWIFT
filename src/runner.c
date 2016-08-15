@@ -151,6 +151,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
   const int ti_current = r->e->ti_current;
   const struct cooling_data *cooling = r->e->cooling_data;
   const struct phys_const *constants = r->e->physical_constants;
+  const struct UnitSystem *us = r->e->internalUnits;
   const double timeBase = r->e->timeBase;
   double dt;
 
@@ -176,7 +177,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
     /* Kick has already updated ti_end, so need to check ti_begin */
     if (p->ti_begin == ti_current) {
       dt = (p->ti_end - p->ti_begin)*timeBase;
-      update_entropy(cooling, constants, p, dt);
+      update_entropy(constants, us, cooling ,p, dt);
     }
   }
 

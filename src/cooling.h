@@ -52,7 +52,10 @@ struct cooling_data {
 #ifdef CREASEY_COOLING
   struct {
     double lambda;
-    double min_energy;
+    double min_temperature;
+    double hydrogen_mass_abundance;
+    double mean_molecular_weight;
+    double min_internal_energy;
     double cooling_tstep_mult;
   } creasey_cooling;
 #endif
@@ -84,13 +87,14 @@ cooling_timestep(const struct cooling_data* cooling,
 /* Now, some generic functions, defined in the source file */
 void cooling_init(const struct swift_params* parameter_file,
                     struct UnitSystem* us,
+		  const struct phys_const* const phys_const,
                     struct cooling_data* cooling);
 
 void cooling_print(const struct cooling_data* cooling);
+void update_entropy(const struct phys_const* const phys_const, const struct UnitSystem* us,
+		    const struct cooling_data* cooling, struct part* p, double dt);
 float calculate_new_thermal_energy(float u_old, float rho, float dt, 
-				   const struct phys_const* const phys_const, 
-				   const struct cooling_data* cooling);
-void update_entropy(const struct cooling_data* cooling,
-		   const struct phys_const* const phys_const, struct part* p, 
-		    double dt);
+				   const struct cooling_data* cooling,
+				   const struct phys_const* const phys_const,
+				   const struct UnitSystem* us);
 #endif /* SWIFT_COOLING_H */

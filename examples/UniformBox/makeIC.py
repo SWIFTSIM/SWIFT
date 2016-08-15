@@ -29,8 +29,8 @@ from numpy import *
 periodic= 1           # 1 For periodic box
 boxSize = 1.0         
 L = int(sys.argv[1])  # Number of particles along one axis
-rho = 1.0e-24          # Density (roughly 1 atom per cubic centimetre)
-P = 1.0e-12               # Pressure (at approx 10000K)
+rho = 3.3e6           # Density in solar masses per cubic kiloparsec (0.1 hydrogen atoms per cm^3)
+P = 1.4e8             # Pressure in code units (at 10^5K)
 gamma = 5./3.         # Gas adiabatic index
 eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "uniformBox.hdf5" 
@@ -38,6 +38,7 @@ fileName = "uniformBox.hdf5"
 #---------------------------------------------------
 numPart = L**3
 mass = boxSize**3 * rho / numPart
+print mass
 internalEnergy = P / ((gamma - 1.)*rho)
 
 #--------------------------------------------------

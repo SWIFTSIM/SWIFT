@@ -1,8 +1,8 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     1   # Grams
-  UnitLength_in_cgs:   1   # Centimeters
-  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitMass_in_cgs:     2.0e33   # Solar masses
+  UnitLength_in_cgs:   3.01e21   # Kilparsecs
+  UnitVelocity_in_cgs: 1.0e5   # Kilometres per second
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
@@ -45,6 +45,8 @@ PointMass:
   # Cooling parameters (Creasey cooling) (always in cgs)
 
 CreaseyCooling:
-  lambda:             1.0e-22
-  min_energy:         0.0
-  cooling_tstep_mult: 1.0
+  Lambda:                      1.0e-22
+  minimum_temperature:         1.0e4
+  mean_molecular_weight:       0.59
+  hydrogen_mass_abundance:     0.75
+  cooling_tstep_mult:          1.0

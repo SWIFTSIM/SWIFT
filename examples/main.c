@@ -342,7 +342,7 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the external potential properties */
   struct cooling_data cooling;
-  if (with_cooling) cooling_init(params, &us, &cooling);
+  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling);
   if (with_cooling && myrank == 0) cooling_print(&cooling);
 
   /* Read particles and space information from (GADGET) ICs */
