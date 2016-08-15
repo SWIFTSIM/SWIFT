@@ -19,7 +19,6 @@
  ##############################################################################
 
 import h5py
-import random
 from numpy import *
 
 # Generates a swift IC file for the Sod Shock in a periodic box

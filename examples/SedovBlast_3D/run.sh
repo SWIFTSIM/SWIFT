@@ -1,10 +1,19 @@
 #!/bin/bash
 
-# Generate the initial conditions if they are not present.
+ # Generate the initial conditions if they are not present.
+if [ ! -e glassCube_64.hdf5 ]
+then
+    echo "Fetching initial glass file for the Sedov blast example..."
+    ./getGlass.sh
+fi
 if [ ! -e sedov.hdf5 ]
 then
-    echo "Generating initial conditions for the SedovBlast example..."
-    python makeIC_fcc.py
+    echo "Generating initial conditions for the Sedov blast example..."
+    python makeIC.py
 fi
 
-../swift -s -t 16 sedov.yml
+# Run SWIFT
+../swift -s -t 4 sedov.yml
+
+# Plot the solution
+python plotSolution.py 5
