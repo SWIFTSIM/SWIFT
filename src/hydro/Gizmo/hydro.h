@@ -318,15 +318,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
            neighbours. Since this method is only called for active particles,
            this is indeed the case. */
   if (p->force.dt) {
-    p->a_hydro[0] =
-        (p->conserved.momentum[0] / p->conserved.mass - p->primitives.v[0]) /
-        p->force.dt;
-    p->a_hydro[1] =
-        (p->conserved.momentum[1] / p->conserved.mass - p->primitives.v[1]) /
-        p->force.dt;
-    p->a_hydro[2] =
-        (p->conserved.momentum[2] / p->conserved.mass - p->primitives.v[2]) /
-        p->force.dt;
+    float mnew = p->conserved.mass + p->conserved.flux.mass;
+    float pnew[3];
+    pnew[0] = p->conserved.momentum[0] + p->conserved.flux.momentum[0];
+    pnew[1] = p->conserved.momentum[1] + p->conserved.flux.momentum[1];
+    pnew[2] = p->conserved.momentum[2] + p->conserved.flux.momentum[2];
+    p->a_hydro[0] = (pnew[0] / mnew - p->primitives.v[0]) / p->force.dt;
+    p->a_hydro[1] = (pnew[1] / mnew - p->primitives.v[1]) / p->force.dt;
+    p->a_hydro[2] = (pnew[2] / mnew - p->primitives.v[2]) / p->force.dt;
   } else {
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;
