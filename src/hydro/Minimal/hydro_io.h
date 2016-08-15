@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 
+#include "adiabatic_index.h"
+#include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 
@@ -51,6 +53,16 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
+float convert_S(struct engine* e, struct part* p) {
+
+  return hydro_get_entropy(p, 0);
+}
+
+float convert_P(struct engine* e, struct part* p) {
+
+  return hydro_get_pressure(p, 0);
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -61,7 +73,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -80,6 +92,11 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
+  list[8] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
+                                              UNIT_CONV_ENTROPY_PER_UNIT_MASS,
+                                              parts, rho, convert_S);
+  list[9] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
 }
 
 /**

@@ -115,6 +115,8 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
 __attribute__((always_inline)) INLINE static void runner_iact_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
+  const float fac_mu = 1.f; /* Will change with cosmological integration */
+
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
 
@@ -143,34 +145,60 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
-  const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
 
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = fminf(dvdr, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
   /* Compute sound speeds */
   const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
-  const float v_sig = ci + cj;
+  const float v_sig = ci + cj - 3.f * mu_ij;
+
+  /* Construct the full viscosity term */
+  const float rho_ij = 0.5f * (rhoi + rhoj);
+  const float visc = -const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+
+  /* Convolve with the kernel */
+  const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
   /* SPH acceleration term */
-  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_acc_term =
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+
+  /* Assemble the acceleration */
+  const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_term * dx[0];
-  pi->a_hydro[1] -= mj * sph_term * dx[1];
-  pi->a_hydro[2] -= mj * sph_term * dx[2];
+  pi->a_hydro[0] -= mj * acc * dx[0];
+  pi->a_hydro[1] -= mj * acc * dx[1];
+  pi->a_hydro[2] -= mj * acc * dx[2];
 
-  pj->a_hydro[0] += mi * sph_term * dx[0];
-  pj->a_hydro[1] += mi * sph_term * dx[1];
-  pj->a_hydro[2] += mi * sph_term * dx[2];
+  pj->a_hydro[0] += mi * acc * dx[0];
+  pj->a_hydro[1] += mi * acc * dx[1];
+  pj->a_hydro[2] += mi * acc * dx[2];
 
   /* Get the time derivative for u. */
-  pi->u_dt += P_over_rho_i * mj * dvdr * r_inv * wi_dr;
-  pj->u_dt += P_over_rho_j * mi * dvdr * r_inv * wj_dr;
+  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wi_dr;
+
+  /* Viscosity term */
+  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+
+  /* Assemble the energy equation term */
+  const float du_dt_i = sph_du_term_i + visc_du_term;
+  const float du_dt_j = sph_du_term_j + visc_du_term;
+
+  /* Internal energy time derivatibe */
+  pi->u_dt += du_dt_i * mj;
+  pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
@@ -197,6 +225,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
+
+  const float fac_mu = 1.f; /* Will change with cosmological integration */
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0f / r;
@@ -226,29 +256,53 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float P_over_rho_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
-  const float P_over_rho_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->rho_dh;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->rho_dh;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
 
-  /* Compute sound speeds */
+  /* Are the particles moving towards each others ? */
+  const float omega_ij = fminf(dvdr, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
+
+  /* Compute sound speeds and signal velocity */
   const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
-  const float v_sig = ci + cj;
+  const float v_sig = ci + cj - 3.f * mu_ij;
+
+  /* Construct the full viscosity term */
+  const float rho_ij = 0.5f * (rhoi + rhoj);
+  const float visc = -const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+
+  /* Convolve with the kernel */
+  const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
 
   /* SPH acceleration term */
-  const float sph_term = (P_over_rho_i * wi_dr + P_over_rho_j * wj_dr) * r_inv;
+  const float sph_acc_term =
+      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+
+  /* Assemble the acceleration */
+  const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * sph_term * dx[0];
-  pi->a_hydro[1] -= mj * sph_term * dx[1];
-  pi->a_hydro[2] -= mj * sph_term * dx[2];
+  pi->a_hydro[0] -= mj * acc * dx[0];
+  pi->a_hydro[1] -= mj * acc * dx[1];
+  pi->a_hydro[2] -= mj * acc * dx[2];
 
   /* Get the time derivative for u. */
-  pi->u_dt += P_over_rho_i * mj * dvdr * r_inv * wi_dr;
+  const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
+
+  /* Viscosity term */
+  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+
+  /* Assemble the energy equation term */
+  const float du_dt_i = sph_du_term_i + visc_du_term;
+
+  /* Internal energy time derivatibe */
+  pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;

@@ -31,8 +31,6 @@ struct xpart {
 
   float v_full[3]; /*!< Velocity at the last full step. */
 
-  float u_full; /*!< Thermal energy at the last full step. */
-
 } __attribute__((aligned(xpart_align)));
 
 /**
