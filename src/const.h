@@ -59,8 +59,8 @@
 //#define WENDLAND_C6_KERNEL
 
 /* SPH variant to use */
-#define MINIMAL_SPH
-//#define GADGET2_SPH
+//#define MINIMAL_SPH
+#define GADGET2_SPH
 //#define DEFAULT_SPH
 
 /* Self gravity stuff. */
