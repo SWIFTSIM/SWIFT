@@ -157,14 +157,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float omega_ij = fminf(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
-  /* Compute sound speeds */
+  /* Compute sound speeds and signal velocity */
   const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
   const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
   const float v_sig = ci + cj - 3.f * mu_ij;
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
@@ -187,7 +187,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = P_over_rho2_i * dvdr * r_inv * wi_dr;
-  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wi_dr;
+  const float sph_du_term_j = P_over_rho2_j * dvdr * r_inv * wj_dr;
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
@@ -275,7 +275,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
