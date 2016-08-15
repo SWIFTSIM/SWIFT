@@ -46,6 +46,13 @@ void cooling_init(const struct swift_params* parameter_file,
   cooling->const_cooling.cooling_tstep_mult = parser_get_param_double(parameter_file, "Cooling:cooling_tstep_mult");
 #endif /* CONST_COOLING */
 
+#ifdef CREASEY_COOLING
+  cooling->creasey_cooling.lambda = parser_get_param_double(parameter_file, "CreaseyCooling:lambda");
+  cooling->creasey_cooling.min_energy = parser_get_param_double(parameter_file, "CreaseyCooling:min_energy");
+  cooling->creasey_cooling.cooling_tstep_mult = parser_get_param_double(parameter_file, "CreaseyCooling:cooling_tstep_mult");
+#endif /* CREASEY_COOLING */
+
+
 }
 
 /**
@@ -55,13 +62,21 @@ void cooling_init(const struct swift_params* parameter_file,
  */
 void cooling_print(const struct cooling_data* cooling) {
 
-#ifdef CONST_COOLING
+#ifdef CONST_COOLING */
   message(
       "Cooling properties are (lambda, min_energy, tstep multiplier) %g %g %g ",
       cooling->const_cooling.lambda,
       cooling->const_cooling.min_energy,
       cooling->const_cooling.cooling_tstep_mult);
 #endif /* CONST_COOLING */
+
+#ifdef CREASEY_COOLING
+  message(
+      "Cooling properties for Creasey cooling are (lambda, min_energy, tstep multiplier) %g %g %g ",
+      cooling->creasey_cooling.lambda,
+      cooling->creasey_cooling.min_energy,
+      cooling->creasey_cooling.cooling_tstep_mult);
+#endif /* CREASEY_COOLING */
 }
 
 void update_entropy(const struct cooling_data* cooling,
@@ -77,17 +92,19 @@ void update_entropy(const struct cooling_data* cooling,
 
   //  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
   u_old = hydro_get_internal_energy(p,0); // dt = 0 because using current entropy
-  u_new = calculate_new_thermal_energy(u_old,dt,cooling);
+  u_new = calculate_new_thermal_energy(u_old,rho,dt,phys_const,cooling);
   new_entropy = u_new*pow_minus_gamma_minus_one(rho) * hydro_gamma_minus_one;
   p->entropy = new_entropy;
 }
 
+/*This function integrates the cooling equation, given the initial
+  thermal energy, density and the timestep dt. Returns the final internal energy*/
 
-float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_data* cooling){
+float calculate_new_thermal_energy(float u_old, float rho, float dt, 
+				   const struct phys_const* const phys_const, 
+				   const struct cooling_data* cooling){
 #ifdef CONST_COOLING
-  //This function integrates the cooling equation, given the initial thermal energy and the timestep dt.
-  //Returns 0 if successful and 1 if not
-  int status = 0;
+  /*du/dt = -lambda, independent of density*/
   float du_dt = -cooling->const_cooling.lambda;
   float u_floor = cooling->const_cooling.min_energy;
   float u_new;
@@ -97,9 +114,24 @@ float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_d
   else{
     u_new = u_floor;
   }
+#endif /*CONST_COOLING*/
 
+#ifdef CREASEY_COOLING
+  /* rho*du/dt = -lambda*n_H^2, where rho = m_p * n_H*/
+  float m_p = phys_const->const_proton_mass;
+  float n_H = rho / m_p;
+  float lambda = cooling->creasey_cooling.lambda;
+  float du_dt = -lambda * n_H * n_H / rho;
+  float u_floor = cooling->creasey_cooling.min_energy;
+  float u_new;
+  if (u_old - du_dt*dt > u_floor){
+    u_new = u_old + du_dt*dt;
+  }
+  else{
+    u_new = u_floor;
+  }
+#endif /*CREASEY_COOLING*/
   return u_new;
-#endif /*CONST_COOLING*/ 
 }
 
 

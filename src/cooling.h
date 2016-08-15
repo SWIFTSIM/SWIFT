@@ -48,6 +48,14 @@ struct cooling_data {
     double cooling_tstep_mult;
   } const_cooling;
 #endif
+
+#ifdef CREASEY_COOLING
+  struct {
+    double lambda;
+    double min_energy;
+    double cooling_tstep_mult;
+  } creasey_cooling;
+#endif
 };
 
 /* Include Cooling */
@@ -62,7 +70,7 @@ struct cooling_data {
  */
 __attribute__((always_inline)) INLINE static float
 cooling_timestep(const struct cooling_data* cooling,
-		 const struct phys_const* const phys_const, 
+		 const struct phys_const* const phys_const,
 		 const struct part* const p) {
 
   const float cooling_rate = cooling->const_cooling.lambda;
@@ -79,7 +87,9 @@ void cooling_init(const struct swift_params* parameter_file,
                     struct cooling_data* cooling);
 
 void cooling_print(const struct cooling_data* cooling);
-float calculate_new_thermal_energy(float u_old, float dt, const struct cooling_data* cooling);
+float calculate_new_thermal_energy(float u_old, float rho, float dt, 
+				   const struct phys_const* const phys_const, 
+				   const struct cooling_data* cooling);
 void update_entropy(const struct cooling_data* cooling,
 		   const struct phys_const* const phys_const, struct part* p, 
 		    double dt);

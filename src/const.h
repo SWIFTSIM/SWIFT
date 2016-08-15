@@ -65,7 +65,8 @@
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 
 /* Cooling properties */
-#define CONST_COOLING
+//#define CONST_COOLING
+#define CREASEY_COOLING
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

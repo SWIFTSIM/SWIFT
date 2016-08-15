@@ -4,7 +4,7 @@
 if [ ! -e uniformBox.hdf5 ]
 then
     echo "Generating initial conditions for the uniform box example..."
-    python makeIC.py 100
+    python makeIC.py 10
 fi
 
 ../swift -s -C -t 16 uniformBox.yml

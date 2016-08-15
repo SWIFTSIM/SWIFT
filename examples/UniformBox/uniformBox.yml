@@ -9,7 +9,7 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   1.    # The end time of the simulation (in internal units).
+  time_end:   10.    # The end time of the simulation (in internal units).
   dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -17,7 +17,7 @@ TimeIntegration:
 Snapshots:
   basename:            uniformBox # Common part of the name of output files
   time_first:          0.         # Time of the first output (in internal units)
-  delta_time:          0.01       # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.1       # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -42,9 +42,9 @@ PointMass:
   position_z:      50.	
   mass:            1e10     # mass of external point mass in internal units
 
-  # Cooling parameters (Constant cooling)
+  # Cooling parameters (Creasey cooling) (always in cgs)
 
-Cooling:
-  lambda:             0.1
+CreaseyCooling:
+  lambda:             1.0e-22
   min_energy:         0.0
   cooling_tstep_mult: 1.0

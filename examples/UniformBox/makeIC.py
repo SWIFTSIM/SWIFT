@@ -27,10 +27,10 @@ from numpy import *
 
 # Parameters
 periodic= 1           # 1 For periodic box
-boxSize = 1.
+boxSize = 1.0         
 L = int(sys.argv[1])  # Number of particles along one axis
-rho = 2.              # Density
-P = 1.                # Pressure
+rho = 1.0e-24          # Density (roughly 1 atom per cubic centimetre)
+P = 1.0e-12               # Pressure (at approx 10000K)
 gamma = 5./3.         # Gas adiabatic index
 eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "uniformBox.hdf5" 
