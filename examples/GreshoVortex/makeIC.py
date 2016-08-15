@@ -1,7 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ # Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
  # it under the terms of the GNU Lesser General Public License as published
@@ -19,7 +18,6 @@
  ##############################################################################
 
 import h5py
-import random
 from numpy import *
 import sys
 
@@ -51,7 +49,6 @@ for i in range(numPart):
     
     x = coords[i,0]
     y = coords[i,1]
-    z = coords[i,2]
 
     r2 = (x - boxSize / 2)**2 + (y - boxSize / 2)**2
     r = sqrt(r2)
