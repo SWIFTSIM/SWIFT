@@ -22,8 +22,6 @@
 
 # Generates the analytical  solution for the Sod shock test case
 # The script works for a given left (x<0) and right (x>0) state and computes the solution at a later time t.
-# The code writes five files rho.dat, P.dat, v.dat, u.dat and s.dat with the density, pressure, internal energy and
-# entropic function on N points between x_min and x_max.
 # This follows the solution given in (Toro, 2009)
 
 
