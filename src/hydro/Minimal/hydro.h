@@ -18,8 +18,10 @@
  ******************************************************************************/
 
 #include "adiabatic_index.h"
-#include "approx_math.h"
+#include "dimension.h"
 #include "equation_of_state.h"
+#include "hydro_properties.h"
+#include "kernel_hydro.h"
 
 /**
  * @brief Returns the internal energy of a particle
@@ -34,7 +36,7 @@
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part *restrict p, float dt) {
 
-  return p->u;
+  return p->u + p->u_dt * dt;
 }
 
 /**
@@ -46,7 +48,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part *restrict p, float dt) {
 
-  return gas_pressure_from_internal_energy(p->rho, p->u);
+  const float u = p->u + p->u_dt * dt;
+
+  return gas_pressure_from_internal_energy(p->rho, u);
 }
 
 /**
@@ -62,7 +66,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part *restrict p, float dt) {
 
-  return gas_entropy_from_internal_energy(p->rho, p->u);
+  const float u = p->u + p->u_dt * dt;
+
+  return gas_entropy_from_internal_energy(p->rho, u);
 }
 
 /**
@@ -74,7 +80,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part *restrict p, float dt) {
 
-  return gas_soundspeed_from_internal_energy(p->rho, p->u);
+  const float u = p->u + p->u_dt * dt;
+
+  return gas_soundspeed_from_internal_energy(p->rho, u);
 }
 
 /**
@@ -150,7 +158,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
-  xp->u_full = p->u;
 }
 
 /**
@@ -164,6 +171,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p) {
+
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
@@ -227,7 +235,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp, int ti_current,
     double timeBase) {
 
-  p->force.pressure = p->rho * p->u * hydro_gamma_minus_one;
+  const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+  const float pressure = hydro_get_pressure(p, half_dt);
+
+  p->force.pressure = pressure;
 }
 
 /**
@@ -268,10 +279,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *restrict p, const struct xpart *restrict xp, int t0, int t1,
     double timeBase) {
 
-  p->u = xp->u_full;
-
-  /* Need to recompute the pressure as well */
-  p->force.pressure = p->rho * p->u * hydro_gamma_minus_one;
+  /* Drift the pressure */
+  const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
+  p->force.pressure = hydro_get_pressure(p, dt_entr);
 }
 
 /**
@@ -304,11 +314,15 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt,
     float half_dt) {
 
-  /* Kick in momentum space */
-  xp->u_full += p->u_dt * dt;
+  /* Do not decrease the energy by more than a factor of 2*/
+  const float u_change = p->u_dt * dt;
+  if (u_change > -0.5f * p->u)
+    p->u += u_change;
+  else
+    p->u *= 0.5f;
 
-  /* Get the predicted internal energy */
-  p->u = xp->u_full - half_dt * p->u_dt;
+  /* Do not 'overcool' when timestep increases */
+  if (p->u + p->u_dt * half_dt < 0.5f * p->u) p->u_dt = -0.5f * p->u / half_dt;
 }
 
 /**
