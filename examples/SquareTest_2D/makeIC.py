@@ -20,71 +20,78 @@
 import h5py
 from numpy import *
 
-# Generates a swift IC file for the Gresho-Chan vortex in a periodic box
+# Generates a swift IC file for the Square test in a periodic box
 
 # Parameters
+L = 64            # Number of particles on the side 
 gamma = 5./3.     # Gas adiabatic index
-rho0 = 1           # Gas density
-P0 = 0.           # Constant additional pressure (should have no impact on the dynamics)
-fileOutputName = "greshoVortex.hdf5" 
-fileGlass = "glassPlane_128.hdf5"
+rho0 = 4          # Gas central density
+rho1 = 1          # Gas outskirt density
+P0 = 2.5          # Gas central pressure
+P1 = 2.5          # Gas central pressure
+vx = 142.3        # Random velocity for all particles 
+vy = -31.4
+fileOutputName = "square.hdf5"
 #---------------------------------------------------
 
-# Get position and smoothing lengths from the glass
-fileInput = h5py.File(fileGlass, 'r')
-coords = fileInput["/PartType0/Coordinates"][:,:]
-h = fileInput["/PartType0/SmoothingLength"][:]
-ids = fileInput["/PartType0/ParticleIDs"][:]
-boxSize = fileInput["/Header"].attrs["BoxSize"][0]
+vol = 1.
+
+numPart_out = L * L
+numPart_in = L * L * rho0 / rho1 / 4
+
+L_out = int(sqrt(numPart_out))
+L_in = int(sqrt(numPart_in))
+
+pos_out = zeros((numPart_out, 3))
+for i in range(L_out):
+    for j in range(L_out):
+        index = i * L_out + j
+        pos_out[index, 0] =  i / (float(L_out)) + 1./(2. * L_out)
+        pos_out[index, 1] =  j / (float(L_out)) + 1./(2. * L_out)
+h_out = ones(numPart_out) * (1. / L_out) * 1.2348
+m_out = ones(numPart_out) * vol  * rho1 / numPart_out
+u_out = ones(numPart_out) * P1 / (rho1 * (gamma - 1.))
+
+pos_in = zeros((numPart_in, 3))
+for i in range(L_in):
+    for j in range(L_in):
+        index = i * L_in + j
+        pos_in[index, 0] =  0.25 + i / float(2. * L_in) + 1./(2. * 2. * L_in)
+        pos_in[index, 1] =  0.25 + j / float(2. * L_in) + 1./(2. * 2. * L_in)
+h_in = ones(numPart_in) * (1. / L_in) * 1.2348
+m_in = ones(numPart_in) * 0.25 * vol * rho0 / numPart_in
+u_in = ones(numPart_in) * P0 / (rho0 * (gamma - 1.))
+
+# Remove the central particles 
+select_out = logical_or(logical_or(pos_out[:,0] < 0.25 , pos_out[:,0] > 0.75), logical_or(pos_out[:,1] < 0.25, pos_out[:,1] > 0.75))
+pos_out = pos_out[select_out, :]
+h_out = h_out[select_out]
+u_out = u_out[select_out]
+m_out = m_out[select_out]
+
+# Add the central region
+pos = append(pos_out, pos_in, axis=0)
+h = append(h_out, h_in, axis=0)
+u = append(u_out, u_in)
+m = append(m_out, m_in)
 numPart = size(h)
-fileInput.close()
-
-# Now generate the rest
-m = ones(numPart) * rho0 * boxSize**2 / numPart
-u = zeros(numPart)
-v = zeros((numPart, 3))
-
-for i in range(numPart):
-    
-    x = coords[i,0]
-    y = coords[i,1]
-
-    r2 = (x - boxSize / 2)**2 + (y - boxSize / 2)**2
-    r = sqrt(r2)
-
-    v_phi = 0.
-    if r < 0.2:
-        v_phi = 5.*r
-    elif r < 0.4:
-        v_phi = 2. - 5.*r
-    else:
-        v_phi = 0.
-    v[i,0] = -v_phi * (y - boxSize / 2) / r
-    v[i,1] =  v_phi * (x - boxSize / 2) / r
-    v[i,2] = 0.
-
-    P = P0
-    if r < 0.2:
-        P = P + 5. + 12.5*r2
-    elif r < 0.4:
-        P = P + 9. + 12.5*r2 - 20.*r + 4.*log(r/0.2)
-    else:
-        P = P + 3. + 4.*log(2.)
-    u[i] = P / ((gamma - 1.)*rho0)
-    
-
+ids = linspace(1, numPart, numPart)
+vel = zeros((numPart, 3))
+vel[:,0] = vx
+vel[:,1] = vy
+        
 
 #File
 fileOutput = h5py.File(fileOutputName, 'w')
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSize, boxSize, 0.2]
+grp.attrs["BoxSize"] = [vol, vol, 0.2]
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
-grp.attrs["NumFileOutputsPerSnapshot"] = 1
+grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 
@@ -103,9 +110,9 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 #Particle group
 grp = fileOutput.create_group("/PartType0")
 ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
-ds[()] = coords
+ds[()] = pos
 ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
-ds[()] = v
+ds[()] = vel
 ds = grp.create_dataset('Masses', (numPart, 1), 'f')
 ds[()] = m.reshape((numPart,1))
 ds = grp.create_dataset('SmoothingLength', (numPart,1), 'f')
