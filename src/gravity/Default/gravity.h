@@ -47,7 +47,8 @@ gravity_compute_timestep_external(const struct external_potential* potential,
                                                                phys_const, gp));
 #endif
 #ifdef EXTERNAL_POTENTIAL_DISK_PATCH
-  dt = fmin(dt, external_gravity_disk_patch_timestep(potential, phys_const, gp));
+  dt =
+      fmin(dt, external_gravity_disk_patch_timestep(potential, phys_const, gp));
 #endif
   return dt;
 }
@@ -73,7 +74,6 @@ gravity_compute_timestep_self(const struct phys_const* const phys_const,
   /* return dt; */
   return FLT_MAX;
 }
-
 
 /**
  * @brief Initialises the g-particles for the first time
@@ -117,7 +117,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * @param const_G Newton's constant
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-	struct gpart* gp, const double const_G) {
+    struct gpart* gp, const double const_G) {
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
@@ -135,8 +135,7 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  * @param gp The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void external_gravity(
-	 const double time,																					 
-    const struct external_potential* potential,
+    const double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* gp) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS

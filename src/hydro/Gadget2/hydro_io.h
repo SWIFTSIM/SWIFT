@@ -21,7 +21,6 @@
 #include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
-#include "equation_of_state.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset

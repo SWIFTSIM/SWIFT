@@ -1,6 +1,7 @@
-genertae and evolve a disk-patch, where gas is in hydrostatic
+generate and evolve a disk-patch, where gas is in hydrostatic
 equilibrium with an imposed external gravutation force, using teh
-equations from Creasey, Theuns & Bower 2013.
+equations from Creasey, Theuns & Bower, 2013, MNRAS, Volume 429,
+Issue 3, p.1922-1948
 
 Run the swift using setting
 #define EXTERNAL_POTENTIAL_DISK_PATCH

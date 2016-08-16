@@ -41,7 +41,7 @@
 /* ------------------------------------------------------------------------- */
 #if defined(EOS_IDEAL_GAS)
 #if defined(EOS_ISOTHERMAL_GAS)
-#error: cannot have ideal and isothermal gas at the same time!
+#error : cannot have ideal and isothermal gas at the same time!
 #endif
 
 /**
@@ -128,15 +128,16 @@ gas_soundspeed_from_internal_energy(float density, float u) {
 
   return sqrtf(u * hydro_gamma * hydro_gamma_minus_one);
 }
-__attribute__((always_inline)) INLINE static void eos_print(){
-  message(" assuming an equation of state of an ideal gas, with gamma = %e", hydro_gamma);
+__attribute__((always_inline)) INLINE static void eos_print() {
+  message(" assuming an equation of state of an ideal gas, with gamma = %e",
+          hydro_gamma);
 }
-__attribute__((always_inline)) INLINE static float hydro_update_entropy(float density, float entropy)
-{
+__attribute__((always_inline)) INLINE static float hydro_update_entropy(
+    float density, float entropy) {
   return entropy;
 }
-__attribute__((always_inline)) INLINE static float hydro_update_entropy_rate(float density, float entropy)
-{
+__attribute__((always_inline)) INLINE static float hydro_update_entropy_rate(
+    float density, float entropy) {
   return hydro_gamma_minus_one * pow_minus_gamma_minus_one(density);
 }
 /* ------------------------------------------------------------------------- */
@@ -174,7 +175,8 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
 __attribute__((always_inline)) INLINE static float
 gas_entropy_from_internal_energy(float density, float u) {
 
-  return hydro_gamma_minus_one * EOS_ISOTHERMAL_GAS / pow(density, hydro_gamma-1);
+  return hydro_gamma_minus_one * EOS_ISOTHERMAL_GAS /
+         pow(density, hydro_gamma - 1);
 }
 
 /**
@@ -202,16 +204,19 @@ gas_soundspeed_from_internal_energy(float density, float u) {
   error("Missing definition !");
   return 0.f;
 }
-__attribute__((always_inline)) INLINE static void eos_print(){
-  message(" assuming an equation of state for an isothermal gas with utherm= %e and gamma = %e", EOS_ISOTHERMAL_GAS, hydro_gamma);
+__attribute__((always_inline)) INLINE static void eos_print() {
+  message(
+      " assuming an equation of state for an isothermal gas with utherm= %e "
+      "and gamma = %e",
+      EOS_ISOTHERMAL_GAS, hydro_gamma);
 }
-__attribute__((always_inline)) INLINE static float hydro_update_entropy(float density, float entropy)
-{
+__attribute__((always_inline)) INLINE static float hydro_update_entropy(
+    float density, float entropy) {
   float thermal_energy = EOS_ISOTHERMAL_GAS;
   return gas_entropy_from_internal_energy(density, thermal_energy);
 }
-__attribute__((always_inline)) INLINE static float hydro_update_entropy_rate(float density, float entropy)
-{
+__attribute__((always_inline)) INLINE static float hydro_update_entropy_rate(
+    float density, float entropy) {
   return 0;
 }
 /* ------------------------------------------------------------------------- */

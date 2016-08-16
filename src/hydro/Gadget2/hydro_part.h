@@ -64,7 +64,7 @@ struct part {
   /* Derivative of the density with respect to smoothing length. */
   float rho_dh;
 
-  //  union {
+  union {
 
     struct {
 
@@ -100,6 +100,7 @@ struct part {
       float h_dt;
 
     } force;
+  };
 
   /* Particle ID. */
   long long id;

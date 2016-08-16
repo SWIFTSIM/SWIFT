@@ -48,7 +48,8 @@
 
 /* Equation of state choice */
 #define EOS_IDEAL_GAS
-/* if EOS_ISOTHERMAL_GAS is defined, keep thermal energy per unit mass equal to EOS_ISOTHERMAL_GAS in programme units */
+/* if EOS_ISOTHERMAL_GAS is defined, keep thermal energy per unit mass equal to
+ * EOS_ISOTHERMAL_GAS in programme units */
 //#define EOS_ISOTHERMAL_GAS (20.2615290634)
 
 /* Kernel function to use */
@@ -74,9 +75,9 @@
 //#define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 #define EXTERNAL_POTENTIAL_DISK_PATCH
-/* Add viscuous force to gas particles to speed-up glass making for disk-patch ICs */
+/* Add viscuous force to gas particles to speed-up glass making for disk-patch
+ * ICs */
 //#define EXTERNAL_POTENTIAL_DISK_PATCH_ICS
-
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS
