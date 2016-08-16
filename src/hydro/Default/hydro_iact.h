@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RUNNER_IACT_H
-#define SWIFT_RUNNER_IACT_H
+#ifndef SWIFT_DEFAULT_HYDRO_IACT_H
+#define SWIFT_DEFAULT_HYDRO_IACT_H
 
 #include "adiabatic_index.h"
 
@@ -932,4 +932,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #endif
 }
 
-#endif /* SWIFT_RUNNER_IACT_H */
+#endif /* SWIFT_DEFAULT_HYDRO_IACT_H */

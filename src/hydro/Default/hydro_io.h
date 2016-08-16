@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_HYDRO_IO_H
+#define SWIFT_DEFAULT_HYDRO_IO_H
 
 #include "io_properties.h"
 #include "kernel_hydro.h"
@@ -112,3 +114,5 @@ void writeSPHflavour(hid_t h_grpsph) {
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
 int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_DEFAULT_HYDRO_IO_H */

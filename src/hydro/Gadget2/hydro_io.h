@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_IO_H
+#define SWIFT_GADGET2_HYDRO_IO_H
 
 #include "adiabatic_index.h"
 #include "hydro.h"
@@ -121,3 +123,5 @@ void writeSPHflavour(hid_t h_grpsph) {
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
 int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_GADGET2_HYDRO_IO_H */
