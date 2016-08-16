@@ -147,8 +147,6 @@ void clean_up(struct cell *ci) {
  */
 void zero_particle_fields(struct cell *c) {
   for (size_t pid = 0; pid < c->count; pid++) {
-    c->parts[pid].rho = 0.f;
-    c->parts[pid].rho_dh = 0.f;
     hydro_init_part(&c->parts[pid]);
   }
 }
@@ -187,7 +185,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].rho,
-            main_cell->parts[pid].rho_dh, main_cell->parts[pid].density.wcount,
+#if defined(GIZMO_SPH)
+            0.f,
+#else
+            main_cell->parts[pid].rho_dh,
+#endif
+            main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
 #if defined(GADGET2_SPH)
             main_cell->parts[pid].density.div_v,
@@ -223,7 +226,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               "%13e %13e %13e\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-              cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+              cj->parts[pjd].v[2], cj->parts[pjd].rho,
+#if defined(GIZMO_SPH)
+              0.f,
+#else
+              main_cell->parts[pjd].rho_dh,
+#endif
               cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
 #if defined(GADGET2_SPH)
               cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
@@ -321,7 +329,7 @@ int main(int argc, char *argv[]) {
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f", h * h * h * kernel_norm);
+  message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);

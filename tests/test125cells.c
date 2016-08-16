@@ -247,9 +247,6 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->ti_begin = 0;
         part->ti_end = 1;
 
-        xpart->v_full[0] = part->v[0];
-        xpart->v_full[1] = part->v[1];
-        xpart->v_full[2] = part->v[2];
         hydro_first_init_part(part, xpart);
         ++part;
         ++xpart;
@@ -328,15 +325,16 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_soundspeed(&main_cell->parts[pid], 0.f),
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
             main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
-            main_cell->parts[pid].force.v_sig,
 #if defined(GADGET2_SPH)
-            main_cell->parts[pid].entropy_dt, 0.f
+            main_cell->parts[pid].force.v_sig, main_cell->parts[pid].entropy_dt,
+            0.f
 #elif defined(DEFAULT_SPH)
-            0.f, main_cell->parts[pid].force.u_dt
+            main_cell->parts[pid].force.v_sig, 0.f,
+            main_cell->parts[pid].force.u_dt
 #elif defined(MINIMAL_SPH)
-            0.f, main_cell->parts[pid].u_dt
+            main_cell->parts[pid].force.v_sig, 0.f, main_cell->parts[pid].u_dt
 #else
-            0.f, 0.f
+            0.f, 0.f, 0.f
 #endif
             );
   }
@@ -447,7 +445,7 @@ int main(int argc, char *argv[]) {
   message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f", h * h * h * kernel_norm);
+  message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
@@ -460,6 +458,11 @@ int main(int argc, char *argv[]) {
 
   printf("\n");
 
+#if !defined(HYDRO_DIMENSION_3D)
+  message("test125cells only useful in 3D. Change parameters in const.h !");
+  return 1;
+#endif
+
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
@@ -469,8 +472,8 @@ int main(int argc, char *argv[]) {
   prog_const.const_newton_G = 1.f;
 
   struct hydro_props hp;
-  hp.target_neighbours = h * h * h * kernel_norm;
-  hp.delta_neighbours = 1.;
+  hp.target_neighbours = pow_dimension(h) * kernel_norm;
+  hp.delta_neighbours = 2.;
   hp.max_smoothing_iterations = 1;
   hp.CFL_condition = 0.1;
 
