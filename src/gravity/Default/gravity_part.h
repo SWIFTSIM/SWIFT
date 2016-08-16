@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_GRAVITY_PART_H
+#define SWIFT_DEFAULT_GRAVITY_PART_H
+
 /* Some standard headers. */
 #include <stdlib.h>
 
@@ -51,3 +54,5 @@ struct gpart {
   long long id_or_neg_offset;
 
 } __attribute__((aligned(gpart_align)));
+
+#endif /* SWIFT_DEFAULT_GRAVITY_PART_H */

@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RUNNER_IACT_GRAV_H
-#define SWIFT_RUNNER_IACT_GRAV_H
+#ifndef SWIFT_DEFAULT_GRAVITY_IACT_H
+#define SWIFT_DEFAULT_GRAVITY_IACT_H
 
 /* Includes. */
 #include "const.h"
@@ -188,4 +188,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_grav_pm(
 #endif
 }
 
-#endif /* SWIFT_RUNNER_IACT_GRAV_H */
+#endif /* SWIFT_DEFAULT_GRAVITY_IACT_H */
