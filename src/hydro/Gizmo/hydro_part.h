@@ -108,7 +108,7 @@ struct part {
     /* Fluid mass (this field already exists outside of this struct as well). */
     float mass;
 
-    /* Fluid total energy (= internal energy + fluid kinetic energy). */
+    /* Fluid thermal energy (not per unit mass!). */
     float energy;
 
     /* Fluxes. */
