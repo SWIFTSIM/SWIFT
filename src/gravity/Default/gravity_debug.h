@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_GRAVITY_DEBUG_H
+#define SWIFT_DEFAULT_GRAVITY_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void gravity_debug_particle(
     const struct gpart* p) {
@@ -27,3 +29,5 @@ __attribute__((always_inline)) INLINE static void gravity_debug_particle(
       p->a_grav[0], p->a_grav[1], p->a_grav[2], p->mass, p->ti_begin,
       p->ti_end);
 }
+
+#endif /* SWIFT_DEFAULT_GRAVITY_DEBUG_H */
