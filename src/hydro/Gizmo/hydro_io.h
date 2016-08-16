@@ -21,6 +21,7 @@
 #include "hydro_gradients.h"
 #include "hydro_slope_limiters.h"
 #include "io_properties.h"
+#include "riemann.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -118,6 +119,9 @@ void writeSPHflavour(hid_t h_grpsph) {
                    HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
   writeAttribute_s(h_grpsph, "Piecewise slope limiter model",
                    HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
+
+  /* Riemann solver information */
+  writeAttribute_s(h_grpsph, "Riemann solver type", RIEMANN_SOLVER_IMPLEMENTATION);
 }
 
 /**

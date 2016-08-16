@@ -30,15 +30,24 @@
 #define EXACT_SOLVER
 
 #ifdef EXACT_SOLVER
+
+#define RIEMANN_SOLVER_IMPLEMENTATION "Exact Riemann solver (Toro 2009)"
 #include "riemann/riemann_exact.h"
+
 #endif
 
 #ifdef TRRS_SOLVER
+
+#define RIEMANN_SOLVER_IMPLEMENTATION "Two Rarefaction Riemann Solver (Toro 2009)"
 #include "riemann/riemann_trrs.h"
+
 #endif
 
 #ifdef HLLC_SOLVER
+
+#define RIEMANN_SOLVER_IMPLEMENTATION "Harten-Lax-van Leer-Contact Riemann solver (Toro 2009)"
 #include "riemann/riemann_hllc.h"
+
 #endif
 
 #endif /* SWIFT_RIEMANN_H */
