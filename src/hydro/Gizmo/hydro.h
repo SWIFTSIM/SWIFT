@@ -73,6 +73,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
+  p->rho = 0.0f;
   p->geometry.volume = 0.0f;
   p->geometry.matrix_E[0][0] = 0.0f;
   p->geometry.matrix_E[0][1] = 0.0f;
@@ -119,6 +120,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
 
   const float ihdim = pow_dimension(ih);
+
+  p->rho += p->mass * kernel_root;
+  p->rho *= ihdim;
 
   float volume;
   float m, momentum[3], energy;
@@ -275,7 +279,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
 
-  return;
+  // return;
   float dt = (t1 - t0) * timeBase;
   float h_inv = 1.0f / p->h;
   float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
@@ -291,8 +295,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->primitives.v[0] += p->a_hydro[0] * dt;
   p->primitives.v[1] += p->a_hydro[1] * dt;
   p->primitives.v[2] += p->a_hydro[2] * dt;
-  float u = p->conserved.energy + p->conserved.flux.energy * dt / p->force.dt;
-  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u;
+  float u = p->conserved.energy + p->du_dt * dt;
+  p->primitives.P =
+      hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
 }
 
 /**
@@ -326,10 +331,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
     p->a_hydro[0] = (pnew[0] / mnew - p->primitives.v[0]) / p->force.dt;
     p->a_hydro[1] = (pnew[1] / mnew - p->primitives.v[1]) / p->force.dt;
     p->a_hydro[2] = (pnew[2] / mnew - p->primitives.v[2]) / p->force.dt;
+
+    p->du_dt = p->conserved.flux.energy / p->force.dt;
   } else {
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;
     p->a_hydro[2] = 0.0f;
+
+    p->du_dt = 0.0f;
   }
 }
 

@@ -57,6 +57,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
+  /* Density. Needed for h_dt. */
+  pi->rho += pj->mass * wi;
+
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
   for (k = 0; k < 3; k++)
@@ -69,6 +72,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
+
+  /* Density. Needed for h_dt. */
+  pj->rho += pi->mass * wi;
 
   /* these are eqns. (1) and (2) in the summary */
   pj->geometry.volume += wj;
@@ -266,18 +272,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   kernel_deval(xj, &wj, &wj_dx);
 
   /* Compute h_dt */
-  // float dvdr = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
-  // (Wi[3]-Wj[3])*dx[2];
-  // float ri = 1.0f/r;
-  // float hidp1 = pow_dimension_plus_one(hi_inv);
-  // float hjdp1 = pow_dimension_plus_one(hj_inv);
-  // float wi_dr = hidp1 * wi_dx;
-  // float wj_dr = hjdp1 * wj_dx;
-  // dvdr *= ri;
-  // pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
-  // if(mode == 1){
-  //  pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
-  //}
+  float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
+               (pi->v[2] - pj->v[2]) * dx[2];
+  float ri = 1.0f / r;
+  float hidp1 = pow_dimension_plus_one(hi_inv);
+  float hjdp1 = pow_dimension_plus_one(hj_inv);
+  float wi_dr = hidp1 * wi_dx;
+  float wj_dr = hjdp1 * wj_dx;
+  dvdr *= ri;
+  pi->force.h_dt -= pj->mass * dvdr / pj->rho * wi_dr;
+  if (mode == 1) {
+    pj->force.h_dt -= pi->mass * dvdr / pi->rho * wj_dr;
+  }
 
   /* Compute area */
   /* eqn. (7) */

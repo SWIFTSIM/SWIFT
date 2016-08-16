@@ -190,4 +190,7 @@ struct part {
   /* Variables needed for the code to compile (should be removed/replaced). */
   float rho;
 
+  /* Old internal energy flux */
+  float du_dt;
+
 } __attribute__((aligned(part_align)));
