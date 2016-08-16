@@ -37,6 +37,10 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
   const float psi1 = 0.5f;
   const float psi2 = 0.25f;
 
+  if (phi_i == phi_j) {
+    return 0.0f;
+  }
+
   delta1 = psi1 * fabs(phi_i - phi_j);
   delta2 = psi2 * fabs(phi_i - phi_j);
 
@@ -59,14 +63,10 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
     phiminus = phimin / (1.0f + delta1 / fabs(phimin));
   }
 
-  if (phi_i == phi_j) {
-    phi_mid = phi_i;
+  if (phi_i < phi_j) {
+    phi_mid = fmax(phiminus, fmin(phibar + delta2, phi_mid0));
   } else {
-    if (phi_i < phi_j) {
-      phi_mid = fmax(phiminus, fmin(phibar + delta2, phi_mid0));
-    } else {
-      phi_mid = fmin(phiplus, fmax(phibar - delta2, phi_mid0));
-    }
+    phi_mid = fmin(phiplus, fmax(phibar - delta2, phi_mid0));
   }
 
   return phi_mid - phi_i;

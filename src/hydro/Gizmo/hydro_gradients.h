@@ -73,9 +73,9 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
  * @param pi Particle i.
  * @param pj Particle j.
  */
-__attribute__((always_inline)) INLINE static void hydro_gradients_collect(
-    float r2, float* dx, float hi, float hj, struct part* pi, struct part* pj) {
-}
+__attribute__((always_inline)) INLINE static void
+hydro_gradients_nonsym_collect(float r2, float* dx, float hi, float hj,
+                               struct part* pi, struct part* pj) {}
 
 /**
  * @brief Finalize the gradient variables after all data have been collected

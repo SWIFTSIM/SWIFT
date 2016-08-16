@@ -288,9 +288,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float h_inv = 1.0f / p->h;
   float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
 
-  // p->primitives.rho =
-  //    (p->conserved.mass + p->conserved.flux.mass * dt / p->force.dt) /
-  //    p->geometry.volume;
   if (fabsf(w) < 0.2f) {
     p->primitives.rho *= approx_expf(w);
   } else {

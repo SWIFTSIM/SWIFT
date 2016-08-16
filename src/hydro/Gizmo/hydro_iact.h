@@ -119,6 +119,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
+  pi->rho += pj->mass * wi;
+
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
   for (k = 0; k < 3; k++)
