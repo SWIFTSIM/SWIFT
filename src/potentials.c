@@ -29,12 +29,13 @@
  * of units.
  *
  * @param parameter_file The parsed parameter file
+ * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
  * @param potential The external potential properties to initialize
  */
 void potential_init(const struct swift_params* parameter_file,
-                    const struct phys_const* const phys_const,
-                    struct UnitSystem* us,
+                    const struct phys_const* phys_const,
+                    const struct UnitSystem* us,
                     struct external_potential* potential) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS

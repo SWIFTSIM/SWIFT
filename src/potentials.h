@@ -162,9 +162,6 @@ external_gravity_disk_patch_potential(
         G_newton; /* returned acceleraton is multiplied by G later on */
   if (dz < 0) g->a_grav[2] += z_accel / G_newton;
 
-  if (abs(g->id_or_neg_offset) == 1)
-    message(" time= %e, rf= %e, az= %e", time, reduction_factor, g->a_grav[2]);
-
 #ifdef EXTERNAL_POTENTIAL_DISK_PATCH_ICS
   /* TT: add viscous drag */
   g->a_grav[0] -= g->v_full[0] / (2 * t_dyn) / G_newton;
@@ -179,7 +176,8 @@ external_gravity_disk_patch_potential(
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 
 /**
- * @brief Computes the time-step due to the acceleration from a point mass
+ * @brief Computes the time-step due to the acceleration from an isothermal
+ * potential.
  *
  * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
@@ -213,9 +211,7 @@ external_gravity_isothermalpotential_timestep(
 }
 
 /**
- * @brief Computes the gravitational acceleration of a particle due to a
- * point
- * mass
+ * @brief Computes the gravitational acceleration from an isothermal potential.
  *
  * Note that the accelerations are multiplied by Newton's G constant
  * later on.
@@ -315,8 +311,8 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
 
 /* Now, some generic functions, defined in the source file */
 void potential_init(const struct swift_params* parameter_file,
-                    const struct phys_const* const phys_const,
-                    struct UnitSystem* us,
+                    const struct phys_const* phys_const,
+                    const struct UnitSystem* us,
                     struct external_potential* potential);
 
 void potential_print(const struct external_potential* potential);

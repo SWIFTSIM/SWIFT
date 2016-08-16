@@ -129,12 +129,13 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  *
  * This function only branches towards the potential chosen by the user.
  *
+ * @param time The current time in internal units.
  * @param potential The properties of the external potential.
  * @param phys_const The physical constants in internal units.
  * @param gp The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void external_gravity(
-    const double time, const struct external_potential* potential,
+								   double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* gp) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS

@@ -36,8 +36,7 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
-/* Thermal energy per unit mass to use as a constant when using an isothermal
- * EoS */
+/* Thermal energy per unit mass used as a constant for the isothermal EoS */
 #define const_isothermal_internal_energy 20.2615290634f
 
 /* Dimensionality of the problem */
@@ -51,8 +50,8 @@
 //#define HYDRO_GAMMA_2_1
 
 /* Equation of state choice */
-//#define EOS_IDEAL_GAS
-#define EOS_ISOTHERMAL_GAS
+#define EOS_IDEAL_GAS
+//#define EOS_ISOTHERMAL_GAS
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL
@@ -74,9 +73,9 @@
 #define const_gravity_eta 0.025f
 
 /* External gravity properties */
-//#define EXTERNAL_POTENTIAL_POINTMASS
+#define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-#define EXTERNAL_POTENTIAL_DISK_PATCH
+//#define EXTERNAL_POTENTIAL_DISK_PATCH
 /* Add viscuous force to gas particles to speed-up glass making for disk-patch
  * ICs */
 //#define EXTERNAL_POTENTIAL_DISK_PATCH_ICS
