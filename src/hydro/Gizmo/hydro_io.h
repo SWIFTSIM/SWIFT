@@ -121,7 +121,8 @@ void writeSPHflavour(hid_t h_grpsph) {
                    HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
 
   /* Riemann solver information */
-  writeAttribute_s(h_grpsph, "Riemann solver type", RIEMANN_SOLVER_IMPLEMENTATION);
+  writeAttribute_s(h_grpsph, "Riemann solver type",
+                   RIEMANN_SOLVER_IMPLEMENTATION);
 }
 
 /**
