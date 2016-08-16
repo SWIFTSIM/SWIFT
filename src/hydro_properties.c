@@ -56,6 +56,15 @@ void hydro_props_init(struct hydro_props *p,
 
 void hydro_props_print(const struct hydro_props *p) {
 
+#if defined(EOS_IDEAL_GAS)
+  message("Equation of state: Ideal gas.");
+#elif defined(EOS_ISOTHERMAL_GAS)
+  message(
+      "Equation of state: Isothermal with internal energy "
+      "per unit mass set to %f.",
+      const_isothermal_internal_energy);
+#endif
+
   message("Adiabatic index gamma: %f.", hydro_gamma);
 
   message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,

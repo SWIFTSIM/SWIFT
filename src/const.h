@@ -36,6 +36,10 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
+/* Thermal energy per unit mass to use as a constant when using an isothermal
+ * EoS */
+#define const_isothermal_internal_energy 20.2615290634f
+
 /* Dimensionality of the problem */
 #define HYDRO_DIMENSION_3D
 //#define HYDRO_DIMENSION_2D
@@ -47,10 +51,8 @@
 //#define HYDRO_GAMMA_2_1
 
 /* Equation of state choice */
-#define EOS_IDEAL_GAS
-/* if EOS_ISOTHERMAL_GAS is defined, keep thermal energy per unit mass equal to
- * EOS_ISOTHERMAL_GAS in programme units */
-//#define EOS_ISOTHERMAL_GAS (20.2615290634)
+//#define EOS_IDEAL_GAS
+#define EOS_ISOTHERMAL_GAS
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL

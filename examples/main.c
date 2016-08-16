@@ -329,7 +329,6 @@ int main(int argc, char *argv[]) {
   /* Initialise the hydro properties */
   struct hydro_props hydro_properties;
   hydro_props_init(&hydro_properties, params);
-  if (with_hydro && myrank == 0) eos_print();
 
   /* Initialise the external potential properties */
   struct external_potential potential;
