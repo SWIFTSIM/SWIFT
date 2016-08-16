@@ -1,7 +1,6 @@
 ###############################################################################
  # This file is part of SWIFT.
- # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- #                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ # Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  # 
  # This program is free software: you can redistribute it and/or modify
  # it under the terms of the GNU Lesser General Public License as published
@@ -19,87 +18,77 @@
  ##############################################################################
 
 import h5py
-import random
 from numpy import *
 
-# Generates a swift IC file for the Sod Shock in a periodic box
+# Generates a swift IC file for the 3D Sod Shock in a periodic box
 
 # Parameters
-periodic= 1      # 1 For periodic box
-factor = 8
-boxSize = [ 1.0 , 1.0/factor , 1.0/factor ]
-L = 100           # Number of particles along one axis
-P1 = 1.           # Pressure left state
-P2 = 0.1795       # Pressure right state
-gamma = 5./3.     # Gas adiabatic index
+gamma = 5./3.          # Gas adiabatic index
+x_min = -1.
+x_max = 1.
+rho_L = 1.             # Density left state
+rho_R = 0.125          # Density right state
+v_L = 0.               # Velocity left state
+v_R = 0.               # Velocity right state
+P_L = 1.               # Pressure left state
+P_R = 0.1              # Pressure right state
 fileName = "sodShock.hdf5" 
-vol = boxSize[0] * boxSize[1] * boxSize[2]
 
 
 #---------------------------------------------------
+boxSize = (x_max - x_min)
 
-#Read in high density glass
-# glass1 = h5py.File("../Glass/glass_200000.hdf5")
-glass1 = h5py.File("glass_001.hdf5")
-pos1 = glass1["/PartType0/Coordinates"][:,:]
-pos1 = pos1 / factor # Particles are in [0:0.25, 0:0.25, 0:0.25]
-glass_h1 = glass1["/PartType0/SmoothingLength"][:] / factor
+glass_L = h5py.File("glassCube_64.hdf5", "r")
+glass_R = h5py.File("glassCube_32.hdf5", "r")
 
-#Read in high density glass
-# glass2 = h5py.File("../Glass/glass_50000.hdf5")
-glass2 = h5py.File("glass_002.hdf5")
-pos2 = glass2["/PartType0/Coordinates"][:,:]
-pos2 = pos2 / factor # Particles are in [0:0.25, 0:0.25, 0:0.25]
-glass_h2 = glass2["/PartType0/SmoothingLength"][:] / factor
+pos_L = glass_L["/PartType0/Coordinates"][:,:] * 0.5
+pos_R = glass_R["/PartType0/Coordinates"][:,:] * 0.5
+h_L = glass_L["/PartType0/SmoothingLength"][:] * 0.5
+h_R = glass_R["/PartType0/SmoothingLength"][:] * 0.5
 
-#Generate high density region
-rho1 = 1.
-coord1 = append(pos1, pos1 + [0.125, 0, 0], 0)
-coord1 = append(coord1, coord1 + [0.25, 0, 0], 0)
-# coord1 = append(pos1, pos1 + [0, 0.5, 0], 0)
-# coord1 = append(coord1, pos1 + [0, 0, 0.5], 0)
-# coord1 = append(coord1, pos1 + [0, 0.5, 0.5], 0)
-N1 = size(coord1)/3
-v1 = zeros((N1, 3))
-u1 = ones(N1) * P1 / ((gamma - 1.) * rho1)
-m1 = ones(N1) * vol * 0.5 * rho1 / N1
-h1 = append(glass_h1, glass_h1, 0)
-h1 = append(h1, h1, 0)
+# Merge things
+aa = pos_L - array([0.5, 0., 0.])
+pos_LL = append(pos_L, pos_L + array([0.5, 0., 0.]), axis=0)
+pos_RR = append(pos_R, pos_R + array([0.5, 0., 0.]), axis=0)
+pos = append(pos_LL - array([1.0, 0., 0.]), pos_RR, axis=0)
+h_LL = append(h_L, h_L)
+h_RR = append(h_R, h_R)
+h = append(h_LL, h_RR)
 
-#Generate low density region
-rho2 = 0.25
-coord2 = append(pos2, pos2 + [0.125, 0, 0], 0)
-coord2 = append(coord2, coord2 + [0.25, 0, 0], 0)
-# coord2 = append(pos2, pos2 + [0, 0.5, 0], 0)
-# coord2 = append(coord2, pos2 + [0, 0, 0.5], 0)
-# coord2 = append(coord2, pos2 + [0, 0.5, 0.5], 0)
-N2 = size(coord2)/3
-v2 = zeros((N2, 3))
-u2 = ones(N2) * P2 / ((gamma - 1.) * rho2)
-m2 = ones(N2) * vol * 0.5 * rho2 / N2
-h2 = append(glass_h2, glass_h2, 0)
-h2 = append(h2, h2, 0)
+numPart_L = size(h_LL)
+numPart_R = size(h_RR)
+numPart = size(h)
 
-#Merge arrays
-numPart = N1 + N2
-coords = append(coord1, coord2+[0.5, 0., 0.], 0)
-v = append(v1, v2,0)
-h = append(h1, h2,0)
-u = append(u1, u2,0)
-m = append(m1, m2,0)
-ids = zeros(numPart, dtype='L')
-for i in range(1, numPart+1):
-    ids[i-1] = i
+vol_L = 0.25
+vol_R = 0.25
 
-#Final operation since we come from Gadget-2 cubic spline ICs
-h /= 1.825752
+# Generate extra arrays
+v = zeros((numPart, 3))
+ids = linspace(1, numPart, numPart)
+m = zeros(numPart)
+u = zeros(numPart)
+
+for i in range(numPart):
+    x = pos[i,0]
+
+    if x < 0: #left
+        u[i] = P_L / (rho_L * (gamma - 1.))
+        m[i] = rho_L * vol_L / numPart_L
+        v[i,0] = v_L
+    else:     #right
+        u[i] = P_R / (rho_R * (gamma - 1.))
+        m[i] = rho_R * vol_R / numPart_R
+        v[i,0] = v_R
+        
+# Shift particles
+pos[:,0] -= x_min
 
 #File
 file = h5py.File(fileName, 'w')
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
+grp.attrs["BoxSize"] = [boxSize, 0.5, 0.5]
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
@@ -110,7 +99,7 @@ grp.attrs["Flag_Entropy_ICs"] = 0
 
 #Runtime parameters
 grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = periodic
+grp.attrs["PeriodicBoundariesOn"] = 1
 
 #Units
 grp = file.create_group("/Units")
@@ -122,7 +111,7 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset('Coordinates', data=coords, dtype='d')
+grp.create_dataset('Coordinates', data=pos, dtype='d')
 grp.create_dataset('Velocities', data=v, dtype='f')
 grp.create_dataset('Masses', data=m, dtype='f')
 grp.create_dataset('SmoothingLength', data=h, dtype='f')
@@ -131,5 +120,3 @@ grp.create_dataset('ParticleIDs', data=ids, dtype='L')
 
 
 file.close()
-
-
