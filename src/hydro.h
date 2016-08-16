@@ -42,6 +42,11 @@
 #include "./hydro/Gizmo/hydro.h"
 #include "./hydro/Gizmo/hydro_iact.h"
 #define SPH_IMPLEMENTATION "GIZMO (Hopkins 2015)"
+#elif defined(SHADOWSWIFT)
+#include "./hydro/Shadowswift/hydro.h"
+#include "./hydro/Shadowswift/hydro_iact.h"
+#define SPH_IMPLEMENTATION \
+  "Shadowfax moving mesh (Vandenbroucke & De Rijcke 2016)"
 #else
 #error "Invalid choice of SPH variant"
 #endif

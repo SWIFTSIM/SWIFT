@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (C) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_IO_H
-#define SWIFT_HYDRO_IO_H
 
-#include "./const.h"
+#include "hydro/Shadowswift/voronoi1d_algorithm.h"
 
-/* Import the right functions */
-#if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_io.h"
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_io.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_io.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_io.h"
-#elif defined(SHADOWSWIFT)
-#include "./hydro/Shadowswift/hydro_io.h"
-#else
-#error "Invalid choice of SPH variant"
-#endif
+int main() {
 
-#endif /* SWIFT_HYDRO_IO_H */
+  /* Create a Voronoi cell */
+  double x[1] = {0.5f};
+  struct voronoi_cell cell;
+  voronoi_cell_init(&cell, x, 1.0f);
+
+  /* Interact with a left and right neighbour */
+  double xL[1] = {0.0f};
+  double xR[1] = {1.0f};
+  voronoi_cell_interact(&cell, xL, 1);
+  voronoi_cell_interact(&cell, xR, 2);
+
+  /* Finalize cell and check results */
+  voronoi_cell_finalize(&cell);
+
+  if (cell.volume != 0.5f) {
+    error("Wrong volume: %g!", cell.volume);
+  }
+  if (cell.centroid != 0.5f) {
+    error("Wrong centroid: %g!", cell.centroid);
+  }
+  if (cell.idL != 1) {
+    error("Wrong left neighbour: %llu!", cell.idL);
+  }
+  if (cell.idR != 2) {
+    error("Wrong right neighbour: %llu!", cell.idR);
+  }
+
+  return 0;
+}

@@ -99,7 +99,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(GIZMO_SPH)
+#elif defined(GIZMO_SPH) || defined(SHADOWSWIFT)
   part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
@@ -196,7 +196,7 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
 
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
     p->geometry.volume = p->mass / density;
     p->primitives.rho = density;
     p->primitives.v[0] = p->v[0];
@@ -269,7 +269,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
         hydro_first_init_part(part, xpart);
 
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
         part->geometry.volume = part->mass / density;
         part->primitives.rho = density;
         part->primitives.v[0] = part->v[0];

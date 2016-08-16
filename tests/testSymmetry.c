@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
   pi.id = 1;
   pj.id = 2;
 
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
   /* Give the primitive variables sensible values, since the Riemann solver does
      not like negative densities and pressures */
   pi.primitives.rho = random_uniform(0.1f, 1.0f);
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
   runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
 
 /* Check that the particles are the same */
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
   i_ok = 0;
   j_ok = 0;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {

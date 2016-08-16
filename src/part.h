@@ -48,6 +48,9 @@
 #elif defined(GIZMO_SPH)
 #include "./hydro/Gizmo/hydro_part.h"
 #define EXTRA_HYDRO_LOOP
+#elif defined(SHADOWSWIFT)
+#include "./hydro/Shadowswift/hydro_part.h"
+#define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of SPH variant"
 #endif

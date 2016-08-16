@@ -132,7 +132,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
             ci->parts[pid].v[2], ci->parts[pid].rho,
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
             0.f,
 #else
             cj->parts[pid].rho_dh,
@@ -156,7 +156,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
             cj->parts[pjd].v[2], cj->parts[pjd].rho,
-#if defined(GIZMO_SPH)
+#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
             0.f,
 #else
             cj->parts[pjd].rho_dh,

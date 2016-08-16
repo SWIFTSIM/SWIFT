@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,38 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_IO_H
-#define SWIFT_HYDRO_IO_H
 
-#include "./const.h"
+#ifndef SWIFT_VORONOI1D_CELL_H
+#define SWIFT_VORONOI1D_CELL_H
 
-/* Import the right functions */
-#if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_io.h"
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_io.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_io.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_io.h"
-#elif defined(SHADOWSWIFT)
-#include "./hydro/Shadowswift/hydro_io.h"
-#else
-#error "Invalid choice of SPH variant"
-#endif
+#include "voronoi1d_cell.h"
 
-#endif /* SWIFT_HYDRO_IO_H */
+struct voronoi_cell {
+
+  /* The position of the generator of the cell. */
+  double x;
+
+  /* The position of the left neighbour of the cell. */
+  double xL;
+
+  /* The position of the right neighbour of the cell. */
+  double xR;
+
+  /* The particle ID of the left neighbour. */
+  unsigned long long idL;
+
+  /* The particle ID of the right neighbour. */
+  unsigned long long idR;
+
+  /* The "volume" of the 1D cell. */
+  float volume;
+
+  /* The centroid of the cell. */
+  float centroid;
+
+  /* The maximal search radius for the cell. If we interacted the cell with all
+     generators within this radius, the cell is complete. */
+  float max_radius;
+};
+
+#endif  // SWIFT_VORONOI1D_CELL_H

@@ -37,9 +37,9 @@
 #define const_max_u_change 0.1f
 
 /* Dimensionality of the problem */
-#define HYDRO_DIMENSION_3D
+//#define HYDRO_DIMENSION_3D
 //#define HYDRO_DIMENSION_2D
-//#define HYDRO_DIMENSION_1D
+#define HYDRO_DIMENSION_1D
 
 /* Hydrodynamical adiabatic index. */
 #define HYDRO_GAMMA_5_3
@@ -62,7 +62,8 @@
 //#define MINIMAL_SPH
 //#define GADGET2_SPH
 //#define DEFAULT_SPH
-#define GIZMO_SPH
+//#define GIZMO_SPH
+#define SHADOWSWIFT
 
 /* Self gravity stuff. */
 #define const_gravity_multipole_order 2
