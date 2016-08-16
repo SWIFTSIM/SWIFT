@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../swift -s -t 1 sodShock.yml
+../swift -s -t 1 sodShock.yml 2>&1 | tee output.log
 
 # Plot the result
-python plotSolution.py 1
+python plotSolution.py 1 

@@ -16,7 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_MINIMAL_HYDRO_IO_H
+#define SWIFT_MINIMAL_HYDRO_IO_H
 
+/**
+ * @file Minimal/hydro_io.h
+ * @brief Minimal conservative implementation of SPH (i/o routines)
+ *
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term without switches is implemented. No thermal conduction
+ * term is implemented.
+ *
+ * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
+ * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
+ * pp. 759-794.
+ */
+
+#include "adiabatic_index.h"
+#include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 
@@ -51,6 +69,16 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
+float convert_S(struct engine* e, struct part* p) {
+
+  return hydro_get_entropy(p, 0);
+}
+
+float convert_P(struct engine* e, struct part* p) {
+
+  return hydro_get_pressure(p, 0);
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -61,7 +89,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -80,6 +108,11 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
+  list[8] = io_make_output_field_convert_part("Entropy", FLOAT, 1,
+                                              UNIT_CONV_ENTROPY_PER_UNIT_MASS,
+                                              parts, rho, convert_S);
+  list[9] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
 }
 
 /**
@@ -90,8 +123,9 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
-  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No model");
-  writeAttribute_s(h_grpsph, "Viscosity Model", "No model");
+  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  writeAttribute_s(h_grpsph, "Viscosity Model",
+                   "Minimal treatment as in Monaghan (1992)");
 
   /* Time integration properties */
   writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
@@ -104,3 +138,5 @@ void writeSPHflavour(hid_t h_grpsph) {
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
 int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_MINIMAL_HYDRO_IO_H */
