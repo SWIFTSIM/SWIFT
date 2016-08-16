@@ -41,6 +41,8 @@
 #include "./hydro/Minimal/hydro_debug.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_debug.h"
+#elif defined(HOPKINS_PE_SPH)
+#include "./hydro/PressureEntropy/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
 #else
