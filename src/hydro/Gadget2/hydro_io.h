@@ -107,9 +107,10 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "(No treatment) Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Legacy Gadget-2 as in Springel (2005)");
+                   "(No treatment) as in Springel (2005)");
+  writeAttribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 }
