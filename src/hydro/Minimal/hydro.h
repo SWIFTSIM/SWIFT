@@ -16,6 +16,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_MINIMAL_HYDRO_H
+#define SWIFT_MINIMAL_HYDRO_H
+
+/**
+ * @file Minimal/hydro.h
+ * @brief Minimal conservative implementation of SPH (Non-neighbour loop
+ * equations)
+ *
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term without switches is implemented. No thermal conduction
+ * term is implemented.
+ *
+ * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
+ * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
+ * pp. 759-794.
+ */
 
 #include "adiabatic_index.h"
 #include "dimension.h"
@@ -337,3 +354,5 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p) {}
+
+#endif /* SWIFT_MINIMAL_HYDRO_H */
