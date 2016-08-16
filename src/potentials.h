@@ -72,8 +72,9 @@ struct external_potential {
 #ifdef EXTERNAL_POTENTIAL_DISK_PATCH
 
 /**
- * @brief Computes the time-step due to the acceleration from a hydrostatic disk
- * (Creasy, Theuns & Bower, 2013)
+ * @brief Computes the time-step from the acceleration due to a hydrostatic disk.
+ *
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
  *
  * @param phys_cont The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
@@ -128,8 +129,9 @@ external_gravity_disk_patch_timestep(const struct external_potential* potential,
 }
 
 /**
- * @brief Computes the gravitational acceleration from a hydrostatic disk
- * (Creasy, Theuns & Bower, 2013)
+ * @brief Computes the gravitational acceleration along z due to a hydrostatic disk
+ *
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
  *
  * @param phys_cont The physical constants in internal units.
  * @param g Pointer to the g-particle data.
