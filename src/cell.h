@@ -122,7 +122,7 @@ struct cell {
   int nr_density, nr_force, nr_grav;
 
   /* The hierarchical tasks. */
-  struct task *ghost, *init, *drift, *kick;
+  struct task *ghost, *init, *kick;
 
   /* Task receiving data. */
   struct task *recv_xv, *recv_rho, *recv_ti;
