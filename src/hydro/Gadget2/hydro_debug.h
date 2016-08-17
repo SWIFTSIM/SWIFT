@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_DEBUG_H
+#define SWIFT_GADGET2_HYDRO_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
@@ -34,3 +36,5 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->density.rot_v[1], p->density.rot_v[2], p->force.balsara,
       p->force.v_sig, p->force.h_dt, p->ti_begin, p->ti_end);
 }
+
+#endif /* SWIFT_GADGET2_HYDRO_DEBUG_H */
