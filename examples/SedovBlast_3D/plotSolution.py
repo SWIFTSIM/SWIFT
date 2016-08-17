@@ -260,7 +260,7 @@ ylim(-5, 50)
 # Information -------------------------------------
 subplot(236, frameon=False)
 
-text(-0.49, 0.9, "Sedov blast with  $\\gamma=%.3f$ in 2D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
+text(-0.49, 0.9, "Sedov blast with  $\\gamma=%.3f$ in 3D at $t=%.2f$"%(gas_gamma,time), fontsize=10)
 text(-0.49, 0.8, "Background $\\rho_0=%.2f$"%(rho_0), fontsize=10)
 text(-0.49, 0.7, "Energy injected $E_0=%.2f$"%(E_0), fontsize=10)
 plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
