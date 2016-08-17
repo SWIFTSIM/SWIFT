@@ -339,7 +339,6 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
-  space.h_max = h;
 
   struct engine engine;
   engine.s = &space;
