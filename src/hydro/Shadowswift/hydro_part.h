@@ -129,18 +129,6 @@ struct part {
 
   } conserved;
 
-  /* Geometrical quantities used for hydro. */
-  struct {
-
-    /* Volume of the particle. */
-    float volume;
-
-    /* Geometrical shear matrix used to calculate second order accurate
-       gradients */
-    float matrix_E[3][3];
-
-  } geometry;
-
   /* Variables used for timestep calculation (currently not used). */
   struct {
 
@@ -152,14 +140,8 @@ struct part {
   /* Quantities used during the volume (=density) loop. */
   struct {
 
-    /* Particle velocity divergence. */
-    float div_v;
-
     /* Derivative of particle number density. */
     float wcount_dh;
-
-    /* Particle velocity curl. */
-    float curl_v[3];
 
     /* Particle number density. */
     float wcount;
@@ -191,9 +173,6 @@ struct part {
 
   /* Variables needed for the code to compile (should be removed/replaced). */
   float rho;
-
-  /* Old internal energy flux */
-  float du_dt;
 
   /* Voronoi cell. */
   struct voronoi_cell cell;

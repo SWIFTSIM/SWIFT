@@ -185,7 +185,7 @@ hydro_gradients_nonsym_collect(float r2, float *dx, float hi, float hj,
 __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
     struct part *p) {
 
-  float volume = p->geometry.volume;
+  float volume = p->cell.volume;
 
   p->primitives.gradients.rho[0] /= volume;
   p->primitives.gradients.rho[1] /= volume;

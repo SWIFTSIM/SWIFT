@@ -197,7 +197,12 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     set_energy_state(p, press, size, density);
 
 #if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
-    p->geometry.volume = p->mass / density;
+    float volume = p->mass / density;
+#if defined(GIZMO_SPH)
+    p->geometry.volume = volume;
+#else
+    p->cell.volume = volume;
+#endif
     p->primitives.rho = density;
     p->primitives.v[0] = p->v[0];
     p->primitives.v[1] = p->v[1];
@@ -207,7 +212,7 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     p->conserved.momentum[1] = p->conserved.mass * p->v[1];
     p->conserved.momentum[2] = p->conserved.mass * p->v[2];
     p->conserved.energy =
-        p->primitives.P / hydro_gamma_minus_one * p->geometry.volume +
+        p->primitives.P / hydro_gamma_minus_one * volume +
         0.5f * (p->conserved.momentum[0] * p->conserved.momentum[0] +
                 p->conserved.momentum[1] * p->conserved.momentum[1] +
                 p->conserved.momentum[2] * p->conserved.momentum[2]) /
@@ -270,7 +275,12 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         hydro_first_init_part(part, xpart);
 
 #if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
-        part->geometry.volume = part->mass / density;
+        float volume = part->mass / density;
+#ifdef GIZMO_SPH
+        part->geometry.volume = volume;
+#else
+        part->cell.volume = volume;
+#endif
         part->primitives.rho = density;
         part->primitives.v[0] = part->v[0];
         part->primitives.v[1] = part->v[1];
@@ -280,7 +290,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->conserved.momentum[1] = part->conserved.mass * part->v[1];
         part->conserved.momentum[2] = part->conserved.mass * part->v[2];
         part->conserved.energy =
-            part->primitives.P / hydro_gamma_minus_one * part->geometry.volume +
+            part->primitives.P / hydro_gamma_minus_one * volume +
             0.5f * (part->conserved.momentum[0] * part->conserved.momentum[0] +
                     part->conserved.momentum[1] * part->conserved.momentum[1] +
                     part->conserved.momentum[2] * part->conserved.momentum[2]) /
@@ -353,7 +363,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
             main_cell->parts[pid].rho,
-#ifdef MINIMAL_SPH
+#if defined(MINIMAL_SPH) || defined(SHADOWSWIFT)
             0.f,
 #else
             main_cell->parts[pid].density.div_v,

@@ -63,6 +63,16 @@ float convert_A(struct engine* e, struct part* p) {
   return p->primitives.P / pow_gamma(p->primitives.rho);
 }
 
+float convert_Etot(struct engine* e, struct part* p) {
+  float momentum2;
+
+  momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
+              p->conserved.momentum[1] * p->conserved.momentum[1] +
+              p->conserved.momentum[2] * p->conserved.momentum[2];
+
+  return p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -94,15 +104,16 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   list[7] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
                                  primitives.rho);
   list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_VOLUME, parts,
-                                 geometry.volume);
+                                 cell.volume);
   list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
                                  parts, primitives.gradients.rho);
   list[10] = io_make_output_field_convert_part(
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, primitives.P, convert_A);
   list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
                                   parts, primitives.P);
-  list[12] = io_make_output_field("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
-                                  parts, conserved.energy);
+  list[12] =
+      io_make_output_field_convert_part("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
+                                        parts, conserved.energy, convert_Etot);
 }
 
 /**

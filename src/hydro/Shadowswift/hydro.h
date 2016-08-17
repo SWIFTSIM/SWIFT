@@ -36,7 +36,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   const float CFL_condition = hydro_properties->CFL_condition;
 
-  return CFL_condition * p->h / fabsf(p->timestepvars.vmax);
+  float R = get_radius_dimension_sphere(p->cell.volume);
+
+  return CFL_condition * R / fabsf(p->timestepvars.vmax);
 }
 
 /**
@@ -79,7 +81,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
   p->rho = 0.0f;
-  p->geometry.volume = 0.0f;
 
   voronoi_cell_init(&p->cell, p->x);
 }
@@ -133,7 +134,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     p->density.wcount_dh = 1.0f / (1.1f * hnew - p->h);
   }
   volume = p->cell.volume;
-  p->geometry.volume = volume;
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
@@ -239,7 +239,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   float volume;
   float m;
   float momentum[3];
-  volume = p->geometry.volume;
+  volume = p->cell.volume;
 
   p->conserved.mass = m = p->mass;
   p->primitives.rho = m / volume;
@@ -343,9 +343,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
     /* We know the desired velocity; now make sure the particle is accelerated
        accordingly during the next time step */
-    p->a_hydro[0] = (vcell[0] - p->primitives.v[0]) / p->force.dt;
-    p->a_hydro[1] = (vcell[1] - p->primitives.v[1]) / p->force.dt;
-    p->a_hydro[2] = (vcell[2] - p->primitives.v[2]) / p->force.dt;
+    p->a_hydro[0] = (vcell[0] - p->force.v_full[0]) / p->force.dt;
+    p->a_hydro[1] = (vcell[1] - p->force.v_full[1]) / p->force.dt;
+    p->a_hydro[2] = (vcell[2] - p->force.v_full[2]) / p->force.dt;
   } else {
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;

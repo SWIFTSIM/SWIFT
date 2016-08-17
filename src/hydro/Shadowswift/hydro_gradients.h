@@ -91,14 +91,13 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
 
   float dWi[5], dWj[5];
   float xij_j[3];
-  float A[3];
 
-  if (!voronoi_get_face(&pj->cell, pi->id, A, xij_j)) {
-    /* Should never happen */
-    message("pi->ti_end: %u, pj->ti_end: %u", pi->ti_end, pj->ti_end);
-    error("pj is neighbour of pi, but pi not of pj. This should never happen!");
-    return;
-  }
+  /* xij_j = real_midpoint - pj->x
+           = xij_i + pi->x - pj->x
+           = xij_i + dx */
+  xij_j[0] = xij_i[0] + dx[0];
+  xij_j[1] = xij_i[1] + dx[1];
+  xij_j[2] = xij_i[2] + dx[2];
 
   dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
            pi->primitives.gradients.rho[1] * xij_i[1] +
@@ -198,6 +197,21 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   Wj[2] += dWj[2];
   Wj[3] += dWj[3];
   Wj[4] += dWj[4];
+
+  /* Sanity check: if density or pressure becomes negative after the
+     interpolation, just reset them */
+  if (Wi[0] < 0.0f) {
+    Wi[0] -= dWi[0];
+  }
+  if (Wi[4] < 0.0f) {
+    Wi[4] -= dWi[4];
+  }
+  if (Wj[0] < 0.0f) {
+    Wj[0] -= dWj[0];
+  }
+  if (Wj[4] < 0.0f) {
+    Wj[4] -= dWj[4];
+  }
 }
 
 #endif  // SWIFT_HYDRO_GRADIENTS_H

@@ -80,6 +80,24 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   pi->primitives.limiter.maxr = fmax(r, pi->primitives.limiter.maxr);
 }
 
+__attribute__((always_inline)) INLINE static void
+hydro_slope_limit_cell_quantity(float* grad, float qval, float qmin, float qmax,
+                                float maxr) {
+
+  float gradtrue, gradmax, gradmin, alpha;
+
+  gradtrue = sqrtf(grad[0] * grad[0] + grad[1] * grad[1] + grad[2] * grad[2]);
+  if (gradtrue) {
+    gradtrue *= maxr;
+    gradmax = qmax - qval;
+    gradmin = qval - qmin;
+    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
+    grad[0] *= alpha;
+    grad[1] *= alpha;
+    grad[2] *= alpha;
+  }
+}
+
 /**
  * @brief Slope limit cell gradients
  *
@@ -88,86 +106,25 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
     struct part* p) {
 
-  float gradrho[3], gradv[3][3], gradP[3];
-  float gradtrue, gradmax, gradmin, alpha;
+  hydro_slope_limit_cell_quantity(
+      p->primitives.gradients.rho, p->primitives.rho,
+      p->primitives.limiter.rho[0], p->primitives.limiter.rho[1],
+      p->primitives.limiter.maxr);
 
-  gradrho[0] = p->primitives.gradients.rho[0];
-  gradrho[1] = p->primitives.gradients.rho[1];
-  gradrho[2] = p->primitives.gradients.rho[2];
+  hydro_slope_limit_cell_quantity(
+      p->primitives.gradients.v[0], p->primitives.v[0],
+      p->primitives.limiter.v[0][0], p->primitives.limiter.v[0][1],
+      p->primitives.limiter.maxr);
+  hydro_slope_limit_cell_quantity(
+      p->primitives.gradients.v[1], p->primitives.v[1],
+      p->primitives.limiter.v[1][0], p->primitives.limiter.v[1][1],
+      p->primitives.limiter.maxr);
+  hydro_slope_limit_cell_quantity(
+      p->primitives.gradients.v[2], p->primitives.v[2],
+      p->primitives.limiter.v[2][0], p->primitives.limiter.v[2][1],
+      p->primitives.limiter.maxr);
 
-  gradv[0][0] = p->primitives.gradients.v[0][0];
-  gradv[0][1] = p->primitives.gradients.v[0][1];
-  gradv[0][2] = p->primitives.gradients.v[0][2];
-
-  gradv[1][0] = p->primitives.gradients.v[1][0];
-  gradv[1][1] = p->primitives.gradients.v[1][1];
-  gradv[1][2] = p->primitives.gradients.v[1][2];
-
-  gradv[2][0] = p->primitives.gradients.v[2][0];
-  gradv[2][1] = p->primitives.gradients.v[2][1];
-  gradv[2][2] = p->primitives.gradients.v[2][2];
-
-  gradP[0] = p->primitives.gradients.P[0];
-  gradP[1] = p->primitives.gradients.P[1];
-  gradP[2] = p->primitives.gradients.P[2];
-
-  gradtrue = sqrtf(gradrho[0] * gradrho[0] + gradrho[1] * gradrho[1] +
-                   gradrho[2] * gradrho[2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.rho[1] - p->primitives.rho;
-    gradmin = p->primitives.rho - p->primitives.limiter.rho[0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.rho[0] *= alpha;
-    p->primitives.gradients.rho[1] *= alpha;
-    p->primitives.gradients.rho[2] *= alpha;
-  }
-
-  gradtrue = sqrtf(gradv[0][0] * gradv[0][0] + gradv[0][1] * gradv[0][1] +
-                   gradv[0][2] * gradv[0][2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[0][1] - p->primitives.v[0];
-    gradmin = p->primitives.v[0] - p->primitives.limiter.v[0][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[0][0] *= alpha;
-    p->primitives.gradients.v[0][1] *= alpha;
-    p->primitives.gradients.v[0][2] *= alpha;
-  }
-
-  gradtrue = sqrtf(gradv[1][0] * gradv[1][0] + gradv[1][1] * gradv[1][1] +
-                   gradv[1][2] * gradv[1][2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[1][1] - p->primitives.v[1];
-    gradmin = p->primitives.v[1] - p->primitives.limiter.v[1][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[1][0] *= alpha;
-    p->primitives.gradients.v[1][1] *= alpha;
-    p->primitives.gradients.v[1][2] *= alpha;
-  }
-
-  gradtrue = sqrtf(gradv[2][0] * gradv[2][0] + gradv[2][1] * gradv[2][1] +
-                   gradv[2][2] * gradv[2][2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.v[2][1] - p->primitives.v[2];
-    gradmin = p->primitives.v[2] - p->primitives.limiter.v[2][0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.v[2][0] *= alpha;
-    p->primitives.gradients.v[2][1] *= alpha;
-    p->primitives.gradients.v[2][2] *= alpha;
-  }
-
-  gradtrue =
-      sqrtf(gradP[0] * gradP[0] + gradP[1] * gradP[1] + gradP[2] * gradP[2]);
-  if (gradtrue) {
-    gradtrue *= p->primitives.limiter.maxr;
-    gradmax = p->primitives.limiter.P[1] - p->primitives.P;
-    gradmin = p->primitives.P - p->primitives.limiter.P[0];
-    alpha = fmin(1.0f, fmin(gradmax / gradtrue, gradmin / gradtrue));
-    p->primitives.gradients.P[0] *= alpha;
-    p->primitives.gradients.P[1] *= alpha;
-    p->primitives.gradients.P[2] *= alpha;
-  }
+  hydro_slope_limit_cell_quantity(
+      p->primitives.gradients.P, p->primitives.P, p->primitives.limiter.P[0],
+      p->primitives.limiter.P[1], p->primitives.limiter.maxr);
 }
