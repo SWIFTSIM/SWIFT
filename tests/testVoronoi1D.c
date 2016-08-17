@@ -54,5 +54,23 @@ int main() {
     error("Wrong right neighbour: %llu!", cell.idR);
   }
 
+  /* Check face method */
+  float A[3];
+  float midpoint[3];
+  voronoi_get_face(&cell, 1, A, midpoint);
+  if (A[0] != -1.0f) {
+    error("Wrong surface normal returned for left neighbour!");
+  }
+  if (midpoint[0] != -0.25f) {
+    error("Wrong midpoint returned for left neighbour!");
+  }
+  voronoi_get_face(&cell, 2, A, midpoint);
+  if (A[0] != 1.0f) {
+    error("Wrong surface normal returned for right neighbour!");
+  }
+  if (midpoint[0] != 0.25f) {
+    error("Wrong midpoint returned for right neighbour!");
+  }
+
   return 0;
 }

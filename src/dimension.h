@@ -40,19 +40,19 @@
 
 #define hydro_dimension 3.f
 #define hydro_dimension_inv 0.3333333333f
-#define hydro_dimention_unit_sphere ((float)(4. * M_PI / 3.))
+#define hydro_dimension_unit_sphere ((float)(4. * M_PI / 3.))
 
 #elif defined(HYDRO_DIMENSION_2D)
 
 #define hydro_dimension 2.f
 #define hydro_dimension_inv 0.5f
-#define hydro_dimention_unit_sphere ((float)M_PI)
+#define hydro_dimension_unit_sphere ((float)M_PI)
 
 #elif defined(HYDRO_DIMENSION_1D)
 
 #define hydro_dimension 1.f
 #define hydro_dimension_inv 1.f
-#define hydro_dimention_unit_sphere 2.f
+#define hydro_dimension_unit_sphere 2.f
 
 #else
 
@@ -194,6 +194,34 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
   } else {
     A[0][0] = 0.0f;
   }
+
+#else
+
+  error("The dimension is not defined !");
+
+#endif
+}
+
+/**
+ * @brief Get the radius of a dimension sphere with the given volume
+ *
+ * @param volume Volume of the dimension sphere
+ * @return Radius of the dimension sphere
+ */
+__attribute__((always_inline)) INLINE static float get_radius_dimension_sphere(
+    float volume) {
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  return cbrtf(volume / hydro_dimension_unit_sphere);
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  return sqrtf(volume / hydro_dimension_unit_sphere);
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  return volume / hydro_dimension_unit_sphere;
 
 #else
 

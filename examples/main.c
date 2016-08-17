@@ -330,6 +330,13 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   hydro_props_init(&hydro_properties, params);
 
+#if defined(SHADOWSWIFT)
+  /* Override the variables governing the density iteration
+     (see src/hydro/Shadowswift/hydro.h for full explanation) */
+  hydro_properties.target_neighbours = 1.0f;
+  hydro_properties.delta_neighbours = 0.0f;
+#endif
+
   /* Initialise the external potential properties */
   struct external_potential potential;
   if (with_external_gravity) potential_init(params, &us, &potential);

@@ -71,12 +71,53 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
   cell->xL = xL = 0.5f * cell->xL;
   cell->xR = xR = 0.5f * cell->xR;
 
-  message("xL: %g, xR: %g", xL, xR);
-
   cell->volume = xR - xL;
   cell->centroid = cell->x + 0.5f * (xL + xR);
 
   return max_radius;
+}
+
+__attribute__((always_inline)) INLINE int voronoi_get_face(
+    struct voronoi_cell *cell, unsigned long long ngb, float *A,
+    float *midpoint) {
+
+  if (ngb != cell->idL && ngb != cell->idR) {
+    /* this is perfectly possible: we interact with all particles within the
+       smoothing length, and they do not need to be all neighbours.
+       If this happens, we return 0, so that the flux method can return */
+    return 0;
+  }
+
+  if (ngb == cell->idL) {
+    /* Left face */
+    A[0] = -1.0f;
+    midpoint[0] = cell->xL;
+  } else {
+    /* Right face */
+    A[0] = 1.0f;
+    midpoint[0] = cell->xR;
+  }
+  /* The other components of A and midpoint are just zero */
+  A[1] = 0.0f;
+  A[2] = 0.0f;
+  midpoint[1] = 0.0f;
+  midpoint[2] = 0.0f;
+
+  return 1;
+}
+
+__attribute__((always_inline)) INLINE void voronoi_get_centroid(
+    struct voronoi_cell *cell, float *centroid) {
+
+  centroid[0] = cell->centroid;
+  centroid[1] = 0.0f;
+  centroid[2] = 0.0f;
+}
+
+__attribute__((always_inline)) INLINE int voronoi_is_neighbour(
+    struct voronoi_cell *cell, unsigned long long ngb) {
+
+  return (ngb == cell->idL || ngb == cell->idR);
 }
 
 #endif  // SWIFT_VORONOI1D_ALGORITHM_H

@@ -20,20 +20,14 @@
 #ifndef SWIFT_HYDRO_GRADIENTS_H
 #define SWIFT_HYDRO_GRADIENTS_H
 
-//#define SPH_GRADIENTS
-#define GIZMO_GRADIENTS
+#define SHADOWFAX_GRADIENTS
 
 #include "hydro_slope_limiters.h"
 
-#if defined(SPH_GRADIENTS)
+#if defined(SHADOWFAX_GRADIENTS)
 
-#define HYDRO_GRADIENT_IMPLEMENTATION "SPH gradients (Price 2012)"
-#include "hydro_gradients_sph.h"
-
-#elif defined(GIZMO_GRADIENTS)
-
-#define HYDRO_GRADIENT_IMPLEMENTATION "GIZMO gradients (Hopkins 2015)"
-#include "hydro_gradients_gizmo.h"
+#define HYDRO_GRADIENT_IMPLEMENTATION "Shadowfax gradients (Springel 2010)"
+#include "hydro_gradients_shadowfax.h"
 
 #else
 
@@ -97,16 +91,14 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
 
   float dWi[5], dWj[5];
   float xij_j[3];
-  int k;
-  float xfac;
+  float A[3];
 
-  /* perform gradient reconstruction in space and time */
-  /* space */
-  /* Compute interface position (relative to pj, since we don't need the actual
-   * position) */
-  /* eqn. (8) */
-  xfac = hj / (hi + hj);
-  for (k = 0; k < 3; k++) xij_j[k] = xfac * dx[k];
+  if (!voronoi_get_face(&pj->cell, pi->id, A, xij_j)) {
+    /* Should never happen */
+    message("pi->ti_end: %u, pj->ti_end: %u", pi->ti_end, pj->ti_end);
+    error("pj is neighbour of pi, but pi not of pj. This should never happen!");
+    return;
+  }
 
   dWi[0] = pi->primitives.gradients.rho[0] * xij_i[0] +
            pi->primitives.gradients.rho[1] * xij_i[1] +

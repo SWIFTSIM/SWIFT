@@ -48,10 +48,10 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",       "sort",       "self",    "pair",          "sub_self",
-    "sub_pair",   "init",       "ghost",   "extra_ghost",
-    "kick",       "kick_fixdt", "send",    "recv",          "grav_gather_m",
-    "grav_fft",   "grav_mm",    "grav_up", "grav_external"};
+    "none",       "sort",    "self",         "pair",          "sub_self",
+    "sub_pair",   "init",    "ghost",        "extra_ghost",   "kick",
+    "kick_fixdt", "send",    "recv",         "grav_gather_m", "grav_fft",
+    "grav_mm",    "grav_up", "grav_external"};
 
 const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav", "tend"};

@@ -46,7 +46,7 @@
 #include "./hydro/Shadowswift/hydro.h"
 #include "./hydro/Shadowswift/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
-  "Shadowfax moving mesh (Vandenbroucke & De Rijcke 2016)"
+  "Shadowfax moving mesh (Vandenbroucke and De Rijcke 2016)"
 #else
 #error "Invalid choice of SPH variant"
 #endif

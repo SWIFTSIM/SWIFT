@@ -80,15 +80,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.0f;
   p->rho = 0.0f;
   p->geometry.volume = 0.0f;
-  p->geometry.matrix_E[0][0] = 0.0f;
-  p->geometry.matrix_E[0][1] = 0.0f;
-  p->geometry.matrix_E[0][2] = 0.0f;
-  p->geometry.matrix_E[1][0] = 0.0f;
-  p->geometry.matrix_E[1][1] = 0.0f;
-  p->geometry.matrix_E[1][2] = 0.0f;
-  p->geometry.matrix_E[2][0] = 0.0f;
-  p->geometry.matrix_E[2][1] = 0.0f;
-  p->geometry.matrix_E[2][2] = 0.0f;
+
   voronoi_cell_init(&p->cell, p->x);
 }
 
@@ -115,41 +107,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 __attribute__((always_inline)) INLINE static void hydro_end_density(
     struct part* restrict p, float time) {
 
-  /* Some smoothing length multiples. */
-  const float h = p->h;
-  const float ih = 1.0f / h;
-
-  /* Final operation on the density. */
-  p->density.wcount += kernel_root;
-  p->density.wcount *= kernel_norm;
-
-  p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
-
-  const float ihdim = pow_dimension(ih);
-
-  p->rho += p->mass * kernel_root;
-  p->rho *= ihdim;
-
   float volume;
   float m, momentum[3], energy;
-
-  /* Final operation on the geometry. */
-  /* we multiply with the smoothing kernel normalization ih3 and calculate the
-   * volume */
-  volume = ihdim * (p->geometry.volume + kernel_root);
-  p->geometry.volume = volume = 1. / volume;
-  /* we multiply with the smoothing kernel normalization */
-  p->geometry.matrix_E[0][0] = ihdim * p->geometry.matrix_E[0][0];
-  p->geometry.matrix_E[0][1] = ihdim * p->geometry.matrix_E[0][1];
-  p->geometry.matrix_E[0][2] = ihdim * p->geometry.matrix_E[0][2];
-  p->geometry.matrix_E[1][0] = ihdim * p->geometry.matrix_E[1][0];
-  p->geometry.matrix_E[1][1] = ihdim * p->geometry.matrix_E[1][1];
-  p->geometry.matrix_E[1][2] = ihdim * p->geometry.matrix_E[1][2];
-  p->geometry.matrix_E[2][0] = ihdim * p->geometry.matrix_E[2][0];
-  p->geometry.matrix_E[2][1] = ihdim * p->geometry.matrix_E[2][1];
-  p->geometry.matrix_E[2][2] = ihdim * p->geometry.matrix_E[2][2];
-
-  invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
 
   hydro_gradients_init(p);
 
@@ -163,15 +122,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
      This way, we can accept an iteration by setting p->density.wcount to 1.
      To get the right correction for h, we set wcount to something else
      (say 0), and then set p->density.wcount_dh to 1/(hnew-h). */
-  if(hnew < p->h){
+  if (hnew < p->h) {
     /* Iteration succesful: we accept, but manually set h to a smaller value
        for the next time step */
     p->density.wcount = 1.0f;
-    p->h = 1.1f*hnew;
+    p->h = 1.1f * hnew;
   } else {
     /* Iteration not succesful: we force h to become 1.1*hnew */
     p->density.wcount = 0.0f;
-    p->density.wcount_dh = 1.0f/(1.1f*hnew-p->h);
+    p->density.wcount_dh = 1.0f / (1.1f * hnew - p->h);
   }
   volume = p->cell.volume;
   p->geometry.volume = volume;
@@ -306,25 +265,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
-
-  // return;
-  float dt = (t1 - t0) * timeBase;
-  float h_inv = 1.0f / p->h;
-  float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
-
-  if (fabsf(w) < 0.2f) {
-    p->primitives.rho *= approx_expf(w);
-  } else {
-    p->primitives.rho *= expf(w);
-  }
-  p->primitives.v[0] += p->a_hydro[0] * dt;
-  p->primitives.v[1] += p->a_hydro[1] * dt;
-  p->primitives.v[2] += p->a_hydro[2] * dt;
-  float u = p->conserved.energy + p->du_dt * dt;
-  p->primitives.P =
-      hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
-}
+    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {}
 
 /**
  * @brief Set the particle acceleration after the flux loop
@@ -341,8 +282,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part* p) {
 
-  /* Add normalization to h_dt. */
-  p->force.h_dt *= p->h * hydro_dimension_inv;
+  float vcell[3];
 
   /* Update the conserved variables. We do this here and not in the kick,
      since we need the updated variables below. */
@@ -367,23 +307,49 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
            neighbours. Since this method is only called for active particles,
            this is indeed the case. */
   if (p->force.dt) {
-    p->a_hydro[0] =
-        (p->conserved.momentum[0] / p->conserved.mass - p->primitives.v[0]) /
-        p->force.dt;
-    p->a_hydro[1] =
-        (p->conserved.momentum[1] / p->conserved.mass - p->primitives.v[1]) /
-        p->force.dt;
-    p->a_hydro[2] =
-        (p->conserved.momentum[2] / p->conserved.mass - p->primitives.v[2]) /
-        p->force.dt;
+    /* We want the cell velocity to be as close as possible to the fluid
+       velocity */
+    vcell[0] = p->conserved.momentum[0] / p->conserved.mass;
+    vcell[1] = p->conserved.momentum[1] / p->conserved.mass;
+    vcell[2] = p->conserved.momentum[2] / p->conserved.mass;
 
-    p->du_dt = p->conserved.flux.energy / p->force.dt;
+    /* To prevent stupid things like cell crossovers or generators that move
+       outside their cell, we steer the motion of the cell somewhat */
+    if (p->primitives.rho) {
+      float centroid[3], d[3];
+      float volume, csnd, R, vfac, fac, dnrm;
+      voronoi_get_centroid(&p->cell, centroid);
+      d[0] = centroid[0] - p->x[0];
+      d[1] = centroid[1] - p->x[1];
+      d[2] = centroid[2] - p->x[2];
+      dnrm = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+      csnd = sqrtf(hydro_gamma * p->primitives.P / p->primitives.rho);
+      volume = p->cell.volume;
+      R = get_radius_dimension_sphere(volume);
+      fac = 4.0f * dnrm / R;
+      if (fac > 0.9f) {
+        if (fac < 1.1f) {
+          vfac = csnd * (dnrm - 0.225f * R) / dnrm / (0.05f * R);
+        } else {
+          vfac = csnd / dnrm;
+        }
+      } else {
+        vfac = 0.0f;
+      }
+      vcell[0] += vfac * d[0];
+      vcell[1] += vfac * d[1];
+      vcell[2] += vfac * d[2];
+    }
+
+    /* We know the desired velocity; now make sure the particle is accelerated
+       accordingly during the next time step */
+    p->a_hydro[0] = (vcell[0] - p->primitives.v[0]) / p->force.dt;
+    p->a_hydro[1] = (vcell[1] - p->primitives.v[1]) / p->force.dt;
+    p->a_hydro[2] = (vcell[2] - p->primitives.v[2]) / p->force.dt;
   } else {
     p->a_hydro[0] = 0.0f;
     p->a_hydro[1] = 0.0f;
     p->a_hydro[2] = 0.0f;
-
-    p->du_dt = 0.0f;
   }
 }
 
