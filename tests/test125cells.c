@@ -505,7 +505,6 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
-  space.h_max = h;
 
   struct phys_const prog_const;
   prog_const.const_newton_G = 1.f;
