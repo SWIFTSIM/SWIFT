@@ -1306,68 +1306,9 @@ void engine_make_hydroloop_tasks(struct engine *e) {
  * For each hydrodynamic task, construct the links with the corresponding cell.
  * Similarly, construct the dependencies for all the sorting tasks.
  *
- * @param map_data The #engine.
- * @param num_elements Number of tasks to process.
- * @param extra_data Pointer to the tasks.
+ * @param e The #engine.
  */
-
-void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
-                                        void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct task *tasks = (struct task *)map_data;
-  struct scheduler *sched = &e->sched;
-
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    struct task *t = &tasks[ind];
-
-    if (t->skip) continue;
-
-    /* Link sort tasks together. */
-    if (t->type == task_type_sort && t->ci->split)
-      for (int j = 0; j < 8; j++)
-        if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
-          t->ci->progeny[j]->sorts->skip = 0;
-          scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
-        }
-
-    /* Link density tasks to cells. */
-    if (t->type == task_type_self) {
-      atomic_inc(&t->ci->nr_tasks);
-      if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-      }
-    } else if (t->type == task_type_pair) {
-      atomic_inc(&t->ci->nr_tasks);
-      atomic_inc(&t->cj->nr_tasks);
-      if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        engine_addlink(e, &t->cj->density, t);
-        atomic_inc(&t->cj->nr_density);
-      }
-    } else if (t->type == task_type_sub_self) {
-      atomic_inc(&t->ci->nr_tasks);
-      if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-      }
-    } else if (t->type == task_type_sub_pair) {
-      atomic_inc(&t->ci->nr_tasks);
-      atomic_inc(&t->cj->nr_tasks);
-      if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        engine_addlink(e, &t->cj->density, t);
-        atomic_inc(&t->cj->nr_density);
-      }
-    }
-  }
-}
-
-void engine_count_and_link_tasks_serial(struct engine *e) {
+void engine_count_and_link_tasks(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
 
@@ -1559,123 +1500,9 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
  * With all the relevant tasks for a given cell available, we construct
  * all the dependencies for that cell.
  *
- * This function is a mapper function to be used via the #threadpool_map
- * function.
- *
- * @param map_data The #engine.
- * @param num_elements Number of tasks to process.
- * @param extra_data Pointer to the tasks.
+ * @param e The #engine.
  */
-void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
-                                              void *extra_data) {
-
-  struct engine *e = (struct engine *)extra_data;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  struct task *tasks = (struct task *)map_data;
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-
-    /* Skip? */
-    if (t->skip) continue;
-
-    /* Self-interaction? */
-    if (t->type == task_type_self && t->subtype == task_subtype_density) {
-
-      /* Start by constructing the task for the second hydro loop */
-      struct task *t2 = scheduler_addtask(
-          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
-
-      /* Add the link between the new loop and the cell */
-      engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
-
-      /* Now, build all the dependencies for the hydro */
-      engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
-    }
-
-    /* Otherwise, pair interaction? */
-    else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
-
-      /* Start by constructing the task for the second hydro loop */
-      struct task *t2 = scheduler_addtask(
-          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
-
-      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
-      engine_addlink(e, &t->cj->force, t2);
-      atomic_inc(&t->cj->nr_force);
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super-cells */
-      if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
-      }
-      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
-      }
-    }
-
-    /* Otherwise, sub self-interaction? */
-    else if (t->type == task_type_sub_self &&
-             t->subtype == task_subtype_density) {
-
-      /* Start by constructing the task for the second hydro loop */
-      struct task *t2 =
-          scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
-                            t->flags, 0, t->ci, t->cj, 0);
-
-      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super-cells */
-      if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
-      }
-    }
-
-    /* Otherwise, sub pair-interaction? */
-    else if (t->type == task_type_sub_pair &&
-             t->subtype == task_subtype_density) {
-
-      /* Start by constructing the task for the second hydro loop */
-      struct task *t2 =
-          scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
-                            t->flags, 0, t->ci, t->cj, 0);
-
-      /* Add the link between the new loop and both cells */
-      engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
-      engine_addlink(e, &t->cj->force, t2);
-      atomic_inc(&t->cj->nr_force);
-
-      /* Now, build all the dependencies for the hydro for the cells */
-      /* that are local and are not descendant of the same super-cells */
-      if (t->ci->nodeID == nodeID) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
-      }
-      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
-        engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
-      }
-    }
-
-    /* /\* Kick tasks should rely on the grav_down tasks of their cell. *\/ */
-    /* else if (t->type == task_type_kick && t->ci->grav_down != NULL) */
-    /*   scheduler_addunlock(sched, t->ci->grav_down, t); */
-
-    /* External gravity tasks should depend on init and unlock the kick */
-    else if (t->type == task_type_grav_external) {
-      scheduler_addunlock(sched, t->ci->init, t);
-      scheduler_addunlock(sched, t, t->ci->kick);
-    }
-  }
-}
-
-void engine_make_extra_hydroloop_tasks_serial(struct engine *e) {
+void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
   int nr_tasks = sched->nr_tasks;
@@ -1857,10 +1684,7 @@ void engine_maketasks(struct engine *e) {
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
-  /* threadpool_map(&e->threadpool, engine_count_and_link_tasks_mapper,
-                 sched->tasks, sched->nr_tasks, sizeof(struct task), 1000, e);
-     */
-  engine_count_and_link_tasks_serial(e);
+  engine_count_and_link_tasks(e);
 
   /* Append hierarchical tasks to each cells */
   if (e->policy & engine_policy_hydro)
@@ -1875,10 +1699,7 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
-                 sched->tasks, sched->nr_tasks, sizeof(struct task), 1000, e);
-     */
-  engine_make_extra_hydroloop_tasks_serial(e);
+  engine_make_extra_hydroloop_tasks(e);
 
   /* Add the dependencies for the self-gravity stuff */
   if (e->policy & engine_policy_self_gravity) engine_link_gravity_tasks(e);
@@ -1927,8 +1748,11 @@ void engine_maketasks(struct engine *e) {
 
 /**
  * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ *        Threadpool mapper function for fixdt version.
  *
- * @return 1 if the space has to be rebuilt, 0 otherwise.
+ * @param map_data pointer to the tasks
+ * @param num_elements number of tasks
+ * @param extra_data pointer to int that will define if a rebuild is needed.
  */
 void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
                                    void *extra_data) {
@@ -1964,6 +1788,14 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Mark any sort tasks as initially skipped.
+ *        Threadpool mapper function.
+ *
+ * @param map_data pointer to the tasks
+ * @param num_elements number of tasks
+ * @param extra_data unused
+ */
 void engine_marktasks_sorts_mapper(void *map_data, int num_elements,
                                    void *extra_data) {
   /* Unpack the arguments. */
@@ -1977,6 +1809,14 @@ void engine_marktasks_sorts_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ *        Threadpool mapper function.
+ *
+ * @param map_data pointer to the tasks
+ * @param num_elements number of tasks
+ * @param extra_data pointer to int that will define if a rebuild is needed.
+ */
 void engine_marktasks_mapper(void *map_data, int num_elements,
                              void *extra_data) {
   /* Unpack the arguments. */
@@ -2100,149 +1940,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
   }
 }
 
-int engine_marktasks_serial(struct engine *e) {
-
-  /* Unpack the arguments. */
-  struct task *tasks = e->sched.tasks;
-  const int *tid = e->sched.tasks_ind;
-  const int ti_end = e->ti_current;
-  const int nr_tasks = e->sched.nr_tasks;
-
-  /* Skip all sends and recvs, we will unmark if needed. */
-  for (int ind = 0; ind < nr_tasks; ind++) {
-    struct task *t = &tasks[tid[ind]];
-    if (t->type == task_type_send || t->type == task_type_recv) {
-      t->skip = 1;
-    }
-  }
-
-  for (int ind = 0; ind < nr_tasks; ind++) {
-    struct task *t = &tasks[tid[ind]];
-
-    /* Clear the flags on sort tasks. Since we're traversing the tasks in
-       topological order, they will only ever be set after they have been
-       cleared. */
-    if (t->type == task_type_sort) {
-      t->flags = 0;
-      t->skip = 1;
-    }
-
-    /* Single-cell task? */
-    else if (t->type == task_type_self || t->type == task_type_ghost ||
-             t->type == task_type_sub_self) {
-
-      /* Set this task's skip. */
-      t->skip = (t->ci->ti_end_min > ti_end);
-    }
-
-    /* Pair? */
-    else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-
-      /* Local pointers. */
-      const struct cell *ci = t->ci;
-      const struct cell *cj = t->cj;
-
-      /* Too much particle movement? */
-      if (t->tight &&
-          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
-        return 1;
-
-      /* Set this task's skip. */
-      if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) == 1)
-        continue;
-
-      /* Set the sort flags. */
-      if (t->type == task_type_pair && t->subtype != task_subtype_grav) {
-        if (!(ci->sorted & (1 << t->flags))) {
-          ci->sorts->flags |= (1 << t->flags);
-          ci->sorts->skip = 0;
-        }
-        if (!(cj->sorted & (1 << t->flags))) {
-          cj->sorts->flags |= (1 << t->flags);
-          cj->sorts->skip = 0;
-        }
-      }
-
-      /* Activate the send/recv flags. */
-      if (ci->nodeID != engine_rank) {
-
-        /* Activate the tasks to recv foreign cell ci's data. */
-        ci->recv_xv->skip = 0;
-        ci->recv_rho->skip = 0;
-        ci->recv_ti->skip = 0;
-
-        /* Look for the local cell cj's send tasks. */
-        struct link *l = NULL;
-        for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_xv task.");
-        l->t->skip = 0;
-
-        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        l->t->skip = 0;
-
-        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        l->t->skip = 0;
-
-      } else if (cj->nodeID != engine_rank) {
-
-        /* Activate the tasks to recv foreign cell cj's data. */
-        cj->recv_xv->skip = 0;
-        cj->recv_rho->skip = 0;
-        cj->recv_ti->skip = 0;
-        /* Look for the local cell ci's send tasks. */
-        struct link *l = NULL;
-        for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_xv task.");
-        l->t->skip = 0;
-
-        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_rho task.");
-        l->t->skip = 0;
-
-        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next)
-          ;
-        if (l == NULL) error("Missing link to send_ti task.");
-        l->t->skip = 0;
-      }
-    }
-
-    /* Kick? */
-    else if (t->type == task_type_kick) {
-      t->skip = (t->ci->ti_end_min > ti_end);
-      t->ci->updated = 0;
-      t->ci->g_updated = 0;
-    }
-
-    /* Init? */
-    else if (t->type == task_type_init) {
-      /* Set this task's skip. */
-      t->skip = (t->ci->ti_end_min > ti_end);
-    }
-
-    /* None? */
-    else if (t->type == task_type_none)
-      t->skip = 1;
-  }
-
-  /* All is well. */
-  return 0;
-}
-
+/**
+ * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ *
+ * @return 1 if the space has to be rebuilt, 0 otherwise.
+ */
 int engine_marktasks(struct engine *e) {
 
   struct scheduler *s = &e->sched;
@@ -2261,7 +1963,6 @@ int engine_marktasks(struct engine *e) {
   } else {
 
     /* Run through the tasks and mark as skip or not. */
-    // rebuild_space = engine_marktasks_serial(e);
     int extra_data[2] = {e->ti_current, rebuild_space};
     threadpool_map(&e->threadpool, engine_marktasks_sorts_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), 10000, NULL);

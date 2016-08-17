@@ -781,26 +781,6 @@ void scheduler_set_unlocks(struct scheduler *s) {
 }
 
 /**
- * @brief #threadpool_map function which runs through the task
- *        graph and re-computes the task wait counters.
- */
-
-void scheduler_simple_rewait_mapper(void *map_data, int num_elements,
-                                    void *extra_data) {
-
-  struct task *tasks = (struct task *)map_data;
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-
-    /* Increment the waits of the dependances */
-    for (int k = 0; k < t->nr_unlock_tasks; k++) {
-      struct task *u = t->unlock_tasks[k];
-      atomic_inc(&u->wait);
-    }
-  }
-}
-
-/**
  * @brief Sort the tasks in topological order over all queues.
  *
  * @param s The #scheduler.
@@ -813,9 +793,6 @@ void scheduler_ranktasks(struct scheduler *s) {
   const int nr_tasks = s->nr_tasks;
 
   /* Run through the tasks and get all the waits right. */
-  /* threadpool_map(s->threadpool, scheduler_simple_rewait_mapper, tasks,
-     nr_tasks,
-                 sizeof(struct task), 1000, NULL); */
   for (int i = 0; i < nr_tasks; i++) {
     struct task *t = &tasks[i];
 
