@@ -688,11 +688,12 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_xv The send_xv #task, if it has already been created.
  * @param t_rho The send_rho #task, if it has already been created.
+ * @param t_gradient The send_gradient #task, if already created.
  * @param t_ti The send_ti #task, if required and has already been created.
  */
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
                           struct task *t_xv, struct task *t_rho,
-                          struct task *t_ti) {
+                          struct task *t_gradient, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -711,21 +712,42 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
-                               3 * ci->tag, 0, ci, cj, 0);
+                               4 * ci->tag, 0, ci, cj, 0);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                3 * ci->tag + 1, 0, ci, cj, 0);
+                                4 * ci->tag + 1, 0, ci, cj, 0);
       if (!(e->policy & engine_policy_fixdt))
         t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                                 3 * ci->tag + 2, 0, ci, cj, 0);
+                                 4 * ci->tag + 2, 0, ci, cj, 0);
+#ifdef EXTRA_HYDRO_LOOP
+      t_gradient = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                     4 * ci->tag + 3, 0, ci, cj, 0);
+#endif
+
+#ifdef EXTRA_HYDRO_LOOP
+
+      scheduler_addunlock(s, t_gradient, ci->super->kick);
+
+      scheduler_addunlock(s, ci->super->extra_ghost, t_gradient);
+
+      /* The send_rho task should unlock the super-cell's extra_ghost task. */
+      scheduler_addunlock(s, t_rho, ci->super->extra_ghost);
 
       /* The send_rho task depends on the cell's ghost task. */
       scheduler_addunlock(s, ci->super->ghost, t_rho);
 
+      /* The send_xv task should unlock the super-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->super->ghost);
+
+#else
       /* The send_rho task should unlock the super-cell's kick task. */
       scheduler_addunlock(s, t_rho, ci->super->kick);
 
+      /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->super->ghost, t_rho);
+
       /* The send_xv task should unlock the super-cell's ghost task. */
       scheduler_addunlock(s, t_xv, ci->super->ghost);
+#endif
 
       /* The super-cell's kick task should unlock the send_ti task. */
       if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick, t_ti);
@@ -734,6 +756,9 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     /* Add them to the local cell. */
     ci->send_xv = engine_addlink(e, ci->send_xv, t_xv);
     ci->send_rho = engine_addlink(e, ci->send_rho, t_rho);
+#ifdef EXTRA_HYDRO_LOOP
+    ci->send_gradient = engine_addlink(e, ci->send_gradient, t_gradient);
+#endif
     if (t_ti != NULL) ci->send_ti = engine_addlink(e, ci->send_ti, t_ti);
   }
 
@@ -741,7 +766,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho, t_ti);
+        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho, t_gradient,
+                             t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -755,10 +781,12 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
  * @param c The foreign #cell.
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
+ * @param t_gradient The recv_gradient #task, if it has already been created.
  * @param t_ti The recv_ti #task, if required and has already been created.
  */
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
-                          struct task *t_rho, struct task *t_ti) {
+                          struct task *t_rho, struct task *t_gradient,
+                          struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -769,19 +797,39 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   if (t_xv == NULL && c->density != NULL) {
 
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 3 * c->tag,
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 4 * c->tag,
                              0, c, NULL, 0);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
-                              3 * c->tag + 1, 0, c, NULL, 0);
+                              4 * c->tag + 1, 0, c, NULL, 0);
     if (!(e->policy & engine_policy_fixdt))
       t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                               3 * c->tag + 2, 0, c, NULL, 0);
+                               4 * c->tag + 2, 0, c, NULL, 0);
+#ifdef EXTRA_HYDRO_LOOP
+    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_none,
+                                   4 * c->tag + 3, 0, c, NULL, 0);
+#endif
   }
   c->recv_xv = t_xv;
   c->recv_rho = t_rho;
+  c->recv_gradient = t_gradient;
   c->recv_ti = t_ti;
 
-  /* Add dependencies. */
+/* Add dependencies. */
+#ifdef EXTRA_HYDRO_LOOP
+  for (struct link *l = c->density; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_xv, l->t);
+    scheduler_addunlock(s, l->t, t_rho);
+  }
+  for (struct link *l = c->gradient; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_rho, l->t);
+    scheduler_addunlock(s, l->t, t_gradient);
+  }
+  for (struct link *l = c->force; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_gradient, l->t);
+    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+  }
+  if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
+#else
   for (struct link *l = c->density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
     scheduler_addunlock(s, l->t, t_rho);
@@ -791,12 +839,13 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
     if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
+#endif
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho, t_ti);
+        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho, t_gradient, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1877,13 +1926,13 @@ void engine_maketasks(struct engine *e) {
       /* Loop through the proxy's incoming cells and add the
          recv tasks. */
       for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL, NULL);
+        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL, NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
       for (int k = 0; k < p->nr_cells_out; k++)
         engine_addtasks_send(e, p->cells_out[k], p->cells_in[0], NULL, NULL,
-                             NULL);
+                             NULL, NULL);
     }
   }
 #endif
@@ -2033,6 +2082,7 @@ int engine_marktasks(struct engine *e) {
           /* Activate the tasks to recv foreign cell ci's data. */
           ci->recv_xv->skip = 0;
           ci->recv_rho->skip = 0;
+          ci->recv_gradient->skip = 0;
           ci->recv_ti->skip = 0;
 
           /* Look for the local cell cj's send tasks. */
@@ -2040,16 +2090,19 @@ int engine_marktasks(struct engine *e) {
           for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
                l = l->next)
             ;
-          if (l == NULL) {
-            abort();
-            error("Missing link to send_xv task.");
-          }
+          if (l == NULL) error("Missing link to send_xv task.");
           l->t->skip = 0;
 
           for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
                l = l->next)
             ;
           if (l == NULL) error("Missing link to send_rho task.");
+          l->t->skip = 0;
+
+          for (l = cj->send_gradient;
+               l != NULL && l->t->cj->nodeID != ci->nodeID; l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_gradient task.");
           l->t->skip = 0;
 
           for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
@@ -2063,6 +2116,7 @@ int engine_marktasks(struct engine *e) {
           /* Activate the tasks to recv foreign cell cj's data. */
           cj->recv_xv->skip = 0;
           cj->recv_rho->skip = 0;
+          cj->recv_gradient->skip = 0;
           cj->recv_ti->skip = 0;
 
           /* Look for the local cell ci's send tasks. */
@@ -2070,16 +2124,19 @@ int engine_marktasks(struct engine *e) {
           for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
                l = l->next)
             ;
-          if (l == NULL) {
-            abort();
-            error("Missing link to send_xv task.");
-          }
+          if (l == NULL) error("Missing link to send_xv task.");
           l->t->skip = 0;
 
           for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
                l = l->next)
             ;
           if (l == NULL) error("Missing link to send_rho task.");
+          l->t->skip = 0;
+
+          for (l = ci->send_gradient;
+               l != NULL && l->t->cj->nodeID != cj->nodeID; l = l->next)
+            ;
+          if (l == NULL) error("Missing link to send_gradient task.");
           l->t->skip = 0;
 
           for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -2720,7 +2777,7 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_ghost;
     mask |= 1 << task_type_extra_ghost; /* Adding unnecessary things to the mask
-                                                 does not harm */
+                                                  does not harm */
 
     submask |= 1 << task_subtype_density;
     submask |= 1 << task_subtype_gradient;
