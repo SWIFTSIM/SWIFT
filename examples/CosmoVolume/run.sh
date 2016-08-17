@@ -7,4 +7,4 @@ then
     ./getIC.sh
 fi
 
-../swift -s -t 16 cosmoVolume.yml
+../swift -s -t 16 cosmoVolume.yml 2>&1 | tee output.log

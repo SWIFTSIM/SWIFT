@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_H
+#define SWIFT_GADGET2_HYDRO_H
 
 #include "adiabatic_index.h"
 #include "dimension.h"
@@ -320,7 +322,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  p->entropy_dt *= hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
+  p->entropy_dt *=
+      0.5f * hydro_gamma_minus_one * pow_minus_gamma_minus_one(p->rho);
 }
 
 /**
@@ -360,3 +363,5 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   /* We read u in the entropy field. We now get S from u */
   p->entropy = gas_entropy_from_internal_energy(p->rho, p->entropy);
 }
+
+#endif /* SWIFT_GADGET2_HYDRO_H */

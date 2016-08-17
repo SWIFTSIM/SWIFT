@@ -18,7 +18,6 @@
  ##############################################################################
 
 import h5py
-import random
 from numpy import *
 
 # Generates a swift IC file for the Sedov blast test in a periodic cubic box

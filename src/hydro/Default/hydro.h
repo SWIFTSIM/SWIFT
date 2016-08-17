@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_HYDRO_H
+#define SWIFT_DEFAULT_HYDRO_H
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
@@ -341,3 +343,5 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part *restrict p) {}
+
+#endif /* SWIFT_DEFAULT_HYDRO_H */

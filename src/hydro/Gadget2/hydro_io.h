@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_IO_H
+#define SWIFT_GADGET2_HYDRO_IO_H
 
 #include "adiabatic_index.h"
 #include "hydro.h"
@@ -107,9 +109,10 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "(No treatment) Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Legacy Gadget-2 as in Springel (2005)");
+                   "(No treatment) as in Springel (2005)");
+  writeAttribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 }
@@ -120,3 +123,5 @@ void writeSPHflavour(hid_t h_grpsph) {
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
 int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_GADGET2_HYDRO_IO_H */
