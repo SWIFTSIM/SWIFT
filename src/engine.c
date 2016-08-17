@@ -1608,9 +1608,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
           sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
 
       /* Add the link between the new loops and the cell */
-      t->ci->gradient = engine_addlink(e, t->ci->gradient, t2);
+      engine_addlink(e, &t->ci->gradient, t2);
       atomic_inc(&t->ci->nr_gradient);
-      t->ci->force = engine_addlink(e, t->ci->force, t3);
+      engine_addlink(e, &t->ci->force, t3);
       atomic_inc(&t->ci->nr_force);
 
       /* Now, build all the dependencies for the hydro */
@@ -1642,13 +1642,13 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
           sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
 
       /* Add the link between the new loop and both cells */
-      t->ci->gradient = engine_addlink(e, t->ci->gradient, t2);
+      engine_addlink(e, &t->ci->gradient, t2);
       atomic_inc(&t->ci->nr_gradient);
-      t->cj->gradient = engine_addlink(e, t->cj->gradient, t2);
+      engine_addlink(e, &t->cj->gradient, t2);
       atomic_inc(&t->cj->nr_gradient);
-      t->ci->force = engine_addlink(e, t->ci->force, t3);
+      engine_addlink(e, &t->ci->force, t3);
       atomic_inc(&t->ci->nr_force);
-      t->cj->force = engine_addlink(e, t->cj->force, t3);
+      engine_addlink(e, &t->cj->force, t3);
       atomic_inc(&t->cj->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
@@ -1700,9 +1700,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
                             t->flags, 0, t->ci, t->cj, 0);
 
       /* Add the link between the new loop and the cell */
-      t->ci->gradient = engine_addlink(e, t->ci->gradient, t2);
+      engine_addlink(e, &t->ci->gradient, t2);
       atomic_inc(&t->ci->nr_gradient);
-      t->ci->force = engine_addlink(e, t->ci->force, t3);
+      engine_addlink(e, &t->ci->force, t3);
       atomic_inc(&t->ci->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
@@ -1744,13 +1744,13 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
                             t->flags, 0, t->ci, t->cj, 0);
 
       /* Add the link between the new loop and both cells */
-      t->ci->gradient = engine_addlink(e, t->ci->gradient, t2);
+      engine_addlink(e, &t->ci->gradient, t2);
       atomic_inc(&t->ci->nr_gradient);
-      t->cj->gradient = engine_addlink(e, t->cj->gradient, t2);
+      engine_addlink(e, &t->cj->gradient, t2);
       atomic_inc(&t->cj->nr_gradient);
-      t->ci->force = engine_addlink(e, t->ci->force, t3);
+      engine_addlink(e, &t->ci->force, t3);
       atomic_inc(&t->ci->nr_force);
-      t->cj->force = engine_addlink(e, t->cj->force, t3);
+      engine_addlink(e, &t->cj->force, t3);
       atomic_inc(&t->cj->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
