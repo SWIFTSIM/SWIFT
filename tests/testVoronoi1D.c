@@ -24,13 +24,19 @@ int main() {
   /* Create a Voronoi cell */
   double x[1] = {0.5f};
   struct voronoi_cell cell;
-  voronoi_cell_init(&cell, x, 1.0f);
+  voronoi_cell_init(&cell, x);
 
   /* Interact with a left and right neighbour */
-  double xL[1] = {0.0f};
-  double xR[1] = {1.0f};
+  float xL[1] = {0.5f};
+  float xR[1] = {-0.5f};
   voronoi_cell_interact(&cell, xL, 1);
   voronoi_cell_interact(&cell, xR, 2);
+
+  /* Interact with some more neighbours to check if they are properly ignored */
+  float x0[1] = {0.6f};
+  float x1[1] = {-0.7f};
+  voronoi_cell_interact(&cell, x0, 3);
+  voronoi_cell_interact(&cell, x1, 4);
 
   /* Finalize cell and check results */
   voronoi_cell_finalize(&cell);

@@ -22,6 +22,7 @@
 #include "adiabatic_index.h"
 #include "hydro_gradients.h"
 #include "riemann.h"
+#include "voronoi_algorithm.h"
 
 /**
  * @brief Calculate the volume interaction between particle i and particle j
@@ -48,6 +49,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   float h_inv;
   float wi, wj, wi_dx, wj_dx;
   int k, l;
+  float mindx[3];
+
+  voronoi_cell_interact(&pi->cell, dx, pj->id);
+  mindx[0] = -dx[0];
+  mindx[1] = -dx[1];
+  mindx[2] = -dx[2];
+  voronoi_cell_interact(&pj->cell, mindx, pi->id);
 
   /* Compute density of pi. */
   h_inv = 1.0 / hi;
@@ -108,6 +116,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   float h_inv;
   float wi, wi_dx;
   int k, l;
+
+  voronoi_cell_interact(&pi->cell, dx, pj->id);
 
   /* Get r and r inverse. */
   r = sqrtf(r2);

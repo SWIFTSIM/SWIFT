@@ -465,6 +465,11 @@ void density_dump(int N) {
     Pj[k].id = k + 4;
     hi[k] = 1.0;
     hj[k] = 1.0;
+#if defined(SHADOWSWIFT)
+    double x[3] = {0.0f, 0.0f, 0.0f};
+    voronoi_cell_init(&Pi[k].cell, x);
+    voronoi_cell_init(&Pj[k].cell, x);
+#endif
   }
 
   for (k = 0; k <= N; k++) {

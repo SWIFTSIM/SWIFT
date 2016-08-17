@@ -17,31 +17,19 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_VORONOI1D_CELL_H
-#define SWIFT_VORONOI1D_CELL_H
+#ifndef SWIFT_VORONOI_ALGORITHM_H
+#define SWIFT_VORONOI_ALGORITHM_H
 
-struct voronoi_cell {
+#if defined(HYDRO_DIMENSION_1D)
+#include "voronoi1d_algorithm.h"
+#elif defined(HYDRO_DIMENSION_2D)
+#warning "2D moving mesh not implemented yet!"
+#include "voronoi2d_algorithm.h"
+#elif defined(HYDRO_DIMENSION_3D)
+#warning "3D moving mesh not implemented yet!"
+#include "voronoi3d_algorithm.h"
+#else
+#error "You have to select a dimension for the hydro!"
+#endif
 
-  /* The position of the generator of the cell. */
-  double x;
-
-  /* The position of the left neighbour of the cell. */
-  double xL;
-
-  /* The position of the right neighbour of the cell. */
-  double xR;
-
-  /* The particle ID of the left neighbour. */
-  unsigned long long idL;
-
-  /* The particle ID of the right neighbour. */
-  unsigned long long idR;
-
-  /* The "volume" of the 1D cell. */
-  float volume;
-
-  /* The centroid of the cell. */
-  float centroid;
-};
-
-#endif  // SWIFT_VORONOI1D_CELL_H
+#endif  // SWIFT_VORONOI_ALGORITHM_H

@@ -21,6 +21,7 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "hydro_gradients.h"
+#include "voronoi_algorithm.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -88,6 +89,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->geometry.matrix_E[2][0] = 0.0f;
   p->geometry.matrix_E[2][1] = 0.0f;
   p->geometry.matrix_E[2][2] = 0.0f;
+  voronoi_cell_init(&p->cell, p->x);
 }
 
 /**
@@ -150,6 +152,29 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
 
   hydro_gradients_init(p);
+
+  float hnew = voronoi_cell_finalize(&p->cell);
+  /* Enforce hnew as new smoothing length in the iteration
+     This is annoyingly difficult, as we do not have access to the variables
+     that govern the loop...
+     So here's an idea: let's force in some method somewhere that makes sure
+     r->e->hydro_properties->target_neighbours is 1, and
+     r->e->hydro_properties->delta_neighbours is 0.
+     This way, we can accept an iteration by setting p->density.wcount to 1.
+     To get the right correction for h, we set wcount to something else
+     (say 0), and then set p->density.wcount_dh to 1/(hnew-h). */
+  if(hnew < p->h){
+    /* Iteration succesful: we accept, but manually set h to a smaller value
+       for the next time step */
+    p->density.wcount = 1.0f;
+    p->h = 1.1f*hnew;
+  } else {
+    /* Iteration not succesful: we force h to become 1.1*hnew */
+    p->density.wcount = 0.0f;
+    p->density.wcount_dh = 1.0f/(1.1f*hnew-p->h);
+  }
+  volume = p->cell.volume;
+  p->geometry.volume = volume;
 
   /* compute primitive variables */
   /* eqns (3)-(5) */

@@ -19,6 +19,8 @@
  *
  ******************************************************************************/
 
+#include "voronoi_cell.h"
+
 /* Extra particle data not needed during the computation. */
 struct xpart {
 
@@ -192,5 +194,8 @@ struct part {
 
   /* Old internal energy flux */
   float du_dt;
+
+  /* Voronoi cell. */
+  struct voronoi_cell cell;
 
 } __attribute__((aligned(part_align)));
