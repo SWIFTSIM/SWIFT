@@ -1,15 +1,15 @@
 # Define the system of units to use internally. 
 InternalUnitSystem:
-  UnitMass_in_cgs:     2.0e33   # Solar masses
-  UnitLength_in_cgs:   3.01e21   # Kilparsecs
-  UnitVelocity_in_cgs: 1.0e5   # Kilometres per second
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
   UnitCurrent_in_cgs:  1   # Amperes
   UnitTemp_in_cgs:     1   # Kelvin
 
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   10.    # The end time of the simulation (in internal units).
+  time_end:   1.    # The end time of the simulation (in internal units).
   dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
@@ -17,7 +17,7 @@ TimeIntegration:
 Snapshots:
   basename:            uniformBox # Common part of the name of output files
   time_first:          0.         # Time of the first output (in internal units)
-  delta_time:          0.1       # Time difference between consecutive outputs (in internal units)
+  delta_time:          0.01       # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -41,12 +41,3 @@ PointMass:
   position_y:      50.
   position_z:      50.	
   mass:            1e10     # mass of external point mass in internal units
-
-  # Cooling parameters (Creasey cooling) (always in cgs)
-
-CreaseyCooling:
-  Lambda:                      1.0e-22
-  minimum_temperature:         1.0e4
-  mean_molecular_weight:       0.59
-  hydrogen_mass_abundance:     0.75
-  cooling_tstep_mult:          1.0

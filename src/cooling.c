@@ -133,7 +133,7 @@ float calculate_new_thermal_energy(float u_old, float rho, float dt,
   float u_new;
   float m_p = phys_const->const_proton_mass;
   float X_H = cooling->creasey_cooling.hydrogen_mass_abundance;
-  float lambda = cooling->creasey_cooling.lambda; //this is always in cgs
+  float lambda_cgs = cooling->creasey_cooling.lambda; //this is always in cgs
   float u_floor = cooling->creasey_cooling.min_internal_energy;
 
   /*convert from internal code units to cgs*/
@@ -143,19 +143,19 @@ float calculate_new_thermal_energy(float u_old, float rho, float dt,
   float n_H_cgs = rho_cgs / m_p_cgs;
   float u_old_cgs =  u_old * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
   float u_floor_cgs =  u_floor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
-  float du_dt = -lambda * n_H_cgs * n_H_cgs / rho;
+  float du_dt_cgs = -lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
   float u_new_cgs;
 
-  if (u_old_cgs - du_dt*dt_cgs > u_floor_cgs){
-    u_new_cgs = u_old_cgs + du_dt*dt_cgs;
+  if (u_old_cgs + du_dt_cgs*dt_cgs > u_floor_cgs){
+    u_new_cgs = u_old_cgs + du_dt_cgs*dt_cgs;
   }
   else{
     u_new_cgs = u_floor_cgs;
   }
-
   /*convert back to internal code units when returning new internal energy*/
 
   u_new = u_new_cgs / units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);  
+  
 #endif /*CREASEY_COOLING*/
   return u_new;
 }
