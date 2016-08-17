@@ -626,32 +626,26 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Drift particles and g-particles forward in time
+ * @brief Drift particles and g-particles in a cell forward in time
  *
- * @param r The runner thread.
  * @param c The cell.
- * @param timer Are we timing this ?
+ * @param e The engine.
  */
-void runner_do_drift(struct runner *r, struct cell *c, int timer) {
+static void runner_do_drift(struct cell *c, struct engine *e) {
 
-  const double timeBase = r->e->timeBase;
-  const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
-  const int ti_old = r->e->ti_old;
-  const int ti_current = r->e->ti_current;
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
-  struct gpart *restrict gparts = c->gparts;
+  const double timeBase = e->timeBase;
+  const double dt = (e->ti_current - e->ti_old) * timeBase;
+  const int ti_old = e->ti_old;
+  const int ti_current = e->ti_current;
+
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  struct gpart *const gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0};
   double ang_mom[3] = {0.0, 0.0, 0.0};
-
-  TIMER_TIC
-
-#ifdef TASK_VERBOSE
-  OUT;
-#endif
 
   /* No children? */
   if (!c->split) {
@@ -661,7 +655,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
-      struct gpart *restrict gp = &gparts[k];
+      struct gpart *const gp = &gparts[k];
 
       /* Drift... */
       drift_gpart(gp, dt, timeBase, ti_old, ti_current);
@@ -678,8 +672,8 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
@@ -732,15 +726,14 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   /* Otherwise, aggregate data from children. */
   else {
 
-    /* Loop over the progeny. */
+    /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
 
-        /* Recurse */
-        struct cell *restrict cp = c->progeny[k];
-        runner_do_drift(r, cp, 0);
+        /* Recurse. */
+        runner_do_drift(cp, e);
 
-        /* Collect */
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
         mass += cp->mass;
@@ -771,8 +764,28 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   c->ang_mom[0] = ang_mom[0];
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
+}
 
-  if (timer) TIMER_TOC(timer_drift);
+/**
+ * @brief Mapper function to drift particles and g-particles forward in time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+
+void runner_do_drift_mapper(void *map_data, int num_elements,
+                            void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &cells[ind];
+
+    /* Only drift local particles. */
+    if (c != NULL && c->nodeID == e->nodeID) runner_do_drift(c, e);
+  }
 }
 
 /**
@@ -1182,9 +1195,6 @@ void *runner_main(void *data) {
         case task_type_extra_ghost:
           runner_do_extra_ghost(r, ci);
           break;
-        case task_type_drift:
-          runner_do_drift(r, ci, 1);
-          break;
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;
@@ -1217,19 +1227,6 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
-          break;
-        case task_type_part_sort:
-          space_do_parts_sort();
-          break;
-        case task_type_gpart_sort:
-          space_do_gparts_sort();
-          break;
-        case task_type_split_cell:
-          space_do_split(e->s, t->ci);
-          break;
-        case task_type_rewait:
-          scheduler_do_rewait((struct task *)t->ci, (struct task *)t->cj,
-                              t->flags, t->rank);
           break;
         default:
           error("Unknown task type.");

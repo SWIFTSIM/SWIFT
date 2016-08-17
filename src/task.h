@@ -42,7 +42,6 @@ enum task_types {
   task_type_init,
   task_type_ghost,
   task_type_extra_ghost,
-  task_type_drift,
   task_type_kick,
   task_type_kick_fixdt,
   task_type_send,
@@ -52,10 +51,6 @@ enum task_types {
   task_type_grav_mm,
   task_type_grav_up,
   task_type_grav_external,
-  task_type_part_sort,
-  task_type_gpart_sort,
-  task_type_split_cell,
-  task_type_rewait,
   task_type_count
 };
 

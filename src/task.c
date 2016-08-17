@@ -49,10 +49,9 @@
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
     "none",       "sort",       "self",    "pair",          "sub_self",
-    "sub_pair",   "init",       "ghost",   "extra_ghost",   "drift",
+    "sub_pair",   "init",       "ghost",   "extra_ghost",
     "kick",       "kick_fixdt", "send",    "recv",          "grav_gather_m",
-    "grav_fft",   "grav_mm",    "grav_up", "grav_external", "part_sort",
-    "gpart_sort", "split_cell", "rewait"};
+    "grav_fft",   "grav_mm",    "grav_up", "grav_external"};
 
 const char *subtaskID_names[task_subtype_count] = {
     "none", "density", "gradient", "force", "grav", "tend"};
@@ -139,7 +138,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_init:
-    case task_type_drift:
     case task_type_kick:
     case task_type_kick_fixdt:
     case task_type_send:
@@ -158,15 +156,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_gpart;
       break;
 
-    case task_type_part_sort:
-    case task_type_gpart_sort:
-    case task_type_split_cell:
-    case task_type_rewait:
-      return task_action_none;
-      break;
-
     default:
-      error("Unknow task_action for task");
+      error("Unknown task_action for task");
       return task_action_none;
       break;
   }
