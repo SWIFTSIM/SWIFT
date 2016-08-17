@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -55,14 +55,35 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_DENSITY, parts, primitives.rho);
 }
 
+/**
+ * @brief Get the internal energy of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Internal energy of the particle
+ */
 float convert_u(struct engine* e, struct part* p) {
   return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
 }
 
+/**
+ * @brief Get the entropic function of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Entropic function of the particle
+ */
 float convert_A(struct engine* e, struct part* p) {
   return p->primitives.P / pow_gamma(p->primitives.rho);
 }
 
+/**
+ * @brief Get the total energy of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Total energy of the particle
+ */
 float convert_Etot(struct engine* e, struct part* p) {
   float momentum2;
 

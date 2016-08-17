@@ -72,6 +72,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * @brief Prepares a particle for the volume calculation.
  *
  * Simply makes sure all necessary variables are initialized to zero.
+ * Initializes the Voronoi cell.
  *
  * @param p The particle to act upon
  */
@@ -88,19 +89,13 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 /**
  * @brief Finishes the volume calculation.
  *
- * Multiplies the density and number of neighbours by the appropiate constants
- * and adds the self-contribution term. Calculates the volume and uses it to
- * update the primitive variables (based on the conserved variables). The latter
- * should only be done for active particles. This is okay, since this method is
- * only called for active particles.
+ * Calls the finalize method on the Voronoi cell, which calculates the volume
+ * and centroid of the cell. We use the return value of this function to set
+ * a new value for the smoothing length and possibly force another iteration
+ * of the volume calculation for this particle. We then use the volume to
+ * convert conserved variables into primitive variables.
  *
- * Multiplies the components of the matrix E with the appropriate constants and
- * inverts it. Initializes the variables used during the gradient loop. This
- * cannot be done in hydro_prepare_force, since that method is called for all
- * particles, and not just the active ones. If we would initialize the
- * variables there, gradients for passive particles would be zero, while we
- * actually use the old gradients in the flux calculation between active and
- * passive particles.
+ * This method also initializes the gradient variables (if gradients are used).
  *
  * @param p The particle to act upon.
  * @param The current physical time.
@@ -200,8 +195,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 /**
  * @brief Reset acceleration fields of a particle
  *
- * This is actually not necessary for GIZMO, since we just set the accelerations
- * after the flux calculation.
+ * This is actually not necessary for Shadowswift, since we just set the
+ * accelerations after the flux calculation.
  *
  * @param p The particle to act upon.
  */
@@ -256,7 +251,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 /**
  * @brief Extra operations to be done during the drift
  *
- * Not used for GIZMO.
+ * Not used for Shadowswift.
  *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
@@ -272,7 +267,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  *
  * We use the new conserved variables to calculate the new velocity of the
  * particle, and use that to derive the change of the velocity over the particle
- * time step.
+ * time step. We also add a correction to the velocity which steers the
+ * generator towards the centroid of the cell.
  *
  * If the particle time step is zero, we set the accelerations to zero. This
  * should only happen at the start of the simulation.
@@ -356,7 +352,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 /**
  * @brief Extra operations done during the kick
  *
- * Not used for GIZMO.
+ * Not used for Shadowswift.
  *
  * @param p Particle to act upon.
  * @param xp Extended particle data to act upon.

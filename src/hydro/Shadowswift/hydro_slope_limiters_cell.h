@@ -80,6 +80,17 @@ hydro_slope_limit_cell_collect(struct part* pi, struct part* pj, float r) {
   pi->primitives.limiter.maxr = fmax(r, pi->primitives.limiter.maxr);
 }
 
+/**
+ * @brief Apply the cell wide slope limiter to the gradient of a single quantity
+ *
+ * This corresponds to equation (B2) in Hopkins (2015).
+ *
+ * @param grad Gradient to slope limit
+ * @param qval Value of the quantity at the cell generator
+ * @param qmin Minimal value of the quantity among all cell neighbours
+ * @param qmax Maximal value of the quantity among all cell neighbours
+ * @param maxr Maximal distance between the generator and all of its neighbours
+ */
 __attribute__((always_inline)) INLINE static void
 hydro_slope_limit_cell_quantity(float* grad, float qval, float qmin, float qmax,
                                 float maxr) {

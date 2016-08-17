@@ -50,6 +50,20 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
   hydro_slope_limit_cell_init(p);
 }
 
+/**
+ * @brief Add the gradient estimate for a single quantity due to a particle pair
+ * to the total gradient for that quantity
+ *
+ * This corresponds to one term of equation (21) in Springel (2010).
+ *
+ * @param qL Value of the quantity on the left.
+ * @param qR Value of the quantity on the right.
+ * @param cLR Vector pointing from the midpoint of the particle pair to the
+ * geometrical centroid of the face in between the particles.
+ * @param xLR Vector pointing from the right particle to the left particle.
+ * @param A Surface area of the face in between the particles.
+ * @param grad Current value of the gradient for the quantity (is updated).
+ */
 __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
     float qL, float qR, float *cLR, float *xLR, float rLR, float A,
     float *grad) {

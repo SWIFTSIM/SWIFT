@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,14 +23,9 @@
 #include "voronoi_algorithm.h"
 
 /**
- * @brief Calculate the volume interaction between particle i and particle j
+ * @brief Calculate the Voronoi cell by interacting particle pi and pj
  *
- * The volume is in essence the same as the weighted number of neighbours in a
- * classical SPH density calculation.
- *
- * We also calculate the components of the matrix E, which is used for second
- * order accurate gradient calculations and for the calculation of the interface
- * surface areas.
+ * This method wraps around voronoi_cell_interact().
  *
  * @param r2 Squared distance between particle i and particle j.
  * @param dx Distance vector between the particles (dx = pi->x - pj->x).
@@ -54,15 +47,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 }
 
 /**
- * @brief Calculate the volume interaction between particle i and particle j:
- * non-symmetric version
+ * @brief Calculate the Voronoi cell by interacting particle pi with pj
  *
- * The volume is in essence the same as the weighted number of neighbours in a
- * classical SPH density calculation.
- *
- * We also calculate the components of the matrix E, which is used for second
- * order accurate gradient calculations and for the calculation of the interface
- * surface areas.
+ * This method wraps around voronoi_cell_interact().
  *
  * @param r2 Squared distance between particle i and particle j.
  * @param dx Distance vector between the particles (dx = pi->x - pj->x).
@@ -125,11 +112,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * active), both runner_iact_force and runner_iact_nonsym_force call this
  * method, with an appropriate mode.
  *
- * This method calculates the surface area of the interface between particle i
- * and particle j, as well as the interface position and velocity. These are
- * then used to reconstruct and predict the primitive variables, which are then
- * fed to a Riemann solver that calculates a flux. This flux is used to update
- * the conserved variables of particle i or both particles.
+ * This method retrieves the oriented surface area and face midpoint for the
+ * Voronoi face between pi and pj (if it exists). It uses the midpoint position
+ * to reconstruct the primitive quantities (if gradients are used) at the face
+ * and then uses the face quantities to estimate a flux through the face using
+ * a Riemann solver.
  *
  * This method also calculates the maximal velocity used to calculate the time
  * step.
