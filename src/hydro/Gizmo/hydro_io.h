@@ -55,12 +55,43 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 UNIT_CONV_DENSITY, parts, primitives.rho);
 }
 
+/**
+ * @brief Get the internal energy of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Internal energy of the particle
+ */
 float convert_u(struct engine* e, struct part* p) {
   return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
 }
 
+/**
+ * @brief Get the entropic function of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Entropic function of the particle
+ */
 float convert_A(struct engine* e, struct part* p) {
   return p->primitives.P / pow_gamma(p->primitives.rho);
+}
+
+/**
+ * @brief Get the total energy of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Total energy of the particle
+ */
+float convert_Etot(struct engine* e, struct part* p) {
+  float momentum2;
+
+  momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
+              p->conserved.momentum[1] * p->conserved.momentum[1] +
+              p->conserved.momentum[2] * p->conserved.momentum[2];
+
+  return p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
 }
 
 /**
@@ -101,8 +132,9 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, primitives.P, convert_A);
   list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
                                   parts, primitives.P);
-  list[12] = io_make_output_field("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
-                                  parts, conserved.energy);
+  list[12] =
+      io_make_output_field_convert_part("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
+                                        parts, conserved.energy, convert_Etot);
 }
 
 /**
