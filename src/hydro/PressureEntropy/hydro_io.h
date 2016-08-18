@@ -55,8 +55,12 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 parts, mass);
   list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
-  list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, entropy);
+  /* list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY, */
+  /*                               UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+   * entropy); */
+  list[4] =
+      io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
+                          UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
@@ -85,7 +89,7 @@ float convert_P(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -105,10 +109,12 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] =
       io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
-  list[8] = io_make_output_field("Entropy", FLOAT, 1,
-                                 UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, rho);
+  list[8] = io_make_output_field(
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
   list[9] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
+  list[10] = io_make_output_field("WeightedPressure", FLOAT, 1,
+                                  UNIT_CONV_PRESSURE, parts, weightedPressure);
 }
 
 /**

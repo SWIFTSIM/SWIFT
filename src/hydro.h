@@ -37,7 +37,7 @@
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro.h"
 #include "./hydro/PressureEntropy/hydro_iact.h"
-#define SPH_IMPLEMENTATION "Pressure-Entropy formulation of SPH (Hopkins 2013)"
+#define SPH_IMPLEMENTATION "Pressure-Entropy SPH (Hopkins 2013)"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro.h"
 #include "./hydro/Default/hydro_iact.h"

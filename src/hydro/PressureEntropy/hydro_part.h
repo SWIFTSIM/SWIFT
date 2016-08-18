@@ -67,14 +67,14 @@ struct part {
   /* Particle density. */
   float rho;
 
+  /* Particle weighted pressure. */
+  float weightedPressure;
+
   /* Particle entropy. */
   float entropy;
 
   /* Entropy time derivative */
   float entropy_dt;
-
-  /* Derivative of the density with respect to smoothing length. */
-  float rho_dh;
 
   union {
 
@@ -86,21 +86,24 @@ struct part {
       /* Number of neighbours spatial derivative. */
       float wcount_dh;
 
+      /* Derivative of particle weighted pressure with h. */
+      float weightedPressure_dh;
+
       /* Particle velocity curl. */
-      float rot_v[3];
+      // float rot_v[3];
 
       /* Particle velocity divergence. */
-      float div_v;
+      // float div_v;
 
     } density;
 
     struct {
 
-      /* Balsara switch */
-      float balsara;
+      /* "Grad h" term */
+      float f_ij;
 
-      /* Pressure over density squared (including drho/dh term) */
-      float P_over_rho2;
+      /* Pressure term */
+      float pressure_term;
 
       /* Particle sound speed. */
       float soundspeed;

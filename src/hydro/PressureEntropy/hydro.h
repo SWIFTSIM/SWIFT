@@ -30,6 +30,7 @@
  */
 
 #include "adiabatic_index.h"
+#include "approx_math.h"
 #include "dimension.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
@@ -170,11 +171,13 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
-  p->rho_dh = 0.f;
-  p->density.div_v = 0.f;
-  p->density.rot_v[0] = 0.f;
-  p->density.rot_v[1] = 0.f;
-  p->density.rot_v[2] = 0.f;
+  p->weightedPressure = 0.f;
+  p->density.weightedPressure_dh = 0.f;
+  // p->rho_dh = 0.f;
+  /* p->density.div_v = 0.f; */
+  /* p->density.rot_v[0] = 0.f; */
+  /* p->density.rot_v[1] = 0.f; */
+  /* p->density.rot_v[2] = 0.f; */
 }
 
 /**
@@ -191,33 +194,40 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                       /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
-  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  // const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->density.wcount += kernel_root;
+  // p->density.wcount_dh -= hydro_dimension * kernel_root;
+  p->weightedPressure += p->mass * pow_one_over_gamma(p->entropy) * kernel_root;
+  p->density.weightedPressure_dh -=
+      hydro_dimension * p->mass * pow_one_over_gamma(p->entropy) * kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
-  p->rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= kernel_norm;
   p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
+  p->weightedPressure *= h_inv_dim;
+  p->density.weightedPressure_dh *= h_inv * kernel_gamma * kernel_norm;
 
-  const float irho = 1.f / p->rho;
+  /* Final operation on the weighted pressure */
+  p->weightedPressure = pow_gamma(p->weightedPressure);
+
+  /* const float irho = 1.f / p->rho; */
 
   /* Compute the derivative term */
-  p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * irho);
+  // p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * irho);
 
   /* Finish calculation of the velocity curl components */
-  p->density.rot_v[0] *= h_inv_dim_plus_one * irho;
-  p->density.rot_v[1] *= h_inv_dim_plus_one * irho;
-  p->density.rot_v[2] *= h_inv_dim_plus_one * irho;
+  // p->density.rot_v[0] *= h_inv_dim_plus_one * irho;
+  // p->density.rot_v[1] *= h_inv_dim_plus_one * irho;
+  // p->density.rot_v[2] *= h_inv_dim_plus_one * irho;
 
   /* Finish calculation of the velocity divergence */
-  p->density.div_v *= h_inv_dim_plus_one * irho;
+  // p->density.div_v *= h_inv_dim_plus_one * irho;
 }
 
 /**
@@ -234,36 +244,27 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp, int ti_current,
     double timeBase) {
 
-  const float fac_mu = 1.f; /* Will change with cosmological integration */
-
-  /* Compute the norm of the curl */
-  const float curl_v = sqrtf(p->density.rot_v[0] * p->density.rot_v[0] +
-                             p->density.rot_v[1] * p->density.rot_v[1] +
-                             p->density.rot_v[2] * p->density.rot_v[2]);
-
-  /* Compute the norm of div v */
-  const float abs_div_v = fabsf(p->density.div_v);
-
   /* Compute the pressure */
   const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+
+  /* Compute the sound speed from the actual pressure*/
   const float pressure = hydro_get_pressure(p, half_dt);
-
   const float irho = 1.f / p->rho;
-
-  /* Divide the pressure by the density and density gradient */
-  const float P_over_rho2 = pressure * irho * irho * p->rho_dh;
-
-  /* Compute the sound speed */
   const float soundspeed = sqrtf(hydro_gamma * pressure * irho);
 
-  /* Compute the Balsara switch */
-  const float balsara =
-      abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
+  /* Compute the "i" part of the f_ij term */
+  const float number_density = p->density.wcount / kernel_norm;
+  const float factor = p->h / (hydro_dimension * number_density);
+  const float f_ij =
+      factor * p->density.weightedPressure_dh / (1.f + factor * number_density);
+
+  /* Comput the pressure term */
+  const float pressure_term = pow_one_minus_two_over_gamma(p->weightedPressure);
 
   /* Update variables. */
-  p->force.P_over_rho2 = P_over_rho2;
   p->force.soundspeed = soundspeed;
-  p->force.balsara = balsara;
+  p->force.f_ij = f_ij;
+  p->force.pressure_term = pressure_term;
 }
 
 /**
@@ -309,15 +310,20 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   const float irho = 1.f / p->rho;
 
-  /* Divide the pressure by the density and density gradient */
-  const float P_over_rho2 = pressure * irho * irho * p->rho_dh;
-
   /* Compute the new sound speed */
   const float soundspeed = sqrtf(hydro_gamma * pressure * irho);
 
+  const float w1 = -hydro_dimension * p->force.h_dt * dt_entr / p->h;
+  if (fabsf(w1) < 0.2f)
+    p->weightedPressure *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    p->weightedPressure *= expf(w1);
+
+  const float pressure_term = pow_one_minus_two_over_gamma(p->weightedPressure);
+
   /* Update variables */
-  p->force.P_over_rho2 = P_over_rho2;
   p->force.soundspeed = soundspeed;
+  p->force.pressure_term = pressure_term;
 }
 
 /**

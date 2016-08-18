@@ -149,4 +149,91 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
 #endif
 }
 
+/**
+ * @brief Returns one over the argument to the power given by one over the
+ * adiabatic index.
+ *
+ * Computes \f$x^{\frac{1}{\gamma}}\f$.
+ */
+__attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, 0.6f); /* x^(3/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return powf(x, 0.75f); /* x^(3/4) */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return sqrtf(x); /* x^(1/2) */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Returns the argument to the power given by two over the adiabatic
+ * index.
+ *
+ * Computes \f$x^{\frac{2}{\gamma}}\f$.
+ */
+__attribute__((always_inline)) INLINE static float pow_two_over_gamma(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, 1.2f); /* x^(6/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  const float sqrt = sqrtf(x);
+  return sqrt * sqrt * sqrt;
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return x; /* x^(2/2) */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Returns the argument to the power one minus two over the
+ * adiabatic index.
+ *
+ * Computes \f$x^{1 - \frac{2}{\gamma}}\f$.
+ */
+__attribute__((always_inline)) INLINE static float pow_one_minus_two_over_gamma(
+    float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, -0.2f); /* x^(-1/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  const float sqrt = sqrtf(x);
+  return 1.f / sqrt;
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return 1.f; /* x^0 */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
 #endif /* SWIFT_ADIABATIC_INDEX_H */
