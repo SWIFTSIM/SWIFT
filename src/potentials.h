@@ -146,8 +146,7 @@ external_gravity_disk_patch_potential(
 
   const float G_newton = phys_const->const_newton_G;
   const float dz = g->x[2] - potential->disk_patch_potential.z_disk;
-  g->a_grav[0] += 0;
-  g->a_grav[1] += 0;
+  const float t_dyn = potential->disk_patch_potential.dynamical_time;
 
   float reduction_factor = 1.;
   if (time < potential->disk_patch_potential.growth_time * t_dyn)

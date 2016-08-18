@@ -90,7 +90,7 @@ mass           = 1
 # using glass ICs
 # read glass file and generate gas positions and tile it ntile times in each dimension
 ntile   = 1
-inglass = '../../SodShock/glass_002.hdf5'
+inglass = 'glassCube_32.hdf5'
 infile  = h5py.File(inglass, "r")
 one_glass_p = infile["/PartType0/Coordinates"][:,:]
 one_glass_h = infile["/PartType0/SmoothingLength"][:]
@@ -203,11 +203,11 @@ if (entropy_flag == 1):
 else:
     ds[()] = u    
 
-print u
-
 ids = 1 + numpy.linspace(0, numGas, numGas, endpoint=False, dtype='L')
 ds = grp0.create_dataset('ParticleIDs', (numGas, ), 'L')
 ds[()] = ids
+
+print "Internal energy:", u[0]
 
 # generate dark matter particles if needed
 if(numPart > 0):
@@ -215,16 +215,14 @@ if(numPart > 0):
     # set seed for random number
     numpy.random.seed(1234)
     
-#Particle group
     grp1 = file.create_group("/PartType1")
     
-#generate particle positions
     radius = Radius * (numpy.random.rand(N))**(1./3.) 
     ctheta = -1. + 2 * numpy.random.rand(N)
     stheta = numpy.sqrt(1.-ctheta**2)
     phi    =  2 * math.pi * numpy.random.rand(N)
     r      = numpy.zeros((numPart, 3))
-#
+
     speed  = vrot
     v      = numpy.zeros((numPart, 3))
     omega  = speed / radius
@@ -245,18 +243,7 @@ if(numPart > 0):
     ds = grp1.create_dataset('Masses', (numPart,), 'f')
     ds[()] = m
     m = numpy.zeros(1)
-    
-    # h = numpy.full((numPart, ), 1.1255 * boxSize / L)
-    # ds = grp1.create_dataset('SmoothingLength', (numPart,), 'f')
-    # ds[()] = h
-    # h = numpy.zeros(1)
-    
-    # u = numpy.full((numPart, ), internalEnergy)
-    # ds = grp1.create_dataset('InternalEnergy', (numPart,), 'f')
-    # ds[()] = u
-    # u = numpy.zeros(1)
-    
-    
+        
     ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False, dtype='L')
     ds = grp1.create_dataset('ParticleIDs', (numPart, ), 'L')
     ds[()] = ids
