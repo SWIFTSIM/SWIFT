@@ -1,0 +1,19 @@
+Generates and evolves a disk-patch, where gas is in hydrostatic
+equilibrium with an imposed external gravitational force, using the
+equations from Creasey, Theuns & Bower, 2013, MNRAS, Volume 429,
+Issue 3, p.1922-1948.
+
+To generate ICs ready for a scientific run:
+
+1) Recover a uniform glass file by running 'getGlass.sh'.
+
+2) Generate pre-ICs by running the 'makeIC.py' script.
+
+3) Run SWIFT with an isothermal EoS, no cooling nor feedback, and the
+disk-patch potential switched on and using the parameters from
+'disk-patch-icc.yml'
+
+4) The ICs are then ready to be run for a science problem.
+
+When running SWIFT with the parameters from 'disk-patch.yml' and an
+ideal gas EoS on these ICs the disk should stay in equilibrium.

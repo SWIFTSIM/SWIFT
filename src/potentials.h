@@ -25,6 +25,7 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local includes. */
@@ -53,13 +54,123 @@ struct external_potential {
     float timestep_mult;
   } isothermal_potential;
 #endif
+
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  struct {
+    double surface_density;
+    double scale_height;
+    double z_disk;
+    double dynamical_time;
+    double growth_time;
+    double timestep_mult;
+  } disk_patch_potential;
+#endif
 };
 
-/* Include external isothermal potential */
+/* ------------------------------------------------------------------------- */
+
+/* external potential: disk_patch */
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+
+/**
+ * @brief Computes the time-step from the acceleration due to a hydrostatic
+ * disk.
+ *
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
+ *
+ * @param phys_cont The physical constants in internal units.
+ * @param gp Pointer to the g-particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+external_gravity_disk_patch_timestep(const struct external_potential* potential,
+                                     const struct phys_const* const phys_const,
+                                     const struct gpart* const g) {
+
+  /* initilize time step to disk dynamical time */
+  const float dt_dyn = potential->disk_patch_potential.dynamical_time;
+  float dt = dt_dyn;
+
+  /* absolute value of height above disk */
+  const float dz = fabs(g->x[2] - potential->disk_patch_potential.z_disk);
+
+  /* vertical cceleration */
+  const float z_accel = 2 * M_PI * phys_const->const_newton_G *
+                        potential->disk_patch_potential.surface_density *
+                        tanh(dz / potential->disk_patch_potential.scale_height);
+
+  /* demand that dt * velocity <  fraction of scale height of disk */
+  float dt1 = FLT_MAX;
+  if (fabs(g->v_full[2]) > 0) {
+    dt1 = potential->disk_patch_potential.scale_height / fabs(g->v_full[2]);
+    if (dt1 < dt) dt = dt1;
+  }
+
+  /* demand that dt^2 * acceleration < fraction of scale height of disk */
+  float dt2 = FLT_MAX;
+  if (fabs(z_accel) > 0) {
+    dt2 = potential->disk_patch_potential.scale_height / fabs(z_accel);
+    if (dt2 < dt * dt) dt = sqrt(dt2);
+  }
+
+  /* demand that dt^3 jerk < fraction of scale height of disk */
+  float dt3 = FLT_MAX;
+  if (abs(g->v_full[2]) > 0) {
+    const float dz_accel_over_dt =
+        2 * M_PI * phys_const->const_newton_G *
+        potential->disk_patch_potential.surface_density /
+        potential->disk_patch_potential.scale_height /
+        cosh(dz / potential->disk_patch_potential.scale_height) /
+        cosh(dz / potential->disk_patch_potential.scale_height) *
+        fabs(g->v_full[2]);
+
+    dt3 = potential->disk_patch_potential.scale_height / fabs(dz_accel_over_dt);
+    if (dt3 < dt * dt * dt) dt = pow(dt3, 1. / 3.);
+  }
+
+  return potential->disk_patch_potential.timestep_mult * dt;
+}
+
+/**
+ * @brief Computes the gravitational acceleration along z due to a hydrostatic
+ * disk
+ *
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
+ *
+ * @param phys_cont The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
+ */
+__attribute__((always_inline)) INLINE static void
+external_gravity_disk_patch_potential(
+    const double time, const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct gpart* g) {
+
+  const float G_newton = phys_const->const_newton_G;
+  const float dz = g->x[2] - potential->disk_patch_potential.z_disk;
+  const float t_dyn = potential->disk_patch_potential.dynamical_time;
+
+  float reduction_factor = 1.;
+  if (time < potential->disk_patch_potential.growth_time * t_dyn)
+    reduction_factor =
+        time / (potential->disk_patch_potential.growth_time * t_dyn);
+
+  const float z_accel =
+      reduction_factor * 2 * G_newton * M_PI *
+      potential->disk_patch_potential.surface_density *
+      tanh(fabs(dz) / potential->disk_patch_potential.scale_height);
+
+  /* Accelerations. Note that they are multiplied by G later on */
+  if (dz > 0) g->a_grav[2] -= z_accel / G_newton;
+  if (dz < 0) g->a_grav[2] += z_accel / G_newton;
+}
+#endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
+
+/* ------------------------------------------------------------------------- */
+
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 
 /**
- * @brief Computes the time-step due to the acceleration from a point mass
+ * @brief Computes the time-step due to the acceleration from an isothermal
+ * potential.
  *
  * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
@@ -73,6 +184,7 @@ external_gravity_isothermalpotential_timestep(
   const float dx = g->x[0] - potential->isothermal_potential.x;
   const float dy = g->x[1] - potential->isothermal_potential.y;
   const float dz = g->x[2] - potential->isothermal_potential.z;
+
   const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
   const float drdv =
       dx * (g->v_full[0]) + dy * (g->v_full[1]) + dz * (g->v_full[2]);
@@ -92,10 +204,10 @@ external_gravity_isothermalpotential_timestep(
 }
 
 /**
- * @brief Computes the gravitational acceleration of a particle due to a point
- * mass
+ * @brief Computes the gravitational acceleration from an isothermal potential.
  *
- * Note that the accelerations are multiplied by Newton's G constant later on.
+ * Note that the accelerations are multiplied by Newton's G constant
+ * later on.
  *
  * @param potential The #external_potential used in the run.
  * @param phys_const The physical constants in internal units.
@@ -107,7 +219,6 @@ external_gravity_isothermalpotential(const struct external_potential* potential,
                                      struct gpart* g) {
 
   const float G_newton = phys_const->const_newton_G;
-
   const float dx = g->x[0] - potential->isothermal_potential.x;
   const float dy = g->x[1] - potential->isothermal_potential.y;
   const float dz = g->x[2] - potential->isothermal_potential.z;
@@ -119,10 +230,11 @@ external_gravity_isothermalpotential(const struct external_potential* potential,
   g->a_grav[0] += term * dx;
   g->a_grav[1] += term * dy;
   g->a_grav[2] += term * dz;
-  // error(" %f %f %f %f", vrot, rinv2, dx, g->a_grav[0]);
 }
 
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
+
+/* ------------------------------------------------------------------------- */
 
 /* Include exteral pointmass potential */
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
@@ -161,10 +273,11 @@ external_gravity_pointmass_timestep(const struct external_potential* potential,
 }
 
 /**
- * @brief Computes the gravitational acceleration of a particle due to a point
- * mass
+ * @brief Computes the gravitational acceleration of a particle due to a
+ * point mass
  *
- * Note that the accelerations are multiplied by Newton's G constant later on.
+ * Note that the accelerations are multiplied by Newton's G constant later
+ * on.
  *
  * @param potential The proerties of the external potential.
  * @param phys_const The physical constants in internal units.
@@ -187,9 +300,12 @@ __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
 
 #endif /* EXTERNAL_POTENTIAL_POINTMASS */
 
+/* ------------------------------------------------------------------------- */
+
 /* Now, some generic functions, defined in the source file */
 void potential_init(const struct swift_params* parameter_file,
-                    struct UnitSystem* us,
+                    const struct phys_const* phys_const,
+                    const struct UnitSystem* us,
                     struct external_potential* potential);
 
 void potential_print(const struct external_potential* potential);

@@ -8,24 +8,25 @@ iplot = 1 ; if iplot = 1, make plot of E/Lz conservation, else, simply compare f
 @physunits
 
 indir    = './'
-basefile = 'Isothermal_'
+basefile = 'Disk-Patch_'
 
 ; set properties of potential
-uL   = 1e3 * phys.pc             ; unit of length
-uM   = phys.msun                 ; unit of mass
-uV   = 1d5                       ; unit of velocity
-vrot = 200.                      ; km/s
-r200 = 100.                      ; virial radius
+uL   = phys.pc                  ; unit of length
+uM   = phys.msun                ; unit of mass
+uV   = 1d5                      ; unit of velocity
+
+; properties of patch
+surface_density = 10.
+scale_height    = 100.
 
 ; derived units
 constG   = 10.^(alog10(phys.g)+alog10(uM)-2d0*alog10(uV)-alog10(uL)) ;
-pcentre  = [100.,100.,100.] * 1d3 * pc / uL
+pcentre  = [0.,0.,300.] * pc / uL
 
 ;
 infile = indir + basefile + '*'
 spawn,'ls -1 '+infile,res
 nfiles = n_elements(res)
-
 
 
 ; choose: calculate change of energy and Lz, comparing first and last
@@ -56,7 +57,7 @@ yout     = fltarr(nfollow, nsave) ; y
 zout     = fltarr(nfollow, nsave) ; z
 eout     = fltarr(nfollow, nsave) ; energies
 ekin     = fltarr(nfollow, nsave)
-epot     = fltarr(nfollow, nsave)
+epot     = fltarr(nfollow, nsave) ; 2 pi G Sigma b ln(cosh(z/b)) + const
 tout     = fltarr(nsave)
 
 
@@ -70,13 +71,14 @@ for ifile=0,nfiles-1,nskip do begin
    v      = h5rd(inf,'PartType1/Velocities')
    id     = h5rd(inf,'PartType1/ParticleIDs')
    indx   = sort(id)
-;
-   id     = id[indx]
-   for ic=0,2 do begin
-      tmp = reform(p[ic,*]) & p[ic,*] = tmp[indx]
-      tmp = reform(v[ic,*]) & v[ic,*] = tmp[indx]
-   endfor
 
+;; ;  if you want to sort particles by ID
+;;    id     = id[indx]
+;;    for ic=0,2 do begin
+;;       tmp = reform(p[ic,*]) & p[ic,*] = tmp[indx]
+;;       tmp = reform(v[ic,*]) & v[ic,*] = tmp[indx]
+;;    endfor
+   
 
 ; calculate energy
    dd  = size(p,/dimen) & npart = dd[1]
@@ -88,25 +90,22 @@ for ifile=0,nfiles-1,nskip do begin
    yout[*,isave] = p[1,0:nfollow-1]-pcentre[1]
    zout[*,isave] = p[2,0:nfollow-1]-pcentre[2]
    Lz  = (p[0,*]-pcentre[0]) * v[1,*] - (p[1,*]-pcentre[1]) * v[0,*]
-   dr = sqrt(dr)
+   dz  = reform(p[2,0:nfollow-1]-pcentre[2])
 ;   print,'time = ',time,p[0,0],v[0,0],id[0]
    ek   = 0.5 * dv
-;   ep   = - constG * mextern / dr
-   ep   = -vrot*vrot * (1 + alog(r200/dr))
+   ep   = fltarr(nfollow)
+   ep   = 2 * !pi * constG * surface_density * scale_height * alog(cosh(abs(dz)/scale_height))
    ener = ek + ep
    tout(isave) = time
    lout[*,isave] = lz[0:nfollow-1]
    eout(*,isave) = ener[0:nfollow-1]
    ekin(*,isave) = ek[0:nfollow-1]
    epot(*,isave) = ep[0:nfollow-1]
-
-;  write some output
-;   print,' time= ',time,' e= ',eout[0],' Lz= ',lz[0],format='(%a %f %a
-;   %f)'
    print,format='('' time= '',f7.1,'' E= '',f9.2,'' Lz= '',e9.2)', time,eout[0],lz[0]
    isave = isave + 1
    
 endfor
+
 x0 = reform(xout[0,*])
 y0 = reform(xout[1,*])
 z0 = reform(xout[2,*])
@@ -136,23 +135,14 @@ if(iplot eq 1) then begin
    legend,['dE/E','dL/L'],linestyle=[0,0],color=[black,red],box=0,/bottom,/left
    screen_to_png,'e-time.png'
 
-;  plot orbits of those particles
+;  plot vertical oscillation
    win,2
-   xr = [-100,100]
-   yr = xr
+   xr = [min(tout), max(tout)]
+   yr = [-3,3]*scale_height
    plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/iso,/nodata,xtitle='x',ytitle='y'
    color = floor(findgen(nplot)*255/float(nplot))
-   for i=0,nplot-1 do oplot,xout[i,*],yout[i,*],color=color(i)
+   for i=0,nplot-1 do oplot,tout,zout[i,*],color=color(i)
    screen_to_png,'orbit.png'
-
-; plot radial position of these particles
-   win,4
-   xr = [min(tout), max(tout)]
-   yr = [0,80]
-   plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/nodata,xtitle='t',ytitle='r'
-   color = floor(findgen(nplot)*255/float(nplot))
-for i=0,nplot-1 do begin dr = sqrt(reform(xout[i,*])^2 + reform(yout[i,*])^2) &  oplot,tout,dr,color=color[i] & endfor
-   screen_to_png,'r-time.png'
 
 ; make histogram of energy changes at end
    win,6

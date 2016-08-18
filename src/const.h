@@ -36,6 +36,9 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
+/* Thermal energy per unit mass used as a constant for the isothermal EoS */
+#define const_isothermal_internal_energy 20.2615290634f
+
 /* Dimensionality of the problem */
 #define HYDRO_DIMENSION_3D
 //#define HYDRO_DIMENSION_2D
@@ -72,6 +75,7 @@
 /* External gravity properties */
 #define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+//#define EXTERNAL_POTENTIAL_DISK_PATCH
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

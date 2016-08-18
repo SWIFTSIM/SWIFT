@@ -48,7 +48,10 @@ gravity_compute_timestep_external(const struct external_potential* potential,
   dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential,
                                                                phys_const, gp));
 #endif
-
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  dt = fminf(dt,
+             external_gravity_disk_patch_timestep(potential, phys_const, gp));
+#endif
   return dt;
 }
 
@@ -128,12 +131,13 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  *
  * This function only branches towards the potential chosen by the user.
  *
+ * @param time The current time in internal units.
  * @param potential The properties of the external potential.
  * @param phys_const The physical constants in internal units.
  * @param gp The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void external_gravity(
-    const struct external_potential* potential,
+    double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* gp) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
@@ -141,6 +145,9 @@ __attribute__((always_inline)) INLINE static void external_gravity(
 #endif
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
   external_gravity_isothermalpotential(potential, phys_const, gp);
+#endif
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  external_gravity_disk_patch_potential(time, potential, phys_const, gp);
 #endif
 }
 
