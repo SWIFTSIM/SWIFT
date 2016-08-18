@@ -76,9 +76,6 @@
 #define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 //#define EXTERNAL_POTENTIAL_DISK_PATCH
-/* Add viscuous force to gas particles to speed-up glass making for disk-patch
- * ICs */
-//#define EXTERNAL_POTENTIAL_DISK_PATCH_ICS
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

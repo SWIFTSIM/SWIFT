@@ -34,28 +34,10 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  Disk-Patch.hdf5       # The file to read
-  h_scaling:  1.                    # A scaling factor to apply to all smoothing lengths in the ICs.
-  shift_x:    0.                    # A shift to apply to all particles read from the ICs (in internal units).
-  shift_y:    0.
-  shift_z:    0.
 
 # External potential parameters
-PointMass:
-	position_x:      50.     # location of external point mass in internal units
-	position_y:      50.
-	position_z:      50.	
-	mass:            1e10     # mass of external point mass in internal units
-	timestep_mult:   0.03     # controls time step
-
-IsothermalPotential:
-	position_x:      100.     # location of centre of isothermal potential in internal units
-	position_y:      100.
-	position_z:      100.	
-	vrot:            200.     # rotation speed of isothermal potential in internal units
-	timestep_mult:   0.03     # controls time step
-
 Disk-PatchPotential:
-	surface_density: 10.
-	scale_height:    100.
-	z_disk:          300.
-	timestep_mult:   0.03
+  surface_density: 10.
+  scale_height:    100.
+  z_disk:          300.
+  timestep_mult:   0.03

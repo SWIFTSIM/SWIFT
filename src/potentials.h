@@ -61,6 +61,7 @@ struct external_potential {
     double scale_height;
     double z_disk;
     double dynamical_time;
+    double growth_time;
     double timestep_mult;
   } disk_patch_potential;
 #endif
@@ -148,30 +149,19 @@ external_gravity_disk_patch_potential(
   g->a_grav[0] += 0;
   g->a_grav[1] += 0;
 
-#ifdef EXTERNAL_POTENTIAL_DISK_PATCH_ICS
   float reduction_factor = 1.;
-  if (time < 5 * t_dyn) reduction_factor = time / (5 * t_dyn);
-#else
-  const float reduction_factor = 1.;
-#endif
+  if (time < potential->disk_patch_potential.growth_time * t_dyn)
+    reduction_factor =
+        time / (potential->disk_patch_potential.growth_time * t_dyn);
 
   const float z_accel =
       reduction_factor * 2 * G_newton * M_PI *
       potential->disk_patch_potential.surface_density *
       tanh(fabs(dz) / potential->disk_patch_potential.scale_height);
 
-  if (dz > 0)
-    g->a_grav[2] -=
-        z_accel /
-        G_newton; /* returned acceleraton is multiplied by G later on */
+  /* Accelerations. Note that they are multiplied by G later on */
+  if (dz > 0) g->a_grav[2] -= z_accel / G_newton;
   if (dz < 0) g->a_grav[2] += z_accel / G_newton;
-
-#ifdef EXTERNAL_POTENTIAL_DISK_PATCH_ICS
-  /* TT: add viscous drag */
-  g->a_grav[0] -= g->v_full[0] / (2 * t_dyn) / G_newton;
-  g->a_grav[1] -= g->v_full[1] / (2 * t_dyn) / G_newton;
-  g->a_grav[2] -= g->v_full[2] / (2 * t_dyn) / G_newton;
-#endif
 }
 #endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 

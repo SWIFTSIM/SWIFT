@@ -1,13 +1,10 @@
 Setup for a potential of a patch disk, see Creasey, Theuns &
 Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
 
+The density is given by
 rho(z) = (Sigma/2b) / cosh^2(z/b)
-where Sigma is the surface density, and b the scale height
-the corresponding force is
-dphi/dz = 2 pi G Sigma tanh(z/b)
+where Sigma is the surface density, and b the scale height.
 
-which satifies d^2phi/dz^2 = 4 pi G rho
-
-
-
-
+The corresponding force is
+dphi/dz = 2 pi G Sigma tanh(z/b),
+which satifies d^2phi/dz^2 = 4 pi G rho.
