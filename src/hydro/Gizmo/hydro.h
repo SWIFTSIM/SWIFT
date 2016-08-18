@@ -343,13 +343,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
            this is indeed the case. */
   if (p->force.dt) {
     p->a_hydro[0] =
-        (p->conserved.momentum[0] / p->conserved.mass - p->primitives.v[0]) /
+        (p->conserved.momentum[0] / p->conserved.mass - p->force.v_full[0]) /
         p->force.dt;
     p->a_hydro[1] =
-        (p->conserved.momentum[1] / p->conserved.mass - p->primitives.v[1]) /
+        (p->conserved.momentum[1] / p->conserved.mass - p->force.v_full[1]) /
         p->force.dt;
     p->a_hydro[2] =
-        (p->conserved.momentum[2] / p->conserved.mass - p->primitives.v[2]) /
+        (p->conserved.momentum[2] / p->conserved.mass - p->force.v_full[2]) /
         p->force.dt;
 
     p->du_dt = p->conserved.flux.energy / p->force.dt;

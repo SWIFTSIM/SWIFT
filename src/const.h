@@ -65,6 +65,22 @@
 //#define GIZMO_SPH
 #define SHADOWSWIFT
 
+/* Riemann solver to use (GIZMO_SPH only) */
+#define RIEMANN_SOLVER_EXACT
+//#define RIEMANN_SOLVER_TRRS
+//#define RIEMANN_SOLVER_HLLC
+
+/* Type of gradients to use (GIZMO_SPH only)
+   If no option is chosen, no gradients are used (first order scheme) */
+//#define GRADIENTS_SPH
+#define GRADIENTS_GIZMO
+
+/* Types of slope limiter to use (GIZMO_SPH only)
+   Different slope limiters can be combined, so multiple options may
+   be selected */
+#define SLOPE_LIMITER_PER_FACE
+#define SLOPE_LIMITER_CELL_WIDE
+
 /* Self gravity stuff. */
 #define const_gravity_multipole_order 2
 #define const_gravity_a_smooth 1.25f
