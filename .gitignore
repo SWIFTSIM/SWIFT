@@ -79,7 +79,7 @@ tests/testRiemannTRRS
 tests/testRiemannHLLC
 tests/testMatrixInversion
 tests/testVoronoi1D
-tests/threadpool_test
+tests/testVoronoi3D
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf
