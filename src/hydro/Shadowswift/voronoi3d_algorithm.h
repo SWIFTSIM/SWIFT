@@ -21,6 +21,9 @@
 #define SWIFT_VORONOI3D_ALGORITHM_H
 
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "error.h"
 #include "inline.h"
 #include "voronoi3d_cell.h"
 
@@ -1219,6 +1222,13 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
   cell->centroid[0] += cell->x[0];
   cell->centroid[1] += cell->x[1];
   cell->centroid[2] += cell->x[2];
+
+  /* Reset the edges: we still need them for the face calculation */
+  for (i = 0; i < VORONOI3D_MAXNUMEDGE; ++i) {
+    if (cell->edges[i] < 0) {
+      cell->edges[i] = -1 - cell->edges[i];
+    }
+  }
 }
 
 /**
@@ -1389,24 +1399,36 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
   }
   max_radius = sqrtf(max_radius);
 
-  return max_radius;
+  return 2.0f * max_radius;
 }
 
 /**
- * @brief Get the oriented surface area and midpoint of the face between a
- * 3D Voronoi cell and the given neighbour
+ * @brief Get the surface area and midpoint of the face between a 3D Voronoi
+ * cell and the given neighbour
  *
  * @param cell 3D Voronoi cell.
  * @param ngb ID of a particle that is possibly a neighbour of this cell->
- * @param A Array to store the oriented surface area in.
  * @param midpoint Array to store the relative position of the face in.
- * @return 0 if the given neighbour is not a neighbour, 1 otherwise.
+ * @return 0 if the given neighbour is not a neighbour, the surface area of
+ * the face otherwise.
  */
-__attribute__((always_inline)) INLINE int voronoi_get_face(
-    struct voronoi_cell *cell, unsigned long long ngb, float *A,
-    float *midpoint) {
+__attribute__((always_inline)) INLINE float voronoi_get_face(
+    struct voronoi_cell *cell, unsigned long long ngb, float *midpoint) {
 
-  return 0;
+  int i = 0;
+  while (i < cell->nface && cell->ngbs[i] != ngb) {
+    i++;
+  }
+  if (i == cell->nface) {
+    /* Ngb not found */
+    return 0.0f;
+  }
+
+  midpoint[0] = cell->face_midpoints[i][0];
+  midpoint[1] = cell->face_midpoints[i][1];
+  midpoint[2] = cell->face_midpoints[i][2];
+
+  return cell->face_areas[i];
 }
 
 /**

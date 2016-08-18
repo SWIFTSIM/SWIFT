@@ -134,8 +134,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   float r = sqrtf(r2);
   int k;
-  float A[3];
-  float Anorm;
+  float A;
   float xij_i[3];
   float vmax, dvdotdx;
   float vi[3], vj[3], vij[3];
@@ -143,7 +142,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float dti, dtj, mindt;
   float n_unit[3];
 
-  if (!voronoi_get_face(&pi->cell, pj->id, A, xij_i)) {
+  A = voronoi_get_face(&pi->cell, pj->id, xij_i);
+  if (!A) {
     /* this neighbour does not share a face with the cell, return */
     return;
   }
@@ -190,11 +190,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   dti = mindt;
   dtj = mindt;
 
-  Anorm = A[0] * A[0] + A[1] * A[1] + A[2] * A[2];
-
   /* compute the normal vector of the interface */
-  Anorm = sqrtf(Anorm);
-  for (k = 0; k < 3; k++) n_unit[k] = A[k] / Anorm;
+  for (k = 0; k < 3; ++k) {
+    n_unit[k] = -dx[k] / r;
+  }
 
   /* Compute interface velocity */
   float fac = (vi[0] - vj[0]) * (xij_i[0] + 0.5f * dx[0]) +
@@ -261,19 +260,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Update conserved variables */
   /* eqn. (16) */
-  pi->conserved.flux.mass -= dti * Anorm * totflux[0];
-  pi->conserved.flux.momentum[0] -= dti * Anorm * totflux[1];
-  pi->conserved.flux.momentum[1] -= dti * Anorm * totflux[2];
-  pi->conserved.flux.momentum[2] -= dti * Anorm * totflux[3];
-  pi->conserved.flux.energy -= dti * Anorm * totflux[4];
+  pi->conserved.flux.mass -= dti * A * totflux[0];
+  pi->conserved.flux.momentum[0] -= dti * A * totflux[1];
+  pi->conserved.flux.momentum[1] -= dti * A * totflux[2];
+  pi->conserved.flux.momentum[2] -= dti * A * totflux[3];
+  pi->conserved.flux.energy -= dti * A * totflux[4];
 
   float ekin = 0.5f * (pi->primitives.v[0] * pi->primitives.v[0] +
                        pi->primitives.v[1] * pi->primitives.v[1] +
                        pi->primitives.v[2] * pi->primitives.v[2]);
-  pi->conserved.flux.energy += dti * Anorm * totflux[1] * pi->primitives.v[0];
-  pi->conserved.flux.energy += dti * Anorm * totflux[2] * pi->primitives.v[1];
-  pi->conserved.flux.energy += dti * Anorm * totflux[3] * pi->primitives.v[2];
-  pi->conserved.flux.energy -= dti * Anorm * totflux[0] * ekin;
+  pi->conserved.flux.energy += dti * A * totflux[1] * pi->primitives.v[0];
+  pi->conserved.flux.energy += dti * A * totflux[2] * pi->primitives.v[1];
+  pi->conserved.flux.energy += dti * A * totflux[3] * pi->primitives.v[2];
+  pi->conserved.flux.energy -= dti * A * totflux[0] * ekin;
 
   /* here is how it works:
      Mode will only be 1 if both particles are ACTIVE and they are in the same
@@ -288,19 +287,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
   if (mode == 1 || pj->ti_end > pi->ti_end) {
-    pj->conserved.flux.mass += dtj * Anorm * totflux[0];
-    pj->conserved.flux.momentum[0] += dtj * Anorm * totflux[1];
-    pj->conserved.flux.momentum[1] += dtj * Anorm * totflux[2];
-    pj->conserved.flux.momentum[2] += dtj * Anorm * totflux[3];
-    pj->conserved.flux.energy += dtj * Anorm * totflux[4];
+    pj->conserved.flux.mass += dtj * A * totflux[0];
+    pj->conserved.flux.momentum[0] += dtj * A * totflux[1];
+    pj->conserved.flux.momentum[1] += dtj * A * totflux[2];
+    pj->conserved.flux.momentum[2] += dtj * A * totflux[3];
+    pj->conserved.flux.energy += dtj * A * totflux[4];
 
     ekin = 0.5f * (pj->primitives.v[0] * pj->primitives.v[0] +
                    pj->primitives.v[1] * pj->primitives.v[1] +
                    pj->primitives.v[2] * pj->primitives.v[2]);
-    pj->conserved.flux.energy -= dtj * Anorm * totflux[1] * pj->primitives.v[0];
-    pj->conserved.flux.energy -= dtj * Anorm * totflux[2] * pj->primitives.v[1];
-    pj->conserved.flux.energy -= dtj * Anorm * totflux[3] * pj->primitives.v[2];
-    pj->conserved.flux.energy += dtj * Anorm * totflux[0] * ekin;
+    pj->conserved.flux.energy -= dtj * A * totflux[1] * pj->primitives.v[0];
+    pj->conserved.flux.energy -= dtj * A * totflux[2] * pj->primitives.v[1];
+    pj->conserved.flux.energy -= dtj * A * totflux[3] * pj->primitives.v[2];
+    pj->conserved.flux.energy += dtj * A * totflux[0] * ekin;
   }
 }
 

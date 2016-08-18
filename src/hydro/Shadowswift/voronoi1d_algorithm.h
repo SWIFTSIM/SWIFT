@@ -128,43 +128,37 @@ __attribute__((always_inline)) INLINE float voronoi_cell_finalize(
  * deal with it appropriately.
  *
  * For this specific case, we simply check if the neighbour is the left or
- * right neighbour and set the surface area to the unit vector pointing either
- * to the right or to the left. The midpoint is set to the relative position
- * vector of the appropriate face.
+ * right neighbour and set the surface area to 1. The midpoint is set to the
+ * relative position vector of the appropriate face.
  *
  * @param cell 1D Voronoi cell.
  * @param ngb ID of a particle that is possibly a neighbour of this cell.
- * @param A Array to store the oriented surface area in.
  * @param midpoint Array to store the relative position of the face in.
- * @return 0 if the given neighbour is not a neighbour, 1 otherwise.
+ * @return 0 if the given neighbour is not a neighbour, surface area 1.0f
+ * otherwise.
  */
-__attribute__((always_inline)) INLINE int voronoi_get_face(
-    struct voronoi_cell *cell, unsigned long long ngb, float *A,
-    float *midpoint) {
+__attribute__((always_inline)) INLINE float voronoi_get_face(
+    struct voronoi_cell *cell, unsigned long long ngb, float *midpoint) {
 
   if (ngb != cell->idL && ngb != cell->idR) {
     /* this is perfectly possible: we interact with all particles within the
        smoothing length, and they do not need to be all neighbours.
        If this happens, we return 0, so that the flux method can return */
-    return 0;
+    return 0.0f;
   }
 
   if (ngb == cell->idL) {
     /* Left face */
-    A[0] = -1.0f;
     midpoint[0] = cell->xL;
   } else {
     /* Right face */
-    A[0] = 1.0f;
     midpoint[0] = cell->xR;
   }
-  /* The other components of A and midpoint are just zero */
-  A[1] = 0.0f;
-  A[2] = 0.0f;
+  /* The other components of midpoint are just zero */
   midpoint[1] = 0.0f;
   midpoint[2] = 0.0f;
 
-  return 1;
+  return 1.0f;
 }
 
 /**

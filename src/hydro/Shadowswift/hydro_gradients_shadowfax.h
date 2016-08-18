@@ -86,14 +86,13 @@ __attribute__((always_inline)) INLINE void hydro_gradients_single_quantity(
 __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
-  float A[3], midpoint[3];
+  float A, midpoint[3];
 
-  if (!voronoi_get_face(&pi->cell, pj->id, A, midpoint)) {
+  A = voronoi_get_face(&pi->cell, pj->id, midpoint);
+  if (!A) {
     /* particle is not a cell neighbour: do nothing */
     return;
   }
-
-  float Anorm = sqrtf(A[0] * A[0] + A[1] * A[1] + A[2] * A[2]);
 
   float c[3];
   /* midpoint is relative w.r.t. pi->x, as is dx */
@@ -108,15 +107,15 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
 
   float r = sqrtf(r2);
   hydro_gradients_single_quantity(pi->primitives.rho, pj->primitives.rho, c, dx,
-                                  r, Anorm, pi->primitives.gradients.rho);
+                                  r, A, pi->primitives.gradients.rho);
   hydro_gradients_single_quantity(pi->primitives.v[0], pj->primitives.v[0], c,
-                                  dx, r, Anorm, pi->primitives.gradients.v[0]);
+                                  dx, r, A, pi->primitives.gradients.v[0]);
   hydro_gradients_single_quantity(pi->primitives.v[1], pj->primitives.v[1], c,
-                                  dx, r, Anorm, pi->primitives.gradients.v[1]);
+                                  dx, r, A, pi->primitives.gradients.v[1]);
   hydro_gradients_single_quantity(pi->primitives.v[2], pj->primitives.v[2], c,
-                                  dx, r, Anorm, pi->primitives.gradients.v[2]);
+                                  dx, r, A, pi->primitives.gradients.v[2]);
   hydro_gradients_single_quantity(pi->primitives.P, pj->primitives.P, c, dx, r,
-                                  Anorm, pi->primitives.gradients.P);
+                                  A, pi->primitives.gradients.P);
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 
@@ -125,19 +124,15 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
   mindx[1] = -dx[1];
   mindx[2] = -dx[2];
   hydro_gradients_single_quantity(pj->primitives.rho, pi->primitives.rho, c,
-                                  mindx, r, Anorm,
-                                  pj->primitives.gradients.rho);
+                                  mindx, r, A, pj->primitives.gradients.rho);
   hydro_gradients_single_quantity(pj->primitives.v[0], pi->primitives.v[0], c,
-                                  mindx, r, Anorm,
-                                  pj->primitives.gradients.v[0]);
+                                  mindx, r, A, pj->primitives.gradients.v[0]);
   hydro_gradients_single_quantity(pj->primitives.v[1], pi->primitives.v[1], c,
-                                  mindx, r, Anorm,
-                                  pj->primitives.gradients.v[1]);
+                                  mindx, r, A, pj->primitives.gradients.v[1]);
   hydro_gradients_single_quantity(pj->primitives.v[2], pi->primitives.v[2], c,
-                                  mindx, r, Anorm,
-                                  pj->primitives.gradients.v[2]);
+                                  mindx, r, A, pj->primitives.gradients.v[2]);
   hydro_gradients_single_quantity(pj->primitives.P, pi->primitives.P, c, mindx,
-                                  r, Anorm, pj->primitives.gradients.P);
+                                  r, A, pj->primitives.gradients.P);
 
   hydro_slope_limit_cell_collect(pj, pi, r);
 }
@@ -156,14 +151,13 @@ __attribute__((always_inline)) INLINE static void
 hydro_gradients_nonsym_collect(float r2, float *dx, float hi, float hj,
                                struct part *pi, struct part *pj) {
 
-  float A[3], midpoint[3];
+  float A, midpoint[3];
 
-  if (!voronoi_get_face(&pi->cell, pj->id, A, midpoint)) {
+  A = voronoi_get_face(&pi->cell, pj->id, midpoint);
+  if (!A) {
     /* particle is not a cell neighbour: do nothing */
     return;
   }
-
-  float Anorm = sqrtf(A[0] * A[0] + A[1] * A[1] + A[2] * A[2]);
 
   float c[3];
   /* midpoint is relative w.r.t. pi->x, as is dx */
@@ -178,15 +172,15 @@ hydro_gradients_nonsym_collect(float r2, float *dx, float hi, float hj,
 
   float r = sqrtf(r2);
   hydro_gradients_single_quantity(pi->primitives.rho, pj->primitives.rho, c, dx,
-                                  r, Anorm, pi->primitives.gradients.rho);
+                                  r, A, pi->primitives.gradients.rho);
   hydro_gradients_single_quantity(pi->primitives.v[0], pj->primitives.v[0], c,
-                                  dx, r, Anorm, pi->primitives.gradients.v[0]);
+                                  dx, r, A, pi->primitives.gradients.v[0]);
   hydro_gradients_single_quantity(pi->primitives.v[1], pj->primitives.v[1], c,
-                                  dx, r, Anorm, pi->primitives.gradients.v[1]);
+                                  dx, r, A, pi->primitives.gradients.v[1]);
   hydro_gradients_single_quantity(pi->primitives.v[2], pj->primitives.v[2], c,
-                                  dx, r, Anorm, pi->primitives.gradients.v[2]);
+                                  dx, r, A, pi->primitives.gradients.v[2]);
   hydro_gradients_single_quantity(pi->primitives.P, pj->primitives.P, c, dx, r,
-                                  Anorm, pi->primitives.gradients.P);
+                                  A, pi->primitives.gradients.P);
 
   hydro_slope_limit_cell_collect(pi, pj, r);
 }

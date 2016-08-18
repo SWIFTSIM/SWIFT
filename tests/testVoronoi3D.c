@@ -64,12 +64,54 @@ void test_calculate_cell() {
   voronoi_initialize(&cell);
   /* Calculate the volume and centroid of the large cube. */
   voronoi_calculate_cell(&cell);
+  /* Calculate the faces. */
+  voronoi_calculate_faces(&cell);
 
   /* Update these values if you ever change to another large cube! */
   assert(cell.volume == 27.0f);
   assert(cell.centroid[0] = 0.5f);
   assert(cell.centroid[1] = 0.5f);
   assert(cell.centroid[2] = 0.5f);
+
+  /* Check cell neighbours. */
+  assert(cell.nface == 6);
+  assert(cell.ngbs[0] == VORONOI3D_BOX_FRONT);
+  assert(cell.ngbs[1] == VORONOI3D_BOX_LEFT);
+  assert(cell.ngbs[2] == VORONOI3D_BOX_BOTTOM);
+  assert(cell.ngbs[3] == VORONOI3D_BOX_TOP);
+  assert(cell.ngbs[4] == VORONOI3D_BOX_BACK);
+  assert(cell.ngbs[5] == VORONOI3D_BOX_RIGHT);
+
+  /* Check cell faces */
+  assert(cell.face_areas[0] == 9.0f);
+  assert(cell.face_midpoints[0][0] == 0.5f);
+  assert(cell.face_midpoints[0][1] == -1.0f);
+  assert(cell.face_midpoints[0][2] == 0.5f);
+
+  assert(cell.face_areas[1] == 9.0f);
+  assert(cell.face_midpoints[1][0] == -1.0f);
+  assert(cell.face_midpoints[1][1] == 0.5f);
+  assert(cell.face_midpoints[1][2] == 0.5f);
+
+  assert(cell.face_areas[2] == 9.0f);
+  assert(cell.face_midpoints[2][0] == 0.5f);
+  assert(cell.face_midpoints[2][1] == 0.5f);
+  assert(cell.face_midpoints[2][2] == -1.0f);
+
+  assert(cell.face_areas[3] == 9.0f);
+  assert(cell.face_midpoints[3][0] == 0.5f);
+  assert(cell.face_midpoints[3][1] == 0.5f);
+  assert(cell.face_midpoints[3][2] == 2.0f);
+
+  assert(cell.face_areas[4] == 9.0f);
+  assert(cell.face_midpoints[4][0] == 0.5f);
+  assert(cell.face_midpoints[4][1] == 2.0f);
+  assert(cell.face_midpoints[4][2] == 0.5f);
+
+  assert(cell.face_areas[5] == 9.0f);
+  assert(cell.face_midpoints[5][0] == 2.0f);
+  assert(cell.face_midpoints[5][1] == 0.5f);
+  assert(cell.face_midpoints[5][2] == 0.5f);
 }
 
 int main() {
@@ -116,14 +158,22 @@ int main() {
     error("Wrong centroid: %g %g %g!", cell.centroid[0], cell.centroid[1],
           cell.centroid[2]);
   }
-  /* Check neighbour order */
-  // TODO
 
-  /* Check face method */
-  float A[3];
-  float midpoint[3];
-  voronoi_get_face(&cell, 1, A, midpoint);
-  // TODO
+  /* Check faces. */
+  float A, midpoint[3];
+  A = voronoi_get_face(&cell, 1, midpoint);
+  if (A) {
+    if (A != 0.25f) {
+      error("Wrong surface area: %g!", A);
+    }
+    if (fabs(midpoint[0] - 0.25f) > 1.e-5 || fabs(midpoint[1] - 0.5f) > 1.e-5 ||
+        fabs(midpoint[2] - 0.5f) > 1.e-5) {
+      error("Wrong face midpoint: %g %g %g!", midpoint[0], midpoint[1],
+            midpoint[2]);
+    }
+  } else {
+    error("Neighbour not found!");
+  }
 
   return 0;
 }
