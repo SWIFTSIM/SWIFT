@@ -1865,6 +1865,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+#ifdef WITH_MPI
+
       /* Activate the send/recv flags. */
       if (ci->nodeID != engine_rank) {
 
@@ -1919,6 +1921,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_ti task.");
         l->t->skip = 0;
       }
+
+#endif
     }
 
     /* Kick? */

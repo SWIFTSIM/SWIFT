@@ -23,6 +23,9 @@
 #ifndef SWIFT_CELL_H
 #define SWIFT_CELL_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include <stddef.h>
 
@@ -124,11 +127,13 @@ struct cell {
   /* The hierarchical tasks. */
   struct task *ghost, *init, *kick;
 
+#ifdef WITH_MPI
   /* Task receiving data. */
   struct task *recv_xv, *recv_rho, *recv_ti;
 
   /* Task send data. */
   struct link *send_xv, *send_rho, *send_ti;
+#endif
 
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
