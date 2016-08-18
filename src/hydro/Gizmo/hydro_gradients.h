@@ -20,17 +20,14 @@
 #ifndef SWIFT_HYDRO_GRADIENTS_H
 #define SWIFT_HYDRO_GRADIENTS_H
 
-//#define SPH_GRADIENTS
-#define GIZMO_GRADIENTS
-
 #include "hydro_slope_limiters.h"
 
-#if defined(SPH_GRADIENTS)
+#if defined(GRADIENTS_SPH)
 
 #define HYDRO_GRADIENT_IMPLEMENTATION "SPH gradients (Price 2012)"
 #include "hydro_gradients_sph.h"
 
-#elif defined(GIZMO_GRADIENTS)
+#elif defined(GRADIENTS_GIZMO)
 
 #define HYDRO_GRADIENT_IMPLEMENTATION "GIZMO gradients (Hopkins 2015)"
 #include "hydro_gradients_gizmo.h"
