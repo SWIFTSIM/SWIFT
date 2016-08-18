@@ -224,10 +224,12 @@ void prepareArray(hid_t grp, char* fileName, FILE* xmfFile,
   }
 
   /* Impose data compression */
-  h_err = H5Pset_deflate(h_prop, 4);
-  if (h_err < 0) {
-    error("Error while setting compression options for field '%s'.",
-          props.name);
+  if(e->snapshotCompression > 0) {
+    h_err = H5Pset_deflate(h_prop, e->snapshotCompression);
+    if (h_err < 0) {
+      error("Error while setting compression options for field '%s'.",
+	    props.name);
+    }
   }
 
   /* Create dataset */

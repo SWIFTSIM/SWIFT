@@ -25,6 +25,7 @@ Snapshots:
   basename:   output      # Common part of the name of output files
   time_first: 0.          # Time of the first output (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+  compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
