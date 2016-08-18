@@ -1,3 +1,4 @@
+
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
@@ -59,9 +60,11 @@ void cooling_init(const struct swift_params* parameter_file,
   double T_min = cooling->creasey_cooling.min_temperature;
   double mu = cooling->creasey_cooling.mean_molecular_weight;
   double m_p = phys_const->const_proton_mass;
-
-  cooling->creasey_cooling.min_internal_energy = k_b * T_min / (hydro_gamma_minus_one * mu * m_p);  
-
+  double u_floor = k_b * T_min / (hydro_gamma_minus_one * mu * m_p);
+  double u_floor_cgs = u_floor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  
+  cooling->creasey_cooling.min_internal_energy = u_floor; 
+  cooling->creasey_cooling.min_internal_energy_cgs = u_floor_cgs;
 #endif /* CREASEY_COOLING */
 }
 
@@ -95,11 +98,11 @@ void update_entropy(const struct phys_const* const phys_const, const struct Unit
 		    const struct cooling_data* cooling, struct part* p, double dt){
 
   /*updates the entropy of a particle after integrating the cooling equation*/
-  float u_old;
-  float u_new;
-  float new_entropy;
-  float old_entropy = p->entropy;
-  float rho = p->rho;
+  double u_old;
+  double u_new;
+  double new_entropy;
+  double old_entropy = p->entropy;
+  double rho = p->rho;
 
   //  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
   u_old = hydro_get_internal_energy(p,0); // dt = 0 because using current entropy
@@ -111,15 +114,15 @@ void update_entropy(const struct phys_const* const phys_const, const struct Unit
 /*This function integrates the cooling equation, given the initial
   thermal energy, density and the timestep dt. Returns the final internal energy*/
 
-float calculate_new_thermal_energy(float u_old, float rho, float dt, 
+double calculate_new_thermal_energy(double u_old, double rho, double dt, 
 				   const struct cooling_data* cooling,
 				   const struct phys_const* const phys_const,
 				   const struct UnitSystem* us){
 #ifdef CONST_COOLING
   /*du/dt = -lambda, independent of density*/
-  float du_dt = -cooling->const_cooling.lambda;
-  float u_floor = cooling->const_cooling.min_energy;
-  float u_new;
+  double du_dt = -cooling->const_cooling.lambda;
+  double u_floor = cooling->const_cooling.min_energy;
+  double u_new;
   if (u_old - du_dt*dt > u_floor){
     u_new = u_old + du_dt*dt;
   }
@@ -130,23 +133,22 @@ float calculate_new_thermal_energy(float u_old, float rho, float dt,
 
 #ifdef CREASEY_COOLING
   /* rho*du/dt = -lambda*n_H^2 */
-  float u_new;
-  float m_p = phys_const->const_proton_mass;
-  float X_H = cooling->creasey_cooling.hydrogen_mass_abundance;
-  float lambda_cgs = cooling->creasey_cooling.lambda; //this is always in cgs
-  float u_floor = cooling->creasey_cooling.min_internal_energy;
+  double u_new;
+  double m_p = phys_const->const_proton_mass;
+  double X_H = cooling->creasey_cooling.hydrogen_mass_abundance;
+  double lambda_cgs = cooling->creasey_cooling.lambda; //this is always in cgs
+  double u_floor_cgs = cooling->creasey_cooling.min_internal_energy_cgs;
 
   /*convert from internal code units to cgs*/
-  float dt_cgs =  dt * units_cgs_conversion_factor(us,UNIT_CONV_TIME);
-  float rho_cgs = rho * units_cgs_conversion_factor(us,UNIT_CONV_DENSITY);
-  float m_p_cgs = m_p * units_cgs_conversion_factor(us,UNIT_CONV_MASS);
-  float n_H_cgs = rho_cgs / m_p_cgs;
-  float u_old_cgs =  u_old * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
-  float u_floor_cgs =  u_floor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
-  float du_dt_cgs = -lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
-  float u_new_cgs;
+  double dt_cgs =  dt * units_cgs_conversion_factor(us,UNIT_CONV_TIME);
+  double rho_cgs = rho * units_cgs_conversion_factor(us,UNIT_CONV_DENSITY);
+  double m_p_cgs = m_p * units_cgs_conversion_factor(us,UNIT_CONV_MASS);
+  double n_H_cgs = X_H * rho_cgs / m_p_cgs;
+  double u_old_cgs =  u_old * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  double du_dt_cgs = -lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
+  double u_new_cgs;
 
-  if (u_old_cgs + du_dt_cgs*dt_cgs > u_floor_cgs){
+  if (u_old_cgs + du_dt_cgs * dt_cgs > u_floor_cgs){
     u_new_cgs = u_old_cgs + du_dt_cgs*dt_cgs;
   }
   else{

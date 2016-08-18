@@ -56,6 +56,7 @@ struct cooling_data {
     double hydrogen_mass_abundance;
     double mean_molecular_weight;
     double min_internal_energy;
+    double min_internal_energy_cgs;
     double cooling_tstep_mult;
   } creasey_cooling;
 #endif
@@ -71,13 +72,13 @@ struct cooling_data {
  * @param phys_const The physical constants in internal units.
  * @param  Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float
+__attribute__((always_inline)) INLINE static double
 cooling_timestep(const struct cooling_data* cooling,
 		 const struct phys_const* const phys_const,
 		 const struct part* const p) {
 
-  const float cooling_rate = cooling->const_cooling.lambda;
-  const float internal_energy = hydro_get_internal_energy(p,0);// dt = 0 because using current entropy
+  const double cooling_rate = cooling->const_cooling.lambda;
+  const double internal_energy = hydro_get_internal_energy(p,0);// dt = 0 because using current entropy
   return  cooling->const_cooling.cooling_tstep_mult * internal_energy / cooling_rate;
 }
 
@@ -93,7 +94,7 @@ void cooling_init(const struct swift_params* parameter_file,
 void cooling_print(const struct cooling_data* cooling);
 void update_entropy(const struct phys_const* const phys_const, const struct UnitSystem* us,
 		    const struct cooling_data* cooling, struct part* p, double dt);
-float calculate_new_thermal_energy(float u_old, float rho, float dt, 
+double calculate_new_thermal_energy(double u_old, double rho, double dt, 
 				   const struct cooling_data* cooling,
 				   const struct phys_const* const phys_const,
 				   const struct UnitSystem* us);
