@@ -299,9 +299,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   } else {
     p->primitives.rho *= expf(w);
   }
-  p->primitives.v[0] += p->a_hydro[0] * dt;
-  p->primitives.v[1] += p->a_hydro[1] * dt;
-  p->primitives.v[2] += p->a_hydro[2] * dt;
+  p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
+  p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
+  p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
   float u = p->conserved.energy + p->du_dt * dt;
   p->primitives.P =
       hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
