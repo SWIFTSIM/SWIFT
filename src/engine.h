@@ -61,7 +61,8 @@ enum engine_policy {
   engine_policy_hydro = (1 << 8),
   engine_policy_self_gravity = (1 << 9),
   engine_policy_external_gravity = (1 << 10),
-  engine_policy_cosmology = (1 << 11)
+  engine_policy_cosmology = (1 << 11),
+  engine_policy_drift_all = (1 << 12)
 };
 
 extern const char *engine_policy_names[];

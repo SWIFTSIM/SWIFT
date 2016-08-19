@@ -225,11 +225,11 @@ void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   }
 
   /* Impose data compression */
-  if(e->snapshotCompression > 0) {
+  if (e->snapshotCompression > 0) {
     h_err = H5Pset_deflate(h_prop, e->snapshotCompression);
     if (h_err < 0) {
       error("Error while setting compression options for field '%s'.",
-	    props.name);
+            props.name);
     }
   }
 

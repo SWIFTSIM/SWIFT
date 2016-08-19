@@ -68,7 +68,7 @@
 #include "units.h"
 #include "version.h"
 
-const char *engine_policy_names[13] = {"none",
+const char *engine_policy_names[14] = {"none",
                                        "rand",
                                        "steal",
                                        "keep",
@@ -80,7 +80,8 @@ const char *engine_policy_names[13] = {"none",
                                        "hydro",
                                        "self_gravity",
                                        "external_gravity",
-                                       "cosmology_integration"};
+                                       "cosmology_integration",
+                                       "drift_all"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -2093,7 +2094,9 @@ void engine_prepare(struct engine *e) {
     e->drift_all = 1;
     threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
                    e->s->nr_cells, sizeof(struct cell), 1, e);
-    e->drift_all = 0;
+
+    /* Restore the default drifting policy */
+    e->drift_all = (e->policy & engine_policy_drift_all);
 
     /* And now rebuild */
     engine_rebuild(e);
@@ -2479,7 +2482,9 @@ void engine_step(struct engine *e) {
     e->drift_all = 1;
     threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
                    e->s->nr_cells, sizeof(struct cell), 1, e);
-    e->drift_all = 0;
+
+    /* Restore the default drifting policy */
+    e->drift_all = (e->policy & engine_policy_drift_all);
 
     /* Dump... */
     engine_dump_snapshot(e);
