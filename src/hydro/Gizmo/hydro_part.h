@@ -178,6 +178,20 @@ struct part {
 
   } force;
 
+  /* Specific stuff for the gravity-hydro coupling. */
+  struct {
+
+    /* Previous value of the gravitational acceleration. */
+    float old_a[3];
+
+    /* Previous value of the mass flux vector. */
+    float old_mflux[3];
+
+    /* Current value of the mass flux vector. */
+    float mflux[3];
+
+  } gravity;
+
   /* Particle mass (this field is also part of the conserved quantities...). */
   float mass;
 

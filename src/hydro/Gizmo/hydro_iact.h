@@ -385,6 +385,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
 
+  /* Store mass flux */
+  float mflux = dti * Anorm * totflux[0];
+  pi->gravity.mflux[0] += mflux * dx[0];
+  pi->gravity.mflux[1] += mflux * dx[1];
+  pi->gravity.mflux[2] += mflux * dx[2];
+
   /* Update conserved variables */
   /* eqn. (16) */
   pi->conserved.flux.mass -= dti * Anorm * totflux[0];
@@ -414,6 +420,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
   if (mode == 1 || pj->ti_end > pi->ti_end) {
+    /* Store mass flux */
+    mflux = dtj * Anorm * totflux[0];
+    pj->gravity.mflux[0] -= mflux * dx[0];
+    pj->gravity.mflux[1] -= mflux * dx[1];
+    pj->gravity.mflux[2] -= mflux * dx[2];
+
     pj->conserved.flux.mass += dtj * Anorm * totflux[0];
     pj->conserved.flux.momentum[0] += dtj * Anorm * totflux[1];
     pj->conserved.flux.momentum[1] += dtj * Anorm * totflux[2];
