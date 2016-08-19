@@ -13,7 +13,8 @@ To generate ICs ready for a scientific run:
 disk-patch potential switched on and using the parameters from
 'disk-patch-icc.yml'
 
-4) The ICs are then ready to be run for a science problem.
+4) The ICs are then ready to be run for a science problem. Rename the last 
+output to 'Disk-Patch-dynamic.hdf5'. These are now the ICs for the actual test.
 
 When running SWIFT with the parameters from 'disk-patch.yml' and an
 ideal gas EoS on these ICs the disk should stay in equilibrium.
