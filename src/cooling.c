@@ -98,11 +98,11 @@ void update_entropy(const struct phys_const* const phys_const, const struct Unit
 		    const struct cooling_data* cooling, struct part* p, double dt){
 
   /*updates the entropy of a particle after integrating the cooling equation*/
-  double u_old;
-  double u_new;
-  double new_entropy;
-  double old_entropy = p->entropy;
-  double rho = p->rho;
+  float u_old;
+  float u_new;
+  float new_entropy;
+  float old_entropy = p->entropy;
+  float rho = p->rho;
 
   //  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
   u_old = hydro_get_internal_energy(p,0); // dt = 0 because using current entropy
@@ -120,9 +120,9 @@ double calculate_new_thermal_energy(double u_old, double rho, double dt,
 				   const struct UnitSystem* us){
 #ifdef CONST_COOLING
   /*du/dt = -lambda, independent of density*/
-  double du_dt = -cooling->const_cooling.lambda;
-  double u_floor = cooling->const_cooling.min_energy;
-  double u_new;
+  float du_dt = -cooling->const_cooling.lambda;
+  float u_floor = cooling->const_cooling.min_energy;
+  float u_new;
   if (u_old - du_dt*dt > u_floor){
     u_new = u_old + du_dt*dt;
   }
@@ -133,20 +133,19 @@ double calculate_new_thermal_energy(double u_old, double rho, double dt,
 
 #ifdef CREASEY_COOLING
   /* rho*du/dt = -lambda*n_H^2 */
-  double u_new;
-  double m_p = phys_const->const_proton_mass;
-  double X_H = cooling->creasey_cooling.hydrogen_mass_abundance;
-  double lambda_cgs = cooling->creasey_cooling.lambda; //this is always in cgs
-  double u_floor_cgs = cooling->creasey_cooling.min_internal_energy_cgs;
+  float u_new;
+  float X_H = cooling->creasey_cooling.hydrogen_mass_abundance;
+  float lambda_cgs = cooling->creasey_cooling.lambda; //this is always in cgs
+  float u_floor_cgs = cooling->creasey_cooling.min_internal_energy_cgs;
 
   /*convert from internal code units to cgs*/
-  double dt_cgs =  dt * units_cgs_conversion_factor(us,UNIT_CONV_TIME);
-  double rho_cgs = rho * units_cgs_conversion_factor(us,UNIT_CONV_DENSITY);
-  double m_p_cgs = m_p * units_cgs_conversion_factor(us,UNIT_CONV_MASS);
-  double n_H_cgs = X_H * rho_cgs / m_p_cgs;
-  double u_old_cgs =  u_old * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
-  double du_dt_cgs = -lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
-  double u_new_cgs;
+  float dt_cgs =  dt * units_cgs_conversion_factor(us,UNIT_CONV_TIME);
+  float rho_cgs = rho * units_cgs_conversion_factor(us,UNIT_CONV_DENSITY);
+  float m_p_cgs = phys_const->const_proton_mass * units_cgs_conversion_factor(us,UNIT_CONV_MASS);
+  float n_H_cgs = X_H * rho_cgs / m_p_cgs;
+  float u_old_cgs =  u_old * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  float du_dt_cgs = -lambda_cgs * n_H_cgs * n_H_cgs / rho_cgs;
+  float u_new_cgs;
 
   if (u_old_cgs + du_dt_cgs * dt_cgs > u_floor_cgs){
     u_new_cgs = u_old_cgs + du_dt_cgs*dt_cgs;
