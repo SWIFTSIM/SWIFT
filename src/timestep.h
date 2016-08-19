@@ -74,7 +74,8 @@ __attribute__((always_inline)) INLINE static int get_gpart_timestep(
   /*     gravity_compute_timestep_self(e->physical_constants, gp); */
   const float new_dt_self = FLT_MAX;  // MATTHIEU
 
-  float new_dt = (new_dt_external < new_dt_self) ? new_dt_external : new_dt_self;
+  float new_dt =
+      (new_dt_external < new_dt_self) ? new_dt_external : new_dt_self;
 
   /* Limit timestep within the allowed range */
   new_dt = (new_dt < e->dt_max) ? new_dt : e->dt_max;
@@ -111,11 +112,12 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
     /*     gravity_compute_timestep_self(e->physical_constants, p->gpart); */
     const float new_dt_self = FLT_MAX;  // MATTHIEU
 
-    new_dt_grav = (new_dt_external < new_dt_self) ? new_dt_external : new_dt_self;
+    new_dt_grav =
+        (new_dt_external < new_dt_self) ? new_dt_external : new_dt_self;
   }
 
   /* Final time-step is minimum of hydro and gravity */
-  float new_dt = (new_dt_hydro < new_dt_grav) ? new_dt_hydro: new_dt_grav;
+  float new_dt = (new_dt_hydro < new_dt_grav) ? new_dt_hydro : new_dt_grav;
 
   /* Limit change in h */
   const float dt_h_change =

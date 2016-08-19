@@ -432,7 +432,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = (dvdr < 0.f) ? dvdr: 0.f;
+  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
@@ -707,7 +707,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = (dvdr < 0.f) ? dvdr: 0.f;
+  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */

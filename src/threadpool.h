@@ -57,5 +57,6 @@ void threadpool_init(struct threadpool *tp, int num_threads);
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data);
+void threadpool_clean(struct threadpool *tp);
 
 #endif /* SWIFT_THREADPOOL_H */
