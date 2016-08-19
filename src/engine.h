@@ -150,6 +150,7 @@ struct engine {
   double deltaTimeSnapshot;
   int ti_nextSnapshot;
   char snapshotBaseName[200];
+  int snapshotCompression;
   struct UnitSystem *snapshotUnits;
 
   /* Statistics information */

@@ -2918,6 +2918,8 @@ void engine_init(struct engine *e, struct space *s,
       parser_get_param_double(params, "Snapshots:delta_time");
   e->ti_nextSnapshot = 0;
   parser_get_param_string(params, "Snapshots:basename", e->snapshotBaseName);
+  e->snapshotCompression =
+      parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshotUnits = malloc(sizeof(struct UnitSystem));
   units_init_default(e->snapshotUnits, params, "Snapshots", internal_units);
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
