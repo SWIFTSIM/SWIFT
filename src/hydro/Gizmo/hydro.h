@@ -319,38 +319,23 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   /* Add normalization to h_dt. */
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  /* Update the conserved variables. We do this here and not in the kick,
-     since we need the updated variables below. */
-  p->conserved.mass += p->conserved.flux.mass;
-  p->conserved.momentum[0] += p->conserved.flux.momentum[0];
-  p->conserved.momentum[1] += p->conserved.flux.momentum[1];
-  p->conserved.momentum[2] += p->conserved.flux.momentum[2];
-  p->conserved.energy += p->conserved.flux.energy;
-
-  /* reset fluxes */
-  /* we can only do this here, since we need to keep the fluxes for inactive
-     particles */
-  p->conserved.flux.mass = 0.0f;
-  p->conserved.flux.momentum[0] = 0.0f;
-  p->conserved.flux.momentum[1] = 0.0f;
-  p->conserved.flux.momentum[2] = 0.0f;
-  p->conserved.flux.energy = 0.0f;
-
   /* Set the hydro acceleration, based on the new momentum and mass */
   /* NOTE: the momentum and mass are only correct for active particles, since
            only active particles have received flux contributions from all their
            neighbours. Since this method is only called for active particles,
            this is indeed the case. */
   if (p->force.dt) {
-    p->a_hydro[0] =
-        (p->conserved.momentum[0] / p->conserved.mass - p->force.v_full[0]) /
-        p->force.dt;
-    p->a_hydro[1] =
-        (p->conserved.momentum[1] / p->conserved.mass - p->force.v_full[1]) /
-        p->force.dt;
-    p->a_hydro[2] =
-        (p->conserved.momentum[2] / p->conserved.mass - p->force.v_full[2]) /
-        p->force.dt;
+    float mnew;
+    float vnew[3];
+
+    mnew = p->conserved.mass + p->conserved.flux.mass;
+    vnew[0] = (p->conserved.momentum[0] + p->conserved.flux.momentum[0]) / mnew;
+    vnew[1] = (p->conserved.momentum[1] + p->conserved.flux.momentum[1]) / mnew;
+    vnew[2] = (p->conserved.momentum[2] + p->conserved.flux.momentum[2]) / mnew;
+
+    p->a_hydro[0] = (vnew[0] - p->force.v_full[0]) / p->force.dt;
+    p->a_hydro[1] = (vnew[1] - p->force.v_full[1]) / p->force.dt;
+    p->a_hydro[2] = (vnew[2] - p->force.v_full[2]) / p->force.dt;
 
     p->du_dt = p->conserved.flux.energy / p->force.dt;
   } else {
@@ -373,7 +358,24 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt Half the physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {}
+    struct part* p, struct xpart* xp, float dt, float half_dt) {
+
+  /* Update conserved variables. */
+  p->conserved.mass += p->conserved.flux.mass;
+  p->conserved.momentum[0] += p->conserved.flux.momentum[0];
+  p->conserved.momentum[1] += p->conserved.flux.momentum[1];
+  p->conserved.momentum[2] += p->conserved.flux.momentum[2];
+  p->conserved.energy += p->conserved.flux.energy;
+
+  /* reset fluxes */
+  /* we can only do this here, since we need to keep the fluxes for inactive
+     particles */
+  p->conserved.flux.mass = 0.0f;
+  p->conserved.flux.momentum[0] = 0.0f;
+  p->conserved.flux.momentum[1] = 0.0f;
+  p->conserved.flux.momentum[2] = 0.0f;
+  p->conserved.flux.energy = 0.0f;
+}
 
 /**
  * @brief Returns the internal energy of a particle
