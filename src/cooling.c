@@ -56,12 +56,9 @@ void cooling_init(const struct swift_params* parameter_file,
   cooling->creasey_cooling.cooling_tstep_mult = parser_get_param_double(parameter_file, "CreaseyCooling:cooling_tstep_mult");
 
   /*convert minimum temperature into minimum internal energy*/
-  double k_b = phys_const->const_boltzmann_k;
-  double T_min = cooling->creasey_cooling.min_temperature;
-  double mu = cooling->creasey_cooling.mean_molecular_weight;
-  double m_p = phys_const->const_proton_mass;
-  double u_floor = k_b * T_min / (hydro_gamma_minus_one * mu * m_p);
-  double u_floor_cgs = u_floor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  float u_floor = phys_const->const_boltzmann_k *  cooling->creasey_cooling.min_temperature
+                    / (hydro_gamma_minus_one * cooling->creasey_cooling.mean_molecular_weight * phys_const->const_proton_mass);
+  float u_floor_cgs = u_floor * units_cgs_conversion_factor(us,UNIT_CONV_ENERGY_PER_UNIT_MASS);
   
   cooling->creasey_cooling.min_internal_energy = u_floor; 
   cooling->creasey_cooling.min_internal_energy_cgs = u_floor_cgs;
@@ -95,7 +92,7 @@ void cooling_print(const struct cooling_data* cooling) {
 }
 
 void update_entropy(const struct phys_const* const phys_const, const struct UnitSystem* us,
-		    const struct cooling_data* cooling, struct part* p, double dt){
+		    const struct cooling_data* cooling, struct part* p, float dt){
 
   /*updates the entropy of a particle after integrating the cooling equation*/
   float u_old;
@@ -114,7 +111,7 @@ void update_entropy(const struct phys_const* const phys_const, const struct Unit
 /*This function integrates the cooling equation, given the initial
   thermal energy, density and the timestep dt. Returns the final internal energy*/
 
-double calculate_new_thermal_energy(double u_old, double rho, double dt, 
+float calculate_new_thermal_energy(float u_old, float rho, float dt, 
 				   const struct cooling_data* cooling,
 				   const struct phys_const* const phys_const,
 				   const struct UnitSystem* us){
