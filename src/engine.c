@@ -3369,4 +3369,5 @@ void engine_clean(struct engine *e) {
   free(e->links);
   scheduler_clean(&e->sched);
   space_clean(e->s);
+  threadpool_clean(&e->threadpool);
 }
