@@ -81,16 +81,6 @@ extern int engine_rank;
 /* The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1 << 28)
 
-/* Mini struct to link cells to density/force tasks. */
-struct link {
-
-  /* The task pointer. */
-  struct task *t;
-
-  /* The next pointer. */
-  struct link *next;
-};
-
 /* Data structure for the engine. */
 struct engine {
 
@@ -138,6 +128,9 @@ struct engine {
 
   /* Minimal ti_end for the next time-step */
   int ti_end_min;
+
+  /* Are we drifting all particles now ? */
+  int drift_all;
 
   /* Number of particles updated */
   size_t updates, g_updates;

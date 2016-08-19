@@ -2088,6 +2088,14 @@ void engine_prepare(struct engine *e) {
 
   /* Did this not go through? */
   if (rebuild) {
+
+    /* First drift all particles to the current time */
+    e->drift_all = 1;
+    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+                   e->s->nr_cells, sizeof(struct cell), 1, e);
+    e->drift_all = 0;
+
+    /* And now rebuild */
     engine_rebuild(e);
   }
 
@@ -2468,8 +2476,10 @@ void engine_step(struct engine *e) {
     snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
+    e->drift_all = 1;
     threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
                    e->s->nr_cells, sizeof(struct cell), 1, e);
+    e->drift_all = 0;
 
     /* Dump... */
     engine_dump_snapshot(e);
@@ -2486,7 +2496,7 @@ void engine_step(struct engine *e) {
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
 
-  /* Drift everybody */
+  /* Drift only the necessary particles */
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
@@ -2915,6 +2925,7 @@ void engine_init(struct engine *e, struct space *s,
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
+  e->drift_all = 0;
   e->internalUnits = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");

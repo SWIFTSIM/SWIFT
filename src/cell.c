@@ -262,7 +262,7 @@ int cell_pack_ti_ends(struct cell *c, int *ti_ends) {
  * @brief Unpack the time information of a given cell and its sub-cells.
  *
  * @param c The #cell
- * @param s ti_ends The time information to unpack
+ * @param ti_ends The time information to unpack
  *
  * @return The number of cells created.
  */
@@ -794,9 +794,9 @@ void cell_check_multipole(struct cell *c, void *data) {
 }
 
 /**
- * @brief Frees up the memory allocated for this #cell
+ * @brief Frees up the memory allocated for this #cell.
  *
- * @param c The #cell
+ * @param c The #cell.
  */
 void cell_clean(struct cell *c) {
 
@@ -805,4 +805,35 @@ void cell_clean(struct cell *c) {
   /* Recurse */
   for (int k = 0; k < 8; k++)
     if (c->progeny[k]) cell_clean(c->progeny[k]);
+}
+
+/**
+ * @brief Checks whether a given cell needs drifting or not.
+ *
+ * @param c the #cell.
+ * @param ti_current The current time on the integer time-line.
+ *
+ * @return 1 If the cell needs drifting, 0 otherwise.
+ */
+int cell_is_drift_needed(struct cell *c, int ti_current) {
+
+  /* Do we have at least one active particle in the cell ?*/
+  if (c->ti_end_min == ti_current) return 1;
+
+  /* Loop over the pair tasks that involve this cell */
+  for (struct link *l = c->density; l != NULL; l = l->next) {
+
+    if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
+      continue;
+
+    /* Left or right? */
+    if (l->t->ci == c) {
+      if (l->t->cj->ti_end_min == ti_current) return 1;
+    } else if (l->t->cj == c) {
+      if (l->t->ci->ti_end_min == ti_current) return 1;
+    }
+  }
+
+  /* No neighbouring cell has active particles. Drift not necessary */
+  return 0;
 }

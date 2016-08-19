@@ -47,6 +47,16 @@ struct space;
 /* Global variables. */
 extern int cell_next_tag;
 
+/* Mini struct to link cells to tasks. Used as a linked list. */
+struct link {
+
+  /* The task pointer. */
+  struct task *t;
+
+  /* The next pointer. */
+  struct link *next;
+};
+
 /* Packed cell. */
 struct pcell {
 
@@ -78,6 +88,9 @@ struct cell {
 
   /* Minimum and maximum end of time step in this cell. */
   int ti_end_min, ti_end_max;
+
+  /* Last time the cell's content was drifted forward in time. */
+  int ti_old;
 
   /* Minimum dimension, i.e. smallest edge of this cell. */
   float dmin;
@@ -208,5 +221,6 @@ int cell_are_neighbours(const struct cell *restrict ci,
                         const struct cell *restrict cj);
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
+int cell_is_drift_needed(struct cell *c, int ti_current);
 
 #endif /* SWIFT_CELL_H */
