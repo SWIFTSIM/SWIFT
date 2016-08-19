@@ -436,7 +436,7 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  */
 void runner_do_extra_ghost(struct runner *r, struct cell *c) {
-#ifdef HYDRO_EXTRA_LOOP
+#ifdef EXTRA_HYDRO_LOOP
   struct part *restrict parts = c->parts;
   const int count = c->count;
   const int ti_current = r->e->ti_current;
