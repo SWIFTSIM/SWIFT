@@ -176,7 +176,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
  * Routines writing an output file
  *-----------------------------------------------------------------------------*/
 
-void prepareArray(hid_t grp, char* fileName, FILE* xmfFile,
+void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                   char* partTypeGroupName, const struct io_props props,
                   long long N_total, const struct UnitSystem* internal_units,
                   const struct UnitSystem* snapshot_units) {
@@ -293,7 +293,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
 
   /* Prepare the arrays in the file */
   if (mpi_rank == 0)
-    prepareArray(grp, fileName, xmfFile, partTypeGroupName, props, N_total,
+    prepareArray(e, grp, fileName, xmfFile, partTypeGroupName, props, N_total,
                  internal_units, snapshot_units);
 
   /* Allocate temporary buffer */
