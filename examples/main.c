@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
 
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
-    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW);
     if (myrank == 0) message("Floating point exceptions will be reported.");
   }
 
@@ -332,7 +332,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the external potential properties */
   struct external_potential potential;
-  if (with_external_gravity) potential_init(params, &us, &potential);
+  if (with_external_gravity)
+    potential_init(params, &prog_const, &us, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Read particles and space information from (GADGET) ICs */

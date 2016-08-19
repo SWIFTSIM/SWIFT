@@ -105,7 +105,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   const int ti_current = r->e->ti_current;
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
-
+  const double time = r->e->time;
   TIMER_TIC;
 
   /* Recurse? */
@@ -128,7 +128,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
 
-      external_gravity(potential, constants, g);
+      external_gravity(time, potential, constants, g);
     }
   }
 
@@ -487,8 +487,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
           h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
 
           /* Truncate to the range [ -p->h/2 , p->h ]. */
-          h_corr = fminf(h_corr, p->h);
-          h_corr = fmaxf(h_corr, -p->h * 0.5f);
+	  h_corr = (h_corr < p->h) ? h_corr : p->h;
+	  h_corr = (h_corr > -0.5f * p->h) ? h_corr : -0.5f * p->h;
         }
 
         /* Did we get the right number density? */
@@ -626,7 +626,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = fmaxf(dx2_max, dx2);
+      dx2_max = (dx2_max  > dx2) ? dx2_max : dx2;
     }
 
     /* Loop over all the particles in the cell (more work for these !) */
@@ -644,10 +644,10 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
-      dx2_max = fmaxf(dx2_max, dx2);
+      dx2_max = (dx2_max  > dx2) ? dx2_max : dx2;
 
       /* Maximal smoothing length */
-      h_max = fmaxf(p->h, h_max);
+      h_max = (h_max > p->h) ? h_max : p->h;
 
       /* Now collect quantities for statistics */
 

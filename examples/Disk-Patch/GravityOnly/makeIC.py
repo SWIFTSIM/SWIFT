@@ -24,10 +24,18 @@ import numpy
 import math
 import random
 
-# Generates N particles in a spherical distribution centred on [0,0,0], to be moved in an isothermal potential
-# usage: python makeIC.py 1000 0 : generate 1000 particles on circular orbits
-#        python makeIC.py 1000 1 : generate 1000 particles with Lz/L uniform in [0,1]
-# all particles move in the xy plane, and start at y=0
+# Generates N particles in a box of [0:BoxSize,0:BoxSize,-2scale_height:2scale_height]
+# see Creasey, Theuns & Bower, 2013, for the equations:
+# disk parameters are: surface density sigma
+#                      scale height b
+# density: rho(z) = (sigma/2b) sech^2(z/b)
+# isothermal velocity dispersion = <v_z^2? = b pi G sigma
+# grad potential  = 2 pi G sigma tanh(z/b)
+# potential       = ln(cosh(z/b)) + const
+# Dynamical time  = sqrt(b / (G sigma))
+# to obtain the 1/ch^2(z/b) profile from a uniform profile (a glass, say, or a uniform random variable), note that, when integrating in z
+# \int 0^z dz/ch^2(z) = tanh(z)-tanh(0) = \int_0^x dx = x (where the last integral refers to a uniform density distribution), so that z = atanh(x)
+# usage: python makeIC.py 1000 
 
 # physical constants in cgs
 NEWTON_GRAVITY_CGS  = 6.672e-8
@@ -37,7 +45,7 @@ PROTON_MASS_IN_CGS  = 1.6726231e24
 YEAR_IN_CGS         = 3.154e+7
 
 # choice of units
-const_unit_length_in_cgs   =   (1000*PARSEC_IN_CGS)
+const_unit_length_in_cgs   =   (PARSEC_IN_CGS)
 const_unit_mass_in_cgs     =   (SOLAR_MASS_IN_CGS)
 const_unit_velocity_in_cgs =   (1e5)
 
@@ -46,31 +54,32 @@ print "UnitLength_in_cgs:   ", const_unit_length_in_cgs
 print "UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs
 
 
-# rotation speed of isothermal potential [km/s]
-vrot_kms = 200.
+# parameters of potential
+surface_density = 10.
+scale_height    = 100.
 
 # derived units
 const_unit_time_in_cgs = (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
 const_G                = ((NEWTON_GRAVITY_CGS*const_unit_mass_in_cgs*const_unit_time_in_cgs*const_unit_time_in_cgs/(const_unit_length_in_cgs*const_unit_length_in_cgs*const_unit_length_in_cgs)))
 print 'G=', const_G
-vrot   = vrot_kms * 1e5 / const_unit_velocity_in_cgs
-
+v_disp                 = numpy.sqrt(scale_height * math.pi * const_G * surface_density)
+t_dyn                  = numpy.sqrt(scale_height / (const_G * surface_density))
+print 'dynamical time = ',t_dyn
+print ' velocity dispersion = ',v_disp
 
 # Parameters
-periodic= 1            # 1 For periodic box
-boxSize = 400.         #  [kpc]
+periodic= 1             # 1 For periodic box
+boxSize = 600.          #  
 Radius  = 100.          # maximum radius of particles [kpc]
 G       = const_G 
 
 N       = int(sys.argv[1])  # Number of particles
-icirc   = int(sys.argv[2])  # if = 0, all particles are on circular orbits, if = 1, Lz/Lcirc uniform in ]0,1[
-L       = N**(1./3.)
 
 # these are not used but necessary for I/O
 rho = 2.              # Density
 P = 1.                # Pressure
 gamma = 5./3.         # Gas adiabatic index
-fileName = "Isothermal.hdf5" 
+fileName = "Disk-Patch.hdf5" 
 
 
 #---------------------------------------------------
@@ -101,7 +110,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+
 
 #Runtime parameters
 grp = file.create_group("/RuntimePars")
@@ -113,48 +122,32 @@ numpy.random.seed(1234)
 #Particle group
 #grp0 = file.create_group("/PartType0")
 grp1 = file.create_group("/PartType1")
+
 #generate particle positions
-radius = Radius * (numpy.random.rand(N))**(1./3.) 
-ctheta = -1. + 2 * numpy.random.rand(N)
-stheta = numpy.sqrt(1.-ctheta**2)
-phi    =  2 * math.pi * numpy.random.rand(N)
 r      = numpy.zeros((numPart, 3))
-#r[:,0] = radius * stheta * numpy.cos(phi)
-#r[:,1] = radius * stheta * numpy.sin(phi)
-#r[:,2] = radius * ctheta
-r[:,0] = radius
-#
-speed  = vrot
+r[:,0] = numpy.random.rand(N) * boxSize
+r[:,1] = numpy.random.rand(N) * boxSize
+z      = scale_height * numpy.arctanh(numpy.random.rand(2*N))
+gd     = z < boxSize / 2
+r[:,2] = z[gd][0:N]
+random = numpy.random.rand(N) > 0.5
+r[random,2] *= -1
+r[:,2] += 0.5 * boxSize
+
+#generate particle velocities
 v      = numpy.zeros((numPart, 3))
-omega  = speed / radius
-period = 2.*math.pi/omega
-print 'period = minimum = ',min(period), ' maximum = ',max(period)
+v      = numpy.zeros(1)
+#v[:,2] = 
 
-omegav = omega
-if (icirc != 0):
-    omegav = omega * numpy.random.rand(N)
-
-v[:,0] = -omegav * r[:,1]
-v[:,1] =  omegav * r[:,0]
 
 ds = grp1.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v
-v = numpy.zeros(1)
 
-m = numpy.full((numPart, ), mass)
+
+m = numpy.ones((numPart, ), dtype=numpy.float32) * mass
 ds = grp1.create_dataset('Masses', (numPart,), 'f')
 ds[()] = m
 m = numpy.zeros(1)
-
-h = numpy.full((numPart, ), 1.1255 * boxSize / L)
-ds = grp1.create_dataset('SmoothingLength', (numPart,), 'f')
-ds[()] = h
-h = numpy.zeros(1)
-
-u = numpy.full((numPart, ), internalEnergy)
-ds = grp1.create_dataset('InternalEnergy', (numPart,), 'f')
-ds[()] = u
-u = numpy.zeros(1)
 
 
 ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False, dtype='L')
