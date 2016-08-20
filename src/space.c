@@ -707,7 +707,7 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   if ((sort_struct.stack =
            malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < sort_struct.stack_size; i++)
+  for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */
@@ -892,7 +892,7 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   if ((sort_struct.stack =
            malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < sort_struct.stack_size; i++)
+  for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */

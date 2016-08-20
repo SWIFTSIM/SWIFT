@@ -179,7 +179,7 @@ void readArray(hid_t grp, const struct io_props props, size_t N,
 
 void prepareArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
                   char* partTypeGroupName, const struct io_props props,
-                  long long N_total, const struct UnitSystem* internal_units,
+                  unsigned long long N_total, const struct UnitSystem* internal_units,
                   const struct UnitSystem* snapshot_units) {
 
   /* Create data space */

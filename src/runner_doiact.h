@@ -2862,7 +2862,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       }
 
       /* Get the sorting index. */
-      int sid = 0;
+      int new_sid = 0;
       for (int k = 0; k < 3; k++)
         new_sid = 3 * new_sid +
                   ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
