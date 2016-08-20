@@ -257,7 +257,7 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   /* Set chunk size */
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
   if (h_err < 0) {
-    error("Error while setting chunk size (%lld, %lld) for field '%s'.",
+    error("Error while setting chunk size (%llu, %llu) for field '%s'.",
           chunk_shape[0], chunk_shape[1], props.name);
   }
 
@@ -471,18 +471,18 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
 
     int num_fields = 0;
     struct io_props list[100];
-    size_t N = 0;
+    size_t Nparticles = 0;
 
     /* Read particle fields into the structure */
     switch (ptype) {
 
       case GAS:
-        N = *Ngas;
+        Nparticles = *Ngas;
         hydro_read_particles(*parts, list, &num_fields);
         break;
 
       case DM:
-        N = Ndm;
+        Nparticles = Ndm;
         darkmatter_read_particles(*gparts, list, &num_fields);
         break;
 
@@ -493,7 +493,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
     /* Read everything */
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
-        readArray(h_grp, list[i], N, internal_units, ic_units);
+        readArray(h_grp, list[i], Nparticles, internal_units, ic_units);
 
     /* Close particle group */
     H5Gclose(h_grp);

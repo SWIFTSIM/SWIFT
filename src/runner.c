@@ -609,7 +609,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   if (!c->split) {
 
     /* Loop over all the g-particles in the cell */
-    const int nr_gparts = c->gcount;
+    const size_t nr_gparts = c->gcount;
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */

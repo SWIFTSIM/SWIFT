@@ -2864,14 +2864,15 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       /* Get the sorting index. */
       int sid = 0;
       for (int k = 0; k < 3; k++)
-        sid =
-            3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                           ? 0
-                           : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
-      sid = sortlistID[sid];
+        new_sid = 3 * new_sid +
+                  ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
+                       ? 0
+                       : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+      new_sid = sortlistID[new_sid];
 
       /* Do any of the cells need to be sorted first? */
-      if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
+      if (!(cj->sorted & (1 << new_sid)))
+        runner_do_sort(r, cj, (1 << new_sid), 1);
 
       /* Compute the interactions. */
       DOPAIR_SUBSET(r, ci, parts, ind, count, cj);

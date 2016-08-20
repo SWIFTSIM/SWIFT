@@ -296,7 +296,7 @@ void engine_redistribute(struct engine *e) {
                    parts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
             parts[k].x[0], parts[k].x[1], parts[k].x[2]);
 #endif
 
@@ -352,7 +352,7 @@ void engine_redistribute(struct engine *e) {
                    gparts[k].x[2] * iwidth[2]);
 #ifdef SWIFT_DEBUG_CHECKS
     if (cid < 0 || cid >= s->nr_cells)
-      error("Bad cell id %i for part %zi at [%.3e,%.3e,%.3e].", cid, k,
+      error("Bad cell id %i for part %zu at [%.3e,%.3e,%.3e].", cid, k,
             gparts[k].x[0], gparts[k].x[1], gparts[k].x[2]);
 #endif
 
@@ -587,7 +587,7 @@ void engine_redistribute(struct engine *e) {
     int my_cells = 0;
     for (int k = 0; k < nr_cells; k++)
       if (cells[k].nodeID == nodeID) my_cells += 1;
-    message("node %i now has %zi parts and %zi gparts in %i cells.", nodeID,
+    message("node %i now has %zu parts and %zu gparts in %i cells.", nodeID,
             nr_parts, nr_gparts, my_cells);
   }
 
@@ -878,7 +878,7 @@ void engine_exchange_cells(struct engine *e) {
 
   /* Count the number of particles we need to import and re-allocate
      the buffer if needed. */
-  int count_parts_in = 0, count_gparts_in = 0;
+  size_t count_parts_in = 0, count_gparts_in = 0;
   for (int k = 0; k < nr_proxies; k++)
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
       count_parts_in += e->proxies[k].cells_in[j]->count;
@@ -968,7 +968,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     if (pid < 0) {
       error(
           "Do not have a proxy for the requested nodeID %i for part with "
-          "id=%llu, x=[%e,%e,%e].",
+          "id=%lld, x=[%e,%e,%e].",
           node_id, s->parts[offset_parts + k].id,
           s->parts[offset_parts + k].x[0], s->parts[offset_parts + k].x[1],
           s->parts[offset_parts + k].x[2]);
@@ -1032,7 +1032,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
     count_gparts_in += e->proxies[k].nr_gparts_in;
   }
   if (e->verbose) {
-    message("sent out %zi/%zi parts/gparts, got %i/%i back.", *Npart, *Ngpart,
+    message("sent out %zu/%zu parts/gparts, got %i/%i back.", *Npart, *Ngpart,
             count_parts_in, count_gparts_in);
   }
   if (offset_parts + count_parts_in > s->size_parts) {
@@ -1126,13 +1126,13 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
         reqs_in[pid + 1] == MPI_REQUEST_NULL &&
         reqs_in[pid + 2] == MPI_REQUEST_NULL) {
       /* Copy the particle data to the part/xpart/gpart arrays. */
-      struct proxy *p = &e->proxies[pid / 3];
-      memcpy(&s->parts[offset_parts + count_parts], p->parts_in,
-             sizeof(struct part) * p->nr_parts_in);
-      memcpy(&s->xparts[offset_parts + count_parts], p->xparts_in,
-             sizeof(struct xpart) * p->nr_parts_in);
-      memcpy(&s->gparts[offset_gparts + count_gparts], p->gparts_in,
-             sizeof(struct gpart) * p->nr_gparts_in);
+      struct proxy *prox = &e->proxies[pid / 3];
+      memcpy(&s->parts[offset_parts + count_parts], prox->parts_in,
+             sizeof(struct part) * prox->nr_parts_in);
+      memcpy(&s->xparts[offset_parts + count_parts], prox->xparts_in,
+             sizeof(struct xpart) * prox->nr_parts_in);
+      memcpy(&s->gparts[offset_gparts + count_gparts], prox->gparts_in,
+             sizeof(struct gpart) * prox->nr_gparts_in);
       /* for (int k = offset; k < offset + count; k++)
          message(
             "received particle %lli, x=[%.3e %.3e %.3e], h=%.3e, from node %i.",
@@ -1140,8 +1140,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
             s->parts[k].x[2], s->parts[k].h, p->nodeID); */
 
       /* Re-link the gparts. */
-      for (int k = 0; k < p->nr_gparts_in; k++) {
-        struct gpart *gp = &s->gparts[offset_gparts + count_gparts + k];
+      for (int kk = 0; kk < prox->nr_gparts_in; kk++) {
+        struct gpart *gp = &s->gparts[offset_gparts + count_gparts + kk];
         if (gp->id_or_neg_offset <= 0) {
           struct part *p =
               &s->parts[offset_gparts + count_parts - gp->id_or_neg_offset];
@@ -1151,8 +1151,8 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
       }
 
       /* Advance the counters. */
-      count_parts += p->nr_parts_in;
-      count_gparts += p->nr_gparts_in;
+      count_parts += prox->nr_parts_in;
+      count_gparts += prox->nr_gparts_in;
     }
   }
 
@@ -2021,8 +2021,8 @@ void engine_print_task_counts(struct engine *e) {
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %zi.", e->s->nr_parts);
-  message("nr_gparts = %zi.", e->s->nr_gparts);
+  message("nr_parts = %zu.", e->s->nr_parts);
+  message("nr_gparts = %zu.", e->s->nr_gparts);
 }
 
 /**
@@ -2489,11 +2489,11 @@ void engine_step(struct engine *e) {
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
-    printf("  %6d %14e %14e %10zd %10zd %21.3f\n", e->step, e->time,
+    printf("  %6d %14e %14e %10zu %10zu %21.3f\n", e->step, e->time,
            e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(stdout);
 
-    fprintf(e->file_timesteps, "  %6d %14e %14e %10zd %10zd %21.3f\n", e->step,
+    fprintf(e->file_timesteps, "  %6d %14e %14e %10zu %10zu %21.3f\n", e->step,
             e->time, e->timeStep, e->updates, e->g_updates, e->wallclock_time);
     fflush(e->file_timesteps);
   }
@@ -2708,7 +2708,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-allocate the local parts. */
   if (e->verbose)
-    message("Re-allocating parts array from %zi to %zi.", s->size_parts,
+    message("Re-allocating parts array from %zu to %zu.", s->size_parts,
             (size_t)(s->nr_parts * 1.2));
   s->size_parts = s->nr_parts * 1.2;
   struct part *parts_new = NULL;
@@ -2730,7 +2730,7 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
 
   /* Re-allocate the local gparts. */
   if (e->verbose)
-    message("Re-allocating gparts array from %zi to %zi.", s->size_gparts,
+    message("Re-allocating gparts array from %zu to %zu.", s->size_gparts,
             (size_t)(s->nr_gparts * 1.2));
   s->size_gparts = s->nr_gparts * 1.2;
   struct gpart *gparts_new = NULL;
