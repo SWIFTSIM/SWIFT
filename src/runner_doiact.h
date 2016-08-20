@@ -1739,7 +1739,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
+  const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2023,7 +2023,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
+  const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2336,7 +2336,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   else {
 
     /* Get the cell dimensions. */
-    const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
+    const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
 
     /* Recurse? */
     if (ci->split && cj->split &&
