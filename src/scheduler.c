@@ -116,9 +116,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
       {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
       {-1, -1, -1, -1, -1, -1, -1, 12}};
-  static const float sid_scale[13] = {0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f,
-                                      0.4025f, 0.1897f, 0.4025f, 0.1897f, 0.4025f,
-                                      0.5788f, 0.4025f, 0.5788f};
+  static const float sid_scale[13] = {
+      0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.1897f,
+      0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.5788f};
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
