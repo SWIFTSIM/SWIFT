@@ -2723,12 +2723,14 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_sub_self;
     mask |= 1 << task_type_sub_pair;
     mask |= 1 << task_type_ghost;
-    mask |= 1 << task_type_extra_ghost; /* Adding unnecessary things to the mask
-                                                  does not harm */
 
     submask |= 1 << task_subtype_density;
-    submask |= 1 << task_subtype_gradient;
     submask |= 1 << task_subtype_force;
+
+#ifdef EXTRA_HYDRO_LOOP
+    mask |= 1 << task_type_extra_ghost;
+    submask |= 1 << task_subtype_gradient;
+#endif
   }
 
   /* Add the tasks corresponding to self-gravity to the masks */
