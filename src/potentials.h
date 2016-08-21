@@ -78,13 +78,15 @@ struct external_potential {
  *
  * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
  *
- * @param phys_cont The physical constants in internal units.
- * @param gp Pointer to the g-particle data.
+ * @param potential The properties of the potential.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float
-external_gravity_disk_patch_timestep(const struct external_potential* potential,
-                                     const struct phys_const* const phys_const,
-                                     const struct gpart* const g) {
+external_gravity_disk_patch_timestep(
+    const struct external_potential* restrict potential,
+    const struct phys_const* restrict phys_const,
+    const struct gpart* restrict g) {
 
   /* initilize time step to disk dynamical time */
   const float dt_dyn = potential->disk_patch_potential.dynamical_time;
@@ -136,13 +138,15 @@ external_gravity_disk_patch_timestep(const struct external_potential* potential,
  *
  * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
  *
- * @param phys_cont The physical constants in internal units.
+ * @param time The current time in internal units.
+ * @param potential The properties of the potential.
+ * @param phys_const The physical constants in internal units.
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void
 external_gravity_disk_patch_potential(
-    const double time, const struct external_potential* potential,
-    const struct phys_const* const phys_const, struct gpart* g) {
+    double time, const struct external_potential* restrict potential,
+    const struct phys_const* restrict phys_const, struct gpart *restrict g) {
 
   const float G_newton = phys_const->const_newton_G;
   const float dz = g->x[2] - potential->disk_patch_potential.z_disk;
@@ -178,8 +182,9 @@ external_gravity_disk_patch_potential(
  */
 __attribute__((always_inline)) INLINE static float
 external_gravity_isothermalpotential_timestep(
-    const struct external_potential* potential,
-    const struct phys_const* const phys_const, const struct gpart* const g) {
+    const struct external_potential* restrict potential,
+    const struct phys_const* restrict phys_const,
+    const struct gpart* restrict g) {
 
   const float dx = g->x[0] - potential->isothermal_potential.x;
   const float dy = g->x[1] - potential->isothermal_potential.y;
@@ -247,9 +252,10 @@ external_gravity_isothermalpotential(const struct external_potential* potential,
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float
-external_gravity_pointmass_timestep(const struct external_potential* potential,
-                                    const struct phys_const* const phys_const,
-                                    const struct gpart* const g) {
+external_gravity_pointmass_timestep(
+    const struct external_potential* restrict potential,
+    const struct phys_const* restrict phys_const,
+    const struct gpart* restrict g) {
 
   const float G_newton = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->point_mass.x;
@@ -284,8 +290,8 @@ external_gravity_pointmass_timestep(const struct external_potential* potential,
  * @param g Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static void external_gravity_pointmass(
-    const struct external_potential* potential,
-    const struct phys_const* const phys_const, struct gpart* g) {
+    const struct external_potential* restrict potential,
+    const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
   const float dx = g->x[0] - potential->point_mass.x;
   const float dy = g->x[1] - potential->point_mass.y;
