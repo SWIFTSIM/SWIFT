@@ -63,23 +63,22 @@
 
 /* SPH variant to use */
 //#define MINIMAL_SPH
-//#define GADGET2_SPH
+#define GADGET2_SPH
 //#define DEFAULT_SPH
-#define GIZMO_SPH
+//#define GIZMO_SPH
 
 /* Riemann solver to use (GIZMO_SPH only) */
 #define RIEMANN_SOLVER_EXACT
 //#define RIEMANN_SOLVER_TRRS
 //#define RIEMANN_SOLVER_HLLC
 
-/* Type of gradients to use (GIZMO_SPH only)
-   If no option is chosen, no gradients are used (first order scheme) */
+/* Type of gradients to use (GIZMO_SPH only) */
+/* If no option is chosen, no gradients are used (first order scheme) */
 //#define GRADIENTS_SPH
 #define GRADIENTS_GIZMO
 
-/* Types of slope limiter to use (GIZMO_SPH only)
-   Different slope limiters can be combined, so multiple options may
-   be selected */
+/* Types of slope limiter to use (GIZMO_SPH only) */
+/* Different slope limiters can be combined */
 #define SLOPE_LIMITER_PER_FACE
 #define SLOPE_LIMITER_CELL_WIDE
 

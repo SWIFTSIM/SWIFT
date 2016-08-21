@@ -82,8 +82,8 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION density
 #include "runner_doiact.h"
 
+/* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
-/* Import the gradient loop functions. */
 #undef FUNCTION
 #define FUNCTION gradient
 #include "runner_doiact.h"
@@ -436,7 +436,9 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  */
 void runner_do_extra_ghost(struct runner *r, struct cell *c) {
+
 #ifdef EXTRA_HYDRO_LOOP
+
   struct part *restrict parts = c->parts;
   const int count = c->count;
   const int ti_current = r->e->ti_current;
@@ -461,6 +463,9 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c) {
       }
     }
   }
+
+#else
+  error("SWIFT was not compiled with the extra hydro loop activated.");
 #endif
 }
 
@@ -1131,7 +1136,8 @@ void *runner_main(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_density) runner_doself1_density(r, ci);
+          if (t->subtype == task_subtype_density) 
+	    runner_doself1_density(r, ci);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
             runner_doself1_gradient(r, ci);
@@ -1194,9 +1200,11 @@ void *runner_main(void *data) {
         case task_type_ghost:
           runner_do_ghost(r, ci);
           break;
+#ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
           runner_do_extra_ghost(r, ci);
           break;
+#endif
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;

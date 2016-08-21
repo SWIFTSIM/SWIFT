@@ -196,7 +196,7 @@ struct part {
   float mass;
 
   /* Particle ID. */
-  unsigned long long id;
+  long long id;
 
   /* Associated gravitas. */
   struct gpart *gpart;
