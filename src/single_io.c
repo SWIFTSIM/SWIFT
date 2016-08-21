@@ -36,6 +36,7 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "dimension.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity_io.h"
@@ -256,15 +257,17 @@ void writeArray(struct engine* e, hid_t grp, char* fileName, FILE* xmfFile,
   /* Set chunk size */
   h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
   if (h_err < 0) {
-    error("Error while setting chunk size (%lld, %lld) for field '%s'.",
+    error("Error while setting chunk size (%llu, %llu) for field '%s'.",
           chunk_shape[0], chunk_shape[1], props.name);
   }
 
   /* Impose data compression */
-  h_err = H5Pset_deflate(h_prop, 4);
-  if (h_err < 0) {
-    error("Error while setting compression options for field '%s'.",
-          props.name);
+  if (e->snapshotCompression > 0) {
+    h_err = H5Pset_deflate(h_prop, e->snapshotCompression);
+    if (h_err < 0) {
+      error("Error while setting compression options for field '%s'.",
+            props.name);
+    }
   }
 
   /* Create dataset */
@@ -339,6 +342,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   int numParticles[NUM_PARTICLE_TYPES] = {0};
   int numParticles_highWord[NUM_PARTICLE_TYPES] = {0};
   size_t N[NUM_PARTICLE_TYPES] = {0};
+  int dimension = 3; /* Assume 3D if nothing is specified */
   size_t Ndm;
 
   /* Open file */
@@ -363,6 +367,15 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
   /* message("Reading file header..."); */
   h_grp = H5Gopen(h_file, "/Header", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening file header\n");
+
+  /* Check the dimensionality of the ICs (if the info exists) */
+  const hid_t hid_dim = H5Aexists(h_grp, "Dimension");
+  if (hid_dim < 0)
+    error("Error while testing existance of 'Dimension' attribute");
+  if (hid_dim > 0) readAttribute(h_grp, "Dimension", INT, &dimension);
+  if (dimension != hydro_dimension)
+    error("ICs dimensionality (%dD) does not match code dimensionality (%dD)",
+          dimension, (int)hydro_dimension);
 
   /* Read the relevant information and print status */
   int flag_entropy_temp[6];
@@ -458,18 +471,18 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
 
     int num_fields = 0;
     struct io_props list[100];
-    size_t N = 0;
+    size_t Nparticles = 0;
 
     /* Read particle fields into the structure */
     switch (ptype) {
 
       case GAS:
-        N = *Ngas;
+        Nparticles = *Ngas;
         hydro_read_particles(*parts, list, &num_fields);
         break;
 
       case DM:
-        N = Ndm;
+        Nparticles = Ndm;
         darkmatter_read_particles(*gparts, list, &num_fields);
         break;
 
@@ -480,7 +493,7 @@ void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
     /* Read everything */
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
-        readArray(h_grp, list[i], N, internal_units, ic_units);
+        readArray(h_grp, list[i], Nparticles, internal_units, ic_units);
 
     /* Close particle group */
     H5Gclose(h_grp);

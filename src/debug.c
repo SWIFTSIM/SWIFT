@@ -73,7 +73,7 @@ void printParticle(const struct part *parts, struct xpart *xparts,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf("## Particle[%zd]:\n id=%lld ", i, parts[i].id);
+      printf("## Particle[%zu]:\n id=%lld ", i, parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
       found = 1;
       break;
@@ -102,13 +102,13 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (gparts[i].id_or_neg_offset == id) {
-      printf("## gParticle[%zd] (DM) :\n id=%lld", i, id);
+      printf("## gParticle[%zu] (DM) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
     } else if (gparts[i].id_or_neg_offset < 0 &&
                parts[-gparts[i].id_or_neg_offset].id == id) {
-      printf("## gParticle[%zd] (hydro) :\n id=%lld", i, id);
+      printf("## gParticle[%zu] (hydro) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
@@ -161,7 +161,7 @@ int checkSpacehmax(struct space *s) {
 
   /* Now all particles. */
   float part_h_max = 0.0f;
-  for (int k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < s->nr_parts; k++) {
     if (s->parts[k].h > part_h_max) {
       part_h_max = s->parts[k].h;
     }
@@ -180,7 +180,7 @@ int checkSpacehmax(struct space *s) {
     }
   }
 
-  for (int k = 0; k < s->nr_parts; k++) {
+  for (size_t k = 0; k < s->nr_parts; k++) {
     if (s->parts[k].h > cell_h_max) {
       message("part %lld is inconsistent (%f > %f)", s->parts[k].id,
               s->parts[k].h, cell_h_max);

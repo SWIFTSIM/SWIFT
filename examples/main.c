@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
 
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
-    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW);
     if (myrank == 0) message("Floating point exceptions will be reported.");
   }
 

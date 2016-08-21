@@ -218,7 +218,7 @@ const char *hdf5_version(void) {
 #ifdef HAVE_HDF5
   unsigned int majnum, minnum, relnum;
   H5get_libversion(&majnum, &minnum, &relnum);
-  sprintf(version, "%i.%i.%i", majnum, minnum, relnum);
+  sprintf(version, "%u.%u.%u", majnum, minnum, relnum);
 #else
   sprintf(version, "Unknown version");
 #endif

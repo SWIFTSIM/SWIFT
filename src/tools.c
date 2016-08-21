@@ -499,7 +499,7 @@ void engine_single_density(double *dim, long long int pid,
   hydro_init_part(&p);
 
   /* Loop over all particle pairs (force). */
-  for (int k = 0; k < N; k++) {
+  for (k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
     for (int i = 0; i < 3; i++) {
       dx[i] = p.x[i] - parts[k].x[i];

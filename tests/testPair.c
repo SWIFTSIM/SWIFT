@@ -105,7 +105,7 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
+  for (int pid = 0; pid < c->count; pid++) {
     hydro_init_part(&c->parts[pid]);
   }
 }
@@ -125,7 +125,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   fprintf(file, "# ci --------------------------------------------\n");
 
-  for (size_t pid = 0; pid < ci->count; pid++) {
+  for (int pid = 0; pid < ci->count; pid++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
@@ -149,7 +149,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   fprintf(file, "# cj --------------------------------------------\n");
 
-  for (size_t pjd = 0; pjd < cj->count; pjd++) {
+  for (int pjd = 0; pjd < cj->count; pjd++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",

@@ -129,7 +129,7 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
                   float density, enum velocity_field vel,
                   enum pressure_field press, float size) {
 
-  for (size_t i = 0; i < main_cell->count; ++i) {
+  for (int i = 0; i < main_cell->count; ++i) {
 
     solution[i].id = main_cell->parts[i].id;
 
@@ -189,7 +189,7 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
 void reset_particles(struct cell *c, enum velocity_field vel,
                      enum pressure_field press, float size, float density) {
 
-  for (size_t i = 0; i < c->count; ++i) {
+  for (int i = 0; i < c->count; ++i) {
 
     struct part *p = &c->parts[i];
 
@@ -343,7 +343,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
-  for (size_t pid = 0; pid < main_cell->count; pid++) {
+  for (int pid = 0; pid < main_cell->count; pid++) {
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
@@ -382,7 +382,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
     fprintf(file, "# Solution ---------------------------------------------\n");
 
-    for (size_t pid = 0; pid < main_cell->count; pid++) {
+    for (int pid = 0; pid < main_cell->count; pid++) {
       fprintf(file,
               "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
               "%8.5f %8.5f "

@@ -37,6 +37,7 @@
 
 /* Local includes. */
 #include "common_io.h"
+#include "dimension.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity_io.h"
@@ -383,6 +384,7 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   size_t N[NUM_PARTICLE_TYPES] = {0};
   long long N_total[NUM_PARTICLE_TYPES] = {0};
   long long offset[NUM_PARTICLE_TYPES] = {0};
+  int dimension = 3; /* Assume 3D if nothing is specified */
 
   /* Open file */
   /* message("Opening file '%s' as IC.", fileName); */
@@ -408,6 +410,15 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   /* message("Reading file header..."); */
   h_grp = H5Gopen(h_file, "/Header", H5P_DEFAULT);
   if (h_grp < 0) error("Error while opening file header\n");
+
+  /* Check the dimensionality of the ICs (if the info exists) */
+  const hid_t hid_dim = H5Aexists(h_grp, "Dimension");
+  if (hid_dim < 0)
+    error("Error while testing existance of 'Dimension' attribute");
+  if (hid_dim > 0) readAttribute(h_grp, "Dimension", INT, &dimension);
+  if (dimension != hydro_dimension)
+    error("ICs dimensionality (%dD) does not match code dimensionality (%dD)",
+          dimension, (int)hydro_dimension);
 
   /* Read the relevant information and print status */
   int flag_entropy_temp[6];
@@ -517,27 +528,18 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
 
     int num_fields = 0;
     struct io_props list[100];
-    size_t N = 0;
+    size_t Nparticles = 0;
 
     /* Read particle fields into the particle structure */
     switch (ptype) {
 
       case GAS:
-        /* if (!dry_run) */
-        /*   hydro_read_particles(h_grp, N[ptype], N_total[ptype],
-         * offset[ptype], */
-        /*                        *parts); */
-        /* break; */
-        N = *Ngas;
+        Nparticles = *Ngas;
         hydro_read_particles(*parts, list, &num_fields);
         break;
 
       case DM:
-        /* if (!dry_run) */
-        /*   darkmatter_read_particles(h_grp, N[ptype], N_total[ptype], */
-        /*                             offset[ptype], *gparts); */
-        /* break; */
-        N = Ndm;
+        Nparticles = Ndm;
         darkmatter_read_particles(*gparts, list, &num_fields);
         break;
 
@@ -548,7 +550,7 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
     /* Read everything */
     if (!dry_run)
       for (int i = 0; i < num_fields; ++i)
-        readArray(h_grp, list[i], N, N_total[ptype], offset[ptype],
+        readArray(h_grp, list[i], Nparticles, N_total[ptype], offset[ptype],
                   internal_units, ic_units);
 
     /* Close particle group */
@@ -782,13 +784,13 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
     int num_fields = 0;
     struct io_props list[100];
-    size_t N = 0;
+    size_t Nparticles = 0;
 
     /* Write particle fields from the particle structure */
     switch (ptype) {
 
       case GAS:
-        N = Ngas;
+        Nparticles = Ngas;
         hydro_write_particles(parts, list, &num_fields);
         break;
 
@@ -805,7 +807,7 @@ void write_output_parallel(struct engine* e, const char* baseName,
         collect_dm_gparts(gparts, Ntot, dmparts, Ndm);
 
         /* Write DM particles */
-        N = Ndm;
+        Nparticles = Ndm;
         darkmatter_write_particles(dmparts, list, &num_fields);
 
         /* Free temporary array */
@@ -818,9 +820,9 @@ void write_output_parallel(struct engine* e, const char* baseName,
 
     /* Write everything */
     for (int i = 0; i < num_fields; ++i)
-      writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i], N,
-                 N_total[ptype], mpi_rank, offset[ptype], internal_units,
-                 snapshot_units);
+      writeArray(e, h_grp, fileName, xmfFile, partTypeGroupName, list[i],
+                 Nparticles, N_total[ptype], mpi_rank, offset[ptype],
+                 internal_units, snapshot_units);
 
     /* Free temporary array */
     free(dmparts);

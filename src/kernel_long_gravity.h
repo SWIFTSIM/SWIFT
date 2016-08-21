@@ -41,7 +41,7 @@ __attribute__((always_inline)) INLINE static void kernel_long_grav_eval(
   const float arg2 = u * one_over_sqrt_pi;
   const float arg3 = -arg1 * arg1;
 
-  const float term1 = erfc(arg1);
+  const float term1 = erfcf(arg1);
   const float term2 = arg2 * expf(arg3);
 
   *W = term1 + term2;
