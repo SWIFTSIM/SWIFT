@@ -42,6 +42,7 @@
 /* Local includes. */
 #include "const.h"
 #include "error.h"
+#include "hydro.h"
 #include "kernel_hydro.h"
 #include "part.h"
 #include "units.h"
@@ -515,13 +516,13 @@ void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
   fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
           particle_type_names[ptype]);
   fprintf(xmfFile,
-          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zi\"/>\n", N);
+          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zu\"/>\n", N);
   fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
   fprintf(xmfFile,
-          "<DataItem Dimensions=\"%zi 3\" NumberType=\"Double\" "
+          "<DataItem Dimensions=\"%zu 3\" NumberType=\"Double\" "
           "Precision=\"8\" "
           "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
-          N, hdfFileName, ptype);
+          N, hdfFileName, (int)ptype);
   fprintf(xmfFile,
           "</Geometry>\n <!-- Done geometry for %s, start of particle fields "
           "list -->\n",
@@ -555,12 +556,12 @@ void writeXMFline(FILE* xmfFile, const char* fileName,
           name, dim == 1 ? "Scalar" : "Vector");
   if (dim == 1)
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zi\" NumberType=\"Double\" "
+            "<DataItem Dimensions=\"%zu\" NumberType=\"Double\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
             N, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   else
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zi %d\" NumberType=\"Double\" "
+            "<DataItem Dimensions=\"%zu %d\" NumberType=\"Double\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
             N, dim, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
@@ -582,7 +583,7 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
   for (size_t i = 0; i < Ndm; ++i) {
     /* 0 or negative ids are not allowed */
     if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle %zd: ID=%lld", i,
+      error("0 or negative ID for DM particle %zu: ID=%lld", i,
             gparts[i].id_or_neg_offset);
   }
 }
@@ -614,7 +615,7 @@ void duplicate_hydro_gparts(struct part* const parts,
     gparts[i + Ndm].v_full[1] = parts[i].v[1];
     gparts[i + Ndm].v_full[2] = parts[i].v[2];
 
-    gparts[i + Ndm].mass = parts[i].mass;
+    gparts[i + Ndm].mass = hydro_get_mass(&parts[i]);
 
     /* Link the particles */
     gparts[i + Ndm].id_or_neg_offset = -i;
@@ -650,7 +651,7 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
 
   /* Check that everything is fine */
   if (count != Ndm)
-    error("Collected the wrong number of dm particles (%zd vs. %zd expected)",
+    error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
           count, Ndm);
 }
 

@@ -36,6 +36,7 @@ examples/*/*/*.xmf
 examples/*/*/*.hdf5
 examples/*/*/*.txt
 examples/*/*/used_parameters.yml
+examples/*/*.png
 
 tests/testPair
 tests/brute_force_standard.dat
@@ -72,7 +73,11 @@ tests/testPair.sh
 tests/testPairPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
-
+tests/testAdiabaticIndex
+tests/testRiemannExact
+tests/testRiemannTRRS
+tests/testRiemannHLLC
+tests/testMatrixInversion
 
 theory/latex/swift.pdf
 theory/kernel/kernels.pdf

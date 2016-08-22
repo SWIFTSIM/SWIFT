@@ -273,18 +273,6 @@ int main(int argc, char *argv[]) {
     message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
   }
 
-/* Temporary abort to handle absence of vectorized functions */
-#ifdef WITH_VECTORIZATION
-
-#ifdef MINIMAL_SPH
-  error(
-      "Vectorized version of Minimal SPH routines not implemented yet. "
-      "Reconfigure with --disable-vec and recompile or use DEFAULT_SPH.");
-#endif
-
-#endif
-  /* End temporary fix */
-
   /* How vocal are we ? */
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
@@ -487,6 +475,8 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0)
       message("Time integration ready to start. End of dry-run.");
+    engine_clean(&e);
+    free(params);
     return 0;
   }
 
@@ -553,7 +543,7 @@ int main(int argc, char *argv[]) {
             if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
               fprintf(
                   file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
-                  myrank, e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
+                  myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
                   (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
@@ -589,7 +579,7 @@ int main(int argc, char *argv[]) {
         if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
           fprintf(
               file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
-              e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
+              e.sched.tasks[l].rid, e.sched.tasks[l].type,
               e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
               e.sched.tasks[l].tic, e.sched.tasks[l].toc,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,

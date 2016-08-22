@@ -28,7 +28,7 @@ int main() {
   size_t Ngas = 0, Ngpart = 0;
   int periodic = -1;
   int flag_entropy_ICs = -1;
-  int i, j, k, n;
+  int i, j, k;
   double dim[3];
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
@@ -55,14 +55,14 @@ int main() {
   assert(periodic == 1);
 
   /* Check particles */
-  for (n = 0; n < Ngas; ++n) {
+  for (size_t n = 0; n < Ngas; ++n) {
 
     /* Check that indices are in a reasonable range */
     unsigned long long index = parts[n].id;
     assert(index < Ngas);
 
     /* Check masses */
-    float mass = parts[n].mass;
+    float mass = hydro_get_mass(&parts[n]);
     float correct_mass = boxSize * boxSize * boxSize * rho / Ngas;
     assert(mass == correct_mass);
 

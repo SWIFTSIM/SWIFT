@@ -352,14 +352,17 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells[k].sorts = NULL;
       s->cells[k].nr_tasks = 0;
       s->cells[k].nr_density = 0;
+      s->cells[k].nr_gradient = 0;
       s->cells[k].nr_force = 0;
       s->cells[k].density = NULL;
+      s->cells[k].gradient = NULL;
       s->cells[k].force = NULL;
       s->cells[k].dx_max = 0.0f;
       s->cells[k].sorted = 0;
       s->cells[k].count = 0;
       s->cells[k].gcount = 0;
       s->cells[k].init = NULL;
+      s->cells[k].extra_ghost = NULL;
       s->cells[k].ghost = NULL;
       s->cells[k].kick = NULL;
       s->cells[k].super = &s->cells[k];
@@ -426,7 +429,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
-  for (int k = 0; k < nr_gparts; k++) {
+  for (size_t k = 0; k < nr_gparts; k++) {
     struct gpart *restrict gp = &s->gparts[k];
     for (int j = 0; j < 3; j++)
       if (gp->x[j] < 0.0)
@@ -484,7 +487,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #endif
 
   /* Move non-local gparts to the end of the list. */
-  for (int k = 0; k < nr_gparts;) {
+  for (size_t k = 0; k < nr_gparts;) {
     if (cells[gind[k]].nodeID != local_nodeID) {
       cells[gind[k]].gcount -= 1;
       nr_gparts -= 1;
@@ -593,7 +596,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   }
 
   /* Assign each particle to its cell. */
-  for (int k = nr_gparts; k < s->nr_gparts; k++) {
+  for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
     gind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
@@ -711,7 +714,7 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
   if ((sort_struct.stack =
            malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < sort_struct.stack_size; i++)
+  for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */
@@ -896,7 +899,7 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
   if ((sort_struct.stack =
            malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < sort_struct.stack_size; i++)
+  for (unsigned int i = 0; i < sort_struct.stack_size; i++)
     sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */
@@ -1580,13 +1583,13 @@ void space_init(struct space *s, const struct swift_params *params,
 
     /* Check that all the part positions are reasonable, wrap if periodic. */
     if (periodic) {
-      for (int k = 0; k < Npart; k++)
+      for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++) {
           while (parts[k].x[j] < 0) parts[k].x[j] += dim[j];
           while (parts[k].x[j] >= dim[j]) parts[k].x[j] -= dim[j];
         }
     } else {
-      for (int k = 0; k < Npart; k++)
+      for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++)
           if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j])
             error("Not all particles are within the specified domain.");
@@ -1594,13 +1597,13 @@ void space_init(struct space *s, const struct swift_params *params,
 
     /* Same for the gparts */
     if (periodic) {
-      for (int k = 0; k < Ngpart; k++)
+      for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++) {
           while (gparts[k].x[j] < 0) gparts[k].x[j] += dim[j];
           while (gparts[k].x[j] >= dim[j]) gparts[k].x[j] -= dim[j];
         }
     } else {
-      for (int k = 0; k < Ngpart; k++)
+      for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++)
           if (gparts[k].x[j] < 0 || gparts[k].x[j] >= dim[j])
             error("Not all g-particles are within the specified domain.");

@@ -46,6 +46,7 @@
 
 /* Hydrodynamical adiabatic index. */
 #define HYDRO_GAMMA_5_3
+//#define HYDRO_GAMMA_7_5
 //#define HYDRO_GAMMA_4_3
 //#define HYDRO_GAMMA_2_1
 
@@ -65,6 +66,22 @@
 //#define MINIMAL_SPH
 #define GADGET2_SPH
 //#define DEFAULT_SPH
+//#define GIZMO_SPH
+
+/* Riemann solver to use (GIZMO_SPH only) */
+#define RIEMANN_SOLVER_EXACT
+//#define RIEMANN_SOLVER_TRRS
+//#define RIEMANN_SOLVER_HLLC
+
+/* Type of gradients to use (GIZMO_SPH only) */
+/* If no option is chosen, no gradients are used (first order scheme) */
+//#define GRADIENTS_SPH
+#define GRADIENTS_GIZMO
+
+/* Types of slope limiter to use (GIZMO_SPH only) */
+/* Different slope limiters can be combined */
+#define SLOPE_LIMITER_PER_FACE
+#define SLOPE_LIMITER_CELL_WIDE
 
 /* Self gravity stuff. */
 #define const_gravity_multipole_order 2

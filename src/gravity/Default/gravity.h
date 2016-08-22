@@ -71,7 +71,7 @@ gravity_compute_timestep_self(const struct phys_const* const phys_const,
 
   const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
 
-  const float dt = sqrt(2.f * const_gravity_eta * gp->epsilon / ac);
+  const float dt = sqrtf(2.f * const_gravity_eta * gp->epsilon / ac);
 
   return dt;
 }
@@ -115,10 +115,10 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * Multiplies the forces and accelerations by the appropiate constants
  *
  * @param gp The particle to act upon
- * @param const_G Newton's constant
+ * @param const_G Newton's constant in internal units
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, double const_G) {
+    struct gpart* gp, float const_G) {
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;

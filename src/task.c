@@ -46,18 +46,20 @@
 #include "inline.h"
 #include "lock.h"
 
-/* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",     "sort",         "self",          "pair",     "sub_self",
-    "sub_pair", "init",         "ghost",         "kick",     "kick_fixdt",
-    "send",     "recv",         "grav_gather_m", "grav_fft", "grav_mm",
-    "grav_up",  "grav_external"};
+    "none",       "sort",    "self",         "pair",          "sub_self",
+    "sub_pair",   "init",    "ghost",        "extra_ghost",   "kick",
+    "kick_fixdt", "send",    "recv",         "grav_gather_m", "grav_fft",
+    "grav_mm",    "grav_up", "grav_external"};
 
-const char *subtaskID_names[task_type_count] = {"none", "density", "force",
-                                                "grav", "tend"};
+const char *subtaskID_names[task_subtype_count] = {
+    "none", "density", "gradient", "force", "grav", "tend"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
     const struct cell *ci, const struct cell *cj) {
@@ -77,6 +79,9 @@ __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
 
 /**
  * @brief Computes the overlap between the gparts array of two given cells.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_gpart(
     const struct cell *ci, const struct cell *cj) {
@@ -110,6 +115,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_sort:
     case task_type_ghost:
+    case task_type_extra_ghost:
       return task_action_part;
       break;
 
@@ -120,6 +126,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       switch (t->subtype) {
 
         case task_subtype_density:
+        case task_subtype_gradient:
         case task_subtype_force:
           return task_action_part;
           break;

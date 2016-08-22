@@ -82,6 +82,13 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION density
 #include "runner_doiact.h"
 
+/* Import the gradient loop functions (if required). */
+#ifdef EXTRA_HYDRO_LOOP
+#undef FUNCTION
+#define FUNCTION gradient
+#include "runner_doiact.h"
+#endif
+
 /* Import the force loop functions. */
 #undef FUNCTION
 #define FUNCTION force
@@ -422,7 +429,49 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Intermediate task between density and force
+ * @brief Intermediate task after the gradient loop that does final operations
+ * on the gradient quantities and optionally slope limits the gradients
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+void runner_do_extra_ghost(struct runner *r, struct cell *c) {
+
+#ifdef EXTRA_HYDRO_LOOP
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+  const int ti_current = r->e->ti_current;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_extra_ghost(r, c->progeny[k]);
+    return;
+  } else {
+
+    /* Loop over the parts in this cell. */
+    for (int i = 0; i < count; i++) {
+
+      /* Get a direct pointer on the part. */
+      struct part *restrict p = &parts[i];
+
+      if (p->ti_end <= ti_current) {
+
+        /* Get ready for a force calculation */
+        hydro_end_gradient(p);
+      }
+    }
+  }
+
+#else
+  error("SWIFT was not compiled with the extra hydro loop activated.");
+#endif
+}
+
+/**
+ * @brief Intermediate task after the density to check that the smoothing
+ * lengths are correct.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -613,7 +662,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   if (!c->split) {
 
     /* Loop over all the g-particles in the cell */
-    const int nr_gparts = c->gcount;
+    const size_t nr_gparts = c->gcount;
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
@@ -657,7 +706,8 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
                           xp->v_full[1] + p->a_hydro[1] * half_dt,
                           xp->v_full[2] + p->a_hydro[2] * half_dt};
-      const float m = p->mass;
+
+      const float m = hydro_get_mass(p);
 
       /* Collect mass */
       mass += m;
@@ -1089,13 +1139,15 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
-      t->last_rid = r->cpuid;
 
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_density)
-            runner_doself1_density(r, ci);
+          if (t->subtype == task_subtype_density) runner_doself1_density(r, ci);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_doself1_gradient(r, ci);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
           else if (t->subtype == task_subtype_grav)
@@ -1106,6 +1158,10 @@ void *runner_main(void *data) {
         case task_type_pair:
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dopair1_gradient(r, ci, cj);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
@@ -1119,6 +1175,10 @@ void *runner_main(void *data) {
         case task_type_sub_self:
           if (t->subtype == task_subtype_density)
             runner_dosub_self1_density(r, ci, 1);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dosub_self1_gradient(r, ci, 1);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_grav)
@@ -1129,6 +1189,10 @@ void *runner_main(void *data) {
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)
             runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dosub_pair1_gradient(r, ci, cj, t->flags, 1);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
@@ -1142,12 +1206,18 @@ void *runner_main(void *data) {
         case task_type_ghost:
           runner_do_ghost(r, ci);
           break;
+#ifdef EXTRA_HYDRO_LOOP
+        case task_type_extra_ghost:
+          runner_do_extra_ghost(r, ci);
+          break;
+#endif
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;
         case task_type_kick_fixdt:
           runner_do_kick_fixdt(r, ci, 1);
           break;
+#ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
@@ -1161,6 +1231,7 @@ void *runner_main(void *data) {
             runner_do_recv_cell(r, ci, 1);
           }
           break;
+#endif
         case task_type_grav_mm:
           runner_do_grav_mm(r, t->ci, 1);
           break;
