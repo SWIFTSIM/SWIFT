@@ -42,6 +42,7 @@
 /* Local includes. */
 #include "const.h"
 #include "error.h"
+#include "hydro.h"
 #include "kernel_hydro.h"
 #include "part.h"
 #include "units.h"
@@ -614,7 +615,7 @@ void duplicate_hydro_gparts(struct part* const parts,
     gparts[i + Ndm].v_full[1] = parts[i].v[1];
     gparts[i + Ndm].v_full[2] = parts[i].v[2];
 
-    gparts[i + Ndm].mass = parts[i].mass;
+    gparts[i + Ndm].mass = hydro_get_mass(&parts[i]);
 
     /* Link the particles */
     gparts[i + Ndm].id_or_neg_offset = -i;

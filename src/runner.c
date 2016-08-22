@@ -702,7 +702,8 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
                           xp->v_full[1] + p->a_hydro[1] * half_dt,
                           xp->v_full[2] + p->a_hydro[2] * half_dt};
-      const float m = p->mass;
+
+      const float m = hydro_get_mass(p);
 
       /* Collect mass */
       mass += m;

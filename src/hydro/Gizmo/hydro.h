@@ -275,6 +275,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
+ * @param dt The drift time-step.
  * @param t0 Integer start time of the drift interval.
  * @param t1 Integer end time of the drift interval.
  * @param timeBase Conversion factor between integer and physical time.
@@ -282,10 +283,16 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
 
-  // return;
-  float dt = (t1 - t0) * timeBase;
-  float h_inv = 1.0f / p->h;
-  float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
+  const float dt = (t1 - t0) * timeBase;
+  const float h_inv = 1.0f / p->h;
+  const float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
+
+  /* Predict smoothing length */
+  const float w1 = p->force.h_dt * h_inv * dt;
+  if (fabsf(w1) < 0.2f)
+    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    p->h *= expf(w1);
 
   if (fabsf(w) < 0.2f) {
     p->primitives.rho *= approx_expf(w);
@@ -432,7 +439,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * @param p The particle of interest.
  * @param dt Time since the last kick.
- * @return Internal energy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part* restrict p, float dt) {
@@ -445,7 +451,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
  *
  * @param p The particle of interest.
  * @param dt Time since the last kick.
- * @return Entropy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part* restrict p, float dt) {
@@ -458,7 +463,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
  *
  * @param p The particle of interest.
  * @param dt Time since the last kick.
- * @param Sound speed of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part* restrict p, float dt) {
@@ -471,10 +475,31 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
  *
  * @param p The particle of interest
  * @param dt Time since the last kick
- * @param Pressure of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part* restrict p, float dt) {
 
   return p->primitives.P;
+}
+
+/**
+ * @brief Returns the mass of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_mass(
+    const struct part* restrict p) {
+
+  return p->conserved.mass;
+}
+
+/**
+ * @brief Returns the density of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_density(
+    const struct part* restrict p) {
+
+  return p->primitives.rho;
 }
