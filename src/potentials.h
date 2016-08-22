@@ -146,7 +146,7 @@ external_gravity_disk_patch_timestep(
 __attribute__((always_inline)) INLINE static void
 external_gravity_disk_patch_potential(
     double time, const struct external_potential* restrict potential,
-    const struct phys_const* restrict phys_const, struct gpart *restrict g) {
+    const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
   const float G_newton = phys_const->const_newton_G;
   const float dz = g->x[2] - potential->disk_patch_potential.z_disk;

@@ -64,7 +64,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->h = size * h / (float)n;
         part->id = ++(*partId);
 #ifdef GIZMO_SPH
-	part->conserved.mass = density * volume / count;
+        part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
 #endif

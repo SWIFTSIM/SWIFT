@@ -46,6 +46,7 @@
 
 /* Hydrodynamical adiabatic index. */
 #define HYDRO_GAMMA_5_3
+//#define HYDRO_GAMMA_7_5
 //#define HYDRO_GAMMA_4_3
 //#define HYDRO_GAMMA_2_1
 

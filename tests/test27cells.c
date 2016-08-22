@@ -105,7 +105,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->h = size * h / (float)n;
         part->id = ++(*partId);
 #ifdef GIZMO_SPH
-	part->conserved.mass = density * volume / count;
+        part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
 #endif
@@ -188,7 +188,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
-            main_cell->parts[pid].v[2], hydro_get_density(&main_cell->parts[pid]),
+            main_cell->parts[pid].v[2],
+            hydro_get_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH)
             0.f,
 #else
