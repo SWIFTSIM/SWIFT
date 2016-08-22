@@ -2692,10 +2692,6 @@ void engine_step(struct engine *e) {
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
 
-  /* Drift only the necessary particles */
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
-
   if (e->nodeID == 0) {
 
     /* Print some information to the screen */
@@ -2713,6 +2709,10 @@ void engine_step(struct engine *e) {
     engine_print_stats(e);
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
+
+  /* Drift only the necessary particles */
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart != REPART_NONE) engine_repartition(e);

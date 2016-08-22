@@ -141,8 +141,8 @@ struct cell {
   struct task *extra_ghost, *ghost, *init, *kick;
 
 #ifdef WITH_MPI
-  
-/* Task receiving data. */
+
+  /* Task receiving data. */
   struct task *recv_xv, *recv_rho, *recv_gradient, *recv_ti;
 
   /* Task send data. */
@@ -217,8 +217,6 @@ int cell_unpack_ti_ends(struct cell *c, int *ti_ends);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
-void cell_init_parts(struct cell *c, void *data);
-void cell_init_gparts(struct cell *c, void *data);
 void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);
 int cell_are_neighbours(const struct cell *restrict ci,
