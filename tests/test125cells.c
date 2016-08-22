@@ -197,12 +197,11 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     set_energy_state(p, press, size, density);
 
 #if defined(GIZMO_SPH)
-    p->geometry.volume = p->mass / density;
+    p->geometry.volume = p->conserved.mass / density;
     p->primitives.rho = density;
     p->primitives.v[0] = p->v[0];
     p->primitives.v[1] = p->v[1];
     p->primitives.v[2] = p->v[2];
-    p->conserved.mass = p->mass;
     p->conserved.momentum[0] = p->conserved.mass * p->v[0];
     p->conserved.momentum[1] = p->conserved.mass * p->v[1];
     p->conserved.momentum[2] = p->conserved.mass * p->v[2];
@@ -258,7 +257,12 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->x[1] = offset[1] + size * (y + 0.5) / (float)n;
         part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
         part->h = size * h / (float)n;
+
+#ifdef GIZMO_SPH
+	part->conserved.mass = density * volume / count;
+#else
         part->mass = density * volume / count;
+#endif
 
         set_velocity(part, vel, size);
         set_energy_state(part, press, size, density);
@@ -270,12 +274,11 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         hydro_first_init_part(part, xpart);
 
 #if defined(GIZMO_SPH)
-        part->geometry.volume = part->mass / density;
+        part->geometry.volume = part->conserved.mass / density;
         part->primitives.rho = density;
         part->primitives.v[0] = part->v[0];
         part->primitives.v[1] = part->v[1];
         part->primitives.v[2] = part->v[2];
-        part->conserved.mass = part->mass;
         part->conserved.momentum[0] = part->conserved.mass * part->v[0];
         part->conserved.momentum[1] = part->conserved.mass * part->v[1];
         part->conserved.momentum[2] = part->conserved.mass * part->v[2];
@@ -352,7 +355,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
-            main_cell->parts[pid].rho,
+            hydro_get_density(&main_cell->parts[pid]),
 #ifdef MINIMAL_SPH
             0.f,
 #else

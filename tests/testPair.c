@@ -63,7 +63,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->v[2] = random_uniform(-0.05, 0.05);
         part->h = size * h / (float)n;
         part->id = ++(*partId);
+#ifdef GIZMO_SPH
+	part->conserved.mass = density * volume / count;
+#else
         part->mass = density * volume / count;
+#endif
         part->ti_begin = 0;
         part->ti_end = 1;
         ++part;
@@ -131,7 +135,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             "%13e %13e %13e\n",
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
-            ci->parts[pid].v[2], ci->parts[pid].rho,
+            ci->parts[pid].v[2], hydro_get_density(&ci->parts[pid]),
 #if defined(GIZMO_SPH)
             0.f,
 #else
@@ -155,7 +159,7 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
             "%13e %13e %13e\n",
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-            cj->parts[pjd].v[2], cj->parts[pjd].rho,
+            cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
 #if defined(GIZMO_SPH)
             0.f,
 #else

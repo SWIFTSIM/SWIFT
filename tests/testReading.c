@@ -62,7 +62,7 @@ int main() {
     assert(index < Ngas);
 
     /* Check masses */
-    float mass = parts[n].mass;
+    float mass = hydro_get_mass(&parts[n]);
     float correct_mass = boxSize * boxSize * boxSize * rho / Ngas;
     assert(mass == correct_mass);
 
