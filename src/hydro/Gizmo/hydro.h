@@ -260,10 +260,11 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->conserved.momentum[0] = m * p->primitives.v[0];
   p->conserved.momentum[1] = m * p->primitives.v[1];
   p->conserved.momentum[2] = m * p->primitives.v[2];
-  p->conserved.energy *= m;
 
   p->primitives.P =
       hydro_gamma_minus_one * p->conserved.energy * p->primitives.rho;
+
+  p->conserved.energy *= m;
 }
 
 /**
