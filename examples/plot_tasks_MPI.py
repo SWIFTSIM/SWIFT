@@ -96,7 +96,7 @@ SUBCOLOURS = {"none": "black",
               "density": "red",
               "force": "blue",
               "grav": "indigo",
-              "tend": "grey"
+              "tend": "grey",
               "count": "purple"}
 
 #  Show docs if help is requested.
