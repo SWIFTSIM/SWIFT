@@ -704,7 +704,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->toc = 0;
   t->nr_unlock_tasks = 0;
   t->rid = -1;
-  t->last_rid = -1;
 
   /* Add an index for it. */
   // lock_lock( &s->lock );

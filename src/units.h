@@ -29,25 +29,26 @@
  * @brief The unit system used internally.
  *
  * This structure contains the conversion factors to the 7 cgs base units to the
- *internal units.
- * It is used everytime a conversion is performed or an i/o function is called.
- *
+ * internal units. It is used everytime a conversion is performed or an i/o
+ * function is called.
  **/
 struct UnitSystem {
-  double UnitMass_in_cgs; /*< Conversion factor from grams to internal mass
-                             units */
 
-  double UnitLength_in_cgs; /*< Conversion factor from centimeters to internal
-                               length units. */
+  /*! Conversion factor from grams to internal mass units */
+  double UnitMass_in_cgs; 
 
-  double UnitTime_in_cgs; /*< Conversion factor from seconds to internal time
-                             units. */
+  /*! Conversion factor from centimeters to internal length unit */
+  double UnitLength_in_cgs; 
 
-  double UnitCurrent_in_cgs; /*< Conversion factor from Ampere to internal
-                                current units. */
+  /*! Conversion factor from seconds to internal time units */
+  double UnitTime_in_cgs; 
 
-  double UnitTemperature_in_cgs; /*< Conversion factor from Kelvins to internal
-                                    temperature units. */
+  /*! Conversion factor from Ampere to internal current units */
+  double UnitCurrent_in_cgs; 
+
+  /*! Conversion factor from Kelvins to internal temperature units. */
+  double UnitTemperature_in_cgs; 
+                                    
 };
 
 /**

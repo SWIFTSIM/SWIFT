@@ -1132,7 +1132,6 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
-      t->last_rid = r->cpuid;
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1211,6 +1210,7 @@ void *runner_main(void *data) {
         case task_type_kick_fixdt:
           runner_do_kick_fixdt(r, ci, 1);
           break;
+#ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
@@ -1224,6 +1224,7 @@ void *runner_main(void *data) {
             runner_do_recv_cell(r, ci, 1);
           }
           break;
+#endif
         case task_type_grav_mm:
           runner_do_grav_mm(r, t->ci, 1);
           break;
