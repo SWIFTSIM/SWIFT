@@ -266,18 +266,6 @@ int main(int argc, char *argv[]) {
     message("sizeof(struct cell)  is %4zi bytes.", sizeof(struct cell));
   }
 
-/* Temporary abort to handle absence of vectorized functions */
-#ifdef WITH_VECTORIZATION
-
-#ifdef MINIMAL_SPH
-  error(
-      "Vectorized version of Minimal SPH routines not implemented yet. "
-      "Reconfigure with --disable-vec and recompile or use DEFAULT_SPH.");
-#endif
-
-#endif
-  /* End temporary fix */
-
   /* How vocal are we ? */
   const int talking = (verbose == 1 && myrank == 0) || (verbose == 2);
 
@@ -479,6 +467,8 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0)
       message("Time integration ready to start. End of dry-run.");
+    engine_clean(&e);
+    free(params);
     return 0;
   }
 
