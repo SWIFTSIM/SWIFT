@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Coypright (c) 2014 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -27,10 +25,6 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
-
-  /* Old density. */
-  float omega;
-
 } __attribute__((aligned(xpart_align)));
 
 /* Data of a single particle. */
@@ -45,7 +39,7 @@ struct part {
   /* Particle acceleration. */
   float a_hydro[3];
 
-  /* Particle cutoff radius. */
+  /* Particle smoothing length. */
   float h;
 
   /* Particle time of beginning of time-step. */
@@ -53,6 +47,9 @@ struct part {
 
   /* Particle time of end of time-step. */
   int ti_end;
+
+  /* Old internal energy flux */
+  float du_dt;
 
   /* The primitive hydrodynamical variables. */
   struct {
@@ -192,19 +189,10 @@ struct part {
 
   } gravity;
 
-  /* Particle mass (this field is also part of the conserved quantities...). */
-  float mass;
-
   /* Particle ID. */
   long long id;
 
   /* Associated gravitas. */
   struct gpart *gpart;
-
-  /* Variables needed for the code to compile (should be removed/replaced). */
-  float rho;
-
-  /* Old internal energy flux */
-  float du_dt;
 
 } __attribute__((aligned(part_align)));

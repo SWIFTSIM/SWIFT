@@ -77,7 +77,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
-  p->rho = 0.0f;
   p->geometry.volume = 0.0f;
   p->geometry.matrix_E[0][0] = 0.0f;
   p->geometry.matrix_E[0][1] = 0.0f;
@@ -124,9 +123,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount_dh *= ih * kernel_gamma * kernel_norm;
 
   const float ihdim = pow_dimension(ih);
-
-  p->rho += p->mass * kernel_root;
-  p->rho *= ihdim;
 
   float volume;
   float m, momentum[3], energy;
@@ -258,12 +254,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p) {
 
-  float volume;
-  float m;
   float momentum[3];
-  volume = p->geometry.volume;
-
-  p->conserved.mass = m = p->mass;
+  const float volume = p->geometry.volume;
+  const float m = p->conserved.mass;
   p->primitives.rho = m / volume;
 
   /* P actually contains internal energy at this point */
