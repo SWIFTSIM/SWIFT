@@ -124,14 +124,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   const float ihdim = pow_dimension(ih);
 
-  float volume;
-  float m, momentum[3], energy;
-
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
-  volume = ihdim * (p->geometry.volume + kernel_root);
-  p->geometry.volume = volume = 1. / volume;
+  const float volume = 1.f / (ihdim * (p->geometry.volume + kernel_root));
+  p->geometry.volume = volume;
+
   /* we multiply with the smoothing kernel normalization */
   p->geometry.matrix_E[0][0] = ihdim * p->geometry.matrix_E[0][0];
   p->geometry.matrix_E[0][1] = ihdim * p->geometry.matrix_E[0][1];
@@ -149,8 +147,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
-  m = p->conserved.mass;
-  if (m) {
+  const float m = p->conserved.mass;
+  if (m > 0.f) {
+    float momentum[3];
     momentum[0] = p->conserved.momentum[0];
     momentum[1] = p->conserved.momentum[1];
     momentum[2] = p->conserved.momentum[2];
@@ -158,7 +157,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     p->primitives.v[0] = momentum[0] / m;
     p->primitives.v[1] = momentum[1] / m;
     p->primitives.v[2] = momentum[2] / m;
-    energy = p->conserved.energy;
+    const float energy = p->conserved.energy;
     p->primitives.P = hydro_gamma_minus_one * energy / volume;
   }
 }
@@ -254,18 +253,17 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p) {
 
-  float momentum[3];
   const float volume = p->geometry.volume;
   const float m = p->conserved.mass;
   p->primitives.rho = m / volume;
 
-  /* P actually contains internal energy at this point */
-  p->primitives.P *= hydro_gamma_minus_one * p->primitives.rho;
+  p->conserved.momentum[0] = m * p->primitives.v[0];
+  p->conserved.momentum[1] = m * p->primitives.v[1];
+  p->conserved.momentum[2] = m * p->primitives.v[2];
+  p->conserved.energy *= m;
 
-  p->conserved.momentum[0] = momentum[0] = m * p->primitives.v[0];
-  p->conserved.momentum[1] = momentum[1] = m * p->primitives.v[1];
-  p->conserved.momentum[2] = momentum[2] = m * p->primitives.v[2];
-  p->conserved.energy = p->primitives.P / hydro_gamma_minus_one * volume;
+  p->primitives.P =
+      hydro_gamma_minus_one * p->conserved.energy * p->primitives.rho;
 }
 
 /**

@@ -103,7 +103,7 @@ struct part {
     /* Fluid momentum. */
     float momentum[3];
 
-    /* Fluid mass (this field already exists outside of this struct as well). */
+    /* Fluid mass */
     float mass;
 
     /* Fluid thermal energy (not per unit mass!). */
