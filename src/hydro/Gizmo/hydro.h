@@ -271,8 +271,6 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 /**
  * @brief Extra operations to be done during the drift
  *
- * Not used for GIZMO.
- *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param dt The drift time-step.
@@ -281,11 +279,10 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
+    struct part* p, struct xpart* xp, float dt, int t0, int t1,
+    double timeBase) {
 
-  const float dt = (t1 - t0) * timeBase;
   const float h_inv = 1.0f / p->h;
-  const float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
 
   /* Predict smoothing length */
   const float w1 = p->force.h_dt * h_inv * dt;
@@ -294,15 +291,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  if (fabsf(w) < 0.2f) {
-    p->primitives.rho *= approx_expf(w);
+  const float w2 = -hydro_dimension * w1;  
+  if (fabsf(w2) < 0.2f) {
+    p->primitives.rho *= approx_expf(w2);
   } else {
-    p->primitives.rho *= expf(w);
+    p->primitives.rho *= expf(w2);
   }
+  
   p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
   p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
   p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
-  float u = p->conserved.energy + p->du_dt * dt;
+  const float u = p->conserved.energy + p->du_dt * dt;
   p->primitives.P =
       hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
 }
