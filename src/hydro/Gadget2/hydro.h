@@ -20,6 +20,7 @@
 #define SWIFT_GADGET2_HYDRO_H
 
 #include "adiabatic_index.h"
+#include "approx_math.h"
 #include "dimension.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
@@ -75,6 +76,28 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part *restrict p, float dt) {
 
   return p->force.soundspeed;
+}
+
+/**
+ * @brief Returns the density of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_density(
+    const struct part *restrict p) {
+
+  return p->rho;
+}
+
+/**
+ * @brief Returns the mass of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_mass(
+    const struct part *restrict p) {
+
+  return p->mass;
 }
 
 /**
@@ -285,13 +308,30 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle
  * @param xp The extended data of the particle
+ * @param dt The drift time-step.
  * @param t0 The time at the start of the drift
  * @param t1 The time at the end of the drift
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, int t0, int t1,
-    double timeBase) {
+    struct part *restrict p, const struct xpart *restrict xp, float dt, int t0,
+    int t1, double timeBase) {
+
+  const float h_inv = 1.f / p->h;
+
+  /* Predict smoothing length */
+  const float w1 = p->force.h_dt * h_inv * dt;
+  if (fabsf(w1) < 0.2f)
+    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    p->h *= expf(w1);
+
+  /* Predict density */
+  const float w2 = -hydro_dimension * w1;
+  if (fabsf(w2) < 0.2f)
+    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
+  else
+    p->rho *= expf(w2);
 
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;

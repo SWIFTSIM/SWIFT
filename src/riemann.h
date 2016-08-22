@@ -27,18 +27,27 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-#define HLLC_SOLVER
+#if defined(RIEMANN_SOLVER_EXACT)
 
-#ifdef EXACT_SOLVER
+#define RIEMANN_SOLVER_IMPLEMENTATION "Exact Riemann solver (Toro 2009)"
 #include "riemann/riemann_exact.h"
-#endif
 
-#ifdef TRRS_SOLVER
+#elif defined(RIEMANN_SOLVER_TRRS)
+
+#define RIEMANN_SOLVER_IMPLEMENTATION \
+  "Two Rarefaction Riemann Solver (Toro 2009)"
 #include "riemann/riemann_trrs.h"
-#endif
 
-#ifdef HLLC_SOLVER
+#elif defined(RIEMANN_SOLVER_HLLC)
+
+#define RIEMANN_SOLVER_IMPLEMENTATION \
+  "Harten-Lax-van Leer-Contact Riemann solver (Toro 2009)"
 #include "riemann/riemann_hllc.h"
+
+#else
+
+#error "Error: no Riemann solver selected!"
+
 #endif
 
 #endif /* SWIFT_RIEMANN_H */

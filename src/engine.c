@@ -218,6 +218,12 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
       /* Generate the ghost task. */
       c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
+
+#ifdef EXTRA_HYDRO_LOOP
+      /* Generate the extra ghost task. */
+      c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
+                                         task_subtype_none, 0, 0, c, NULL, 0);
+#endif
     }
   }
 
@@ -675,11 +681,12 @@ void engine_addtasks_grav(struct engine *e, struct cell *c, struct task *up,
  * @param cj Dummy cell containing the nodeID of the receiving node.
  * @param t_xv The send_xv #task, if it has already been created.
  * @param t_rho The send_rho #task, if it has already been created.
+ * @param t_gradient The send_gradient #task, if already created.
  * @param t_ti The send_ti #task, if required and has already been created.
  */
 void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
                           struct task *t_xv, struct task *t_rho,
-                          struct task *t_ti) {
+                          struct task *t_gradient, struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -698,21 +705,42 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     /* Create the tasks and their dependencies? */
     if (t_xv == NULL) {
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_none,
-                               3 * ci->tag, 0, ci, cj, 0);
+                               4 * ci->tag, 0, ci, cj, 0);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_none,
-                                3 * ci->tag + 1, 0, ci, cj, 0);
+                                4 * ci->tag + 1, 0, ci, cj, 0);
       if (!(e->policy & engine_policy_fixdt))
         t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend,
-                                 3 * ci->tag + 2, 0, ci, cj, 0);
+                                 4 * ci->tag + 2, 0, ci, cj, 0);
+#ifdef EXTRA_HYDRO_LOOP
+      t_gradient = scheduler_addtask(s, task_type_send, task_subtype_none,
+                                     4 * ci->tag + 3, 0, ci, cj, 0);
+#endif
+
+#ifdef EXTRA_HYDRO_LOOP
+
+      scheduler_addunlock(s, t_gradient, ci->super->kick);
+
+      scheduler_addunlock(s, ci->super->extra_ghost, t_gradient);
+
+      /* The send_rho task should unlock the super-cell's extra_ghost task. */
+      scheduler_addunlock(s, t_rho, ci->super->extra_ghost);
 
       /* The send_rho task depends on the cell's ghost task. */
       scheduler_addunlock(s, ci->super->ghost, t_rho);
 
+      /* The send_xv task should unlock the super-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->super->ghost);
+
+#else
       /* The send_rho task should unlock the super-cell's kick task. */
       scheduler_addunlock(s, t_rho, ci->super->kick);
 
+      /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->super->ghost, t_rho);
+
       /* The send_xv task should unlock the super-cell's ghost task. */
       scheduler_addunlock(s, t_xv, ci->super->ghost);
+#endif
 
       /* The super-cell's kick task should unlock the send_ti task. */
       if (t_ti != NULL) scheduler_addunlock(s, ci->super->kick, t_ti);
@@ -721,6 +749,9 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
     /* Add them to the local cell. */
     engine_addlink(e, &ci->send_xv, t_xv);
     engine_addlink(e, &ci->send_rho, t_rho);
+#ifdef EXTRA_HYDRO_LOOP
+    engine_addlink(e, &ci->send_gradient, t_gradient);
+#endif
     if (t_ti != NULL) engine_addlink(e, &ci->send_ti, t_ti);
   }
 
@@ -728,7 +759,8 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
   if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho, t_ti);
+        engine_addtasks_send(e, ci->progeny[k], cj, t_xv, t_rho, t_gradient,
+                             t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -742,11 +774,13 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
  * @param c The foreign #cell.
  * @param t_xv The recv_xv #task, if it has already been created.
  * @param t_rho The recv_rho #task, if it has already been created.
+ * @param t_gradient The recv_gradient #task, if it has already been created.
  * @param t_ti The recv_ti #task, if required and has already been created.
  */
 
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
-                          struct task *t_rho, struct task *t_ti) {
+                          struct task *t_rho, struct task *t_gradient,
+                          struct task *t_ti) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -757,19 +791,39 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
   if (t_xv == NULL && c->density != NULL) {
 
     /* Create the tasks. */
-    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 3 * c->tag,
+    t_xv = scheduler_addtask(s, task_type_recv, task_subtype_none, 4 * c->tag,
                              0, c, NULL, 0);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_none,
-                              3 * c->tag + 1, 0, c, NULL, 0);
+                              4 * c->tag + 1, 0, c, NULL, 0);
     if (!(e->policy & engine_policy_fixdt))
       t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend,
-                               3 * c->tag + 2, 0, c, NULL, 0);
+                               4 * c->tag + 2, 0, c, NULL, 0);
+#ifdef EXTRA_HYDRO_LOOP
+    t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_none,
+                                   4 * c->tag + 3, 0, c, NULL, 0);
+#endif
   }
   c->recv_xv = t_xv;
   c->recv_rho = t_rho;
+  c->recv_gradient = t_gradient;
   c->recv_ti = t_ti;
 
-  /* Add dependencies. */
+/* Add dependencies. */
+#ifdef EXTRA_HYDRO_LOOP
+  for (struct link *l = c->density; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_xv, l->t);
+    scheduler_addunlock(s, l->t, t_rho);
+  }
+  for (struct link *l = c->gradient; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_rho, l->t);
+    scheduler_addunlock(s, l->t, t_gradient);
+  }
+  for (struct link *l = c->force; l != NULL; l = l->next) {
+    scheduler_addunlock(s, t_gradient, l->t);
+    if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
+  }
+  if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
+#else
   for (struct link *l = c->density; l != NULL; l = l->next) {
     scheduler_addunlock(s, t_xv, l->t);
     scheduler_addunlock(s, l->t, t_rho);
@@ -779,12 +833,13 @@ void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
     if (t_ti != NULL) scheduler_addunlock(s, l->t, t_ti);
   }
   if (c->sorts != NULL) scheduler_addunlock(s, t_xv, c->sorts);
+#endif
 
   /* Recurse? */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho, t_ti);
+        engine_addtasks_recv(e, c->progeny[k], t_xv, t_rho, t_gradient, t_ti);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1470,6 +1525,34 @@ void engine_link_gravity_tasks(struct engine *e) {
   }
 }
 
+#ifdef EXTRA_HYDRO_LOOP
+
+/**
+ * @brief Creates the dependency network for the hydro tasks of a given cell.
+ *
+ * @param sched The #scheduler.
+ * @param density The density task to link.
+ * @param gradient The gradient task to link.
+ * @param force The force task to link.
+ * @param c The cell.
+ */
+static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
+                                                        struct task *density,
+                                                        struct task *gradient,
+                                                        struct task *force,
+                                                        struct cell *c) {
+  /* init --> density loop --> ghost --> gradient loop --> extra_ghost */
+  /* extra_ghost --> force loop --> kick */
+  scheduler_addunlock(sched, c->super->init, density);
+  scheduler_addunlock(sched, density, c->super->ghost);
+  scheduler_addunlock(sched, c->super->ghost, gradient);
+  scheduler_addunlock(sched, gradient, c->super->extra_ghost);
+  scheduler_addunlock(sched, c->super->extra_ghost, force);
+  scheduler_addunlock(sched, force, c->super->kick);
+}
+
+#else
+
 /**
  * @brief Creates the dependency network for the hydro tasks of a given cell.
  *
@@ -1482,7 +1565,6 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
                                                         struct task *density,
                                                         struct task *force,
                                                         struct cell *c) {
-
   /* init --> density loop --> ghost --> force loop --> kick */
   scheduler_addunlock(sched, c->super->init, density);
   scheduler_addunlock(sched, density, c->super->ghost);
@@ -1490,6 +1572,7 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
   scheduler_addunlock(sched, force, c->super->kick);
 }
 
+#endif
 /**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
@@ -1517,6 +1600,24 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Self-interaction? */
     if (t->type == task_type_self && t->subtype == task_subtype_density) {
 
+#ifdef EXTRA_HYDRO_LOOP
+      /* Start by constructing the task for the second  and third hydro loop */
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_self, task_subtype_gradient, 0, 0, t->ci, NULL, 0);
+      struct task *t3 = scheduler_addtask(
+          sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
+
+      /* Add the link between the new loops and the cell */
+      engine_addlink(e, &t->ci->gradient, t2);
+      atomic_inc(&t->ci->nr_gradient);
+      engine_addlink(e, &t->ci->force, t3);
+      atomic_inc(&t->ci->nr_force);
+
+      /* Now, build all the dependencies for the hydro */
+      engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+
+#else
+
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 = scheduler_addtask(
           sched, task_type_self, task_subtype_force, 0, 0, t->ci, NULL, 0);
@@ -1527,10 +1628,39 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
+#endif
     }
 
     /* Otherwise, pair interaction? */
     else if (t->type == task_type_pair && t->subtype == task_subtype_density) {
+
+#ifdef EXTRA_HYDRO_LOOP
+      /* Start by constructing the task for the second and third hydro loop */
+      struct task *t2 = scheduler_addtask(
+          sched, task_type_pair, task_subtype_gradient, 0, 0, t->ci, t->cj, 0);
+      struct task *t3 = scheduler_addtask(
+          sched, task_type_pair, task_subtype_force, 0, 0, t->ci, t->cj, 0);
+
+      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &t->ci->gradient, t2);
+      atomic_inc(&t->ci->nr_gradient);
+      engine_addlink(e, &t->cj->gradient, t2);
+      atomic_inc(&t->cj->nr_gradient);
+      engine_addlink(e, &t->ci->force, t3);
+      atomic_inc(&t->ci->nr_force);
+      engine_addlink(e, &t->cj->force, t3);
+      atomic_inc(&t->cj->nr_force);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+      }
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj);
+      }
+
+#else
 
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 = scheduler_addtask(
@@ -1550,12 +1680,38 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
+
+#endif
+
     }
 
     /* Otherwise, sub-self interaction? */
     else if (t->type == task_type_sub_self &&
              t->subtype == task_subtype_density) {
 
+#ifdef EXTRA_HYDRO_LOOP
+
+      /* Start by constructing the task for the second and third hydro loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub_self, task_subtype_gradient,
+                            t->flags, 0, t->ci, t->cj, 0);
+      struct task *t3 =
+          scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj, 0);
+
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &t->ci->gradient, t2);
+      atomic_inc(&t->ci->nr_gradient);
+      engine_addlink(e, &t->ci->force, t3);
+      atomic_inc(&t->ci->nr_force);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+      }
+
+#else
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 =
           scheduler_addtask(sched, task_type_sub_self, task_subtype_force,
@@ -1570,12 +1726,43 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       if (t->ci->nodeID == nodeID) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
       }
+#endif
     }
 
     /* Otherwise, sub-pair interaction? */
     else if (t->type == task_type_sub_pair &&
              t->subtype == task_subtype_density) {
 
+#ifdef EXTRA_HYDRO_LOOP
+
+      /* Start by constructing the task for the second and third hydro loop */
+      struct task *t2 =
+          scheduler_addtask(sched, task_type_sub_pair, task_subtype_gradient,
+                            t->flags, 0, t->ci, t->cj, 0);
+      struct task *t3 =
+          scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
+                            t->flags, 0, t->ci, t->cj, 0);
+
+      /* Add the link between the new loop and both cells */
+      engine_addlink(e, &t->ci->gradient, t2);
+      atomic_inc(&t->ci->nr_gradient);
+      engine_addlink(e, &t->cj->gradient, t2);
+      atomic_inc(&t->cj->nr_gradient);
+      engine_addlink(e, &t->ci->force, t3);
+      atomic_inc(&t->ci->nr_force);
+      engine_addlink(e, &t->cj->force, t3);
+      atomic_inc(&t->cj->nr_force);
+
+      /* Now, build all the dependencies for the hydro for the cells */
+      /* that are local and are not descendant of the same super-cells */
+      if (t->ci->nodeID == nodeID) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
+      }
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+        engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->cj);
+      }
+
+#else
       /* Start by constructing the task for the second hydro loop */
       struct task *t2 =
           scheduler_addtask(sched, task_type_sub_pair, task_subtype_force,
@@ -1595,8 +1782,8 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
         engine_make_hydro_loops_dependencies(sched, t, t2, t->cj);
       }
+#endif
     }
-
     /* External gravity tasks should depend on init and unlock the kick */
     else if (t->type == task_type_grav_external) {
       scheduler_addunlock(sched, t->ci->init, t);
@@ -1672,7 +1859,11 @@ void engine_maketasks(struct engine *e) {
      is the number of cells (s->tot_cells) times the number of neighbours (27)
      times the number of interaction types (2, density and force). */
   if (e->links != NULL) free(e->links);
+#ifdef EXTRA_HYDRO_LOOP
+  e->size_links = s->tot_cells * 27 * 3;
+#else
   e->size_links = s->tot_cells * 27 * 2;
+#endif
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
   e->nr_links = 0;
@@ -1718,13 +1909,13 @@ void engine_maketasks(struct engine *e) {
       /* Loop through the proxy's incoming cells and add the
          recv tasks. */
       for (int k = 0; k < p->nr_cells_in; k++)
-        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL, NULL);
+        engine_addtasks_recv(e, p->cells_in[k], NULL, NULL, NULL, NULL);
 
       /* Loop through the proxy's outgoing cells and add the
          send tasks. */
       for (int k = 0; k < p->nr_cells_out; k++)
         engine_addtasks_send(e, p->cells_out[k], p->cells_in[0], NULL, NULL,
-                             NULL);
+                             NULL, NULL);
     }
   }
 #endif
@@ -2535,6 +2726,11 @@ void engine_step(struct engine *e) {
 
     submask |= 1 << task_subtype_density;
     submask |= 1 << task_subtype_force;
+
+#ifdef EXTRA_HYDRO_LOOP
+    mask |= 1 << task_type_extra_ghost;
+    submask |= 1 << task_subtype_gradient;
+#endif
   }
 
   /* Add the tasks corresponding to self-gravity to the masks */

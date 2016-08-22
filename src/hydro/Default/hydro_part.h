@@ -28,6 +28,8 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  float u_full;
+
   /* Old density. */
   float omega;
 

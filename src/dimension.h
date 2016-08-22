@@ -33,6 +33,8 @@
 #include "inline.h"
 #include "vector.h"
 
+#include <math.h>
+
 /* First define some constants */
 #if defined(HYDRO_DIMENSION_3D)
 
@@ -110,6 +112,92 @@ __attribute__((always_inline)) INLINE static float pow_dimension_plus_one(
 
   error("The dimension is not defined !");
   return 0.f;
+
+#endif
+}
+
+/**
+ * @brief Inverts the given dimension by dimension matrix (in place)
+ *
+ * @param A A 3x3 matrix of which we want to invert the top left dxd part
+ */
+__attribute__((always_inline)) INLINE static void
+invert_dimension_by_dimension_matrix(float A[3][3]) {
+
+#if defined(HYDRO_DIMENSION_3D)
+
+  float detA, Ainv[3][3];
+
+  detA = A[0][0] * A[1][1] * A[2][2] + A[0][1] * A[1][2] * A[2][0] +
+         A[0][2] * A[1][0] * A[2][1] - A[0][2] * A[1][1] * A[2][0] -
+         A[0][1] * A[1][0] * A[2][2] - A[0][0] * A[1][2] * A[2][1];
+
+  if (detA && !isnan(detA)) {
+    Ainv[0][0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / detA;
+    Ainv[0][1] = (A[0][2] * A[2][1] - A[0][1] * A[2][2]) / detA;
+    Ainv[0][2] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / detA;
+    Ainv[1][0] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / detA;
+    Ainv[1][1] = (A[0][0] * A[2][2] - A[0][2] * A[2][0]) / detA;
+    Ainv[1][2] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / detA;
+    Ainv[2][0] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / detA;
+    Ainv[2][1] = (A[0][1] * A[2][0] - A[0][0] * A[2][1]) / detA;
+    Ainv[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / detA;
+  } else {
+    Ainv[0][0] = 0.0f;
+    Ainv[0][1] = 0.0f;
+    Ainv[0][2] = 0.0f;
+    Ainv[1][0] = 0.0f;
+    Ainv[1][1] = 0.0f;
+    Ainv[1][2] = 0.0f;
+    Ainv[2][0] = 0.0f;
+    Ainv[2][1] = 0.0f;
+    Ainv[2][2] = 0.0f;
+  }
+
+  A[0][0] = Ainv[0][0];
+  A[0][1] = Ainv[0][1];
+  A[0][2] = Ainv[0][2];
+  A[1][0] = Ainv[1][0];
+  A[1][1] = Ainv[1][1];
+  A[1][2] = Ainv[1][2];
+  A[2][0] = Ainv[2][0];
+  A[2][1] = Ainv[2][1];
+  A[2][2] = Ainv[2][2];
+
+#elif defined(HYDRO_DIMENSION_2D)
+
+  float detA, Ainv[2][2];
+
+  detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+
+  if (detA && !isnan(detA)) {
+    Ainv[0][0] = A[1][1] / detA;
+    Ainv[0][1] = -A[0][1] / detA;
+    Ainv[1][0] = -A[1][0] / detA;
+    Ainv[1][1] = A[0][0] / detA;
+  } else {
+    Ainv[0][0] = 0.0f;
+    Ainv[0][1] = 0.0f;
+    Ainv[1][0] = 0.0f;
+    Ainv[1][1] = 0.0f;
+  }
+
+  A[0][0] = Ainv[0][0];
+  A[0][1] = Ainv[0][1];
+  A[1][0] = Ainv[1][0];
+  A[1][1] = Ainv[1][1];
+
+#elif defined(HYDRO_DIMENSION_1D)
+
+  if (A[0][0] && !isnan(A[0][0])) {
+    A[0][0] = 1.0f / A[0][0];
+  } else {
+    A[0][0] = 0.0f;
+  }
+
+#else
+
+  error("The dimension is not defined !");
 
 #endif
 }
