@@ -291,13 +291,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->h *= expf(w1);
 
-  const float w2 = -hydro_dimension * w1;  
+  const float w2 = -hydro_dimension * w1;
   if (fabsf(w2) < 0.2f) {
     p->primitives.rho *= approx_expf(w2);
   } else {
     p->primitives.rho *= expf(w2);
   }
-  
+
   p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
   p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
   p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
