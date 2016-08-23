@@ -111,14 +111,14 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
 static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
   /* Static constants. */
-  const static int pts[7][8] = {
+  static const int pts[7][8] = {
       {-1, 12, 10, 9, 4, 3, 1, 0},     {-1, -1, 11, 10, 5, 4, 2, 1},
       {-1, -1, -1, 12, 7, 6, 4, 3},    {-1, -1, -1, -1, 8, 7, 5, 4},
       {-1, -1, -1, -1, -1, 12, 10, 9}, {-1, -1, -1, -1, -1, -1, 11, 10},
       {-1, -1, -1, -1, -1, -1, -1, 12}};
-  const static float sid_scale[13] = {0.1897, 0.4025, 0.1897, 0.4025, 0.5788,
-                                      0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
-                                      0.5788, 0.4025, 0.5788};
+  static const float sid_scale[13] = {
+      0.1897f, 0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.1897f,
+      0.4025f, 0.1897f, 0.4025f, 0.5788f, 0.4025f, 0.5788f};
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -704,7 +704,6 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->toc = 0;
   t->nr_unlock_tasks = 0;
   t->rid = -1;
-  t->last_rid = -1;
 
   /* Add an index for it. */
   // lock_lock( &s->lock );

@@ -443,48 +443,6 @@ void pairs_single_grav(double *dim, long long int pid,
 }
 
 /**
- * @brief Test the density function by dumping it for two random parts.
- *
- * @param N number of intervals in [0,1].
- */
-void density_dump(int N) {
-
-  int k;
-  float r2[4] = {0.0f, 0.0f, 0.0f, 0.0f}, hi[4], hj[4];
-  struct part /**pi[4],  *pj[4],*/ Pi[4], Pj[4];
-
-  /* Init the interaction parameters. */
-  for (k = 0; k < 4; k++) {
-    Pi[k].mass = 1.0f;
-    Pi[k].rho = 0.0f;
-    Pi[k].density.wcount = 0.0f;
-    Pi[k].id = k;
-    Pj[k].mass = 1.0f;
-    Pj[k].rho = 0.0f;
-    Pj[k].density.wcount = 0.0f;
-    Pj[k].id = k + 4;
-    hi[k] = 1.0;
-    hj[k] = 1.0;
-#if defined(SHADOWSWIFT)
-    double x[3] = {0.0f, 0.0f, 0.0f};
-    voronoi_cell_init(&Pi[k].cell, x);
-    voronoi_cell_init(&Pj[k].cell, x);
-#endif
-  }
-
-  for (k = 0; k <= N; k++) {
-    r2[3] = r2[2];
-    r2[2] = r2[1];
-    r2[1] = r2[0];
-    r2[0] = ((float)k) / N;
-    Pi[0].density.wcount = 0;
-    Pj[0].density.wcount = 0;
-    runner_iact_density(r2[0], NULL, hi[0], hj[0], &Pi[0], &Pj[0]);
-    printf(" %e %e %e", r2[0], Pi[0].density.wcount, Pj[0].density.wcount);
-  }
-}
-
-/**
  * @brief Compute the force on a single particle brute-force.
  */
 void engine_single_density(double *dim, long long int pid,
@@ -504,7 +462,7 @@ void engine_single_density(double *dim, long long int pid,
   hydro_init_part(&p);
 
   /* Loop over all particle pairs (force). */
-  for (int k = 0; k < N; k++) {
+  for (k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
     for (int i = 0; i < 3; i++) {
       dx[i] = p.x[i] - parts[k].x[i];
@@ -525,7 +483,7 @@ void engine_single_density(double *dim, long long int pid,
   /* Dump the result. */
   hydro_end_density(&p, 0);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
-          p.density.wcount, p.rho);
+          p.density.wcount, hydro_get_density(&p));
   fflush(stdout);
 }
 

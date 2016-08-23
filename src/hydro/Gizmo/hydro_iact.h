@@ -57,9 +57,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
 
-  /* Density. Needed for h_dt. */
-  pi->rho += pj->mass * wi;
-
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
   for (k = 0; k < 3; k++)
@@ -72,9 +69,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   pj->density.wcount += wj;
   pj->density.wcount_dh -= xj * wj_dx;
-
-  /* Density. Needed for h_dt. */
-  pj->rho += pi->mass * wi;
 
   /* these are eqns. (1) and (2) in the summary */
   pj->geometry.volume += wj;
@@ -118,8 +112,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   pi->density.wcount += wi;
   pi->density.wcount_dh -= xi * wi_dx;
-
-  pi->rho += pj->mass * wi;
 
   /* these are eqns. (1) and (2) in the summary */
   pi->geometry.volume += wi;
@@ -273,7 +265,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   xj = r * hj_inv;
   kernel_deval(xj, &wj, &wj_dx);
 
-  /* Compute h_dt */
+  /* Compute h_dt. We are going to use an SPH-like estimate of div_v for that */
   float dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
                (pi->v[2] - pj->v[2]) * dx[2];
   float ri = 1.0f / r;
@@ -282,9 +274,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float wi_dr = hidp1 * wi_dx;
   float wj_dr = hjdp1 * wj_dx;
   dvdr *= ri;
-  pi->force.h_dt -= pj->mass * dvdr / pj->rho * wi_dr;
+  pi->force.h_dt -= pj->conserved.mass * dvdr / pj->primitives.rho * wi_dr;
   if (mode == 1) {
-    pj->force.h_dt -= pi->mass * dvdr / pi->rho * wj_dr;
+    pj->force.h_dt -= pi->conserved.mass * dvdr / pi->primitives.rho * wj_dr;
   }
 
   /* Compute area */
@@ -385,6 +377,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   riemann_solve_for_flux(Wi, Wj, n_unit, vij, totflux);
 
+  /* Store mass flux */
+  float mflux = dti * Anorm * totflux[0];
+  pi->gravity.mflux[0] += mflux * dx[0];
+  pi->gravity.mflux[1] += mflux * dx[1];
+  pi->gravity.mflux[2] += mflux * dx[2];
+
   /* Update conserved variables */
   /* eqn. (16) */
   pi->conserved.flux.mass -= dti * Anorm * totflux[0];
@@ -414,6 +412,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      ==> we update particle j if (MODE IS 1) OR (j IS INACTIVE)
   */
   if (mode == 1 || pj->ti_end > pi->ti_end) {
+    /* Store mass flux */
+    mflux = dtj * Anorm * totflux[0];
+    pj->gravity.mflux[0] -= mflux * dx[0];
+    pj->gravity.mflux[1] -= mflux * dx[1];
+    pj->gravity.mflux[2] -= mflux * dx[2];
+
     pj->conserved.flux.mass += dtj * Anorm * totflux[0];
     pj->conserved.flux.momentum[0] += dtj * Anorm * totflux[1];
     pj->conserved.flux.momentum[1] += dtj * Anorm * totflux[2];
@@ -471,16 +475,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
 __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {}
+    struct part **pj) {
+  error(
+      "Vectorised versions of the Gizmo interaction functions do not exist "
+      "yet!");
+}
 
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
-                               struct part **pi, struct part **pj) {}
+                               struct part **pi, struct part **pj) {
+  error(
+      "Vectorised versions of the Gizmo interaction functions do not exist "
+      "yet!");
+}
 
 __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {}
+    struct part **pj) {
+  error(
+      "Vectorised versions of the Gizmo interaction functions do not exist "
+      "yet!");
+}
 
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
-    struct part **pj) {}
+    struct part **pj) {
+  error(
+      "Vectorised versions of the Gizmo interaction functions do not exist "
+      "yet!");
+}

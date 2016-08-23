@@ -46,7 +46,6 @@
 #include "inline.h"
 #include "lock.h"
 
-/* Task type names. */
 const char *taskID_names[task_type_count] = {
     "none",       "sort",    "self",         "pair",          "sub_self",
     "sub_pair",   "init",    "ghost",        "extra_ghost",   "kick",
@@ -58,6 +57,9 @@ const char *subtaskID_names[task_subtype_count] = {
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
     const struct cell *ci, const struct cell *cj) {
@@ -77,6 +79,9 @@ __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
 
 /**
  * @brief Computes the overlap between the gparts array of two given cells.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_gpart(
     const struct cell *ci, const struct cell *cj) {

@@ -82,8 +82,8 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION density
 #include "runner_doiact.h"
 
+/* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
-/* Import the gradient loop functions. */
 #undef FUNCTION
 #define FUNCTION gradient
 #include "runner_doiact.h"
@@ -112,7 +112,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   const int ti_current = r->e->ti_current;
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
-
+  const double time = r->e->time;
   TIMER_TIC;
 
   /* Recurse? */
@@ -135,7 +135,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
 
-      external_gravity(potential, constants, g);
+      external_gravity(time, potential, constants, g);
     }
   }
 
@@ -436,6 +436,9 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  */
 void runner_do_extra_ghost(struct runner *r, struct cell *c) {
+
+#ifdef EXTRA_HYDRO_LOOP
+
   struct part *restrict parts = c->parts;
   const int count = c->count;
   const int ti_current = r->e->ti_current;
@@ -460,6 +463,10 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c) {
       }
     }
   }
+
+#else
+  error("SWIFT was not compiled with the extra hydro loop activated.");
+#endif
 }
 
 /**
@@ -529,8 +536,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
           h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
 
           /* Truncate to the range [ -p->h/2 , p->h ]. */
-          h_corr = fminf(h_corr, p->h);
-          h_corr = fmaxf(h_corr, -p->h * 0.5f);
+          h_corr = (h_corr < p->h) ? h_corr : p->h;
+          h_corr = (h_corr > -0.5f * p->h) ? h_corr : -0.5f * p->h;
         }
 
         /* Did we get the right number density? */
@@ -651,7 +658,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   if (!c->split) {
 
     /* Loop over all the g-particles in the cell */
-    const int nr_gparts = c->gcount;
+    const size_t nr_gparts = c->gcount;
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
@@ -664,7 +671,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = fmaxf(dx2_max, dx2);
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
     }
 
     /* Loop over all the particles in the cell (more work for these !) */
@@ -682,10 +689,10 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
-      dx2_max = fmaxf(dx2_max, dx2);
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
 
       /* Maximal smoothing length */
-      h_max = fmaxf(p->h, h_max);
+      h_max = (h_max > p->h) ? h_max : p->h;
 
       /* Now collect quantities for statistics */
 
@@ -695,7 +702,8 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
                           xp->v_full[1] + p->a_hydro[1] * half_dt,
                           xp->v_full[2] + p->a_hydro[2] * half_dt};
-      const float m = p->mass;
+
+      const float m = hydro_get_mass(p);
 
       /* Collect mass */
       mass += m;
@@ -1124,7 +1132,6 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
-      t->last_rid = r->cpuid;
 
       /* Different types of tasks... */
       switch (t->type) {
@@ -1192,15 +1199,18 @@ void *runner_main(void *data) {
         case task_type_ghost:
           runner_do_ghost(r, ci);
           break;
+#ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
           runner_do_extra_ghost(r, ci);
           break;
+#endif
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;
         case task_type_kick_fixdt:
           runner_do_kick_fixdt(r, ci, 1);
           break;
+#ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
@@ -1214,6 +1224,7 @@ void *runner_main(void *data) {
             runner_do_recv_cell(r, ci, 1);
           }
           break;
+#endif
         case task_type_grav_mm:
           runner_do_grav_mm(r, t->ci, 1);
           break;

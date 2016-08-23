@@ -132,22 +132,6 @@ __attribute__((always_inline)) INLINE void voronoi3d_cell_copy(
   for (int i = 0; i < VORONOI3D_MAXNUMEDGE; ++i) {
     destination->ngbs[i] = source->ngbs[i];
   }
-
-  /* Copy the number of faces of the cell. */
-  destination->nface = source->nface;
-
-  /* Copy the surface areas of the cell faces. We only copy the nface first
-     values. */
-  for (int i = 0; i < source->nface; ++i) {
-    destination->face_areas[i] = source->face_areas[i];
-  }
-
-  /* Copy the midpoints of the cell faces. */
-  for (int i = 0; i < source->nface; ++i) {
-    destination->face_midpoints[i][0] = source->face_midpoints[i][0];
-    destination->face_midpoints[i][1] = source->face_midpoints[i][1];
-    destination->face_midpoints[i][2] = source->face_midpoints[i][2];
-  }
 }
 
 #endif  // SWIFT_VORONOI1D_CELL_H

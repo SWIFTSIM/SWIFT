@@ -77,4 +77,9 @@ int main(int argc, char *argv[]) {
     fflush(stdout);
     threadpool_map(&tp, map_function_first, data, N, sizeof(int), 2, NULL);
   }
+
+  /* Be clean */
+  threadpool_clean(&tp);
+
+  return 0;
 }

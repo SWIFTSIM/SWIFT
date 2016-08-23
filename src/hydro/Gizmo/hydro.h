@@ -77,7 +77,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->density.wcount = 0.0f;
   p->density.wcount_dh = 0.0f;
-  p->rho = 0.0f;
   p->geometry.volume = 0.0f;
   p->geometry.matrix_E[0][0] = 0.0f;
   p->geometry.matrix_E[0][1] = 0.0f;
@@ -125,17 +124,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   const float ihdim = pow_dimension(ih);
 
-  p->rho += p->mass * kernel_root;
-  p->rho *= ihdim;
-
-  float volume;
-  float m, momentum[3], energy;
-
   /* Final operation on the geometry. */
   /* we multiply with the smoothing kernel normalization ih3 and calculate the
    * volume */
-  volume = ihdim * (p->geometry.volume + kernel_root);
-  p->geometry.volume = volume = 1. / volume;
+  const float volume = 1.f / (ihdim * (p->geometry.volume + kernel_root));
+  p->geometry.volume = volume;
+
   /* we multiply with the smoothing kernel normalization */
   p->geometry.matrix_E[0][0] = ihdim * p->geometry.matrix_E[0][0];
   p->geometry.matrix_E[0][1] = ihdim * p->geometry.matrix_E[0][1];
@@ -153,8 +147,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
-  m = p->conserved.mass;
-  if (m) {
+  const float m = p->conserved.mass;
+  if (m > 0.f) {
+    float momentum[3];
     momentum[0] = p->conserved.momentum[0];
     momentum[1] = p->conserved.momentum[1];
     momentum[2] = p->conserved.momentum[2];
@@ -162,7 +157,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     p->primitives.v[0] = momentum[0] / m;
     p->primitives.v[1] = momentum[1] / m;
     p->primitives.v[2] = momentum[2] / m;
-    energy = p->conserved.energy;
+    const float energy = p->conserved.energy;
     p->primitives.P = hydro_gamma_minus_one * energy / volume;
   }
 }
@@ -205,12 +200,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
  * Just a wrapper around hydro_gradients_finalize, which can be an empty method,
  * in which case no gradients are used.
  *
+ * This method also initializes the force loop variables.
+ *
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part* p) {
 
   hydro_gradients_finalize(p);
+
+  p->gravity.mflux[0] = 0.0f;
+  p->gravity.mflux[1] = 0.0f;
+  p->gravity.mflux[2] = 0.0f;
 }
 
 /**
@@ -252,51 +253,54 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     struct part* p) {
 
-  float volume;
-  float m;
-  float momentum[3];
-  volume = p->geometry.volume;
-
-  p->conserved.mass = m = p->mass;
+  const float volume = p->geometry.volume;
+  const float m = p->conserved.mass;
   p->primitives.rho = m / volume;
 
-  /* P actually contains internal energy at this point */
-  p->primitives.P *= hydro_gamma_minus_one * p->primitives.rho;
+  p->conserved.momentum[0] = m * p->primitives.v[0];
+  p->conserved.momentum[1] = m * p->primitives.v[1];
+  p->conserved.momentum[2] = m * p->primitives.v[2];
 
-  p->conserved.momentum[0] = momentum[0] = m * p->primitives.v[0];
-  p->conserved.momentum[1] = momentum[1] = m * p->primitives.v[1];
-  p->conserved.momentum[2] = momentum[2] = m * p->primitives.v[2];
-  p->conserved.energy = p->primitives.P / hydro_gamma_minus_one * volume;
+  p->primitives.P =
+      hydro_gamma_minus_one * p->conserved.energy * p->primitives.rho;
+
+  p->conserved.energy *= m;
 }
 
 /**
  * @brief Extra operations to be done during the drift
  *
- * Not used for GIZMO.
- *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
+ * @param dt The drift time-step.
  * @param t0 Integer start time of the drift interval.
  * @param t1 Integer end time of the drift interval.
  * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {
+    struct part* p, struct xpart* xp, float dt, int t0, int t1,
+    double timeBase) {
 
-  // return;
-  float dt = (t1 - t0) * timeBase;
-  float h_inv = 1.0f / p->h;
-  float w = -hydro_dimension * p->force.h_dt * h_inv * dt;
+  const float h_inv = 1.0f / p->h;
 
-  if (fabsf(w) < 0.2f) {
-    p->primitives.rho *= approx_expf(w);
+  /* Predict smoothing length */
+  const float w1 = p->force.h_dt * h_inv * dt;
+  if (fabsf(w1) < 0.2f)
+    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    p->h *= expf(w1);
+
+  const float w2 = -hydro_dimension * w1;
+  if (fabsf(w2) < 0.2f) {
+    p->primitives.rho *= approx_expf(w2);
   } else {
-    p->primitives.rho *= expf(w);
+    p->primitives.rho *= expf(w2);
   }
-  p->primitives.v[0] += p->a_hydro[0] * dt;
-  p->primitives.v[1] += p->a_hydro[1] * dt;
-  p->primitives.v[2] += p->a_hydro[2] * dt;
-  float u = p->conserved.energy + p->du_dt * dt;
+
+  p->primitives.v[0] += (p->a_hydro[0] + p->gravity.old_a[0]) * dt;
+  p->primitives.v[1] += (p->a_hydro[1] + p->gravity.old_a[1]) * dt;
+  p->primitives.v[2] += (p->a_hydro[2] + p->gravity.old_a[2]) * dt;
+  const float u = p->conserved.energy + p->du_dt * dt;
   p->primitives.P =
       hydro_gamma_minus_one * u * p->primitives.rho / p->conserved.mass;
 }
@@ -319,38 +323,23 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   /* Add normalization to h_dt. */
   p->force.h_dt *= p->h * hydro_dimension_inv;
 
-  /* Update the conserved variables. We do this here and not in the kick,
-     since we need the updated variables below. */
-  p->conserved.mass += p->conserved.flux.mass;
-  p->conserved.momentum[0] += p->conserved.flux.momentum[0];
-  p->conserved.momentum[1] += p->conserved.flux.momentum[1];
-  p->conserved.momentum[2] += p->conserved.flux.momentum[2];
-  p->conserved.energy += p->conserved.flux.energy;
-
-  /* reset fluxes */
-  /* we can only do this here, since we need to keep the fluxes for inactive
-     particles */
-  p->conserved.flux.mass = 0.0f;
-  p->conserved.flux.momentum[0] = 0.0f;
-  p->conserved.flux.momentum[1] = 0.0f;
-  p->conserved.flux.momentum[2] = 0.0f;
-  p->conserved.flux.energy = 0.0f;
-
   /* Set the hydro acceleration, based on the new momentum and mass */
   /* NOTE: the momentum and mass are only correct for active particles, since
            only active particles have received flux contributions from all their
            neighbours. Since this method is only called for active particles,
            this is indeed the case. */
   if (p->force.dt) {
-    p->a_hydro[0] =
-        (p->conserved.momentum[0] / p->conserved.mass - p->force.v_full[0]) /
-        p->force.dt;
-    p->a_hydro[1] =
-        (p->conserved.momentum[1] / p->conserved.mass - p->force.v_full[1]) /
-        p->force.dt;
-    p->a_hydro[2] =
-        (p->conserved.momentum[2] / p->conserved.mass - p->force.v_full[2]) /
-        p->force.dt;
+    float mnew;
+    float vnew[3];
+
+    mnew = p->conserved.mass + p->conserved.flux.mass;
+    vnew[0] = (p->conserved.momentum[0] + p->conserved.flux.momentum[0]) / mnew;
+    vnew[1] = (p->conserved.momentum[1] + p->conserved.flux.momentum[1]) / mnew;
+    vnew[2] = (p->conserved.momentum[2] + p->conserved.flux.momentum[2]) / mnew;
+
+    p->a_hydro[0] = (vnew[0] - p->force.v_full[0]) / p->force.dt;
+    p->a_hydro[1] = (vnew[1] - p->force.v_full[1]) / p->force.dt;
+    p->a_hydro[2] = (vnew[2] - p->force.v_full[2]) / p->force.dt;
 
     p->du_dt = p->conserved.flux.energy / p->force.dt;
   } else {
@@ -373,14 +362,81 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  * @param half_dt Half the physical time step.
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
-    struct part* p, struct xpart* xp, float dt, float half_dt) {}
+    struct part* p, struct xpart* xp, float dt, float half_dt) {
+
+  float oldm, oldp[3], anew[3];
+
+  /* Retrieve the current value of the gravitational acceleration from the
+     gpart. We are only allowed to do this because this is the kick. We still
+     need to check whether gpart exists though.*/
+  if (p->gpart) {
+    anew[0] = p->gpart->a_grav[0];
+    anew[1] = p->gpart->a_grav[1];
+    anew[2] = p->gpart->a_grav[2];
+
+    /* Copy the old mass and momentum before updating the conserved variables */
+    oldm = p->conserved.mass;
+    oldp[0] = p->conserved.momentum[0];
+    oldp[1] = p->conserved.momentum[1];
+    oldp[2] = p->conserved.momentum[2];
+  }
+
+  /* Update conserved variables. */
+  p->conserved.mass += p->conserved.flux.mass;
+  p->conserved.momentum[0] += p->conserved.flux.momentum[0];
+  p->conserved.momentum[1] += p->conserved.flux.momentum[1];
+  p->conserved.momentum[2] += p->conserved.flux.momentum[2];
+  p->conserved.energy += p->conserved.flux.energy;
+
+  /* Add gravity. We only do this if we have gravity activated. */
+  if (p->gpart) {
+    p->conserved.momentum[0] +=
+        half_dt * (oldm * p->gravity.old_a[0] + p->conserved.mass * anew[0]);
+    p->conserved.momentum[1] +=
+        half_dt * (oldm * p->gravity.old_a[1] + p->conserved.mass * anew[1]);
+    p->conserved.momentum[2] +=
+        half_dt * (oldm * p->gravity.old_a[2] + p->conserved.mass * anew[2]);
+
+    float paold, panew;
+    paold = oldp[0] * p->gravity.old_a[0] + oldp[1] * p->gravity.old_a[1] +
+            oldp[2] * p->gravity.old_a[2];
+    panew = p->conserved.momentum[0] * anew[0] +
+            p->conserved.momentum[1] * anew[1] +
+            p->conserved.momentum[2] * anew[2];
+    p->conserved.energy += half_dt * (paold + panew);
+
+    float fluxaold, fluxanew;
+    fluxaold = p->gravity.old_a[0] * p->gravity.old_mflux[0] +
+               p->gravity.old_a[1] * p->gravity.old_mflux[1] +
+               p->gravity.old_a[2] * p->gravity.old_mflux[2];
+    fluxanew = anew[0] * p->gravity.mflux[0] + anew[1] * p->gravity.mflux[1] +
+               anew[2] * p->gravity.mflux[2];
+    p->conserved.energy += half_dt * (fluxaold + fluxanew);
+
+    /* Store gravitational acceleration and mass flux for next step */
+    p->gravity.old_a[0] = anew[0];
+    p->gravity.old_a[1] = anew[1];
+    p->gravity.old_a[2] = anew[2];
+    p->gravity.old_mflux[0] = p->gravity.mflux[0];
+    p->gravity.old_mflux[1] = p->gravity.mflux[1];
+    p->gravity.old_mflux[2] = p->gravity.mflux[2];
+  }
+
+  /* reset fluxes */
+  /* we can only do this here, since we need to keep the fluxes for inactive
+     particles */
+  p->conserved.flux.mass = 0.0f;
+  p->conserved.flux.momentum[0] = 0.0f;
+  p->conserved.flux.momentum[1] = 0.0f;
+  p->conserved.flux.momentum[2] = 0.0f;
+  p->conserved.flux.energy = 0.0f;
+}
 
 /**
  * @brief Returns the internal energy of a particle
  *
  * @param p The particle of interest.
  * @param dt Time since the last kick.
- * @return Internal energy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
     const struct part* restrict p, float dt) {
@@ -393,7 +449,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
  *
  * @param p The particle of interest.
  * @param dt Time since the last kick.
- * @return Entropy of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_entropy(
     const struct part* restrict p, float dt) {
@@ -406,7 +461,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
  *
  * @param p The particle of interest.
  * @param dt Time since the last kick.
- * @param Sound speed of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part* restrict p, float dt) {
@@ -419,10 +473,31 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
  *
  * @param p The particle of interest
  * @param dt Time since the last kick
- * @param Pressure of the particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part* restrict p, float dt) {
 
   return p->primitives.P;
+}
+
+/**
+ * @brief Returns the mass of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_mass(
+    const struct part* restrict p) {
+
+  return p->conserved.mass;
+}
+
+/**
+ * @brief Returns the density of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_density(
+    const struct part* restrict p) {
+
+  return p->primitives.rho;
 }

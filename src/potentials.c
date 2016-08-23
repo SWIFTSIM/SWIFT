@@ -29,11 +29,13 @@
  * of units.
  *
  * @param parameter_file The parsed parameter file
+ * @param phys_const Physical constants in internal units
  * @param us The current internal system of units
  * @param potential The external potential properties to initialize
  */
 void potential_init(const struct swift_params* parameter_file,
-                    struct UnitSystem* us,
+                    const struct phys_const* phys_const,
+                    const struct UnitSystem* us,
                     struct external_potential* potential) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
@@ -65,6 +67,22 @@ void potential_init(const struct swift_params* parameter_file,
       parameter_file, "IsothermalPotential:timestep_mult");
 
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  potential->disk_patch_potential.surface_density = parser_get_param_double(
+      parameter_file, "Disk-PatchPotential:surface_density");
+  potential->disk_patch_potential.scale_height = parser_get_param_double(
+      parameter_file, "Disk-PatchPotential:scale_height");
+  potential->disk_patch_potential.z_disk =
+      parser_get_param_double(parameter_file, "Disk-PatchPotential:z_disk");
+  potential->disk_patch_potential.timestep_mult = parser_get_param_double(
+      parameter_file, "Disk-PatchPotential:timestep_mult");
+  potential->disk_patch_potential.growth_time = parser_get_opt_param_double(
+      parameter_file, "Disk-PatchPotential:growth_time", 0.);
+  potential->disk_patch_potential.dynamical_time =
+      sqrt(potential->disk_patch_potential.scale_height /
+           (phys_const->const_newton_G *
+            potential->disk_patch_potential.surface_density));
+#endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 }
 
 /**
@@ -78,7 +96,7 @@ void potential_print(const struct external_potential* potential) {
 
   message(
       "Point mass properties are (x,y,z) = (%e, %e, %e), M = %e timestep "
-      "multiplier = %e",
+      "multiplier = %e.",
       potential->point_mass.x, potential->point_mass.y, potential->point_mass.z,
       potential->point_mass.mass, potential->point_mass.timestep_mult);
 
@@ -88,10 +106,25 @@ void potential_print(const struct external_potential* potential) {
 
   message(
       "Isothermal potential properties are (x,y,z) = (%e, %e, %e), vrot = %e "
-      "timestep multiplier= %e",
+      "timestep multiplier = %e.",
       potential->isothermal_potential.x, potential->isothermal_potential.y,
       potential->isothermal_potential.z, potential->isothermal_potential.vrot,
       potential->isothermal_potential.timestep_mult);
 
 #endif /* EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL */
+
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+
+  message(
+      "Disk-patch potential properties are surface_density = %e disk height= "
+      "%e scale height = %e timestep multiplier = %e.",
+      potential->disk_patch_potential.surface_density,
+      potential->disk_patch_potential.z_disk,
+      potential->disk_patch_potential.scale_height,
+      potential->disk_patch_potential.timestep_mult);
+
+  if (potential->disk_patch_potential.growth_time > 0.)
+    message("Disk will grow for %f dynamiccal times.",
+            potential->disk_patch_potential.growth_time);
+#endif /* EXTERNAL_POTENTIAL_DISK_PATCH */
 }

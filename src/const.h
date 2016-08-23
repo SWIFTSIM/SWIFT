@@ -36,6 +36,9 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
+/* Thermal energy per unit mass used as a constant for the isothermal EoS */
+#define const_isothermal_internal_energy 20.2615290634f
+
 /* Dimensionality of the problem */
 #define HYDRO_DIMENSION_3D
 //#define HYDRO_DIMENSION_2D
@@ -43,6 +46,7 @@
 
 /* Hydrodynamical adiabatic index. */
 #define HYDRO_GAMMA_5_3
+//#define HYDRO_GAMMA_7_5
 //#define HYDRO_GAMMA_4_3
 //#define HYDRO_GAMMA_2_1
 
@@ -70,14 +74,13 @@
 //#define RIEMANN_SOLVER_TRRS
 //#define RIEMANN_SOLVER_HLLC
 
-/* Type of gradients to use (GIZMO_SPH only)
-   If no option is chosen, no gradients are used (first order scheme) */
+/* Type of gradients to use (GIZMO_SPH only) */
+/* If no option is chosen, no gradients are used (first order scheme) */
 //#define GRADIENTS_SPH
 #define GRADIENTS_GIZMO
 
-/* Types of slope limiter to use (GIZMO_SPH only)
-   Different slope limiters can be combined, so multiple options may
-   be selected */
+/* Types of slope limiter to use (GIZMO_SPH only) */
+/* Different slope limiters can be combined */
 #define SLOPE_LIMITER_PER_FACE
 #define SLOPE_LIMITER_CELL_WIDE
 
@@ -90,6 +93,7 @@
 /* External gravity properties */
 #define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+//#define EXTERNAL_POTENTIAL_DISK_PATCH
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

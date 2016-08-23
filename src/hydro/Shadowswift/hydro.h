@@ -255,12 +255,13 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
+ * @param dt The drift time-step.
  * @param t0 Integer start time of the drift interval.
  * @param t1 Integer end time of the drift interval.
  * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, int t0, int t1, double timeBase) {}
+    struct part* p, struct xpart* xp, float dt, int t0, int t1, double timeBase) {}
 
 /**
  * @brief Set the particle acceleration after the flux loop
@@ -412,4 +413,26 @@ __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part* restrict p, float dt) {
 
   return p->primitives.P;
+}
+
+/**
+ * @brief Returns the mass of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_mass(
+    const struct part* restrict p) {
+
+  return p->conserved.mass;
+}
+
+/**
+ * @brief Returns the density of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_density(
+    const struct part* restrict p) {
+
+  return p->primitives.rho;
 }

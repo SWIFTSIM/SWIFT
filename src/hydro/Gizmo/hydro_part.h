@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Coypright (c) 2014 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -28,9 +26,6 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-  /* Old density. */
-  float omega;
-
 } __attribute__((aligned(xpart_align)));
 
 /* Data of a single particle. */
@@ -45,7 +40,7 @@ struct part {
   /* Particle acceleration. */
   float a_hydro[3];
 
-  /* Particle cutoff radius. */
+  /* Particle smoothing length. */
   float h;
 
   /* Particle time of beginning of time-step. */
@@ -53,6 +48,9 @@ struct part {
 
   /* Particle time of end of time-step. */
   int ti_end;
+
+  /* Old internal energy flux */
+  float du_dt;
 
   /* The primitive hydrodynamical variables. */
   struct {
@@ -105,7 +103,7 @@ struct part {
     /* Fluid momentum. */
     float momentum[3];
 
-    /* Fluid mass (this field already exists outside of this struct as well). */
+    /* Fluid mass */
     float mass;
 
     /* Fluid thermal energy (not per unit mass!). */
@@ -178,19 +176,24 @@ struct part {
 
   } force;
 
-  /* Particle mass (this field is also part of the conserved quantities...). */
-  float mass;
+  /* Specific stuff for the gravity-hydro coupling. */
+  struct {
+
+    /* Previous value of the gravitational acceleration. */
+    float old_a[3];
+
+    /* Previous value of the mass flux vector. */
+    float old_mflux[3];
+
+    /* Current value of the mass flux vector. */
+    float mflux[3];
+
+  } gravity;
 
   /* Particle ID. */
-  unsigned long long id;
+  long long id;
 
   /* Associated gravitas. */
   struct gpart *gpart;
-
-  /* Variables needed for the code to compile (should be removed/replaced). */
-  float rho;
-
-  /* Old internal energy flux */
-  float du_dt;
 
 } __attribute__((aligned(part_align)));
