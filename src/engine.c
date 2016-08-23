@@ -122,10 +122,10 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  *
  * @param e The #engine.
  * @param c The #cell.
- * @param super The super #cell.
+ * @param gsuper The gsuper #cell.
  */
 void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
-                                            struct cell *super) {
+                                            struct cell *gsuper) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
@@ -134,10 +134,10 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
 
   /* Is this the super-cell? */
-  if (super == NULL && (c->grav != NULL || (!c->split && c->gcount > 0))) {
+  if (gsuper == NULL && (c->grav != NULL || (!c->split && c->gcount > 0))) {
 
     /* This is the super cell, i.e. the first with gravity tasks attached. */
-    super = c;
+    gsuper = c;
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -165,13 +165,13 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
   }
 
   /* Set the super-cell. */
-  c->super = super;
+  c->gsuper = gsuper;
 
   /* Recurse. */
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_make_gravity_hierarchical_tasks(e, c->progeny[k], super);
+        engine_make_gravity_hierarchical_tasks(e, c->progeny[k], gsuper);
 }
 
 /**
@@ -1428,11 +1428,11 @@ static inline void engine_make_gravity_dependencies(struct scheduler *sched,
                                                     struct cell *c) {
 
   /* init --> gravity --> kick */
-  scheduler_addunlock(sched, c->super->init, gravity);
-  scheduler_addunlock(sched, gravity, c->super->kick);
+  scheduler_addunlock(sched, c->gsuper->init, gravity);
+  scheduler_addunlock(sched, gravity, c->gsuper->kick);
 
   /* grav_up --> gravity ( --> kick) */
-  scheduler_addunlock(sched, c->super->grav_up, gravity);
+  scheduler_addunlock(sched, c->gsuper->grav_up, gravity);
 }
 
 /**
@@ -1474,10 +1474,10 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       /* Gather the multipoles --> mm interaction --> kick */
       scheduler_addunlock(sched, gather, t);
-      scheduler_addunlock(sched, t, t->ci->super->kick);
+      scheduler_addunlock(sched, t, t->ci->gsuper->kick);
 
       /* init --> mm interaction */
-      scheduler_addunlock(sched, t->ci->super->init, t);
+      scheduler_addunlock(sched, t->ci->gsuper->init, t);
     }
 
     /* Self-interaction? */
@@ -1495,7 +1495,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         engine_make_gravity_dependencies(sched, t, t->ci);
       }
 
-      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+      if (t->cj->nodeID == nodeID && t->ci->gsuper != t->cj->gsuper) {
 
         engine_make_gravity_dependencies(sched, t, t->cj);
       }
@@ -1517,7 +1517,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         engine_make_gravity_dependencies(sched, t, t->ci);
       }
-      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
+      if (t->cj->nodeID == nodeID && t->ci->gsuper != t->cj->gsuper) {
 
         engine_make_gravity_dependencies(sched, t, t->cj);
       }

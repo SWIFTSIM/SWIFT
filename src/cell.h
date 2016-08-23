@@ -110,8 +110,13 @@ struct cell {
   /* Parent cell. */
   struct cell *parent;
 
-  /* Super cell, i.e. the highest-level supercell that has interactions. */
+  /* Super cell, i.e. the highest-level supercell that has hydro interactions.
+   */
   struct cell *super;
+
+  /* Super cell, i.e. the highest-level supercell that has gravity interactions.
+   */
+  struct cell *gsuper;
 
   /* The task computing this cell's sorts. */
   struct task *sorts;
