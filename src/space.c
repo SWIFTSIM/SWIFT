@@ -1240,7 +1240,6 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
 
     struct cell *c = &cells[ind];
-    if (c == NULL) continue;
 
     const int count = c->count;
     const int gcount = c->gcount;
