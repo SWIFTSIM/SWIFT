@@ -41,9 +41,9 @@
 #include "parser.h"
 #include "partition.h"
 #include "potentials.h"
-#include "sourceterms.h"
 #include "runner.h"
 #include "scheduler.h"
+#include "sourceterms.h"
 #include "space.h"
 #include "task.h"
 #include "units.h"
@@ -224,7 +224,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
-					  const struct sourceterms *sourceterms);
+                 const struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);

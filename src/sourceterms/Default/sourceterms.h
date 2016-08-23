@@ -22,7 +22,7 @@
 #include "feedback.h"
 
 /**
- * @brief Computes the feedback time-step of a given particle due to 
+ * @brief Computes the feedback time-step of a given particle due to
  * a source term
  *
  * This function only branches towards the potential chosen by the user.
@@ -31,21 +31,18 @@
  * @param phys_const The physical constants in internal units.
  * @param g Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static float
-sourceterms_compute_timestep(const struct sourceterms *feedback,
-									  const struct phys_const* const phys_const,
-									  const struct part* const p){
+__attribute__((always_inline)) INLINE static float sourceterms_compute_timestep(
+    const struct sourceterms* feedback,
+    const struct phys_const* const phys_const, const struct part* const p) {
   float dt = FLT_MAX;
 #ifdef SN_FEEDBACK
-  dt = 
-	 fmin(dt, sn_feedback_timestep(feedback, phys_const, p));
+  dt = fmin(dt, sn_feedback_timestep(feedback, phys_const, p));
 #endif
 }
-__attribute__((always_inline)) INLINE static void feedback(const struct sourceterms *feedback,
-																			  const struct phys_const* const phys_const,
-																			  struct part* p)
+__attribute__((always_inline)) INLINE static void feedback(
+    const struct sourceterms* feedback,
+    const struct phys_const* const phys_const, struct part* p)
 #ifdef SN_FEEDBACK
-  sn_feedback(feedback, phys_const, p);
+    sn_feedback(feedback, phys_const, p);
 #endif
 }
-

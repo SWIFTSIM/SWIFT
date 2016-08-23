@@ -228,7 +228,11 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
       /* Generate the ghost task. */
       c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
-
+#ifdef EXTRA_HYDRO_LOOP
+      /* Generate the extra ghost task. */
+      c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
+                                         task_subtype_none, 0, 0, c, NULL, 0);
+#endif
 		/* add source terms */
 		if (is_with_sourceterms)
 		  c->sourceterms = scheduler_addtask(s, task_type_sourceterms, task_subtype_none, 0, 0, 

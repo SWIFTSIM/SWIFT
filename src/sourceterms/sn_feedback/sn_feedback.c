@@ -1,4 +1,4 @@
-#error: this file is no longer in use!
+#error : this file is no longer in use!
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
@@ -26,26 +26,26 @@
 #include "../sourceterms.h"
 
 void supernova_feedback_init(const struct swift_params* parameter_file,
-									  struct UnitSystem* us,
-									  struct supernova* sn){
-  sn.time   = parser_get_param_double(parameter_file, "SN:time");
+                             struct UnitSystem* us, struct supernova* sn) {
+  sn.time = parser_get_param_double(parameter_file, "SN:time");
   sn.energy = parser_get_param_double(parameter_file, "SN:energy");
-  sn.x      = parser_get_param_double(parameter_file, "SN:x");
-  sn.y      = parser_get_param_double(parameter_file, "SN:y");
-  sn.z      = parser_get_param_double(parameter_file, "SN:z");
+  sn.x = parser_get_param_double(parameter_file, "SN:x");
+  sn.y = parser_get_param_double(parameter_file, "SN:y");
+  sn.z = parser_get_param_double(parameter_file, "SN:z");
 }
 
-void supernova_feedback_print(const struct supernova* sn){
-  message(" Single SNe of energy= %e will explode at time= %e at location (%e,%e,%e)",
-			 sn.energy, sn.time, sn.x, sn.y, sn.z);
+void supernova_feedback_print(const struct supernova* sn) {
+  message(
+      " Single SNe of energy= %e will explode at time= %e at location "
+      "(%e,%e,%e)",
+      sn.energy, sn.time, sn.x, sn.y, sn.z);
 };
 
-__attribute__((always_inline)) INLINE static void do_supernova_feedback(const struct sourceterms* sourceterms, struct part* p)
-{
-};
+__attribute__((always_inline)) INLINE static void do_supernova_feedback(
+    const struct sourceterms* sourceterms, struct part* p){};
 
-__attribute__((always_inline)) INLINE void update_entropy(const sourceterms *sourceterms, struct part* p)
-{
+__attribute__((always_inline)) INLINE void update_entropy(
+    const sourceterms* sourceterms, struct part* p) {
 
   /*updates the entropy of a particle due to feedback */
   float u_old;
@@ -55,10 +55,10 @@ __attribute__((always_inline)) INLINE void update_entropy(const sourceterms *sou
   float rho = p->rho;
 
   //  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);
-  const float u_old = hydro_get_internal_energy(p,0); // dt = 0 because using current entropy
+  const float u_old =
+      hydro_get_internal_energy(p, 0);  // dt = 0 because using current entropy
   const float u_new = u_old + sourceterms->supernova.energy;
-  const float new_entropy = u_new*pow_minus_gamma_minus_one(-p>rho) * hydro_gamma_minus_one;
+  const float new_entropy =
+      u_new * pow_minus_gamma_minus_one(-p > rho) * hydro_gamma_minus_one;
   p->entropy = new_entropy;
 }
-
-

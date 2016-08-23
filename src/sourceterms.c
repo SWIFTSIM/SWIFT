@@ -26,11 +26,11 @@
 
 /* Local includes. */
 #include "const.h"
+#include "equation_of_state.h"
 #include "error.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
-#include "equation_of_state.h"
 #include "units.h"
 
 /* This object's header. */
@@ -44,15 +44,15 @@
  * @param sourceterms: the structure that has all the source term properties
  */
 void source_terms_init(const struct swift_params* parameter_file,
-							  struct UnitSystem* us,
-							  struct sourceterms* source) {
+                       struct UnitSystem* us, struct sourceterms* source) {
 
 #ifdef SN_FEEDBACK
-  source->supernova.time   = parser_get_param_double(parameter_file, "SN:time");
-  source->supernova.energy = parser_get_param_double(parameter_file, "SN:energy");
-  source->supernova.x      = parser_get_param_double(parameter_file, "SN:x");
-  source->supernova.y      = parser_get_param_double(parameter_file, "SN:y");
-  source->supernova.z      = parser_get_param_double(parameter_file, "SN:z");
+  source->supernova.time = parser_get_param_double(parameter_file, "SN:time");
+  source->supernova.energy =
+      parser_get_param_double(parameter_file, "SN:energy");
+  source->supernova.x = parser_get_param_double(parameter_file, "SN:x");
+  source->supernova.y = parser_get_param_double(parameter_file, "SN:y");
+  source->supernova.z = parser_get_param_double(parameter_file, "SN:z");
 #endif /* SN_FEEDBCK */
 };
 
@@ -64,13 +64,18 @@ void source_terms_init(const struct swift_params* parameter_file,
 void source_terms_print(const struct sourceterms* source) {
 
 #ifdef SN_FEEDBACK
-  message(" Single SNe of energy= %e will explode at time= %e at location (%e,%e,%e)",
-			 source->supernova.energy, source->supernova.time, source->supernova.x, source->supernova.y, source->supernova.z);
+  message(
+      " Single SNe of energy= %e will explode at time= %e at location "
+      "(%e,%e,%e)",
+      source->supernova.energy, source->supernova.time, source->supernova.x,
+      source->supernova.y, source->supernova.z);
 #endif /* SN_FEEDBACK */
-
 };
 
-__attribute__((always_inline)) INLINE float calculate_entropy(const float entropy_old, const float density, const float u_old, const float u_new)
-{
-  return entropy_old + hydro_gamma_minus_one * (u_new-u_old) * pow_minus_gamma_minus_one(density);
-};
+/* __attribute__((always_inline)) INLINE float calculate_entropy( */
+/*     const float entropy_old, const float density, const float u_old, */
+/*     const float u_new) { */
+/*   return entropy_old + */
+/*          hydro_gamma_minus_one * (u_new - u_old) * */
+/*              pow_minus_gamma_minus_one(density); */
+/* }; */

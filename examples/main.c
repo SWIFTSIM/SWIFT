@@ -73,8 +73,7 @@ void print_help_message() {
          "Overwrite the CPU frequency (Hz) to be used for time measurements");
   printf("  %2s %8s %s\n", "-g", "",
          "Run with an external gravitational potential");
-  printf("  %2s %8s %s\n", "-F", "",
-         "Run with feedback ");
+  printf("  %2s %8s %s\n", "-F", "", "Run with feedback ");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps");
@@ -182,8 +181,8 @@ int main(int argc, char *argv[]) {
       case 'G':
         with_self_gravity = 1;
         break;
-	   case 'F':
-		  with_sourceterms = 1;
+      case 'F':
+        with_sourceterms = 1;
         break;
       case 'h':
         if (myrank == 0) print_help_message();
