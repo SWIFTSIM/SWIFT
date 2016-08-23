@@ -46,8 +46,8 @@
 
 /* Coefficients for the kernel. */
 #define kernel_name "Cubic spline (M4)"
-#define kernel_degree 3 /* Degree of the polynomial */
-#define kernel_ivals 2  /* Number of branches */
+#define kernel_degree 3 /*!< Degree of the polynomial */
+#define kernel_ivals 2  /*!< Number of branches */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(1.825742))
 #define kernel_constant ((float)(16. * M_1_PI))
@@ -238,11 +238,14 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /**
  * @brief Computes the kernel function and its derivative.
  *
- * Returns garbage if $u > \\gamma = H/h$
+ * The kernel function needs to be mutliplied by \f$h^{-d}\f$ and the gradient by 
+ * \f$h^{-(d+1)}\f$, where \f$d\f$ is the dimensionality of the problem.
  *
- * @param u The ratio of the distance to the smoothing length $u = x/h$.
- * @param W (return) The value of the kernel function $W(x,h)$.
- * @param dW_dx (return) The norm of the gradient of $|\\nabla W(x,h)|$.
+ * Returns 0 if \f$u > \gamma = H/h\f$.
+ *
+ * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
+ * @param W (return) The value of the kernel function \f$W(x,h)\f$.
+ * @param dW_dx (return) The norm of the gradient of \f$|\nabla W(x,h)|\f$.
  */
 __attribute__((always_inline)) INLINE static void kernel_deval(
     float u, float *restrict W, float *restrict dW_dx) {
@@ -250,15 +253,10 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
 
-  //#if kernel_ivals == 1
-  ///* Only one branch in this case */
-  // const float *const coeffs = &kernel_coeffs[0];
-  //#else
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
-  //#endif
 
   /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
@@ -278,25 +276,24 @@ __attribute__((always_inline)) INLINE static void kernel_deval(
 /**
  * @brief Computes the kernel function.
  *
- * Returns garbage if $u > \\gamma = H/h$
+ * The kernel function needs to be mutliplied by \f$h^{-d}\f$,
+ * where \f$d\f$ is the dimensionality of the problem.
  *
- * @param u The ratio of the distance to the smoothing length $u = x/h$.
- * @param W (return) The value of the kernel function $W(x,h)$.
+ * Returns 0 if \f$u > \gamma = H/h\f$
+ *
+ * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
+ * @param W (return) The value of the kernel function \f$W(x,h)\f$.
  */
 __attribute__((always_inline)) INLINE static void kernel_eval(
     float u, float *restrict W) {
+
   /* Go to the range [0,1[ from [0,H[ */
   const float x = u * kernel_gamma_inv;
 
-  //#if kernel_ivals == 1
-  ///* Only one branch in this case */
-  // const float *const coeffs = &kernel_coeffs[0];
-  //#else
   /* Pick the correct branch of the kernel */
   const int temp = (int)(x * kernel_ivals_f);
   const int ind = temp > kernel_ivals ? kernel_ivals : temp;
   const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
-  //#endif
 
   /* First two terms of the polynomial ... */
   float w = coeffs[0] * x + coeffs[1];
