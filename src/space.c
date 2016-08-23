@@ -1253,7 +1253,9 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
     struct xpart *xparts = c->xparts;
 
     /* Check the depth. */
-    if (c->depth > s->maxdepth) s->maxdepth = c->depth;
+    while (c->depth > (maxdepth = s->maxdepth)) {
+      atomic_cas(&s->maxdepth, maxdepth, c->depth);
+    }
 
     /* Split or let it be? */
     if (count > space_splitsize || gcount > space_splitsize) {
