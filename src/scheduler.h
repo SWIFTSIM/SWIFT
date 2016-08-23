@@ -117,9 +117,9 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s);
-struct task *scheduler_addtask(struct scheduler *s, int type, int subtype,
-                               int flags, int wait, struct cell *ci,
-                               struct cell *cj, int tight);
+struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
+                               enum task_subtypes subtype, int flags, int wait,
+                               struct cell *ci, struct cell *cj, int tight);
 void scheduler_splittasks(struct scheduler *s);
 struct task *scheduler_done(struct scheduler *s, struct task *t);
 struct task *scheduler_unlock(struct scheduler *s, struct task *t);
@@ -127,5 +127,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta, struct task *tb);
 void scheduler_set_unlocks(struct scheduler *s);
 void scheduler_dump_queue(struct scheduler *s);
 void scheduler_print_tasks(const struct scheduler *s, const char *fileName);
+void scheduler_clean(struct scheduler *s);
 
 #endif /* SWIFT_SCHEDULER_H */

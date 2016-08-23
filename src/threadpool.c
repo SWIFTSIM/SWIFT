@@ -65,12 +65,18 @@ void *threadpool_runner(void *data) {
       const int num_elements = task_ind + tp->map_data_chunk > tp->map_data_size
                                    ? tp->map_data_size - task_ind
                                    : tp->map_data_chunk;
-      tp->map_function(tp->map_data + tp->map_data_stride * task_ind,
+      tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
                        num_elements, tp->map_extra_data);
     }
   }
 }
 
+/**
+ * @brief Initialises the #threadpool with a given number of threads.
+ *
+ * @param tp The #threadpool.
+ * @param num_threads The number of threads.
+ */
 void threadpool_init(struct threadpool *tp, int num_threads) {
 
   /* Initialize the thread counters. */
@@ -126,7 +132,6 @@ void threadpool_init(struct threadpool *tp, int num_threads) {
  * @param extra_data Addtitional pointer that will be passed to the mapping
  *        function, may contain additional data.
  */
-
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data) {
@@ -154,3 +159,8 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   }
   pthread_mutex_unlock(&tp->thread_mutex);
 }
+
+/**
+ * @brief Frees up the memory allocated for this #threadpool.
+ */
+void threadpool_clean(struct threadpool *tp) { free(tp->threads); }

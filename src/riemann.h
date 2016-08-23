@@ -27,18 +27,35 @@
 #include "stdio.h"
 #include "stdlib.h"
 
-#define HLLC_SOLVER
+/* Check that we use an ideal equation of state, since other equations of state
+   are not compatible with these Riemann solvers. */
+#ifndef EOS_IDEAL_GAS
+#error Currently there are no Riemann solvers that can handle the requested \
+       equation of state. Select an ideal gas equation of state if you want to \
+       use this hydro scheme!
+#endif
 
-#ifdef EXACT_SOLVER
+#if defined(RIEMANN_SOLVER_EXACT)
+
+#define RIEMANN_SOLVER_IMPLEMENTATION "Exact Riemann solver (Toro 2009)"
 #include "riemann/riemann_exact.h"
-#endif
 
-#ifdef TRRS_SOLVER
+#elif defined(RIEMANN_SOLVER_TRRS)
+
+#define RIEMANN_SOLVER_IMPLEMENTATION \
+  "Two Rarefaction Riemann Solver (Toro 2009)"
 #include "riemann/riemann_trrs.h"
-#endif
 
-#ifdef HLLC_SOLVER
+#elif defined(RIEMANN_SOLVER_HLLC)
+
+#define RIEMANN_SOLVER_IMPLEMENTATION \
+  "Harten-Lax-van Leer-Contact Riemann solver (Toro 2009)"
 #include "riemann/riemann_hllc.h"
+
+#else
+
+#error "Error: no Riemann solver selected!"
+
 #endif
 
 #endif /* SWIFT_RIEMANN_H */

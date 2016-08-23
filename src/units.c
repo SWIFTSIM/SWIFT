@@ -37,8 +37,23 @@
 #include "units.h"
 
 /* Includes. */
+#include "adiabatic_index.h"
 #include "const.h"
 #include "error.h"
+
+/**
+ * @brief Initialises the UnitSystem structure with CGS system
+ *
+ * @param us The UnitSystem to initialize
+ */
+void units_init_cgs(struct UnitSystem* us) {
+
+  us->UnitMass_in_cgs = 1.;
+  us->UnitLength_in_cgs = 1.;
+  us->UnitTime_in_cgs = 1.;
+  us->UnitCurrent_in_cgs = 1.;
+  us->UnitTemperature_in_cgs = 1.;
+}
 
 /**
  * @brief Initialises the UnitSystem structure with the constants given in
@@ -66,6 +81,41 @@ void units_init(struct UnitSystem* us, const struct swift_params* params,
 }
 
 /**
+ * @brief Initialises the UnitSystem structure with the constants given in
+ * rhe parameter file. Uses a default if the values are not present in the file.
+ *
+ * @param us The UnitSystem to initialize.
+ * @param params The parsed parameter file.
+ * @param category The section of the parameter file to read from.
+ * @param def The default unit system to copy from if required.
+ */
+void units_init_default(struct UnitSystem* us,
+                        const struct swift_params* params, const char* category,
+                        const struct UnitSystem* def) {
+
+  if (!def) error("Default UnitSystem not allocated");
+
+  char buffer[200];
+  sprintf(buffer, "%s:UnitMass_in_cgs", category);
+  us->UnitMass_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitMass_in_cgs);
+  sprintf(buffer, "%s:UnitLength_in_cgs", category);
+  us->UnitLength_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitLength_in_cgs);
+  sprintf(buffer, "%s:UnitVelocity_in_cgs", category);
+  const double defaultVelocity = def->UnitLength_in_cgs / def->UnitTime_in_cgs;
+  const double unitVelocity =
+      parser_get_opt_param_double(params, buffer, defaultVelocity);
+  us->UnitTime_in_cgs = us->UnitLength_in_cgs / unitVelocity;
+  sprintf(buffer, "%s:UnitCurrent_in_cgs", category);
+  us->UnitCurrent_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitCurrent_in_cgs);
+  sprintf(buffer, "%s:UnitTemp_in_cgs", category);
+  us->UnitTemperature_in_cgs =
+      parser_get_opt_param_double(params, buffer, def->UnitTemperature_in_cgs);
+}
+
+/**
  * @brief Returns the base unit conversion factor for a given unit system
  * @param us The UnitSystem used
  * @param baseUnit The base unit
@@ -90,10 +140,10 @@ double units_get_base_unit(const struct UnitSystem* us,
 }
 
 /**
- * @brief Returns the base unit symbol
+ * @brief Returns the base unit symbol used internally
  * @param baseUnit The base unit
  */
-const char* units_get_base_unit_symbol(enum BaseUnits baseUnit) {
+const char* units_get_base_unit_internal_symbol(enum BaseUnits baseUnit) {
   switch (baseUnit) {
     case UNIT_MASS:
       return "U_M";
@@ -115,7 +165,7 @@ const char* units_get_base_unit_symbol(enum BaseUnits baseUnit) {
  * @brief Returns the base unit symbol in the cgs system
  * @param baseUnit The base unit
  */
-const char* units_get_base_unit_CGS_symbol(enum BaseUnits baseUnit) {
+const char* units_get_base_unit_cgs_symbol(enum BaseUnits baseUnit) {
   switch (baseUnit) {
     case UNIT_MASS:
       return "g";
@@ -188,14 +238,14 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
       break;
 
     case UNIT_CONV_ENTROPY:
-      baseUnitsExp[UNIT_MASS] = 1.f - const_hydro_gamma;
-      baseUnitsExp[UNIT_LENGTH] = 3.f * const_hydro_gamma - 1.f;
+      baseUnitsExp[UNIT_MASS] = 1.f - hydro_gamma;
+      baseUnitsExp[UNIT_LENGTH] = 3.f * hydro_gamma - 1.f;
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 
     case UNIT_CONV_ENTROPY_PER_UNIT_MASS:
-      baseUnitsExp[UNIT_MASS] = -const_hydro_gamma;
-      baseUnitsExp[UNIT_LENGTH] = 3.f * const_hydro_gamma - 1.f;
+      baseUnitsExp[UNIT_MASS] = -hydro_gamma;
+      baseUnitsExp[UNIT_LENGTH] = 3.f * hydro_gamma - 1.f;
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 
@@ -266,6 +316,10 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
 
     case UNIT_CONV_TEMPERATURE:
       baseUnitsExp[UNIT_TEMPERATURE] = 1.f;
+      break;
+
+    case UNIT_CONV_VOLUME:
+      baseUnitsExp[UNIT_LENGTH] = -3.f;
   }
 }
 
@@ -275,13 +329,13 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
  * @param us The system of units in use
  * @param unit The unit to convert
  */
-double units_conversion_factor(const struct UnitSystem* us,
-                               enum UnitConversionFactor unit) {
+double units_cgs_conversion_factor(const struct UnitSystem* us,
+                                   enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
   units_get_base_unit_exponants_array(baseUnitsExp, unit);
 
-  return units_general_conversion_factor(us, baseUnitsExp);
+  return units_general_cgs_conversion_factor(us, baseUnitsExp);
 }
 
 /**
@@ -316,13 +370,13 @@ float units_a_factor(const struct UnitSystem* us,
  * @brief Returns a string containing the exponents of the base units making up
  * the conversion factors
  */
-void units_conversion_string(char* buffer, const struct UnitSystem* us,
-                             enum UnitConversionFactor unit) {
+void units_cgs_conversion_string(char* buffer, const struct UnitSystem* us,
+                                 enum UnitConversionFactor unit) {
   float baseUnitsExp[5] = {0.f};
 
   units_get_base_unit_exponants_array(baseUnitsExp, unit);
 
-  units_general_conversion_string(buffer, us, baseUnitsExp);
+  units_general_cgs_conversion_string(buffer, us, baseUnitsExp);
 }
 
 /**
@@ -332,14 +386,14 @@ void units_conversion_string(char* buffer, const struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-double units_general_conversion_factor(const struct UnitSystem* us,
-                                       const float baseUnitsExponants[5]) {
+double units_general_cgs_conversion_factor(const struct UnitSystem* us,
+                                           const float baseUnitsExponants[5]) {
   double factor = 1.;
-  int i;
 
-  for (i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     if (baseUnitsExponants[i] != 0)
-      factor *= pow(units_get_base_unit(us, i), baseUnitsExponants[i]);
+      factor *= pow(units_get_base_unit(us, (enum BaseUnits)i),
+                    baseUnitsExponants[i]);
   return factor;
 }
 
@@ -386,16 +440,16 @@ float units_general_a_factor(const struct UnitSystem* us,
  * @param baseUnitsExponants The exponent of each base units required to form
  * the desired quantity. See conversionFactor() for a working example
  */
-void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
-                                     const float baseUnitsExponants[5]) {
+void units_general_cgs_conversion_string(char* buffer,
+                                         const struct UnitSystem* us,
+                                         const float baseUnitsExponants[5]) {
   char temp[14];
-  double a_exp = units_general_a_factor(us, baseUnitsExponants);
-  double h_exp = units_general_h_factor(us, baseUnitsExponants);
-  int i;
+  const double a_exp = units_general_a_factor(us, baseUnitsExponants);
+  const double h_exp = units_general_h_factor(us, baseUnitsExponants);
 
   /* Check whether we are unitless or not */
   char isAllNonZero = 1;
-  for (i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     if (baseUnitsExponants[i] != 0.) isAllNonZero = 0;
 
   if (isAllNonZero) {
@@ -425,17 +479,20 @@ void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
   strncat(buffer, temp, 12);
 
   /* Add conversion units */
-  for (i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i)
     if (baseUnitsExponants[i] != 0) {
       if (baseUnitsExponants[i] == 0.)
         sprintf(temp, " ");
       else if (baseUnitsExponants[i] == 1.)
-        sprintf(temp, "%s ", units_get_base_unit_symbol(i));
+        sprintf(temp, "%s ",
+                units_get_base_unit_internal_symbol((enum BaseUnits)i));
       else if (remainder(baseUnitsExponants[i], 1.) == 0)
-        sprintf(temp, "%s^%d ", units_get_base_unit_symbol(i),
+        sprintf(temp, "%s^%d ",
+                units_get_base_unit_internal_symbol((enum BaseUnits)i),
                 (int)baseUnitsExponants[i]);
       else
-        sprintf(temp, "%s^%7.4f ", units_get_base_unit_symbol(i),
+        sprintf(temp, "%s^%7.4f ",
+                units_get_base_unit_internal_symbol((enum BaseUnits)i),
                 baseUnitsExponants[i]);
       strncat(buffer, temp, 12);
     }
@@ -443,21 +500,81 @@ void units_general_conversion_string(char* buffer, const struct UnitSystem* us,
   /* Add CGS units */
   strncat(buffer, " [ ", 3);
 
-  for (i = 0; i < 5; ++i) {
+  for (int i = 0; i < 5; ++i) {
     if (baseUnitsExponants[i] != 0) {
       if (baseUnitsExponants[i] == 0.)
         continue;
       else if (baseUnitsExponants[i] == 1.)
-        sprintf(temp, "%s ", units_get_base_unit_CGS_symbol(i));
+        sprintf(temp, "%s ", units_get_base_unit_cgs_symbol((enum BaseUnits)i));
       else if (remainder(baseUnitsExponants[i], 1.) == 0)
-        sprintf(temp, "%s^%d ", units_get_base_unit_CGS_symbol(i),
+        sprintf(temp, "%s^%d ",
+                units_get_base_unit_cgs_symbol((enum BaseUnits)i),
                 (int)baseUnitsExponants[i]);
       else
-        sprintf(temp, "%s^%7.4f ", units_get_base_unit_CGS_symbol(i),
+        sprintf(temp, "%s^%7.4f ",
+                units_get_base_unit_cgs_symbol((enum BaseUnits)i),
                 baseUnitsExponants[i]);
       strncat(buffer, temp, 12);
     }
   }
 
   strncat(buffer, "]", 2);
+}
+
+/**
+ * @brief Are the two unit systems equal ?
+ *
+ * @param a The First #UnitSystem
+ * @param b The second #UnitSystem
+ * @return 1 if the systems are the same, 0 otherwise
+ */
+int units_are_equal(const struct UnitSystem* a, const struct UnitSystem* b) {
+
+  if (a->UnitMass_in_cgs != b->UnitMass_in_cgs) return 0;
+  if (a->UnitLength_in_cgs != b->UnitLength_in_cgs) return 0;
+  if (a->UnitTime_in_cgs != b->UnitTime_in_cgs) return 0;
+  if (a->UnitCurrent_in_cgs != b->UnitCurrent_in_cgs) return 0;
+  if (a->UnitTemperature_in_cgs != b->UnitTemperature_in_cgs) return 0;
+
+  return 1;
+}
+
+/**
+ * @brief Return the unit conversion factor between two systems
+ *
+ * @param from The #UnitSystem we are converting from
+ * @param to The #UnitSystem we are converting to
+ * @param baseUnitsExponants The exponent of each base units required to form
+ * the desired quantity. See conversionFactor() for a working example
+ */
+double units_general_conversion_factor(const struct UnitSystem* from,
+                                       const struct UnitSystem* to,
+                                       const float baseUnitsExponants[5]) {
+
+  const double from_cgs =
+      units_general_cgs_conversion_factor(from, baseUnitsExponants);
+  const double to_cgs =
+      units_general_cgs_conversion_factor(to, baseUnitsExponants);
+
+  return from_cgs / to_cgs;
+}
+
+/**
+ * @brief Return the unit conversion factor between two systems
+ *
+ * @param from The #UnitSystem we are converting from
+ * @param to The #UnitSystem we are converting to
+ * @param unit The unit we are converting
+ *
+ * @return The conversion factor
+ */
+double units_conversion_factor(const struct UnitSystem* from,
+                               const struct UnitSystem* to,
+                               enum UnitConversionFactor unit) {
+
+  float baseUnitsExp[5] = {0.f};
+
+  units_get_base_unit_exponants_array(baseUnitsExp, unit);
+
+  return units_general_conversion_factor(from, to, baseUnitsExp);
 }

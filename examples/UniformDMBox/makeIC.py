@@ -26,7 +26,7 @@ from numpy import *
 # with a density of 1
 
 # Parameters
-periodic= 1           # 1 For periodic box
+periodic= 0           # 1 For periodic box
 boxSize = 1.
 rho = 1.
 L = int(sys.argv[1])  # Number of particles along one axis
@@ -51,6 +51,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, mass, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
+grp.attrs["Dimension"] = 3
 
 #Runtime parameters
 grp = file.create_group("/RuntimePars")

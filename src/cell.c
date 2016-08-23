@@ -110,13 +110,13 @@ int cell_unpack(struct pcell *pc, struct cell *c, struct space *s) {
       temp->loc[0] = c->loc[0];
       temp->loc[1] = c->loc[1];
       temp->loc[2] = c->loc[2];
-      temp->h[0] = c->h[0] / 2;
-      temp->h[1] = c->h[1] / 2;
-      temp->h[2] = c->h[2] / 2;
+      temp->width[0] = c->width[0] / 2;
+      temp->width[1] = c->width[1] / 2;
+      temp->width[2] = c->width[2] / 2;
       temp->dmin = c->dmin / 2;
-      if (k & 4) temp->loc[0] += temp->h[0];
-      if (k & 2) temp->loc[1] += temp->h[1];
-      if (k & 1) temp->loc[2] += temp->h[2];
+      if (k & 4) temp->loc[0] += temp->width[0];
+      if (k & 2) temp->loc[1] += temp->width[1];
+      if (k & 1) temp->loc[2] += temp->width[2];
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->dx_max = 0.f;
@@ -425,7 +425,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
   double pivot[3];
 
   /* Init the pivots. */
-  for (int k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->h[k] / 2;
+  for (int k = 0; k < 3; k++) pivot[k] = c->loc[k] + c->width[k] / 2;
 
   /* Split along the x-axis. */
   i = 0;
@@ -638,11 +638,11 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
  */
 void cell_init_parts(struct cell *c, void *data) {
 
-  struct part *p = c->parts;
-  struct xpart *xp = c->xparts;
-  const int count = c->count;
+  struct part *restrict p = c->parts;
+  struct xpart *restrict xp = c->xparts;
+  const size_t count = c->count;
 
-  for (int i = 0; i < count; ++i) {
+  for (size_t i = 0; i < count; ++i) {
     p[i].ti_begin = 0;
     p[i].ti_end = 0;
     xp[i].v_full[0] = p[i].v[0];
@@ -665,13 +665,14 @@ void cell_init_parts(struct cell *c, void *data) {
  */
 void cell_init_gparts(struct cell *c, void *data) {
 
-  struct gpart *gp = c->gparts;
-  const int gcount = c->gcount;
+  struct gpart *restrict gp = c->gparts;
+  const size_t gcount = c->gcount;
 
-  for (int i = 0; i < gcount; ++i) {
+  for (size_t i = 0; i < gcount; ++i) {
     gp[i].ti_begin = 0;
     gp[i].ti_end = 0;
     gravity_first_init_gpart(&gp[i]);
+    gravity_init_gpart(&gp[i]);
   }
   c->ti_end_min = 0;
   c->ti_end_max = 0;
@@ -703,6 +704,107 @@ void cell_clean_links(struct cell *c, void *data) {
   c->density = NULL;
   c->nr_density = 0;
 
+  c->gradient = NULL;
+  c->nr_gradient = 0;
+
   c->force = NULL;
   c->nr_force = 0;
+}
+
+/**
+<<<<<<< HEAD
+ * @brief Checks whether the cells are direct neighbours ot not. Both cells have
+ * to be of the same size
+ *
+ * @param ci First #cell.
+ * @param cj Second #cell.
+ *
+ * @todo Deal with periodicity.
+ */
+int cell_are_neighbours(const struct cell *restrict ci,
+                        const struct cell *restrict cj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->width[0] != cj->width[0]) error("Cells of different size !");
+#endif
+
+  /* Maximum allowed distance */
+  const double min_dist =
+      1.2 * ci->width[0]; /* 1.2 accounts for rounding errors */
+
+  /* (Manhattan) Distance between the cells */
+  for (int k = 0; k < 3; k++) {
+    const double center_i = ci->loc[k];
+    const double center_j = cj->loc[k];
+    if (fabsf(center_i - center_j) > min_dist) return 0;
+  }
+
+  return 1;
+}
+
+/**
+ * @brief Computes the multi-pole brutally and compare to the
+ * recursively computed one.
+ *
+ * @param c Cell to act upon
+ * @param data Unused parameter
+ */
+void cell_check_multipole(struct cell *c, void *data) {
+
+  struct multipole ma;
+
+  if (c->gcount > 0) {
+
+    /* Brute-force calculation */
+    multipole_init(&ma, c->gparts, c->gcount);
+
+    /* Compare with recursive one */
+    struct multipole mb = c->multipole;
+
+    if (fabsf(ma.mass - mb.mass) / fabsf(ma.mass + mb.mass) > 1e-5)
+      error("Multipole masses are different (%12.15e vs. %12.15e)", ma.mass,
+            mb.mass);
+
+    for (int k = 0; k < 3; ++k)
+      if (fabsf(ma.CoM[k] - mb.CoM[k]) / fabsf(ma.CoM[k] + mb.CoM[k]) > 1e-5)
+        error("Multipole CoM are different (%12.15e vs. %12.15e", ma.CoM[k],
+              mb.CoM[k]);
+
+    if (fabsf(ma.I_xx - mb.I_xx) / fabsf(ma.I_xx + mb.I_xx) > 1e-5 &&
+        ma.I_xx > 1e-9)
+      error("Multipole I_xx are different (%12.15e vs. %12.15e)", ma.I_xx,
+            mb.I_xx);
+    if (fabsf(ma.I_yy - mb.I_yy) / fabsf(ma.I_yy + mb.I_yy) > 1e-5 &&
+        ma.I_yy > 1e-9)
+      error("Multipole I_yy are different (%12.15e vs. %12.15e)", ma.I_yy,
+            mb.I_yy);
+    if (fabsf(ma.I_zz - mb.I_zz) / fabsf(ma.I_zz + mb.I_zz) > 1e-5 &&
+        ma.I_zz > 1e-9)
+      error("Multipole I_zz are different (%12.15e vs. %12.15e)", ma.I_zz,
+            mb.I_zz);
+    if (fabsf(ma.I_xy - mb.I_xy) / fabsf(ma.I_xy + mb.I_xy) > 1e-5 &&
+        ma.I_xy > 1e-9)
+      error("Multipole I_xy are different (%12.15e vs. %12.15e)", ma.I_xy,
+            mb.I_xy);
+    if (fabsf(ma.I_xz - mb.I_xz) / fabsf(ma.I_xz + mb.I_xz) > 1e-5 &&
+        ma.I_xz > 1e-9)
+      error("Multipole I_xz are different (%12.15e vs. %12.15e)", ma.I_xz,
+            mb.I_xz);
+    if (fabsf(ma.I_yz - mb.I_yz) / fabsf(ma.I_yz + mb.I_yz) > 1e-5 &&
+        ma.I_yz > 1e-9)
+      error("Multipole I_yz are different (%12.15e vs. %12.15e)", ma.I_yz,
+            mb.I_yz);
+  }
+}
+
+/*
+ * @brief Frees up the memory allocated for this #cell
+ */
+void cell_clean(struct cell *c) {
+
+  free(c->sort);
+
+  /* Recurse */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k]) cell_clean(c->progeny[k]);
 }

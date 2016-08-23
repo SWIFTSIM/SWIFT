@@ -25,7 +25,9 @@
 /* Local headers. */
 #include "const.h"
 #include "debug.h"
+#include "dimension.h"
 #include "hydro.h"
+#include "part.h"
 
 /**
  * @brief Perform the 'drift' operation on a #gpart
@@ -37,7 +39,8 @@
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_gpart(
-    struct gpart* gp, float dt, double timeBase, int ti_old, int ti_current) {
+    struct gpart *restrict gp, float dt, double timeBase, int ti_old,
+    int ti_current) {
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt;
   gp->x[1] += gp->v_full[1] * dt;
@@ -60,10 +63,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
  * @param ti_current Integer end of time-step
  */
 __attribute__((always_inline)) INLINE static void drift_part(
-    struct part* p, struct xpart* xp, float dt, double timeBase, int ti_old,
-    int ti_current) {
-  /* Useful quantity */
-  const float h_inv = 1.0f / p->h;
+    struct part *restrict p, struct xpart *restrict xp, float dt,
+    double timeBase, int ti_old, int ti_current) {
 
   /* Drift... */
   p->x[0] += xp->v_full[0] * dt;
@@ -75,22 +76,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
   p->v[1] += p->a_hydro[1] * dt;
   p->v[2] += p->a_hydro[2] * dt;
 
-  /* Predict smoothing length */
-  const float w1 = p->h_dt * h_inv * dt;
-  if (fabsf(w1) < 0.2f)
-    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
-  else
-    p->h *= expf(w1);
-
-  /* Predict density */
-  const float w2 = -3.0f * w1;
-  if (fabsf(w2) < 0.2f)
-    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
-  else
-    p->rho *= expf(w2);
-
   /* Predict the values of the extra fields */
-  hydro_predict_extra(p, xp, ti_old, ti_current, timeBase);
+  hydro_predict_extra(p, xp, dt, ti_old, ti_current, timeBase);
 
   /* Compute offset since last cell construction */
   xp->x_diff[0] -= xp->v_full[0] * dt;

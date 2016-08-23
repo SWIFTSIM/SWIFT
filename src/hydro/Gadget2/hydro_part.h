@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_PART_H
+#define SWIFT_GADGET2_HYDRO_PART_H
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -43,8 +45,8 @@ struct part {
   /* Particle cutoff radius. */
   float h;
 
-  /* Time derivative of the smoothing length */
-  float h_dt;
+  /* Particle mass. */
+  float mass;
 
   /* Particle time of beginning of time-step. */
   int ti_begin;
@@ -55,53 +57,52 @@ struct part {
   /* Particle density. */
   float rho;
 
-  /* Derivative of the density with respect to this particle's smoothing length.
-   */
-  float rho_dh;
-
   /* Particle entropy. */
   float entropy;
 
   /* Entropy time derivative */
   float entropy_dt;
 
-  /* Particle mass. */
-  float mass;
+  /* Derivative of the density with respect to smoothing length. */
+  float rho_dh;
 
   union {
 
     struct {
 
-      /* Number of neighbours */
+      /* Number of neighbours. */
       float wcount;
 
-      /* Number of neighbours spatial derivative */
+      /* Number of neighbours spatial derivative. */
       float wcount_dh;
 
-      /* Velocity curl components */
+      /* Particle velocity curl. */
       float rot_v[3];
+
+      /* Particle velocity divergence. */
+      float div_v;
 
     } density;
 
     struct {
 
-      /* Velocity curl norm*/
-      float curl_v;
+      /* Balsara switch */
+      float balsara;
 
-      /* Signal velocity */
+      /* Pressure over density squared (including drho/dh term) */
+      float P_over_rho2;
+
+      /* Particle sound speed. */
+      float soundspeed;
+
+      /* Signal velocity. */
       float v_sig;
 
-      /* Particle pressure */
-      float pressure;
-
-      /* Particle sound speed */
-      float soundspeed;
+      /* Time derivative of the smoothing length */
+      float h_dt;
 
     } force;
   };
-
-  /* Velocity divergence */
-  float div_v;
 
   /* Particle ID. */
   long long id;
@@ -110,3 +111,5 @@ struct part {
   struct gpart* gpart;
 
 } __attribute__((aligned(part_align)));
+
+#endif /* SWIFT_GADGET2_HYDRO_PART_H */

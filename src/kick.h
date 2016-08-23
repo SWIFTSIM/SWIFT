@@ -33,15 +33,14 @@
  * @param new_dti The (integer) time-step for this kick.
  * @param timeBase The minimal allowed time-step size.
  */
-__attribute__((always_inline)) INLINE static void kick_gpart(struct gpart* gp,
-                                                             int new_dti,
-                                                             double timeBase) {
+__attribute__((always_inline)) INLINE static void kick_gpart(
+    struct gpart *restrict gp, int new_dti, double timeBase) {
 
   /* Compute the time step for this kick */
   const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
   const int ti_end = gp->ti_end + new_dti / 2;
-  const double dt = (ti_end - ti_start) * timeBase;
-  const double half_dt = (ti_end - gp->ti_end) * timeBase;
+  const float dt = (ti_end - ti_start) * timeBase;
+  const float half_dt = (ti_end - gp->ti_end) * timeBase;
 
   /* Move particle forward in time */
   gp->ti_begin = gp->ti_end;
@@ -64,16 +63,15 @@ __attribute__((always_inline)) INLINE static void kick_gpart(struct gpart* gp,
  * @param new_dti The (integer) time-step for this kick.
  * @param timeBase The minimal allowed time-step size.
  */
-__attribute__((always_inline)) INLINE static void kick_part(struct part* p,
-                                                            struct xpart* xp,
-                                                            int new_dti,
-                                                            double timeBase) {
+__attribute__((always_inline)) INLINE static void kick_part(
+    struct part *restrict p, struct xpart *restrict xp, int new_dti,
+    double timeBase) {
 
   /* Compute the time step for this kick */
   const int ti_start = (p->ti_begin + p->ti_end) / 2;
   const int ti_end = p->ti_end + new_dti / 2;
-  const double dt = (ti_end - ti_start) * timeBase;
-  const double half_dt = (ti_end - p->ti_end) * timeBase;
+  const float dt = (ti_end - ti_start) * timeBase;
+  const float half_dt = (ti_end - p->ti_end) * timeBase;
 
   /* Move particle forward in time */
   p->ti_begin = p->ti_end;
@@ -88,7 +86,7 @@ __attribute__((always_inline)) INLINE static void kick_part(struct part* p,
   if (p->gpart != NULL) {
     a_tot[0] += p->gpart->a_grav[0];
     a_tot[1] += p->gpart->a_grav[1];
-    a_tot[1] += p->gpart->a_grav[2];
+    a_tot[2] += p->gpart->a_grav[2];
   }
 
   /* Kick particles in momentum space */

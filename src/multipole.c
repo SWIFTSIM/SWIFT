@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,42 +22,139 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-/* MPI headers. */
-#ifdef WITH_MPI
-#include <mpi.h>
-#endif
+#include <strings.h>
 
 /* This object's header. */
 #include "multipole.h"
 
 /**
- * @brief Merge two multipoles.
+* @brief Reset the data of a #multipole.
+*
+* @param m The #multipole.
+*/
+void multipole_reset(struct multipole *m) {
+
+  /* Just bzero the struct. */
+  bzero(m, sizeof(struct multipole));
+}
+
+/**
+* @brief Init a multipole from a set of particles.
+*
+* @param m The #multipole.
+* @param gparts The #gpart.
+* @param gcount The number of particles.
+*/
+void multipole_init(struct multipole *m, const struct gpart *gparts,
+                    int gcount) {
+
+#if const_gravity_multipole_order > 2
+#error "Multipoles of order >2 not yet implemented."
+#endif
+
+  /* Zero everything */
+  multipole_reset(m);
+
+  /* Temporary variables */
+  double mass = 0.0;
+  double com[3] = {0.0, 0.0, 0.0};
+
+#if const_gravity_multipole_order >= 2
+  double I_xx = 0.0, I_yy = 0.0, I_zz = 0.0;
+  double I_xy = 0.0, I_xz = 0.0, I_yz = 0.0;
+#endif
+
+  /* Collect the particle data. */
+  for (int k = 0; k < gcount; k++) {
+    const float w = gparts[k].mass;
+
+    mass += w;
+    com[0] += gparts[k].x[0] * w;
+    com[1] += gparts[k].x[1] * w;
+    com[2] += gparts[k].x[2] * w;
+
+#if const_gravity_multipole_order >= 2
+    I_xx += gparts[k].x[0] * gparts[k].x[0] * w;
+    I_yy += gparts[k].x[1] * gparts[k].x[1] * w;
+    I_zz += gparts[k].x[2] * gparts[k].x[2] * w;
+    I_xy += gparts[k].x[0] * gparts[k].x[1] * w;
+    I_xz += gparts[k].x[0] * gparts[k].x[2] * w;
+    I_yz += gparts[k].x[1] * gparts[k].x[2] * w;
+#endif
+  }
+
+  const double imass = 1.0 / mass;
+
+  /* Store the data on the multipole. */
+  m->mass = mass;
+  m->CoM[0] = com[0] * imass;
+  m->CoM[1] = com[1] * imass;
+  m->CoM[2] = com[2] * imass;
+
+#if const_gravity_multipole_order >= 2
+  m->I_xx = I_xx - imass * com[0] * com[0];
+  m->I_yy = I_yy - imass * com[1] * com[1];
+  m->I_zz = I_zz - imass * com[2] * com[2];
+  m->I_xy = I_xy - imass * com[0] * com[1];
+  m->I_xz = I_xz - imass * com[0] * com[2];
+  m->I_yz = I_yz - imass * com[1] * com[2];
+#endif
+}
+
+/**
+ * @brief Add the second multipole to the first one.
  *
- * @param ma The #multipole which will contain the merged result.
- * @param mb The other #multipole.
+ * @param ma The #multipole which will contain the sum.
+ * @param mb The #multipole to add.
  */
 
-void multipole_merge(struct multipole *ma, struct multipole *mb) {
+void multipole_add(struct multipole *ma, const struct multipole *mb) {
 
-#if multipole_order == 1
+#if const_gravity_multipole_order > 2
+#error "Multipoles of order >2 not yet implemented."
+#endif
 
   /* Correct the position. */
-  float mma = ma->coeffs[0], mmb = mb->coeffs[0];
-  float w = 1.0f / (mma + mmb);
-  for (int k = 0; k < 3; k++) ma->x[k] = (ma->x[k] * mma + mb->x[k] * mmb) * w;
+  const double ma_mass = ma->mass;
+  const double mb_mass = mb->mass;
+  const double M_tot = ma_mass + mb_mass;
+  const double M_tot_inv = 1.0 / M_tot;
 
-  /* Add the particle to the moments. */
-  ma->coeffs[0] = mma + mmb;
+  const double ma_CoM[3] = {ma->CoM[0], ma->CoM[1], ma->CoM[2]};
+  const double mb_CoM[3] = {mb->CoM[0], mb->CoM[1], mb->CoM[2]};
 
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
+#if const_gravity_multipole_order >= 2
+  const double ma_I_xx = (double)ma->I_xx + ma_mass * ma_CoM[0] * ma_CoM[0];
+  const double ma_I_yy = (double)ma->I_yy + ma_mass * ma_CoM[1] * ma_CoM[1];
+  const double ma_I_zz = (double)ma->I_zz + ma_mass * ma_CoM[2] * ma_CoM[2];
+  const double ma_I_xy = (double)ma->I_xy + ma_mass * ma_CoM[0] * ma_CoM[1];
+  const double ma_I_xz = (double)ma->I_xz + ma_mass * ma_CoM[0] * ma_CoM[2];
+  const double ma_I_yz = (double)ma->I_yz + ma_mass * ma_CoM[1] * ma_CoM[2];
+
+  const double mb_I_xx = (double)mb->I_xx + mb_mass * mb_CoM[0] * mb_CoM[0];
+  const double mb_I_yy = (double)mb->I_yy + mb_mass * mb_CoM[1] * mb_CoM[1];
+  const double mb_I_zz = (double)mb->I_zz + mb_mass * mb_CoM[2] * mb_CoM[2];
+  const double mb_I_xy = (double)mb->I_xy + mb_mass * mb_CoM[0] * mb_CoM[1];
+  const double mb_I_xz = (double)mb->I_xz + mb_mass * mb_CoM[0] * mb_CoM[2];
+  const double mb_I_yz = (double)mb->I_yz + mb_mass * mb_CoM[1] * mb_CoM[2];
+#endif
+
+  /* New mass */
+  ma->mass = M_tot;
+
+  /* New CoM */
+  ma->CoM[0] = (ma_CoM[0] * ma_mass + mb_CoM[0] * mb_mass) * M_tot_inv;
+  ma->CoM[1] = (ma_CoM[1] * ma_mass + mb_CoM[1] * mb_mass) * M_tot_inv;
+  ma->CoM[2] = (ma_CoM[2] * ma_mass + mb_CoM[2] * mb_mass) * M_tot_inv;
+
+/* New quadrupole */
+#if const_gravity_multipole_order >= 2
+  ma->I_xx = (ma_I_xx + mb_I_xx) - M_tot * ma->CoM[0] * ma->CoM[0];
+  ma->I_yy = (ma_I_yy + mb_I_yy) - M_tot * ma->CoM[1] * ma->CoM[1];
+  ma->I_zz = (ma_I_zz + mb_I_zz) - M_tot * ma->CoM[2] * ma->CoM[2];
+  ma->I_xy = (ma_I_xy + mb_I_xy) - M_tot * ma->CoM[0] * ma->CoM[1];
+  ma->I_xz = (ma_I_xz + mb_I_xz) - M_tot * ma->CoM[0] * ma->CoM[2];
+  ma->I_yz = (ma_I_yz + mb_I_yz) - M_tot * ma->CoM[1] * ma->CoM[2];
 #endif
 }
 
@@ -69,19 +167,22 @@ void multipole_merge(struct multipole *ma, struct multipole *mb) {
 
 void multipole_addpart(struct multipole *m, struct gpart *p) {
 
-#if multipole_order == 1
+  /* #if const_gravity_multipole_order == 1 */
 
-  /* Correct the position. */
-  float mm = m->coeffs[0], mp = p->mass;
-  float w = 1.0f / (mm + mp);
-  for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + p->x[k] * mp) * w;
+  /*   /\* Correct the position. *\/ */
+  /*   float mm = m->coeffs[0], mp = p->mass; */
+  /*   float w = 1.0f / (mm + mp); */
+  /*   for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + p->x[k] * mp) * w;
+   */
 
-  /* Add the particle to the moments. */
-  m->coeffs[0] = mm + mp;
+  /*   /\* Add the particle to the moments. *\/ */
+  /*   m->coeffs[0] = mm + mp; */
 
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
+  /* #else */
+  /* #error( "Multipoles of order %i not yet implemented." ,
+   * const_gravity_multipole_order )
+   */
+  /* #endif */
 }
 
 /**
@@ -94,76 +195,30 @@ void multipole_addpart(struct multipole *m, struct gpart *p) {
 
 void multipole_addparts(struct multipole *m, struct gpart *p, int N) {
 
-#if multipole_order == 1
+  /* #if const_gravity_multipole_order == 1 */
 
-  /* Get the combined mass and positions. */
-  double xp[3] = {0.0, 0.0, 0.0};
-  float mp = 0.0f, w;
-  for (int k = 0; k < N; k++) {
-    w = p[k].mass;
-    mp += w;
-    xp[0] += p[k].x[0] * w;
-    xp[1] += p[k].x[1] * w;
-    xp[2] += p[k].x[2] * w;
-  }
+  /*   /\* Get the combined mass and positions. *\/ */
+  /*   double xp[3] = {0.0, 0.0, 0.0}; */
+  /*   float mp = 0.0f, w; */
+  /*   for (int k = 0; k < N; k++) { */
+  /*     w = p[k].mass; */
+  /*     mp += w; */
+  /*     xp[0] += p[k].x[0] * w; */
+  /*     xp[1] += p[k].x[1] * w; */
+  /*     xp[2] += p[k].x[2] * w; */
+  /*   } */
 
-  /* Correct the position. */
-  float mm = m->coeffs[0];
-  w = 1.0f / (mm + mp);
-  for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + xp[k]) * w;
+  /*   /\* Correct the position. *\/ */
+  /*   float mm = m->coeffs[0]; */
+  /*   w = 1.0f / (mm + mp); */
+  /*   for (int k = 0; k < 3; k++) m->x[k] = (m->x[k] * mm + xp[k]) * w; */
 
-  /* Add the particle to the moments. */
-  m->coeffs[0] = mm + mp;
+  /*   /\* Add the particle to the moments. *\/ */
+  /*   m->coeffs[0] = mm + mp; */
 
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
-}
-
-/**
- * @brief Init a multipole from a set of particles.
- *
- * @param m The #multipole.
- * @param parts The #gpart.
- * @param N The number of particles.
- */
-
-void multipole_init(struct multipole *m, struct gpart *parts, int N) {
-
-#if multipole_order == 1
-
-  float mass = 0.0f, w;
-  double x[3] = {0.0, 0.0, 0.0};
-  int k;
-
-  /* Collect the particle data. */
-  for (k = 0; k < N; k++) {
-    w = parts[k].mass;
-    mass += w;
-    x[0] += parts[k].x[0] * w;
-    x[1] += parts[k].x[1] * w;
-    x[2] += parts[k].x[2] * w;
-  }
-
-  /* Store the data on the multipole. */
-  m->coeffs[0] = mass;
-  m->x[0] = x[0] / mass;
-  m->x[1] = x[1] / mass;
-  m->x[2] = x[2] / mass;
-
-#else
-#error( "Multipoles of order %i not yet implemented." , multipole_order )
-#endif
-}
-
-/**
- * @brief Reset the data of a #multipole.
- *
- * @param m The #multipole.
- */
-
-void multipole_reset(struct multipole *m) {
-
-  /* Just bzero the struct. */
-  bzero(m, sizeof(struct multipole));
+  /* #else */
+  /* #error( "Multipoles of order %i not yet implemented." ,
+   * const_gravity_multipole_order )
+   */
+  /* #endif */
 }

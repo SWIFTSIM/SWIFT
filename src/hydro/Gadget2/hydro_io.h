@@ -16,84 +16,89 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_IO_H
+#define SWIFT_GADGET2_HYDRO_IO_H
+
+#include "adiabatic_index.h"
+#include "hydro.h"
+#include "io_properties.h"
+#include "kernel_hydro.h"
 
 /**
- * @brief Reads the different particles to the HDF5 file
+ * @brief Specifies which particle fields to read from a dataset
  *
- * @param h_grp The HDF5 group in which to read the arrays.
- * @param N The number of particles on that MPI rank.
- * @param N_total The total number of particles (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI
- *mode)
- * @param parts The particle array
- *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to read.
+ * @param num_fields The number of i/o fields to read.
  */
-__attribute__((always_inline)) INLINE static void hydro_read_particles(
-    hid_t h_grp, int N, long long N_total, long long offset,
-    struct part* parts) {
+void hydro_read_particles(struct part* parts, struct io_props* list,
+                          int* num_fields) {
 
-  /* Read arrays */
-  readArray(h_grp, "Coordinates", DOUBLE, N, 3, parts, N_total, offset, x,
-            COMPULSORY);
-  readArray(h_grp, "Velocities", FLOAT, N, 3, parts, N_total, offset, v,
-            COMPULSORY);
-  readArray(h_grp, "Masses", FLOAT, N, 1, parts, N_total, offset, mass,
-            COMPULSORY);
-  readArray(h_grp, "SmoothingLength", FLOAT, N, 1, parts, N_total, offset, h,
-            COMPULSORY);
-  readArray(h_grp, "InternalEnergy", FLOAT, N, 1, parts, N_total, offset,
-            entropy, COMPULSORY);
-  readArray(h_grp, "ParticleIDs", ULONGLONG, N, 1, parts, N_total, offset, id,
-            COMPULSORY);
-  readArray(h_grp, "Acceleration", FLOAT, N, 3, parts, N_total, offset, a_hydro,
-            OPTIONAL);
-  readArray(h_grp, "Density", FLOAT, N, 1, parts, N_total, offset, rho,
-            OPTIONAL);
+  *num_fields = 8;
+
+  /* List what we want to read */
+  list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
+                                UNIT_CONV_LENGTH, parts, x);
+  list[1] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_SPEED, parts, v);
+  list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
+                                parts, mass);
+  list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_LENGTH, parts, h);
+  list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
+                                UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, entropy);
+  list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, id);
+  list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
+                                UNIT_CONV_ACCELERATION, parts, a_hydro);
+  list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
+                                UNIT_CONV_DENSITY, parts, rho);
+}
+
+float convert_u(struct engine* e, struct part* p) {
+
+  return hydro_get_internal_energy(p, 0);
+}
+
+float convert_P(struct engine* e, struct part* p) {
+
+  return hydro_get_pressure(p, 0);
 }
 
 /**
- * @brief Writes the different particles to the HDF5 file
+ * @brief Specifies which particle fields to write to a dataset
  *
- * @param h_grp The HDF5 group in which to write the arrays.
- * @param fileName The name of the file (unsued in MPI mode).
- * @param partTypeGroupName The name of the group containing the particles in
- *the HDF5 file.
- * @param xmfFile The XMF file to write to (unused in MPI mode).
- * @param N The number of particles on that MPI rank.
- * @param N_total The total number of particles (only used in MPI mode)
- * @param mpi_rank The MPI rank of this node (only used in MPI mode)
- * @param offset The offset of the particles for this MPI rank (only used in MPI
- *mode)
- * @param parts The particle array
- * @param us The unit system to use
- *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to write.
+ * @param num_fields The number of i/o fields to write.
  */
-__attribute__((always_inline)) INLINE static void hydro_write_particles(
-    hid_t h_grp, char* fileName, char* partTypeGroupName, FILE* xmfFile, int N,
-    long long N_total, int mpi_rank, long long offset, struct part* parts,
-    struct UnitSystem* us) {
+void hydro_write_particles(struct part* parts, struct io_props* list,
+                           int* num_fields) {
 
-  /* Write arrays */
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Coordinates", DOUBLE,
-             N, 3, parts, N_total, mpi_rank, offset, x, us, UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Velocities", FLOAT,
-             N, 3, parts, N_total, mpi_rank, offset, v, us, UNIT_CONV_SPEED);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Masses", FLOAT, N, 1,
-             parts, N_total, mpi_rank, offset, mass, us, UNIT_CONV_MASS);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "SmoothingLength",
-             FLOAT, N, 1, parts, N_total, mpi_rank, offset, h, us,
-             UNIT_CONV_LENGTH);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "InternalEnergy",
-             FLOAT, N, 1, parts, N_total, mpi_rank, offset, entropy, us,
-             UNIT_CONV_ENTROPY_PER_UNIT_MASS);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "ParticleIDs",
-             ULONGLONG, N, 1, parts, N_total, mpi_rank, offset, id, us,
-             UNIT_CONV_NO_UNITS);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Acceleration", FLOAT,
-             N, 3, parts, N_total, mpi_rank, offset, a_hydro, us,
-             UNIT_CONV_ACCELERATION);
-  writeArray(h_grp, fileName, xmfFile, partTypeGroupName, "Density", FLOAT, N,
-             1, parts, N_total, mpi_rank, offset, rho, us, UNIT_CONV_DENSITY);
+  *num_fields = 10;
+
+  /* List what we want to write */
+  list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
+                                 parts, x);
+  list[1] =
+      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, v);
+  list[2] =
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
+  list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
+                                 parts, h);
+  list[4] = io_make_output_field(
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
+  list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
+                                 UNIT_CONV_NO_UNITS, parts, id);
+  list[6] = io_make_output_field("Acceleration", FLOAT, 3,
+                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
+  list[7] =
+      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
+  list[8] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
+                                              UNIT_CONV_ENERGY_PER_UNIT_MASS,
+                                              parts, rho, convert_u);
+  list[9] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
 }
 
 /**
@@ -102,14 +107,12 @@ __attribute__((always_inline)) INLINE static void hydro_write_particles(
  */
 void writeSPHflavour(hid_t h_grpsph) {
 
-  /* Kernel function description */
-  writeAttribute_s(h_grpsph, "Kernel", kernel_name);
-
   /* Viscosity and thermal conduction */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "(No treatment) Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Legacy Gadget-2 as in Springel (2005)");
+                   "(No treatment) as in Springel (2005)");
+  writeAttribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 }
@@ -119,4 +122,6 @@ void writeSPHflavour(hid_t h_grpsph) {
  *
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
-int writeEntropyFlag() { return 1; }
+int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_GADGET2_HYDRO_IO_H */

@@ -27,19 +27,24 @@ int main() {
 
   size_t Ngas = 0, Ngpart = 0;
   int periodic = -1;
-  int i, j, k, n;
+  int flag_entropy_ICs = -1;
+  int i, j, k;
   double dim[3];
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
 
+  /* Default unit system */
+  struct UnitSystem us;
+  units_init_cgs(&us);
+
   /* Properties of the ICs */
   const double boxSize = 1.;
-  const int L = 4;
+  const size_t L = 4;
   const double rho = 2.;
 
   /* Read data */
-  read_ic_single("input.hdf5", dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 0);
+  read_ic_single("input.hdf5", &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, 0);
 
   /* Check global properties read are correct */
   assert(dim[0] == boxSize);
@@ -50,14 +55,14 @@ int main() {
   assert(periodic == 1);
 
   /* Check particles */
-  for (n = 0; n < Ngas; ++n) {
+  for (size_t n = 0; n < Ngas; ++n) {
 
     /* Check that indices are in a reasonable range */
     unsigned long long index = parts[n].id;
     assert(index < Ngas);
 
     /* Check masses */
-    float mass = parts[n].mass;
+    float mass = hydro_get_mass(&parts[n]);
     float correct_mass = boxSize * boxSize * boxSize * rho / Ngas;
     assert(mass == correct_mass);
 
@@ -90,6 +95,7 @@ int main() {
 
   /* Clean-up */
   free(parts);
+  free(gparts);
 
   return 0;
 }

@@ -16,22 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_DEBUG_H
+#define SWIFT_GADGET2_HYDRO_DEBUG_H
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
   printf(
       "x=[%.3e,%.3e,%.3e], "
       "v=[%.3e,%.3e,%.3e],v_full=[%.3e,%.3e,%.3e] \n a=[%.3e,%.3e,%.3e],\n "
-      "h=%.3e, "
-      "wcount=%d, wcount_dh=%.3e, m=%.3e, dh_drho=%.3e, rho=%.3e, P=%.3e, "
-      "S=%.3e, "
-      "dS/dt=%.3e, c=%.3e\n"
-      "divV=%.3e, curlV=%.3e, rotV=[%.3e,%.3e,%.3e]  \n "
+      "h=%.3e, wcount=%.3f, wcount_dh=%.3e, m=%.3e, dh_drho=%.3e, rho=%.3e, "
+      "P=%.3e, P_over_rho2=%.3e, S=%.3e, dS/dt=%.3e, c=%.3e\n"
+      "divV=%.3e, rotV=[%.3e,%.3e,%.3e], balsara=%.3e \n "
       "v_sig=%e dh/dt=%.3e t_begin=%d, t_end=%d\n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
-      p->h, (int)p->density.wcount, p->density.wcount_dh, p->mass, p->rho_dh,
-      p->rho, p->force.pressure, p->entropy, p->entropy_dt, p->force.soundspeed,
-      p->div_v, p->force.curl_v, p->density.rot_v[0], p->density.rot_v[1],
-      p->density.rot_v[2], p->force.v_sig, p->h_dt, p->ti_begin, p->ti_end);
+      p->h, p->density.wcount, p->density.wcount_dh, p->mass, p->rho_dh, p->rho,
+      hydro_get_pressure(p, 0.), p->force.P_over_rho2, p->entropy,
+      p->entropy_dt, p->force.soundspeed, p->density.div_v, p->density.rot_v[0],
+      p->density.rot_v[1], p->density.rot_v[2], p->force.balsara,
+      p->force.v_sig, p->force.h_dt, p->ti_begin, p->ti_end);
 }
+
+#endif /* SWIFT_GADGET2_HYDRO_DEBUG_H */

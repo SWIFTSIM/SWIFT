@@ -15,25 +15,34 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and debug to CFLAGS
-AM_CFLAGS = -I../src $(HDF5_CPPFLAGS) -DTIMER
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) -DTIMER
 
 
-AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS)
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testReading.sh testSingle testPair.sh testPairPerturbed.sh \
-	test27cells.sh test27cellsPerturbed.sh testParser.sh testKernel dump_test \
-  threadpool_test
+TESTS = testGreetings testMaths testReading.sh testSingle testKernel testSymmetry \
+        testPair.sh testPairPerturbed.sh test27cells.sh test27cellsPerturbed.sh  \
+        testParser.sh testSPHStep test125cells.sh testKernelGrav testFFT \
+        testAdiabaticIndex testRiemannExact testRiemannTRRS testRiemannHLLC \
+        testMatrixInversion testThreadpool
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testSingle testTimeIntegration \
-		 testSPHStep testPair test27cells testParser testKernel dump_test \
-     threadpool_test
+		 testSPHStep testPair test27cells test125cells testParser \
+                 testKernel testKernelGrav testFFT testInteractions testMaths \
+                 testSymmetry testThreadpool \
+                 testAdiabaticIndex testRiemannExact testRiemannTRRS \
+                 testRiemannHLLC testMatrixInversion
 
 # Sources for the individual programs
 testGreetings_SOURCES = testGreetings.c
 
+testMaths_SOURCES = testMaths.c
+
 testReading_SOURCES = testReading.c
+
+testSymmetry_SOURCES = testSymmetry.c
 
 testTimeIntegration_SOURCES = testTimeIntegration.c
 
@@ -45,15 +54,31 @@ testPair_SOURCES = testPair.c
 
 test27cells_SOURCES = test27cells.c
 
+test125cells_SOURCES = test125cells.c
+
 testParser_SOURCES = testParser.c
 
 testKernel_SOURCES = testKernel.c
 
-dump_test_SOURCES = dump_test.c
+testKernelGrav_SOURCES = testKernelGrav.c
 
-threadpool_test_SOURCES = threadpool_test.c
+testFFT_SOURCES = testFFT.c
+
+testInteractions_SOURCES = testInteractions.c
+
+testAdiabaticIndex_SOURCES = testAdiabaticIndex.c
+
+testRiemannExact_SOURCES = testRiemannExact.c
+
+testRiemannTRRS_SOURCES = testRiemannTRRS.c
+
+testRiemannHLLC_SOURCES = testRiemannHLLC.c
+
+testMatrixInversion_SOURCES = testMatrixInversion.c
+
+testThreadpool_SOURCES = testThreadpool.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \
 	     test27cells.sh test27cellsPerturbed.sh tolerance.dat testParser.sh \
-	     testParserInput.yaml
+	     test125cells.sh testParserInput.yaml

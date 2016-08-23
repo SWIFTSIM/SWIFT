@@ -16,6 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_GRAVITY_PART_H
+#define SWIFT_DEFAULT_GRAVITY_PART_H
+
 /* Some standard headers. */
 #include <stdlib.h>
 
@@ -37,18 +40,19 @@ struct gpart {
   /* Particle mass. */
   float mass;
 
+  /* Softening length */
+  float epsilon;
+
   /* Particle time of beginning of time-step. */
   int ti_begin;
 
   /* Particle time of end of time-step. */
   int ti_end;
 
-  /* /\* current time of x, and of v_full *\/ */
-  /* float tx; */
-  /* float tv; */
-
   /* Particle ID. If negative, it is the negative offset of the #part with
      which this gpart is linked. */
   long long id_or_neg_offset;
 
 } __attribute__((aligned(gpart_align)));
+
+#endif /* SWIFT_DEFAULT_GRAVITY_PART_H */

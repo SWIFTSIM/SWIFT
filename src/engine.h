@@ -72,6 +72,8 @@ extern const char *engine_policy_names[];
 #define engine_tasksreweight 10
 #define engine_parts_size_grow 1.05
 #define engine_redistribute_alloc_margin 1.2
+#define engine_default_energy_file_name "energy"
+#define engine_default_timesteps_file_name "timesteps"
 
 /* The rank of the engine as a global variable (for messages). */
 extern int engine_rank;
@@ -140,17 +142,24 @@ struct engine {
   /* Number of particles updated */
   size_t updates, g_updates;
 
+  /* The internal system of units */
+  const struct UnitSystem *internalUnits;
+
   /* Snapshot information */
   double timeFirstSnapshot;
   double deltaTimeSnapshot;
   int ti_nextSnapshot;
   char snapshotBaseName[200];
+  int snapshotCompression;
   struct UnitSystem *snapshotUnits;
 
   /* Statistics information */
   FILE *file_stats;
   double timeLastStatistics;
   double deltaTimeStatistics;
+
+  /* Timesteps information */
+  FILE *file_timesteps;
 
   /* The current step number. */
   int step;
@@ -187,9 +196,6 @@ struct engine {
   struct link *links;
   int nr_links, size_links;
 
-  /* Root task for all send and recv tasks. */
-  struct task *send_root, *recv_root;
-
   /* Are we talkative ? */
   int verbose;
 
@@ -213,6 +219,7 @@ void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
                  int nr_threads, int with_aff, int policy, int verbose,
+                 const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential);
@@ -235,5 +242,6 @@ void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin();
 void engine_unpin();
+void engine_clean(struct engine *e);
 
 #endif /* SWIFT_ENGINE_H */

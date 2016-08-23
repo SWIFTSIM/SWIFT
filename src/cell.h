@@ -68,7 +68,7 @@ struct cell {
   double loc[3];
 
   /* The cell dimensions. */
-  double h[3];
+  double width[3];
 
   /* Max radii in this cell. */
   double h_max;
@@ -101,8 +101,8 @@ struct cell {
   struct gpart *gparts;
 
   /* Pointers for the sorted indices. */
-  struct entry *sort, *gsort;
-  unsigned int sorted, gsorted;
+  struct entry *sort;
+  unsigned int sorted;
 
   /* Pointers to the next level of cells. */
   struct cell *progeny[8];
@@ -114,21 +114,21 @@ struct cell {
   struct cell *super;
 
   /* The task computing this cell's sorts. */
-  struct task *sorts, *gsorts;
-  int sortsize, gsortsize;
+  struct task *sorts;
+  int sortsize;
 
   /* The tasks computing this cell's density. */
-  struct link *density, *force, *grav;
-  int nr_density, nr_force, nr_grav;
+  struct link *density, *gradient, *force, *grav;
+  int nr_density, nr_gradient, nr_force, nr_grav;
 
   /* The hierarchical tasks. */
-  struct task *ghost, *init, *drift, *kick;
+  struct task *extra_ghost, *ghost, *init, *kick;
 
   /* Task receiving data. */
-  struct task *recv_xv, *recv_rho, *recv_ti;
+  struct task *recv_xv, *recv_rho, *recv_gradient, *recv_ti;
 
   /* Task send data. */
-  struct link *send_xv, *send_rho, *send_ti;
+  struct link *send_xv, *send_rho, *send_gradient, *send_ti;
 
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
@@ -152,7 +152,7 @@ struct cell {
   double mom[3], ang_mom[3];
 
   /* Mass, potential, internal  and kinetic energy of particles in this cell. */
-  double mass, e_pot, e_int, e_kin;
+  double mass, e_pot, e_int, e_kin, entropy;
 
   /* Number of particles updated in this cell. */
   int updated, g_updated;
@@ -197,5 +197,9 @@ void cell_init_parts(struct cell *c, void *data);
 void cell_init_gparts(struct cell *c, void *data);
 void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);
+int cell_are_neighbours(const struct cell *restrict ci,
+                        const struct cell *restrict cj);
+void cell_check_multipole(struct cell *c, void *data);
+void cell_clean(struct cell *c);
 
 #endif /* SWIFT_CELL_H */

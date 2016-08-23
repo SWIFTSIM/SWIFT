@@ -29,12 +29,14 @@
 
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 
-void read_ic_single(char* fileName, double dim[3], struct part** parts,
-                    struct gpart** gparts, size_t* Ngas, size_t* Ndm,
-                    int* periodic, int* flag_entropy, int dry_run);
+void read_ic_single(char* fileName, const struct UnitSystem* internal_units,
+                    double dim[3], struct part** parts, struct gpart** gparts,
+                    size_t* Ngas, size_t* Ndm, int* periodic, int* flag_entropy,
+                    int dry_run);
 
 void write_output_single(struct engine* e, const char* baseName,
-                         struct UnitSystem* us);
+                         const struct UnitSystem* internal_units,
+                         const struct UnitSystem* snapshot_units);
 
 #endif
 

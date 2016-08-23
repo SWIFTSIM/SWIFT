@@ -1,0 +1,20 @@
+#!/bin/bash
+
+for v in {0..3}
+do
+    echo ""
+
+    rm -f brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat
+
+    ./test27cells -n 6 -r 1 -d 0.1 -f perturbed -v $v
+
+    if [ -e brute_force_27_perturbed.dat ]
+    then
+	python @srcdir@/difffloat.py brute_force_27_perturbed.dat swift_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed.dat 6
+    else
+	exit 1
+    fi
+
+done
+
+exit $?

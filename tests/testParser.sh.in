@@ -1,0 +1,4 @@
+#!/bin/bash
+
+rm -f parser_output.yml
+./testParser @srcdir@/testParserInput.yaml

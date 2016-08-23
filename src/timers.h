@@ -36,16 +36,21 @@ enum {
   timer_kick,
   timer_dosort,
   timer_doself_density,
+  timer_doself_gradient,
   timer_doself_force,
-  timer_doself_grav,
+  timer_doself_grav_pp,
   timer_dopair_density,
+  timer_dopair_gradient,
   timer_dopair_force,
-  timer_dopair_grav,
+  timer_dopair_grav_pm,
+  timer_dopair_grav_pp,
   timer_dograv_external,
   timer_dosub_self_density,
+  timer_dosub_self_gradient,
   timer_dosub_self_force,
   timer_dosub_self_grav,
   timer_dosub_pair_density,
+  timer_dosub_pair_gradient,
   timer_dosub_pair_force,
   timer_dosub_pair_grav,
   timer_dopair_subset,
@@ -63,7 +68,7 @@ enum {
 extern ticks timers[timer_count];
 
 /* Mask for all timers. */
-#define timers_mask_all ((1 << timer_count) - 1)
+#define timers_mask_all ((1ull << timer_count) - 1)
 
 /* Define the timer macros. */
 #ifdef TIMER
@@ -73,7 +78,7 @@ extern ticks timers[timer_count];
 #define TIMER_TOC(t) timers_toc(t, tic)
 #define TIMER_TIC2 ticks tic2 = getticks();
 #define TIMER_TOC2(t) timers_toc(t, tic2)
-INLINE static ticks timers_toc(int t, ticks tic) {
+INLINE static ticks timers_toc(unsigned int t, ticks tic) {
   ticks d = (getticks() - tic);
   atomic_add(&timers[t], d);
   return d;
@@ -86,6 +91,6 @@ INLINE static ticks timers_toc(int t, ticks tic) {
 #endif
 
 /* Function prototypes. */
-void timers_reset(unsigned int mask);
+void timers_reset(unsigned long long mask);
 
 #endif /* SWIFT_TIMERS_H */

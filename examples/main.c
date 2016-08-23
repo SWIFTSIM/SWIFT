@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
 
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
-    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW);
     if (myrank == 0) message("Floating point exceptions will be reported.");
   }
 
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
   struct swift_params *params = malloc(sizeof(struct swift_params));
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
-    message("Reading parameters from file '%s'", paramFileName);
+    message("Reading runtime parameters from file '%s'", paramFileName);
     parser_read_file(paramFileName, params);
     // parser_print_params(&params);
     parser_write_params_to_file(params, "used_parameters.yml");
@@ -306,11 +306,11 @@ int main(int argc, char *argv[]) {
   units_init(&us, params, "InternalUnitSystem");
   phys_const_init(&us, &prog_const);
   if (myrank == 0 && verbose > 0) {
-    message("Unit system: U_M = %e g.", us.UnitMass_in_cgs);
-    message("Unit system: U_L = %e cm.", us.UnitLength_in_cgs);
-    message("Unit system: U_t = %e s.", us.UnitTime_in_cgs);
-    message("Unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
-    message("Unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
+    message("Internal unit system: U_M = %e g.", us.UnitMass_in_cgs);
+    message("Internal unit system: U_L = %e cm.", us.UnitLength_in_cgs);
+    message("Internal unit system: U_t = %e s.", us.UnitTime_in_cgs);
+    message("Internal unit system: U_I = %e A.", us.UnitCurrent_in_cgs);
+    message("Internal unit system: U_T = %e K.", us.UnitTemperature_in_cgs);
     phys_const_print(&prog_const);
   }
 
@@ -320,7 +320,8 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the external potential properties */
   struct external_potential potential;
-  if (with_external_gravity) potential_init(params, &us, &potential);
+  if (with_external_gravity)
+    potential_init(params, &prog_const, &us, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Read particles and space information from (GADGET) ICs */
@@ -336,17 +337,17 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(WITH_MPI)
 #if defined(HAVE_PARALLEL_HDF5)
-  read_ic_parallel(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                   &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
-                   MPI_INFO_NULL, dry_run);
+  read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                   &periodic, &flag_entropy_ICs, myrank, nr_nodes,
+                   MPI_COMM_WORLD, MPI_INFO_NULL, dry_run);
 #else
-  read_ic_serial(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
+  read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, myrank, nr_nodes, MPI_COMM_WORLD,
                  MPI_INFO_NULL, dry_run);
 #endif
 #else
-  read_ic_single(ICfileName, dim, &parts, &gparts, &Ngas, &Ngpart, &periodic,
-                 &flag_entropy_ICs, dry_run);
+  read_ic_single(ICfileName, &us, dim, &parts, &gparts, &Ngas, &Ngpart,
+                 &periodic, &flag_entropy_ICs, dry_run);
 #endif
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -387,8 +388,8 @@ int main(int argc, char *argv[]) {
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   struct space s;
-  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic, talking,
-             dry_run);
+  space_init(&s, params, dim, parts, gparts, Ngas, Ngpart, periodic,
+             with_self_gravity, talking, dry_run);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -434,7 +435,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
-              engine_policies, talking, &prog_const, &hydro_properties,
+              engine_policies, talking, &us, &prog_const, &hydro_properties,
               &potential);
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -442,9 +443,6 @@ int main(int argc, char *argv[]) {
             clocks_getunit());
     fflush(stdout);
   }
-
-  /* Write the state of the system before starting time integration. */
-  if (!dry_run) engine_dump_snapshot(&e);
 
 /* Init the runner history. */
 #ifdef HIST
@@ -469,6 +467,8 @@ int main(int argc, char *argv[]) {
 #endif
     if (myrank == 0)
       message("Time integration ready to start. End of dry-run.");
+    engine_clean(&e);
+    free(params);
     return 0;
   }
 
@@ -480,6 +480,9 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the particles */
   engine_init_particles(&e, flag_entropy_ICs);
+
+  /* Write the state of the system before starting time integration. */
+  engine_dump_snapshot(&e);
 
   /* Legend */
   if (myrank == 0)
@@ -532,7 +535,7 @@ int main(int argc, char *argv[]) {
             if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit) {
               fprintf(
                   file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %i\n",
-                  myrank, e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
+                  myrank, e.sched.tasks[l].rid, e.sched.tasks[l].type,
                   e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
                   e.sched.tasks[l].tic, e.sched.tasks[l].toc,
                   (e.sched.tasks[l].ci != NULL) ? e.sched.tasks[l].ci->count
@@ -568,7 +571,7 @@ int main(int argc, char *argv[]) {
         if (!e.sched.tasks[l].skip && !e.sched.tasks[l].implicit)
           fprintf(
               file_thread, " %i %i %i %i %lli %lli %i %i %i %i\n",
-              e.sched.tasks[l].last_rid, e.sched.tasks[l].type,
+              e.sched.tasks[l].rid, e.sched.tasks[l].type,
               e.sched.tasks[l].subtype, (e.sched.tasks[l].cj == NULL),
               e.sched.tasks[l].tic, e.sched.tasks[l].toc,
               (e.sched.tasks[l].ci == NULL) ? 0 : e.sched.tasks[l].ci->count,
@@ -598,6 +601,10 @@ int main(int argc, char *argv[]) {
   if ((res = MPI_Finalize()) != MPI_SUCCESS)
     error("call to MPI_Finalize failed with error %i.", res);
 #endif
+
+  /* Clean everything */
+  engine_clean(&e);
+  free(params);
 
   /* Say goodbye. */
   if (myrank == 0) message("done. Bye.");

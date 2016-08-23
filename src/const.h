@@ -20,9 +20,6 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
-/* Hydrodynamical constants. */
-#define const_hydro_gamma (5.0f / 3.0f)
-
 /* SPH Viscosity constants. */
 #define const_viscosity_alpha 0.8f
 #define const_viscosity_alpha_min \
@@ -39,10 +36,23 @@
 /* Time integration constants. */
 #define const_max_u_change 0.1f
 
-/* Gravity stuff. */
-#define const_theta_max 0.57735f
-#define const_G 6.672e-8f     /* Gravitational constant. */
-#define const_epsilon 0.0014f /* Gravity blending distance. */
+/* Thermal energy per unit mass used as a constant for the isothermal EoS */
+#define const_isothermal_internal_energy 20.2615290634f
+
+/* Dimensionality of the problem */
+#define HYDRO_DIMENSION_3D
+//#define HYDRO_DIMENSION_2D
+//#define HYDRO_DIMENSION_1D
+
+/* Hydrodynamical adiabatic index. */
+#define HYDRO_GAMMA_5_3
+//#define HYDRO_GAMMA_7_5
+//#define HYDRO_GAMMA_4_3
+//#define HYDRO_GAMMA_2_1
+
+/* Equation of state choice */
+#define EOS_IDEAL_GAS
+//#define EOS_ISOTHERMAL_GAS
 
 /* Kernel function to use */
 #define CUBIC_SPLINE_KERNEL
@@ -56,9 +66,33 @@
 //#define MINIMAL_SPH
 #define GADGET2_SPH
 //#define DEFAULT_SPH
+//#define GIZMO_SPH
 
-/* Gravity properties */
+/* Riemann solver to use (GIZMO_SPH only) */
+#define RIEMANN_SOLVER_EXACT
+//#define RIEMANN_SOLVER_TRRS
+//#define RIEMANN_SOLVER_HLLC
+
+/* Type of gradients to use (GIZMO_SPH only) */
+/* If no option is chosen, no gradients are used (first order scheme) */
+//#define GRADIENTS_SPH
+#define GRADIENTS_GIZMO
+
+/* Types of slope limiter to use (GIZMO_SPH only) */
+/* Different slope limiters can be combined */
+#define SLOPE_LIMITER_PER_FACE
+#define SLOPE_LIMITER_CELL_WIDE
+
+/* Self gravity stuff. */
+#define const_gravity_multipole_order 2
+#define const_gravity_a_smooth 1.25f
+#define const_gravity_r_cut 4.5f
+#define const_gravity_eta 0.025f
+
+/* External gravity properties */
 #define EXTERNAL_POTENTIAL_POINTMASS
+//#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+//#define EXTERNAL_POTENTIAL_DISK_PATCH
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS

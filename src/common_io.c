@@ -42,6 +42,7 @@
 /* Local includes. */
 #include "const.h"
 #include "error.h"
+#include "hydro.h"
 #include "kernel_hydro.h"
 #include "part.h"
 #include "units.h"
@@ -58,6 +59,7 @@ const char* particle_type_names[NUM_PARTICLE_TYPES] = {
  *way.
  */
 hid_t hdf5Type(enum DATA_TYPE type) {
+
   switch (type) {
     case INT:
       return H5T_NATIVE_INT;
@@ -87,6 +89,7 @@ hid_t hdf5Type(enum DATA_TYPE type) {
  * @brief Returns the memory size of the data type
  */
 size_t sizeOfType(enum DATA_TYPE type) {
+
   switch (type) {
     case INT:
       return sizeof(int);
@@ -108,6 +111,24 @@ size_t sizeOfType(enum DATA_TYPE type) {
       return sizeof(char);
     default:
       error("Unknown type");
+      return 0;
+  }
+}
+
+/**
+ * @brief Return 1 if the type has double precision
+ *
+ * Returns an error if the type is not FLOAT or DOUBLE
+ */
+int isDoublePrecision(enum DATA_TYPE type) {
+
+  switch (type) {
+    case FLOAT:
+      return 0;
+    case DOUBLE:
+      return 1;
+    default:
+      error("Invalid type");
       return 0;
   }
 }
@@ -274,14 +295,54 @@ void writeAttribute_s(hid_t grp, const char* name, const char* str) {
 }
 
 /**
+ * @brief Reads the Unit System from an IC file.
+ * @param h_file The (opened) HDF5 file from which to read.
+ * @param us The UnitSystem to fill.
+ *
+ * If the 'Units' group does not exist in the ICs, cgs units will be assumed
+ */
+void readUnitSystem(hid_t h_file, struct UnitSystem* us) {
+
+  hid_t h_grp = H5Gopen(h_file, "/Units", H5P_DEFAULT);
+
+  if (h_grp < 0) {
+    message("'Units' group not found in ICs. Assuming CGS unit system.");
+
+    /* Default to CGS */
+    us->UnitMass_in_cgs = 1.;
+    us->UnitLength_in_cgs = 1.;
+    us->UnitTime_in_cgs = 1.;
+    us->UnitCurrent_in_cgs = 1.;
+    us->UnitTemperature_in_cgs = 1.;
+
+    return;
+  }
+
+  /* Ok, Read the damn thing */
+  readAttribute(h_grp, "Unit length in cgs (U_L)", DOUBLE,
+                &us->UnitLength_in_cgs);
+  readAttribute(h_grp, "Unit mass in cgs (U_M)", DOUBLE, &us->UnitMass_in_cgs);
+  readAttribute(h_grp, "Unit time in cgs (U_t)", DOUBLE, &us->UnitTime_in_cgs);
+  readAttribute(h_grp, "Unit current in cgs (U_I)", DOUBLE,
+                &us->UnitCurrent_in_cgs);
+  readAttribute(h_grp, "Unit temperature in cgs (U_T)", DOUBLE,
+                &us->UnitTemperature_in_cgs);
+
+  /* Clean up */
+  H5Gclose(h_grp);
+}
+
+/**
  * @brief Writes the current Unit System
  * @param h_file The (opened) HDF5 file in which to write
- * @param us The UnitSystem used in the run
+ * @param us The UnitSystem to dump
+ * @param groupName The name of the HDF5 group to write to
  */
-void writeUnitSystem(hid_t h_file, struct UnitSystem* us) {
-  hid_t h_grpunit = 0;
+void writeUnitSystem(hid_t h_file, const struct UnitSystem* us,
+                     const char* groupName) {
 
-  h_grpunit = H5Gcreate1(h_file, "/Units", 0);
+  hid_t h_grpunit = 0;
+  h_grpunit = H5Gcreate1(h_file, groupName, 0);
   if (h_grpunit < 0) error("Error while creating Unit System group");
 
   writeAttribute_d(h_grpunit, "Unit mass in cgs (U_M)",
@@ -314,6 +375,9 @@ void writeCodeDescription(hid_t h_file) {
   writeAttribute_s(h_grpcode, "Git Branch", git_branch());
   writeAttribute_s(h_grpcode, "Git Revision", git_revision());
   writeAttribute_s(h_grpcode, "HDF5 library version", hdf5_version());
+#ifdef HAVE_FFTW
+  writeAttribute_s(h_grpcode, "FFTW library version", fftw3_version());
+#endif
 #ifdef WITH_MPI
   writeAttribute_s(h_grpcode, "MPI library", mpi_version());
 #ifdef HAVE_METIS
@@ -452,13 +516,13 @@ void writeXMFgroupheader(FILE* xmfFile, char* hdfFileName, size_t N,
   fprintf(xmfFile, "\n<Grid Name=\"%s\" GridType=\"Uniform\">\n",
           particle_type_names[ptype]);
   fprintf(xmfFile,
-          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zi\"/>\n", N);
+          "<Topology TopologyType=\"Polyvertex\" Dimensions=\"%zu\"/>\n", N);
   fprintf(xmfFile, "<Geometry GeometryType=\"XYZ\">\n");
   fprintf(xmfFile,
-          "<DataItem Dimensions=\"%zi 3\" NumberType=\"Double\" "
+          "<DataItem Dimensions=\"%zu 3\" NumberType=\"Double\" "
           "Precision=\"8\" "
           "Format=\"HDF\">%s:/PartType%d/Coordinates</DataItem>\n",
-          N, hdfFileName, ptype);
+          N, hdfFileName, (int)ptype);
   fprintf(xmfFile,
           "</Geometry>\n <!-- Done geometry for %s, start of particle fields "
           "list -->\n",
@@ -484,19 +548,20 @@ void writeXMFgroupfooter(FILE* xmfFile, enum PARTICLE_TYPE ptype) {
  *
  * @todo Treat the types in a better way.
  */
-void writeXMFline(FILE* xmfFile, char* fileName, char* partTypeGroupName,
-                  char* name, size_t N, int dim, enum DATA_TYPE type) {
+void writeXMFline(FILE* xmfFile, const char* fileName,
+                  const char* partTypeGroupName, const char* name, size_t N,
+                  int dim, enum DATA_TYPE type) {
   fprintf(xmfFile,
           "<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"Node\">\n",
           name, dim == 1 ? "Scalar" : "Vector");
   if (dim == 1)
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zi\" NumberType=\"Double\" "
+            "<DataItem Dimensions=\"%zu\" NumberType=\"Double\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
             N, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   else
     fprintf(xmfFile,
-            "<DataItem Dimensions=\"%zi %d\" NumberType=\"Double\" "
+            "<DataItem Dimensions=\"%zu %d\" NumberType=\"Double\" "
             "Precision=\"%d\" Format=\"HDF\">%s:%s/%s</DataItem>\n",
             N, dim, type == FLOAT ? 4 : 8, fileName, partTypeGroupName, name);
   fprintf(xmfFile, "</Attribute>\n");
@@ -518,7 +583,7 @@ void prepare_dm_gparts(struct gpart* const gparts, size_t Ndm) {
   for (size_t i = 0; i < Ndm; ++i) {
     /* 0 or negative ids are not allowed */
     if (gparts[i].id_or_neg_offset <= 0)
-      error("0 or negative ID for DM particle %zd: ID=%lld", i,
+      error("0 or negative ID for DM particle %zu: ID=%lld", i,
             gparts[i].id_or_neg_offset);
   }
 }
@@ -550,7 +615,7 @@ void duplicate_hydro_gparts(struct part* const parts,
     gparts[i + Ndm].v_full[1] = parts[i].v[1];
     gparts[i + Ndm].v_full[2] = parts[i].v[2];
 
-    gparts[i + Ndm].mass = parts[i].mass;
+    gparts[i + Ndm].mass = hydro_get_mass(&parts[i]);
 
     /* Link the particles */
     gparts[i + Ndm].id_or_neg_offset = -i;
@@ -586,7 +651,7 @@ void collect_dm_gparts(const struct gpart* const gparts, size_t Ntot,
 
   /* Check that everything is fine */
   if (count != Ndm)
-    error("Collected the wrong number of dm particles (%zd vs. %zd expected)",
+    error("Collected the wrong number of dm particles (%zu vs. %zu expected)",
           count, Ndm);
 }
 

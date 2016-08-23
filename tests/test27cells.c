@@ -17,11 +17,17 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
+/* Some standard headers. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/* Local headers. */
 #include "swift.h"
 
 enum velocity_types {
@@ -98,7 +104,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         }
         part->h = size * h / (float)n;
         part->id = ++(*partId);
+#ifdef GIZMO_SPH
+        part->conserved.mass = density * volume / count;
+#else
         part->mass = density * volume / count;
+#endif
         part->ti_begin = 0;
         part->ti_end = 1;
         ++part;
@@ -111,9 +121,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->dx_max = 0.;
-  cell->h[0] = size;
-  cell->h[1] = size;
-  cell->h[2] = size;
+  cell->width[0] = size;
+  cell->width[1] = size;
+  cell->width[2] = size;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
@@ -126,7 +136,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
@@ -141,9 +150,7 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
-    c->parts[pid].rho = 0.f;
-    c->parts[pid].rho_dh = 0.f;
+  for (int pid = 0; pid < c->count; pid++) {
     hydro_init_part(&c->parts[pid]);
   }
 }
@@ -152,7 +159,7 @@ void zero_particle_fields(struct cell *c) {
  * @brief Ends the loop by adding the appropriate coefficients
  */
 void end_calculation(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
+  for (int pid = 0; pid < c->count; pid++) {
     hydro_end_density(&c->parts[pid], 1);
   }
 }
@@ -174,18 +181,30 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
-  for (size_t pid = 0; pid < main_cell->count; pid++) {
+  for (int pid = 0; pid < main_cell->count; pid++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
-            main_cell->parts[pid].v[2], main_cell->parts[pid].rho,
-            main_cell->parts[pid].rho_dh, main_cell->parts[pid].density.wcount,
+            main_cell->parts[pid].v[2],
+            hydro_get_density(&main_cell->parts[pid]),
+#if defined(GIZMO_SPH)
+            0.f,
+#else
+            main_cell->parts[pid].rho_dh,
+#endif
+            main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
-#ifdef GADGET2_SPH
-            main_cell->parts[pid].div_v, main_cell->parts[pid].density.rot_v[0],
+#if defined(GADGET2_SPH)
+            main_cell->parts[pid].density.div_v,
+            main_cell->parts[pid].density.rot_v[0],
+            main_cell->parts[pid].density.rot_v[1],
+            main_cell->parts[pid].density.rot_v[2]
+#elif defined(DEFAULT_SPH)
+            main_cell->parts[pid].density.div_v,
+            main_cell->parts[pid].density.rot_v[0],
             main_cell->parts[pid].density.rot_v[1],
             main_cell->parts[pid].density.rot_v[2]
 #else
@@ -205,17 +224,25 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                 "# Offset: [%2d %2d %2d] -----------------------------------\n",
                 i - 1, j - 1, k - 1);
 
-        for (size_t pjd = 0; pjd < cj->count; pjd++) {
+        for (int pjd = 0; pjd < cj->count; pjd++) {
           fprintf(
               file,
               "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
               "%13e %13e %13e\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-              cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+              cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
+#if defined(GIZMO_SPH)
+              0.f,
+#else
+              main_cell->parts[pjd].rho_dh,
+#endif
               cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-#ifdef GADGET2_SPH
-              cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
+#if defined(GADGET2_SPH)
+              cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
+              cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
+#elif defined(DEFAULT_SPH)
+              cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
               cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else
               0., 0., 0., 0.
@@ -235,21 +262,24 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 /* And go... */
 int main(int argc, char *argv[]) {
   size_t runs = 0, particles = 0;
-  double h = 1.2348, size = 1., rho = 1.;
+  double h = 1.23485, size = 1., rho = 1.;
   double perturbation = 0.;
   char outputFileNameExtension[200] = "";
   char outputFileName[200] = "";
-  int vel = velocity_zero;
+  enum velocity_types vel = velocity_zero;
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
+  /* Choke on FP-exceptions */
+  feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+
   /* Get some randomness going */
   srand(0);
 
   char c;
-  while ((c = getopt(argc, argv, "m:s:h:p:r:t:d:f:v:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -257,7 +287,7 @@ int main(int argc, char *argv[]) {
       case 's':
         sscanf(optarg, "%lf", &size);
         break;
-      case 'p':
+      case 'n':
         sscanf(optarg, "%zu", &particles);
         break;
       case 'r':
@@ -273,7 +303,7 @@ int main(int argc, char *argv[]) {
         strcpy(outputFileNameExtension, optarg);
         break;
       case 'v':
-        sscanf(optarg, "%d", &vel);
+        sscanf(optarg, "%d", (int *)&vel);
         break;
       case '?':
         error("Unknown option.");
@@ -283,9 +313,10 @@ int main(int argc, char *argv[]) {
 
   if (h < 0 || particles == 0 || runs == 0) {
     printf(
-        "\nUsage: %s -p PARTICLES_PER_AXIS -r NUMBER_OF_RUNS [OPTIONS...]\n"
-        "\nGenerates a cell pair, filled with particles on a Cartesian grid."
-        "\nThese are then interacted using runner_dopair1_density."
+        "\nUsage: %s -n PARTICLES_PER_AXIS -r NUMBER_OF_RUNS [OPTIONS...]\n"
+        "\nGenerates 27 cells, filled with particles on a Cartesian grid."
+        "\nThese are then interacted using runner_dopair1_density() and "
+        "runner_doself1_density()."
         "\n\nOptions:"
         "\n-h DISTANCE=1.2348 - Smoothing length in units of <x>"
         "\n-m rho             - Physical density in the cell"
@@ -299,19 +330,20 @@ int main(int argc, char *argv[]) {
   }
 
   /* Help users... */
+  message("Adiabatic index: ga = %f", hydro_gamma);
+  message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f",
-          h * h * h * 4.0 * M_PI * kernel_gamma3 / 3.0);
+  message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
+
   printf("\n");
 
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
-  space.h_max = h;
 
   struct engine engine;
   engine.s = &space;
@@ -331,6 +363,8 @@ int main(int argc, char *argv[]) {
         double offset[3] = {i * size, j * size, k * size};
         cells[i * 9 + j * 3 + k] = make_cell(particles, offset, size, h, rho,
                                              &partId, perturbation, vel);
+
+        runner_do_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0);
       }
     }
   }
@@ -345,6 +379,8 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+
     /* Run all the pairs */
     for (int j = 0; j < 27; ++j)
       if (cells[j] != main_cell)
@@ -352,6 +388,8 @@ int main(int argc, char *argv[]) {
 
     /* And now the self-interaction */
     runner_doself1_density(&runner, main_cell);
+
+#endif
 
     const ticks toc = getticks();
     time += toc - tic;
@@ -377,12 +415,16 @@ int main(int argc, char *argv[]) {
 
   const ticks tic = getticks();
 
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
+
   /* Run all the brute-force pairs */
   for (int j = 0; j < 27; ++j)
     if (cells[j] != main_cell) pairs_all_density(&runner, main_cell, cells[j]);
 
   /* And now the self-interaction */
   self_all_density(&runner, main_cell);
+
+#endif
 
   const ticks toc = getticks();
 

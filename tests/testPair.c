@@ -63,7 +63,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->v[2] = random_uniform(-0.05, 0.05);
         part->h = size * h / (float)n;
         part->id = ++(*partId);
+#ifdef GIZMO_SPH
+        part->conserved.mass = density * volume / count;
+#else
         part->mass = density * volume / count;
+#endif
         part->ti_begin = 0;
         part->ti_end = 1;
         ++part;
@@ -76,9 +80,9 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->h_max = h;
   cell->count = count;
   cell->dx_max = 0.;
-  cell->h[0] = n;
-  cell->h[1] = n;
-  cell->h[2] = n;
+  cell->width[0] = n;
+  cell->width[1] = n;
+  cell->width[2] = n;
   cell->loc[0] = offset[0];
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
@@ -91,7 +95,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->sorted = 0;
   cell->sort = NULL;
   cell->sortsize = 0;
-  runner_do_sort(NULL, cell, 0x1FFF, 0);
 
   return cell;
 }
@@ -106,9 +109,7 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
-    c->parts[pid].rho = 0.f;
-    c->parts[pid].rho_dh = 0.f;
+  for (int pid = 0; pid < c->count; pid++) {
     hydro_init_part(&c->parts[pid]);
   }
 }
@@ -128,16 +129,21 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   fprintf(file, "# ci --------------------------------------------\n");
 
-  for (size_t pid = 0; pid < ci->count; pid++) {
+  for (int pid = 0; pid < ci->count; pid++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
             ci->parts[pid].id, ci->parts[pid].x[0], ci->parts[pid].x[1],
             ci->parts[pid].x[2], ci->parts[pid].v[0], ci->parts[pid].v[1],
-            ci->parts[pid].v[2], ci->parts[pid].rho, ci->parts[pid].rho_dh,
+            ci->parts[pid].v[2], hydro_get_density(&ci->parts[pid]),
+#if defined(GIZMO_SPH)
+            0.f,
+#else
+            cj->parts[pid].rho_dh,
+#endif
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
-#ifdef GADGET2_SPH
-            ci->parts[pid].div_v, ci->parts[pid].density.rot_v[0],
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
+            ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
 #else
             0., 0., 0., 0.
@@ -147,16 +153,21 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 
   fprintf(file, "# cj --------------------------------------------\n");
 
-  for (size_t pjd = 0; pjd < cj->count; pjd++) {
+  for (int pjd = 0; pjd < cj->count; pjd++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
             cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
             cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-            cj->parts[pjd].v[2], cj->parts[pjd].rho, cj->parts[pjd].rho_dh,
+            cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
+#if defined(GIZMO_SPH)
+            0.f,
+#else
+            cj->parts[pjd].rho_dh,
+#endif
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-#ifdef GADGET2_SPH
-            cj->parts[pjd].div_v, cj->parts[pjd].density.rot_v[0],
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
+            cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else
             0., 0., 0., 0.
@@ -231,7 +242,6 @@ int main(int argc, char *argv[]) {
   }
 
   space.periodic = 0;
-  space.h_max = h;
 
   engine.s = &space;
   engine.time = 0.1f;
@@ -245,6 +255,9 @@ int main(int argc, char *argv[]) {
   for (size_t i = 0; i < type + 1; ++i) offset[i] = 1.;
   cj = make_cell(particles, offset, size, h, rho, &partId, perturbation);
 
+  runner_do_sort(&runner, ci, 0x1FFF, 0);
+  runner_do_sort(&runner, cj, 0x1FFF, 0);
+
   time = 0;
   for (size_t i = 0; i < runs; ++i) {
     /* Zero the fields */
@@ -253,8 +266,10 @@ int main(int argc, char *argv[]) {
 
     tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
     /* Run the test */
     runner_dopair1_density(&runner, ci, cj);
+#endif
 
     toc = getticks();
     time += toc - tic;
@@ -277,8 +292,10 @@ int main(int argc, char *argv[]) {
 
   tic = getticks();
 
+#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
   /* Run the brute-force test */
   pairs_all_density(&runner, ci, cj);
+#endif
 
   toc = getticks();
 

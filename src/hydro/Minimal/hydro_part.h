@@ -16,6 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_MINIMAL_HYDRO_PART_H
+#define SWIFT_MINIMAL_HYDRO_PART_H
+
+/**
+ * @file Minimal/hydro_part.h
+ * @brief Minimal conservative implementation of SPH (Particle definition)
+ *
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term without switches is implemented. No thermal conduction
+ * term is implemented.
+ *
+ * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
+ * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
+ * pp. 759-794.
+ */
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -30,8 +46,6 @@ struct xpart {
                       tree rebuild. */
 
   float v_full[3]; /*!< Velocity at the last full step. */
-
-  float u_full; /*!< Thermal energy at the last full step. */
 
 } __attribute__((aligned(xpart_align)));
 
@@ -53,8 +67,6 @@ struct part {
   float mass; /*!< Particle mass. */
 
   float h; /*!< Particle smoothing length. */
-
-  float h_dt; /*!< Time derivative of smoothing length  */
 
   int ti_begin; /*!< Time at the beginning of time-step. */
 
@@ -91,13 +103,15 @@ struct part {
      * neighbours.
      *
      * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost and kick tasks.
+     * loop over neighbours and the ghost, drift and kick tasks.
      */
     struct {
 
       float pressure; /*!< Particle pressure. */
 
       float v_sig; /*!< Particle signal velocity */
+
+      float h_dt; /*!< Time derivative of smoothing length  */
 
     } force;
   };
@@ -107,3 +121,5 @@ struct part {
   struct gpart* gpart; /*!< Pointer to corresponding gravity part. */
 
 } __attribute__((aligned(part_align)));
+
+#endif /* SWIFT_MINIMAL_HYDRO_PART_H */

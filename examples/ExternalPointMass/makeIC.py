@@ -83,11 +83,19 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-
+grp.attrs["Dimension"] = 3
 
 #Runtime parameters
 grp = file.create_group("/RuntimePars")
 grp.attrs["PeriodicBoundariesOn"] = periodic
+
+#Units
+grp = file.create_group("/Units")
+grp.attrs["Unit length in cgs (U_L)"] = 3.0856776e21
+grp.attrs["Unit mass in cgs (U_M)"] = 1.9885e33
+grp.attrs["Unit time in cgs (U_t)"] = 3.0856776e16
+grp.attrs["Unit current in cgs (U_I)"] = 1.
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
 #Particle group
 #grp0 = file.create_group("/PartType0")

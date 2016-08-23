@@ -241,7 +241,7 @@ static void accumulate_counts(struct space *s, int *counts) {
 
   struct part *parts = s->parts;
   int *cdim = s->cdim;
-  double ih[3] = {s->ih[0], s->ih[1], s->ih[2]};
+  double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
   double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   bzero(counts, sizeof(int) * s->nr_cells);
@@ -253,8 +253,9 @@ static void accumulate_counts(struct space *s, int *counts) {
       else if (parts[k].x[j] >= dim[j])
         parts[k].x[j] -= dim[j];
     }
-    const int cid = cell_getid(cdim, parts[k].x[0] * ih[0],
-                               parts[k].x[1] * ih[1], parts[k].x[2] * ih[2]);
+    const int cid =
+        cell_getid(cdim, parts[k].x[0] * iwidth[0], parts[k].x[1] * iwidth[1],
+                   parts[k].x[2] * iwidth[2]);
     counts[cid]++;
   }
 }
@@ -454,13 +455,19 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     /* Skip un-interesting tasks. */
     if (t->type != task_type_self && t->type != task_type_pair &&
         t->type != task_type_sub_self && t->type != task_type_sub_self &&
-        t->type != task_type_ghost && t->type != task_type_drift &&
-        t->type != task_type_kick && t->type != task_type_init)
+        t->type != task_type_ghost && t->type != task_type_kick &&
+        t->type != task_type_init)
       continue;
 
-    /* Get the task weight. */
+    /* Get the task weight. This can be slightly negative on multiple board
+     * computers when the runners are not pinned to cores, don't stress just
+     * make a report and ignore these tasks. */
     int w = (t->toc - t->tic) * wscale;
-    if (w < 0) error("Bad task weight (%d).", w);
+    if (w < 0) {
+      message("Task toc before tic: -%.3f %s, (try using processor affinity).",
+              clocks_from_ticks(t->tic - t->toc), clocks_getunit());
+      w = 0;
+    }
 
     /* Do we need to re-scale? */
     wtot += w;
@@ -487,8 +494,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
     int cid = ci - cells;
 
     /* Different weights for different tasks. */
-    if (t->type == task_type_ghost || t->type == task_type_drift ||
-        t->type == task_type_kick) {
+    if (t->type == task_type_ghost || t->type == task_type_kick) {
       /* Particle updates add only to vertex weight. */
       if (taskvweights) weights_v[cid] += w;
 
@@ -826,10 +832,10 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Check each particle and accumilate the counts per cell. */
       struct part *parts = s->parts;
       int *cdim = s->cdim;
-      double ih[3], dim[3];
-      ih[0] = s->ih[0];
-      ih[1] = s->ih[1];
-      ih[2] = s->ih[2];
+      double iwidth[3], dim[3];
+      iwidth[0] = s->iwidth[0];
+      iwidth[1] = s->iwidth[1];
+      iwidth[2] = s->iwidth[2];
       dim[0] = s->dim[0];
       dim[1] = s->dim[1];
       dim[2] = s->dim[2];
@@ -841,8 +847,8 @@ void partition_initial_partition(struct partition *initial_partition,
             parts[k].x[j] -= dim[j];
         }
         const int cid =
-            cell_getid(cdim, parts[k].x[0] * ih[0], parts[k].x[1] * ih[1],
-                       parts[k].x[2] * ih[2]);
+            cell_getid(cdim, parts[k].x[0] * iwidth[0],
+                       parts[k].x[1] * iwidth[1], parts[k].x[2] * iwidth[2]);
         weights[cid]++;
       }
 
@@ -1079,9 +1085,9 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
       for (int k = 0; k < s->cdim[2]; k++) {
 
         /* Scale indices to old cell space. */
-        int ii = rint(i * s->ih[0] * oldh[0]);
-        int jj = rint(j * s->ih[1] * oldh[1]);
-        int kk = rint(k * s->ih[2] * oldh[2]);
+        int ii = rint(i * s->iwidth[0] * oldh[0]);
+        int jj = rint(j * s->iwidth[1] * oldh[1]);
+        int kk = rint(k * s->iwidth[2] * oldh[2]);
 
         int cid = cell_getid(s->cdim, i, j, k);
         int oldcid = cell_getid(oldcdim, ii, jj, kk);

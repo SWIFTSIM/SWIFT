@@ -94,7 +94,7 @@ for i in range(n_lines_to_check):
         else:
             rel_diff = 0.
 
-        if( abs_diff > absTol[j]):
+        if( abs_diff > 1.1*absTol[j]):
             print "Absolute difference larger than tolerance (%e) for particle %d, column %d:"%(absTol[j], i,j)
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])
@@ -102,7 +102,9 @@ for i in range(n_lines_to_check):
             print ""
             error = True
 
-        if( rel_diff > relTol[j]):
+        if abs(data1[i,j]) < 1e-6 and + abs(data2[i,j]) < 1e-6 : continue
+            
+        if( rel_diff > 1.1*relTol[j]):
             print "Relative difference larger than tolerance (%e) for particle %d, column %d:"%(relTol[j], i,j)
             print "%10s:           a = %e"%("File 1", data1[i,j])
             print "%10s:           b = %e"%("File 2", data2[i,j])

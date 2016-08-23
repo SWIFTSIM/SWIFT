@@ -47,7 +47,7 @@ if downsample > 1. or downsample <= 0.:
 # Download the tile
 if (not os.path.isfile("tile.hdf5")):
     print "Downloading initial tile..."
-    urllib.urlretrieve ("http://icc.dur.ac.uk/~jlvc76/Files/SWIFT/tile.hdf5", "tile.hdf5")
+    urllib.urlretrieve ("http://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs/tile.hdf5", "tile.hdf5")
     print "Done."
 else:
     print "Tile already exists. No need to download..."
@@ -133,6 +133,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
+grp.attrs["Dimension"] = 3
 
 #Runtime parameters
 grp = file.create_group("/RuntimePars")
