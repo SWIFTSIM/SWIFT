@@ -27,6 +27,14 @@
 #include "stdio.h"
 #include "stdlib.h"
 
+/* Check that we use an ideal equation of state, since other equations of state
+   are not compatible with these Riemann solvers. */
+#ifndef EOS_IDEAL_GAS
+#error Currently there are no Riemann solvers that can handle the requested \
+       equation of state. Select an ideal gas equation of state if you want to \
+       use this hydro scheme!
+#endif
+
 #if defined(RIEMANN_SOLVER_EXACT)
 
 #define RIEMANN_SOLVER_IMPLEMENTATION "Exact Riemann solver (Toro 2009)"
