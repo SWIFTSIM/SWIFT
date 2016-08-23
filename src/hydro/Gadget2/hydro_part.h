@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_PART_H
+#define SWIFT_GADGET2_HYDRO_PART_H
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -109,3 +111,5 @@ struct part {
   struct gpart* gpart;
 
 } __attribute__((aligned(part_align)));
+
+#endif /* SWIFT_GADGET2_HYDRO_PART_H */

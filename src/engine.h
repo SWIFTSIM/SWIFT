@@ -111,6 +111,9 @@ struct engine {
   /* The task scheduler. */
   struct scheduler sched;
 
+  /* Common threadpool for all the engine's tasks. */
+  struct threadpool threadpool;
+
   /* The minimum and maximum allowed dt */
   double dt_min, dt_max;
 
@@ -149,6 +152,7 @@ struct engine {
   double deltaTimeSnapshot;
   int ti_nextSnapshot;
   char snapshotBaseName[200];
+  int snapshotCompression;
   struct UnitSystem *snapshotUnits;
 
   /* Statistics information */
@@ -240,7 +244,6 @@ void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
-struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin();

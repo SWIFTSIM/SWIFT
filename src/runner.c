@@ -83,6 +83,13 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 #define FUNCTION density
 #include "runner_doiact.h"
 
+/* Import the gradient loop functions (if required). */
+#ifdef EXTRA_HYDRO_LOOP
+#undef FUNCTION
+#define FUNCTION gradient
+#include "runner_doiact.h"
+#endif
+
 /* Import the force loop functions. */
 #undef FUNCTION
 #define FUNCTION force
@@ -170,7 +177,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   const int ti_current = r->e->ti_current;
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
-
+  const double time = r->e->time;
   TIMER_TIC;
 
   /* Recurse? */
@@ -193,7 +200,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
 
-      external_gravity(potential, constants, g);
+      external_gravity(time, potential, constants, g);
     }
   }
 
@@ -487,7 +494,49 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Intermediate task between density and force
+ * @brief Intermediate task after the gradient loop that does final operations
+ * on the gradient quantities and optionally slope limits the gradients
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ */
+void runner_do_extra_ghost(struct runner *r, struct cell *c) {
+
+#ifdef EXTRA_HYDRO_LOOP
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+  const int ti_current = r->e->ti_current;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_extra_ghost(r, c->progeny[k]);
+    return;
+  } else {
+
+    /* Loop over the parts in this cell. */
+    for (int i = 0; i < count; i++) {
+
+      /* Get a direct pointer on the part. */
+      struct part *restrict p = &parts[i];
+
+      if (p->ti_end <= ti_current) {
+
+        /* Get ready for a force calculation */
+        hydro_end_gradient(p);
+      }
+    }
+  }
+
+#else
+  error("SWIFT was not compiled with the extra hydro loop activated.");
+#endif
+}
+
+/**
+ * @brief Intermediate task after the density to check that the smoothing
+ * lengths are correct.
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -552,8 +601,8 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
           h_corr = (target_wcount - p->density.wcount) / p->density.wcount_dh;
 
           /* Truncate to the range [ -p->h/2 , p->h ]. */
-          h_corr = fminf(h_corr, p->h);
-          h_corr = fmaxf(h_corr, -p->h * 0.5f);
+          h_corr = (h_corr < p->h) ? h_corr : p->h;
+          h_corr = (h_corr > -0.5f * p->h) ? h_corr : -0.5f * p->h;
         }
 
         /* Did we get the right number density? */
@@ -649,42 +698,36 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Drift particles and g-particles forward in time
+ * @brief Drift particles and g-particles in a cell forward in time
  *
- * @param r The runner thread.
  * @param c The cell.
- * @param timer Are we timing this ?
+ * @param e The engine.
  */
-void runner_do_drift(struct runner *r, struct cell *c, int timer) {
+static void runner_do_drift(struct cell *c, struct engine *e) {
 
-  const double timeBase = r->e->timeBase;
-  const double dt = (r->e->ti_current - r->e->ti_old) * timeBase;
-  const int ti_old = r->e->ti_old;
-  const int ti_current = r->e->ti_current;
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
-  struct gpart *restrict gparts = c->gparts;
+  const double timeBase = e->timeBase;
+  const double dt = (e->ti_current - e->ti_old) * timeBase;
+  const int ti_old = e->ti_old;
+  const int ti_current = e->ti_current;
+
+  struct part *const parts = c->parts;
+  struct xpart *const xparts = c->xparts;
+  struct gpart *const gparts = c->gparts;
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0};
   double ang_mom[3] = {0.0, 0.0, 0.0};
 
-  TIMER_TIC
-
-#ifdef TASK_VERBOSE
-  OUT;
-#endif
-
   /* No children? */
   if (!c->split) {
 
     /* Loop over all the g-particles in the cell */
-    const int nr_gparts = c->gcount;
+    const size_t nr_gparts = c->gcount;
     for (size_t k = 0; k < nr_gparts; k++) {
 
       /* Get a handle on the gpart. */
-      struct gpart *restrict gp = &gparts[k];
+      struct gpart *const gp = &gparts[k];
 
       /* Drift... */
       drift_gpart(gp, dt, timeBase, ti_old, ti_current);
@@ -693,7 +736,7 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
                         gp->x_diff[1] * gp->x_diff[1] +
                         gp->x_diff[2] * gp->x_diff[2];
-      dx2_max = fmaxf(dx2_max, dx2);
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
     }
 
     /* Loop over all the particles in the cell (more work for these !) */
@@ -701,8 +744,8 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
     for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
-      struct xpart *restrict xp = &xparts[k];
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
 
       /* Drift... */
       drift_part(p, xp, dt, timeBase, ti_old, ti_current);
@@ -711,10 +754,10 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
-      dx2_max = fmaxf(dx2_max, dx2);
+      dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
 
       /* Maximal smoothing length */
-      h_max = fmaxf(p->h, h_max);
+      h_max = (h_max > p->h) ? h_max : p->h;
 
       /* Now collect quantities for statistics */
 
@@ -724,7 +767,8 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
       const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
                           xp->v_full[1] + p->a_hydro[1] * half_dt,
                           xp->v_full[2] + p->a_hydro[2] * half_dt};
-      const float m = p->mass;
+
+      const float m = hydro_get_mass(p);
 
       /* Collect mass */
       mass += m;
@@ -755,15 +799,14 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   /* Otherwise, aggregate data from children. */
   else {
 
-    /* Loop over the progeny. */
+    /* Loop over the progeny and collect their data. */
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
 
-        /* Recurse */
-        struct cell *restrict cp = c->progeny[k];
-        runner_do_drift(r, cp, 0);
+        /* Recurse. */
+        runner_do_drift(cp, e);
 
-        /* Collect */
         dx_max = fmaxf(dx_max, cp->dx_max);
         h_max = fmaxf(h_max, cp->h_max);
         mass += cp->mass;
@@ -794,8 +837,28 @@ void runner_do_drift(struct runner *r, struct cell *c, int timer) {
   c->ang_mom[0] = ang_mom[0];
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
+}
 
-  if (timer) TIMER_TOC(timer_drift);
+/**
+ * @brief Mapper function to drift particles and g-particles forward in time.
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+
+void runner_do_drift_mapper(void *map_data, int num_elements,
+                            void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &cells[ind];
+
+    /* Only drift local particles. */
+    if (c != NULL && c->nodeID == e->nodeID) runner_do_drift(c, e);
+  }
 }
 
 /**
@@ -1134,13 +1197,15 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
-      t->last_rid = r->cpuid;
 
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_density)
-            runner_doself1_density(r, ci);
+          if (t->subtype == task_subtype_density) runner_doself1_density(r, ci);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_doself1_gradient(r, ci);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_doself2_force(r, ci);
           else if (t->subtype == task_subtype_grav)
@@ -1151,6 +1216,10 @@ void *runner_main(void *data) {
         case task_type_pair:
           if (t->subtype == task_subtype_density)
             runner_dopair1_density(r, ci, cj);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dopair1_gradient(r, ci, cj);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dopair2_force(r, ci, cj);
           else if (t->subtype == task_subtype_grav)
@@ -1164,6 +1233,10 @@ void *runner_main(void *data) {
         case task_type_sub_self:
           if (t->subtype == task_subtype_density)
             runner_dosub_self1_density(r, ci, 1);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dosub_self1_gradient(r, ci, 1);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, 1);
           else if (t->subtype == task_subtype_grav)
@@ -1174,6 +1247,10 @@ void *runner_main(void *data) {
         case task_type_sub_pair:
           if (t->subtype == task_subtype_density)
             runner_dosub_pair1_density(r, ci, cj, t->flags, 1);
+#ifdef EXTRA_HYDRO_LOOP
+          else if (t->subtype == task_subtype_gradient)
+            runner_dosub_pair1_gradient(r, ci, cj, t->flags, 1);
+#endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, t->flags, 1);
           else if (t->subtype == task_subtype_grav)
@@ -1187,15 +1264,18 @@ void *runner_main(void *data) {
         case task_type_ghost:
           runner_do_ghost(r, ci);
           break;
-        case task_type_drift:
-          runner_do_drift(r, ci, 1);
+#ifdef EXTRA_HYDRO_LOOP
+        case task_type_extra_ghost:
+          runner_do_extra_ghost(r, ci);
           break;
+#endif
         case task_type_kick:
           runner_do_kick(r, ci, 1);
           break;
         case task_type_kick_fixdt:
           runner_do_kick_fixdt(r, ci, 1);
           break;
+#ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
@@ -1209,6 +1289,7 @@ void *runner_main(void *data) {
             runner_do_recv_cell(r, ci, 1);
           }
           break;
+#endif
         case task_type_grav_mm:
           runner_do_grav_mm(r, t->ci, 1);
           break;

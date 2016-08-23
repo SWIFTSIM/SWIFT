@@ -38,6 +38,10 @@
 #include "./hydro/Default/hydro.h"
 #include "./hydro/Default/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Default version of SPH"
+#elif defined(GIZMO_SPH)
+#include "./hydro/Gizmo/hydro.h"
+#include "./hydro/Gizmo/hydro_iact.h"
+#define SPH_IMPLEMENTATION "GIZMO (Hopkins 2015)"
 #else
 #error "Invalid choice of SPH variant"
 #endif

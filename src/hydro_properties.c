@@ -56,6 +56,15 @@ void hydro_props_init(struct hydro_props *p,
 
 void hydro_props_print(const struct hydro_props *p) {
 
+#if defined(EOS_IDEAL_GAS)
+  message("Equation of state: Ideal gas.");
+#elif defined(EOS_ISOTHERMAL_GAS)
+  message(
+      "Equation of state: Isothermal with internal energy "
+      "per unit mass set to %f.",
+      const_isothermal_internal_energy);
+#endif
+
   message("Adiabatic index gamma: %f.", hydro_gamma);
 
   message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,
@@ -70,7 +79,7 @@ void hydro_props_print(const struct hydro_props *p) {
   message(
       "Hydrodynamic integration: Max change of volume: %.2f "
       "(max|dlog(h)/dt|=%f).",
-      powf(expf(p->log_max_h_change), hydro_dimension), p->log_max_h_change);
+      pow_dimension(expf(p->log_max_h_change)), p->log_max_h_change);
 
   if (p->max_smoothing_iterations != hydro_props_default_max_iterations)
     message("Maximal iterations in ghost task set to %d (default is %d)",
@@ -90,8 +99,8 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
   writeAttribute_f(h_grpsph, "CFL parameter", p->CFL_condition);
   writeAttribute_f(h_grpsph, "Volume log(max(delta h))", p->log_max_h_change);
   writeAttribute_f(h_grpsph, "Volume max change time-step",
-                   powf(expf(p->log_max_h_change), 3.f));
-  writeAttribute_f(h_grpsph, "Max ghost iterations",
+                   pow_dimension(expf(p->log_max_h_change)));
+  writeAttribute_i(h_grpsph, "Max ghost iterations",
                    p->max_smoothing_iterations);
 }
 #endif

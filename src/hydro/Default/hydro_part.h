@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_HYDRO_PART_H
+#define SWIFT_DEFAULT_HYDRO_PART_H
 
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
@@ -25,6 +27,8 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
+
+  float u_full;
 
   /* Old density. */
   float omega;
@@ -117,3 +121,5 @@ struct part {
   struct gpart* gpart;
 
 } __attribute__((aligned(part_align)));
+
+#endif /* SWIFT_DEFAULT_HYDRO_PART_H */

@@ -20,19 +20,8 @@
 #ifndef SWIFT_RIEMANN_TRRS_H
 #define SWIFT_RIEMANN_TRRS_H
 
-/* frequently used combinations of const_hydro_gamma */
-#define const_riemann_gp1d2g \
-  (0.5f * (const_hydro_gamma + 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1d2g \
-  (0.5f * (const_hydro_gamma - 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1dgp1 \
-  ((const_hydro_gamma - 1.0f) / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgp1 (2.0f / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgm1 (2.0f / (const_hydro_gamma - 1.0f))
-#define const_riemann_gm1d2 (0.5f * (const_hydro_gamma - 1.0f))
-#define const_riemann_tgdgm1 \
-  (2.0f * const_hydro_gamma / (const_hydro_gamma - 1.0f))
-#define const_riemann_ginv (1.0f / const_hydro_gamma)
+#include "adiabatic_index.h"
+#include "riemann_vacuum.h"
 
 /**
  * @brief Solve the Riemann problem using the Two Rarefaction Riemann Solver
@@ -50,31 +39,39 @@
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT* Whalf, float* n_unit) {
-  GFLOAT aL, aR;
-  GFLOAT PLR;
-  GFLOAT vL, vR;
-  GFLOAT ustar, pstar;
-  GFLOAT vhalf;
-  GFLOAT pdpR, SHR, STR;
-  GFLOAT pdpL, SHL, STL;
+    float* WL, float* WR, float* Whalf, float* n_unit) {
+  float aL, aR;
+  float PLR;
+  float vL, vR;
+  float ustar, pstar;
+  float vhalf;
+  float pdpR, SHR, STR;
+  float pdpL, SHL, STL;
 
   /* calculate the velocities along the interface normal */
   vL = WL[1] * n_unit[0] + WL[2] * n_unit[1] + WL[3] * n_unit[2];
   vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
   /* calculate the sound speeds */
-  aL = sqrtf(const_hydro_gamma * WL[4] / WL[0]);
-  aR = sqrtf(const_hydro_gamma * WR[4] / WR[0]);
+  aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
+
+  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
+    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
+    return;
+  }
 
   /* calculate the velocity and pressure in the intermediate state */
-  PLR = pow(WL[4] / WR[4], const_riemann_gm1d2g);
-  ustar = (PLR * vL / aL + vR / aR + const_riemann_tdgm1 * (PLR - 1.0f)) /
+  PLR = pow_gamma_minus_one_over_two_gamma(WL[4] / WR[4]);
+  ustar = (PLR * vL / aL + vR / aR +
+           hydro_two_over_gamma_minus_one * (PLR - 1.0f)) /
           (PLR / aL + 1.0f / aR);
-  pstar = 0.5f * (WL[4] * pow(1.0f + const_riemann_gm1d2 / aL * (vL - ustar),
-                              const_riemann_tgdgm1) +
-                  WR[4] * pow(1.0f + const_riemann_gm1d2 / aR * (ustar - vR),
-                              const_riemann_tgdgm1));
+  pstar =
+      0.5f *
+      (WL[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aL * (vL - ustar)) +
+       WR[4] * pow_two_gamma_over_gamma_minus_one(
+                   1.0f + hydro_gamma_minus_one_over_two / aR * (ustar - vR)));
 
   /* sample the solution */
   if (ustar < 0.0f) {
@@ -86,17 +83,21 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
     /* always a rarefaction wave, that's the approximation */
     SHR = vR + aR;
     if (SHR > 0.0f) {
-      STR = ustar + aR * pow(pdpR, const_riemann_gm1d2g);
+      STR = ustar + aR * pow_gamma_minus_one_over_two_gamma(pdpR);
       if (STR <= 0.0f) {
         Whalf[0] =
-            WR[0] * pow(const_riemann_tdgp1 - const_riemann_gm1dgp1 / aR * vR,
-                        const_riemann_tdgm1);
-        vhalf = const_riemann_tdgp1 * (-aR + const_riemann_gm1d2 * vR) - vR;
+            WR[0] * pow_two_over_gamma_minus_one(
+                        hydro_two_over_gamma_plus_one -
+                        hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+        vhalf = hydro_two_over_gamma_plus_one *
+                    (-aR + hydro_gamma_minus_one_over_two * vR) -
+                vR;
         Whalf[4] =
-            WR[4] * pow(const_riemann_tdgp1 - const_riemann_gm1dgp1 / aR * vR,
-                        const_riemann_tgdgm1);
+            WR[4] * pow_two_gamma_over_gamma_minus_one(
+                        hydro_two_over_gamma_plus_one -
+                        hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
       } else {
-        Whalf[0] = WR[0] * pow(pdpR, const_riemann_ginv);
+        Whalf[0] = WR[0] * pow_one_over_gamma(pdpR);
         vhalf = ustar - vR;
         Whalf[4] = pstar;
       }
@@ -114,17 +115,21 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
     /* rarefaction wave */
     SHL = vL - aL;
     if (SHL < 0.0f) {
-      STL = ustar - aL * pow(pdpL, const_riemann_gm1d2g);
+      STL = ustar - aL * pow_gamma_minus_one_over_two_gamma(pdpL);
       if (STL > 0.0f) {
         Whalf[0] =
-            WL[0] * pow(const_riemann_tdgp1 + const_riemann_gm1dgp1 / aL * vL,
-                        const_riemann_tdgm1);
-        vhalf = const_riemann_tdgp1 * (aL + const_riemann_gm1d2 * vL) - vL;
+            WL[0] * pow_two_over_gamma_minus_one(
+                        hydro_two_over_gamma_plus_one +
+                        hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+        vhalf = hydro_two_over_gamma_plus_one *
+                    (aL + hydro_gamma_minus_one_over_two * vL) -
+                vL;
         Whalf[4] =
-            WL[4] * pow(const_riemann_tdgp1 + const_riemann_gm1dgp1 / aL * vL,
-                        const_riemann_tgdgm1);
+            WL[4] * pow_two_gamma_over_gamma_minus_one(
+                        hydro_two_over_gamma_plus_one +
+                        hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
       } else {
-        Whalf[0] = WL[0] * pow(pdpL, const_riemann_ginv);
+        Whalf[0] = WL[0] * pow_one_over_gamma(pdpL);
         vhalf = ustar - vL;
         Whalf[4] = pstar;
       }
@@ -139,6 +144,55 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   Whalf[1] += vhalf * n_unit[0];
   Whalf[2] += vhalf * n_unit[1];
   Whalf[3] += vhalf * n_unit[2];
+}
+
+__attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
+    float* Wi, float* Wj, float* n_unit, float* vij, float* totflux) {
+
+  float Whalf[5];
+  float flux[5][3];
+  float vtot[3];
+  float rhoe;
+
+  riemann_solver_solve(Wi, Wj, Whalf, n_unit);
+
+  flux[0][0] = Whalf[0] * Whalf[1];
+  flux[0][1] = Whalf[0] * Whalf[2];
+  flux[0][2] = Whalf[0] * Whalf[3];
+
+  vtot[0] = Whalf[1] + vij[0];
+  vtot[1] = Whalf[2] + vij[1];
+  vtot[2] = Whalf[3] + vij[2];
+  flux[1][0] = Whalf[0] * vtot[0] * Whalf[1] + Whalf[4];
+  flux[1][1] = Whalf[0] * vtot[0] * Whalf[2];
+  flux[1][2] = Whalf[0] * vtot[0] * Whalf[3];
+  flux[2][0] = Whalf[0] * vtot[1] * Whalf[1];
+  flux[2][1] = Whalf[0] * vtot[1] * Whalf[2] + Whalf[4];
+  flux[2][2] = Whalf[0] * vtot[1] * Whalf[3];
+  flux[3][0] = Whalf[0] * vtot[2] * Whalf[1];
+  flux[3][1] = Whalf[0] * vtot[2] * Whalf[2];
+  flux[3][2] = Whalf[0] * vtot[2] * Whalf[3] + Whalf[4];
+
+  /* eqn. (15) */
+  /* F_P = \rho e ( \vec{v} - \vec{v_{ij}} ) + P \vec{v} */
+  /* \rho e = P / (\gamma-1) + 1/2 \rho \vec{v}^2 */
+  rhoe = Whalf[4] / hydro_gamma_minus_one +
+         0.5f * Whalf[0] *
+             (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
+  flux[4][0] = rhoe * Whalf[1] + Whalf[4] * vtot[0];
+  flux[4][1] = rhoe * Whalf[2] + Whalf[4] * vtot[1];
+  flux[4][2] = rhoe * Whalf[3] + Whalf[4] * vtot[2];
+
+  totflux[0] =
+      flux[0][0] * n_unit[0] + flux[0][1] * n_unit[1] + flux[0][2] * n_unit[2];
+  totflux[1] =
+      flux[1][0] * n_unit[0] + flux[1][1] * n_unit[1] + flux[1][2] * n_unit[2];
+  totflux[2] =
+      flux[2][0] * n_unit[0] + flux[2][1] * n_unit[1] + flux[2][2] * n_unit[2];
+  totflux[3] =
+      flux[3][0] * n_unit[0] + flux[3][1] * n_unit[1] + flux[3][2] * n_unit[2];
+  totflux[4] =
+      flux[4][0] * n_unit[0] + flux[4][1] * n_unit[1] + flux[4][2] * n_unit[2];
 }
 
 #endif /* SWIFT_RIEMANN_TRRS_H */

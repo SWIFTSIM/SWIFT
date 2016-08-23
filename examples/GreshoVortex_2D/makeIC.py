@@ -19,7 +19,6 @@
 
 import h5py
 from numpy import *
-import sys
 
 # Generates a swift IC file for the Gresho-Chan vortex in a periodic box
 
@@ -80,7 +79,7 @@ fileOutput = h5py.File(fileOutputName, 'w')
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
+grp.attrs["BoxSize"] = [boxSize, boxSize, 0.2]
 grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
@@ -88,6 +87,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFileOutputsPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
+grp.attrs["Dimension"] = 2
 
 #Runtime parameters
 grp = fileOutput.create_group("/RuntimePars")

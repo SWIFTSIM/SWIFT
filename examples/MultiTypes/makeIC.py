@@ -61,6 +61,7 @@ grp.attrs["Time"] = 0.0
 grp.attrs["NumFilesPerSnapshot"] = 1
 grp.attrs["MassTable"] = [0.0, massDM, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
+grp.attrs["Dimension"] = 3
 
 #Runtime parameters
 grp = file.create_group("/RuntimePars")

@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RUNNER_IACT_LEGACY_H
-#define SWIFT_RUNNER_IACT_LEGACY_H
+#ifndef SWIFT_GADGET2_HYDRO_IACT_H
+#define SWIFT_GADGET2_HYDRO_IACT_H
 
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
@@ -432,7 +432,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
@@ -465,8 +465,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
-  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
+  pi->force.v_sig = (pi->force.v_sig > v_sig) ? pi->force.v_sig : v_sig;
+  pj->force.v_sig = (pj->force.v_sig > v_sig) ? pj->force.v_sig : v_sig;
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
@@ -707,7 +707,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
@@ -735,7 +735,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
+  pi->force.v_sig = (pi->force.v_sig > v_sig) ? pi->force.v_sig : v_sig;
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
@@ -913,4 +913,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
 #endif
 }
 
-#endif /* SWIFT_RUNNER_IACT_LEGACY_H */
+#endif /* SWIFT_GADGET2_HYDRO_IACT_H */

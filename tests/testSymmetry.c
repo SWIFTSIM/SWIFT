@@ -46,6 +46,55 @@ int main(int argc, char *argv[]) {
   pi.id = 1;
   pj.id = 2;
 
+#if defined(GIZMO_SPH)
+  /* Give the primitive variables sensible values, since the Riemann solver does
+     not like negative densities and pressures */
+  pi.primitives.rho = random_uniform(0.1f, 1.0f);
+  pi.primitives.v[0] = random_uniform(-10.0f, 10.0f);
+  pi.primitives.v[1] = random_uniform(-10.0f, 10.0f);
+  pi.primitives.v[2] = random_uniform(-10.0f, 10.0f);
+  pi.primitives.P = random_uniform(0.1f, 1.0f);
+  pj.primitives.rho = random_uniform(0.1f, 1.0f);
+  pj.primitives.v[0] = random_uniform(-10.0f, 10.0f);
+  pj.primitives.v[1] = random_uniform(-10.0f, 10.0f);
+  pj.primitives.v[2] = random_uniform(-10.0f, 10.0f);
+  pj.primitives.P = random_uniform(0.1f, 1.0f);
+  /* make gradients zero */
+  pi.primitives.gradients.rho[0] = 0.0f;
+  pi.primitives.gradients.rho[1] = 0.0f;
+  pi.primitives.gradients.rho[2] = 0.0f;
+  pi.primitives.gradients.v[0][0] = 0.0f;
+  pi.primitives.gradients.v[0][1] = 0.0f;
+  pi.primitives.gradients.v[0][2] = 0.0f;
+  pi.primitives.gradients.v[1][0] = 0.0f;
+  pi.primitives.gradients.v[1][1] = 0.0f;
+  pi.primitives.gradients.v[1][2] = 0.0f;
+  pi.primitives.gradients.v[2][0] = 0.0f;
+  pi.primitives.gradients.v[2][1] = 0.0f;
+  pi.primitives.gradients.v[2][2] = 0.0f;
+  pi.primitives.gradients.P[0] = 0.0f;
+  pi.primitives.gradients.P[1] = 0.0f;
+  pi.primitives.gradients.P[2] = 0.0f;
+  pj.primitives.gradients.rho[0] = 0.0f;
+  pj.primitives.gradients.rho[1] = 0.0f;
+  pj.primitives.gradients.rho[2] = 0.0f;
+  pj.primitives.gradients.v[0][0] = 0.0f;
+  pj.primitives.gradients.v[0][1] = 0.0f;
+  pj.primitives.gradients.v[0][2] = 0.0f;
+  pj.primitives.gradients.v[1][0] = 0.0f;
+  pj.primitives.gradients.v[1][1] = 0.0f;
+  pj.primitives.gradients.v[1][2] = 0.0f;
+  pj.primitives.gradients.v[2][0] = 0.0f;
+  pj.primitives.gradients.v[2][1] = 0.0f;
+  pj.primitives.gradients.v[2][2] = 0.0f;
+  pj.primitives.gradients.P[0] = 0.0f;
+  pj.primitives.gradients.P[1] = 0.0f;
+  pj.primitives.gradients.P[2] = 0.0f;
+  /* set time step to reasonable value */
+  pi.force.dt = 0.001;
+  pj.force.dt = 0.001;
+#endif
+
   /* Make an xpart companion */
   struct xpart xpi, xpj;
   bzero(&xpi, sizeof(struct xpart));
@@ -100,12 +149,54 @@ int main(int argc, char *argv[]) {
   dx[2] = -dx[2];
   runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
 
-  /* Check that the particles are the same */
+/* Check that the particles are the same */
+#if defined(GIZMO_SPH)
+  i_ok = 0;
+  j_ok = 0;
+  for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
+    float a = *(((float *)&pi) + i);
+    float b = *(((float *)&pi2) + i);
+    float c = *(((float *)&pj) + i);
+    float d = *(((float *)&pj2) + i);
+
+    int a_is_b;
+    if ((a + b)) {
+      a_is_b = (fabs((a - b) / (a + b)) > 1.e-4);
+    } else {
+      a_is_b = !(a == 0.0f);
+    }
+    int c_is_d;
+    if ((c + d)) {
+      c_is_d = (fabs((c - d) / (c + d)) > 1.e-4);
+    } else {
+      c_is_d = !(c == 0.0f);
+    }
+
+    if (a_is_b) {
+      message("%.8e, %.8e, %lu", a, b, i);
+    }
+    if (c_is_d) {
+      message("%.8e, %.8e, %lu", c, d, i);
+    }
+
+    i_ok |= a_is_b;
+    j_ok |= c_is_d;
+  }
+#else
   i_ok = memcmp(&pi, &pi2, sizeof(struct part));
   j_ok = memcmp(&pj, &pj2, sizeof(struct part));
+#endif
 
-  if (i_ok) error("Particles 'pi' do not match after force");
-  if (j_ok) error("Particles 'pj' do not match after force");
+  if (i_ok) {
+    printParticle_single(&pi, &xpi);
+    printParticle_single(&pi2, &xpi);
+    error("Particles 'pi' do not match after force");
+  }
+  if (j_ok) {
+    printParticle_single(&pj, &xpj);
+    printParticle_single(&pj2, &xpj);
+    error("Particles 'pj' do not match after force");
+  }
 
   return 0;
 }

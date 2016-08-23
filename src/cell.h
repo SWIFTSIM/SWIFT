@@ -101,8 +101,8 @@ struct cell {
   struct gpart *gparts;
 
   /* Pointers for the sorted indices. */
-  struct entry *sort, *gsort;
-  unsigned int sorted, gsorted;
+  struct entry *sort;
+  unsigned int sorted;
 
   /* Pointers to the next level of cells. */
   struct cell *progeny[8];
@@ -114,21 +114,21 @@ struct cell {
   struct cell *super;
 
   /* The task computing this cell's sorts. */
-  struct task *sorts, *gsorts;
-  int sortsize, gsortsize;
+  struct task *sorts;
+  int sortsize;
 
   /* The tasks computing this cell's density. */
-  struct link *density, *force, *grav;
-  int nr_density, nr_force, nr_grav;
+  struct link *density, *gradient, *force, *grav;
+  int nr_density, nr_gradient, nr_force, nr_grav;
 
   /* The hierarchical tasks. */
-  struct task *ghost, *init, *drift, *kick;
+  struct task *extra_ghost, *ghost, *init, *kick;
 
   /* Task receiving data. */
-  struct task *recv_xv, *recv_rho, *recv_ti;
+  struct task *recv_xv, *recv_rho, *recv_gradient, *recv_ti;
 
   /* Task send data. */
-  struct link *send_xv, *send_rho, *send_ti;
+  struct link *send_xv, *send_rho, *send_gradient, *send_ti;
 
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;

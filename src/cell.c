@@ -704,6 +704,9 @@ void cell_clean_links(struct cell *c, void *data) {
   c->density = NULL;
   c->nr_density = 0;
 
+  c->gradient = NULL;
+  c->nr_gradient = 0;
+
   c->force = NULL;
   c->nr_force = 0;
 }
