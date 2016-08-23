@@ -3126,7 +3126,7 @@ void engine_init(struct engine *e, struct space *s,
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
-  e->drift_all = 0;
+  e->drift_all = (policy & engine_policy_drift_all);
   e->internalUnits = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");

@@ -272,7 +272,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void *)&s->cells, 64,
+    if (posix_memalign((void *)&s->cells, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate cells.");
     bzero(s->cells, s->nr_cells * sizeof(struct cell));
@@ -1406,7 +1406,7 @@ struct cell *space_getcell(struct space *s) {
 
   /* Is the buffer empty? */
   if (s->cells_new == NULL) {
-    if (posix_memalign((void *)&s->cells_new, 64,
+    if (posix_memalign((void *)&s->cells_new, cell_align,
                        space_cellallocchunk * sizeof(struct cell)) != 0)
       error("Failed to allocate more cells.");
     bzero(s->cells_new, space_cellallocchunk * sizeof(struct cell));
