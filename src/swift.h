@@ -43,6 +43,7 @@
 #include "partition.h"
 #include "physical_constants.h"
 #include "potentials.h"
+#include "sourceterms.h"
 #include "queue.h"
 #include "runner.h"
 #include "scheduler.h"

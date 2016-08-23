@@ -73,6 +73,9 @@
 #define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 
+/* Source terms */
+#define SN_FEEDBACK
+
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS
 

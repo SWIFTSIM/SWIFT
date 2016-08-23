@@ -47,6 +47,7 @@
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
+#include "sourceterms.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "kick.h"
@@ -90,6 +91,70 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
 /* Import the gravity loop functions. */
 #include "runner_doiact_fft.h"
 #include "runner_doiact_grav.h"
+
+/**
+ * @brief Calculate gravity acceleration from external potential
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+  const double cell_min[3]   = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
+  const int ti_current = r->e->ti_current;
+  const struct sourceterms *sourceterms = r->e->sourceterms;
+  const double  location[3] = {sourceterms->supernova.x, sourceterms->supernova.y, sourceterms->supernova.z};
+  const int dimen=3;
+  const double timeBase = r->e->timeBase;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_sourceterms(r, c->progeny[k], 0);
+    return;
+  }
+
+  /* does cell contain explosion? */
+  if(count > 0) {
+	 const int incell = is_in_cell(cell_min, cell_width, location, dimen);
+	 if (incell == 1)
+		{
+
+		  /* inject SN energy into particle with highest id, if it is active */
+		  int imax = 0;
+		  struct part *restrict sn_part;
+		  for (int i = 0; i < count; i++) {
+			 
+			 /* Get a direct pointer on the part. */
+			 struct part *restrict p = &parts[i];
+			 if(p->id > imax)
+				{
+				  imax = p->id;
+				  sn_part = p;
+				}
+		  }
+		  /* Is this part within the time step? */
+		  if (sn_part->ti_begin == ti_current) {
+			 
+			 /* does this time step sraddle the feedback injecton time? */
+			 const float t_begin = sn_part->ti_begin * timeBase;
+			 const float t_end   = sn_part->ti_end * timeBase;
+			 if(t_begin <= sourceterms->supernova.time && t_end > sourceterms->supernova.time)
+				{
+				  do_supernova_feedback(sourceterms, sn_part);
+				}
+		  }
+		}
+  }
+
+  if (timer) TIMER_TOC(timer_dosource);
+}
 
 /**
  * @brief Calculate gravity acceleration from external potential
@@ -1157,6 +1222,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
+          break;
+        case task_type_sourceterms:
+          runner_do_sourceterms(r, t->ci, 1);
           break;
         case task_type_part_sort:
           space_do_parts_sort();

@@ -73,6 +73,8 @@ void print_help_message() {
          "Overwrite the CPU frequency (Hz) to be used for time measurements");
   printf("  %2s %8s %s\n", "-g", "",
          "Run with an external gravitational potential");
+  printf("  %2s %8s %s\n", "-F", "",
+         "Run with feedback ");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps");
@@ -143,6 +145,7 @@ int main(int argc, char *argv[]) {
   int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
+  int with_sourceterms = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_fp_exceptions = 0;
@@ -153,7 +156,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acdef:gGhn:st:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acdef:gFGhn:st:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -178,6 +181,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'G':
         with_self_gravity = 1;
+        break;
+	   case 'F':
+		  with_sourceterms = 1;
         break;
       case 'h':
         if (myrank == 0) print_help_message();
@@ -335,6 +341,11 @@ int main(int argc, char *argv[]) {
   if (with_external_gravity) potential_init(params, &us, &potential);
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
+  /* Initialise the feedback properties */
+  struct sourceterms sourceterms;
+  if (with_sourceterms) source_terms_init(params, &us, &sourceterms);
+  if (with_sourceterms && myrank == 0) source_terms_print(&sourceterms);
+
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
@@ -440,6 +451,7 @@ int main(int argc, char *argv[]) {
   if (with_hydro) engine_policies |= engine_policy_hydro;
   if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
+  if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
 
   /* Initialize the engine with the space and policies. */
@@ -447,7 +459,7 @@ int main(int argc, char *argv[]) {
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
               engine_policies, talking, &us, &prog_const, &hydro_properties,
-              &potential);
+              &potential, &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),

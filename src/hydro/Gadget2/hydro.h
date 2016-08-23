@@ -16,7 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
+#ifndef SWIFT_GADGET_HYDRO_H
+#define SWIFT_GADGET_HYDRO_H
 #include "adiabatic_index.h"
 #include "dimension.h"
 #include "equation_of_state.h"
@@ -361,3 +362,4 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   /* We read u in the entropy field. We now get S from u */
   p->entropy = gas_entropy_from_internal_energy(p->rho, p->entropy);
 }
+#endif /* SWIFT_GADGET_HYDRO_H */
