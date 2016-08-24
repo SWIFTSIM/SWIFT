@@ -830,8 +830,8 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
       continue;
 
     /* Does the other cell in the pair have an active particle ? */
-    if ((l->t->ci == c) && (l->t->cj->ti_end_min == ti_current) ||
-        (l->t->cj == c) && (l->t->ci->ti_end_min == ti_current))
+    if ((l->t->ci == c && l->t->cj->ti_end_min == ti_current) ||
+        (l->t->cj == c && l->t->ci->ti_end_min == ti_current))
       return 1;
   }
 
