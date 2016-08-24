@@ -650,6 +650,9 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   /* Do we need to drift ? */
   if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
 
+  /* Check that we are actually going to move forward. */
+  if (ti_current == ti_old) return;
+
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
 

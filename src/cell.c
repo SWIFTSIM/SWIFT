@@ -829,12 +829,10 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
     if (l->t->type != task_type_pair && l->t->type != task_type_sub_pair)
       continue;
 
-    /* Left or right? */
-    if (l->t->ci == c) {
-      if (l->t->cj->ti_end_min == ti_current) return 1;
-    } else if (l->t->cj == c) {
-      if (l->t->ci->ti_end_min == ti_current) return 1;
-    }
+    /* Does the other cell in the pair have an active particle ? */
+    if ((l->t->ci == c) && (l->t->cj->ti_end_min == ti_current) ||
+        (l->t->cj == c) && (l->t->ci->ti_end_min == ti_current))
+      return 1;
   }
 
   /* No neighbouring cell has active particles. Drift not necessary */
