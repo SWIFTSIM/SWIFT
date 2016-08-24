@@ -23,6 +23,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "error.h"
 #include "inline.h"
 #include "voronoi3d_cell.h"
@@ -1011,6 +1012,8 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
   /* remove deleted vertices from all arrays */
   struct voronoi_cell new_cell;
+  // make sure the contents of the new cell are the same as for the old cell
+  memcpy(&new_cell, c, sizeof(struct voronoi_cell));
   int m, n;
   for (vindex = 0; vindex < c->nvert; vindex++) {
     j = vindex;

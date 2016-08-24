@@ -236,7 +236,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   float momentum[3];
   volume = p->cell.volume;
 
-  p->conserved.mass = m = p->mass;
+  p->mass = m = p->conserved.mass;
   p->primitives.rho = m / volume;
 
   /* P actually contains internal energy at this point */

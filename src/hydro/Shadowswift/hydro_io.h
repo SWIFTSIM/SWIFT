@@ -41,7 +41,7 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
   list[1] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
                                 UNIT_CONV_SPEED, parts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
-                                parts, mass);
+                                parts, conserved.mass);
   list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
   list[4] =

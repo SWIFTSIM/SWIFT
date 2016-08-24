@@ -104,8 +104,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         }
         part->h = size * h / (float)n;
         part->id = ++(*partId);
-#ifdef GIZMO_SPH
+#if defined(GIZMO_SPH)
         part->conserved.mass = density * volume / count;
+#elif defined(SHADOWSWIFT)
+        part->conserved.mass = density * volume / count;
+        voronoi_cell_init(&part->cell, part->x);
 #else
         part->mass = density * volume / count;
 #endif

@@ -93,6 +93,12 @@ int main(int argc, char *argv[]) {
   /* set time step to reasonable value */
   pi.force.dt = 0.001;
   pj.force.dt = 0.001;
+
+#ifdef SHADOWSWIFT
+  voronoi_cell_init(&pi.cell, pi.x);
+  voronoi_cell_init(&pj.cell, pj.x);
+#endif
+
 #endif
 
   /* Make an xpart companion */

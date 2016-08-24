@@ -19,7 +19,7 @@
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
-  /*  printf(
+    printf(
         "x=[%.16e,%.16e,%.16e], "
         "v=[%.3e,%.3e,%.3e], "
         "a=[%.3e,%.3e,%.3e], "
@@ -43,15 +43,10 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
         "momentum=[%.3e,%.3e,%.3e], "
         "mass=%.3e, "
         "energy=%.3e}, "
-        "geometry={"
-        "volume=%.3e, "
-        "matrix_E=[[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e],[%.3e,%.3e,%.3e]]}, "
         "timestepvars={"
         "vmax=%.3e}, "
         "density={"
-        "div_v=%.3e, "
         "wcount_dh=%.3e, "
-        "curl_v=[%.3e,%.3e,%.3e], "
         "wcount=%.3e}, "
         "mass=%.3e\n",
         p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a_hydro[0],
@@ -72,12 +67,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
         p->primitives.limiter.P[0], p->primitives.limiter.P[1],
         p->primitives.limiter.maxr, p->conserved.momentum[0],
         p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.mass,
-        p->conserved.energy, p->geometry.volume, p->geometry.matrix_E[0][0],
-        p->geometry.matrix_E[0][1], p->geometry.matrix_E[0][2],
-        p->geometry.matrix_E[1][0], p->geometry.matrix_E[1][1],
-        p->geometry.matrix_E[1][2], p->geometry.matrix_E[2][0],
-        p->geometry.matrix_E[2][1], p->geometry.matrix_E[2][2],
-        p->timestepvars.vmax, p->density.div_v, p->density.wcount_dh,
-        p->density.curl_v[0], p->density.curl_v[1], p->density.curl_v[2],
-        p->density.wcount, p->mass);*/
+        p->conserved.energy,
+        p->timestepvars.vmax, p->density.wcount_dh,
+        p->density.wcount, p->mass);
 }
