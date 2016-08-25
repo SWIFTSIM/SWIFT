@@ -85,11 +85,6 @@ const char *engine_policy_names[13] = {"none",
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
 
-#ifdef HAVE_SETAFFINITY
-/** The initial affinity of the main thread (set by engin_pin()) */
-static cpu_set_t entry_affinity;
-#endif
-
 /**
  * @brief Link a density/force task to a cell.
  *
@@ -3010,6 +3005,7 @@ void engine_dump_snapshot(struct engine *e) {
 static cpu_set_t *engine_entry_affinity() {
 
   static int use_entry_affinity = 0;
+  static cpu_set_t entry_affinity;
 
   if (!use_entry_affinity) {
     pthread_t engine = pthread_self();
@@ -3050,7 +3046,8 @@ void engine_pin() {
 void engine_unpin() {
 #ifdef HAVE_SETAFFINITY
   pthread_t main_thread = pthread_self();
-  pthread_setaffinity_np(main_thread, sizeof(entry_affinity), &entry_affinity);
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+  pthread_setaffinity_np(main_thread, sizeof(*entry_affinity), entry_affinity);
 #else
   error("SWIFT was not compiled with support for pinning.");
 #endif
