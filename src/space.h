@@ -37,7 +37,6 @@
 #include "space.h"
 
 /* Some constants. */
-#define space_maxdepth 10
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
@@ -62,59 +61,69 @@ struct entry {
 /* The space in which the cells reside. */
 struct space {
 
-  /* Spatial extent. */
+  /*! Spatial extent. */
   double dim[3];
 
-  /* Cell widths. */
-  double width[3], iwidth[3];
+  /*! Width of the top-level cells. */
+  double width[3];
 
-  /* The minimum cell width. */
+  /* Inverse of the top-level cell width */
+  double iwidth[3];
+
+  /*! The minimum cell width. */
   double cell_min;
 
-  /* Current maximum displacement for particles. */
+  /*! Current maximum displacement for particles. */
   float dx_max;
 
-  /* Number of cells. */
+  /*! Number of cells. */
   int nr_cells, tot_cells;
 
-  /* Space dimensions in number of cells. */
-  int maxdepth, cdim[3];
+  /*! Space dimensions in number of cells. */
+  int cdim[3];
 
-  /* The (level 0) cells themselves. */
-  struct cell *cells;
+  /*! Maximal depth reached by the tree */
+  int maxdepth;
 
-  /* Buffer of unused cells. */
+  /*! The (level 0) cells themselves. */
+  struct cell *cells_top;
+
+  /*! Buffer of unused cells. */
   struct cell *cells_new;
 
-  /* The particle data (cells have pointers to this). */
+  /*! The particle data (cells have pointers to this). */
   struct part *parts;
   struct xpart *xparts;
   struct gpart *gparts;
 
-  /* The total number of parts in the space. */
+  /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
   size_t nr_gparts, size_gparts;
 
-  /* Is the space periodic? */
+  /*! Is the space periodic? */
   int periodic;
 
-  /* Are we doing gravity? */
+  /*! Are we doing gravity? */
   int gravity;
 
-  /* General-purpose lock for this space. */
+  /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
-  /* Number of queues in the system. */
+  /*! Number of queues in the system. */
   int nr_queues;
 
-  /* The associated engine. */
+  /*! The associated engine. */
   struct engine *e;
 
-  /* Buffers for parts that we will receive from foreign cells. */
+#ifdef WITH_MPI
+
+  /*! Buffers for parts that we will receive from foreign cells. */
   struct part *parts_foreign;
   size_t nr_parts_foreign, size_parts_foreign;
   struct gpart *gparts_foreign;
   size_t nr_gparts_foreign, size_gparts_foreign;
+
+#endif
 };
 
 /* Interval stack necessary for parallel particle sorting. */

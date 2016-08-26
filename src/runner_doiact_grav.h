@@ -488,7 +488,7 @@ static void runner_do_grav_mm(struct runner *r, struct cell *ci, int timer) {
 
   /* Recover the list of top-level cells */
   const struct engine *e = r->e;
-  struct cell *cells = e->s->cells;
+  struct cell *cells = e->s->cells_top;
   const int nr_cells = e->s->nr_cells;
   const int ti_current = e->ti_current;
   const double max_d =
