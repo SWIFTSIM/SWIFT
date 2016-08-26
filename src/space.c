@@ -691,7 +691,7 @@ void space_split(struct space *s, struct cell *cells, int verbose) {
 
 /**
  * @brief Sort the particles and condensed particles according to the given
- *indices.
+ * indices.
  *
  * @param s The #space.
  * @param ind The indices with respect to which the parts are sorted.
@@ -876,8 +876,7 @@ void space_parts_sort_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Sort the g-particles and condensed particles according to the given
- *indices.
+ * @brief Sort the g-particles according to the given indices.
  *
  * @param s The #space.
  * @param ind The indices with respect to which the gparts are sorted.
@@ -1504,7 +1503,6 @@ void space_init_gparts(struct space *s) {
  * parts with a cutoff below half the cell width are then split
  * recursively.
  */
-
 void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 size_t Npart, size_t Ngpart, int periodic, int gravity,
