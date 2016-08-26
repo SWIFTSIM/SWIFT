@@ -113,7 +113,11 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
   const double time = r->e->time;
+
   TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
 
   /* Recurse? */
   if (c->split) {
@@ -391,6 +395,9 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -443,6 +450,9 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c) {
   const int count = c->count;
   const int ti_current = r->e->ti_current;
 
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -492,6 +502,9 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
       r->e->hydro_properties->max_smoothing_iterations;
 
   TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
 
   /* Recurse? */
   if (c->split) {
@@ -928,14 +941,21 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   const double const_G = r->e->physical_constants->const_newton_G;
 
-  int updated = 0, g_updated = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  TIMER_TIC;
 
-  TIMER_TIC
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) {
+    c->updated = 0;
+    c->g_updated = 0;
+    return;
+  }
 
 #ifdef TASK_VERBOSE
   OUT;
 #endif
+
+  int updated = 0, g_updated = 0;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
 
   /* No children? */
   if (!c->split) {
