@@ -98,6 +98,8 @@ struct space {
 
   /*! The total number of parts in the space. */
   size_t nr_parts, size_parts;
+
+  /*! The total number of g-parts in the space. */
   size_t nr_gparts, size_gparts;
 
   /*! The particle data (cells have pointers to this). */
@@ -129,22 +131,6 @@ struct space {
   size_t nr_gparts_foreign, size_gparts_foreign;
 
 #endif
-};
-
-/* Interval stack necessary for parallel particle sorting. */
-struct qstack {
-  volatile ptrdiff_t i, j;
-  volatile int min, max;
-  volatile int ready;
-};
-struct parallel_sort {
-  struct part *parts;
-  struct gpart *gparts;
-  struct xpart *xparts;
-  int *ind;
-  struct qstack *stack;
-  unsigned int stack_size;
-  volatile unsigned int first, last, waiting;
 };
 
 /* function prototypes. */

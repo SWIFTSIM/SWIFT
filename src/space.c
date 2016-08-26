@@ -89,6 +89,28 @@ const int sortlistID[27] = {
     /* (  1 ,  1 ,  1 ) */ 0};
 
 /**
+ * @brief Interval stack necessary for parallel particle sorting.
+ */
+struct qstack {
+  volatile ptrdiff_t i, j;
+  volatile int min, max;
+  volatile int ready;
+};
+
+/**
+ * @brief Parallel particle-sorting stack
+ */
+struct parallel_sort {
+  struct part *parts;
+  struct gpart *gparts;
+  struct xpart *xparts;
+  int *ind;
+  struct qstack *stack;
+  unsigned int stack_size;
+  volatile unsigned int first, last, waiting;
+};
+
+/**
  * @brief Get the shift-id of the given pair of cells, swapping them
  *      if need be.
  *
@@ -137,6 +159,8 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
 /**
  * @brief Recursively dismantle a cell tree.
  *
+ * @param s The #space.
+ * @param c The #cell to recycle.
  */
 void space_rebuild_recycle(struct space *s, struct cell *c) {
 
@@ -150,7 +174,7 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
 }
 
 /**
- * @brief Re-build the cell grid.
+ * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
  * @param cell_max Maximum cell edge length.
@@ -159,8 +183,7 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
 void space_regrid(struct space *s, double cell_max, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
-  struct cell *restrict c;
-  ticks tic = getticks();
+  const ticks tic = getticks();
   const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
@@ -195,10 +218,10 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (verbose) message("h_max is %.3e (cell_max=%.3e).", h_max, cell_max);
 
   /* Get the new putative cell dimensions. */
-  int cdim[3];
-  for (int k = 0; k < 3; k++)
-    cdim[k] =
-        floor(s->dim[k] / fmax(h_max * kernel_gamma * space_stretch, cell_max));
+  const int cdim[3] = {
+      floor(s->dim[0] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
+      floor(s->dim[1] / fmax(h_max * kernel_gamma * space_stretch, cell_max)),
+      floor(s->dim[2] / fmax(h_max * kernel_gamma * space_stretch, cell_max))};
 
   /* Check if we have enough cells for periodicity. */
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -282,7 +305,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
     for (int i = 0; i < cdim[0]; i++)
       for (int j = 0; j < cdim[1]; j++)
         for (int k = 0; k < cdim[2]; k++) {
-          c = &s->cells_top[cell_getid(cdim, i, j, k)];
+          struct cell *restrict c = &s->cells_top[cell_getid(cdim, i, j, k)];
           c->loc[0] = i * s->width[0];
           c->loc[1] = j * s->width[1];
           c->loc[2] = k * s->width[2];
@@ -338,12 +361,13 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       free(oldnodeIDs);
     }
 #endif
-  } /* re-build upper-level cells? */
-  // message( "rebuilding upper-level cells took %.3f %s." ,
-  // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-  /* Otherwise, just clean up the cells. */
-  else {
+    // message( "rebuilding upper-level cells took %.3f %s." ,
+    // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
+
+  } /* re-build upper-level cells? */
+
+  else { /* Otherwise, just clean up the cells. */
 
     /* Free the old cells, if they were allocated. */
     for (int k = 0; k < s->nr_cells; k++) {
@@ -438,7 +462,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
         cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
     cells_top[gind[k]].gcount++;
   }
-// message( "getting particle indices took %.3f %s." ,
+// message( "getting g-particle indices took %.3f %s." ,
 // clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #ifdef WITH_MPI
@@ -610,7 +634,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
 #endif
 
-  /* Sort the parts according to their cells. */
+  /* Sort the gparts according to their cells. */
   space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
@@ -672,6 +696,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
 /**
  * @brief Split particles between cells of a hierarchy
+ *
+ * This is done in parallel using threads in the #threadpool.
  *
  * @param s The #space.
  * @param cells The cell hierarchy
@@ -1077,16 +1103,13 @@ static void rec_map_parts(struct cell *c,
                           void (*fun)(struct part *p, struct cell *c,
                                       void *data),
                           void *data) {
-
-  int k;
-
   /* No progeny? */
   if (!c->split)
-    for (k = 0; k < c->count; k++) fun(&c->parts[k], c, data);
+    for (int k = 0; k < c->count; k++) fun(&c->parts[k], c, data);
 
   /* Otherwise, recurse. */
   else
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) rec_map_parts(c->progeny[k], fun, data);
 }
 
@@ -1101,10 +1124,8 @@ void space_map_parts(struct space *s,
                      void (*fun)(struct part *p, struct cell *c, void *data),
                      void *data) {
 
-  int cid = 0;
-
   /* Call the recursive function on all higher-level cells. */
-  for (cid = 0; cid < s->nr_cells; cid++)
+  for (int cid = 0; cid < s->nr_cells; cid++)
     rec_map_parts(&s->cells_top[cid], fun, data);
 }
 
@@ -1118,15 +1139,13 @@ static void rec_map_parts_xparts(struct cell *c,
                                  void (*fun)(struct part *p, struct xpart *xp,
                                              struct cell *c)) {
 
-  int k;
-
   /* No progeny? */
   if (!c->split)
-    for (k = 0; k < c->count; k++) fun(&c->parts[k], &c->xparts[k], c);
+    for (int k = 0; k < c->count; k++) fun(&c->parts[k], &c->xparts[k], c);
 
   /* Otherwise, recurse. */
   else
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) rec_map_parts_xparts(c->progeny[k], fun);
 }
 
@@ -1140,10 +1159,8 @@ void space_map_parts_xparts(struct space *s,
                             void (*fun)(struct part *p, struct xpart *xp,
                                         struct cell *c)) {
 
-  int cid = 0;
-
   /* Call the recursive function on all higher-level cells. */
-  for (cid = 0; cid < s->nr_cells; cid++)
+  for (int cid = 0; cid < s->nr_cells; cid++)
     rec_map_parts_xparts(&s->cells_top[cid], fun);
 }
 
@@ -1158,12 +1175,9 @@ void space_map_parts_xparts(struct space *s,
 static void rec_map_cells_post(struct cell *c, int full,
                                void (*fun)(struct cell *c, void *data),
                                void *data) {
-
-  int k;
-
   /* Recurse. */
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         rec_map_cells_post(c->progeny[k], full, fun, data);
 
@@ -1182,10 +1196,8 @@ static void rec_map_cells_post(struct cell *c, int full,
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data) {
 
-  int cid = 0;
-
   /* Call the recursive function on all higher-level cells. */
-  for (cid = 0; cid < s->nr_cells; cid++)
+  for (int cid = 0; cid < s->nr_cells; cid++)
     rec_map_cells_post(&s->cells_top[cid], full, fun, data);
 }
 
@@ -1193,14 +1205,12 @@ static void rec_map_cells_pre(struct cell *c, int full,
                               void (*fun)(struct cell *c, void *data),
                               void *data) {
 
-  int k;
-
   /* No progeny? */
   if (full || !c->split) fun(c, data);
 
   /* Recurse. */
   if (c->split)
-    for (k = 0; k < 8; k++)
+    for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         rec_map_cells_pre(c->progeny[k], full, fun, data);
 }
@@ -1216,22 +1226,24 @@ static void rec_map_cells_pre(struct cell *c, int full,
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data) {
 
-  int cid = 0;
-
   /* Call the recursive function on all higher-level cells. */
-  for (cid = 0; cid < s->nr_cells; cid++)
+  for (int cid = 0; cid < s->nr_cells; cid++)
     rec_map_cells_pre(&s->cells_top[cid], full, fun, data);
 }
 
 /**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_elements The number of cells to treat.
+ * @param extra_data Pointers to the #space.
  */
 void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = (struct cell *)map_data;
+  struct cell *restrict cells_top = (struct cell *)map_data;
   struct engine *e = s->e;
 
   for (int ind = 0; ind < num_elements; ind++) {
@@ -1354,7 +1366,7 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
 }
 
 /**
- * @brief Return a used cell to the sub-cell buffer.
+ * @brief Return a used cell to the buffer od unused sub-cells.
  *
  * @param s The #space.
  * @param c The #cell.
@@ -1392,9 +1404,6 @@ void space_recycle(struct space *s, struct cell *c) {
  */
 struct cell *space_getcell(struct space *s) {
 
-  struct cell *c;
-  int k;
-
   /* Lock the space. */
   lock_lock(&s->lock);
 
@@ -1408,13 +1417,13 @@ struct cell *space_getcell(struct space *s) {
     bzero(s->cells_sub, space_cellallocchunk * sizeof(struct cell));
 
     /* Constructed a linked list */
-    for (k = 0; k < space_cellallocchunk - 1; k++)
+    for (int k = 0; k < space_cellallocchunk - 1; k++)
       s->cells_sub[k].next = &s->cells_sub[k + 1];
     s->cells_sub[space_cellallocchunk - 1].next = NULL;
   }
 
   /* Pick off the next cell. */
-  c = s->cells_sub;
+  struct cell *c = s->cells_sub;
   s->cells_sub = c->next;
   s->tot_cells += 1;
 
