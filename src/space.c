@@ -164,6 +164,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   const size_t nr_parts = s->nr_parts;
   struct cell *restrict c;
   ticks tic = getticks();
+  const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
@@ -271,7 +272,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void *)&s->cells, 64,
+    if (posix_memalign((void *)&s->cells, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate cells.");
     bzero(s->cells, s->nr_cells * sizeof(struct cell));
@@ -294,6 +295,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
           c->count = 0;
           c->gcount = 0;
           c->super = c;
+          c->ti_old = ti_current;
           lock_init(&c->lock);
         }
 
@@ -395,6 +397,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells = s->cells;
+  const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -646,6 +649,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   struct gpart *gfinger = s->gparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells[k];
+    c->ti_old = ti_current;
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -1237,6 +1241,7 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *cells = (struct cell *)map_data;
+  struct engine *e = s->e;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -1268,6 +1273,7 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
         temp = space_getcell(s);
         temp->count = 0;
         temp->gcount = 0;
+        temp->ti_old = e->ti_current;
         temp->loc[0] = c->loc[0];
         temp->loc[1] = c->loc[1];
         temp->loc[2] = c->loc[2];
@@ -1402,7 +1408,7 @@ struct cell *space_getcell(struct space *s) {
 
   /* Is the buffer empty? */
   if (s->cells_new == NULL) {
-    if (posix_memalign((void *)&s->cells_new, 64,
+    if (posix_memalign((void *)&s->cells_new, cell_align,
                        space_cellallocchunk * sizeof(struct cell)) != 0)
       error("Failed to allocate more cells.");
     bzero(s->cells_new, space_cellallocchunk * sizeof(struct cell));

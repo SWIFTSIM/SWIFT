@@ -654,15 +654,22 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 static void runner_do_drift(struct cell *c, struct engine *e) {
 
   const double timeBase = e->timeBase;
-  const double dt = (e->ti_current - e->ti_old) * timeBase;
-  const int ti_old = e->ti_old;
+  const int ti_old = c->ti_old;
   const int ti_current = e->ti_current;
-
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
+  /* Do we need to drift ? */
+  if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current == ti_old) return;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old) * timeBase;
+
+  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0};
   double ang_mom[3] = {0.0, 0.0, 0.0};
@@ -785,6 +792,9 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   c->ang_mom[0] = ang_mom[0];
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
+
+  /* Update the time of the last drift */
+  c->ti_old = ti_current;
 }
 
 /**
