@@ -99,7 +99,6 @@ const int sortlistID[27] = {
  *
  * @return The shift ID and set shift, may or may not swap ci and cj.
  */
-
 int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
                  double *shift) {
 
@@ -139,7 +138,6 @@ int space_getsid(struct space *s, struct cell **ci, struct cell **cj,
  * @brief Recursively dismantle a cell tree.
  *
  */
-
 void space_rebuild_recycle(struct space *s, struct cell *c) {
 
   if (c->split)
@@ -158,7 +156,6 @@ void space_rebuild_recycle(struct space *s, struct cell *c) {
  * @param cell_max Maximum cell edge length.
  * @param verbose Print messages to stdout or not.
  */
-
 void space_regrid(struct space *s, double cell_max, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
@@ -385,7 +382,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
  * @param verbose Print messages to stdout or not
  *
  */
-
 void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   const ticks tic = getticks();
@@ -704,7 +700,6 @@ void space_split(struct space *s, struct cell *cells, int verbose) {
  * @param max highest index.
  * @param verbose Are we talkative ?
  */
-
 void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
                       int verbose) {
 
@@ -1064,7 +1059,6 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
 /**
  * @brief Mapping function to free the sorted indices buffers.
  */
-
 void space_map_clearsort(struct cell *c, void *data) {
 
   if (c->sort != NULL) {
@@ -1080,7 +1074,6 @@ void space_map_clearsort(struct cell *c, void *data) {
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-
 static void rec_map_parts(struct cell *c,
                           void (*fun)(struct part *p, struct cell *c,
                                       void *data),
@@ -1105,7 +1098,6 @@ static void rec_map_parts(struct cell *c,
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-
 void space_map_parts(struct space *s,
                      void (*fun)(struct part *p, struct cell *c, void *data),
                      void *data) {
@@ -1123,7 +1115,6 @@ void space_map_parts(struct space *s,
  * @param c The #cell we are working in.
  * @param fun Function pointer to apply on the cells.
  */
-
 static void rec_map_parts_xparts(struct cell *c,
                                  void (*fun)(struct part *p, struct xpart *xp,
                                              struct cell *c)) {
@@ -1146,7 +1137,6 @@ static void rec_map_parts_xparts(struct cell *c,
  * @param s The #space we are working in.
  * @param fun Function pointer to apply on the particles in the cells.
  */
-
 void space_map_parts_xparts(struct space *s,
                             void (*fun)(struct part *p, struct xpart *xp,
                                         struct cell *c)) {
@@ -1166,7 +1156,6 @@ void space_map_parts_xparts(struct space *s,
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-
 static void rec_map_cells_post(struct cell *c, int full,
                                void (*fun)(struct cell *c, void *data),
                                void *data) {
@@ -1191,7 +1180,6 @@ static void rec_map_cells_post(struct cell *c, int full,
  * @param fun Function pointer to apply on the cells.
  * @param data Data passed to the function fun.
  */
-
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data) {
 
@@ -1240,7 +1228,6 @@ void space_map_cells_pre(struct space *s, int full,
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  */
-
 void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
 
   /* Unpack the inputs. */
@@ -1368,12 +1355,11 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
 }
 
 /**
- * @brief Return a used cell to the cell buffer.
+ * @brief Return a used cell to the sub-cell buffer.
  *
  * @param s The #space.
  * @param c The #cell.
  */
-
 void space_recycle(struct space *s, struct cell *c) {
 
   /* Lock the space. */
@@ -1389,8 +1375,8 @@ void space_recycle(struct space *s, struct cell *c) {
   bzero(c, sizeof(struct cell));
 
   /* Hook this cell into the buffer. */
-  c->next = s->cells_new;
-  s->cells_new = c;
+  c->next = s->cells_sub;
+  s->cells_sub = c;
   s->tot_cells -= 1;
 
   /* Unlock the space. */
@@ -1398,11 +1384,13 @@ void space_recycle(struct space *s, struct cell *c) {
 }
 
 /**
- * @brief Get a new empty cell.
+ * @brief Get a new empty (sub-)#cell.
+ *
+ * If there are cells in the buffer, use the one at the end of the linked list.
+ * If we have no cells, allocate a new chunk of memory and pick one from there.
  *
  * @param s The #space.
  */
-
 struct cell *space_getcell(struct space *s) {
 
   struct cell *c;
@@ -1412,25 +1400,29 @@ struct cell *space_getcell(struct space *s) {
   lock_lock(&s->lock);
 
   /* Is the buffer empty? */
-  if (s->cells_new == NULL) {
-    if (posix_memalign((void *)&s->cells_new, cell_align,
+  if (s->cells_sub == NULL) {
+    if (posix_memalign((void *)&s->cells_sub, cell_align,
                        space_cellallocchunk * sizeof(struct cell)) != 0)
       error("Failed to allocate more cells.");
-    bzero(s->cells_new, space_cellallocchunk * sizeof(struct cell));
+
+    /* Zero everything for good measure */
+    bzero(s->cells_sub, space_cellallocchunk * sizeof(struct cell));
+
+    /* Constructed a linked list */
     for (k = 0; k < space_cellallocchunk - 1; k++)
-      s->cells_new[k].next = &s->cells_new[k + 1];
-    s->cells_new[space_cellallocchunk - 1].next = NULL;
+      s->cells_sub[k].next = &s->cells_sub[k + 1];
+    s->cells_sub[space_cellallocchunk - 1].next = NULL;
   }
 
   /* Pick off the next cell. */
-  c = s->cells_new;
-  s->cells_new = c->next;
+  c = s->cells_sub;
+  s->cells_sub = c->next;
   s->tot_cells += 1;
 
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
 
-  /* Init some things in the cell. */
+  /* Init some things in the cell we just got. */
   bzero(c, sizeof(struct cell));
   c->nodeID = -1;
   if (lock_init(&c->lock) != 0 || lock_init(&c->glock) != 0)

@@ -795,7 +795,7 @@ void partition_initial_partition(struct partition *initial_partition,
     /* Run through the cells and set their nodeID. */
     // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
     for (k = 0; k < s->nr_cells; k++) {
-      c = &s->cells_new[k];
+      c = &s->cells_top[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
       c->nodeID = ind[0] +

@@ -154,9 +154,9 @@ int checkSpacehmax(struct space *s) {
   /* Loop over local cells. */
   float cell_h_max = 0.0f;
   for (int k = 0; k < s->nr_cells; k++) {
-    if (s->cells_new[k].nodeID == s->e->nodeID &&
-        s->cells_new[k].h_max > cell_h_max) {
-      cell_h_max = s->cells_new[k].h_max;
+    if (s->cells_top[k].nodeID == s->e->nodeID &&
+        s->cells_top[k].h_max > cell_h_max) {
+      cell_h_max = s->cells_top[k].h_max;
     }
   }
 
@@ -173,9 +173,9 @@ int checkSpacehmax(struct space *s) {
 
   /* There is a problem. Hunt it down. */
   for (int k = 0; k < s->nr_cells; k++) {
-    if (s->cells_new[k].nodeID == s->e->nodeID) {
-      if (s->cells_new[k].h_max > part_h_max) {
-        message("cell %d is inconsistent (%f > %f)", k, s->cells_new[k].h_max,
+    if (s->cells_top[k].nodeID == s->e->nodeID) {
+      if (s->cells_top[k].h_max > part_h_max) {
+        message("cell %d is inconsistent (%f > %f)", k, s->cells_top[k].h_max,
                 part_h_max);
       }
     }

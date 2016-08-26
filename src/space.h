@@ -58,7 +58,9 @@ struct entry {
   int i;
 };
 
-/* The space in which the cells reside. */
+/**
+ * @brief The space in which the cells reside.
+ */
 struct space {
 
   /*! Spatial extent. */
@@ -88,8 +90,8 @@ struct space {
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
-  /*! Buffer of unused cells. */
-  struct cell *cells_new;
+  /*! Buffer of unused cells for the sub-cells. */
+  struct cell *cells_sub;
 
   /*! The particle data (cells have pointers to this). */
   struct part *parts;
