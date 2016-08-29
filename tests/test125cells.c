@@ -99,6 +99,8 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
+#elif defined(GIZMO_SPH)
+  part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
 #endif
@@ -127,7 +129,7 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
                   float density, enum velocity_field vel,
                   enum pressure_field press, float size) {
 
-  for (size_t i = 0; i < main_cell->count; ++i) {
+  for (int i = 0; i < main_cell->count; ++i) {
 
     solution[i].id = main_cell->parts[i].id;
 
@@ -178,6 +180,38 @@ void get_solution(const struct cell *main_cell, struct solution_part *solution,
     solution[i].a_hydro[2] = -gradP[2] / solution[i].rho;
 
     solution[i].v_sig = 2.f * solution[i].c;
+
+    solution[i].S_dt = 0.f;
+    solution[i].u_dt = -(solution[i].P / solution[i].rho) * solution[i].div_v;
+  }
+}
+
+void reset_particles(struct cell *c, enum velocity_field vel,
+                     enum pressure_field press, float size, float density) {
+
+  for (int i = 0; i < c->count; ++i) {
+
+    struct part *p = &c->parts[i];
+
+    set_velocity(p, vel, size);
+    set_energy_state(p, press, size, density);
+
+#if defined(GIZMO_SPH)
+    p->geometry.volume = p->conserved.mass / density;
+    p->primitives.rho = density;
+    p->primitives.v[0] = p->v[0];
+    p->primitives.v[1] = p->v[1];
+    p->primitives.v[2] = p->v[2];
+    p->conserved.momentum[0] = p->conserved.mass * p->v[0];
+    p->conserved.momentum[1] = p->conserved.mass * p->v[1];
+    p->conserved.momentum[2] = p->conserved.mass * p->v[2];
+    p->conserved.energy =
+        p->primitives.P / hydro_gamma_minus_one * p->geometry.volume +
+        0.5f * (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                p->conserved.momentum[1] * p->conserved.momentum[1] +
+                p->conserved.momentum[2] * p->conserved.momentum[2]) /
+            p->conserved.mass;
+#endif
   }
 }
 
@@ -223,7 +257,12 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->x[1] = offset[1] + size * (y + 0.5) / (float)n;
         part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
         part->h = size * h / (float)n;
+
+#ifdef GIZMO_SPH
+        part->conserved.mass = density * volume / count;
+#else
         part->mass = density * volume / count;
+#endif
 
         set_velocity(part, vel, size);
         set_energy_state(part, press, size, density);
@@ -232,9 +271,25 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->ti_begin = 0;
         part->ti_end = 1;
 
-        xpart->v_full[0] = part->v[0];
-        xpart->v_full[1] = part->v[1];
-        xpart->v_full[2] = part->v[2];
+        hydro_first_init_part(part, xpart);
+
+#if defined(GIZMO_SPH)
+        part->geometry.volume = part->conserved.mass / density;
+        part->primitives.rho = density;
+        part->primitives.v[0] = part->v[0];
+        part->primitives.v[1] = part->v[1];
+        part->primitives.v[2] = part->v[2];
+        part->conserved.momentum[0] = part->conserved.mass * part->v[0];
+        part->conserved.momentum[1] = part->conserved.mass * part->v[1];
+        part->conserved.momentum[2] = part->conserved.mass * part->v[2];
+        part->conserved.energy =
+            part->primitives.P / hydro_gamma_minus_one * part->geometry.volume +
+            0.5f * (part->conserved.momentum[0] * part->conserved.momentum[0] +
+                    part->conserved.momentum[1] * part->conserved.momentum[1] +
+                    part->conserved.momentum[2] * part->conserved.momentum[2]) /
+                part->conserved.mass;
+#endif
+
         ++part;
         ++xpart;
       }
@@ -291,7 +346,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
-  for (size_t pid = 0; pid < main_cell->count; pid++) {
+  for (int pid = 0; pid < main_cell->count; pid++) {
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
@@ -300,7 +355,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
             main_cell->parts[pid].v[2], main_cell->parts[pid].h,
-            main_cell->parts[pid].rho,
+            hydro_get_density(&main_cell->parts[pid]),
 #ifdef MINIMAL_SPH
             0.f,
 #else
@@ -312,15 +367,16 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_soundspeed(&main_cell->parts[pid], 0.f),
             main_cell->parts[pid].a_hydro[0], main_cell->parts[pid].a_hydro[1],
             main_cell->parts[pid].a_hydro[2], main_cell->parts[pid].force.h_dt,
-            main_cell->parts[pid].force.v_sig,
 #if defined(GADGET2_SPH)
-            main_cell->parts[pid].entropy_dt, 0.f
+            main_cell->parts[pid].force.v_sig, main_cell->parts[pid].entropy_dt,
+            0.f
 #elif defined(DEFAULT_SPH)
-            0.f, main_cell->parts[pid].force.u_dt
+            main_cell->parts[pid].force.v_sig, 0.f,
+            main_cell->parts[pid].force.u_dt
 #elif defined(MINIMAL_SPH)
-            0.f, main_cell->parts[pid].u_dt
+            main_cell->parts[pid].force.v_sig, 0.f, main_cell->parts[pid].u_dt
 #else
-            0.f, 0.f
+            0.f, 0.f, 0.f
 #endif
             );
   }
@@ -329,7 +385,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
     fprintf(file, "# Solution ---------------------------------------------\n");
 
-    for (size_t pid = 0; pid < main_cell->count; pid++) {
+    for (int pid = 0; pid < main_cell->count; pid++) {
       fprintf(file,
               "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
               "%8.5f %8.5f "
@@ -340,7 +396,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               solution[pid].div_v, solution[pid].S, solution[pid].u,
               solution[pid].P, solution[pid].c, solution[pid].a_hydro[0],
               solution[pid].a_hydro[1], solution[pid].a_hydro[2],
-              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt, 0.f);
+              solution[pid].h_dt, solution[pid].v_sig, solution[pid].S_dt,
+              solution[pid].u_dt);
     }
   }
 
@@ -427,9 +484,10 @@ int main(int argc, char *argv[]) {
 
   /* Help users... */
   message("Adiabatic index: ga = %f", hydro_gamma);
+  message("Hydro implementation: %s", SPH_IMPLEMENTATION);
   message("Smoothing length: h = %f", h * size);
   message("Kernel:               %s", kernel_name);
-  message("Neighbour target: N = %f", h * h * h * kernel_norm);
+  message("Neighbour target: N = %f", pow_dimension(h) * kernel_norm);
   message("Density target: rho = %f", rho);
   message("div_v target:   div = %f", vel == 2 ? 3.f : 0.f);
   message("curl_v target: curl = [0., 0., %f]", vel == 3 ? -2.f : 0.f);
@@ -442,18 +500,27 @@ int main(int argc, char *argv[]) {
 
   printf("\n");
 
+#if !defined(HYDRO_DIMENSION_3D)
+  message("test125cells only useful in 3D. Change parameters in const.h !");
+  return 1;
+#endif
+
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
-  space.h_max = h;
+
+  struct phys_const prog_const;
+  prog_const.const_newton_G = 1.f;
 
   struct hydro_props hp;
-  hp.target_neighbours = h * h * h * kernel_norm;
-  hp.delta_neighbours = 1.;
+  hp.target_neighbours = pow_dimension(h) * kernel_norm;
+  hp.delta_neighbours = 2.;
   hp.max_smoothing_iterations = 1;
+  hp.CFL_condition = 0.1;
 
   struct engine engine;
   engine.hydro_properties = &hp;
+  engine.physical_constants = &prog_const;
   engine.s = &space;
   engine.time = 0.1f;
   engine.ti_current = 1;
@@ -508,7 +575,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
 /* Do the density calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Run all the pairs (only once !)*/
     for (int i = 0; i < 5; i++) {
@@ -550,7 +617,7 @@ int main(int argc, char *argv[]) {
     for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
 
 /* Do the force calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
     /* Do the pairs (for the central 27 cells) */
     for (int i = 1; i < 4; i++) {
@@ -585,6 +652,9 @@ int main(int argc, char *argv[]) {
   /* Output timing */
   message("SWIFT calculation took       : %15lli ticks.", time / runs);
 
+  for (int j = 0; j < 125; ++j)
+    reset_particles(cells[j], vel, press, size, rho);
+
   /* NOW BRUTE-FORCE CALCULATION */
 
   const ticks tic = getticks();
@@ -593,7 +663,7 @@ int main(int argc, char *argv[]) {
   for (int j = 0; j < 125; ++j) runner_do_init(&runner, cells[j], 0);
 
 /* Do the density calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Run all the pairs (only once !)*/
   for (int i = 0; i < 5; i++) {
@@ -634,7 +704,7 @@ int main(int argc, char *argv[]) {
   for (int j = 0; j < 27; ++j) runner_do_ghost(&runner, inner_cells[j]);
 
 /* Do the force calculation */
-#if defined(DEFAULT_SPH) || !defined(WITH_VECTORIZATION)
+#if !(defined(MINIMAL_SPH) && defined(WITH_VECTORIZATION))
 
   /* Do the pairs (for the central 27 cells) */
   for (int i = 1; i < 4; i++) {
@@ -650,6 +720,7 @@ int main(int argc, char *argv[]) {
 
   /* And now the self-interaction for the main cell */
   self_all_force(&runner, main_cell);
+
 #endif
 
   /* Finally, give a gentle kick */

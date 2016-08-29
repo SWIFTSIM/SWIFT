@@ -24,17 +24,20 @@
 #include "../config.h"
 
 /* Some standard headers. */
+#include <float.h>
 #include <stdio.h>
 
 /* This object's header. */
 #include "debug.h"
 
 /* Local includes. */
-#include "config.h"
+#include "cell.h"
 #include "const.h"
+#include "engine.h"
 #include "hydro.h"
 #include "inline.h"
 #include "part.h"
+#include "space.h"
 
 /* Import the right hydro definition */
 #if defined(MINIMAL_SPH)
@@ -43,6 +46,8 @@
 #include "./hydro/Gadget2/hydro_debug.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_debug.h"
+#elif defined(GIZMO_SPH)
+#include "./hydro/Gizmo/hydro_debug.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif
@@ -68,7 +73,7 @@ void printParticle(const struct part *parts, struct xpart *xparts,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf("## Particle[%zd]:\n id=%lld ", i, parts[i].id);
+      printf("## Particle[%zu]:\n id=%lld ", i, parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
       found = 1;
       break;
@@ -97,13 +102,13 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (gparts[i].id_or_neg_offset == id) {
-      printf("## gParticle[%zd] (DM) :\n id=%lld", i, id);
+      printf("## gParticle[%zu] (DM) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
     } else if (gparts[i].id_or_neg_offset < 0 &&
                parts[-gparts[i].id_or_neg_offset].id == id) {
-      printf("## gParticle[%zd] (hydro) :\n id=%lld", i, id);
+      printf("## gParticle[%zu] (hydro) :\n id=%lld", i, id);
       gravity_debug_particle(&gparts[i]);
       found = 1;
       break;
@@ -135,6 +140,54 @@ void printgParticle_single(struct gpart *gp) {
   printf("## g-Particle: id=%lld ", gp->id_or_neg_offset);
   gravity_debug_particle(gp);
   printf("\n");
+}
+
+/**
+ * @brief Check that the cells and particles of a space have consistent h_max
+ *        values.
+ *
+ * @param s the space.
+ * @result 1 or 0
+ */
+int checkSpacehmax(struct space *s) {
+
+  /* Loop over local cells. */
+  float cell_h_max = 0.0f;
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells[k].nodeID == s->e->nodeID && s->cells[k].h_max > cell_h_max) {
+      cell_h_max = s->cells[k].h_max;
+    }
+  }
+
+  /* Now all particles. */
+  float part_h_max = 0.0f;
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    if (s->parts[k].h > part_h_max) {
+      part_h_max = s->parts[k].h;
+    }
+  }
+
+  /*  If within some epsilon we are OK. */
+  if (abs(cell_h_max - part_h_max) <= FLT_EPSILON) return 1;
+
+  /* There is a problem. Hunt it down. */
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells[k].nodeID == s->e->nodeID) {
+      if (s->cells[k].h_max > part_h_max) {
+        message("cell %d is inconsistent (%f > %f)", k, s->cells[k].h_max,
+                part_h_max);
+      }
+    }
+  }
+
+  for (size_t k = 0; k < s->nr_parts; k++) {
+    if (s->parts[k].h > cell_h_max) {
+      message("part %lld is inconsistent (%f > %f)", s->parts[k].id,
+              s->parts[k].h, cell_h_max);
+    }
+  }
+
+  return 0;
 }
 
 #ifdef HAVE_METIS

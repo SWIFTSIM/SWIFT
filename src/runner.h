@@ -29,31 +29,32 @@ extern const char runner_flip[27];
 struct cell;
 struct engine;
 
-/* A struct representing a runner's thread and its data. */
+/**
+ * @brief A struct representing a runner's thread and its data.
+ */
 struct runner {
 
-  /* The id of this thread. */
+  /*! The id of this thread. */
   int id;
 
-  /* The thread which it is running. */
+  /*! The actual thread which it is running. */
   pthread_t thread;
 
-  /* The queue to use to get tasks. */
+  /*! The queue to use to get tasks. */
   int cpuid, qid;
 
-  /* The underlying runner. */
+  /*! The engine owing this runner. */
   struct engine *e;
 };
 
 /* Function prototypes. */
 void runner_do_ghost(struct runner *r, struct cell *c);
 void runner_do_sort(struct runner *r, struct cell *c, int flag, int clock);
-void runner_do_gsort(struct runner *r, struct cell *c, int flag, int clock);
 void runner_do_kick(struct runner *r, struct cell *c, int timer);
 void runner_do_kick_fixdt(struct runner *r, struct cell *c, int timer);
-void runner_do_drift(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
 void runner_do_cooling(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
+void runner_do_drift_mapper(void *map_data, int num_elements, void *extra_data);
 
 #endif /* SWIFT_RUNNER_H */

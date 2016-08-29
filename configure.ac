@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[0.3.0])
+AC_INIT([SWIFT],[0.4.0])
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE
@@ -466,10 +466,10 @@ if test "$enable_warn" != "no"; then
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
           gnu | clang)
-             CFLAGS="$CFLAGS -Wall"
+             CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter"
           ;;
 	  intel)
-             CFLAGS="$CFLAGS -w2"
+             CFLAGS="$CFLAGS -w2 -Wunused-variable"
           ;;
 	  *)
 	     AX_CFLAGS_WARN_ALL

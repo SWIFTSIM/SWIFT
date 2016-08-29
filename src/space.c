@@ -41,16 +41,17 @@
 
 /* Local headers. */
 #include "atomic.h"
+#include "const.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity.h"
+#include "hydro.h"
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "minmax.h"
 #include "runner.h"
+#include "threadpool.h"
 #include "tools.h"
-
-/* Shared sort structure. */
-struct parallel_sort space_sort_struct;
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -163,20 +164,22 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   const size_t nr_parts = s->nr_parts;
   struct cell *restrict c;
   ticks tic = getticks();
+  const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-  /* Run through the parts and get the current h_max. */
+  /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
   if (nr_parts > 0) {
     if (s->cells != NULL) {
       for (int k = 0; k < s->nr_cells; k++) {
-        if (s->cells[k].h_max > h_max) h_max = s->cells[k].h_max;
+        if (s->cells[k].nodeID == engine_rank && s->cells[k].h_max > h_max) {
+          h_max = s->cells[k].h_max;
+        }
       }
     } else {
       for (size_t k = 0; k < nr_parts; k++) {
         if (s->parts[k].h > h_max) h_max = s->parts[k].h;
       }
-      s->h_max = h_max;
     }
   }
 
@@ -269,7 +272,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
-    if (posix_memalign((void *)&s->cells, 64,
+    if (posix_memalign((void *)&s->cells, cell_align,
                        s->nr_cells * sizeof(struct cell)) != 0)
       error("Failed to allocate cells.");
     bzero(s->cells, s->nr_cells * sizeof(struct cell));
@@ -292,6 +295,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
           c->count = 0;
           c->gcount = 0;
           c->super = c;
+          c->ti_old = ti_current;
           lock_init(&c->lock);
         }
 
@@ -348,16 +352,18 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells[k].sorts = NULL;
       s->cells[k].nr_tasks = 0;
       s->cells[k].nr_density = 0;
+      s->cells[k].nr_gradient = 0;
       s->cells[k].nr_force = 0;
       s->cells[k].density = NULL;
+      s->cells[k].gradient = NULL;
       s->cells[k].force = NULL;
       s->cells[k].dx_max = 0.0f;
       s->cells[k].sorted = 0;
       s->cells[k].count = 0;
       s->cells[k].gcount = 0;
       s->cells[k].init = NULL;
+      s->cells[k].extra_ghost = NULL;
       s->cells[k].ghost = NULL;
-      s->cells[k].drift = NULL;
       s->cells[k].kick = NULL;
       s->cells[k].super = &s->cells[k];
     }
@@ -391,6 +397,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   size_t nr_parts = s->nr_parts;
   size_t nr_gparts = s->nr_gparts;
   struct cell *restrict cells = s->cells;
+  const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
   const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -422,7 +429,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
-  for (int k = 0; k < nr_gparts; k++) {
+  for (size_t k = 0; k < nr_gparts; k++) {
     struct gpart *restrict gp = &s->gparts[k];
     for (int j = 0; j < 3; j++)
       if (gp->x[j] < 0.0)
@@ -480,7 +487,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 #endif
 
   /* Move non-local gparts to the end of the list. */
-  for (int k = 0; k < nr_gparts;) {
+  for (size_t k = 0; k < nr_gparts;) {
     if (cells[gind[k]].nodeID != local_nodeID) {
       cells[gind[k]].gcount -= 1;
       nr_gparts -= 1;
@@ -589,7 +596,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   }
 
   /* Assign each particle to its cell. */
-  for (int k = nr_gparts; k < s->nr_gparts; k++) {
+  for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
     gind[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
@@ -642,6 +649,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   struct gpart *gfinger = s->gparts;
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells[k];
+    c->ti_old = ti_current;
     c->parts = finger;
     c->xparts = xfinger;
     c->gparts = gfinger;
@@ -672,10 +680,8 @@ void space_split(struct space *s, struct cell *cells, int verbose) {
 
   const ticks tic = getticks();
 
-  for (int k = 0; k < s->nr_cells; k++)
-    scheduler_addtask(&s->e->sched, task_type_split_cell, task_subtype_none, k,
-                      0, &cells[k], NULL, 0);
-  engine_launch(s->e, s->e->nr_threads, 1 << task_type_split_cell, 0);
+  threadpool_map(&s->e->threadpool, space_split_mapper, cells, s->nr_cells,
+                 sizeof(struct cell), 1, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -699,29 +705,32 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
 
   const ticks tic = getticks();
 
-  /*Populate the global parallel_sort structure with the input data */
-  space_sort_struct.parts = s->parts;
-  space_sort_struct.xparts = s->xparts;
-  space_sort_struct.ind = ind;
-  space_sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((space_sort_struct.stack = malloc(sizeof(struct qstack) *
-                                        space_sort_struct.stack_size)) == NULL)
+  /* Populate a parallel_sort structure with the input data */
+  struct parallel_sort sort_struct;
+  sort_struct.parts = s->parts;
+  sort_struct.xparts = s->xparts;
+  sort_struct.ind = ind;
+  sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
+  if ((sort_struct.stack =
+           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < space_sort_struct.stack_size; i++)
-    space_sort_struct.stack[i].ready = 0;
+  for (unsigned int i = 0; i < sort_struct.stack_size; i++)
+    sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */
-  space_sort_struct.stack[0].i = 0;
-  space_sort_struct.stack[0].j = N - 1;
-  space_sort_struct.stack[0].min = min;
-  space_sort_struct.stack[0].max = max;
-  space_sort_struct.stack[0].ready = 1;
-  space_sort_struct.first = 0;
-  space_sort_struct.last = 1;
-  space_sort_struct.waiting = 1;
+  sort_struct.stack[0].i = 0;
+  sort_struct.stack[0].j = N - 1;
+  sort_struct.stack[0].min = min;
+  sort_struct.stack[0].max = max;
+  sort_struct.stack[0].ready = 1;
+  sort_struct.first = 0;
+  sort_struct.last = 1;
+  sort_struct.waiting = 1;
 
-  /* Launch the sorting tasks. */
-  engine_launch(s->e, s->e->nr_threads, (1 << task_type_part_sort), 0);
+  /* Launch the sorting tasks with a stride of zero such that the same
+     map data is passed to each thread. */
+  threadpool_map(&s->e->threadpool, space_parts_sort_mapper, &sort_struct,
+                 s->e->threadpool.num_threads, 0, 1, NULL);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify space_sort_struct. */
@@ -733,37 +742,40 @@ void space_parts_sort(struct space *s, int *ind, size_t N, int min, int max,
 #endif
 
   /* Clean up. */
-  free(space_sort_struct.stack);
+  free(sort_struct.stack);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
 
-void space_do_parts_sort() {
+void space_parts_sort_mapper(void *map_data, int num_elements,
+                             void *extra_data) {
+
+  /* Unpack the mapping data. */
+  struct parallel_sort *sort_struct = (struct parallel_sort *)map_data;
 
   /* Pointers to the sorting data. */
-  int *ind = space_sort_struct.ind;
-  struct part *parts = space_sort_struct.parts;
-  struct xpart *xparts = space_sort_struct.xparts;
+  int *ind = sort_struct->ind;
+  struct part *parts = sort_struct->parts;
+  struct xpart *xparts = sort_struct->xparts;
 
   /* Main loop. */
-  while (space_sort_struct.waiting) {
+  while (sort_struct->waiting) {
 
     /* Grab an interval off the queue. */
-    int qid =
-        atomic_inc(&space_sort_struct.first) % space_sort_struct.stack_size;
+    int qid = atomic_inc(&sort_struct->first) % sort_struct->stack_size;
 
     /* Wait for the entry to be ready, or for the sorting do be done. */
-    while (!space_sort_struct.stack[qid].ready)
-      if (!space_sort_struct.waiting) return;
+    while (!sort_struct->stack[qid].ready)
+      if (!sort_struct->waiting) return;
 
     /* Get the stack entry. */
-    ptrdiff_t i = space_sort_struct.stack[qid].i;
-    ptrdiff_t j = space_sort_struct.stack[qid].j;
-    int min = space_sort_struct.stack[qid].min;
-    int max = space_sort_struct.stack[qid].max;
-    space_sort_struct.stack[qid].ready = 0;
+    ptrdiff_t i = sort_struct->stack[qid].i;
+    ptrdiff_t j = sort_struct->stack[qid].j;
+    int min = sort_struct->stack[qid].min;
+    int max = sort_struct->stack[qid].max;
+    sort_struct->stack[qid].ready = 0;
 
     /* Loop over sub-intervals. */
     while (1) {
@@ -813,18 +825,16 @@ void space_do_parts_sort() {
 
         /* Recurse on the left? */
         if (jj > i && pivot > min) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) % sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = i;
-          space_sort_struct.stack[qid].j = jj;
-          space_sort_struct.stack[qid].min = min;
-          space_sort_struct.stack[qid].max = pivot;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = i;
+          sort_struct->stack[qid].j = jj;
+          sort_struct->stack[qid].min = min;
+          sort_struct->stack[qid].max = pivot;
+          if (atomic_inc(&sort_struct->waiting) >= sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the right? */
@@ -838,18 +848,16 @@ void space_do_parts_sort() {
 
         /* Recurse on the right? */
         if (pivot + 1 < max) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) % sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = jj + 1;
-          space_sort_struct.stack[qid].j = j;
-          space_sort_struct.stack[qid].min = pivot + 1;
-          space_sort_struct.stack[qid].max = max;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = jj + 1;
+          sort_struct->stack[qid].j = j;
+          sort_struct->stack[qid].min = pivot + 1;
+          sort_struct->stack[qid].max = max;
+          if (atomic_inc(&sort_struct->waiting) >= sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the left? */
@@ -862,7 +870,7 @@ void space_do_parts_sort() {
 
     } /* loop over sub-intervals. */
 
-    atomic_dec(&space_sort_struct.waiting);
+    atomic_dec(&sort_struct->waiting);
 
   } /* main loop. */
 }
@@ -883,28 +891,31 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
 
   const ticks tic = getticks();
 
-  /*Populate the global parallel_sort structure with the input data */
-  space_sort_struct.gparts = s->gparts;
-  space_sort_struct.ind = ind;
-  space_sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
-  if ((space_sort_struct.stack = malloc(sizeof(struct qstack) *
-                                        space_sort_struct.stack_size)) == NULL)
+  /*Populate a global parallel_sort structure with the input data */
+  struct parallel_sort sort_struct;
+  sort_struct.gparts = s->gparts;
+  sort_struct.ind = ind;
+  sort_struct.stack_size = 2 * (max - min + 1) + 10 + s->e->nr_threads;
+  if ((sort_struct.stack =
+           malloc(sizeof(struct qstack) * sort_struct.stack_size)) == NULL)
     error("Failed to allocate sorting stack.");
-  for (int i = 0; i < space_sort_struct.stack_size; i++)
-    space_sort_struct.stack[i].ready = 0;
+  for (unsigned int i = 0; i < sort_struct.stack_size; i++)
+    sort_struct.stack[i].ready = 0;
 
   /* Add the first interval. */
-  space_sort_struct.stack[0].i = 0;
-  space_sort_struct.stack[0].j = N - 1;
-  space_sort_struct.stack[0].min = min;
-  space_sort_struct.stack[0].max = max;
-  space_sort_struct.stack[0].ready = 1;
-  space_sort_struct.first = 0;
-  space_sort_struct.last = 1;
-  space_sort_struct.waiting = 1;
+  sort_struct.stack[0].i = 0;
+  sort_struct.stack[0].j = N - 1;
+  sort_struct.stack[0].min = min;
+  sort_struct.stack[0].max = max;
+  sort_struct.stack[0].ready = 1;
+  sort_struct.first = 0;
+  sort_struct.last = 1;
+  sort_struct.waiting = 1;
 
-  /* Launch the sorting tasks. */
-  engine_launch(s->e, s->e->nr_threads, (1 << task_type_gpart_sort), 0);
+  /* Launch the sorting tasks with a stride of zero such that the same
+     map data is passed to each thread. */
+  threadpool_map(&s->e->threadpool, space_gparts_sort_mapper, &sort_struct,
+                 s->e->threadpool.num_threads, 0, 1, NULL);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify space_sort_struct. */
@@ -916,36 +927,39 @@ void space_gparts_sort(struct space *s, int *ind, size_t N, int min, int max,
 #endif
 
   /* Clean up. */
-  free(space_sort_struct.stack);
+  free(sort_struct.stack);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
 
-void space_do_gparts_sort() {
+void space_gparts_sort_mapper(void *map_data, int num_elements,
+                              void *extra_data) {
+
+  /* Unpack the mapping data. */
+  struct parallel_sort *sort_struct = (struct parallel_sort *)map_data;
 
   /* Pointers to the sorting data. */
-  int *ind = space_sort_struct.ind;
-  struct gpart *gparts = space_sort_struct.gparts;
+  int *ind = sort_struct->ind;
+  struct gpart *gparts = sort_struct->gparts;
 
   /* Main loop. */
-  while (space_sort_struct.waiting) {
+  while (sort_struct->waiting) {
 
     /* Grab an interval off the queue. */
-    int qid =
-        atomic_inc(&space_sort_struct.first) % space_sort_struct.stack_size;
+    int qid = atomic_inc(&sort_struct->first) % sort_struct->stack_size;
 
     /* Wait for the entry to be ready, or for the sorting do be done. */
-    while (!space_sort_struct.stack[qid].ready)
-      if (!space_sort_struct.waiting) return;
+    while (!sort_struct->stack[qid].ready)
+      if (!sort_struct->waiting) return;
 
     /* Get the stack entry. */
-    ptrdiff_t i = space_sort_struct.stack[qid].i;
-    ptrdiff_t j = space_sort_struct.stack[qid].j;
-    int min = space_sort_struct.stack[qid].min;
-    int max = space_sort_struct.stack[qid].max;
-    space_sort_struct.stack[qid].ready = 0;
+    ptrdiff_t i = sort_struct->stack[qid].i;
+    ptrdiff_t j = sort_struct->stack[qid].j;
+    int min = sort_struct->stack[qid].min;
+    int max = sort_struct->stack[qid].max;
+    sort_struct->stack[qid].ready = 0;
 
     /* Loop over sub-intervals. */
     while (1) {
@@ -992,18 +1006,16 @@ void space_do_gparts_sort() {
 
         /* Recurse on the left? */
         if (jj > i && pivot > min) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) % sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = i;
-          space_sort_struct.stack[qid].j = jj;
-          space_sort_struct.stack[qid].min = min;
-          space_sort_struct.stack[qid].max = pivot;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = i;
+          sort_struct->stack[qid].j = jj;
+          sort_struct->stack[qid].min = min;
+          sort_struct->stack[qid].max = pivot;
+          if (atomic_inc(&sort_struct->waiting) >= sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the right? */
@@ -1017,18 +1029,16 @@ void space_do_gparts_sort() {
 
         /* Recurse on the right? */
         if (pivot + 1 < max) {
-          qid = atomic_inc(&space_sort_struct.last) %
-                space_sort_struct.stack_size;
-          while (space_sort_struct.stack[qid].ready)
+          qid = atomic_inc(&sort_struct->last) % sort_struct->stack_size;
+          while (sort_struct->stack[qid].ready)
             ;
-          space_sort_struct.stack[qid].i = jj + 1;
-          space_sort_struct.stack[qid].j = j;
-          space_sort_struct.stack[qid].min = pivot + 1;
-          space_sort_struct.stack[qid].max = max;
-          if (atomic_inc(&space_sort_struct.waiting) >=
-              space_sort_struct.stack_size)
+          sort_struct->stack[qid].i = jj + 1;
+          sort_struct->stack[qid].j = j;
+          sort_struct->stack[qid].min = pivot + 1;
+          sort_struct->stack[qid].max = max;
+          if (atomic_inc(&sort_struct->waiting) >= sort_struct->stack_size)
             error("Qstack overflow.");
-          space_sort_struct.stack[qid].ready = 1;
+          sort_struct->stack[qid].ready = 1;
         }
 
         /* Recurse on the left? */
@@ -1041,7 +1051,7 @@ void space_do_gparts_sort() {
 
     } /* loop over sub-intervals. */
 
-    atomic_dec(&space_sort_struct.waiting);
+    atomic_dec(&sort_struct->waiting);
 
   } /* main loop. */
 }
@@ -1222,73 +1232,117 @@ void space_map_cells_pre(struct space *s, int full,
 }
 
 /**
- * @brief Split cells that contain too many particles.
- *
- * @param s The #space we are working in.
- * @param c The #cell under consideration.
+ * @brief #threadpool mapper function to split cells if they contain
+ *        too many particles.
  */
 
-void space_do_split(struct space *s, struct cell *c) {
+void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
 
-  const int count = c->count;
-  const int gcount = c->gcount;
-  int maxdepth = 0;
-  float h_max = 0.0f;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
-  struct cell *temp;
-  struct part *parts = c->parts;
-  struct gpart *gparts = c->gparts;
-  struct xpart *xparts = c->xparts;
+  /* Unpack the inputs. */
+  struct space *s = (struct space *)extra_data;
+  struct cell *cells = (struct cell *)map_data;
+  struct engine *e = s->e;
 
-  /* Check the depth. */
-  if (c->depth > s->maxdepth) s->maxdepth = c->depth;
+  for (int ind = 0; ind < num_elements; ind++) {
 
-  /* Split or let it be? */
-  if (count > space_splitsize || gcount > space_splitsize) {
+    struct cell *c = &cells[ind];
 
-    /* No longer just a leaf. */
-    c->split = 1;
+    const int count = c->count;
+    const int gcount = c->gcount;
+    int maxdepth = 0;
+    float h_max = 0.0f;
+    int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+    struct cell *temp;
+    struct part *parts = c->parts;
+    struct gpart *gparts = c->gparts;
+    struct xpart *xparts = c->xparts;
 
-    /* Create the cell's progeny. */
-    for (int k = 0; k < 8; k++) {
-      temp = space_getcell(s);
-      temp->count = 0;
-      temp->gcount = 0;
-      temp->loc[0] = c->loc[0];
-      temp->loc[1] = c->loc[1];
-      temp->loc[2] = c->loc[2];
-      temp->width[0] = c->width[0] / 2;
-      temp->width[1] = c->width[1] / 2;
-      temp->width[2] = c->width[2] / 2;
-      temp->dmin = c->dmin / 2;
-      if (k & 4) temp->loc[0] += temp->width[0];
-      if (k & 2) temp->loc[1] += temp->width[1];
-      if (k & 1) temp->loc[2] += temp->width[2];
-      temp->depth = c->depth + 1;
-      temp->split = 0;
-      temp->h_max = 0.0;
-      temp->dx_max = 0.f;
-      temp->nodeID = c->nodeID;
-      temp->parent = c;
-      c->progeny[k] = temp;
+    /* Check the depth. */
+    while (c->depth > (maxdepth = s->maxdepth)) {
+      atomic_cas(&s->maxdepth, maxdepth, c->depth);
     }
 
-    /* Split the cell data. */
-    cell_split(c, c->parts - s->parts);
+    /* Split or let it be? */
+    if (count > space_splitsize || gcount > space_splitsize) {
 
-    /* Remove any progeny with zero parts. */
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0) {
-        space_recycle(s, c->progeny[k]);
-        c->progeny[k] = NULL;
-      } else {
-        space_do_split(s, c->progeny[k]);
-        h_max = fmaxf(h_max, c->progeny[k]->h_max);
-        ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
-        ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
-        if (c->progeny[k]->maxdepth > maxdepth)
-          maxdepth = c->progeny[k]->maxdepth;
+      /* No longer just a leaf. */
+      c->split = 1;
+
+      /* Create the cell's progeny. */
+      for (int k = 0; k < 8; k++) {
+        temp = space_getcell(s);
+        temp->count = 0;
+        temp->gcount = 0;
+        temp->ti_old = e->ti_current;
+        temp->loc[0] = c->loc[0];
+        temp->loc[1] = c->loc[1];
+        temp->loc[2] = c->loc[2];
+        temp->width[0] = c->width[0] / 2;
+        temp->width[1] = c->width[1] / 2;
+        temp->width[2] = c->width[2] / 2;
+        temp->dmin = c->dmin / 2;
+        if (k & 4) temp->loc[0] += temp->width[0];
+        if (k & 2) temp->loc[1] += temp->width[1];
+        if (k & 1) temp->loc[2] += temp->width[2];
+        temp->depth = c->depth + 1;
+        temp->split = 0;
+        temp->h_max = 0.0;
+        temp->dx_max = 0.f;
+        temp->nodeID = c->nodeID;
+        temp->parent = c;
+        c->progeny[k] = temp;
       }
+
+      /* Split the cell data. */
+      cell_split(c, c->parts - s->parts);
+
+      /* Remove any progeny with zero parts. */
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k]->count == 0 && c->progeny[k]->gcount == 0) {
+          space_recycle(s, c->progeny[k]);
+          c->progeny[k] = NULL;
+        } else {
+          space_split_mapper(c->progeny[k], 1, s);
+          h_max = fmaxf(h_max, c->progeny[k]->h_max);
+          ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
+          ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
+          if (c->progeny[k]->maxdepth > maxdepth)
+            maxdepth = c->progeny[k]->maxdepth;
+        }
+
+    }
+
+    /* Otherwise, collect the data for this cell. */
+    else {
+
+      /* Clear the progeny. */
+      bzero(c->progeny, sizeof(struct cell *) * 8);
+      c->split = 0;
+      maxdepth = c->depth;
+
+      /* Get dt_min/dt_max. */
+      for (int k = 0; k < count; k++) {
+        struct part *p = &parts[k];
+        struct xpart *xp = &xparts[k];
+        const float h = p->h;
+        const int ti_end = p->ti_end;
+        xp->x_diff[0] = 0.f;
+        xp->x_diff[1] = 0.f;
+        xp->x_diff[2] = 0.f;
+        if (h > h_max) h_max = h;
+        if (ti_end < ti_end_min) ti_end_min = ti_end;
+        if (ti_end > ti_end_max) ti_end_max = ti_end;
+      }
+      for (int k = 0; k < gcount; k++) {
+        struct gpart *gp = &gparts[k];
+        const int ti_end = gp->ti_end;
+        gp->x_diff[0] = 0.f;
+        gp->x_diff[1] = 0.f;
+        gp->x_diff[2] = 0.f;
+        if (ti_end < ti_end_min) ti_end_min = ti_end;
+        if (ti_end > ti_end_max) ti_end_max = ti_end;
+      }
+    }
 
     /* Set the values for this cell. */
     c->h_max = h_max;
@@ -1296,52 +1350,16 @@ void space_do_split(struct space *s, struct cell *c) {
     c->ti_end_max = ti_end_max;
     c->maxdepth = maxdepth;
 
+    /* Set ownership according to the start of the parts array. */
+    if (s->nr_parts > 0)
+      c->owner =
+          ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
+    else if (s->nr_gparts > 0)
+      c->owner = ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues /
+                 s->nr_gparts;
+    else
+      c->owner = 0; /* Ok, there is really nothing on this rank... */
   }
-
-  /* Otherwise, collect the data for this cell. */
-  else {
-
-    /* Clear the progeny. */
-    bzero(c->progeny, sizeof(struct cell *) * 8);
-    c->split = 0;
-    c->maxdepth = c->depth;
-
-    /* Get dt_min/dt_max. */
-    for (int k = 0; k < count; k++) {
-      struct part *p = &parts[k];
-      struct xpart *xp = &xparts[k];
-      const float h = p->h;
-      const int ti_end = p->ti_end;
-      xp->x_diff[0] = 0.f;
-      xp->x_diff[1] = 0.f;
-      xp->x_diff[2] = 0.f;
-      if (h > h_max) h_max = h;
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
-    }
-    for (int k = 0; k < gcount; k++) {
-      struct gpart *gp = &gparts[k];
-      const int ti_end = gp->ti_end;
-      gp->x_diff[0] = 0.f;
-      gp->x_diff[1] = 0.f;
-      gp->x_diff[2] = 0.f;
-      if (ti_end < ti_end_min) ti_end_min = ti_end;
-      if (ti_end > ti_end_max) ti_end_max = ti_end;
-    }
-    c->h_max = h_max;
-    c->ti_end_min = ti_end_min;
-    c->ti_end_max = ti_end_max;
-  }
-
-  /* Set ownership according to the start of the parts array. */
-  if (s->nr_parts > 0)
-    c->owner =
-        ((c->parts - s->parts) % s->nr_parts) * s->nr_queues / s->nr_parts;
-  else if (s->nr_gparts > 0)
-    c->owner =
-        ((c->gparts - s->gparts) % s->nr_gparts) * s->nr_queues / s->nr_gparts;
-  else
-    c->owner = 0; /* Ok, there is really nothing on this rank... */
 }
 
 /**
@@ -1390,7 +1408,7 @@ struct cell *space_getcell(struct space *s) {
 
   /* Is the buffer empty? */
   if (s->cells_new == NULL) {
-    if (posix_memalign((void *)&s->cells_new, 64,
+    if (posix_memalign((void *)&s->cells_new, cell_align,
                        space_cellallocchunk * sizeof(struct cell)) != 0)
       error("Failed to allocate more cells.");
     bzero(s->cells_new, space_cellallocchunk * sizeof(struct cell));
@@ -1414,6 +1432,59 @@ struct cell *space_getcell(struct space *s) {
     error("Failed to initialize cell spinlocks.");
 
   return c;
+}
+
+/**
+ * @brief Initialises all the particles by setting them into a valid state
+ *
+ * Calls hydro_first_init_part() on all the particles
+ */
+void space_init_parts(struct space *s) {
+
+  const size_t nr_parts = s->nr_parts;
+  struct part *restrict p = s->parts;
+  struct xpart *restrict xp = s->xparts;
+
+  for (size_t i = 0; i < nr_parts; ++i) {
+
+#ifdef HYDRO_DIMENSION_2D
+    p[i].x[2] = 0.f;
+    p[i].v[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+    p[i].x[1] = p[i].x[2] = 0.f;
+    p[i].v[1] = p[i].v[2] = 0.f;
+#endif
+
+    hydro_first_init_part(&p[i], &xp[i]);
+  }
+}
+
+/**
+ * @brief Initialises all the g-particles by setting them into a valid state
+ *
+ * Calls gravity_first_init_gpart() on all the particles
+ */
+void space_init_gparts(struct space *s) {
+
+  const size_t nr_gparts = s->nr_gparts;
+  struct gpart *restrict gp = s->gparts;
+
+  for (size_t i = 0; i < nr_gparts; ++i) {
+
+#ifdef HYDRO_DIMENSION_2D
+    gp[i].x[2] = 0.f;
+    gp[i].v_full[2] = 0.f;
+#endif
+
+#ifdef HYDRO_DIMENSION_1D
+    gp[i].x[1] = gp[i].x[2] = 0.f;
+    gp[i].v_full[1] = gp[i].v_full[2] = 0.f;
+#endif
+
+    gravity_first_init_gpart(&gp[i]);
+  }
 }
 
 /**
@@ -1514,13 +1585,13 @@ void space_init(struct space *s, const struct swift_params *params,
 
     /* Check that all the part positions are reasonable, wrap if periodic. */
     if (periodic) {
-      for (int k = 0; k < Npart; k++)
+      for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++) {
           while (parts[k].x[j] < 0) parts[k].x[j] += dim[j];
           while (parts[k].x[j] >= dim[j]) parts[k].x[j] -= dim[j];
         }
     } else {
-      for (int k = 0; k < Npart; k++)
+      for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++)
           if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j])
             error("Not all particles are within the specified domain.");
@@ -1528,13 +1599,13 @@ void space_init(struct space *s, const struct swift_params *params,
 
     /* Same for the gparts */
     if (periodic) {
-      for (int k = 0; k < Ngpart; k++)
+      for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++) {
           while (gparts[k].x[j] < 0) gparts[k].x[j] += dim[j];
           while (gparts[k].x[j] >= dim[j]) gparts[k].x[j] -= dim[j];
         }
     } else {
-      for (int k = 0; k < Ngpart; k++)
+      for (size_t k = 0; k < Ngpart; k++)
         for (int j = 0; j < 3; j++)
           if (gparts[k].x[j] < 0 || gparts[k].x[j] >= dim[j])
             error("Not all g-particles are within the specified domain.");
@@ -1548,6 +1619,10 @@ void space_init(struct space *s, const struct swift_params *params,
       error("Failed to allocate xparts.");
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
+
+  /* Set the particles in a state where they are ready for a run */
+  space_init_parts(s);
+  space_init_gparts(s);
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

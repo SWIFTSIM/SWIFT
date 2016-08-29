@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_GRAVITY_IO_H
+#define SWIFT_DEFAULT_GRAVITY_IO_H
 
 #include "io_properties.h"
 
@@ -68,3 +70,5 @@ void darkmatter_write_particles(struct gpart* gparts, struct io_props* list,
   list[4] = io_make_output_field("Acceleration", FLOAT, 3,
                                  UNIT_CONV_ACCELERATION, gparts, a_grav);
 }
+
+#endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

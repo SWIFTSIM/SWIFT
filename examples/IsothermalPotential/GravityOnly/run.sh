@@ -7,4 +7,4 @@ then
     python makeIC.py 10000 1 1
 fi
 
-../../swift -g -t 2 isothermal.yml
+../../swift -g -t 2 isothermal.yml 2>&1 | tee output.log

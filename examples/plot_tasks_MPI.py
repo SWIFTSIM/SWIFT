@@ -62,9 +62,8 @@ pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init", "ghost",
-             "drift", "kick", "kick_fixdt", "send", "recv", "grav_pp", "grav_mm",
-             "grav_up", "grav_down", "grav_external", "part_sort", "gpart_sort",
-             "split_cell", "rewait", "count"]
+             "kick", "kick_fixdt", "send", "recv", "grav_gather_m", "grav_fft",
+             "grav_mm", "grav_up", "grav_external", "count"]
 
 TASKCOLOURS = {"none": "black",
                "sort": "lightblue",
@@ -74,29 +73,26 @@ TASKCOLOURS = {"none": "black",
                "sub_pair": "navy",
                "init": "indigo",
                "ghost": "cyan",
-               "drift": "maroon",
                "kick": "green",
                "kick_fixdt": "green",
                "send": "yellow",
                "recv": "magenta",
-               "grav_pp": "mediumorchid",
+               "grav_gather_m": "mediumorchid",
+               "grav_fft": "mediumnightblue",
                "grav_mm": "mediumturquoise",
                "grav_up": "mediumvioletred",
-               "grav_down": "mediumnightblue",
                "grav_external": "darkred",
-               "part_sort": "steelblue",
-               "gpart_sort": "teal" ,
-               "split_cell": "seagreen",
-               "rewait": "olive",
                "count": "powerblue"}
 
-SUBTYPES = ["none", "density", "force", "grav", "count"]
+SUBTYPES = ["none", "density", "gradient", "force", "grav", "tend", "count"]
 
 SUBCOLOURS = {"none": "black",
               "density": "red",
+              "gradient": "powerblue",
               "force": "blue",
               "grav": "indigo",
-              "count": "purple"}
+              "tend": "grey",
+              "count": "black"}
 
 #  Show docs if help is requested.
 if len( sys.argv ) == 2 and ( sys.argv[1][0:2] == "-h" or sys.argv[1][0:3] == "--h" ):

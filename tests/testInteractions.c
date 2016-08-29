@@ -17,6 +17,12 @@
  *
  ******************************************************************************/
 
+#include "../config.h"
+
+#ifndef WITH_VECTORIZATION
+int main() { return 0; }
+#else
+
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -138,7 +144,7 @@ void write_header(char *fileName) {
   fclose(file);
 }
 
-/*
+/**
  * @brief Calls the serial and vectorised version of the non-symmetrical density
  * interaction.
  *
@@ -324,3 +330,5 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+#endif /* WITH_VECTORIZATION */

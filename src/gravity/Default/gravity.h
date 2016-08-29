@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_DEFAULT_GRAVITY_H
+#define SWIFT_DEFAULT_GRAVITY_H
 
 #include <float.h>
 #include "potentials.h"
@@ -46,7 +48,10 @@ gravity_compute_timestep_external(const struct external_potential* potential,
   dt = fminf(dt, external_gravity_isothermalpotential_timestep(potential,
                                                                phys_const, gp));
 #endif
-
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  dt = fminf(dt,
+             external_gravity_disk_patch_timestep(potential, phys_const, gp));
+#endif
   return dt;
 }
 
@@ -66,7 +71,7 @@ gravity_compute_timestep_self(const struct phys_const* const phys_const,
 
   const float ac = (ac2 > 0.f) ? sqrtf(ac2) : FLT_MIN;
 
-  const float dt = sqrt(2.f * const_gravity_eta * gp->epsilon / ac);
+  const float dt = sqrtf(2.f * const_gravity_eta * gp->epsilon / ac);
 
   return dt;
 }
@@ -81,6 +86,9 @@ gravity_compute_timestep_self(const struct phys_const* const phys_const,
  */
 __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     struct gpart* gp) {
+
+  gp->ti_begin = 0;
+  gp->ti_end = 0;
   gp->epsilon = 0.;  // MATTHIEU
 }
 
@@ -107,10 +115,10 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * Multiplies the forces and accelerations by the appropiate constants
  *
  * @param gp The particle to act upon
- * @param const_G Newton's constant
+ * @param const_G Newton's constant in internal units
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, double const_G) {
+    struct gpart* gp, float const_G) {
 
   /* Let's get physical... */
   gp->a_grav[0] *= const_G;
@@ -123,12 +131,13 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
  *
  * This function only branches towards the potential chosen by the user.
  *
+ * @param time The current time in internal units.
  * @param potential The properties of the external potential.
  * @param phys_const The physical constants in internal units.
  * @param gp The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void external_gravity(
-    const struct external_potential* potential,
+    double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* gp) {
 
 #ifdef EXTERNAL_POTENTIAL_POINTMASS
@@ -136,6 +145,9 @@ __attribute__((always_inline)) INLINE static void external_gravity(
 #endif
 #ifdef EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
   external_gravity_isothermalpotential(potential, phys_const, gp);
+#endif
+#ifdef EXTERNAL_POTENTIAL_DISK_PATCH
+  external_gravity_disk_patch_potential(time, potential, phys_const, gp);
 #endif
 }
 
@@ -148,3 +160,5 @@ __attribute__((always_inline)) INLINE static void external_gravity(
  */
 __attribute__((always_inline)) INLINE static void gravity_kick_extra(
     struct gpart* gp, float dt, float half_dt) {}
+
+#endif /* SWIFT_DEFAULT_GRAVITY_H */

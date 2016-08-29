@@ -23,15 +23,15 @@
 #ifndef SWIFT_TASK_H
 #define SWIFT_TASK_H
 
+#include "../config.h"
+
 /* Includes. */
 #include "cell.h"
 #include "cycle.h"
 
-/* Some constants. */
-#define task_maxwait 3
-#define task_maxunlock 15
-
-/* The different task types. */
+/**
+ * @brief The different task types.
+ */
 enum task_types {
   task_type_none = 0,
   task_type_sort,
@@ -41,7 +41,7 @@ enum task_types {
   task_type_sub_pair,
   task_type_init,
   task_type_ghost,
-  task_type_drift,
+  task_type_extra_ghost,
   task_type_kick,
   task_type_kick_fixdt,
   task_type_send,
@@ -52,26 +52,25 @@ enum task_types {
   task_type_grav_up,
   task_type_grav_external,
   task_type_cooling,
-  task_type_part_sort,
-  task_type_gpart_sort,
-  task_type_split_cell,
-  task_type_rewait,
   task_type_count
 };
 
-extern const char *taskID_names[];
-
-/* The different task sub-types. */
+/**
+ * @brief The different task sub-types (for pairs, selfs and sub-tasks).
+ */
 enum task_subtypes {
   task_subtype_none = 0,
   task_subtype_density,
+  task_subtype_gradient,
   task_subtype_force,
   task_subtype_grav,
   task_subtype_tend,
   task_subtype_count
 };
 
-/* The kind of action the task perform */
+/**
+ * @brief The type of particles/objects this task acts upon in a given cell.
+ */
 enum task_actions {
   task_action_none,
   task_action_part,
@@ -81,29 +80,74 @@ enum task_actions {
   task_action_count
 };
 
+/**
+ * @brief Names of the task types.
+ */
+extern const char *taskID_names[];
+
+/**
+ * @brief Names of the task sub-types.
+ */
 extern const char *subtaskID_names[];
 
-/* Data of a task. */
+/**
+ * @brief A task to be run by the #scheduler.
+ */
 struct task {
 
+  /*! Type of the task */
   enum task_types type;
+
+  /*! Sub-type of the task (for the tasks that have one */
   enum task_subtypes subtype;
   char skip, tight, implicit;
   int flags, wait, rank, weight;
 
+  /*! Flags used to carry additional information (e.g. sort directions) */
+  int flags;
+
+  /*! Number of unsatisfied dependencies */
+  int wait;
+
+  /*! Rank of a task in the order */
+  int rank;
+
+  /*! Weight of the task */
+  int weight;
+
+  /*! Pointers to the cells this task acts upon */
   struct cell *ci, *cj;
 
-  void *buff;
+  /*! ID of the queue or runner owning this task */
+  int rid;
+
+  /*! Number of tasks unlocked by this one */
+  int nr_unlock_tasks;
+
+  /*! List of tasks unlocked by this one */
+  struct task **unlock_tasks;
 
 #ifdef WITH_MPI
+
+  /*! Buffer for this task's communications */
+  void *buff;
+
+  /*! MPI request corresponding to this task */
   MPI_Request req;
+
 #endif
 
-  int rid, last_rid;
+  /*! Start and end time of this task */
   ticks tic, toc;
 
-  int nr_unlock_tasks;
-  struct task **unlock_tasks;
+  /*! Should the scheduler skip this task ? */
+  char skip;
+
+  /*! Does this task require the particles to be tightly in the cell ? */
+  char tight;
+
+  /*! Is this task implicit (i.e. does not do anything) ? */
+  char implicit;
 };
 
 /* Function prototypes. */
@@ -113,6 +157,5 @@ int task_lock(struct task *t);
 void task_print_mask(unsigned int mask);
 void task_print_submask(unsigned int submask);
 void task_do_rewait(struct task *t);
-enum task_actions task_acts_on(const struct task *t);
 
 #endif /* SWIFT_TASK_H */

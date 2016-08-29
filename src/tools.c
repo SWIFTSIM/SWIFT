@@ -144,10 +144,7 @@ void pairs_single_density(double *dim, long long int pid,
   p = parts[k];
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
-  p.rho = 0.0;
-  p.density.wcount = 0.0;
-  // p.icount = 0;
-  p.rho_dh = 0.0;
+  hydro_init_part(&p);
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -446,66 +443,28 @@ void pairs_single_grav(double *dim, long long int pid,
 }
 
 /**
- * @brief Test the density function by dumping it for two random parts.
- *
- * @param N number of intervals in [0,1].
- */
-void density_dump(int N) {
-
-  int k;
-  float r2[4] = {0.0f, 0.0f, 0.0f, 0.0f}, hi[4], hj[4];
-  struct part /**pi[4],  *pj[4],*/ Pi[4], Pj[4];
-
-  /* Init the interaction parameters. */
-  for (k = 0; k < 4; k++) {
-    Pi[k].mass = 1.0f;
-    Pi[k].rho = 0.0f;
-    Pi[k].density.wcount = 0.0f;
-    Pi[k].id = k;
-    Pj[k].mass = 1.0f;
-    Pj[k].rho = 0.0f;
-    Pj[k].density.wcount = 0.0f;
-    Pj[k].id = k + 4;
-    hi[k] = 1.0;
-    hj[k] = 1.0;
-  }
-
-  for (k = 0; k <= N; k++) {
-    r2[3] = r2[2];
-    r2[2] = r2[1];
-    r2[1] = r2[0];
-    r2[0] = ((float)k) / N;
-    Pi[0].density.wcount = 0;
-    Pj[0].density.wcount = 0;
-    runner_iact_density(r2[0], NULL, hi[0], hj[0], &Pi[0], &Pj[0]);
-    printf(" %e %e %e", r2[0], Pi[0].density.wcount, Pj[0].density.wcount);
-  }
-}
-
-/**
  * @brief Compute the force on a single particle brute-force.
  */
 void engine_single_density(double *dim, long long int pid,
                            struct part *restrict parts, int N, int periodic) {
-  int i, k;
   double r2, dx[3];
-  float fdx[3], ih;
+  float fdx[3];
   struct part p;
 
   /* Find "our" part. */
+  int k;
   for (k = 0; k < N && parts[k].id != pid; k++)
     ;
   if (k == N) error("Part not found.");
   p = parts[k];
 
   /* Clear accumulators. */
-  ih = 1.0f / p.h;
   hydro_init_part(&p);
 
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
     if (parts[k].id == p.id) continue;
-    for (i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       dx[i] = p.x[i] - parts[k].x[i];
       if (periodic) {
         if (dx[i] < -dim[i] / 2)
@@ -522,12 +481,9 @@ void engine_single_density(double *dim, long long int pid,
   }
 
   /* Dump the result. */
-  p.rho = ih * ih * ih * (p.rho + p.mass * kernel_root);
-  p.rho_dh = p.rho_dh * ih * ih * ih * ih;
-  p.density.wcount =
-      (p.density.wcount + kernel_root) * (4.0f / 3.0 * M_PI * kernel_gamma3);
-  message("part %lli (h=%e) has wcount=%e, rho=%e, rho_dh=%e.", p.id, p.h,
-          p.density.wcount, p.rho, p.rho_dh);
+  hydro_end_density(&p, 0);
+  message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
+          p.density.wcount, hydro_get_density(&p));
   fflush(stdout);
 }
 

@@ -16,8 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GADGET2_HYDRO_IO_H
+#define SWIFT_GADGET2_HYDRO_IO_H
 
 #include "adiabatic_index.h"
+#include "hydro.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 
@@ -54,8 +57,12 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
 
 float convert_u(struct engine* e, struct part* p) {
 
-  return p->entropy * pow_gamma_minus_one(p->rho) *
-         hydro_one_over_gamma_minus_one;
+  return hydro_get_internal_energy(p, 0);
+}
+
+float convert_P(struct engine* e, struct part* p) {
+
+  return hydro_get_pressure(p, 0);
 }
 
 /**
@@ -68,7 +75,7 @@ float convert_u(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 10;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
@@ -90,6 +97,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
   list[8] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
                                               UNIT_CONV_ENERGY_PER_UNIT_MASS,
                                               parts, rho, convert_u);
+  list[9] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
 }
 
 /**
@@ -100,9 +109,10 @@ void writeSPHflavour(hid_t h_grpsph) {
 
   /* Viscosity and thermal conduction */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model",
-                   "(No treatment) Legacy Gadget-2 as in Springel (2005)");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Legacy Gadget-2 as in Springel (2005)");
+                   "(No treatment) as in Springel (2005)");
+  writeAttribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
   writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
   writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 }
@@ -113,3 +123,5 @@ void writeSPHflavour(hid_t h_grpsph) {
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
 int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_GADGET2_HYDRO_IO_H */

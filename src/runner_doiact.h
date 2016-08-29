@@ -1739,7 +1739,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
+  const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2023,7 +2023,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
+  const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2336,7 +2336,7 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   else {
 
     /* Get the cell dimensions. */
-    const float h = fmin(ci->width[0], fmin(ci->width[1], ci->width[2]));
+    const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
 
     /* Recurse? */
     if (ci->split && cj->split &&
@@ -2862,16 +2862,17 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       }
 
       /* Get the sorting index. */
-      int sid = 0;
+      int new_sid = 0;
       for (int k = 0; k < 3; k++)
-        sid =
-            3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                           ? 0
-                           : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
-      sid = sortlistID[sid];
+        new_sid = 3 * new_sid +
+                  ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
+                       ? 0
+                       : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+      new_sid = sortlistID[new_sid];
 
       /* Do any of the cells need to be sorted first? */
-      if (!(cj->sorted & (1 << sid))) runner_do_sort(r, cj, (1 << sid), 1);
+      if (!(cj->sorted & (1 << new_sid)))
+        runner_do_sort(r, cj, (1 << new_sid), 1);
 
       /* Compute the interactions. */
       DOPAIR_SUBSET(r, ci, parts, ind, count, cj);
