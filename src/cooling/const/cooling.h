@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static double cooling_timestep(
  * @param phys_const The physical constants in internal units.
  * @param cooling The cooling properties to initialize
  */
-inline void cooling_init(const struct swift_params* parameter_file,
+INLINE void cooling_init(const struct swift_params* parameter_file,
                          const struct UnitSystem* us,
                          const struct phys_const* phys_const,
                          struct cooling_data* cooling) {
@@ -130,7 +130,7 @@ inline void cooling_init(const struct swift_params* parameter_file,
  *
  * @param cooling The properties of the cooling function.
  */
-inline void cooling_print(const struct cooling_data* cooling) {
+INLINE void cooling_print(const struct cooling_data* cooling) {
 
   message("Cooling function is 'Constant cooling' with rate %f and floor %f",
           cooling->lambda, cooling->min_energy);
