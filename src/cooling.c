@@ -98,7 +98,7 @@ void update_entropy(const struct phys_const* const phys_const, const struct Unit
   float u_old;
   float u_new;
   float new_entropy;
-  float old_entropy = p->entropy;
+  //float old_entropy = p->entropy;
   float rho = p->rho;
 
   //  u_old = old_entropy/(GAMMA_MINUS1) * pow(rho,GAMMA_MINUS1);

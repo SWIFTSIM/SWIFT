@@ -159,7 +159,7 @@ struct cell {
   struct task *grav_external;
 
   /* Task for cooling */
-  struct task *cooling_task;
+  struct task *cooling;
 
   /* Number of tasks that are associated with this cell. */
   int nr_tasks;

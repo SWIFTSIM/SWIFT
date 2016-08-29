@@ -100,8 +100,6 @@ struct task {
 
   /*! Sub-type of the task (for the tasks that have one */
   enum task_subtypes subtype;
-  char skip, tight, implicit;
-  int flags, wait, rank, weight;
 
   /*! Flags used to carry additional information (e.g. sort directions) */
   int flags;
