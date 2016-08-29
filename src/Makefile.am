@@ -51,7 +51,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potentials.c hydro_properties.c \
-    runner_doiact_fft.c threadpool.c cooling.c
+    runner_doiact_fft.c threadpool.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -71,7 +71,8 @@ nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_h
 		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h hydro/Gizmo/hydro_io.h \
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
 	         riemann.h \
-		 riemann/riemann_hllc.h riemann/riemann_trrs.h riemann/riemann_exact.h
+		 riemann/riemann_hllc.h riemann/riemann_trrs.h riemann/riemann_exact.h \
+                 cooling/const/cooling.h
 
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)

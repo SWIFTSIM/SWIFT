@@ -95,8 +95,9 @@
 //#define EXTERNAL_POTENTIAL_DISK_PATCH
 
 /* Cooling properties */
-//#define CONST_COOLING
-#define CREASEY_COOLING
+#define COOLING_CONST_COOLING
+//#define COOLING_CREASEY_COOLING
+//#define COOLING_GRACKLE_COOLING
 
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS
