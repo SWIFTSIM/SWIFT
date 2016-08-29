@@ -147,7 +147,6 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_dograv_external);
 }
 
-
 /**
  * @brief Calculate change in entropy from cooling
  *
@@ -187,8 +186,8 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
     /* Kick has already updated ti_end, so need to check ti_begin */
     if (p->ti_begin == ti_current) {
-      dt = (p->ti_end - p->ti_begin)*timeBase;
-      update_entropy(constants, us, cooling ,p, dt);
+      dt = (p->ti_end - p->ti_begin) * timeBase;
+      update_entropy(constants, us, cooling, p, dt);
     }
   }
 

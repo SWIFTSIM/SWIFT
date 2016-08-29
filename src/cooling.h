@@ -72,30 +72,32 @@ struct cooling_data {
  * @param phys_const The physical constants in internal units.
  * @param  Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static double
-cooling_timestep(const struct cooling_data* cooling,
-		 const struct phys_const* const phys_const,
-		 const struct part* const p) {
+__attribute__((always_inline)) INLINE static double cooling_timestep(
+    const struct cooling_data* cooling,
+    const struct phys_const* const phys_const, const struct part* const p) {
 
   const double cooling_rate = cooling->const_cooling.lambda;
-  const double internal_energy = hydro_get_internal_energy(p,0);// dt = 0 because using current entropy
-  return  cooling->const_cooling.cooling_tstep_mult * internal_energy / cooling_rate;
+  const double internal_energy =
+      hydro_get_internal_energy(p, 0);  // dt = 0 because using current entropy
+  return cooling->const_cooling.cooling_tstep_mult * internal_energy /
+         cooling_rate;
 }
 
 #endif /* CONST_COOLING */
 
-
 /* Now, some generic functions, defined in the source file */
 void cooling_init(const struct swift_params* parameter_file,
-                    struct UnitSystem* us,
-		  const struct phys_const* const phys_const,
-                    struct cooling_data* cooling);
+                  struct UnitSystem* us,
+                  const struct phys_const* const phys_const,
+                  struct cooling_data* cooling);
 
 void cooling_print(const struct cooling_data* cooling);
-void update_entropy(const struct phys_const* const phys_const, const struct UnitSystem* us,
-		    const struct cooling_data* cooling, struct part* p, float dt);
-float calculate_new_thermal_energy(float u_old, float rho, float dt, 
-				   const struct cooling_data* cooling,
-				   const struct phys_const* const phys_const,
-				   const struct UnitSystem* us);
+void update_entropy(const struct phys_const* const phys_const,
+                    const struct UnitSystem* us,
+                    const struct cooling_data* cooling, struct part* p,
+                    float dt);
+float calculate_new_thermal_energy(float u_old, float rho, float dt,
+                                   const struct cooling_data* cooling,
+                                   const struct phys_const* const phys_const,
+                                   const struct UnitSystem* us);
 #endif /* SWIFT_COOLING_H */

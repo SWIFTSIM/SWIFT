@@ -82,7 +82,7 @@ const char *engine_policy_names[15] = {"none",
                                        "external_gravity",
                                        "cosmology_integration",
                                        "drift_all",
-				       "cooling"};
+                                       "cooling"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -186,8 +186,7 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
   struct scheduler *s = &e->sched;
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
   const int is_with_cooling =
-      (e->policy & engine_policy_cooling) ==
-      engine_policy_cooling;
+      (e->policy & engine_policy_cooling) == engine_policy_cooling;
 
   /* Is this the super-cell? */
   if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
@@ -225,9 +224,8 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
 #endif
 
       if (is_with_cooling)
-        c->cooling = scheduler_addtask(
-            s, task_type_cooling, task_subtype_none, 0, 0, c, NULL, 0);
- 	
+        c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
+                                       0, 0, c, NULL, 0);
     }
   }
 
@@ -1793,10 +1791,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       scheduler_addunlock(sched, t->ci->init, t);
       scheduler_addunlock(sched, t, t->ci->kick);
     }
-    
+
     /* Cooling tasks should depend on kick and does not unlock anything since
      it is the last task*/
-     else if (t->type == task_type_cooling) {
+    else if (t->type == task_type_cooling) {
       scheduler_addunlock(sched, t->ci->kick, t);
     }
   }
@@ -2780,7 +2778,7 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_grav_external;
   }
 
-   /* Add the tasks corresponding to cooling to the masks */
+  /* Add the tasks corresponding to cooling to the masks */
   if (e->policy & engine_policy_cooling) {
     mask |= 1 << task_type_cooling;
   }
@@ -3115,8 +3113,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
-		 const struct cooling_data *cooling) {
-
+                 const struct cooling_data *cooling) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
