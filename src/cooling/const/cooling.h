@@ -49,7 +49,7 @@ struct cooling_data {
   /*! Cooling rate in internal units */
   float lambda;
 
-  /*! Minimal internal energy of the particles */
+  /*! Minimally allowed internal energy of the particles */
   float min_energy;
 
   /*! Constant multiplication factor for time-step criterion */
@@ -106,18 +106,17 @@ __attribute__((always_inline)) INLINE static double cooling_timestep(
 }
 
 /**
- * @brief Initialises the cooling properties in the internal system
- * of units.
+ * @brief Initialises the cooling properties.
  *
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
  * @param phys_const The physical constants in internal units.
  * @param cooling The cooling properties to initialize
  */
-inline inline void cooling_init(const struct swift_params* parameter_file,
-                                const struct UnitSystem* us,
-                                const struct phys_const* phys_const,
-                                struct cooling_data* cooling) {
+inline void cooling_init(const struct swift_params* parameter_file,
+                         const struct UnitSystem* us,
+                         const struct phys_const* phys_const,
+                         struct cooling_data* cooling) {
 
   cooling->lambda = parser_get_param_double(parameter_file, "Cooling:lambda");
   cooling->min_energy =
@@ -131,7 +130,7 @@ inline inline void cooling_init(const struct swift_params* parameter_file,
  *
  * @param cooling The properties of the cooling function.
  */
-static inline void cooling_print(const struct cooling_data* cooling) {
+inline void cooling_print(const struct cooling_data* cooling) {
 
   message("Cooling function is 'Constant cooling' with rate %f and floor %f",
           cooling->lambda, cooling->min_energy);
