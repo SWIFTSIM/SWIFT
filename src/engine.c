@@ -68,7 +68,7 @@
 #include "units.h"
 #include "version.h"
 
-const char *engine_policy_names[13] = {"none",
+const char *engine_policy_names[14] = {"none",
                                        "rand",
                                        "steal",
                                        "keep",
@@ -80,15 +80,11 @@ const char *engine_policy_names[13] = {"none",
                                        "hydro",
                                        "self_gravity",
                                        "external_gravity",
-                                       "cosmology_integration"};
+                                       "cosmology_integration",
+                                       "drift_all"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
-
-#ifdef HAVE_SETAFFINITY
-/** The initial affinity of the main thread (set by engin_pin()) */
-static cpu_set_t entry_affinity;
-#endif
 
 /**
  * @brief Link a density/force task to a cell.
@@ -2056,6 +2052,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+#ifdef WITH_MPI
+
       /* Activate the send/recv flags. */
       if (ci->nodeID != engine_rank) {
 
@@ -2110,6 +2108,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (l == NULL) error("Missing link to send_ti task.");
         l->t->skip = 0;
       }
+
+#endif
     }
 
     /* Kick? */
@@ -2275,6 +2275,16 @@ void engine_prepare(struct engine *e) {
 
   /* Did this not go through? */
   if (rebuild) {
+
+    /* First drift all particles to the current time */
+    e->drift_all = 1;
+    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+                   e->s->nr_cells, sizeof(struct cell), 1, e);
+
+    /* Restore the default drifting policy */
+    e->drift_all = (e->policy & engine_policy_drift_all);
+
+    /* And now rebuild */
     engine_rebuild(e);
   }
 
@@ -2655,8 +2665,12 @@ void engine_step(struct engine *e) {
     snapshot_drift_time = e->timeStep;
 
     /* Drift everybody to the snapshot position */
+    e->drift_all = 1;
     threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
                    e->s->nr_cells, sizeof(struct cell), 1, e);
+
+    /* Restore the default drifting policy */
+    e->drift_all = (e->policy & engine_policy_drift_all);
 
     /* Dump... */
     engine_dump_snapshot(e);
@@ -2672,10 +2686,6 @@ void engine_step(struct engine *e) {
   e->time = e->ti_current * e->timeBase + e->timeBegin;
   e->timeOld = e->ti_old * e->timeBase + e->timeBegin;
   e->timeStep = (e->ti_current - e->ti_old) * e->timeBase + snapshot_drift_time;
-
-  /* Drift everybody */
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
 
   if (e->nodeID == 0) {
 
@@ -2694,6 +2704,10 @@ void engine_step(struct engine *e) {
     engine_print_stats(e);
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
+
+  /* Drift only the necessary particles */
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart != REPART_NONE) engine_repartition(e);
@@ -3010,6 +3024,7 @@ void engine_dump_snapshot(struct engine *e) {
 static cpu_set_t *engine_entry_affinity() {
 
   static int use_entry_affinity = 0;
+  static cpu_set_t entry_affinity;
 
   if (!use_entry_affinity) {
     pthread_t engine = pthread_self();
@@ -3050,7 +3065,8 @@ void engine_pin() {
 void engine_unpin() {
 #ifdef HAVE_SETAFFINITY
   pthread_t main_thread = pthread_self();
-  pthread_setaffinity_np(main_thread, sizeof(entry_affinity), &entry_affinity);
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+  pthread_setaffinity_np(main_thread, sizeof(*entry_affinity), entry_affinity);
 #else
   error("SWIFT was not compiled with support for pinning.");
 #endif
@@ -3107,6 +3123,7 @@ void engine_init(struct engine *e, struct space *s,
   e->timeStep = 0.;
   e->timeBase = 0.;
   e->timeBase_inv = 0.;
+  e->drift_all = (policy & engine_policy_drift_all);
   e->internalUnits = internal_units;
   e->timeFirstSnapshot =
       parser_get_param_double(params, "Snapshots:time_first");

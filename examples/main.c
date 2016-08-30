@@ -67,6 +67,8 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "", "",
          "Allows user to check validy of parameter and IC files as well as "
          "memory limits.");
+  printf("  %2s %8s %s\n", "-D", "",
+         "Always drift all particles even the ones far from active particles.");
   printf("  %2s %8s %s\n", "-e", "",
          "Enable floating-point exceptions (debugging mode)");
   printf("  %2s %8s %s\n", "-f", "{int}",
@@ -75,7 +77,8 @@ void print_help_message() {
          "Run with an external gravitational potential");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-n", "{int}",
-         "Execute a fixed number of time steps");
+         "Execute a fixed number of time steps. When unset use the time_end "
+         "parameter to stop.");
   printf("  %2s %8s %s\n", "-s", "", "Run with SPH");
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
@@ -146,6 +149,7 @@ int main(int argc, char *argv[]) {
   int with_self_gravity = 0;
   int with_hydro = 0;
   int with_fp_exceptions = 0;
+  int with_drift_all = 0;
   int verbose = 0;
   int nr_threads = 1;
   char paramFileName[200] = "";
@@ -153,7 +157,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acdef:gGhn:st:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acdDef:gGhn:st:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -162,6 +166,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'd':
         dry_run = 1;
+        break;
+      case 'D':
+        with_drift_all = 1;
         break;
       case 'e':
         with_fp_exceptions = 1;
@@ -328,6 +335,8 @@ int main(int argc, char *argv[]) {
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
+  fflush(stdout);
+
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   size_t Ngas = 0, Ngpart = 0;
@@ -426,6 +435,7 @@ int main(int argc, char *argv[]) {
 
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
+  if (with_drift_all) engine_policies |= engine_policy_drift_all;
   if (with_hydro) engine_policies |= engine_policy_hydro;
   if (with_self_gravity) engine_policies |= engine_policy_self_gravity;
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;

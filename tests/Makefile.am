@@ -80,5 +80,7 @@ testThreadpool_SOURCES = testThreadpool.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testPair.sh testPairPerturbed.sh \
-	     test27cells.sh test27cellsPerturbed.sh tolerance.dat testParser.sh \
-	     test125cells.sh testParserInput.yaml
+	     test27cells.sh test27cellsPerturbed.sh testParser.sh \
+	     test125cells.sh testParserInput.yaml difffloat.py \
+	     tolerance_125.dat tolerance_27_normal.dat tolerance_27_perturbed.dat \
+	     tolerance_pair_normal.dat tolerance_pair_perturbed.dat

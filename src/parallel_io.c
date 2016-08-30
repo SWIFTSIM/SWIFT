@@ -677,6 +677,8 @@ void write_output_parallel(struct engine* e, const char* baseName,
   writeAttribute(h_grp, "BoxSize", DOUBLE, e->s->dim, 3);
   double dblTime = e->time;
   writeAttribute(h_grp, "Time", DOUBLE, &dblTime, 1);
+  int dimension = (int)hydro_dimension;
+  writeAttribute(h_grp, "Dimension", INT, &dimension, 1);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
