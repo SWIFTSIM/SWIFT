@@ -565,7 +565,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_parts_sort(s, ind, nr_parts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the gparts. */
-  part_relink_gparts(s->parts, nr_parts, 0);
+  if (nr_parts > 0 && nr_gparts > 0) part_relink_gparts(s->parts, nr_parts, 0);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify space_sort_struct. */
@@ -613,7 +613,8 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   space_gparts_sort(s, gind, nr_gparts, 0, s->nr_cells - 1, verbose);
 
   /* Re-link the parts. */
-  part_relink_parts(s->gparts, nr_gparts, s->parts);
+  if (nr_parts > 0 && nr_gparts > 0)
+    part_relink_parts(s->gparts, nr_gparts, s->parts);
 
   /* We no longer need the indices as of here. */
   free(gind);
