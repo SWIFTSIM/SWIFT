@@ -295,6 +295,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
           c->count = 0;
           c->gcount = 0;
           c->super = c;
+          c->gsuper = c;
           c->ti_old = ti_current;
           lock_init(&c->lock);
         }
@@ -366,6 +367,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells[k].ghost = NULL;
       s->cells[k].kick = NULL;
       s->cells[k].super = &s->cells[k];
+      s->cells[k].gsuper = &s->cells[k];
     }
     s->maxdepth = 0;
   }
@@ -1290,6 +1292,8 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
         temp->dx_max = 0.f;
         temp->nodeID = c->nodeID;
         temp->parent = c;
+        temp->super = NULL;
+        temp->gsuper = NULL;
         c->progeny[k] = temp;
       }
 
