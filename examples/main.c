@@ -335,6 +335,8 @@ int main(int argc, char *argv[]) {
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
   if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
+  fflush(stdout);
+
   struct part *parts = NULL;
   struct gpart *gparts = NULL;
   size_t Ngas = 0, Ngpart = 0;
