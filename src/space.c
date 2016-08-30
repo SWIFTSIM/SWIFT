@@ -268,7 +268,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->width[k] = s->dim[k] / cdim[k];
       s->iwidth[k] = 1.0 / s->width[k];
     }
-    const float dmin = fminf(s->width[0], fminf(s->width[1], s->width[2]));
+    const float dmin = min(s->width[0], min(s->width[1], s->width[2]));
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
@@ -1307,7 +1307,7 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
           c->progeny[k] = NULL;
         } else {
           space_split_mapper(c->progeny[k], 1, s);
-          h_max = fmaxf(h_max, c->progeny[k]->h_max);
+          h_max = max(h_max, c->progeny[k]->h_max);
           ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
           ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
           if (c->progeny[k]->maxdepth > maxdepth)

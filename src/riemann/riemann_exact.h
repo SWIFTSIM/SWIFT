@@ -31,6 +31,7 @@
 
 #include <float.h>
 #include "adiabatic_index.h"
+#include "minmax.h"
 #include "riemann_vacuum.h"
 
 /**
@@ -145,12 +146,12 @@ __attribute__((always_inline)) INLINE static float riemann_guess_p(
   float pguess, pmin, pmax, qmax;
   float ppv;
 
-  pmin = fminf(WL[4], WR[4]);
-  pmax = fmaxf(WL[4], WR[4]);
+  pmin = min(WL[4], WR[4]);
+  pmax = max(WL[4], WR[4]);
   qmax = pmax / pmin;
   ppv =
       0.5f * (WL[4] + WR[4]) - 0.125f * (vR - vL) * (WL[0] + WR[0]) * (aL + aR);
-  ppv = fmaxf(1.e-8f, ppv);
+  ppv = max(1.e-8f, ppv);
   if (qmax <= 2.0f && pmin <= ppv && ppv <= pmax) {
     pguess = ppv;
   } else {
@@ -171,7 +172,7 @@ __attribute__((always_inline)) INLINE static float riemann_guess_p(
      value for pressure (...).
      Thus in order to avoid negative guess values we introduce the small
      positive constant _tolerance" */
-  pguess = fmaxf(1.e-8f, pguess);
+  pguess = max(1.e-8f, pguess);
   return pguess;
 }
 

@@ -21,6 +21,7 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "hydro_gradients.h"
+#include "minmax.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle

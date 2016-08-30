@@ -1959,7 +1959,7 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
 
       /* Too much particle movement? */
       if (t->tight &&
-          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
            ci->dx_max > space_maxreldx * ci->h_max ||
            cj->dx_max > space_maxreldx * cj->h_max))
         *rebuild_space = 1;
@@ -2031,7 +2031,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Too much particle movement? */
       if (t->tight &&
-          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
            ci->dx_max > space_maxreldx * ci->h_max ||
            cj->dx_max > space_maxreldx * cj->h_max))
         *rebuild_space = 1;
