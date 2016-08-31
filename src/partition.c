@@ -274,7 +274,7 @@ static void accumulate_counts(struct space *s, int *counts) {
  */
 static void split_metis(struct space *s, int nregions, int *celllist) {
 
-  for (int i = 0; i < s->nr_cells; i++) s->cells[i].nodeID = celllist[i];
+  for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 }
 #endif
 
@@ -419,7 +419,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
   int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
   float wscale = 1e-3, vscale = 1e-3, wscale_buff = 0.0;
   int wtot = 0;
   int wmax = 1e9 / nr_nodes;
