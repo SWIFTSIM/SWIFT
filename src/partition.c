@@ -143,7 +143,7 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
             select = l;
           }
         }
-        s->cells[n++].nodeID = select;
+        s->cells_top[n++].nodeID = select;
       }
     }
   }
@@ -274,7 +274,7 @@ static void accumulate_counts(struct space *s, int *counts) {
  */
 static void split_metis(struct space *s, int nregions, int *celllist) {
 
-  for (int i = 0; i < s->nr_cells; i++) s->cells[i].nodeID = celllist[i];
+  for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 }
 #endif
 
@@ -419,7 +419,7 @@ static void repart_edge_metis(int partweights, int bothweights, int nodeID,
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
   int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
   float wscale = 1e-3, vscale = 1e-3, wscale_buff = 0.0;
   int wtot = 0;
   int wmax = 1e9 / nr_nodes;
@@ -795,7 +795,7 @@ void partition_initial_partition(struct partition *initial_partition,
     /* Run through the cells and set their nodeID. */
     // message("s->dim = [%e,%e,%e]", s->dim[0], s->dim[1], s->dim[2]);
     for (k = 0; k < s->nr_cells; k++) {
-      c = &s->cells[k];
+      c = &s->cells_top[k];
       for (j = 0; j < 3; j++)
         ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
       c->nodeID = ind[0] +
@@ -1037,10 +1037,10 @@ static int check_complete(struct space *s, int verbose, int nregions) {
   int failed = 0;
   for (int i = 0; i < nregions; i++) present[i] = 0;
   for (int i = 0; i < s->nr_cells; i++) {
-    if (s->cells[i].nodeID <= nregions)
-      present[s->cells[i].nodeID]++;
+    if (s->cells_top[i].nodeID <= nregions)
+      present[s->cells_top[i].nodeID]++;
     else
-      message("Bad nodeID: %d", s->cells[i].nodeID);
+      message("Bad nodeID: %d", s->cells_top[i].nodeID);
   }
   for (int i = 0; i < nregions; i++) {
     if (!present[i]) {
@@ -1085,13 +1085,13 @@ int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
       for (int k = 0; k < s->cdim[2]; k++) {
 
         /* Scale indices to old cell space. */
-        int ii = rint(i * s->iwidth[0] * oldh[0]);
-        int jj = rint(j * s->iwidth[1] * oldh[1]);
-        int kk = rint(k * s->iwidth[2] * oldh[2]);
+        const int ii = rint(i * s->iwidth[0] * oldh[0]);
+        const int jj = rint(j * s->iwidth[1] * oldh[1]);
+        const int kk = rint(k * s->iwidth[2] * oldh[2]);
 
-        int cid = cell_getid(s->cdim, i, j, k);
-        int oldcid = cell_getid(oldcdim, ii, jj, kk);
-        s->cells[cid].nodeID = oldnodeIDs[oldcid];
+        const int cid = cell_getid(s->cdim, i, j, k);
+        const int oldcid = cell_getid(oldcdim, ii, jj, kk);
+        s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
 
         if (oldnodeIDs[oldcid] > nr_nodes) nr_nodes = oldnodeIDs[oldcid];
       }
