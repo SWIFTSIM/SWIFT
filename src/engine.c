@@ -256,7 +256,7 @@ void engine_redistribute(struct engine *e) {
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
   const int *cdim = s->cdim;
   const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
@@ -535,12 +535,12 @@ void engine_redistribute(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
-  for (int k = 0; k < nr_parts; k++) {
-    int cid = cell_getid(cdim, parts_new[k].x[0] * iwidth[0],
-                         parts_new[k].x[1] * iwidth[1],
-                         parts_new[k].x[2] * iwidth[2]);
+  for (size_t k = 0; k < nr_parts; k++) {
+    const int cid = cell_getid(cdim, parts_new[k].x[0] * iwidth[0],
+                               parts_new[k].x[1] * iwidth[1],
+                               parts_new[k].x[2] * iwidth[2]);
     if (cells[cid].nodeID != nodeID)
-      error("Received particle (%i) that does not belong here (nodeID=%i).", k,
+      error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
   }
 
@@ -561,7 +561,7 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_parts; ++k) {
 
     if (parts_new[k].gpart != NULL &&
-        parts_new[k].gpart->id_or_neg_offset != -k) {
+        parts_new[k].gpart->id_or_neg_offset != -(ptrdiff_t)k) {
       error("Linking problem !");
     }
   }
@@ -852,7 +852,7 @@ void engine_exchange_cells(struct engine *e) {
 #ifdef WITH_MPI
 
   struct space *s = e->s;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
   const int nr_proxies = e->nr_proxies;
   int offset[nr_cells];
@@ -1012,7 +1012,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
   /* Put the parts and gparts into the corresponding proxies. */
   for (size_t k = 0; k < *Npart; k++) {
     /* Get the target node and proxy ID. */
-    const int node_id = e->s->cells[ind_part[k]].nodeID;
+    const int node_id = e->s->cells_top[ind_part[k]].nodeID;
     if (node_id < 0 || node_id >= e->nr_nodes)
       error("Bad node ID %i.", node_id);
     const int pid = e->proxy_ind[node_id];
@@ -1036,7 +1036,7 @@ void engine_exchange_strays(struct engine *e, size_t offset_parts,
                      &s->xparts[offset_parts + k], 1);
   }
   for (size_t k = 0; k < *Ngpart; k++) {
-    const int node_id = e->s->cells[ind_gpart[k]].nodeID;
+    const int node_id = e->s->cells_top[ind_gpart[k]].nodeID;
     if (node_id < 0 || node_id >= e->nr_nodes)
       error("Bad node ID %i.", node_id);
     const int pid = e->proxy_ind[node_id];
@@ -1241,7 +1241,7 @@ void engine_make_gravity_tasks(struct engine *e) {
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
 
   for (int cid = 0; cid < nr_cells; ++cid) {
@@ -1296,7 +1296,7 @@ void engine_make_hydroloop_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
 
   /* Run through the highest level of cells and add pairs. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -1802,7 +1802,7 @@ void engine_make_gravityrecursive_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
   const int nr_cells = s->nr_cells;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
 
   for (int k = 0; k < nr_cells; k++) {
 
@@ -1835,7 +1835,7 @@ void engine_maketasks(struct engine *e) {
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
   const int nr_cells = s->nr_cells;
   const ticks tic = getticks();
 
@@ -2278,7 +2278,7 @@ void engine_prepare(struct engine *e) {
 
     /* First drift all particles to the current time */
     e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                    e->s->nr_cells, sizeof(struct cell), 1, e);
 
     /* Restore the default drifting policy */
@@ -2396,8 +2396,8 @@ void engine_collect_timestep(struct engine *e) {
 
   /* Collect the cell data. */
   for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells[k];
+    if (s->cells_top[k].nodeID == e->nodeID) {
+      struct cell *c = &s->cells_top[k];
 
       /* Make the top-cells recurse */
       engine_collect_kick(c);
@@ -2450,8 +2450,8 @@ void engine_print_stats(struct engine *e) {
 
   /* Collect the cell data. */
   for (int k = 0; k < s->nr_cells; k++)
-    if (s->cells[k].nodeID == e->nodeID) {
-      struct cell *c = &s->cells[k];
+    if (s->cells_top[k].nodeID == e->nodeID) {
+      struct cell *c = &s->cells_top[k];
       mass += c->mass;
       e_kin += c->e_kin;
       e_int += c->e_int;
@@ -2666,7 +2666,7 @@ void engine_step(struct engine *e) {
 
     /* Drift everybody to the snapshot position */
     e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                    e->s->nr_cells, sizeof(struct cell), 1, e);
 
     /* Restore the default drifting policy */
@@ -2706,7 +2706,7 @@ void engine_step(struct engine *e) {
   }
 
   /* Drift only the necessary particles */
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells,
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
   /* Re-distribute the particles amongst the nodes? */
@@ -2805,7 +2805,7 @@ void engine_makeproxies(struct engine *e) {
 #ifdef WITH_MPI
   const int *cdim = e->s->cdim;
   const struct space *s = e->s;
-  struct cell *cells = s->cells;
+  struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
   ticks tic = getticks();
 
@@ -2972,7 +2972,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   }
   for (size_t k = 0; k < s->nr_parts; ++k) {
 
-    if (s->parts[k].gpart != NULL && s->parts[k].gpart->id_or_neg_offset != -k)
+    if (s->parts[k].gpart != NULL &&
+        s->parts[k].gpart->id_or_neg_offset != -(ptrdiff_t)k)
       error("Linking problem !");
   }
 
