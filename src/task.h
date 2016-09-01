@@ -29,7 +29,11 @@
 #include "cell.h"
 #include "cycle.h"
 
-#define task_align 32
+#ifdef WITH_MPI
+#define task_align 128
+#else
+#define task_align 64
+#endif
 
 /**
  * @brief The different task types.
@@ -148,7 +152,7 @@ struct task {
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
 
-} __attribute__((aligned(task_align)));
+} __attribute__((aligned(32)));
 
 /* Function prototypes. */
 void task_unlock(struct task *t);
