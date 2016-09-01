@@ -20,6 +20,8 @@
 #ifndef SWIFT_GADGET2_HYDRO_IACT_H
 #define SWIFT_GADGET2_HYDRO_IACT_H
 
+#include "minmax.h"
+
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
