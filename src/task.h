@@ -29,6 +29,8 @@
 #include "cell.h"
 #include "cycle.h"
 
+#define task_align 32
+
 /**
  * @brief The different task types.
  */
@@ -103,6 +105,16 @@ struct task {
   /*! Start and end time of this task */
   ticks tic, toc;
 
+#ifdef WITH_MPI
+
+  /*! Buffer for this task's communications */
+  void *buff;
+
+  /*! MPI request corresponding to this task */
+  MPI_Request req;
+
+#endif
+
   /*! Flags used to carry additional information (e.g. sort directions) */
   int flags;
 
@@ -121,16 +133,6 @@ struct task {
   /*! Number of unsatisfied dependencies */
   short int wait;
 
-#ifdef WITH_MPI
-
-  /*! Buffer for this task's communications */
-  void *buff;
-
-  /*! MPI request corresponding to this task */
-  MPI_Request req;
-
-#endif
-
   /*! Type of the task */
   enum task_types type;
 
@@ -145,7 +147,8 @@ struct task {
 
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
-};
+
+} __attribute__((aligned(task_align)));
 
 /* Function prototypes. */
 void task_unlock(struct task *t);
