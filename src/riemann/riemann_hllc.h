@@ -21,6 +21,7 @@
 #define SWIFT_RIEMANN_HLLC_H
 
 #include "adiabatic_index.h"
+#include "minmax.h"
 #include "riemann_vacuum.h"
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
@@ -57,7 +58,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   rhobar = 0.5 * (WL[0] + WR[0]);
   abar = 0.5 * (aL + aR);
   pPVRS = 0.5 * (WL[4] + WR[4]) - 0.5 * (uR - uL) * rhobar * abar;
-  pstar = fmaxf(0., pPVRS);
+  pstar = max(0., pPVRS);
 
   /* STEP 2: wave speed estimates
      all these speeds are along the interface normal, since uL and uR are */

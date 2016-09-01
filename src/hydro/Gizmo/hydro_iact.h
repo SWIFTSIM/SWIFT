@@ -242,14 +242,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   if (dvdotdx > 0.) {
     vmax -= dvdotdx / r;
   }
-  pi->timestepvars.vmax = fmaxf(pi->timestepvars.vmax, vmax);
+  pi->timestepvars.vmax = max(pi->timestepvars.vmax, vmax);
   if (mode == 1) {
-    pj->timestepvars.vmax = fmaxf(pj->timestepvars.vmax, vmax);
+    pj->timestepvars.vmax = max(pj->timestepvars.vmax, vmax);
   }
 
   /* The flux will be exchanged using the smallest time step of the two
    * particles */
-  mindt = fminf(dti, dtj);
+  mindt = min(dti, dtj);
   dti = mindt;
   dtj = mindt;
 

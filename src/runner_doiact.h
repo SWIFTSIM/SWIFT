@@ -1739,7 +1739,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
+  const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -1748,7 +1748,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      fmaxf(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
           h / 2) {
 
     /* Different types of flags. */
@@ -2023,7 +2023,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
   if (ci->ti_end_min > ti_current && cj->ti_end_min > ti_current) return;
 
   /* Get the cell dimensions. */
-  const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
+  const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
 
   /* Get the type of pair if not specified explicitly. */
   // if ( sid < 0 )
@@ -2032,7 +2032,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj, int sid,
 
   /* Recurse? */
   if (ci->split && cj->split &&
-      fmaxf(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+      max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
           h / 2) {
 
     /* Different types of flags. */
@@ -2336,11 +2336,11 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   else {
 
     /* Get the cell dimensions. */
-    const float h = fminf(ci->width[0], fminf(ci->width[1], ci->width[2]));
+    const float h = min(ci->width[0], min(ci->width[1], ci->width[2]));
 
     /* Recurse? */
     if (ci->split && cj->split &&
-        fmaxf(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
+        max(ci->h_max, cj->h_max) * kernel_gamma + ci->dx_max + cj->dx_max <
             h / 2) {
 
       /* Get the type of pair if not specified explicitly. */

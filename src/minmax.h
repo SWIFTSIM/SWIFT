@@ -24,11 +24,11 @@
  *
  * This macro evaluates its arguments exactly once.
  */
-#define min(a, b)           \
-  ({                        \
-    __typeof__(a) _a = (a); \
-    __typeof__(b) _b = (b); \
-    _a < _b ? _a : _b;      \
+#define min(a, b)                 \
+  ({                              \
+    const __typeof__(a) _a = (a); \
+    const __typeof__(b) _b = (b); \
+    _a < _b ? _a : _b;            \
   })
 
 /**
@@ -36,11 +36,11 @@
  *
  * This macro evaluates its arguments exactly once.
  */
-#define max(a, b)           \
-  ({                        \
-    __typeof__(a) _a = (a); \
-    __typeof__(b) _b = (b); \
-    _a > _b ? _a : _b;      \
+#define max(a, b)                 \
+  ({                              \
+    const __typeof__(a) _a = (a); \
+    const __typeof__(b) _b = (b); \
+    _a > _b ? _a : _b;            \
   })
 
 #endif /* SWIFT_MINMAX_H */

@@ -1959,7 +1959,7 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
 
       /* Too much particle movement? */
       if (t->tight &&
-          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
            ci->dx_max > space_maxreldx * ci->h_max ||
            cj->dx_max > space_maxreldx * cj->h_max))
         *rebuild_space = 1;
@@ -2031,7 +2031,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Too much particle movement? */
       if (t->tight &&
-          (fmaxf(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
            ci->dx_max > space_maxreldx * ci->h_max ||
            cj->dx_max > space_maxreldx * cj->h_max))
         *rebuild_space = 1;
@@ -2936,7 +2936,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->xparts = xparts_new;
 
   /* Re-link the gparts. */
-  part_relink_gparts(s->parts, s->nr_parts, 0);
+  if (s->nr_parts > 0 && s->nr_gparts > 0)
+    part_relink_gparts(s->parts, s->nr_parts, 0);
 
   /* Re-allocate the local gparts. */
   if (e->verbose)
@@ -2952,7 +2953,8 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   s->gparts = gparts_new;
 
   /* Re-link the parts. */
-  part_relink_parts(s->gparts, s->nr_gparts, s->parts);
+  if (s->nr_parts > 0 && s->nr_gparts > 0)
+    part_relink_parts(s->gparts, s->nr_gparts, s->parts);
 
 #ifdef SWIFT_DEBUG_CHECKS
 

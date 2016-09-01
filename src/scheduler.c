@@ -152,8 +152,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       if (ci->split) {
 
         /* Make a sub? */
-        if (scheduler_dosub && (ci->count * ci->count < space_subsize ||
-                                ci->gcount * ci->gcount < space_subsize)) {
+        if (scheduler_dosub &&
+               ((ci->count > 0 && ci->count < space_subsize / ci->count) ||
+                (ci->gcount > 0 && ci->gcount < space_subsize / ci->gcount))) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
@@ -917,7 +918,7 @@ void scheduler_reweight(struct scheduler *s) {
                        (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
           break;
         case task_type_self:
-          t->weight += 1 * t->ci->count * t->ci->count;
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_pair:
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
@@ -962,7 +963,7 @@ void scheduler_reweight(struct scheduler *s) {
   // clocks_from_ticks( getticks() - tic ), clocks_getunit());
 
   /* int min = tasks[0].weight, max = tasks[0].weight;
-  for ( k = 1 ; k < nr_tasks ; k++ )
+  for ( int k = 1 ; k < nr_tasks ; k++ )
       if ( tasks[k].weight < min )
           min = tasks[k].weight;
       else if ( tasks[k].weight > max )
