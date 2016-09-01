@@ -29,11 +29,7 @@
 #include "cell.h"
 #include "cycle.h"
 
-#ifdef WITH_MPI
 #define task_align 128
-#else
-#define task_align 64
-#endif
 
 /**
  * @brief The different task types.
