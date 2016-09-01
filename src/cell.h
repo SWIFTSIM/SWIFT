@@ -44,7 +44,7 @@ struct space;
  * The maximum was lowered by a further factor of 2 to be on the safe side.*/
 #define cell_max_tag (1 << 29)
 
-#define cell_align 32
+#define cell_align 128
 
 /* Global variables. */
 extern int cell_next_tag;
@@ -205,7 +205,7 @@ struct cell {
 
 #endif
 
-} __attribute__((aligned(cell_align)));
+} __attribute__((aligned(32)));
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \

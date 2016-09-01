@@ -28,7 +28,7 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-} __attribute__((aligned(xpart_align)));
+} __attribute__((aligned(32)));
 
 /* Data of a single particle. */
 struct part {
@@ -110,6 +110,6 @@ struct part {
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
-} __attribute__((aligned(part_align)));
+} __attribute__((aligned(32)));
 
 #endif /* SWIFT_GADGET2_HYDRO_PART_H */

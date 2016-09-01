@@ -47,7 +47,7 @@ struct xpart {
 
   float v_full[3]; /*!< Velocity at the last full step. */
 
-} __attribute__((aligned(xpart_align)));
+} __attribute__((aligned(32)));
 
 /**
  * @brief Particle fields for the SPH particles
@@ -120,6 +120,6 @@ struct part {
 
   struct gpart* gpart; /*!< Pointer to corresponding gravity part. */
 
-} __attribute__((aligned(part_align)));
+} __attribute__((aligned(32)));
 
 #endif /* SWIFT_MINIMAL_HYDRO_PART_H */

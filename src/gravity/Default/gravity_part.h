@@ -53,6 +53,6 @@ struct gpart {
      which this gpart is linked. */
   long long id_or_neg_offset;
 
-} __attribute__((aligned(gpart_align)));
+} __attribute__((aligned(32)));
 
 #endif /* SWIFT_DEFAULT_GRAVITY_PART_H */
