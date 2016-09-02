@@ -764,8 +764,9 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->unlock_tasks = &s->unlocks[offsets[k]];
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that there are no duplicate unlocks. */
-  /* for (int k = 0; k < s->nr_tasks; k++) {
+  for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
@@ -773,7 +774,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
           error("duplicate unlock!");
       }
     }
-  } */
+  }
+#endif
 
   /* Clean up. */
   free(counts);
@@ -862,9 +864,11 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
     /* Allocate the new lists. */
-    if ((s->tasks = (struct task *)malloc(sizeof(struct task) * size)) ==
-            NULL ||
-        (s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
+    if (posix_memalign((void *)&s->tasks, task_align,
+                       size * sizeof(struct task)) != 0)
+      error("Failed to allocate task array.");
+
+    if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
   }
 
