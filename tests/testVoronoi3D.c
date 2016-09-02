@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include "error.h"
 #include "hydro/Shadowswift/voronoi3d_algorithm.h"
+#include "part.h"
 
 /**
  * @brief Check if voronoi_volume_tetrahedron() works
@@ -114,6 +115,81 @@ void test_calculate_cell() {
   assert(cell.face_midpoints[5][2] == 0.5f);
 }
 
+void set_coordinates(struct part *p, double x, double y, double z,
+                     unsigned int id) {
+  p->x[0] = x;
+  p->x[1] = y;
+  p->x[2] = z;
+  p->id = id;
+  voronoi_cell_init(&p->cell, p->x);
+}
+
+void test_degeneracies() {
+  int idx = 0;
+  /* make a small cube */
+  struct part particles[100];
+  set_coordinates(&particles[idx], 0.1, 0.1, 0.1, idx);
+  idx++;
+  set_coordinates(&particles[idx], 0.2, 0.1, 0.1, idx);
+  idx++;
+  set_coordinates(&particles[idx], 0.1, 0.2, 0.1, idx);
+  idx++;
+  set_coordinates(&particles[idx], 0.1, 0.1, 0.2, idx);
+  idx++;
+  /* corner on cutting plane */
+  set_coordinates(&particles[idx], 0.2, 0.2, 0.2, idx);
+  idx++;
+  /* edge on cutting plane */
+  set_coordinates(&particles[idx], 0.2, 0.1, 0.2, idx);
+  idx++;
+  set_coordinates(&particles[idx], 0.2, 0.2, 0.1, idx);
+  idx++;
+  /* cutting plane is diagonal */
+  set_coordinates(&particles[idx], 0.05, 0.1, 0.05, idx);
+  idx++;
+  /* order 4 vertex (found after an impressive display of analytical geometry
+     of which I'm rather proud) */
+  float t = 0.5 / 0.0475;
+  set_coordinates(&particles[idx], 0.0075 * t + 0.1, 0.0075 * t + 0.1,
+                  0.1 - 0.0025 * t, idx);
+  idx++;
+  /* order 4 vertex with float edge */
+  t = 0.35 / 0.06125;
+  set_coordinates(&particles[idx], 0.0075 * t + 0.1, 0.015 * t + 0.1,
+                  0.1 - 0.005 * t, idx);
+  idx++;
+  /* plane that was already encountered */
+  t = 0.5 / 0.0475;
+  set_coordinates(&particles[idx], 0.0075 * t + 0.1, 0.0075 * t + 0.1,
+                  0.1 - 0.0025 * t, idx);
+  idx++;
+  /* no intersection (just to cover all code) */
+  set_coordinates(&particles[idx], 0.3, 0.3, 0.3, idx);
+  idx++;
+  set_coordinates(&particles[idx], 0.3, 0.1, 0.3, idx);
+  idx++;
+  /* order 5 vertex */
+  t = 0.04 / 0.0175;
+  set_coordinates(&particles[idx], 0.1 - 0.0075 * t, 0.1 + 0.00375 * t,
+                  0.1 + 0.00625 * t, idx);
+  idx++;
+  /* plane with order 5 vertex */
+  set_coordinates(&particles[idx], 0.1, 0.2, 0.1, idx);
+  idx++;
+  /* edge with order 5 vertex that looses an edge */
+  t = -0.1 / 0.095;
+  set_coordinates(&particles[idx], 0.1 - 0.015 * t, 0.1 + 0.015 * t,
+                  0.1 - 0.005 * t, idx);
+  idx++;
+  for (int i = 1; i < idx; i++) {
+    float dx[3];
+    dx[0] = particles[0].x[0] - particles[i].x[0];
+    dx[1] = particles[0].x[1] - particles[i].x[1];
+    dx[2] = particles[0].x[2] - particles[i].x[2];
+    voronoi_cell_interact(&particles[0].cell, dx, particles[i].id);
+  }
+}
+
 int main() {
 
   /* Check basic Voronoi cell functions */
@@ -174,6 +250,8 @@ int main() {
   } else {
     error("Neighbour not found!");
   }
+
+  test_degeneracies();
 
   return 0;
 }

@@ -389,7 +389,10 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       }
       us--;
       if (l >= u) {
-        error("Cell completely gone! This should not happen.");
+        error(
+            "Cell completely gone! This should not happen. (l >= u, l = %g, u "
+            "= %g)",
+            l, u);
       }
       ls = voronoi_get_edgeindex(c, up, us);
 
@@ -412,7 +415,10 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
             us++;
           }
           if (l >= u) {
-            error("Cell completely gone! This should not happen.");
+            error(
+                "Cell completely gone! This should not happen. (l >= u, l = "
+                "%g, u = %g)",
+                l, u);
           }
         }
         us--;
@@ -514,7 +520,11 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       while (lw != -1) {
         i++;
         if (i == c->orders[up]) {
-          error("Cell completely gone! This should not happen.");
+          error(
+              "Cell completely gone! This should not happen. (i == "
+              "c->order[up], i = %d, c->orders[up] = %d, up = %d)\n"
+              "dx: [%g %g %g]",
+              i, c->orders[up], up, dx[0], dx[1], dx[2]);
         }
         lp = voronoi_get_edge(c, up, i);
         lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,

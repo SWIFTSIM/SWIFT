@@ -261,7 +261,8 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param timeBase Conversion factor between integer and physical time.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float dt, int t0, int t1, double timeBase) {}
+    struct part* p, struct xpart* xp, float dt, int t0, int t1,
+    double timeBase) {}
 
 /**
  * @brief Set the particle acceleration after the flux loop

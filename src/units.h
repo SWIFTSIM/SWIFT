@@ -35,20 +35,19 @@
 struct UnitSystem {
 
   /*! Conversion factor from grams to internal mass units */
-  double UnitMass_in_cgs; 
+  double UnitMass_in_cgs;
 
   /*! Conversion factor from centimeters to internal length unit */
-  double UnitLength_in_cgs; 
+  double UnitLength_in_cgs;
 
   /*! Conversion factor from seconds to internal time units */
-  double UnitTime_in_cgs; 
+  double UnitTime_in_cgs;
 
   /*! Conversion factor from Ampere to internal current units */
-  double UnitCurrent_in_cgs; 
+  double UnitCurrent_in_cgs;
 
   /*! Conversion factor from Kelvins to internal temperature units. */
-  double UnitTemperature_in_cgs; 
-                                    
+  double UnitTemperature_in_cgs;
 };
 
 /**
