@@ -2264,7 +2264,7 @@ void engine_prepare(struct engine *e) {
   /* Run through the tasks and mark as skip or not. */
   int rebuild = (e->forcerebuild || engine_marktasks(e));
 
-/* Collect the values of rebuild from all nodes. */
+  /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
   int buff = 0;
   if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
@@ -2273,20 +2273,8 @@ void engine_prepare(struct engine *e) {
   rebuild = buff;
 #endif
 
-  /* Did this not go through? */
-  if (rebuild) {
-
-    /* First drift all particles to the current time */
-    e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 1, e);
-
-    /* Restore the default drifting policy */
-    e->drift_all = (e->policy & engine_policy_drift_all);
-
-    /* And now rebuild */
-    engine_rebuild(e);
-  }
+  /* And rebuild if necessary. */
+  if (rebuild) engine_rebuild(e);
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -2705,9 +2693,14 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Drift only the necessary particles */
+  /* Drift only the necessary particles, that all means all particles
+   * if we are about to repartition. */
+  e->drift_all = (e->forcerepart != REPART_NONE) || e->drift_all;
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
+
+  /* Restore the default drifting policy */
+  e->drift_all = (e->policy & engine_policy_drift_all);
 
   /* Re-distribute the particles amongst the nodes? */
   if (e->forcerepart != REPART_NONE) engine_repartition(e);
