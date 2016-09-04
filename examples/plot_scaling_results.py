@@ -48,7 +48,7 @@ threadList = []
 hexcols = ['#332288', '#88CCEE', '#44AA99', '#117733', '#999933', '#DDCC77',
            '#CC6677', '#882255', '#AA4499', '#661100', '#6699CC', '#AA4466',
            '#4477AA']
-linestyle = (hexcols[0],hexcols[1],hexcols[3],hexcols[5],hexcols[6])
+linestyle = (hexcols[0],hexcols[1],hexcols[3],hexcols[5],hexcols[6],hexcols[8])
 #cmdLine = './swift_fixdt -s -t 16 cosmoVolume.yml'
 #platform = 'KNL'
 
@@ -68,6 +68,9 @@ elif len(sys.argv) == 5:
 elif len(sys.argv) == 6:
   inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
   numOfSeries = 5
+elif len(sys.argv) == 7:
+  inputFileNames = (sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6])
+  numOfSeries = 6
 
 # Get the names of the branch, Git revision, hydro scheme and hydro kernel
 def parse_header(inputFile):
@@ -76,7 +79,8 @@ def parse_header(inputFile):
     for line in f:
       if 'Branch:' in line:
         s = line.split()
-        branch.append(s[2])
+        line = s[2:]
+        branch.append(" ".join(line))
       elif 'Revision:' in line:
         s = line.split() 
         revision.append(s[2])
@@ -176,7 +180,7 @@ def print_results(times,totalTime,parallelEff,version):
 
 def plot_results(times,totalTime,speedUp,parallelEff):
   
-  fig, axarr = plt.subplots(2, 2, figsize=(10,10), frameon=False)
+  fig, axarr = plt.subplots(2, 2, figsize=(10,10), frameon=True)
   speedUpPlot = axarr[0, 0]
   parallelEffPlot = axarr[0, 1]
   totalTimePlot = axarr[1, 0]
