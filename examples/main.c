@@ -84,8 +84,8 @@ void print_help_message() {
   printf("  %2s %8s %s\n", "-t", "{int}",
          "The number of threads to use on each MPI rank. Defaults to 1 if not "
          "specified.");
-  printf("  %2s %8s %s\n", "-v", "[12]",
-         "Increase the level of verbosity 1: MPI-rank 0 writes ");
+  printf("  %2s %8s %s\n", "-v", "[12]", "Increase the level of verbosity");
+  printf("  %2s %8s %s\n", "", "", "1: MPI-rank 0 writes ");
   printf("  %2s %8s %s\n", "", "", "2: All MPI-ranks write");
   printf("  %2s %8s %s\n", "-y", "{int}",
          "Time-step frequency at which task graphs are dumped");
