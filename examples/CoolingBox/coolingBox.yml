@@ -15,7 +15,7 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            uniformBox # Common part of the name of output files
+  basename:            coolingBox # Common part of the name of output files
   time_first:          0.         # Time of the first output (in internal units)
   delta_time:          1.0e-1       # Time difference between consecutive outputs (in internal units)
 
@@ -32,20 +32,13 @@ SPH:
   
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./uniformBox.hdf5     # The file to read
+  file_name:  ./coolingBox.hdf5     # The file to read
 
-
-  # External potential parameters
-PointMass:
-  position_x:      50.     # location of external point mass in internal units
-  position_y:      50.
-  position_z:      50.	
-  mass:            1e10     # mass of external point mass in internal units
-
-  # Cooling parameters (Creasey cooling) (always in cgs)
-Cooling:
-  lambda:                      0.0
-  minimum_temperature:         1.0e4
-  mean_molecular_weight:       0.59
-  hydrogen_mass_abundance:     0.75
-  cooling_tstep_mult:          1.0
+# Dimensionless pre-factor for the time-step condition
+LambdaCooling:
+  lambda:                      0.0    # Cooling rate (in cgs units)
+  minimum_temperature:         1.0e4  # Minimal temperature (Kelvin)
+  mean_molecular_weight:       0.59   # Mean molecular weight
+  hydrogen_mass_abundance:     0.75   # Hydrogen mass abundance (dimensionless)
+  cooling_tstep_mult:          1.0    # Dimensionless pre-factor for the time-step condition
+  

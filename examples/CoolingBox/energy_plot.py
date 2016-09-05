@@ -4,7 +4,7 @@ import h5py as h5
 import sys
 
 stats_filename = "./energy.txt"
-snap_filename = "uniformBox_000.hdf5"
+snap_filename = "coolingBox_000.hdf5"
 #plot_dir = "./"
 
 #some constants in cgs units
@@ -24,10 +24,10 @@ unit_mass = units.attrs["Unit mass in cgs (U_M)"]
 unit_length = units.attrs["Unit length in cgs (U_L)"]
 unit_time = units.attrs["Unit time in cgs (U_t)"]
 parameters = f["Parameters"]
-cooling_lambda = float(parameters.attrs["Cooling:lambda"])
-min_T = float(parameters.attrs["Cooling:minimum_temperature"])
-mu = float(parameters.attrs["Cooling:mean_molecular_weight"])
-X_H = float(parameters.attrs["Cooling:hydrogen_mass_abundance"])
+cooling_lambda = float(parameters.attrs["LambdaCooling:lambda"])
+min_T = float(parameters.attrs["LambdaCooling:minimum_temperature"])
+mu = float(parameters.attrs["LambdaCooling:mean_molecular_weight"])
+X_H = float(parameters.attrs["LambdaCooling:hydrogen_mass_abundance"])
 
 #get number of particles
 header = f["Header"]

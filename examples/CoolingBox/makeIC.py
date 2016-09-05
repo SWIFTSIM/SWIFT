@@ -33,7 +33,7 @@ rho = 3.2e3          # Density in code units (0.01 hydrogen atoms per cm^3)
 P = 4.5e6          # Pressure in code units (at 10^5K)
 gamma = 5./3.         # Gas adiabatic index
 eta = 1.2349          # 48 ngbs with cubic spline kernel
-fileName = "uniformBox.hdf5" 
+fileName = "coolingBox.hdf5" 
 
 #---------------------------------------------------
 numPart = L**3

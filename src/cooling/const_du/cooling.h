@@ -119,11 +119,11 @@ INLINE void cooling_init(const struct swift_params* parameter_file,
                          struct cooling_data* cooling) {
 
   cooling->cooling_rate =
-      parser_get_param_double(parameter_file, "Cooling:cooling_rate");
+      parser_get_param_double(parameter_file, "ConstCooling:cooling_rate");
   cooling->min_energy =
-      parser_get_param_double(parameter_file, "Cooling:min_energy");
-  cooling->cooling_tstep_mult =
-      parser_get_param_double(parameter_file, "Cooling:cooling_tstep_mult");
+      parser_get_param_double(parameter_file, "ConstCooling:min_energy");
+  cooling->cooling_tstep_mult = parser_get_param_double(
+      parameter_file, "ConstCooling:cooling_tstep_mult");
 }
 
 /**

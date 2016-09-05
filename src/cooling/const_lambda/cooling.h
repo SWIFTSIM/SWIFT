@@ -117,6 +117,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Calculate du_dt */
   const float du_dt = cooling_rate(phys_const, us, cooling, p);
+
   /* Intergrate cooling equation, but enforce energy floor */
   float u_new;
   if (u_old + du_dt * dt > u_floor) {
@@ -127,13 +128,13 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Update the internal energy */
   hydro_set_internal_energy(p, u_new);
-  // const float u_new_test = hydro_get_internal_energy(p, 0.f);
-  /* if (-(u_new_test - u_old)/u_old > 1.0e-6){ */
-  /* printf("Particle has successfully cooled: u_old = %g , du_dt = %g , dt = %g
-   * ,  du_dt*dt = %g, u_old + du_dt*dt = %g, u_new =
-   * %g\n",u_old,du_dt,dt,du_dt*dt,u_new,u_new_test); */
-  /*   exit(-1); */
-  /* } */
+
+  /* if (-(u_new_test - u_old) / u_old > 1.0e-6) */
+  /*   error( */
+  /*       "Particle has not successfully cooled: u_old = %g , du_dt = %g , dt =
+   * " */
+  /*       "%g, du_dt*dt = %g, u_old + du_dt*dt = %g, u_new = %g\n", */
+  /*       u_old, du_dt, dt, du_dt * dt, u_new, u_new_test); */
 }
 
 /**
@@ -171,15 +172,16 @@ INLINE void cooling_init(const struct swift_params* parameter_file,
                          const struct phys_const* phys_const,
                          struct cooling_data* cooling) {
 
-  cooling->lambda = parser_get_param_double(parameter_file, "Cooling:lambda");
-  cooling->min_temperature =
-      parser_get_param_double(parameter_file, "Cooling:minimum_temperature");
+  cooling->lambda =
+      parser_get_param_double(parameter_file, "LambdaCooling:lambda");
+  cooling->min_temperature = parser_get_param_double(
+      parameter_file, "LambdaCooling:minimum_temperature");
   cooling->hydrogen_mass_abundance = parser_get_param_double(
-      parameter_file, "Cooling:hydrogen_mass_abundance");
-  cooling->mean_molecular_weight =
-      parser_get_param_double(parameter_file, "Cooling:mean_molecular_weight");
-  cooling->cooling_tstep_mult =
-      parser_get_param_double(parameter_file, "Cooling:cooling_tstep_mult");
+      parameter_file, "LambdaCooling:hydrogen_mass_abundance");
+  cooling->mean_molecular_weight = parser_get_param_double(
+      parameter_file, "LambdaCooling:mean_molecular_weight");
+  cooling->cooling_tstep_mult = parser_get_param_double(
+      parameter_file, "LambdaCooling:cooling_tstep_mult");
 
   /*convert minimum temperature into minimum internal energy*/
   const float u_floor =
