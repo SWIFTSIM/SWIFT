@@ -72,7 +72,7 @@ nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_h
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
 	         riemann.h \
 		 riemann/riemann_hllc.h riemann/riemann_trrs.h riemann/riemann_exact.h \
-                 cooling/const/cooling.h
+                 cooling/const_du/cooling.h cooling/const_lambda/cooling.h
 
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)

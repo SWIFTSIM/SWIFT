@@ -5,6 +5,8 @@ echo "Generating initial conditions for the uniform box example..."
 
 python makeIC.py 10
 
-../swift -s -C -t 16 uniformBox.yml
+../swift -s -t 16 uniformBox.yml
 
 python energy_plot.py 0
+
+python add_energy_column

@@ -31,10 +31,10 @@
 #include "const.h"
 
 /* Import the right cooling definition */
-#if defined(COOLING_CONST_COOLING)
-#include "./cooling/const/cooling.h"
-#elif defined(COOLING_CREASEY_COOLING)
-#include "./cooling/creasey/cooling.h"
+#if defined(COOLING_CONST_DU)
+#include "./cooling/const_du/cooling.h"
+#elif defined(COOLING_CONST_LAMBDA)
+#include "./cooling/const_lambda/cooling.h"
 #elif defined(COOLING_GRACKLE_COOLING)
 #include "./cooling/grackle/cooling.h"
 #else

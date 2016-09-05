@@ -43,9 +43,8 @@ PointMass:
   mass:            1e10     # mass of external point mass in internal units
 
   # Cooling parameters (Creasey cooling) (always in cgs)
-
-CreaseyCooling:
-  Lambda:                      1.0e-22
+Cooling:
+  lambda:                      0.0
   minimum_temperature:         1.0e4
   mean_molecular_weight:       0.59
   hydrogen_mass_abundance:     0.75
