@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
 
   /* Get particle properties */
   /* Density */
-  const float rho = p->rho;
+  const float rho = hydro_get_density(p);
   /* Get cooling function properties */
   const float X_H = cooling->hydrogen_mass_abundance;
   /* lambda should always be set in cgs units */
