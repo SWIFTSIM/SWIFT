@@ -18,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_CONST_DU
-#define SWIFT_COOLING_CONST_DU
+#ifndef SWIFT_COOLING_CONST_DU_H
+#define SWIFT_COOLING_CONST_DU_H
 
 /**
  * @file src/cooling/const/cooling.h
@@ -118,7 +118,8 @@ INLINE void cooling_init(const struct swift_params* parameter_file,
                          const struct phys_const* phys_const,
                          struct cooling_data* cooling) {
 
-  cooling->cooling_rate = parser_get_param_double(parameter_file, "Cooling:cooling_rate");
+  cooling->cooling_rate =
+      parser_get_param_double(parameter_file, "Cooling:cooling_rate");
   cooling->min_energy =
       parser_get_param_double(parameter_file, "Cooling:min_energy");
   cooling->cooling_tstep_mult =
@@ -136,4 +137,4 @@ INLINE void cooling_print(const struct cooling_data* cooling) {
           cooling->cooling_rate, cooling->min_energy);
 }
 
-#endif /* SWIFT_CONST_COOLING_H */
+#endif /* SWIFT_COOLING_CONST_DU_H */

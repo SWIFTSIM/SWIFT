@@ -35,7 +35,7 @@
 #include "./cooling/const_du/cooling.h"
 #elif defined(COOLING_CONST_LAMBDA)
 #include "./cooling/const_lambda/cooling.h"
-#elif defined(COOLING_GRACKLE_COOLING)
+#elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling.h"
 #else
 #error "Invalid choice of cooling function."

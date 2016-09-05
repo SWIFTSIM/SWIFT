@@ -160,7 +160,8 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Calculate change in entropy from cooling
+ * @brief Calculate change in thermal state of particles induced
+ * by radiative cooling and heating.
  *
  * @param r runner task
  * @param c cell
@@ -1330,9 +1331,9 @@ void *runner_main(void *data) {
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
           break;
-      case task_type_cooling:
-	runner_do_cooling(r, t->ci, 1);
-	break;
+        case task_type_cooling:
+          runner_do_cooling(r, t->ci, 1);
+          break;
         default:
           error("Unknown task type.");
       }
