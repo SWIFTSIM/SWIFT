@@ -133,8 +133,8 @@ def parse_files():
     parse_header(file_list[0])
     
     version.append(branch[i] + " " + revision[i] + "\n" + hydro_scheme[i] + 
-                   "\n" + hydro_kernel[i] + r", $N_{ngb}$=" + hydro_neighbours[i] + 
-                   r", $\eta$=" + hydro_eta[i])                  
+                   "\n" + hydro_kernel[i] + r", $N_{ngb}=%d$"%float(hydro_neighbours[i]) + 
+                   r", $\eta=%.3f$"%float(hydro_eta[i]))
     times.append([])
     totalTime.append([])
     speedUp.append([])
@@ -222,7 +222,7 @@ def plot_results(times,totalTime,speedUp,parallelEff):
   totalTimePlot.set_xlim([0.9, 10**(np.floor(np.log10(threadList[i][-1]))+0.5)])
   totalTimePlot.set_ylim([10**np.floor(np.log10(np.min(totalTime)*0.6)), 1.2*10**np.floor(np.log10(np.max(totalTime) * 1.5)+1)])
   
-  totalTimePlot.legend(bbox_to_anchor=(1.14, 1), loc=2, borderaxespad=0.,prop={'size':12})
+  totalTimePlot.legend(bbox_to_anchor=(1.14, 0.97), loc=2, borderaxespad=0.,prop={'size':12}, frameon=False)
   emptyPlot.axis('off')
   
   for i, txt in enumerate(threadList[0]):
