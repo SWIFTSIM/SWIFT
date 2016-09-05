@@ -432,9 +432,13 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
       // if lp is also above the plane, replace up by lp and repeat the process
       // until lp is below the plane
       while ((*lw) == 1) {
+        /* PATH 1.4 */
         *u = (*l);
         *up = (*lp);
         *us = 0;
+        /* no while: PATH 1.4.0 */
+        /* somewhere in while: PATH 1.4.1 */
+        /* last valid option of while: PATH 1.4.2 */
         while ((*us) < (*ls) && (*l) >= (*u)) {
           *lp = voronoi_get_edge(c, (*up), (*us));
           *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
@@ -443,6 +447,9 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         }
         if ((*l) >= (*u)) {
           (*us)++;
+          /* no while: PATH 1.4.3 */
+          /* somewhere in while: PATH 1.4.4 */
+          /* last valid option of while: PATH 1.4.5 */
           while ((*us) < c->orders[(*up)] && (*l) >= (*u)) {
             *lp = voronoi_get_edge(c, (*up), (*us));
             *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
@@ -450,6 +457,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
             (*us)++;
           }
           if ((*l) >= (*u)) {
+            /* PATH 1.4.6 */
             message(
                 "Cell completely gone! This should not happen. (l >= u, l = "
                 "%g, u = %g)",
@@ -463,6 +471,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
       // if lp is too close to the plane, replace up by lp and proceed to
       // complicated setup
       if ((*lw) == 0) {
+        /* PATH 1.5 */
         *up = (*lp);
         complicated = 1;
       }
@@ -503,10 +512,14 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
 
       // repeat the above process until qp is closer or above the plane
       while ((*qw) == -1) {
+        /* PATH 2.4 */
         *qs = voronoi_get_edgeindex(c, (*up), (*us));
         *u = (*q);
         *up = (*qp);
         *us = 0;
+        /* no while: PATH 2.4.0 */
+        /* somewhere in while: PATH 2.4.1 */
+        /* last valid option of while: 2.4.2 */
         while ((*us) < (*qs) && (*u) >= (*q)) {
           *qp = voronoi_get_edge(c, (*up), (*us));
           *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
@@ -515,6 +528,9 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         }
         if ((*u) >= (*q)) {
           (*us)++;
+          /* no while: PATH 2.4.3 */
+          /* somewhere in while: PATH 2.4.4 */
+          /* last valid option of while: PATH 2.4.5 */
           while ((*us) < c->orders[(*up)] && (*u) >= (*q)) {
             *qp = voronoi_get_edge(c, (*up), (*us));
             *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
@@ -522,6 +538,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
             (*us)++;
           }
           if ((*u) >= (*q)) {
+            /* PATH 2.4.6 */
             /* cell unaltered */
             return 0;
           }
@@ -537,6 +554,7 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         *us = voronoi_get_edgeindex(c, (*lp), (*ls));
         *u = (*q);
       } else {
+        /* PATH 2.5 */
         // too close to call: go to complicated setup
         *up = (*qp);
         complicated = 1;

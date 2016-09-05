@@ -272,6 +272,349 @@ void test_paths() {
     assert(result == -1);
   }
 
+  /* PATH 1.4.0 */
+  // first vertex is above the plane, second vertex is closer and third vertex
+  // lies below
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.75f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.edges[0] = 1;
+    cell.edges[3] = 2;
+    cell.edges[6] = 1;
+    cell.edgeindices[0] = 2;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[6] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 1);
+    assert(us == 0);
+    assert(u == 0.125f);
+    assert(lp == 2);
+    assert(ls == 0);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.4.1 */
+  // first vertex is above the plane, second vertex is closer and fourth vertex
+  // is below
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.75f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = -1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.offsets[3] = 9;
+    cell.edges[0] = 1;
+    cell.edges[3] = 2;
+    cell.edges[4] = 3;
+    cell.edges[5] = 0;
+    cell.edges[6] = 1;
+    cell.edges[9] = 1;
+    // this is the only difference between PATH 1.4.1 and PATH 1.4.2
+    cell.edgeindices[0] = 3;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[4] = 0;
+    cell.edgeindices[9] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 1);
+    assert(us == 1);
+    assert(u == 0.125f);
+    assert(lp == 3);
+    assert(ls == 0);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.4.2 */
+  // first vertex is above the plane, second is closer, fourth is below
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.75f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = -1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.offsets[3] = 9;
+    cell.edges[0] = 1;
+    cell.edges[3] = 2;
+    cell.edges[4] = 3;
+    cell.edges[5] = 0;
+    cell.edges[6] = 1;
+    cell.edges[9] = 1;
+    // this is the only difference between PATH 1.4.1 and PATH 1.4.2
+    cell.edgeindices[0] = 2;
+    cell.edgeindices[3] = 1;
+    cell.edgeindices[4] = 0;
+    cell.edgeindices[9] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 1);
+    assert(us == 1);
+    assert(u == 0.125f);
+    assert(lp == 3);
+    assert(ls == 0);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.4.3 */
+  // first vertex is above the plane, second is closer, third is below
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.75f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.edges[0] = 1;
+    // this is the difference between PATH 1.4.0 and this path
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edges[6] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[6] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 1);
+    assert(us == 1);
+    assert(u == 0.125f);
+    assert(lp == 2);
+    assert(ls == 0);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.4.4 */
+  // first vertex is above the plane, second is closer, fourth is below
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.75f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = -1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 4;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 7;
+    cell.offsets[3] = 10;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edges[5] = 3;
+    cell.edges[7] = 1;
+    cell.edges[10] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[5] = 0;
+    cell.edgeindices[10] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 1);
+    assert(us == 2);
+    assert(u == 0.125f);
+    assert(lp == 3);
+    assert(ls == 0);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.4.5 */
+  // same as 1.4.4, but with an order 3 second vertex
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.75f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = -1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.offsets[3] = 9;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edges[5] = 3;
+    cell.edges[6] = 1;
+    cell.edges[9] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[5] = 0;
+    cell.edgeindices[9] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 1);
+    assert(us == 2);
+    assert(u == 0.125f);
+    assert(lp == 3);
+    assert(ls == 0);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.4.6 */
+  // first vertex is above the plane, second is closer and is the closest
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.75f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 2;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 5;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == -1);
+  }
+
+  /* PATH 1.5 */
+  // first vertex is above the plane, second vertex is too close to call
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.nvert = 2;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 2);
+    assert(up == 1);
+  }
+
   /* PATH 2.0 */
   // the first vertex is below the plane and its first edge is above the plane
   {
@@ -307,6 +650,87 @@ void test_paths() {
     assert(l == -0.75f);
   }
 
+  /* PATH 2.1 */
+  // the first vertex is below the plane and its second edge is above the plane
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -2.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.edges[0] = 1;
+    cell.edges[1] = 2;
+    cell.edges[6] = 0;
+    cell.edgeindices[1] = 0;
+    cell.edgeindices[6] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 2);
+    assert(us == 0);
+    assert(uw == -1);
+    assert(u == 0.25f);
+    assert(lp == 0);
+    assert(ls == 1);
+    assert(qw == 1);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 2.2 */
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -2.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 2;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 2;
+    cell.offsets[2] = 5;
+    cell.edges[0] = 1;
+    cell.edges[1] = 2;
+    cell.edges[5] = 0;
+    cell.edgeindices[1] = 0;
+    cell.edgeindices[5] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 2);
+    assert(us == 0);
+    assert(uw == -1);
+    assert(u == 0.25f);
+    assert(lp == 0);
+    assert(ls == 1);
+    assert(qw == 1);
+    assert(l == -0.75f);
+  }
+
   /* PATH 2.3 */
   // the first vertex is below the plane and is the closest vertex to the plane
   {
@@ -335,6 +759,348 @@ void test_paths() {
     int result = voronoi_intersect_find_closest_vertex(
         &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
     assert(result == 0);
+  }
+
+  /* PATH 2.4.0 */
+  // first vertex is below the plane, second is closer and third is above
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.edges[0] = 1;
+    cell.edges[3] = 2;
+    cell.edges[5] = 0;
+    cell.edges[6] = 1;
+    cell.edgeindices[0] = 2;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[5] = 0;
+    cell.edgeindices[6] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 2);
+    assert(u == 0.25f);
+    assert(lp == 1);
+    assert(l == -0.5f);
+  }
+
+  /* PATH 2.4.1 */
+  // first vertex is below, second is closer and fourth is above
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = 1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 4;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 7;
+    cell.offsets[3] = 10;
+    cell.edges[0] = 1;
+    cell.edges[3] = 2;
+    cell.edges[4] = 3;
+    cell.edges[6] = 0;
+    cell.edges[10] = 1;
+    cell.edgeindices[0] = 3;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[4] = 0;
+    cell.edgeindices[6] = 0;
+    cell.edgeindices[10] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 3);
+    assert(us == 0);
+    assert(u == 0.25f);
+    assert(lp == 1);
+    assert(ls == 1);
+    assert(l == -0.5f);
+  }
+
+  /* PATH 2.4.2 */
+  // first vertex is below, second is closer and fourth is above
+  // same as 2.4.1, but with order 3 second vertex
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = 1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.offsets[3] = 9;
+    cell.edges[0] = 1;
+    cell.edges[3] = 2;
+    cell.edges[4] = 3;
+    cell.edges[5] = 0;
+    cell.edges[9] = 1;
+    cell.edgeindices[0] = 3;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[4] = 0;
+    cell.edgeindices[5] = 0;
+    cell.edgeindices[9] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 3);
+    assert(us == 0);
+    assert(u == 0.25f);
+    assert(lp == 1);
+    assert(ls == 1);
+    assert(l == -0.5f);
+  }
+
+  /* PATH 2.4.3 */
+  // first vertex is below, second is closer, third is above
+  // first vertex is first edge of second
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edges[6] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[4] = 0;
+    cell.edgeindices[6] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 2);
+    assert(us == 0);
+    assert(u == 0.25f);
+    assert(lp == 1);
+    assert(ls == 1);
+    assert(l == -0.5f);
+  }
+
+  /* PATH 2.4.4 */
+  // first vertex is below, second is closer, fourth is above
+  // first vertex is first edge of second
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = 1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 4;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 7;
+    cell.offsets[3] = 10;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edges[5] = 3;
+    cell.edges[10] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[5] = 0;
+    cell.edgeindices[10] = 2;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 3);
+    assert(us == 0);
+    assert(u == 0.25f);
+    assert(lp == 1);
+    assert(ls == 2);
+    assert(l == -0.5f);
+  }
+
+  /* PATH 2.4.5 */
+  // first vertex is below, second is closer, fourth is above
+  // first vertex is first edge of second
+  // second vertex is order 3 vertex (and not order 4 like 2.4.4)
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = 1.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.orders[3] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.offsets[3] = 9;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edges[5] = 3;
+    cell.edges[9] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[5] = 0;
+    cell.edgeindices[9] = 2;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 3);
+    assert(us == 0);
+    assert(u == 0.25f);
+    assert(lp == 1);
+    assert(ls == 2);
+    assert(l == -0.5f);
+  }
+
+  /* PATH 2.4.6 */
+  // first vertex is below, second is closer and is closest
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 2;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 5;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edges[4] = 2;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    cell.edgeindices[4] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 0);
+  }
+
+  /* PATH 2.5 */
+  // first vertex is below, second is too close to call
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 0.5f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.nvert = 2;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.edges[0] = 1;
+    cell.edges[3] = 0;
+    cell.edgeindices[0] = 0;
+    cell.edgeindices[3] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 2);
   }
 }
 
