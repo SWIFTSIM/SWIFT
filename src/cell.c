@@ -580,7 +580,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
   }
 
   /* Re-link the gparts. */
-  part_relink_gparts(parts, count, parts_offset);
+  if (count > 0 && gcount > 0) part_relink_gparts(parts, count, parts_offset);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that _all_ the parts have been assigned to a cell. */
@@ -675,7 +675,8 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
   }
 
   /* Re-link the parts. */
-  part_relink_parts(gparts, gcount, parts - parts_offset);
+  if (count > 0 && gcount > 0)
+    part_relink_parts(gparts, gcount, parts - parts_offset);
 }
 
 /**

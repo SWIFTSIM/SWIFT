@@ -58,6 +58,18 @@
 #include "timers.h"
 #include "timestep.h"
 
+/**
+ * @brief  Entry in a list of sorted indices.
+ */
+struct entry {
+
+  /*! Distance on the axis */
+  float d;
+
+  /*! Particle index */
+  int i;
+};
+
 /* Orientation of the cell pairs */
 const double runner_shift[13][3] = {
     {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
@@ -811,9 +823,8 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
         /* Recurse. */
         runner_do_drift(cp, e);
 
-        /* Collect */
-        dx_max = fmaxf(dx_max, cp->dx_max);
-        h_max = fmaxf(h_max, cp->h_max);
+        dx_max = max(dx_max, cp->dx_max);
+        h_max = max(h_max, cp->h_max);
         mass += cp->mass;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
@@ -1141,7 +1152,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
       // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
-      h_max = fmaxf(h_max, parts[k].h);
+      h_max = max(h_max, parts[k].h);
     }
     for (size_t k = 0; k < nr_gparts; k++) {
       const int ti_end = gparts[k].ti_end;
@@ -1159,7 +1170,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
         runner_do_recv_cell(r, c->progeny[k], 0);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
-        h_max = fmaxf(h_max, c->progeny[k]->h_max);
+        h_max = max(h_max, c->progeny[k]->h_max);
       }
     }
   }
