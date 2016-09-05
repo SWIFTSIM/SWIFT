@@ -608,168 +608,20 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   dx[2] = -0.5f * odx[2];
   r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-  // test the first vertex: uw = -1 if it is below the plane, 1 if it is above
-  // 0 if it is very close to the plane, and things become complicated...
-  uw = voronoi_test_vertex(&c->vertices[0], dx, r2, &u, teststack,
-                           &teststack_size);
-  up = 0;
-  complicated = 0;
-  if (uw == 0) {
-
-    /* PATH 0 */
+  int result = voronoi_intersect_find_closest_vertex(
+      c, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+  if (result < 0) {
+    error("Error while searching intersected edge!");
+  }
+  if (!result) {
+    /* no intersection */
+    return;
+  }
+  if (result == 2) {
     complicated = 1;
-
   } else {
-
-    // two options: either the vertex is above or below the plane
-
-    if (uw == 1) {
-
-      /* PATH 1 */
-
-      // above: try to find a vertex below
-      // we test all edges of the current vertex stored in up (vertex 0) until
-      // we either find one below the plane or closer to the plane
-      lp = voronoi_get_edge(c, up, 0);
-      lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                               &teststack_size);
-      us = 1;
-      /* Not in while: PATH 1.0 */
-      /* somewhere in while: PATH 1.1 */
-      /* last valid option of while: PATH 1.2 */
-      while (us < c->orders[up] && l >= u) {
-        lp = voronoi_get_edge(c, up, us);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-        us++;
-      }
-      // we increased us too much, correct this
-      us--;
-      if (l >= u) {
-        /* PATH 1.3 */
-        // up is the closest vertex to the plane, but is above the plane
-        // since the entire cell is convex, up is the closest vertex of all
-        // vertices of the cell
-        // this means the entire cell is supposedly above the plane, which is
-        // impossible
-        error(
-            "Cell completely gone! This should not happen. (l >= u, l = %g, u "
-            "= %g)",
-            l, u);
-      }
-      // we know that lp is closer to the plane or below the plane
-      // now find the index of the edge up-lp in the edge list of lp
-      ls = voronoi_get_edgeindex(c, up, us);
-
-      // if lp is also above the plane, replace up by lp and repeat the process
-      // until lp is below the plane
-      while (lw == 1) {
-        u = l;
-        up = lp;
-        us = 0;
-        while (us < ls && l >= u) {
-          lp = voronoi_get_edge(c, up, us);
-          lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                   &teststack_size);
-          us++;
-        }
-        if (l >= u) {
-          us++;
-          while (us < c->orders[up] && l >= u) {
-            lp = voronoi_get_edge(c, up, us);
-            lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l,
-                                     teststack, &teststack_size);
-            us++;
-          }
-          if (l >= u) {
-            error(
-                "Cell completely gone! This should not happen. (l >= u, l = "
-                "%g, u = %g)",
-                l, u);
-          }
-        }
-        us--;
-        ls = voronoi_get_edgeindex(c, up, us);
-      }
-      // if lp is too close to the plane, replace up by lp and proceed to
-      // complicated setup
-      if (lw == 0) {
-        up = lp;
-        complicated = 1;
-      }
-
-    } else { /* if(uw == 1) */
-
-      // below: try to find a vertex above
-      // we test all edges of the current vertex stored in up (vertex 0) until
-      // we either find one above the plane or closer to the plane
-
-      qp = voronoi_get_edge(c, up, 0);
-      qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q, teststack,
-                               &teststack_size);
-      us = 1;
-      while (us < c->orders[up] && u >= q) {
-        qp = voronoi_get_edge(c, up, us);
-        qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q, teststack,
-                                 &teststack_size);
-        us++;
-      }
-      if (u >= q) {
-        // up is the closest vertex to the plane and is below the plane
-        // since the cell is convex, up is the closest vertex of all vertices of
-        // the cell
-        // this means that the entire cell is below the plane
-        /* cell unaltered */
-        return;
-      } else {
-        // the last increase in the loop pushed us too far, correct this
-        us--;
-      }
-
-      // repeat the above process until qp is closer or above the plane
-      while (qw == -1) {
-        qs = voronoi_get_edgeindex(c, up, us);
-        u = q;
-        up = qp;
-        us = 0;
-        while (us < qs && u >= q) {
-          qp = voronoi_get_edge(c, up, us);
-          qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q, teststack,
-                                   &teststack_size);
-          us++;
-        }
-        if (u >= q) {
-          us++;
-          while (us < c->orders[up] && u >= q) {
-            qp = voronoi_get_edge(c, up, us);
-            qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q,
-                                     teststack, &teststack_size);
-            us++;
-          }
-          if (u >= q) {
-            /* cell unaltered */
-            return;
-          }
-        }
-        us--;
-      }
-      if (qw == 1) {
-        // qp is above the plane: initialize lp to up and replace up by qp
-        lp = up;
-        ls = us;
-        l = u;
-        up = qp;
-        us = voronoi_get_edgeindex(c, lp, ls);
-        u = q;
-      } else {
-        // too close to call: go to complicated setup
-        up = qp;
-        complicated = 1;
-      }
-
-    } /* if(uw == 1) */
-
-  } /* if(uw == 0) */
+    complicated = 0;
+  }
 
   int vindex = -1;
   int visitflags[VORONOI3D_MAXNUMVERT];
