@@ -16,37 +16,39 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_H
-#define SWIFT_COOLING_H
-
-/**
- * @file src/cooling.h
- * @brief Branches between the different cooling functions.
- */
 
 /* Config parameters. */
 #include "../config.h"
 
-/* Local headers. */
-#include "const.h"
+/* This object's header. */
+#include "cooling.h"
 
-/* Import the right cooling definition */
-#if defined(COOLING_CONST_DU)
-#include "./cooling/const_du/cooling.h"
-#elif defined(COOLING_CONST_LAMBDA)
-#include "./cooling/const_lambda/cooling.h"
-#elif defined(COOLING_GRACKLE)
-#include "./cooling/grackle/cooling.h"
-#else
-#error "Invalid choice of cooling function."
-#endif
-
-/* Common functions */
+/**
+ * @brief Initialises the cooling properties.
+ *
+ * Calls cooling_init_backend for the chosen cooling function.
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param us The current internal system of units.
+ * @param phys_const The physical constants in internal units.
+ * @param cooling The cooling properties to initialize
+ */
 void cooling_init(const struct swift_params* parameter_file,
                   const struct UnitSystem* us,
                   const struct phys_const* phys_const,
-                  struct cooling_data* cooling);
+                  struct cooling_data* cooling) {
 
-void cooling_print(const struct cooling_data* cooling);
+  cooling_init_backend(parameter_file, us, phys_const, cooling);
+}
 
-#endif /* SWIFT_COOLING_H */
+/**
+ * @brief Prints the properties of the cooling model to stdout.
+ *
+ * Calls cooling_print_backend for the chosen cooling function.
+ *
+ * @param cooling The properties of the cooling function.
+ */
+void cooling_print(const struct cooling_data* cooling) {
+
+  cooling_print_backend(cooling);
+}

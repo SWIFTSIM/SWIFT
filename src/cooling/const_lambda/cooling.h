@@ -167,10 +167,9 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  * @param phys_const The physical constants in internal units.
  * @param cooling The cooling properties to initialize
  */
-INLINE void cooling_init(const struct swift_params* parameter_file,
-                         const struct UnitSystem* us,
-                         const struct phys_const* phys_const,
-                         struct cooling_data* cooling) {
+static INLINE void cooling_init_backend(
+    const struct swift_params* parameter_file, const struct UnitSystem* us,
+    const struct phys_const* phys_const, struct cooling_data* cooling) {
 
   cooling->lambda =
       parser_get_param_double(parameter_file, "LambdaCooling:lambda");
@@ -200,7 +199,7 @@ INLINE void cooling_init(const struct swift_params* parameter_file,
  *
  * @param cooling The properties of the cooling function.
  */
-INLINE void cooling_print(const struct cooling_data* cooling) {
+static INLINE void cooling_print_backend(const struct cooling_data* cooling) {
 
   message(
       "Cooling function is 'Constant lambda' with "

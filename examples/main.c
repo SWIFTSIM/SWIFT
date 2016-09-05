@@ -442,7 +442,7 @@ int main(int argc, char *argv[]) {
   struct cooling_data cooling;
   if (with_cooling) cooling_init(params, &us, &prog_const, &cooling);
   if (with_cooling && myrank == 0) cooling_print(&cooling);
-  
+
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_drift_all) engine_policies |= engine_policy_drift_all;

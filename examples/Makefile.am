@@ -68,6 +68,7 @@ swift_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS
 EXTRA_DIST = BigCosmoVolume/makeIC.py \
 	     BigPerturbedBox/makeIC_fcc.py \
 	     CosmoVolume/cosmoVolume.yml CosmoVolume/getIC.sh CosmoVolume/run.sh \
+	     CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/makeIC.py CoolingBox/run.sh \
 	     EAGLE_12/eagle_12.yml EAGLE_12/getIC.sh EAGLE_12/README EAGLE_12/run.sh \
 	     EAGLE_25/eagle_25.yml EAGLE_25/getIC.sh EAGLE_25/README EAGLE_25/run.sh \
 	     EAGLE_50/eagle_50.yml EAGLE_50/getIC.sh EAGLE_50/README EAGLE_50/run.sh \
