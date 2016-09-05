@@ -330,17 +330,6 @@ int main(int argc, char *argv[]) {
   struct hydro_props hydro_properties;
   hydro_props_init(&hydro_properties, params);
 
-  /* Initialise the external potential properties */
-  struct external_potential potential;
-  if (with_external_gravity)
-    potential_init(params, &prog_const, &us, &potential);
-  if (with_external_gravity && myrank == 0) potential_print(&potential);
-
-  /* Initialise the cooling function properties */
-  struct cooling_data cooling;
-  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling);
-  if (with_cooling && myrank == 0) cooling_print(&cooling);
-
   /* Read particles and space information from (GADGET) ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
@@ -443,6 +432,17 @@ int main(int argc, char *argv[]) {
     message("nr of cells at depth %i is %i.", data[0], data[1]);
   }
 
+  /* Initialise the external potential properties */
+  struct external_potential potential;
+  if (with_external_gravity)
+    potential_init(params, &prog_const, &us, &potential);
+  if (with_external_gravity && myrank == 0) potential_print(&potential);
+
+  /* Initialise the cooling function properties */
+  struct cooling_data cooling;
+  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling);
+  if (with_cooling && myrank == 0) cooling_print(&cooling);
+  
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_drift_all) engine_policies |= engine_policy_drift_all;
