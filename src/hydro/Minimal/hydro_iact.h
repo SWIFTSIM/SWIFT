@@ -34,6 +34,7 @@
  */
 
 #include "adiabatic_index.h"
+#include "minmax.h"
 
 /**
  * @brief Density loop
@@ -161,7 +162,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = min(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
@@ -212,8 +213,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
-  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
+  pj->force.v_sig = max(pj->force.v_sig, v_sig);
 }
 
 /**
@@ -272,7 +273,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = min(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
@@ -315,7 +316,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
+  pi->force.v_sig = max(pi->force.v_sig, v_sig);
 }
 
 /**

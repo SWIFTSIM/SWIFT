@@ -37,7 +37,6 @@
 #include "space.h"
 
 /* Some constants. */
-#define space_maxdepth 10
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
@@ -53,84 +52,85 @@ extern int space_subsize;
 /* Map shift vector to sortlist. */
 extern const int sortlistID[27];
 
-/* Entry in a list of sorted indices. */
-struct entry {
-  float d;
-  int i;
-};
-
-/* The space in which the cells reside. */
+/**
+ * @brief The space in which the cells and particles reside.
+ */
 struct space {
 
-  /* Spatial extent. */
+  /*! Spatial extent. */
   double dim[3];
 
-  /* Cell widths. */
-  double width[3], iwidth[3];
-
-  /* The minimum cell width. */
-  double cell_min;
-
-  /* Current maximum displacement for particles. */
-  float dx_max;
-
-  /* Number of cells. */
-  int nr_cells, tot_cells;
-
-  /* Space dimensions in number of cells. */
-  int maxdepth, cdim[3];
-
-  /* The (level 0) cells themselves. */
-  struct cell *cells;
-
-  /* Buffer of unused cells. */
-  struct cell *cells_new;
-
-  /* The particle data (cells have pointers to this). */
-  struct part *parts;
-  struct xpart *xparts;
-  struct gpart *gparts;
-
-  /* The total number of parts in the space. */
-  size_t nr_parts, size_parts;
-  size_t nr_gparts, size_gparts;
-
-  /* Is the space periodic? */
+  /*! Is the space periodic? */
   int periodic;
 
-  /* Are we doing gravity? */
+  /*! Are we doing gravity? */
   int gravity;
 
-  /* General-purpose lock for this space. */
+  /*! Width of the top-level cells. */
+  double width[3];
+
+  /*! Inverse of the top-level cell width */
+  double iwidth[3];
+
+  /*! The minimum top-level cell width allowed. */
+  double cell_min;
+
+  /*! Current maximum displacement for particles. */
+  float dx_max;
+
+  /*! Space dimensions in number of top-cells. */
+  int cdim[3];
+
+  /*! Maximal depth reached by the tree */
+  int maxdepth;
+
+  /*! Number of top-level cells. */
+  int nr_cells;
+
+  /*! Total number of cells (top- and sub-) */
+  int tot_cells;
+
+  /*! The (level 0) cells themselves. */
+  struct cell *cells_top;
+
+  /*! Buffer of unused cells for the sub-cells. */
+  struct cell *cells_sub;
+
+  /*! The total number of parts in the space. */
+  size_t nr_parts, size_parts;
+
+  /*! The total number of g-parts in the space. */
+  size_t nr_gparts, size_gparts;
+
+  /*! The particle data (cells have pointers to this). */
+  struct part *parts;
+
+  /*! The extended particle data (cells have pointers to this). */
+  struct xpart *xparts;
+
+  /*! The g-particle data (cells have pointers to this). */
+  struct gpart *gparts;
+
+  /*! General-purpose lock for this space. */
   swift_lock_type lock;
 
-  /* Number of queues in the system. */
+  /*! Number of queues in the system. */
   int nr_queues;
 
-  /* The associated engine. */
+  /*! The associated engine. */
   struct engine *e;
 
-  /* Buffers for parts that we will receive from foreign cells. */
+#ifdef WITH_MPI
+
+  /*! Buffers for parts that we will receive from foreign cells. */
   struct part *parts_foreign;
   size_t nr_parts_foreign, size_parts_foreign;
+
+  /*! Buffers for g-parts that we will receive from foreign cells. */
   struct gpart *gparts_foreign;
   size_t nr_gparts_foreign, size_gparts_foreign;
-};
 
-/* Interval stack necessary for parallel particle sorting. */
-struct qstack {
-  volatile ptrdiff_t i, j;
-  volatile int min, max;
-  volatile int ready;
-};
-struct parallel_sort {
-  struct part *parts;
-  struct gpart *gparts;
-  struct xpart *xparts;
-  int *ind;
-  struct qstack *stack;
-  unsigned int stack_size;
-  volatile unsigned int first, last, waiting;
+#endif
 };
 
 /* function prototypes. */

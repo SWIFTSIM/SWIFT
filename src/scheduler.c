@@ -152,8 +152,9 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       if (ci->split) {
 
         /* Make a sub? */
-        if (scheduler_dosub && (ci->count * ci->count < space_subsize ||
-                                ci->gcount * ci->gcount < space_subsize)) {
+        if (scheduler_dosub &&
+            ((ci->count > 0 && ci->count < space_subsize / ci->count) ||
+             (ci->gcount > 0 && ci->gcount < space_subsize / ci->gcount))) {
 
           /* convert to a self-subtask. */
           t->type = task_type_sub_self;
@@ -763,8 +764,9 @@ void scheduler_set_unlocks(struct scheduler *s) {
     t->unlock_tasks = &s->unlocks[offsets[k]];
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
   /* Verify that there are no duplicate unlocks. */
-  /* for (int k = 0; k < s->nr_tasks; k++) {
+  for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
@@ -772,7 +774,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
           error("duplicate unlock!");
       }
     }
-  } */
+  }
+#endif
 
   /* Clean up. */
   free(counts);
@@ -861,9 +864,11 @@ void scheduler_reset(struct scheduler *s, int size) {
     if (s->tasks_ind != NULL) free(s->tasks_ind);
 
     /* Allocate the new lists. */
-    if ((s->tasks = (struct task *)malloc(sizeof(struct task) * size)) ==
-            NULL ||
-        (s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
+    if (posix_memalign((void *)&s->tasks, task_align,
+                       size * sizeof(struct task)) != 0)
+      error("Failed to allocate task array.");
+
+    if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
   }
 
@@ -917,7 +922,7 @@ void scheduler_reweight(struct scheduler *s) {
                        (sizeof(int) * 8 - intrinsics_clz(t->ci->count));
           break;
         case task_type_self:
-          t->weight += 1 * t->ci->count * t->ci->count;
+          t->weight += 1 * wscale * t->ci->count * t->ci->count;
           break;
         case task_type_pair:
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
@@ -962,7 +967,7 @@ void scheduler_reweight(struct scheduler *s) {
   // clocks_from_ticks( getticks() - tic ), clocks_getunit());
 
   /* int min = tasks[0].weight, max = tasks[0].weight;
-  for ( k = 1 ; k < nr_tasks ; k++ )
+  for ( int k = 1 ; k < nr_tasks ; k++ )
       if ( tasks[k].weight < min )
           min = tasks[k].weight;
       else if ( tasks[k].weight > max )
@@ -1104,10 +1109,20 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_pair:
       case task_type_sub_pair:
-        qid = t->ci->super->owner;
-        if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count)
-          qid = t->cj->super->owner;
+        if (t->subtype == task_subtype_grav) {
+
+          qid = t->ci->gsuper->owner;
+          if (qid < 0 ||
+              s->queues[qid].count > s->queues[t->cj->gsuper->owner].count)
+            qid = t->cj->gsuper->owner;
+
+        } else {
+
+          qid = t->ci->super->owner;
+          if (qid < 0 ||
+              s->queues[qid].count > s->queues[t->cj->super->owner].count)
+            qid = t->cj->super->owner;
+        }
         break;
       case task_type_recv:
 #ifdef WITH_MPI

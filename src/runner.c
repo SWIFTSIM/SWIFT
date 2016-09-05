@@ -57,6 +57,18 @@
 #include "timers.h"
 #include "timestep.h"
 
+/**
+ * @brief  Entry in a list of sorted indices.
+ */
+struct entry {
+
+  /*! Distance on the axis */
+  float d;
+
+  /*! Particle index */
+  int i;
+};
+
 /* Orientation of the cell pairs */
 const double runner_shift[13][3] = {
     {5.773502691896258e-01, 5.773502691896258e-01, 5.773502691896258e-01},
@@ -113,7 +125,11 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   const struct external_potential *potential = r->e->external_potential;
   const struct phys_const *constants = r->e->physical_constants;
   const double time = r->e->time;
+
   TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
 
   /* Recurse? */
   if (c->split) {
@@ -391,6 +407,9 @@ void runner_do_init(struct runner *r, struct cell *c, int timer) {
 
   TIMER_TIC;
 
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -443,6 +462,9 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c) {
   const int count = c->count;
   const int ti_current = r->e->ti_current;
 
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
+
   /* Recurse? */
   if (c->split) {
     for (int k = 0; k < 8; k++)
@@ -492,6 +514,9 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
       r->e->hydro_properties->max_smoothing_iterations;
 
   TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) return;
 
   /* Recurse? */
   if (c->split) {
@@ -641,15 +666,22 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 static void runner_do_drift(struct cell *c, struct engine *e) {
 
   const double timeBase = e->timeBase;
-  const double dt = (e->ti_current - e->ti_old) * timeBase;
-  const int ti_old = e->ti_old;
+  const int ti_old = c->ti_old;
   const int ti_current = e->ti_current;
-
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
-  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
 
+  /* Do we need to drift ? */
+  if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
+
+  /* Check that we are actually going to move forward. */
+  if (ti_current == ti_old) return;
+
+  /* Drift from the last time the cell was drifted to the current time */
+  const double dt = (ti_current - ti_old) * timeBase;
+
+  float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0};
   double ang_mom[3] = {0.0, 0.0, 0.0};
@@ -742,8 +774,8 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
         /* Recurse. */
         runner_do_drift(cp, e);
 
-        dx_max = fmaxf(dx_max, cp->dx_max);
-        h_max = fmaxf(h_max, cp->h_max);
+        dx_max = max(dx_max, cp->dx_max);
+        h_max = max(h_max, cp->h_max);
         mass += cp->mass;
         e_kin += cp->e_kin;
         e_int += cp->e_int;
@@ -772,6 +804,9 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   c->ang_mom[0] = ang_mom[0];
   c->ang_mom[1] = ang_mom[1];
   c->ang_mom[2] = ang_mom[2];
+
+  /* Update the time of the last drift */
+  c->ti_old = ti_current;
 }
 
 /**
@@ -928,14 +963,21 @@ void runner_do_kick(struct runner *r, struct cell *c, int timer) {
   struct gpart *restrict gparts = c->gparts;
   const double const_G = r->e->physical_constants->const_newton_G;
 
-  int updated = 0, g_updated = 0;
-  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
+  TIMER_TIC;
 
-  TIMER_TIC
+  /* Anything to do here? */
+  if (c->ti_end_min > ti_current) {
+    c->updated = 0;
+    c->g_updated = 0;
+    return;
+  }
 
 #ifdef TASK_VERBOSE
   OUT;
 #endif
+
+  int updated = 0, g_updated = 0;
+  int ti_end_min = max_nr_timesteps, ti_end_max = 0;
 
   /* No children? */
   if (!c->split) {
@@ -1061,7 +1103,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
       // if(ti_end < ti_current) error("Received invalid particle !");
       ti_end_min = min(ti_end_min, ti_end);
       ti_end_max = max(ti_end_max, ti_end);
-      h_max = fmaxf(h_max, parts[k].h);
+      h_max = max(h_max, parts[k].h);
     }
     for (size_t k = 0; k < nr_gparts; k++) {
       const int ti_end = gparts[k].ti_end;
@@ -1079,7 +1121,7 @@ void runner_do_recv_cell(struct runner *r, struct cell *c, int timer) {
         runner_do_recv_cell(r, c->progeny[k], 0);
         ti_end_min = min(ti_end_min, c->progeny[k]->ti_end_min);
         ti_end_max = max(ti_end_max, c->progeny[k]->ti_end_max);
-        h_max = fmaxf(h_max, c->progeny[k]->h_max);
+        h_max = max(h_max, c->progeny[k]->h_max);
       }
     }
   }

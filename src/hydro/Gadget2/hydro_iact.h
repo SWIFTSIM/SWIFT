@@ -20,6 +20,8 @@
 #ifndef SWIFT_GADGET2_HYDRO_IACT_H
 #define SWIFT_GADGET2_HYDRO_IACT_H
 
+#include "minmax.h"
+
 /**
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
@@ -641,8 +643,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     }
     pi[k]->force.h_dt -= pih_dt.f[k];
     pj[k]->force.h_dt -= pjh_dt.f[k];
-    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
-    pj[k]->force.v_sig = fmaxf(pj[k]->force.v_sig, v_sig.f[k]);
+    pi[k]->force.v_sig = max(pi[k]->force.v_sig, v_sig.f[k]);
+    pj[k]->force.v_sig = max(pj[k]->force.v_sig, v_sig.f[k]);
     pi[k]->entropy_dt += entropy_dt.f[k] * mj.f[k];
     pj[k]->entropy_dt += entropy_dt.f[k] * mi.f[k];
   }
@@ -900,7 +902,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   for (k = 0; k < VEC_SIZE; k++) {
     for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
     pi[k]->force.h_dt -= pih_dt.f[k];
-    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
+    pi[k]->force.v_sig = max(pi[k]->force.v_sig, v_sig.f[k]);
     pi[k]->entropy_dt += entropy_dt.f[k];
   }
 

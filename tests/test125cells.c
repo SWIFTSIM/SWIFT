@@ -574,7 +574,7 @@ int main(int argc, char *argv[]) {
 
   /* Start the test */
   ticks time = 0;
-  for (size_t i = 0; i < runs; ++i) {
+  for (size_t n = 0; n < runs; ++n) {
 
     const ticks tic = getticks();
 
@@ -652,7 +652,7 @@ int main(int argc, char *argv[]) {
     time += toc - tic;
 
     /* Dump if necessary */
-    if (i == 0) {
+    if (n == 0) {
       sprintf(outputFileName, "swift_dopair_125_%s.dat",
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, solution, 0);
