@@ -63,7 +63,7 @@ DomainDecomposition:
   initial_grid_z:    10
   repartition_type:   b     # (Optional) The re-decomposition strategy ("n", "b", "v", "e" or "x").
  
-# Parameters related to external potentials
+# Parameters related to external potentials --------------------------------------------
   
 # Point mass external potentials
 PointMass:
@@ -73,6 +73,7 @@ PointMass:
   mass:            1e10     # mass of external point mass (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
 
+# Isothermal potential parameters
 IsothermalPotential:
   position_x:      100.     # Location of centre of isothermal potential (internal units)
   position_y:      100.
@@ -80,9 +81,27 @@ IsothermalPotential:
   vrot:            200.     # Rotation speed of isothermal potential (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
 
+# Disk-patch potential parameters
 Disk-PatchPotential:
   surface_density: 10.      # Surface density of the disk (internal units)
   scale_height:    100.     # Scale height of the disk (internal units)
   z_disk:          200.     # Disk height (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   growth_time:     5.       # (Optional) Time for the disk to grow to its final size (multiple of the dynamical time)
+
+# Parameters related to cooling function  ----------------------------------------------
+
+# Constant du/dt cooling function
+ConstCooling:
+  cooling_rate: 1.          # Cooling rate (du/dt) (internal units)
+  min_energy:   1.          # Minimal internal energy per unit mass (internal units)
+  cooling_tstep_mult: 1.    # Dimensionless pre-factor for the time-step condition
+
+# Constant lambda cooling function
+LambdaCooling:
+  lambda:                      2.0   # Cooling rate (in cgs units)
+  minimum_temperature:         1.0e4 # Minimal temperature (Kelvin)
+  mean_molecular_weight:       0.59  # Mean molecular weight
+  hydrogen_mass_abundance:     0.75  # Hydrogen mass abundance (dimensionless)
+  cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition
+
