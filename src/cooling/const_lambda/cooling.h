@@ -142,7 +142,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  * @param cooling The #cooling_data used in the run.
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
- * @param Pointer to the particle data.
+ * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct cooling_data* cooling,
