@@ -115,6 +115,229 @@ void test_calculate_cell() {
   assert(cell.face_midpoints[5][2] == 0.5f);
 }
 
+void test_paths() {
+  float u, l, q;
+  int up, us, uw, lp, ls, lw, qp, qs, qw;
+  float r2, dx[3];
+  struct voronoi_cell cell;
+
+  /* PATH 1.0 */
+  // the first vertex is above the cutting plane and its first edge is below the
+  // plane
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -1.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.nvert = 2;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.edges[0] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edges[3] = 0;
+    cell.edgeindices[3] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 0);
+    assert(us == 0);
+    assert(uw == 1);
+    assert(u == 0.25f);
+    assert(lp == 1);
+    assert(ls == 0);
+    assert(lw == -1);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.1 */
+  // the first vertex is above the cutting plane and its second edge is below
+  // the plane
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 2.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.offsets[2] = 6;
+    cell.edges[0] = 1;
+    cell.edges[1] = 2;
+    cell.edges[6] = 0;
+    cell.edgeindices[1] = 0;
+    cell.edgeindices[6] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 0);
+    assert(us == 1);
+    assert(uw == 1);
+    assert(u == 0.25f);
+    assert(lp == 2);
+    assert(ls == 0);
+    assert(lw == -1);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.2 */
+  // the first vertex is above the cutting plane and its second and last edge
+  // is below the plane
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 2.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -1.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.nvert = 3;
+    cell.orders[0] = 2;
+    cell.orders[1] = 3;
+    cell.orders[2] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 2;
+    cell.offsets[2] = 5;
+    cell.edges[0] = 1;
+    cell.edges[1] = 2;
+    cell.edges[6] = 0;
+    cell.edgeindices[1] = 0;
+    cell.edgeindices[5] = 1;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 0);
+    assert(us == 1);
+    assert(uw == 1);
+    assert(u == 0.25f);
+    assert(lp == 2);
+    assert(ls == 0);
+    assert(lw == -1);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 1.3 */
+  // the first vertex is above the cutting plane and is the closest vertex to
+  // the plane. The code should crash.
+  {
+    cell.vertices[0] = 1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 2.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = 2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = 2.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.offsets[0] = 0;
+    cell.edges[0] = 1;
+    cell.edges[1] = 2;
+    cell.edges[2] = 3;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == -1);
+  }
+
+  /* PATH 2.0 */
+  // the first vertex is below the plane and its first edge is above the plane
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = 1.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.nvert = 2;
+    cell.orders[0] = 3;
+    cell.orders[1] = 3;
+    cell.offsets[0] = 0;
+    cell.offsets[1] = 3;
+    cell.edges[0] = 1;
+    cell.edgeindices[0] = 0;
+    cell.edges[3] = 0;
+    cell.edgeindices[3] = 0;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 1);
+    assert(up == 1);
+    assert(us == 0);
+    assert(uw == -1);
+    assert(u == 0.25f);
+    assert(lp == 0);
+    assert(ls == 0);
+    assert(qw == 1);
+    assert(l == -0.75f);
+  }
+
+  /* PATH 2.3 */
+  // the first vertex is below the plane and is the closest vertex to the plane
+  {
+    cell.vertices[0] = -1.0f;
+    cell.vertices[1] = 0.0f;
+    cell.vertices[2] = 0.0f;
+    cell.vertices[3] = -2.0f;
+    cell.vertices[4] = 0.0f;
+    cell.vertices[5] = 0.0f;
+    cell.vertices[6] = -2.0f;
+    cell.vertices[7] = 0.0f;
+    cell.vertices[8] = 0.0f;
+    cell.vertices[9] = -2.0f;
+    cell.vertices[10] = 0.0f;
+    cell.vertices[11] = 0.0f;
+    cell.nvert = 4;
+    cell.orders[0] = 3;
+    cell.offsets[0] = 0;
+    cell.edges[0] = 1;
+    cell.edges[1] = 2;
+    cell.edges[2] = 3;
+    dx[0] = 0.5f;
+    dx[1] = 0.0f;
+    dx[2] = 0.0f;
+    r2 = 0.25f;
+    int result = voronoi_intersect_find_closest_vertex(
+        &cell, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
+    assert(result == 0);
+  }
+}
+
 void set_coordinates(struct part *p, double x, double y, double z,
                      unsigned int id) {
   p->x[0] = x;
@@ -196,6 +419,9 @@ int main() {
   test_voronoi_volume_tetrahedron();
   test_voronoi_centroid_tetrahedron();
   test_calculate_cell();
+
+  /* Test the different paths */
+  test_paths();
 
   /* Create a Voronoi cell */
   double x[3] = {0.5f, 0.5f, 0.5f};
