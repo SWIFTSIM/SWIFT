@@ -2256,8 +2256,11 @@ void engine_rebuild(struct engine *e) {
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
+ * @param nodrift Whether to drift particles before rebuilding or not. Will
+ *                not be necessary if all particles have already been
+ *                drifted (before repartitioning for instance).
  */
-void engine_prepare(struct engine *e) {
+void engine_prepare(struct engine *e, int nodrift) {
 
   TIMER_TIC;
 
@@ -2274,7 +2277,20 @@ void engine_prepare(struct engine *e) {
 #endif
 
   /* And rebuild if necessary. */
-  if (rebuild) engine_rebuild(e);
+  if (rebuild) {
+
+    /* Drift all particles to the current time if needed. */
+    if (!nodrift) {
+      e->drift_all = 1;
+      threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
+                     e->s->nr_cells, sizeof(struct cell), 1, e);
+
+      /* Restore the default drifting policy */
+      e->drift_all = (e->policy & engine_policy_drift_all);
+    }
+
+    engine_rebuild(e);
+  }
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
@@ -2553,7 +2569,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Running initialisation fake time-step.");
 
-  engine_prepare(e);
+  engine_prepare(e, 1);
 
   engine_marktasks(e);
 
@@ -2695,18 +2711,19 @@ void engine_step(struct engine *e) {
 
   /* Drift only the necessary particles, that all means all particles
    * if we are about to repartition. */
-  e->drift_all = (e->forcerepart != REPART_NONE) || e->drift_all;
+  int repart = (e->forcerepart != REPART_NONE);
+  e->drift_all = repart || e->drift_all;
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
-  /* Restore the default drifting policy */
-  e->drift_all = (e->policy & engine_policy_drift_all);
-
   /* Re-distribute the particles amongst the nodes? */
-  if (e->forcerepart != REPART_NONE) engine_repartition(e);
+  if (repart) engine_repartition(e);
 
   /* Prepare the space. */
-  engine_prepare(e);
+  engine_prepare(e, e->drift_all);
+
+  /* Restore the default drifting policy */
+  e->drift_all = (e->policy & engine_policy_drift_all);
 
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0, submask = 0;
