@@ -1988,27 +1988,6 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Mark any sort tasks as initially skipped.
- *        Threadpool mapper function.
- *
- * @param map_data pointer to the tasks
- * @param num_elements number of tasks
- * @param extra_data unused
- */
-void engine_marktasks_sorts_mapper(void *map_data, int num_elements,
-                                   void *extra_data) {
-  /* Unpack the arguments. */
-  struct task *tasks = (struct task *)map_data;
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-    if (t->type == task_type_sort) {
-      t->flags = 0;
-      t->skip = 1;
-    }
-  }
-}
-
-/**
  * @brief Mark tasks to be skipped and set the sort flags accordingly.
  *        Threadpool mapper function.
  *
@@ -2164,11 +2143,6 @@ int engine_marktasks(struct engine *e) {
 
     /* Multiple-timestep case */
   } else {
-
-    /* Run through the tasks and mark as skip or not. */
-    int extra_data[2] = {e->ti_current, rebuild_space};
-    threadpool_map(&e->threadpool, engine_marktasks_sorts_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 10000, NULL);
 
 #ifdef WITH_MPI
     if (e->policy & engine_policy_mpi) {
