@@ -53,6 +53,7 @@ enum task_types {
   task_type_grav_mm,
   task_type_grav_up,
   task_type_grav_external,
+  task_type_cooling,
   task_type_count
 } __attribute__((packed));
 

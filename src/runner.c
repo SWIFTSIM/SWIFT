@@ -42,6 +42,7 @@
 #include "atomic.h"
 #include "cell.h"
 #include "const.h"
+#include "cooling.h"
 #include "debug.h"
 #include "drift.h"
 #include "engine.h"
@@ -156,6 +157,55 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
   }
 
   if (timer) TIMER_TOC(timer_dograv_external);
+}
+
+/**
+ * @brief Calculate change in thermal state of particles induced
+ * by radiative cooling and heating.
+ *
+ * @param r runner task
+ * @param c cell
+ * @param timer 1 if the time is to be recorded.
+ */
+void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
+
+  struct part *restrict parts = c->parts;
+  const int count = c->count;
+  const int ti_current = r->e->ti_current;
+  const struct cooling_data *cooling = r->e->cooling_data;
+  const struct phys_const *constants = r->e->physical_constants;
+  const struct UnitSystem *us = r->e->internalUnits;
+  const double timeBase = r->e->timeBase;
+
+  TIMER_TIC;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) runner_do_cooling(r, c->progeny[k], 0);
+    return;
+  }
+
+#ifdef TASK_VERBOSE
+  OUT;
+#endif
+
+  /* Loop over the parts in this cell. */
+  for (int i = 0; i < count; i++) {
+
+    /* Get a direct pointer on the part. */
+    struct part *restrict p = &parts[i];
+
+    /* Kick has already updated ti_end, so need to check ti_begin */
+    if (p->ti_begin == ti_current) {
+
+      const double dt = (p->ti_end - p->ti_begin) * timeBase;
+
+      cooling_cool_part(constants, us, cooling, p, dt);
+    }
+  }
+
+  if (timer) TIMER_TOC(timer_do_cooling);
 }
 
 /**
@@ -1280,6 +1330,9 @@ void *runner_main(void *data) {
           break;
         case task_type_grav_external:
           runner_do_grav_external(r, t->ci, 1);
+          break;
+        case task_type_cooling:
+          runner_do_cooling(r, t->ci, 1);
           break;
         default:
           error("Unknown task type.");

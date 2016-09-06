@@ -38,6 +38,7 @@
 
 /* Includes. */
 #include "clocks.h"
+#include "cooling.h"
 #include "parser.h"
 #include "partition.h"
 #include "potentials.h"
@@ -62,7 +63,8 @@ enum engine_policy {
   engine_policy_self_gravity = (1 << 9),
   engine_policy_external_gravity = (1 << 10),
   engine_policy_cosmology = (1 << 11),
-  engine_policy_drift_all = (1 << 12)
+  engine_policy_drift_all = (1 << 12),
+  engine_policy_cooling = (1 << 13),
 };
 
 extern const char *engine_policy_names[];
@@ -202,6 +204,9 @@ struct engine {
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
+  /* Properties of the cooling scheme */
+  const struct cooling_data *cooling_data;
+
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
 };
@@ -217,7 +222,8 @@ void engine_init(struct engine *e, struct space *s,
                  const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
-                 const struct external_potential *potential);
+                 const struct external_potential *potential,
+                 const struct cooling_data *cooling);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e, int nodrift);
