@@ -696,7 +696,7 @@ struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
   t->wait = wait;
   t->ci = ci;
   t->cj = cj;
-  t->skip = 0;
+  t->skip = 1; /* Mark tasks as skip by default. */
   t->tight = tight;
   t->implicit = 0;
   t->weight = 0;
@@ -1220,6 +1220,9 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
+  
+  /* Mark the task as skip. */
+  t->skip = 1;
 
   /* Return the next best task. Note that we currently do not
      implement anything that does this, as getting it to respect
