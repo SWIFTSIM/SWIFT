@@ -63,9 +63,9 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 
 #Units
 grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 3.08e21 
+grp.attrs["Unit length in cgs (U_L)"] = 3.0857e21 
 grp.attrs["Unit mass in cgs (U_M)"] = 2.0e33 
-grp.attrs["Unit time in cgs (U_t)"] = 3.08e16 
+grp.attrs["Unit time in cgs (U_t)"] = 3.0857e16 
 grp.attrs["Unit current in cgs (U_I)"] = 1.
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
