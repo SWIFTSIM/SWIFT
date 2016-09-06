@@ -66,7 +66,7 @@ enum engine_policy {
   engine_policy_cosmology = (1 << 11),
   engine_policy_drift_all = (1 << 12),
   engine_policy_cooling = (1 << 13),
-  engine_policy_sourceterms = (1 << 12)
+  engine_policy_sourceterms = (1 << 14)
 };
 
 extern const char *engine_policy_names[];

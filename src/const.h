@@ -40,8 +40,8 @@
 #define const_isothermal_internal_energy 20.2615290634f
 
 /* Dimensionality of the problem */
-//#define HYDRO_DIMENSION_3D
-#define HYDRO_DIMENSION_2D
+#define HYDRO_DIMENSION_3D
+//#define HYDRO_DIMENSION_2D
 //#define HYDRO_DIMENSION_1D
 
 /* Hydrodynamical adiabatic index. */
@@ -64,9 +64,9 @@
 
 /* SPH variant to use */
 //#define MINIMAL_SPH
-//#define GADGET2_SPH
+#define GADGET2_SPH
 //#define DEFAULT_SPH
-#define GIZMO_SPH
+//#define GIZMO_SPH
 
 /* Riemann solver to use (GIZMO_SPH only) */
 #define RIEMANN_SOLVER_EXACT
@@ -90,9 +90,9 @@
 #define const_gravity_eta 0.025f
 
 /* External gravity properties */
-//#define EXTERNAL_POTENTIAL_POINTMASS
+#define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-#define EXTERNAL_POTENTIAL_DISK_PATCH
+//#define EXTERNAL_POTENTIAL_DISK_PATCH
 
 /* Source terms */
 #define SN_FEEDBACK
