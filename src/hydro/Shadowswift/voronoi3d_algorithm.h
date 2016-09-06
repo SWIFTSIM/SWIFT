@@ -30,7 +30,7 @@
 
 /* Tolerance parameter used to decide when to use more precise geometric
    criteria */
-#define VORONOI3D_TOLERANCE 1.e-5f
+#define VORONOI3D_TOLERANCE 1.e-6f
 
 /* Box boundary flags used to signal cells neighbouring the box boundary
    These values correspond to the top range of possible 64-bit integers, and
@@ -48,12 +48,68 @@
 /* We should make sure that this box is either so large a particle can never
    fall outside (by using FLT_MAX if that works), or is initialized to be larger
    than the (periodic) simulation box */
-#define VORONOI3D_BOX_ANCHOR_X -1.0f
-#define VORONOI3D_BOX_ANCHOR_Y -1.0f
-#define VORONOI3D_BOX_ANCHOR_Z -1.0f
-#define VORONOI3D_BOX_SIDE_X 3.0f
-#define VORONOI3D_BOX_SIDE_Y 3.0f
-#define VORONOI3D_BOX_SIDE_Z 3.0f
+#define VORONOI3D_BOX_ANCHOR_X -2.0f
+#define VORONOI3D_BOX_ANCHOR_Y -2.0f
+#define VORONOI3D_BOX_ANCHOR_Z -2.0f
+#define VORONOI3D_BOX_SIDE_X 6.0f
+#define VORONOI3D_BOX_SIDE_Y 6.0f
+#define VORONOI3D_BOX_SIDE_Z 6.0f
+
+__attribute__((always_inline)) INLINE static float voronoi_get_box_volume() {
+  return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y * VORONOI3D_BOX_SIDE_Z;
+}
+
+__attribute__((always_inline)) INLINE static void voronoi_get_box_centroid(
+    float *box_centroid) {
+  box_centroid[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+  box_centroid[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+  box_centroid[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+}
+
+__attribute__((always_inline)) INLINE static float voronoi_get_box_face(
+    unsigned long long id, float *face_midpoint) {
+
+  if (id == VORONOI3D_BOX_FRONT) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Z;
+  }
+  if (id == VORONOI3D_BOX_BACK) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = VORONOI3D_BOX_ANCHOR_Y + VORONOI3D_BOX_SIDE_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Z;
+  }
+
+  if (id == VORONOI3D_BOX_BOTTOM) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+  if (id == VORONOI3D_BOX_TOP) {
+    face_midpoint[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = VORONOI3D_BOX_ANCHOR_Z + VORONOI3D_BOX_SIDE_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+
+  if (id == VORONOI3D_BOX_LEFT) {
+    face_midpoint[0] = VORONOI3D_BOX_ANCHOR_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+  if (id == VORONOI3D_BOX_RIGHT) {
+    face_midpoint[0] = VORONOI3D_BOX_ANCHOR_X + VORONOI3D_BOX_SIDE_X;
+    face_midpoint[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
+    face_midpoint[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+    return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y;
+  }
+
+  return 0.0f;
+}
 
 /*******************************************************************************
  * 3D specific methods
@@ -61,6 +117,26 @@
  * Most of these methods are based on the source code of voro++:
  *  http://math.lbl.gov/voro++/
  ******************************************************************************/
+
+__attribute__((always_inline)) INLINE void voronoi_print_gnuplot_c(
+    struct voronoi_cell *c) {
+
+  int i, j, v;
+  double *x = c->x;
+
+  fprintf(stderr, "%g\t%g\t%g\n\n", x[0], x[1], x[2]);
+
+  for (i = 0; i < c->nvert; i++) {
+    for (j = 0; j < c->orders[i]; j++) {
+      v = c->edges[c->offsets[i] + j];
+      fprintf(stderr, "%g\t%g\t%g\n", c->vertices[3 * i + 0] + x[0],
+              c->vertices[3 * i + 1] + x[1], c->vertices[3 * i + 2] + x[2]);
+      fprintf(stderr, "%g\t%g\t%g\n\n", c->vertices[3 * v + 0] + x[0],
+              c->vertices[3 * v + 1] + x[1], c->vertices[3 * v + 2] + x[2]);
+    }
+  }
+  fprintf(stderr, "\n");
+}
 
 /**
  * @brief Print the contents of a 3D Voronoi cell
@@ -611,6 +687,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   int result = voronoi_intersect_find_closest_vertex(
       c, dx, r2, &u, &up, &us, &uw, &l, &lp, &ls, &lw, &q, &qp, &qs, &qw);
   if (result < 0) {
+    voronoi_print_gnuplot_c(c);
     error("Error while searching intersected edge!");
   }
   if (!result) {
@@ -625,7 +702,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
   int vindex = -1;
   int visitflags[VORONOI3D_MAXNUMVERT];
-  int dstack[VORONOI3D_MAXNUMVERT];
+  int dstack[2 * VORONOI3D_MAXNUMVERT];
   int dstack_size = 1;
   float r = 0.0f;
   int cs = -1, rp = -1;
@@ -639,11 +716,18 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
   if (complicated) {
 
+    // the search routine detected a vertex very close to the plane
+    // the index of this vertex is stored in up
+    // we proceed by checking the edges of this vertex
+
     lp = voronoi_get_edge(c, up, 0);
     lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                              &teststack_size);
 
+    // the first edge can be below, above or on the plane
     if (lw != -1) {
+
+      // above or on the plane: we try to find one below the plane
 
       rp = lw;
       i = 1;
@@ -653,11 +737,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       while (lw != -1) {
         i++;
         if (i == c->orders[up]) {
+          // none of the edges of up is below the plane. Since the cell is
+          // supposed to be convex, this means the entire cell is above or on
+          // the plane. This should not happen...
+          voronoi_print_gnuplot_c(c);
           error(
               "Cell completely gone! This should not happen. (i == "
               "c->order[up], i = %d, c->orders[up] = %d, up = %d)\n"
-              "dx: [%g %g %g]",
-              i, c->orders[up], up, dx[0], dx[1], dx[2]);
+              "dx: [%g %g %g]\nv[up]: [%g %g %g]\nx: [%g %g %g]",
+              i, c->orders[up], up, dx[0], dx[1], dx[2], c->vertices[3 * up],
+              c->vertices[3 * up + 1], c->vertices[3 * up + 2], c->x[0],
+              c->x[1], c->x[2]);
         }
         lp = voronoi_get_edge(c, up, i);
         lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,

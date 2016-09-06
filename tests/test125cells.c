@@ -197,7 +197,7 @@ void reset_particles(struct cell *c, enum velocity_field vel,
     set_energy_state(p, press, size, density);
 
 #if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
-    float volume = p->mass / density;
+    float volume = p->conserved.mass / density;
 #if defined(GIZMO_SPH)
     p->geometry.volume = volume;
 #else
@@ -263,7 +263,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->x[2] = offset[2] + size * (z + 0.5) / (float)n;
         part->h = size * h / (float)n;
 
-#ifdef GIZMO_SPH
+#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -279,7 +279,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         hydro_first_init_part(part, xpart);
 
 #if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
-        float volume = part->mass / density;
+        float volume = part->conserved.mass / density;
 #ifdef GIZMO_SPH
         part->geometry.volume = volume;
 #else

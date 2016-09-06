@@ -69,10 +69,12 @@ void test_calculate_cell() {
   voronoi_calculate_faces(&cell);
 
   /* Update these values if you ever change to another large cube! */
-  assert(cell.volume == 27.0f);
-  assert(cell.centroid[0] = 0.5f);
-  assert(cell.centroid[1] = 0.5f);
-  assert(cell.centroid[2] = 0.5f);
+  assert(cell.volume == voronoi_get_box_volume());
+  float box_centroid[3];
+  voronoi_get_box_centroid(box_centroid);
+  assert(cell.centroid[0] = box_centroid[0]);
+  assert(cell.centroid[1] = box_centroid[1]);
+  assert(cell.centroid[2] = box_centroid[2]);
 
   /* Check cell neighbours. */
   assert(cell.nface == 6);
@@ -84,35 +86,42 @@ void test_calculate_cell() {
   assert(cell.ngbs[5] == VORONOI3D_BOX_RIGHT);
 
   /* Check cell faces */
-  assert(cell.face_areas[0] == 9.0f);
-  assert(cell.face_midpoints[0][0] == 0.5f);
-  assert(cell.face_midpoints[0][1] == -1.0f);
-  assert(cell.face_midpoints[0][2] == 0.5f);
+  float face_midpoint[3], face_area;
+  face_area = voronoi_get_box_face(VORONOI3D_BOX_FRONT, face_midpoint);
+  assert(cell.face_areas[0] == face_area);
+  assert(cell.face_midpoints[0][0] == face_midpoint[0]);
+  assert(cell.face_midpoints[0][1] == face_midpoint[1]);
+  assert(cell.face_midpoints[0][2] == face_midpoint[2]);
 
-  assert(cell.face_areas[1] == 9.0f);
-  assert(cell.face_midpoints[1][0] == -1.0f);
-  assert(cell.face_midpoints[1][1] == 0.5f);
-  assert(cell.face_midpoints[1][2] == 0.5f);
+  face_area = voronoi_get_box_face(VORONOI3D_BOX_LEFT, face_midpoint);
+  assert(cell.face_areas[1] == face_area);
+  assert(cell.face_midpoints[1][0] == face_midpoint[0]);
+  assert(cell.face_midpoints[1][1] == face_midpoint[1]);
+  assert(cell.face_midpoints[1][2] == face_midpoint[2]);
 
-  assert(cell.face_areas[2] == 9.0f);
-  assert(cell.face_midpoints[2][0] == 0.5f);
-  assert(cell.face_midpoints[2][1] == 0.5f);
-  assert(cell.face_midpoints[2][2] == -1.0f);
+  face_area = voronoi_get_box_face(VORONOI3D_BOX_BOTTOM, face_midpoint);
+  assert(cell.face_areas[2] == face_area);
+  assert(cell.face_midpoints[2][0] == face_midpoint[0]);
+  assert(cell.face_midpoints[2][1] == face_midpoint[1]);
+  assert(cell.face_midpoints[2][2] == face_midpoint[2]);
 
-  assert(cell.face_areas[3] == 9.0f);
-  assert(cell.face_midpoints[3][0] == 0.5f);
-  assert(cell.face_midpoints[3][1] == 0.5f);
-  assert(cell.face_midpoints[3][2] == 2.0f);
+  face_area = voronoi_get_box_face(VORONOI3D_BOX_TOP, face_midpoint);
+  assert(cell.face_areas[3] == face_area);
+  assert(cell.face_midpoints[3][0] == face_midpoint[0]);
+  assert(cell.face_midpoints[3][1] == face_midpoint[1]);
+  assert(cell.face_midpoints[3][2] == face_midpoint[2]);
 
-  assert(cell.face_areas[4] == 9.0f);
-  assert(cell.face_midpoints[4][0] == 0.5f);
-  assert(cell.face_midpoints[4][1] == 2.0f);
-  assert(cell.face_midpoints[4][2] == 0.5f);
+  face_area = voronoi_get_box_face(VORONOI3D_BOX_BACK, face_midpoint);
+  assert(cell.face_areas[4] == face_area);
+  assert(cell.face_midpoints[4][0] == face_midpoint[0]);
+  assert(cell.face_midpoints[4][1] == face_midpoint[1]);
+  assert(cell.face_midpoints[4][2] == face_midpoint[2]);
 
-  assert(cell.face_areas[5] == 9.0f);
-  assert(cell.face_midpoints[5][0] == 2.0f);
-  assert(cell.face_midpoints[5][1] == 0.5f);
-  assert(cell.face_midpoints[5][2] == 0.5f);
+  face_area = voronoi_get_box_face(VORONOI3D_BOX_RIGHT, face_midpoint);
+  assert(cell.face_areas[5] == face_area);
+  assert(cell.face_midpoints[5][0] == face_midpoint[0]);
+  assert(cell.face_midpoints[5][1] == face_midpoint[1]);
+  assert(cell.face_midpoints[5][2] == face_midpoint[2]);
 }
 
 void test_paths() {
@@ -1104,6 +1113,7 @@ void test_paths() {
   }
 }
 
+#ifdef SHADOWSWIFT
 void set_coordinates(struct part *p, double x, double y, double z,
                      unsigned int id) {
   p->x[0] = x;
@@ -1112,8 +1122,10 @@ void set_coordinates(struct part *p, double x, double y, double z,
   p->id = id;
   voronoi_cell_init(&p->cell, p->x);
 }
+#endif
 
 void test_degeneracies() {
+#ifdef SHADOWSWIFT
   int idx = 0;
   /* make a small cube */
   struct part particles[100];
@@ -1177,6 +1189,7 @@ void test_degeneracies() {
     dx[2] = particles[0].x[2] - particles[i].x[2];
     voronoi_cell_interact(&particles[0].cell, dx, particles[i].id);
   }
+#endif
 }
 
 int main() {
@@ -1217,7 +1230,7 @@ int main() {
   /* Finalize cell and check results */
   voronoi_cell_finalize(&cell);
 
-  if (cell.volume != 0.125f) {
+  if (fabs(cell.volume - 0.125f) > 1.e-5) {
     error("Wrong volume: %g!", cell.volume);
   }
   if (fabs(cell.centroid[0] - 0.5f) > 1.e-5f ||
@@ -1231,7 +1244,7 @@ int main() {
   float A, midpoint[3];
   A = voronoi_get_face(&cell, 1, midpoint);
   if (A) {
-    if (A != 0.25f) {
+    if (fabs(A - 0.25f) > 1.e-5) {
       error("Wrong surface area: %g!", A);
     }
     if (fabs(midpoint[0] - 0.25f) > 1.e-5 || fabs(midpoint[1] - 0.5f) > 1.e-5 ||
