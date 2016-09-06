@@ -2144,19 +2144,8 @@ int engine_marktasks(struct engine *e) {
     /* Multiple-timestep case */
   } else {
 
-#ifdef WITH_MPI
-    if (e->policy & engine_policy_mpi) {
-
-      /* Skip all sends and recvs, we will unmark if needed. */
-      for (int k = 0; k < s->nr_tasks; k++) {
-        struct task *t = &s->tasks[k];
-        if (t->type == task_type_send || t->type == task_type_recv) {
-          t->skip = 1;
-        }
-      }
-    }
-#endif
-
+    /* Run through the tasks and mark as skip or not. */
+    int extra_data[2] = {e->ti_current, rebuild_space};
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), 10000, extra_data);
     rebuild_space = extra_data[1];
