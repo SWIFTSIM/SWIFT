@@ -863,16 +863,20 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
+      const struct cell *ci = t->ci;
+      const struct cell *cj = t->cj;
     t->skip = 0;
     if (t->type == task_type_pair) {
-      if (!(c->sorted & (1 << t->flags))) {
-        c->sorts->flags |= (1 << t->flags);
-        c->sorts->skip = 0;
+      if (!(ci->sorted & (1 << t->flags))) {
+        atomic_or(&ci->sorts->flags, (1 << t->flags));
+        ci->sorts->skip = 0;
+      }
+      if (!(cj->sorted & (1 << t->flags))) {
+        atomic_or(&cj->sorts->flags, (1 << t->flags));
+        cj->sorts->skip = 0;
       }
     }
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-      const struct cell *ci = t->ci;
-      const struct cell *cj = t->cj;
       if (t->tight &&
           (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
            ci->dx_max > space_maxreldx * ci->h_max ||

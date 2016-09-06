@@ -2688,7 +2688,7 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Drift only the necessary particles, that all means all particles
+  /* Drift only the necessary particles, that means all particles
    * if we are about to repartition. */
   int repart = (e->forcerepart != REPART_NONE);
   e->drift_all = repart || e->drift_all;
