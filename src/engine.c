@@ -1923,14 +1923,14 @@ void engine_maketasks(struct engine *e) {
   scheduler_ranktasks(sched);
 
   /* Weight the tasks. */
-  scheduler_reweight(sched);
+  scheduler_reweight(sched, e->verbose);
 
   /* Set the tasks age. */
   e->tasks_age = 0;
 
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -2267,7 +2267,7 @@ void engine_prepare(struct engine *e, int nodrift) {
   /* Run through the tasks and mark as skip or not. */
   int rebuild = (e->forcerebuild || engine_marktasks(e));
 
-  /* Collect the values of rebuild from all nodes. */
+/* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
   int buff = 0;
   if (MPI_Allreduce(&rebuild, &buff, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD) !=
@@ -2293,15 +2293,15 @@ void engine_prepare(struct engine *e, int nodrift) {
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
-    scheduler_reweight(&e->sched);
+    scheduler_reweight(&e->sched, e->verbose);
   }
   e->tasks_age += 1;
 
   TIMER_TOC(timer_prepare);
 
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including marktask, rebuild and reweight).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -2393,6 +2393,7 @@ void engine_collect_kick(struct cell *c) {
  */
 void engine_collect_timestep(struct engine *e) {
 
+  const ticks tic = getticks();
   int updates = 0, g_updates = 0;
   int ti_end_min = max_nr_timesteps;
   const struct space *s = e->s;
@@ -2437,6 +2438,10 @@ void engine_collect_timestep(struct engine *e) {
   e->ti_end_min = ti_end_min;
   e->updates = updates;
   e->g_updates = g_updates;
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2446,6 +2451,7 @@ void engine_collect_timestep(struct engine *e) {
  */
 void engine_print_stats(struct engine *e) {
 
+  const ticks tic = getticks();
   const struct space *s = e->s;
 
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
@@ -2512,6 +2518,10 @@ void engine_print_stats(struct engine *e) {
         mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
     fflush(e->file_stats);
   }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2524,6 +2534,8 @@ void engine_print_stats(struct engine *e) {
  */
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask) {
+
+  const ticks tic = getticks();
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
@@ -2549,6 +2561,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2809,7 +2825,7 @@ int engine_is_done(struct engine *e) {
  */
 void engine_drift(struct engine *e) {
 
-  ticks tic = getticks();
+  const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
   if (e->verbose)
