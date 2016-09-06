@@ -1256,6 +1256,7 @@ void *runner_main(void *data) {
           break;
         case task_type_sort:
           runner_do_sort(r, ci, t->flags, 1);
+          t->flags = 0;
           break;
         case task_type_sub_self:
           if (t->subtype == task_subtype_density)
