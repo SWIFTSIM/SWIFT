@@ -2162,11 +2162,10 @@ void engine_print_task_counts(struct engine *e) {
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
-  for (int k = 0; k < sched->nr_tasks; k++)
-    if (!sched->tasks[k].skip)
-      counts[(int)sched->tasks[k].type] += 1;
-    else
-      counts[task_type_count] += 1;
+  for (int k = 0; k < sched->nr_tasks; k++) {
+    counts[(int)sched->tasks[k].type] += 1;
+    if (sched->tasks[k].skip) counts[task_type_count] += 1;
+  }
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -2205,10 +2204,6 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the tasks. */
   engine_maketasks(e);
 
-  /* Run through the tasks and mark as skip or not. */
-  if (engine_marktasks(e))
-    error("engine_marktasks failed after space_rebuild.");
-
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
 
@@ -2230,7 +2225,8 @@ void engine_prepare(struct engine *e, int nodrift) {
   TIMER_TIC;
 
   /* Run through the tasks and mark as skip or not. */
-  int rebuild = (e->forcerebuild || engine_marktasks(e));
+  // int rebuild = (e->forcerebuild || engine_marktasks(e));
+  int rebuild = e->forcerebuild;
 
 /* Collect the values of rebuild from all nodes. */
 #ifdef WITH_MPI
@@ -2552,7 +2548,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   engine_prepare(e, 1);
 
   engine_marktasks(e);
-
+  
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0;
   unsigned int submask = 0;
