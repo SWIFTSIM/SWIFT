@@ -40,7 +40,7 @@
 #define space_cellallocchunk 1000
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
-#define space_subsize_default 8000000
+#define space_subsize_default 64000000
 #define space_stretch 1.10f
 #define space_maxreldx 0.25f
 
