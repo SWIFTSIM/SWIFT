@@ -1372,13 +1372,10 @@ void engine_count_and_link_tasks(struct engine *e) {
 
     struct task *t = &sched->tasks[ind];
 
-    if (t->skip) continue;
-
     /* Link sort tasks together. */
     if (t->type == task_type_sort && t->ci->split)
       for (int j = 0; j < 8; j++)
         if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
-          t->ci->progeny[j]->sorts->skip = 0;
           scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
         }
 
@@ -1461,9 +1458,6 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Get a pointer to the task. */
     struct task *t = &sched->tasks[k];
-
-    /* Skip? */
-    if (t->skip) continue;
 
     /* Multipole construction */
     if (t->type == task_type_grav_up) {
@@ -1594,9 +1588,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
   for (int ind = 0; ind < nr_tasks; ind++) {
     struct task *t = &sched->tasks[ind];
-
-    /* Skip? */
-    if (t->skip) continue;
 
     /* Self-interaction? */
     if (t->type == task_type_self && t->subtype == task_subtype_density) {
