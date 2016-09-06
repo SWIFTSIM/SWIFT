@@ -2203,6 +2203,10 @@ void engine_rebuild(struct engine *e) {
 
   /* Re-build the tasks. */
   engine_maketasks(e);
+  
+  /* Run through the tasks and mark as skip or not. */
+  if (engine_marktasks(e))
+     error("engine_marktasks failed after space_rebuild.");
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
