@@ -68,7 +68,7 @@
 #include "units.h"
 #include "version.h"
 
-const char *engine_policy_names[14] = {"none",
+const char *engine_policy_names[15] = {"none",
                                        "rand",
                                        "steal",
                                        "keep",
@@ -81,7 +81,8 @@ const char *engine_policy_names[14] = {"none",
                                        "self_gravity",
                                        "external_gravity",
                                        "cosmology_integration",
-                                       "drift_all"};
+                                       "drift_all",
+                                       "cooling"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -95,7 +96,6 @@ int engine_rank;
  *
  * @return The new #link pointer.
  */
-
 void engine_addlink(struct engine *e, struct link **l, struct task *t) {
 
   /* Get the next free link. */
@@ -185,6 +185,8 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
 
   struct scheduler *s = &e->sched;
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+  const int is_with_cooling =
+      (e->policy & engine_policy_cooling) == engine_policy_cooling;
 
   /* Is this the super-cell? */
   if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
@@ -220,6 +222,10 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
       c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                          task_subtype_none, 0, 0, c, NULL, 0);
 #endif
+
+      if (is_with_cooling)
+        c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
+                                       0, 0, c, NULL, 0);
     }
   }
 
@@ -773,7 +779,6 @@ void engine_addtasks_send(struct engine *e, struct cell *ci, struct cell *cj,
  * @param t_gradient The recv_gradient #task, if it has already been created.
  * @param t_ti The recv_ti #task, if required and has already been created.
  */
-
 void engine_addtasks_recv(struct engine *e, struct cell *c, struct task *t_xv,
                           struct task *t_rho, struct task *t_gradient,
                           struct task *t_ti) {
@@ -1584,7 +1589,7 @@ static inline void engine_make_hydro_loops_dependencies(struct scheduler *sched,
 void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
-  int nr_tasks = sched->nr_tasks;
+  const int nr_tasks = sched->nr_tasks;
   const int nodeID = e->nodeID;
 
   for (int ind = 0; ind < nr_tasks; ind++) {
@@ -1780,10 +1785,17 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       }
 #endif
     }
+
     /* External gravity tasks should depend on init and unlock the kick */
     else if (t->type == task_type_grav_external) {
       scheduler_addunlock(sched, t->ci->init, t);
       scheduler_addunlock(sched, t, t->ci->kick);
+    }
+
+    /* Cooling tasks should depend on kick and does not unlock anything since
+     it is the last task*/
+    else if (t->type == task_type_cooling) {
+      scheduler_addunlock(sched, t->ci->kick, t);
     }
   }
 }
@@ -1871,7 +1883,7 @@ void engine_maketasks(struct engine *e) {
   /* Count the number of tasks associated with each cell and
      store the density tasks in each cell, and make each sort
      depend on the sorts of its progeny. */
-  engine_count_and_link_tasks(e);
+  if (e->policy & engine_policy_hydro) engine_count_and_link_tasks(e);
 
   /* Append hierarchical tasks to each cells */
   if (e->policy & engine_policy_hydro)
@@ -1886,7 +1898,7 @@ void engine_maketasks(struct engine *e) {
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
      of its super-cell. */
-  engine_make_extra_hydroloop_tasks(e);
+  if (e->policy & engine_policy_hydro) engine_make_extra_hydroloop_tasks(e);
 
   /* Add the dependencies for the self-gravity stuff */
   if (e->policy & engine_policy_self_gravity) engine_link_gravity_tasks(e);
@@ -2221,7 +2233,6 @@ void engine_print_task_counts(struct engine *e) {
  *
  * @param e The #engine.
  */
-
 void engine_rebuild(struct engine *e) {
 
   const ticks tic = getticks();
@@ -2767,6 +2778,11 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_grav_external;
   }
 
+  /* Add the tasks corresponding to cooling to the masks */
+  if (e->policy & engine_policy_cooling) {
+    mask |= 1 << task_type_cooling;
+  }
+
   /* Add MPI tasks if need be */
   if (e->policy & engine_policy_mpi) {
 
@@ -3092,6 +3108,7 @@ void engine_unpin() {
  * @param physical_constants The #phys_const used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
+ * @param cooling The properties of the cooling function.
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -3099,7 +3116,8 @@ void engine_init(struct engine *e, struct space *s,
                  const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
-                 const struct external_potential *potential) {
+                 const struct external_potential *potential,
+                 const struct cooling_data *cooling) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -3151,6 +3169,7 @@ void engine_init(struct engine *e, struct space *s,
   e->physical_constants = physical_constants;
   e->hydro_properties = hydro;
   e->external_potential = potential;
+  e->cooling_data = cooling;
   e->parameter_file = params;
   engine_rank = nodeID;
 
