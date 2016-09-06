@@ -106,8 +106,10 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct cooling_data* cooling, struct part* p, float dt) {
+    const struct phys_const* restrict phys_const,
+    const struct UnitSystem* restrict us,
+    const struct cooling_data* restrict cooling, struct part* restrict p,
+    float dt) {
 
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p, 0.f);
@@ -146,9 +148,9 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
-    const struct cooling_data* cooling,
-    const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct part* const p) {
+    const struct cooling_data* restrict cooling,
+    const struct phys_const* restrict phys_const,
+    const struct UnitSystem* restrict us, const struct part* restrict p) {
 
   /* Get du_dt */
   const float du_dt = cooling_rate(phys_const, us, cooling, p);
