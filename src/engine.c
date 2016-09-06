@@ -1935,14 +1935,14 @@ void engine_maketasks(struct engine *e) {
   scheduler_ranktasks(sched);
 
   /* Weight the tasks. */
-  scheduler_reweight(sched);
+  scheduler_reweight(sched, e->verbose);
 
   /* Set the tasks age. */
   e->tasks_age = 0;
 
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -2267,8 +2267,11 @@ void engine_rebuild(struct engine *e) {
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
+ * @param nodrift Whether to drift particles before rebuilding or not. Will
+ *                not be necessary if all particles have already been
+ *                drifted (before repartitioning for instance).
  */
-void engine_prepare(struct engine *e) {
+void engine_prepare(struct engine *e, int nodrift) {
 
   TIMER_TIC;
 
@@ -2284,32 +2287,32 @@ void engine_prepare(struct engine *e) {
   rebuild = buff;
 #endif
 
-  /* Did this not go through? */
+  /* And rebuild if necessary. */
   if (rebuild) {
 
-    /* First drift all particles to the current time */
-    e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 1, e);
+    /* Drift all particles to the current time if needed. */
+    if (!nodrift) {
+      e->drift_all = 1;
+      engine_drift(e);
 
-    /* Restore the default drifting policy */
-    e->drift_all = (e->policy & engine_policy_drift_all);
+      /* Restore the default drifting policy */
+      e->drift_all = (e->policy & engine_policy_drift_all);
+    }
 
-    /* And now rebuild */
     engine_rebuild(e);
   }
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
-    scheduler_reweight(&e->sched);
+    scheduler_reweight(&e->sched, e->verbose);
   }
   e->tasks_age += 1;
 
   TIMER_TOC(timer_prepare);
 
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including marktask, rebuild and reweight).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -2401,6 +2404,7 @@ void engine_collect_kick(struct cell *c) {
  */
 void engine_collect_timestep(struct engine *e) {
 
+  const ticks tic = getticks();
   int updates = 0, g_updates = 0;
   int ti_end_min = max_nr_timesteps;
   const struct space *s = e->s;
@@ -2445,6 +2449,10 @@ void engine_collect_timestep(struct engine *e) {
   e->ti_end_min = ti_end_min;
   e->updates = updates;
   e->g_updates = g_updates;
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2454,6 +2462,7 @@ void engine_collect_timestep(struct engine *e) {
  */
 void engine_print_stats(struct engine *e) {
 
+  const ticks tic = getticks();
   const struct space *s = e->s;
 
   double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
@@ -2520,6 +2529,10 @@ void engine_print_stats(struct engine *e) {
         mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
     fflush(e->file_stats);
   }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2532,6 +2545,8 @@ void engine_print_stats(struct engine *e) {
  */
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask) {
+
+  const ticks tic = getticks();
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
@@ -2557,6 +2572,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2576,7 +2595,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Running initialisation fake time-step.");
 
-  engine_prepare(e);
+  engine_prepare(e, 1);
 
   engine_marktasks(e);
 
@@ -2677,8 +2696,7 @@ void engine_step(struct engine *e) {
 
     /* Drift everybody to the snapshot position */
     e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 1, e);
+    engine_drift(e);
 
     /* Restore the default drifting policy */
     e->drift_all = (e->policy & engine_policy_drift_all);
@@ -2716,15 +2734,20 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Drift only the necessary particles */
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
+  /* Drift only the necessary particles, that all means all particles
+   * if we are about to repartition. */
+  int repart = (e->forcerepart != REPART_NONE);
+  e->drift_all = repart || e->drift_all;
+  engine_drift(e);
 
   /* Re-distribute the particles amongst the nodes? */
-  if (e->forcerepart != REPART_NONE) engine_repartition(e);
+  if (repart) engine_repartition(e);
 
   /* Prepare the space. */
-  engine_prepare(e);
+  engine_prepare(e, e->drift_all);
+
+  /* Restore the default drifting policy */
+  e->drift_all = (e->policy & engine_policy_drift_all);
 
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0, submask = 0;
@@ -2809,6 +2832,21 @@ void engine_step(struct engine *e) {
  */
 int engine_is_done(struct engine *e) {
   return !(e->ti_current < max_nr_timesteps);
+}
+
+/**
+ * @brief Drift particles using the current engine drift policy.
+ *
+ * @param e The #engine.
+ */
+void engine_drift(struct engine *e) {
+
+  const ticks tic = getticks();
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**

@@ -40,3 +40,4 @@ PointMass:
   position_y:      50.
   position_z:      50.	
   mass:            1e10     # mass of external point mass in internal units
+  timestep_mult:   1e-2
