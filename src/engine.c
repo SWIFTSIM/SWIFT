@@ -2282,8 +2282,7 @@ void engine_prepare(struct engine *e, int nodrift) {
     /* Drift all particles to the current time if needed. */
     if (!nodrift) {
       e->drift_all = 1;
-      threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                     e->s->nr_cells, sizeof(struct cell), 1, e);
+      engine_drift(e);
 
       /* Restore the default drifting policy */
       e->drift_all = (e->policy & engine_policy_drift_all);
@@ -2670,8 +2669,7 @@ void engine_step(struct engine *e) {
 
     /* Drift everybody to the snapshot position */
     e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 1, e);
+    engine_drift(e);
 
     /* Restore the default drifting policy */
     e->drift_all = (e->policy & engine_policy_drift_all);
@@ -2713,8 +2711,7 @@ void engine_step(struct engine *e) {
    * if we are about to repartition. */
   int repart = (e->forcerepart != REPART_NONE);
   e->drift_all = repart || e->drift_all;
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
+  engine_drift(e);
 
   /* Re-distribute the particles amongst the nodes? */
   if (repart) engine_repartition(e);
@@ -2803,6 +2800,21 @@ void engine_step(struct engine *e) {
  */
 int engine_is_done(struct engine *e) {
   return !(e->ti_current < max_nr_timesteps);
+}
+
+/**
+ * @brief Drift particles using the current engine drift policy.
+ *
+ * @param e The #engine.
+ */
+void engine_drift(struct engine *e) {
+
+  ticks tic = getticks();
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
