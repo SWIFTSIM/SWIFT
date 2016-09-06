@@ -22,6 +22,7 @@
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "equation_of_state.h"
+#include "minmax.h"
 
 #include <float.h>
 
@@ -148,7 +149,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       (p->force.u_dt != 0.0f) ? fabsf(const_max_u_change * p->u / p->force.u_dt)
                               : FLT_MAX;
 
-  return fminf(dt_cfl, dt_u_change);
+  return min(dt_cfl, dt_u_change);
 }
 
 /**
@@ -273,7 +274,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float tau = h / (2.f * const_viscosity_length * p->force.soundspeed);
 
   /* Viscosity source term */
-  const float S = fmaxf(-normDiv_v, 0.f);
+  const float S = max(-normDiv_v, 0.f);
 
   /* Compute the particle's viscosity parameter time derivative */
   const float alpha_dot = (const_viscosity_alpha_min - p->alpha) / tau +

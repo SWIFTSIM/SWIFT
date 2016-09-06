@@ -23,6 +23,9 @@
 #ifndef SWIFT_CELL_H
 #define SWIFT_CELL_H
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Includes. */
 #include <stddef.h>
 
@@ -41,8 +44,20 @@ struct space;
  * The maximum was lowered by a further factor of 2 to be on the safe side.*/
 #define cell_max_tag (1 << 29)
 
+#define cell_align 32
+
 /* Global variables. */
 extern int cell_next_tag;
+
+/* Mini struct to link cells to tasks. Used as a linked list. */
+struct link {
+
+  /* The task pointer. */
+  struct task *t;
+
+  /* The next pointer. */
+  struct link *next;
+};
 
 /* Packed cell. */
 struct pcell {
@@ -70,11 +85,14 @@ struct cell {
   /* The cell dimensions. */
   double width[3];
 
-  /* Max radii in this cell. */
+  /* Max smoothing length in this cell. */
   double h_max;
 
   /* Minimum and maximum end of time step in this cell. */
   int ti_end_min, ti_end_max;
+
+  /* Last time the cell's content was drifted forward in time. */
+  int ti_old;
 
   /* Minimum dimension, i.e. smallest edge of this cell. */
   float dmin;
@@ -82,7 +100,7 @@ struct cell {
   /* Maximum slack allowed for particle movement. */
   float slack;
 
-  /* Maximum particle movement in this cell. */
+  /* Maximum particle movement in this cell since last construction. */
   float dx_max;
 
   /* The depth of this cell in the tree. */
@@ -110,8 +128,13 @@ struct cell {
   /* Parent cell. */
   struct cell *parent;
 
-  /* Super cell, i.e. the highest-level supercell that has interactions. */
+  /* Super cell, i.e. the highest-level supercell that has hydro interactions.
+   */
   struct cell *super;
+
+  /* Super cell, i.e. the highest-level supercell that has gravity interactions.
+   */
+  struct cell *gsuper;
 
   /* The task computing this cell's sorts. */
   struct task *sorts;
@@ -124,17 +147,24 @@ struct cell {
   /* The hierarchical tasks. */
   struct task *extra_ghost, *ghost, *init, *kick;
 
+#ifdef WITH_MPI
+
   /* Task receiving data. */
   struct task *recv_xv, *recv_rho, *recv_gradient, *recv_ti;
 
   /* Task send data. */
   struct link *send_xv, *send_rho, *send_gradient, *send_ti;
 
+#endif
+
   /* Tasks for gravity tree. */
   struct task *grav_up, *grav_down;
 
   /* Task for external gravity */
   struct task *grav_external;
+
+  /* Task for cooling */
+  struct task *cooling;
 
   /* Task for source terms */
   struct task *sourceterms;
@@ -163,8 +193,13 @@ struct cell {
   /* Linking pointer for "memory management". */
   struct cell *next;
 
+  /* This cell's multipole. */
+  struct multipole multipole;
+
   /* ID of the node this cell lives on. */
   int nodeID;
+
+#ifdef WITH_MPI
 
   /* Bit mask of the proxies this cell is registered with. */
   unsigned long long int sendto;
@@ -174,10 +209,9 @@ struct cell {
   int pcell_size;
   int tag;
 
-  /* This cell's multipole. */
-  struct multipole multipole;
+#endif
 
-} __attribute__((aligned(64)));
+} __attribute__((aligned(cell_align)));
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
@@ -196,13 +230,12 @@ int cell_unpack_ti_ends(struct cell *c, int *ti_ends);
 int cell_getsize(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
-void cell_init_parts(struct cell *c, void *data);
-void cell_init_gparts(struct cell *c, void *data);
 void cell_convert_hydro(struct cell *c, void *data);
 void cell_clean_links(struct cell *c, void *data);
 int cell_are_neighbours(const struct cell *restrict ci,
                         const struct cell *restrict cj);
 void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
+int cell_is_drift_needed(struct cell *c, int ti_current);
 
 #endif /* SWIFT_CELL_H */

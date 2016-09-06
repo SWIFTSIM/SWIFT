@@ -38,6 +38,7 @@
 
 /* Includes. */
 #include "clocks.h"
+#include "cooling.h"
 #include "parser.h"
 #include "partition.h"
 #include "potentials.h"
@@ -63,6 +64,8 @@ enum engine_policy {
   engine_policy_self_gravity = (1 << 9),
   engine_policy_external_gravity = (1 << 10),
   engine_policy_cosmology = (1 << 11),
+  engine_policy_drift_all = (1 << 12),
+  engine_policy_cooling = (1 << 13),
   engine_policy_sourceterms = (1 << 12)
 };
 
@@ -82,16 +85,6 @@ extern int engine_rank;
 
 /* The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1 << 28)
-
-/* Mini struct to link cells to density/force tasks. */
-struct link {
-
-  /* The task pointer. */
-  struct task *t;
-
-  /* The next pointer. */
-  struct link *next;
-};
 
 /* Data structure for the engine. */
 struct engine {
@@ -140,6 +133,9 @@ struct engine {
 
   /* Minimal ti_end for the next time-step */
   int ti_end_min;
+
+  /* Are we drifting all particles now ? */
+  int drift_all;
 
   /* Number of particles updated */
   size_t updates, g_updates;
@@ -210,6 +206,9 @@ struct engine {
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
+  /* Properties of the cooling scheme */
+  const struct cooling_data *cooling_data;
+
   /* Properties of source terms */
   const struct sourceterms *sourceterms;
 
@@ -228,6 +227,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
+                 const struct cooling_data *cooling,
                  const struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);

@@ -41,7 +41,7 @@
 /* ------------------------------------------------------------------------- */
 #if defined(EOS_IDEAL_GAS)
 #if defined(EOS_ISOTHERMAL_GAS)
-#error can't have both!
+#error cannot have both!
 #endif
 /**
  * @brief Returns the internal energy given density and entropy

@@ -43,7 +43,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potentials.h version.h \
-    hydro_properties.h sourceterms.h threadpool.h
+    hydro_properties.h threadpool.h cooling.h sourceterms.h
 
 # Common source files
 AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
@@ -51,7 +51,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
     physical_constants.c potentials.c hydro_properties.c \
-    runner_doiact_fft.c sourceterms.c threadpool.c
+    runner_doiact_fft.c threadpool.c cooling.c sourceterms.c 
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
@@ -71,8 +71,10 @@ nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_h
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
 		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h hydro/Gizmo/hydro_io.h \
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
-	         riemann.h \
-		 riemann/riemann_hllc.h riemann/riemann_trrs.h riemann/riemann_exact.h
+	         riemann.h riemann/riemann_hllc.h riemann/riemann_trrs.h \
+		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
+	         cooling/const_du/cooling.h cooling/const_lambda/cooling.h
+
 
 # Sources and flags for regular library
 libswiftsim_la_SOURCES = $(AM_SOURCES)

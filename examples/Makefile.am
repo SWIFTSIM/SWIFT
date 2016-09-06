@@ -65,19 +65,37 @@ swift_fixdt_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="e
 swift_fixdt_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a $(MPI_LIBS) $(EXTRA_LIBS)
 
 # Scripts to generate ICs
-EXTRA_DIST = UniformBox/makeIC.py UniformBox/run.sh UniformBox/uniformBox.yml \
-	     UniformDMBox/makeIC.py \
-	     PerturbedBox/makeIC.py \
-	     SedovBlast/makeIC.py SedovBlast/makeIC_fcc.py SedovBlast/solution.py SedovBlast/run.sh SedovBlast/sedov.yml \
-	     SodShock/makeIC.py SodShock/solution.py SodShock/glass_001.hdf5 SodShock/glass_002.hdf5 SodShock/rhox.py SodShock/run.sh SodShock/sodShock.yml \
-	     CosmoVolume/getIC.sh CosmoVolume/run.sh CosmoVolume/cosmoVolume.yml \
-	     BigCosmoVolume/makeIC.py \
+EXTRA_DIST = BigCosmoVolume/makeIC.py \
 	     BigPerturbedBox/makeIC_fcc.py \
-             GreshoVortex/makeIC.py GreshoVortex/solution.py \
-             MultiTypes/makeIC.py \
-             parameter_example.yml
+	     CosmoVolume/cosmoVolume.yml CosmoVolume/getIC.sh CosmoVolume/run.sh \
+	     CoolingBox/coolingBox.yml CoolingBox/energy_plot.py CoolingBox/makeIC.py CoolingBox/run.sh \
+	     EAGLE_12/eagle_12.yml EAGLE_12/getIC.sh EAGLE_12/README EAGLE_12/run.sh \
+	     EAGLE_25/eagle_25.yml EAGLE_25/getIC.sh EAGLE_25/README EAGLE_25/run.sh \
+	     EAGLE_50/eagle_50.yml EAGLE_50/getIC.sh EAGLE_50/README EAGLE_50/run.sh \
+	     ExternalPointMass/externalPointMass.yml ExternalPointMass/makeIC.py ExternalPointMass/run.sh ExternalPointMass/test.pro \
+	     GreshoVortex_2D/getGlass.sh GreshoVortex_2D/gresho.yml GreshoVortex_2D/makeIC.py GreshoVortex_2D/plotSolution.py GreshoVortex_2D/run.sh \
+	     KelvinHelmholtz_2D/kelvinHelmholtz.yml KelvinHelmholtz_2D/makeIC.py KelvinHelmholtz_2D/plotSolution.py KelvinHelmholtz_2D/run.sh \
+	     MultiTypes/makeIC.py  MultiTypes/multiTypes.yml MultiTypes/run.sh \
+	     PerturbedBox_2D/makeIC.py PerturbedBox_2D/perturbedPlane.yml \
+	     PerturbedBox_3D/makeIC.py PerturbedBox_3D/perturbedBox.yml PerturbedBox_3D/run.sh \
+	     SedovBlast_1D/makeIC.py SedovBlast_1D/plotSolution.py SedovBlast_1D/run.sh SedovBlast_1D/sedov.yml \
+	     SedovBlast_2D/getGlass.sh SedovBlast_2D/makeIC.py SedovBlast_2D/plotSolution.py SedovBlast_2D/run.sh SedovBlast_2D/sedov.yml \
+	     SedovBlast_3D/getGlass.sh SedovBlast_3D/makeIC.py SedovBlast_3D/plotSolution.py SedovBlast_3D/run.sh SedovBlast_3D/sedov.yml \
+	     SodShock_1D/makeIC.py SodShock_1D/plotSolution.py SodShock_1D/run.sh SodShock_1D/sodShock.yml \
+	     SodShock_2D/getGlass.sh SodShock_2D/makeIC.py SodShock_2D/plotSolution.py SodShock_2D/run.sh SodShock_2D/sodShock.yml \
+	     SodShock_3D/getGlass.sh SodShock_3D/makeIC.py SodShock_3D/plotSolution.py SodShock_3D/run.sh SodShock_3D/sodShock.yml \
+	     SquareTest_2D/makeIC.py SquareTest_2D/plotSolution.py SquareTest_2D/run.sh SquareTest_2D/square.yml \
+	     UniformBox_2D/makeIC.py UniformBox_2D/run.sh UniformBox_2D/uniformPlane.yml \
+	     UniformBox_3D/makeICbig.py UniformBox_3D/makeIC.py UniformBox_3D/run.sh UniformBox_3D/uniformBox.yml \
+	     UniformDMBox/makeIC.py
+
+# Default parameter file
+EXTRA_DIST += parameter_example.yml
 
 # Scripts to plot task graphs
 EXTRA_DIST += plot_tasks_MPI.py plot_tasks.py \
 	      process_plot_tasks_MPI process_plot_tasks
+
+# Script for scaling plot
+EXTRA_DIST += plot_scaling_results.py
 

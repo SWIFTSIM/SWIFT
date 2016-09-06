@@ -97,6 +97,11 @@
 /* Source terms */
 #define SN_FEEDBACK
 
+/* Cooling properties */
+//#define COOLING_CONST_DU
+#define COOLING_CONST_LAMBDA
+//#define COOLING_GRACKLE
+
 /* Are we debugging ? */
 //#define SWIFT_DEBUG_CHECKS
 

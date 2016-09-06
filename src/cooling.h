@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,45 +16,37 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_SWIFT_H
-#define SWIFT_SWIFT_H
+#ifndef SWIFT_COOLING_H
+#define SWIFT_COOLING_H
+
+/**
+ * @file src/cooling.h
+ * @brief Branches between the different cooling functions.
+ */
 
 /* Config parameters. */
 #include "../config.h"
 
 /* Local headers. */
-#include "atomic.h"
-#include "cell.h"
-#include "clocks.h"
 #include "const.h"
-#include "cooling.h"
-#include "cycle.h"
-#include "debug.h"
-#include "engine.h"
-#include "error.h"
-#include "gravity.h"
-#include "hydro.h"
-#include "hydro_properties.h"
-#include "lock.h"
-#include "map.h"
-#include "multipole.h"
-#include "parallel_io.h"
-#include "parser.h"
-#include "part.h"
-#include "partition.h"
-#include "physical_constants.h"
-#include "potentials.h"
-#include "queue.h"
-#include "runner.h"
-#include "scheduler.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "sourceterms.h"
-#include "space.h"
-#include "task.h"
-#include "timers.h"
-#include "tools.h"
-#include "units.h"
-#include "version.h"
 
-#endif /* SWIFT_SWIFT_H */
+/* Import the right cooling definition */
+#if defined(COOLING_CONST_DU)
+#include "./cooling/const_du/cooling.h"
+#elif defined(COOLING_CONST_LAMBDA)
+#include "./cooling/const_lambda/cooling.h"
+#elif defined(COOLING_GRACKLE)
+#include "./cooling/grackle/cooling.h"
+#else
+#error "Invalid choice of cooling function."
+#endif
+
+/* Common functions */
+void cooling_init(const struct swift_params* parameter_file,
+                  const struct UnitSystem* us,
+                  const struct phys_const* phys_const,
+                  struct cooling_data* cooling);
+
+void cooling_print(const struct cooling_data* cooling);
+
+#endif /* SWIFT_COOLING_H */

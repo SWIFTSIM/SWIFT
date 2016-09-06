@@ -41,7 +41,7 @@
  *
  * @param parameter_file The parsed parameter file
  * @param us The current internal system of units
- * @param sourceterms: the structure that has all the source term properties
+ * @param source the structure that has all the source term properties
  */
 void source_terms_init(const struct swift_params* parameter_file,
                        struct UnitSystem* us, struct sourceterms* source) {
@@ -59,7 +59,7 @@ void source_terms_init(const struct swift_params* parameter_file,
 /**
  * @brief Prints the properties of the external potential to stdout.
  *
- * @param  potential The external potential properties.
+ * @param source the structure that has all the source term properties
  */
 void source_terms_print(const struct sourceterms* source) {
 

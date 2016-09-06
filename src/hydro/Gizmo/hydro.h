@@ -20,7 +20,9 @@
 #include <float.h>
 #include "adiabatic_index.h"
 #include "approx_math.h"
+#include "equation_of_state.h"
 #include "hydro_gradients.h"
+#include "minmax.h"
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -501,6 +503,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_density(
 
   return p->primitives.rho;
 }
+
 /**
  * @brief Modifies the thermal state of a particle to the imposed internal
  * energy
@@ -512,7 +515,25 @@ __attribute__((always_inline)) INLINE static float hydro_get_density(
  * @param u The new internal energy
  */
 __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
-    struct part *restrict p, float u) {
+    struct part* restrict p, float u) {
 
-  p->conserved.energy  = u;
+  /* conserved.energy is NOT the specific energy (u), but the total thermal
+     energy (u*m) */
+  p->conserved.energy = u * p->conserved.mass;
+}
+
+/**
+ * @brief Modifies the thermal state of a particle to the imposed entropy
+ *
+ * This overrides the current state of the particle but does *not* change its
+ * time-derivatives
+ *
+ * @param p The particle
+ * @param S The new entropy
+ */
+__attribute__((always_inline)) INLINE static void hydro_set_entropy(
+    struct part* restrict p, float S) {
+
+  p->conserved.energy = gas_internal_energy_from_entropy(p->primitives.rho, S) *
+                        p->conserved.mass;
 }
