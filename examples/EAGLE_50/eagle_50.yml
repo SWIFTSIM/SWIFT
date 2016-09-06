@@ -6,11 +6,6 @@ InternalUnitSystem:
   UnitCurrent_in_cgs:  1             # Amperes
   UnitTemp_in_cgs:     1             # Kelvin
 
-# Parameters for the task scheduling
-Scheduler:
-  cell_sub_size:    6000     # Value used for the original scaling tests
-  cell_split_size:  300      # Value used for the original scaling tests
-
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).

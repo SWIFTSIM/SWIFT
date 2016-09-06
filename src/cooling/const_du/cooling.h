@@ -22,11 +22,12 @@
 #define SWIFT_COOLING_CONST_DU_H
 
 /**
- * @file src/cooling/const/cooling.h
+ * @file src/cooling/const_du/cooling.h
  * @brief Routines related to the "constant cooling" cooling function.
  *
  * This is the simplest possible cooling function. A constant cooling rate with
- * a minimal energy floor is applied.
+ * a minimal energy floor is applied. Should be used as a template for more
+ * realistic functions.
  */
 
 /* Some standard headers. */
@@ -59,6 +60,9 @@ struct cooling_data {
 /**
  * @brief Apply the cooling function to a particle.
  *
+ * In this simple example we just apply the const cooling rate
+ * and check that we don't go below the given floor.
+ *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param cooling The #cooling_data used in the run.
@@ -66,8 +70,10 @@ struct cooling_data {
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct cooling_data* cooling, struct part* p, float dt) {
+    const struct phys_const* restrict phys_const,
+    const struct UnitSystem* restrict us,
+    const struct cooling_data* restrict cooling, struct part* restrict p,
+    float dt) {
 
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p, 0.f);
@@ -91,17 +97,22 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 /**
  * @brief Computes the cooling time-step.
  *
+ * In this simple example, we return \f$ \alpha \frac{u}{du/dt} \f$.
+ * This is used to compute the time-step of the particle. Cooling functions
+ * that are solved implicitly can simply return FLT_MAX here.
+ *
  * @param cooling The #cooling_data used in the run.
  * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static double cooling_timestep(
-    const struct cooling_data* cooling,
-    const struct phys_const* const phys_const, const struct part* const p) {
+    const struct cooling_data* restrict cooling,
+    const struct phys_const* restrict phys_const,
+    const struct UnitSystem* restrict us, const struct part* restrict p) {
 
   const float cooling_rate = cooling->cooling_rate;
-  const float internal_energy =
-      hydro_get_internal_energy(p, 0);  // dt = 0 because using current entropy
+  const float internal_energy = hydro_get_internal_energy(p, 0);
   return cooling->cooling_tstep_mult * internal_energy / cooling_rate;
 }
 

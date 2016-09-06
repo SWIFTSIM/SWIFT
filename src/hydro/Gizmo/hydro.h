@@ -517,7 +517,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_density(
 __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
     struct part* restrict p, float u) {
 
-  p->conserved.energy = u;
+  /* conserved.energy is NOT the specific energy (u), but the total thermal
+     energy (u*m) */
+  p->conserved.energy = u * p->conserved.mass;
 }
 
 /**
@@ -532,5 +534,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part* restrict p, float S) {
 
-  p->conserved.energy = gas_internal_energy_from_entropy(p->primitives.rho, S);
+  p->conserved.energy = gas_internal_energy_from_entropy(p->primitives.rho, S) *
+                        p->conserved.mass;
 }
