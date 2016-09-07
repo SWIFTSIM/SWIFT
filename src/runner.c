@@ -48,12 +48,12 @@
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
-#include "sourceterms.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "kick.h"
 #include "minmax.h"
 #include "scheduler.h"
+#include "sourceterms.h"
 #include "space.h"
 #include "task.h"
 #include "timers.h"
@@ -123,12 +123,14 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
 
   struct part *restrict parts = c->parts;
   const int count = c->count;
-  const double cell_min[3]   = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
   const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
   const int ti_current = r->e->ti_current;
   const struct sourceterms *sourceterms = r->e->sourceterms;
-  const double  location[3] = {sourceterms->supernova.x, sourceterms->supernova.y, sourceterms->supernova.z};
-  const int dimen=3;
+  const double location[3] = {sourceterms->supernova.x,
+                              sourceterms->supernova.y,
+                              sourceterms->supernova.z};
+  const int dimen = 3;
   const double timeBase = r->e->timeBase;
 
   TIMER_TIC;
@@ -141,7 +143,7 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
   }
 
   /* does cell contain explosion? */
-  if(count > 0) {
+  if (count > 0) {
     const int incell = is_in_cell(cell_min, cell_width, location, dimen);
     if (incell == 1) {
 
@@ -152,7 +154,7 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
 
         /* Get a direct pointer on the part. */
         struct part *restrict p = &parts[i];
-        if(p->id > imax) {
+        if (p->id > imax) {
           imax = p->id;
           sn_part = p;
         }
@@ -163,8 +165,8 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
 
         /* Does this time step straddle the feedback injection time? */
         const float t_begin = sn_part->ti_begin * timeBase;
-        const float t_end   = sn_part->ti_end * timeBase;
-        if (t_begin <= sourceterms->supernova.time && 
+        const float t_end = sn_part->ti_end * timeBase;
+        if (t_begin <= sourceterms->supernova.time &&
             t_end > sourceterms->supernova.time) {
           do_supernova_feedback(sourceterms, sn_part);
         }

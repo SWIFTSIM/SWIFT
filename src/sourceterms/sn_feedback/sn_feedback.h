@@ -43,6 +43,5 @@ __attribute__((always_inline)) INLINE static void do_supernova_feedback(
   const float u_old = hydro_get_internal_energy(p, 0);
   const float u_new = u_old + sourceterms->supernova.energy / hydro_get_mass(p);
   hydro_set_internal_energy(p, u_new);
-
 };
 #endif /* SWIFT_SN_FEEDBACK_H */

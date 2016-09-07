@@ -158,7 +158,6 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
       if (is_with_external_gravity)
         c->grav_external = scheduler_addtask(
             s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
-
     }
   }
 
@@ -1796,10 +1795,10 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     else if (t->type == task_type_grav_external) {
       scheduler_addunlock(sched, t->ci->init, t);
       scheduler_addunlock(sched, t, t->ci->kick);
-	 }
-	 /* source terms depend on kick (should eventually depend on cooling) */
-	 else if (t->type == task_type_sourceterms) {
-		scheduler_addunlock(sched, t->ci->kick, t);
+    }
+    /* source terms depend on kick (should eventually depend on cooling) */
+    else if (t->type == task_type_sourceterms) {
+      scheduler_addunlock(sched, t->ci->kick, t);
     }
 
     /* Cooling tasks should depend on kick and does not unlock anything since
