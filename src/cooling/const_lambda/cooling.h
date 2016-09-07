@@ -116,7 +116,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   /*       u_old, du_dt, dt, du_dt * dt, u_new, u_new_test); */
 
   /* Store the radiated energy */
-  xp->cooling_data.radiated_energy += u_new - u_old;
+  xp->cooling_data.radiated_energy += hydro_get_mass(p) * (u_old - u_new);
 }
 
 /**
@@ -152,6 +152,17 @@ __attribute__((always_inline)) INLINE static void cooling_init_part(
     const struct part* restrict p, struct xpart* restrict xp) {
 
   xp->cooling_data.radiated_energy = 0.f;
+}
+
+/**
+ * @brief Returns the total radiated energy by this particle.
+ *
+ * @param xp The extended particle data
+ */
+__attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
+    const struct xpart* restrict xp) {
+
+  return xp->cooling_data.radiated_energy;
 }
 
 /**

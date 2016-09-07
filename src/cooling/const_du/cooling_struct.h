@@ -53,8 +53,7 @@ struct cooling_function_data {
  */
 struct cooling_xpart_data {
 
-  /*! Amount of energy radiated away by this particle since the start of the run
-   */
+  /*! Energy radiated away by this particle since the start of the run */
   float radiated_energy;
 };
 

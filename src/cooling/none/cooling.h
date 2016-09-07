@@ -84,6 +84,19 @@ __attribute__((always_inline)) INLINE static void cooling_init_part(
     const struct part* restrict p, struct xpart* restrict xp) {}
 
 /**
+ * @brief Returns the total radiated energy by this particle.
+ *
+ * No cooling, so return 0.
+ *
+ * @param xp The extended particle data
+ */
+__attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
+    const struct xpart* restrict xp) {
+
+  return 0.f;
+}
+
+/**
  * @brief Initialises the cooling properties.
  *
  * Nothing to do here.
