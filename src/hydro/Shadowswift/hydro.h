@@ -240,13 +240,14 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->mass = m = p->conserved.mass;
   p->primitives.rho = m / volume;
 
-  /* P actually contains internal energy at this point */
-  p->primitives.P *= hydro_gamma_minus_one * p->primitives.rho;
-
   p->conserved.momentum[0] = momentum[0] = m * p->primitives.v[0];
   p->conserved.momentum[1] = momentum[1] = m * p->primitives.v[1];
   p->conserved.momentum[2] = momentum[2] = m * p->primitives.v[2];
-  p->conserved.energy = p->primitives.P / hydro_gamma_minus_one * volume;
+
+  p->primitives.P =
+      hydro_gamma_minus_one * p->conserved.energy * p->primitives.rho;
+
+  p->conserved.energy *= m;
 }
 
 /**

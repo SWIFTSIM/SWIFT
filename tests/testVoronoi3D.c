@@ -1220,6 +1220,31 @@ int main() {
   voronoi_cell_interact(&cell, x3, 4);
   voronoi_cell_interact(&cell, x4, 5);
   voronoi_cell_interact(&cell, x5, 6);
+  float expected_midpoints[6][3], expected_areas[6];
+  expected_areas[0] = 0.25f;
+  expected_midpoints[0][0] = 0.25f;
+  expected_midpoints[0][1] = 0.5f;
+  expected_midpoints[0][2] = 0.5f;
+  expected_areas[1] = 0.25f;
+  expected_midpoints[1][0] = 0.75f;
+  expected_midpoints[1][1] = 0.5f;
+  expected_midpoints[1][2] = 0.5f;
+  expected_areas[2] = 0.25f;
+  expected_midpoints[2][0] = 0.5f;
+  expected_midpoints[2][1] = 0.25f;
+  expected_midpoints[2][2] = 0.5f;
+  expected_areas[3] = 0.25f;
+  expected_midpoints[3][0] = 0.5f;
+  expected_midpoints[3][1] = 0.75f;
+  expected_midpoints[3][2] = 0.5f;
+  expected_areas[4] = 0.25f;
+  expected_midpoints[4][0] = 0.5f;
+  expected_midpoints[4][1] = 0.5f;
+  expected_midpoints[4][2] = 0.25f;
+  expected_areas[5] = 0.25f;
+  expected_midpoints[5][0] = 0.5f;
+  expected_midpoints[5][1] = 0.5f;
+  expected_midpoints[5][2] = 0.75f;
 
   /* Interact with some more neighbours to check if they are properly ignored */
   float xE0[3] = {0.6f, 0.0f, 0.1f};
@@ -1242,18 +1267,22 @@ int main() {
 
   /* Check faces. */
   float A, midpoint[3];
-  A = voronoi_get_face(&cell, 1, midpoint);
-  if (A) {
-    if (fabs(A - 0.25f) > 1.e-5) {
-      error("Wrong surface area: %g!", A);
+  for (int i = 0; i < 6; ++i) {
+    A = voronoi_get_face(&cell, i + 1, midpoint);
+    if (A) {
+      if (fabs(A - expected_areas[i]) > 1.e-5) {
+        error("Wrong surface area: %g!", A);
+      }
+      if (fabs(midpoint[0] - expected_midpoints[i][0]) > 1.e-5 ||
+          fabs(midpoint[1] - expected_midpoints[i][1]) > 1.e-5 ||
+          fabs(midpoint[2] - expected_midpoints[i][2]) > 1.e-5) {
+        error("Wrong face midpoint: %g %g %g (should be %g %g %g)!",
+              midpoint[0], midpoint[1], midpoint[2], expected_midpoints[i][0],
+              expected_midpoints[i][1], expected_midpoints[i][2]);
+      }
+    } else {
+      error("Neighbour %i not found!", i);
     }
-    if (fabs(midpoint[0] - 0.25f) > 1.e-5 || fabs(midpoint[1] - 0.5f) > 1.e-5 ||
-        fabs(midpoint[2] - 0.5f) > 1.e-5) {
-      error("Wrong face midpoint: %g %g %g!", midpoint[0], midpoint[1],
-            midpoint[2]);
-    }
-  } else {
-    error("Neighbour not found!");
   }
 
   test_degeneracies();
