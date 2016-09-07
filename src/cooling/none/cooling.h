@@ -1,8 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *                    Richard Bower (r.g.bower@durham.ac.uk)
- *                    Stefan Arridge  (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,23 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_CONST_DU_H
-#define SWIFT_COOLING_CONST_DU_H
+#ifndef SWIFT_COOLING_NONE_H
+#define SWIFT_COOLING_NONE_H
 
 /**
- * @file src/cooling/const_du/cooling.h
- * @brief Routines related to the "constant cooling" cooling function.
- *
- * This is the simplest possible cooling function. A constant cooling rate with
- * a minimal energy floor is applied. Should be used as a template for more
- * realistic functions.
+ * @file src/cooling/none/cooling.h
+ * @brief Empty infrastructure for the cases without cooling function
  */
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 
 /* Local includes. */
-#include "const.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -45,23 +39,12 @@
 /**
  * @brief Properties of the cooling function.
  */
-struct cooling_data {
-
-  /*! Cooling rate in internal units. du_dt = -cooling_rate */
-  float cooling_rate;
-
-  /*! Minimally allowed internal energy of the particles */
-  float min_energy;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-};
+struct cooling_data {};
 
 /**
  * @brief Apply the cooling function to a particle.
  *
- * In this simple example we just apply the const cooling rate
- * and check that we don't go below the given floor.
+ * We do nothing.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -73,33 +56,12 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us,
     const struct cooling_data* restrict cooling, struct part* restrict p,
-    float dt) {
-
-  /* Get current internal energy (dt=0) */
-  const float u_old = hydro_get_internal_energy(p, 0.f);
-
-  /* Get cooling function properties */
-  const float du_dt = -cooling->cooling_rate;
-  const float u_floor = cooling->min_energy;
-
-  /* Constant cooling with a minimal floor */
-  float u_new;
-  if (u_old - du_dt * dt > u_floor) {
-    u_new = u_old + du_dt * dt;
-  } else {
-    u_new = u_floor;
-  }
-
-  /* Update the internal energy */
-  hydro_set_internal_energy(p, u_new);
-}
+    float dt) {}
 
 /**
  * @brief Computes the cooling time-step.
  *
- * In this simple example, we return \f$ \alpha \frac{u}{du/dt} \f$.
- * This is used to compute the time-step of the particle. Cooling functions
- * that are solved implicitly can simply return FLT_MAX here.
+ * We return FLT_MAX so as to impose no limit on the time-step.
  *
  * @param cooling The #cooling_data used in the run.
  * @param phys_const The physical constants in internal units.
@@ -111,13 +73,13 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
-  const float cooling_rate = cooling->cooling_rate;
-  const float internal_energy = hydro_get_internal_energy(p, 0);
-  return cooling->cooling_tstep_mult * internal_energy / cooling_rate;
+  return FLT_MAX;
 }
 
 /**
  * @brief Initialises the cooling properties.
+ *
+ * Nothing to do here.
  *
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
@@ -126,15 +88,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  */
 static INLINE void cooling_init_backend(
     const struct swift_params* parameter_file, const struct UnitSystem* us,
-    const struct phys_const* phys_const, struct cooling_data* cooling) {
-
-  cooling->cooling_rate =
-      parser_get_param_double(parameter_file, "ConstCooling:cooling_rate");
-  cooling->min_energy =
-      parser_get_param_double(parameter_file, "ConstCooling:min_energy");
-  cooling->cooling_tstep_mult = parser_get_param_double(
-      parameter_file, "ConstCooling:cooling_tstep_mult");
-}
+    const struct phys_const* phys_const, struct cooling_data* cooling) {}
 
 /**
  * @brief Prints the properties of the cooling model to stdout.
@@ -143,8 +97,7 @@ static INLINE void cooling_init_backend(
  */
 static INLINE void cooling_print_backend(const struct cooling_data* cooling) {
 
-  message("Cooling function is 'Constant cooling' with rate %f and floor %f.",
-          cooling->cooling_rate, cooling->min_energy);
+  message("Cooling function is 'No cooling'.");
 }
 
-#endif /* SWIFT_COOLING_CONST_DU_H */
+#endif /* SWIFT_COOLING_NONE_H */

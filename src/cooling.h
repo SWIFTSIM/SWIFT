@@ -31,7 +31,9 @@
 #include "const.h"
 
 /* Import the right cooling definition */
-#if defined(COOLING_CONST_DU)
+#if defined(COOLING_NONE)
+#include "./cooling/none/cooling.h"
+#elif defined(COOLING_CONST_DU)
 #include "./cooling/const_du/cooling.h"
 #elif defined(COOLING_CONST_LAMBDA)
 #include "./cooling/const_lambda/cooling.h"
