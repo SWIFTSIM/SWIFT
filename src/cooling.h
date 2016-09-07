@@ -47,8 +47,8 @@
 void cooling_init(const struct swift_params* parameter_file,
                   const struct UnitSystem* us,
                   const struct phys_const* phys_const,
-                  struct cooling_data* cooling);
+                  struct cooling_function_data* cooling);
 
-void cooling_print(const struct cooling_data* cooling);
+void cooling_print(const struct cooling_function_data* cooling);
 
 #endif /* SWIFT_COOLING_H */

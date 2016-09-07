@@ -3146,7 +3146,7 @@ void engine_unpin() {
  * @param physical_constants The #phys_const used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
- * @param cooling The properties of the cooling function.
+ * @param cooling_func The properties of the cooling function.
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -3155,7 +3155,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
-                 const struct cooling_data *cooling) {
+                 const struct cooling_function_data *cooling_func) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -3207,7 +3207,7 @@ void engine_init(struct engine *e, struct space *s,
   e->physical_constants = physical_constants;
   e->hydro_properties = hydro;
   e->external_potential = potential;
-  e->cooling_data = cooling;
+  e->cooling_func = cooling_func;
   e->parameter_file = params;
   engine_rank = nodeID;
 

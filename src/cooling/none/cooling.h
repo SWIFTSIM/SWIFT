@@ -39,7 +39,7 @@
 /**
  * @brief Properties of the cooling function.
  */
-struct cooling_data {};
+struct cooling_function_data {};
 
 /**
  * @brief Apply the cooling function to a particle.
@@ -48,28 +48,28 @@ struct cooling_data {};
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us,
-    const struct cooling_data* restrict cooling, struct part* restrict p,
-    float dt) {}
+    const struct cooling_function_data* restrict cooling,
+    struct part* restrict p, float dt) {}
 
 /**
  * @brief Computes the cooling time-step.
  *
  * We return FLT_MAX so as to impose no limit on the time-step.
  *
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
-    const struct cooling_data* restrict cooling,
+    const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
@@ -88,14 +88,16 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  */
 static INLINE void cooling_init_backend(
     const struct swift_params* parameter_file, const struct UnitSystem* us,
-    const struct phys_const* phys_const, struct cooling_data* cooling) {}
+    const struct phys_const* phys_const,
+    struct cooling_function_data* cooling) {}
 
 /**
  * @brief Prints the properties of the cooling model to stdout.
  *
  * @param cooling The properties of the cooling function.
  */
-static INLINE void cooling_print_backend(const struct cooling_data* cooling) {
+static INLINE void cooling_print_backend(
+    const struct cooling_function_data* cooling) {
 
   message("Cooling function is 'No cooling'.");
 }
