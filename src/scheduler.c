@@ -1220,7 +1220,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     pthread_cond_broadcast(&s->sleep_cond);
     pthread_mutex_unlock(&s->sleep_mutex);
   }
-  
+
   /* Mark the task as skip. */
   t->skip = 1;
 

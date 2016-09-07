@@ -2203,10 +2203,10 @@ void engine_rebuild(struct engine *e) {
 
   /* Re-build the tasks. */
   engine_maketasks(e);
-  
+
   /* Run through the tasks and mark as skip or not. */
   if (engine_marktasks(e))
-     error("engine_marktasks failed after space_rebuild.");
+    error("engine_marktasks failed after space_rebuild.");
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
@@ -2552,7 +2552,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   engine_prepare(e, 1);
 
   engine_marktasks(e);
-  
+
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0;
   unsigned int submask = 0;
