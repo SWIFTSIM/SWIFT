@@ -114,6 +114,9 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
    * " */
   /*       "%g, du_dt*dt = %g, u_old + du_dt*dt = %g, u_new = %g\n", */
   /*       u_old, du_dt, dt, du_dt * dt, u_new, u_new_test); */
+
+  /* Store the radiated energy */
+  xp->cooling_data.radiated_energy += u_new - u_old;
 }
 
 /**

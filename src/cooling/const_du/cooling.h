@@ -79,6 +79,9 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Update the internal energy */
   hydro_set_internal_energy(p, u_new);
+
+  /* Store the radiated energy */
+  xp->cooling_data.radiated_energy += u_new - u_old;
 }
 
 /**
