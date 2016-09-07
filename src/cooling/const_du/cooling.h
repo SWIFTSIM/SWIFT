@@ -53,6 +53,7 @@
  * @param us The internal system of units.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
@@ -103,7 +104,27 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
 }
 
 /**
- * @brief Initialises the cooling properties.
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state.
+ *
+ * In this case, we set the total radiated energy to 0. Note that the particle
+ * structure is just passed in for cases where information needs to be read
+ * from there.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void cooling_init_part(
+    const struct part* restrict p, struct xpart* restrict xp) {
+
+  xp->cooling_data.radiated_energy = 0.f;
+}
+
+/**
+ * @brief Initialises the cooling function properties from the parameter file
+ *
+ * In this example, we just read in the values from the YAML file without
+ * doing any conversions or multiplying any constants in.
  *
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.

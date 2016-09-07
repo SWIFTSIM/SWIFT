@@ -51,6 +51,11 @@ struct cooling_function_data {
  * This is used to carry properties such as the total amount of
  * energy radiated away.
  */
-struct cooling_xpart_data {};
+struct cooling_xpart_data {
+
+  /*! Amount of energy radiated away by this particle since the start of the run
+   */
+  float radiated_energy;
+};
 
 #endif /* SWIFT_COOLING_STRUCT_CONST_DU_H */

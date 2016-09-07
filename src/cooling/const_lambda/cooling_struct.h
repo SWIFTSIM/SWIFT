@@ -48,9 +48,14 @@ struct cooling_function_data {
   float cooling_tstep_mult;
 };
 
+
 /**
- * @brief Properties of the cooling stored in the particle data
+ * @brief Properties of the cooling stored in the particle data.
  */
-struct cooling_xpart_data {};
+struct cooling_xpart_data {
+
+  /*! Amount of energy radiated away by this particle since the start of the run */
+  float radiated_energy;
+};
 
 #endif /* SWIFT_COOLING_STRUCT_CONST_LAMBDA_H */
