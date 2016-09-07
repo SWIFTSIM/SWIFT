@@ -38,7 +38,7 @@
 
 /* Includes. */
 #include "clocks.h"
-#include "cooling.h"
+#include "cooling_struct.h"
 #include "parser.h"
 #include "partition.h"
 #include "potentials.h"

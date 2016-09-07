@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_GIZMO_HYDRO_PART_H
+#define SWIFT_GIZMO_HYDRO_PART_H
+
+#include "cooling_struct.h"
 
 /* Extra particle data not needed during the computation. */
 struct xpart {
@@ -25,6 +29,9 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
+
+  /* Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
 
 } __attribute__((aligned(xpart_align)));
 
@@ -197,3 +204,5 @@ struct part {
   struct gpart *gpart;
 
 } __attribute__((aligned(part_align)));
+
+#endif /* SWIFT_GIZMO_HYDRO_PART_H */

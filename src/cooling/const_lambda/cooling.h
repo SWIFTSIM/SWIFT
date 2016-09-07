@@ -35,29 +35,6 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* Cooling Properties */
-struct cooling_function_data {
-
-  /*! Cooling rate in cgs units. Defined by 'rho * du/dt = -lambda * n_H^2'*/
-  float lambda;
-
-  /*! Minimum temperature (in Kelvin) for all gas particles*/
-  float min_temperature;
-
-  /*! Fraction of gas mass that is Hydrogen. Used to calculate n_H*/
-  float hydrogen_mass_abundance;
-
-  /* 'mu', used to convert min_temperature to min_internal energy*/
-  float mean_molecular_weight;
-
-  /*! Minimally allowed internal energy of the particles */
-  float min_energy;
-  float min_energy_cgs;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-};
-
 /**
  * @brief Calculates du/dt in code units for a particle.
  *

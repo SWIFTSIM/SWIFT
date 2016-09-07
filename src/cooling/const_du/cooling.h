@@ -35,27 +35,13 @@
 
 /* Local includes. */
 #include "const.h"
+#include "cooling_struct.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
-
-/**
- * @brief Properties of the cooling function.
- */
-struct cooling_function_data {
-
-  /*! Cooling rate in internal units. du_dt = -cooling_rate */
-  float cooling_rate;
-
-  /*! Minimally allowed internal energy of the particles */
-  float min_energy;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-};
 
 /**
  * @brief Apply the cooling function to a particle.

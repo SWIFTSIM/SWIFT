@@ -37,11 +37,6 @@
 #include "units.h"
 
 /**
- * @brief Properties of the cooling function.
- */
-struct cooling_function_data {};
-
-/**
  * @brief Apply the cooling function to a particle.
  *
  * We do nothing.

@@ -33,6 +33,8 @@
  * pp. 759-794.
  */
 
+#include "cooling_struct.h"
+
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
  *
@@ -46,6 +48,9 @@ struct xpart {
                       tree rebuild. */
 
   float v_full[3]; /*!< Velocity at the last full step. */
+
+  struct cooling_xpart_data
+      cooling_data; /*!< Additional data used to record cooling information */
 
 } __attribute__((aligned(xpart_align)));
 
