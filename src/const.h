@@ -95,8 +95,8 @@
 //#define EXTERNAL_POTENTIAL_DISK_PATCH
 
 /* Cooling properties */
-#define COOLING_NONE
-//#define COOLING_CONST_DU
+//#define COOLING_NONE
+#define COOLING_CONST_DU
 //#define COOLING_CONST_LAMBDA
 //#define COOLING_GRACKLE
 

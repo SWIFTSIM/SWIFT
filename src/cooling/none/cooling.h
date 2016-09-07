@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us,
     const struct cooling_function_data* restrict cooling,
-    struct part* restrict p, float dt) {}
+    struct part* restrict p, struct xpart* restrict xp, float dt) {}
 
 /**
  * @brief Computes the cooling time-step.

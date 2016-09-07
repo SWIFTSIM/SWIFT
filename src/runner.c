@@ -170,6 +170,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
   struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
   const int ti_current = r->e->ti_current;
   const struct cooling_function_data *cooling_func = r->e->cooling_func;
@@ -195,13 +196,14 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
     /* Get a direct pointer on the part. */
     struct part *restrict p = &parts[i];
+    struct xpart *restrict xp = &xparts[i];
 
     /* Kick has already updated ti_end, so need to check ti_begin */
     if (p->ti_begin == ti_current) {
 
       const double dt = (p->ti_end - p->ti_begin) * timeBase;
 
-      cooling_cool_part(constants, us, cooling_func, p, dt);
+      cooling_cool_part(constants, us, cooling_func, p, xp, dt);
     }
   }
 
