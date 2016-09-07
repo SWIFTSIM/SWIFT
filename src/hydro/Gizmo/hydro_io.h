@@ -124,8 +124,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
                                  UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
                                  primitives.rho);
-  list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_VOLUME, parts,
-                                 geometry.volume);
+  list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_INV_VOLUME,
+                                 parts, geometry.volume);
   list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
                                  parts, primitives.gradients.rho);
   list[10] = io_make_output_field_convert_part(
