@@ -30,6 +30,7 @@
 #include <stddef.h>
 
 /* Local includes. */
+#include "align.h"
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
@@ -74,7 +75,8 @@ struct pcell {
 
   /* Relative indices of the cell's progeny. */
   int progeny[8];
-};
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Structure to store the data of a single cell. */
 struct cell {
@@ -208,7 +210,7 @@ struct cell {
 
 #endif
 
-} __attribute__((aligned(32)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \

@@ -31,6 +31,7 @@
 #endif
 
 /* Local headers. */
+#include "align.h"
 #include "const.h"
 
 /* Some constants. */
