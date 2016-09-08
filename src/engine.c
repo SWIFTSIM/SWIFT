@@ -2163,8 +2163,8 @@ void engine_print_task_counts(struct engine *e) {
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
   for (int k = 0; k < sched->nr_tasks; k++) {
-    counts[(int)sched->tasks[k].type] += 1;
     if (sched->tasks[k].skip) counts[task_type_count] += 1;
+    else counts[(int)sched->tasks[k].type] += 1;
   }
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
@@ -2229,7 +2229,6 @@ void engine_prepare(struct engine *e, int nodrift) {
   TIMER_TIC;
 
   /* Run through the tasks and mark as skip or not. */
-  // int rebuild = (e->forcerebuild || engine_marktasks(e));
   int rebuild = e->forcerebuild;
 
 /* Collect the values of rebuild from all nodes. */
@@ -2767,6 +2766,8 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_recv;
     submask |= 1 << task_subtype_tend;
   }
+  
+  engine_print_task_counts(e);
 
   /* Send off the runners. */
   TIMER_TIC;
