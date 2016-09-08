@@ -43,17 +43,34 @@
 #define VORONOI3D_BOX_LEFT 18446744073709551604llu
 #define VORONOI3D_BOX_RIGHT 18446744073709551605llu
 
+extern float global_voronoi_box_anchor[3];
+extern float global_voronoi_box_side[3];
+
+#define VORONOI3D_DECLARE_GLOBAL_VARIABLES() \
+  float global_voronoi_box_anchor[3];        \
+  float global_voronoi_box_side[3];
+
 /* Bottom front left corner and side lengths of the large box that contains all
    particles and is used as initial cell at the start of the construction */
 /* We should make sure that this box is either so large a particle can never
    fall outside (by using FLT_MAX if that works), or is initialized to be larger
    than the (periodic) simulation box */
-#define VORONOI3D_BOX_ANCHOR_X -2.0f
-#define VORONOI3D_BOX_ANCHOR_Y -2.0f
-#define VORONOI3D_BOX_ANCHOR_Z -2.0f
-#define VORONOI3D_BOX_SIDE_X 6.0f
-#define VORONOI3D_BOX_SIDE_Y 6.0f
-#define VORONOI3D_BOX_SIDE_Z 6.0f
+#define VORONOI3D_BOX_ANCHOR_X global_voronoi_box_anchor[0]
+#define VORONOI3D_BOX_ANCHOR_Y global_voronoi_box_anchor[1]
+#define VORONOI3D_BOX_ANCHOR_Z global_voronoi_box_anchor[2]
+#define VORONOI3D_BOX_SIDE_X global_voronoi_box_side[0]
+#define VORONOI3D_BOX_SIDE_Y global_voronoi_box_side[1]
+#define VORONOI3D_BOX_SIDE_Z global_voronoi_box_side[2]
+
+__attribute__((always_inline)) INLINE static void voronoi_set_box(float *anchor,
+                                                                  float *side) {
+  global_voronoi_box_anchor[0] = anchor[0];
+  global_voronoi_box_anchor[1] = anchor[1];
+  global_voronoi_box_anchor[2] = anchor[2];
+  global_voronoi_box_side[0] = side[0];
+  global_voronoi_box_side[1] = side[1];
+  global_voronoi_box_side[2] = side[2];
+}
 
 __attribute__((always_inline)) INLINE static float voronoi_get_box_volume() {
   return VORONOI3D_BOX_SIDE_X * VORONOI3D_BOX_SIDE_Y * VORONOI3D_BOX_SIDE_Z;

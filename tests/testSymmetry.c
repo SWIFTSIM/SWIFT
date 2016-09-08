@@ -26,10 +26,21 @@
 
 #include "swift.h"
 
+#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#endif
+
 int main(int argc, char *argv[]) {
 
   /* Choke if need be */
   feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
+
+#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+  /* Initialize the Voronoi simulation box */
+  float box_anchor[3] = {-2.0f, -2.0f, -2.0f};
+  float box_side[3] = {6.0f, 6.0f, 6.0f};
+  voronoi_set_box(box_anchor, box_side);
+#endif
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;

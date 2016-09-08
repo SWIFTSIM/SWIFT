@@ -22,7 +22,10 @@
 #include "const.h"
 #include "dimension.h"
 #include "error.h"
-#include "tools.h"
+
+double random_uniform(double a, double b) {
+  return (rand() / (double)RAND_MAX) * (b - a) + a;
+}
 
 void setup_matrix(float A[3][3]) {
   A[0][0] = random_uniform(-1.0, 1.0);

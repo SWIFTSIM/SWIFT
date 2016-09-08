@@ -420,6 +420,10 @@ void runner_doself1_density(struct runner *r, struct cell *ci);
 void runner_dopair2_force(struct runner *r, struct cell *ci, struct cell *cj);
 void runner_doself2_force(struct runner *r, struct cell *ci);
 
+#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#endif
+
 /* And go... */
 int main(int argc, char *argv[]) {
 
@@ -439,6 +443,12 @@ int main(int argc, char *argv[]) {
 
   /* Get some randomness going */
   srand(0);
+
+#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+  float box_anchor[3] = {-2.0f, -2.0f, -2.0f};
+  float box_side[3] = {8.0f, 8.0f, 8.0f};
+  voronoi_set_box(box_anchor, box_side);
+#endif
 
   char c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:")) != -1) {

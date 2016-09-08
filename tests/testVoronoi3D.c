@@ -1192,7 +1192,14 @@ void test_degeneracies() {
 #endif
 }
 
+VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+
 int main() {
+
+  /* Set the all enclosing simulation box dimensions */
+  float box_anchor[3] = {0.0f, 0.0f, 0.0f};
+  float box_side[3] = {1.0f, 1.0f, 1.0f};
+  voronoi_set_box(box_anchor, box_side);
 
   /* Check basic Voronoi cell functions */
   test_voronoi_volume_tetrahedron();

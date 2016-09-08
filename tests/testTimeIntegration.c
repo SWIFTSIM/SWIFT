@@ -22,6 +22,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#endif
+
 /**
  * @brief Test the kick-drift-kick leapfrog integration
  * via a Sun-Earth simulation

@@ -95,6 +95,10 @@ void print_help_message() {
       "parameter file.\n");
 }
 
+#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+VORONOI3D_DECLARE_GLOBAL_VARIABLES()
+#endif
+
 /**
  * @brief Main routine that loads a few particles and generates some output.
  *
@@ -370,6 +374,27 @@ int main(int argc, char *argv[]) {
             clocks_getunit());
     fflush(stdout);
   }
+
+#if defined(SHADOWSWIFT) && defined(HYDRO_DIMENSION_3D)
+  /* set the *global* box dimensions */
+  float box_anchor[3], box_side[3];
+  if (periodic) {
+    box_anchor[0] = -0.5f * dim[0];
+    box_anchor[1] = -0.5f * dim[1];
+    box_anchor[2] = -0.5f * dim[2];
+    box_side[0] = 2.0f * dim[0];
+    box_side[1] = 2.0f * dim[1];
+    box_side[2] = 2.0f * dim[2];
+  } else {
+    box_anchor[0] = 0.0f;
+    box_anchor[1] = 0.0f;
+    box_anchor[2] = 0.0f;
+    box_side[0] = dim[0];
+    box_side[1] = dim[1];
+    box_side[2] = dim[2];
+  }
+  voronoi_set_box(box_anchor, box_side);
+#endif
 
   /* Discard gparts if we don't have gravity
    * (Better implementation of i/o will come)*/

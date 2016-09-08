@@ -20,7 +20,10 @@
 #include <string.h>
 #include "error.h"
 #include "riemann/riemann_hllc.h"
-#include "tools.h"
+
+double random_uniform(double a, double b) {
+  return (rand() / (double)RAND_MAX) * (b - a) + a;
+}
 
 int consistent_with_zero(float val) { return fabs(val) < 1.e-4; }
 

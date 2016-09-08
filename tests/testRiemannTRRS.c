@@ -20,7 +20,10 @@
 #include <string.h>
 #include "error.h"
 #include "riemann/riemann_trrs.h"
-#include "tools.h"
+
+double random_uniform(double a, double b) {
+  return (rand() / (double)RAND_MAX) * (b - a) + a;
+}
 
 int opposite(float a, float b) {
   if ((a - b)) {
