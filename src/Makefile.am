@@ -55,7 +55,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     runner_doiact_fft.c threadpool.c cooling.c
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h runner_doiact.h runner_doiact_grav.h runner_doiact_fft.h \
                  units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
 		 dimension.h equation_of_state.h \

@@ -33,7 +33,7 @@ struct xpart {
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
 
-} __attribute__((aligned(xpart_align)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
 struct part {

@@ -52,7 +52,7 @@ struct xpart {
   struct cooling_xpart_data
       cooling_data; /*!< Additional data used to record cooling information */
 
-} __attribute__((aligned(xpart_align)));
+} SWIFT_STRUCT_ALIGN;
 
 /**
  * @brief Particle fields for the SPH particles
