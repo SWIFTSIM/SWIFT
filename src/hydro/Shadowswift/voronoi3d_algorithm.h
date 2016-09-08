@@ -720,7 +720,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   int vindex = -1;
   int visitflags[VORONOI3D_MAXNUMVERT];
   int dstack[2 * VORONOI3D_MAXNUMVERT];
-  int dstack_size = 1;
+  int dstack_size = 0;
   float r = 0.0f;
   int cs = -1, rp = -1;
   int double_edge = 0;
@@ -732,6 +732,51 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   }
 
   if (complicated) {
+
+    // first of all, make sure we have a vertex that has edges which are below
+    // the plane
+    dstack[dstack_size] = up;
+    ++dstack_size;
+    j = 0;
+    lw = 0;
+    while (j < dstack_size && lw != -1) {
+      up = dstack[j];
+      for (i = 0; i < c->orders[up]; ++i) {
+        lp = voronoi_get_edge(c, up, i);
+        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                                 &teststack_size);
+        if (!lw) {
+          k = 0;
+          // make sure we don't add duplicates, since then we might get stuck in
+          // the outer loop...
+          while (k < dstack_size && dstack[k] != lp) {
+            ++k;
+          }
+          if (k == dstack_size) {
+            dstack[dstack_size] = lp;
+            ++dstack_size;
+          }
+        }
+        if (lw == -1) {
+          break;
+        }
+      }
+      ++j;
+    }
+    if (lw != -1) {
+      message("j: %i, dstack_size: %i", j, dstack_size);
+      message("dx: %g %g %g", dx[0], dx[1], dx[2]);
+      message("up: %i", up);
+      message("orders[up] = %i", c->orders[up]);
+      for (i = 0; i < c->orders[up]; ++i) {
+        lp = voronoi_get_edge(c, up, i);
+        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                                 &teststack_size);
+        message("edge[%i]: %i (%g %g %g - %i)", i, lp, c->vertices[3 * lp],
+                c->vertices[3 * lp + 1], c->vertices[3 * lp + 2], lw);
+      }
+      error("Cell completely gone! This should not happen.");
+    }
 
     // the search routine detected a vertex very close to the plane
     // the index of this vertex is stored in up
@@ -920,7 +965,8 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       voronoi_set_ngb(c, vindex, 0, voronoi_get_ngb(c, up, qs));
     }
 
-    dstack[0] = up;
+    dstack[dstack_size] = up;
+    ++dstack_size;
 
     cs = k;
     qp = up;
@@ -955,7 +1001,8 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     c->vertices[3 * vindex + 2] =
         c->vertices[3 * lp + 2] * r + c->vertices[3 * up + 2] * l;
 
-    dstack[0] = up;
+    dstack[dstack_size] = up;
+    ++dstack_size;
 
     voronoi_set_edge(c, vindex, 1, lp);
     voronoi_set_edgeindex(c, vindex, 1, ls);
