@@ -19,6 +19,8 @@
 #ifndef SWIFT_GADGET2_HYDRO_PART_H
 #define SWIFT_GADGET2_HYDRO_PART_H
 
+#include "cooling_struct.h"
+
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
@@ -27,6 +29,9 @@ struct xpart {
 
   /* Velocity at the last full step. */
   float v_full[3];
+
+  /* Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -110,6 +115,6 @@ struct part {
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
-} SWIFT_STRUCT_ALIGN;
+} __attribute__((aligned(part_align)));
 
 #endif /* SWIFT_GADGET2_HYDRO_PART_H */

@@ -42,6 +42,7 @@
 /* Local headers. */
 #include "atomic.h"
 #include "const.h"
+#include "cooling.h"
 #include "engine.h"
 #include "error.h"
 #include "gravity.h"
@@ -1472,6 +1473,23 @@ void space_init_parts(struct space *s) {
 }
 
 /**
+ * @brief Initialises all the extra particle data
+ *
+ * Calls cooling_init_xpart() on all the particles
+ */
+void space_init_xparts(struct space *s) {
+
+  const size_t nr_parts = s->nr_parts;
+  struct part *restrict p = s->parts;
+  struct xpart *restrict xp = s->xparts;
+
+  for (size_t i = 0; i < nr_parts; ++i) {
+
+    cooling_init_part(&p[i], &xp[i]);
+  }
+}
+
+/**
  * @brief Initialises all the g-particles by setting them into a valid state
  *
  * Calls gravity_first_init_gpart() on all the particles
@@ -1630,6 +1648,7 @@ void space_init(struct space *s, const struct swift_params *params,
 
   /* Set the particles in a state where they are ready for a run */
   space_init_parts(s);
+  space_init_xparts(s);
   space_init_gparts(s);
 
   /* Init the space lock. */
