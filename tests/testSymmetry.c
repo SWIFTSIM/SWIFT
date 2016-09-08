@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
   runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2);
 
 /* Check that the particles are the same */
-#if defined(GIZMO_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_SPH)
   i_ok = 0;
   j_ok = 0;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
