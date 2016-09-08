@@ -90,9 +90,10 @@
 #define const_gravity_eta 0.025f
 
 /* External gravity properties */
-#define EXTERNAL_POTENTIAL_POINTMASS
+#define EXTERNAL_POTENTIAL_NONE
+//#define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-//#define EXTERNAL_POTENTIAL_DISK_PATCH
+//#define EXTERNAL_POTENTIAL_DISC_PATCH
 
 /* Cooling properties */
 #define COOLING_NONE

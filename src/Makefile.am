@@ -42,7 +42,7 @@ endif
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
-    physical_constants.h physical_constants_cgs.h potentials.h version.h \
+    physical_constants.h physical_constants_cgs.h potential.h version.h \
     hydro_properties.h threadpool.h cooling.h cooling_struct.h
 
 
@@ -51,7 +51,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     serial_io.c timers.c debug.c scheduler.c proxy.c parallel_io.c \
     units.c common_io.c single_io.c multipole.c version.c map.c \
     kernel_hydro.c tools.c part.c partition.c clocks.c parser.c \
-    physical_constants.c potentials.c hydro_properties.c \
+    physical_constants.c potential.c hydro_properties.c \
     runner_doiact_fft.c threadpool.c cooling.c
 
 # Include files for distribution, not installation.

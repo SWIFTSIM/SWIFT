@@ -66,7 +66,7 @@ DomainDecomposition:
 # Parameters related to external potentials --------------------------------------------
   
 # Point mass external potentials
-PointMass:
+PointMassPotential:
   position_x:      50.      # location of external point mass (internal units)
   position_y:      50.
   position_z:      50.
@@ -82,12 +82,12 @@ IsothermalPotential:
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
 
 # Disk-patch potential parameters
-Disk-PatchPotential:
-  surface_density: 10.      # Surface density of the disk (internal units)
-  scale_height:    100.     # Scale height of the disk (internal units)
-  z_disk:          200.     # Disk height (internal units)
+DiscPatchPotential:
+  surface_density: 10.      # Surface density of the disc (internal units)
+  scale_height:    100.     # Scale height of the disc (internal units)
+  z_disc:          200.     # Disc height (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
-  growth_time:     5.       # (Optional) Time for the disk to grow to its final size (multiple of the dynamical time)
+  growth_time:     5.       # (Optional) Time for the disc to grow to its final size (multiple of the dynamical time)
 
 # Parameters related to cooling function  ----------------------------------------------
 

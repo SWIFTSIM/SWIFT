@@ -152,7 +152,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
 
-      external_gravity(time, potential, constants, g);
+      external_gravity_acceleration(time, potential, constants, g);
     }
   }
 
