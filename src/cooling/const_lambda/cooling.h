@@ -132,7 +132,7 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
   /* Get current internal energy (dt=0) */
   const float u = hydro_get_internal_energy(p, 0.f);
 
-  return u / du_dt;
+  return u / abs(du_dt);
 }
 
 /**
