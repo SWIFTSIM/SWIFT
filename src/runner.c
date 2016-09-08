@@ -721,6 +721,10 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
+  
+  /* Clear the active particle counters. */
+  c->updated = 0;
+  c->g_updated = 0;
 
   /* Do we need to drift ? */
   if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
