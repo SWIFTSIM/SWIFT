@@ -10,7 +10,7 @@ InternalUnitSystem:
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   1.    # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1e-4  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
@@ -41,4 +41,3 @@ LambdaCooling:
   mean_molecular_weight:       0.59   # Mean molecular weight
   hydrogen_mass_abundance:     0.75   # Hydrogen mass abundance (dimensionless)
   cooling_tstep_mult:          1.0    # Dimensionless pre-factor for the time-step condition
-  

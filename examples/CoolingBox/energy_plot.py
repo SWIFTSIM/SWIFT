@@ -11,9 +11,9 @@ snap_filename = "coolingBox_000.hdf5"
 k_b = 1.38E-16 #boltzmann
 m_p = 1.67e-24 #proton mass
 #initial conditions set in makeIC.py
-rho = 3.2e6
-P = 4.5e9
-n_H_cgs = 0.0001
+rho = 3.2e3
+P = 4.5e6
+#n_H_cgs = 0.0001
 gamma = 5./3.
 T_init = 1.0e5
 
@@ -46,7 +46,7 @@ total_mass = total_mass[1:]
 rho_cgs = rho * unit_mass / (unit_length)**3
 time_cgs = time * unit_time
 u_init_cgs = total_energy[0]/(total_mass[0]) * unit_length**2 / (unit_time)**2 
-
+n_H_cgs = X_H * rho_cgs / m_p
 #find the energy floor
 print min_T
 u_floor_cgs = k_b * min_T / (mu * m_p * (gamma - 1.))
@@ -67,14 +67,14 @@ u_floor_cgs /= u_init_cgs
 for i in range(u_analytic.size):
     if u_analytic[i]<u_floor_cgs:
         u_analytic[i] = u_floor_cgs
-plt.plot(time_cgs,total_energy,'k',label = "Numerical solution")
-plt.plot(analytic_time,u_analytic,'--r',lw = 2.0,label = "Analytic Solution")
+plt.plot(time_cgs-time_cgs[0],total_energy,'kd',label = "Numerical solution")
+plt.plot(analytic_time-analytic_time[0],u_analytic,'r',lw = 2.0,label = "Analytic Solution")
 plt.plot((cooling_time,cooling_time),(0,1),'b',label = "Cooling time")
-plt.plot((time_cgs[0],time_cgs[0]),(0,1),'m',label = "First output")
+plt.plot((time_cgs[1]-time_cgs[0],time_cgs[1]-time_cgs[0]),(0,1),'m',label = "First output")
 plt.title(r"$n_H = %1.1e \, \mathrm{cm}^{-3}$" %n_H_cgs)
 plt.xlabel("Time (seconds)")
 plt.ylabel("Energy/Initial energy")
-plt.ylim(0.999,1.001)
+plt.ylim(0,1)
 plt.xlim(0,min(10.0*cooling_time,time_cgs[-1]))
 plt.legend(loc = "upper right")    
 if (int(sys.argv[1])==0):
