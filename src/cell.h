@@ -30,6 +30,7 @@
 #include <stddef.h>
 
 /* Local includes. */
+#include "align.h"
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
@@ -44,7 +45,7 @@ struct space;
  * The maximum was lowered by a further factor of 2 to be on the safe side.*/
 #define cell_max_tag (1 << 29)
 
-#define cell_align 32
+#define cell_align 128
 
 /* Global variables. */
 extern int cell_next_tag;
@@ -74,7 +75,8 @@ struct pcell {
 
   /* Relative indices of the cell's progeny. */
   int progeny[8];
-};
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Structure to store the data of a single cell. */
 struct cell {
@@ -208,7 +210,7 @@ struct cell {
 
 #endif
 
-} __attribute__((aligned(cell_align)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \

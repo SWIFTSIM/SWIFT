@@ -33,7 +33,7 @@ struct xpart {
   /* Old density. */
   float omega;
 
-} __attribute__((aligned(xpart_align)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
 struct part {
@@ -120,6 +120,6 @@ struct part {
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
-} __attribute__((aligned(part_align)));
+} SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_DEFAULT_HYDRO_PART_H */
