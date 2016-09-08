@@ -31,12 +31,13 @@
 #endif
 
 /* Local headers. */
+#include "align.h"
 #include "const.h"
 
 /* Some constants. */
-#define part_align 64
-#define xpart_align 32
-#define gpart_align 32
+#define part_align 128
+#define xpart_align 128
+#define gpart_align 128
 
 /* Import the right hydro particle definition */
 #if defined(MINIMAL_SPH)
