@@ -115,6 +115,6 @@ struct part {
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
-} __attribute__((aligned(part_align)));
+} SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_GADGET2_HYDRO_PART_H */
