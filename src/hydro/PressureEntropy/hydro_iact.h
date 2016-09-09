@@ -119,7 +119,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-  error("Vectorized version of Pressure-Entropy SPH routine not existatn yet.");
+  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
 }
 
 /**
@@ -184,7 +184,7 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
                                struct part **pi, struct part **pj) {
 
-  error("Vectorized version of Pressure-Entropy SPH routine not existatn yet.");
+  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
 }
 
 /**
@@ -300,7 +300,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-  error("Vectorized version of Pressure-Entropy SPH routine not existatn yet.");
+  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
 }
 
 /**
@@ -401,7 +401,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
     float *R2, float *Dx, float *Hi, float *Hj, struct part **pi,
     struct part **pj) {
 
-  error("Vectorized version of Pressure-Entropy SPH routine not existatn yet.");
+  error("Vectorized version of Pressure-Entropy SPH routine not existant yet.");
 }
 
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H */

@@ -319,8 +319,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  *
  * @param p The particle
  * @param xp The extended data of the particle
- * @param t0 The time at the start of the drift
- * @param t1 The time at the end of the drift
+ * @param dt The drift time-step.
+ * @param t0 The time at the start of the drift (on the timeline).
+ * @param t1 The time at the end of the drift (on the timeline).
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
