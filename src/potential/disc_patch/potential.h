@@ -35,14 +35,29 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* External Potential Properties */
+/**
+ * @brief External Potential Properties - Disc patch case
+ *
+ * See Creasey, Theuns & Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
+ */
 struct external_potential {
 
+  /*! Surface density of the disc */
   double surface_density;
+
+  /*! Disc scale-height */
   double scale_height;
+
+  /*! Position of the disc along the z-axis */
   double z_disc;
+
+  /*! Dynamical time of the system */
   double dynamical_time;
+
+  /*! Time over which to grow the disk in units of the dynamical time */
   double growth_time;
+
+  /*! Time-step condition pre-factor */
   double timestep_mult;
 };
 
@@ -70,7 +85,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float dz = fabs(g->x[2] - potential->z_disc);
 
   /* vertical cceleration */
-  const float z_accel = 2 * M_PI * phys_const->const_newton_G *
+  const float z_accel = 2.f * M_PI * phys_const->const_newton_G *
                         potential->surface_density *
                         tanh(dz / potential->scale_height);
 
@@ -92,7 +107,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   float dt3 = FLT_MAX;
   if (abs(g->v_full[2]) > 0) {
     const float dz_accel_over_dt =
-        2 * M_PI * phys_const->const_newton_G * potential->surface_density /
+        2.f * M_PI * phys_const->const_newton_G * potential->surface_density /
         potential->scale_height / cosh(dz / potential->scale_height) /
         cosh(dz / potential->scale_height) * fabs(g->v_full[2]);
 
@@ -118,21 +133,20 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* restrict potential,
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
-  const float G_newton = phys_const->const_newton_G;
   const float dz = g->x[2] - potential->z_disc;
   const float t_dyn = potential->dynamical_time;
 
-  float reduction_factor = 1.;
+  float reduction_factor = 1.f;
   if (time < potential->growth_time * t_dyn)
     reduction_factor = time / (potential->growth_time * t_dyn);
 
-  const float z_accel = reduction_factor * 2 * G_newton * M_PI *
+  /* Accelerations. Note that they are multiplied by G later on */
+  const float z_accel = reduction_factor * 2.f * M_PI *
                         potential->surface_density *
                         tanh(fabs(dz) / potential->scale_height);
 
-  /* Accelerations. Note that they are multiplied by G later on */
-  if (dz > 0) g->a_grav[2] -= z_accel / G_newton;
-  if (dz < 0) g->a_grav[2] += z_accel / G_newton;
+  if (dz > 0) g->a_grav[2] -= z_accel;
+  if (dz < 0) g->a_grav[2] += z_accel;
 }
 
 /**
@@ -149,16 +163,16 @@ static INLINE void potential_init_backend(
     const struct phys_const* phys_const, const struct UnitSystem* us,
     struct external_potential* potential) {
 
-  potential->surface_density =
-      parser_get_param_double(parameter_file, "DiscPatchPotential:surface_density");
-  potential->scale_height =
-      parser_get_param_double(parameter_file, "DiscPatchPotential:scale_height");
+  potential->surface_density = parser_get_param_double(
+      parameter_file, "DiscPatchPotential:surface_density");
+  potential->scale_height = parser_get_param_double(
+      parameter_file, "DiscPatchPotential:scale_height");
   potential->z_disc =
       parser_get_param_double(parameter_file, "DiscPatchPotential:z_disc");
-  potential->timestep_mult =
-      parser_get_param_double(parameter_file, "DiscPatchPotential:timestep_mult");
-  potential->growth_time =
-      parser_get_opt_param_double(parameter_file, "DiscPatchPotential:growth_time", 0.);
+  potential->timestep_mult = parser_get_param_double(
+      parameter_file, "DiscPatchPotential:timestep_mult");
+  potential->growth_time = parser_get_opt_param_double(
+      parameter_file, "DiscPatchPotential:growth_time", 0.);
   potential->dynamical_time =
       sqrt(potential->scale_height /
            (phys_const->const_newton_G * potential->surface_density));
@@ -179,7 +193,7 @@ static INLINE void potential_print_backend(
       potential->timestep_mult);
 
   if (potential->growth_time > 0.)
-    message("Disc will grow for %f dynamiccal times.", potential->growth_time);
+    message("Disc will grow for %f dynamical times.", potential->growth_time);
 }
 
 #endif /* SWIFT_DISC_PATCH_H */

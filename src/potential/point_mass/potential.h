@@ -34,12 +34,17 @@
 #include "units.h"
 
 /**
- * @brief External Potential Properties
+ * @brief External Potential Properties - Point mass case
  */
 struct external_potential {
 
+  /*! Position of the point mass */
   double x, y, z;
+
+  /*! Mass */
   double mass;
+
+  /*! Time-step condition pre-factor */
   float timestep_mult;
 };
 

@@ -85,7 +85,7 @@ IsothermalPotential:
 DiscPatchPotential:
   surface_density: 10.      # Surface density of the disc (internal units)
   scale_height:    100.     # Scale height of the disc (internal units)
-  z_disc:          200.     # Disc height (internal units)
+  z_disc:          200.     # Position of the disc along the z-axis (internal units)
   timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
   growth_time:     5.       # (Optional) Time for the disc to grow to its final size (multiple of the dynamical time)
 

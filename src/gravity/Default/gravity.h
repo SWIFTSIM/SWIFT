@@ -22,17 +22,14 @@
 
 #include <float.h>
 #include "minmax.h"
-#include "physical_constants.h"
 
 /**
  * @brief Computes the gravity time-step of a given particle due to self-gravity
  *
- * @param phys_const The physical constants in internal units.
  * @param gp Pointer to the g-particle data.
  */
 __attribute__((always_inline)) INLINE static float
-gravity_compute_timestep_self(const struct phys_const* const phys_const,
-                              const struct gpart* const gp) {
+gravity_compute_timestep_self(const struct gpart* const gp) {
 
   const float ac2 = gp->a_grav[0] * gp->a_grav[0] +
                     gp->a_grav[1] * gp->a_grav[1] +

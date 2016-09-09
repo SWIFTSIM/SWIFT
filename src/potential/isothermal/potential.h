@@ -33,12 +33,22 @@
 #include "physical_constants.h"
 #include "units.h"
 
-/* External Potential Properties */
+/**
+ * @brief External Potential Properties - Isothermal sphere case
+ */
 struct external_potential {
 
+  /*! Position of the centre of potential */
   double x, y, z;
+
+  /*! Rotation velocity */
   double vrot;
-  float timestep_mult;
+
+  /*! Square of vrot divided by G \f$ \frac{v_{rot}^2}{G} \f$ */
+  double vrot2_over_G;
+
+  /*! Time-step condition pre-factor */
+  double timestep_mult;
 };
 
 /**
@@ -65,11 +75,11 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const double vrot = potential->vrot;
 
   const float dota_x =
-      vrot * vrot * rinv2 * (g->v_full[0] - 2 * drdv * dx * rinv2);
+      vrot * vrot * rinv2 * (g->v_full[0] - 2.f * drdv * dx * rinv2);
   const float dota_y =
-      vrot * vrot * rinv2 * (g->v_full[1] - 2 * drdv * dy * rinv2);
+      vrot * vrot * rinv2 * (g->v_full[1] - 2.f * drdv * dy * rinv2);
   const float dota_z =
-      vrot * vrot * rinv2 * (g->v_full[2] - 2 * drdv * dz * rinv2);
+      vrot * vrot * rinv2 * (g->v_full[2] - 2.f * drdv * dz * rinv2);
   const float dota_2 = dota_x * dota_x + dota_y * dota_y + dota_z * dota_z;
   const float a_2 = g->a_grav[0] * g->a_grav[0] + g->a_grav[1] * g->a_grav[1] +
                     g->a_grav[2] * g->a_grav[2];
@@ -92,14 +102,12 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
-  const double G_newton = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->x;
   const float dy = g->x[1] - potential->y;
   const float dz = g->x[2] - potential->z;
   const float rinv2 = 1.f / (dx * dx + dy * dy + dz * dz);
 
-  const double vrot = potential->vrot;
-  const double term = -vrot * vrot * rinv2 / G_newton;
+  const double term = -potential->vrot2_over_G * rinv2;
 
   g->a_grav[0] += term * dx;
   g->a_grav[1] += term * dy;
@@ -130,6 +138,9 @@ static INLINE void potential_init_backend(
       parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
   potential->timestep_mult = parser_get_param_float(
       parameter_file, "IsothermalPotential:timestep_mult");
+
+  potential->vrot2_over_G =
+      potential->vrot * potential->vrot / phys_const->const_newton_G;
 }
 
 /**
