@@ -43,7 +43,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
-    hydro_properties.h threadpool.h cooling.h cooling_struct.h
+    hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h
 
 
 # Common source files
@@ -71,9 +71,11 @@ nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h 
                  hydro/Gadget2/hydro_debug.h hydro/Gadget2/hydro_part.h \
 		 hydro/Gizmo/hydro.h hydro/Gizmo/hydro_iact.h hydro/Gizmo/hydro_io.h \
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
-	         riemann.h riemann/riemann_hllc.h riemann/riemann_trrs.h \
+	         riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
-	         cooling/none/cooling.h cooling/none/cooling_struct.h \
+	         potential/none/potential.h potential/point_mass/potential.h \
+                 potential/isothermal/potential.h potential/disc_patch/potential.h \
+		 cooling/none/cooling.h cooling/none/cooling_struct.h \
 	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
                  cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h 
 
