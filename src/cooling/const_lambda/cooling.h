@@ -59,12 +59,12 @@ struct cooling_data {
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data..
  */
 __attribute__((always_inline)) INLINE static float cooling_rate(
     const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct cooling_data* cooling, const struct part* p) {
+    const struct cooling_function_data* cooling, const struct part* p) {
 
   /* Get particle density */
   const float rho = p->rho;
@@ -83,15 +83,15 @@ __attribute__((always_inline)) INLINE static float cooling_rate(
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us,
-    const struct cooling_data* restrict cooling, struct part* restrict p,
-    float dt) {
+    const struct cooling_function_data* restrict cooling,
+    struct part* restrict p, struct xpart* restrict xp, float dt) {
 
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p, 0.f);
@@ -111,18 +111,21 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
   }
   /* Update the internal energy */
   hydro_set_internal_energy(p, u_new);
+
+  /* Store the radiated energy */
+  xp->cooling_data.radiated_energy += hydro_get_mass(p) * (u_old - u_new);
 }
 
 /**
  * @brief Computes the time-step due to cooling
  *
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
 __attribute__((always_inline)) INLINE static float cooling_timestep(
-    const struct cooling_data* restrict cooling,
+    const struct cooling_function_data* restrict cooling,
     const struct phys_const* restrict phys_const,
     const struct UnitSystem* restrict us, const struct part* restrict p) {
 
@@ -136,6 +139,30 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
 }
 
 /**
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void cooling_init_part(
+    const struct part* restrict p, struct xpart* restrict xp) {
+
+  xp->cooling_data.radiated_energy = 0.f;
+}
+
+/**
+ * @brief Returns the total radiated energy by this particle.
+ *
+ * @param xp The extended particle data
+ */
+__attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
+    const struct xpart* restrict xp) {
+
+  return xp->cooling_data.radiated_energy;
+}
+
+/**
  * @brief Initialises the cooling properties.
  *
  * @param parameter_file The parsed parameter file.
@@ -145,7 +172,8 @@ __attribute__((always_inline)) INLINE static float cooling_timestep(
  */
 static INLINE void cooling_init_backend(
     const struct swift_params* parameter_file, const struct UnitSystem* us,
-    const struct phys_const* phys_const, struct cooling_data* cooling) {
+    const struct phys_const* phys_const,
+    struct cooling_function_data* cooling) {
 
   const double lambda_cgs =
       parser_get_param_double(parameter_file, "LambdaCooling:lambda_cgs");
@@ -178,7 +206,8 @@ static INLINE void cooling_init_backend(
  *
  * @param cooling The properties of the cooling function.
  */
-static INLINE void cooling_print_backend(const struct cooling_data* cooling) {
+static INLINE void cooling_print_backend(
+    const struct cooling_function_data* cooling) {
 
   message(
       "Cooling function is 'Constant lambda' with "

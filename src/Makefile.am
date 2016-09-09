@@ -43,7 +43,7 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potentials.h version.h \
-    hydro_properties.h threadpool.h cooling.h
+    hydro_properties.h threadpool.h cooling.h cooling_struct.h
 
 
 # Common source files
@@ -55,7 +55,7 @@ AM_SOURCES = space.c runner.c queue.c task.c cell.c engine.c \
     runner_doiact_fft.c threadpool.c cooling.c
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h \
 		 kernel_long_gravity.h vector.h runner_doiact.h runner_doiact_grav.h runner_doiact_fft.h \
                  units.h intrinsics.h minmax.h kick.h timestep.h drift.h adiabatic_index.h io_properties.h \
 		 dimension.h equation_of_state.h \
@@ -73,7 +73,9 @@ nobase_noinst_HEADERS = approx_math.h atomic.h cycle.h error.h inline.h kernel_h
                  hydro/Gizmo/hydro_debug.h hydro/Gizmo/hydro_part.h \
 	         riemann.h riemann/riemann_hllc.h riemann/riemann_trrs.h \
 		 riemann/riemann_exact.h riemann/riemann_vacuum.h \
-	         cooling/const_du/cooling.h cooling/const_lambda/cooling.h
+	         cooling/none/cooling.h cooling/none/cooling_struct.h \
+	         cooling/const_du/cooling.h cooling/const_du/cooling_struct.h \
+                 cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h 
 
 
 # Sources and flags for regular library

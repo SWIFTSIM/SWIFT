@@ -16,39 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_COOLING_H
-#define SWIFT_COOLING_H
+#ifndef SWIFT_COOLING_STRUCT_NONE_H
+#define SWIFT_COOLING_STRUCT_NONE_H
 
 /**
- * @file src/cooling.h
- * @brief Branches between the different cooling functions.
+ * @file src/cooling/none/cooling_struct.h
+ * @brief Empty infrastructure for the cases without cooling function
  */
 
-/* Config parameters. */
-#include "../config.h"
+/**
+ * @brief Properties of the cooling function.
+ */
+struct cooling_function_data {};
 
-/* Local headers. */
-#include "const.h"
+/**
+ * @brief Properties of the cooling stored in the particle data
+ */
+struct cooling_xpart_data {};
 
-/* Import the right cooling definition */
-#if defined(COOLING_NONE)
-#include "./cooling/none/cooling.h"
-#elif defined(COOLING_CONST_DU)
-#include "./cooling/const_du/cooling.h"
-#elif defined(COOLING_CONST_LAMBDA)
-#include "./cooling/const_lambda/cooling.h"
-#elif defined(COOLING_GRACKLE)
-#include "./cooling/grackle/cooling.h"
-#else
-#error "Invalid choice of cooling function."
-#endif
-
-/* Common functions */
-void cooling_init(const struct swift_params* parameter_file,
-                  const struct UnitSystem* us,
-                  const struct phys_const* phys_const,
-                  struct cooling_function_data* cooling);
-
-void cooling_print(const struct cooling_function_data* cooling);
-
-#endif /* SWIFT_COOLING_H */
+#endif /* SWIFT_COOLING_STRUCT_NONE_H */

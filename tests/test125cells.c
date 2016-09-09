@@ -519,6 +519,7 @@ int main(int argc, char *argv[]) {
   hp.CFL_condition = 0.1;
 
   struct engine engine;
+  bzero(&engine, sizeof(struct engine));
   engine.hydro_properties = &hp;
   engine.physical_constants = &prog_const;
   engine.s = &space;
