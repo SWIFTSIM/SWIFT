@@ -9,8 +9,8 @@ InternalUnitSystem:
 # Parameters for the task scheduling
 Scheduler:
   nr_queues:        0        # (Optional) The number of task queues to use. Use 0  to let the system decide.
-  cell_max_size:    8000000  # (Optional) Maximal number of interactions per task (this is the default value).
-  cell_sub_size:    8000000  # (Optional) Maximal number of interactions per sub-task  (this is the default value).
+  cell_max_size:    8000000  # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
+  cell_sub_size:    64000000 # (Optional) Maximal number of interactions per sub-task  (this is the default value).
   cell_split_size:  400      # (Optional) Maximal number of particles per cell (this is the default value).
 
 # Parameters governing the time integration
@@ -25,6 +25,7 @@ Snapshots:
   basename:   output      # Common part of the name of output files
   time_first: 0.          # Time of the first output (in internal units)
   delta_time: 0.01        # Time difference between consecutive outputs (in internal units)
+  compression: 0          # (Optional) Set the level of compression of the HDF5 datasets [0-9]. 0 does no compression.
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
@@ -62,19 +63,45 @@ DomainDecomposition:
   initial_grid_z:    10
   repartition_type:   b     # (Optional) The re-decomposition strategy ("n", "b", "v", "e" or "x").
  
-# Parameters related to external potentials
+# Parameters related to external potentials --------------------------------------------
   
 # Point mass external potentials
-PointMass:
-  position_x:      50.     # location of external point mass in internal units
+PointMassPotential:
+  position_x:      50.      # location of external point mass (internal units)
   position_y:      50.
   position_z:      50.
-  mass:            1e10     # mass of external point mass in internal units
-  timestep_mult:   0.03     # Pre-factor for the time-step condition
+  mass:            1e10     # mass of external point mass (internal units)
+  timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
 
+# Isothermal potential parameters
 IsothermalPotential:
-  position_x:      100.     # Location of centre of isothermal potential in internal units
+  position_x:      100.     # Location of centre of isothermal potential (internal units)
   position_y:      100.
   position_z:      100.
-  vrot:            200.     # Rotation speed of isothermal potential in internal units
-  timestep_mult:   0.03     # Pre-factor for the time-step condition
+  vrot:            200.     # Rotation speed of isothermal potential (internal units)
+  timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
+
+# Disk-patch potential parameters
+DiscPatchPotential:
+  surface_density: 10.      # Surface density of the disc (internal units)
+  scale_height:    100.     # Scale height of the disc (internal units)
+  z_disc:          200.     # Position of the disc along the z-axis (internal units)
+  timestep_mult:   0.03     # Dimensionless pre-factor for the time-step condition
+  growth_time:     5.       # (Optional) Time for the disc to grow to its final size (multiple of the dynamical time)
+
+# Parameters related to cooling function  ----------------------------------------------
+
+# Constant du/dt cooling function
+ConstCooling:
+  cooling_rate: 1.          # Cooling rate (du/dt) (internal units)
+  min_energy:   1.          # Minimal internal energy per unit mass (internal units)
+  cooling_tstep_mult: 1.    # Dimensionless pre-factor for the time-step condition
+
+# Constant lambda cooling function
+LambdaCooling:
+  lambda:                      2.0   # Cooling rate (in cgs units)
+  minimum_temperature:         1.0e4 # Minimal temperature (Kelvin)
+  mean_molecular_weight:       0.59  # Mean molecular weight
+  hydrogen_mass_abundance:     0.75  # Hydrogen mass abundance (dimensionless)
+  cooling_tstep_mult:          1.0   # Dimensionless pre-factor for the time-step condition
+

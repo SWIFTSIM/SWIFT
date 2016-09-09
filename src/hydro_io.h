@@ -30,6 +30,8 @@
 #include "./hydro/PressureEntropy/hydro_io.h"
 #elif defined(DEFAULT_SPH)
 #include "./hydro/Default/hydro_io.h"
+#elif defined(GIZMO_SPH)
+#include "./hydro/Gizmo/hydro_io.h"
 #else
 #error "Invalid choice of SPH variant"
 #endif

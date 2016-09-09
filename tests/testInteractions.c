@@ -173,7 +173,7 @@ void test_interactions(struct part *parts, int count,
 
   /* Dump state of particles before serial interaction. */
   dump_indv_particle_fields(serial_filename, &pi);
-  for (size_t i = 1; i < count; i++)
+  for (int i = 1; i < count; i++)
     dump_indv_particle_fields(serial_filename, &parts[i]);
 
   /* Make copy of pi to be used in vectorised version. */
@@ -206,7 +206,7 @@ void test_interactions(struct part *parts, int count,
 
   /* Dump result of serial interaction. */
   dump_indv_particle_fields(serial_filename, &pi);
-  for (size_t i = 1; i < count; i++)
+  for (int i = 1; i < count; i++)
     dump_indv_particle_fields(serial_filename, &parts[i]);
 
   /* Setup arrays for vector interaction. */

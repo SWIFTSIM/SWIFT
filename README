@@ -19,19 +19,21 @@ Usage: swift [OPTION]... PARAMFILE
 Valid options are:
   -a          Pin runners using processor affinity
   -c          Run with cosmological time integration
+  -C          Run with cooling
   -d          Dry run. Read the parameter file, allocate memory but does not read 
               the particles from ICs and exit before the start of time integration.
               Allows user to check validy of parameter and IC files as well as memory limits.
+  -D          Always drift all particles even the ones far from active particles.
   -e          Enable floating-point exceptions (debugging mode)
   -f    {int} Overwrite the CPU frequency (Hz) to be used for time measurements
   -g          Run with an external gravitational potential
   -G          Run with self-gravity
-  -n    {int} Execute a fixed number of time steps. When unset use the time_end
-              parameter to stop. 
+  -n    {int} Execute a fixed number of time steps. When unset use the time_end parameter to stop. 
   -s          Run with SPH
   -t    {int} The number of threads to use on each MPI rank. Defaults to 1 if not specified.
-  -v     [12] Increase the level of verbosity 1: MPI-rank 0 writes 
-              2: All MPI-ranks write
+  -v     [12] Increase the level of verbosity
+  	      1: MPI-rank 0 writes
+	      2: All MPI-ranks write
   -y    {int} Time-step frequency at which task graphs are dumped
   -h          Print this help message and exit
 

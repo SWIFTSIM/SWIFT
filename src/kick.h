@@ -39,8 +39,8 @@ __attribute__((always_inline)) INLINE static void kick_gpart(
   /* Compute the time step for this kick */
   const int ti_start = (gp->ti_begin + gp->ti_end) / 2;
   const int ti_end = gp->ti_end + new_dti / 2;
-  const double dt = (ti_end - ti_start) * timeBase;
-  const double half_dt = (ti_end - gp->ti_end) * timeBase;
+  const float dt = (ti_end - ti_start) * timeBase;
+  const float half_dt = (ti_end - gp->ti_end) * timeBase;
 
   /* Move particle forward in time */
   gp->ti_begin = gp->ti_end;
@@ -70,8 +70,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
   /* Compute the time step for this kick */
   const int ti_start = (p->ti_begin + p->ti_end) / 2;
   const int ti_end = p->ti_end + new_dti / 2;
-  const double dt = (ti_end - ti_start) * timeBase;
-  const double half_dt = (ti_end - p->ti_end) * timeBase;
+  const float dt = (ti_end - ti_start) * timeBase;
+  const float half_dt = (ti_end - p->ti_end) * timeBase;
 
   /* Move particle forward in time */
   p->ti_begin = p->ti_end;

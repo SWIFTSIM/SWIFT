@@ -104,7 +104,11 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         }
         part->h = size * h / (float)n;
         part->id = ++(*partId);
+#ifdef GIZMO_SPH
+        part->conserved.mass = density * volume / count;
+#else
         part->mass = density * volume / count;
+#endif
         part->ti_begin = 0;
         part->ti_end = 1;
         ++part;
@@ -146,7 +150,7 @@ void clean_up(struct cell *ci) {
  * @brief Initializes all particles field to be ready for a density calculation
  */
 void zero_particle_fields(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
+  for (int pid = 0; pid < c->count; pid++) {
     hydro_init_part(&c->parts[pid]);
   }
 }
@@ -155,7 +159,7 @@ void zero_particle_fields(struct cell *c) {
  * @brief Ends the loop by adding the appropriate coefficients
  */
 void end_calculation(struct cell *c) {
-  for (size_t pid = 0; pid < c->count; pid++) {
+  for (int pid = 0; pid < c->count; pid++) {
     hydro_end_density(&c->parts[pid], 1);
   }
 }
@@ -177,14 +181,15 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
-  for (size_t pid = 0; pid < main_cell->count; pid++) {
+  for (int pid = 0; pid < main_cell->count; pid++) {
     fprintf(file,
             "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
             "%13e %13e %13e\n",
             main_cell->parts[pid].id, main_cell->parts[pid].x[0],
             main_cell->parts[pid].x[1], main_cell->parts[pid].x[2],
             main_cell->parts[pid].v[0], main_cell->parts[pid].v[1],
-            main_cell->parts[pid].v[2], main_cell->parts[pid].rho,
+            main_cell->parts[pid].v[2],
+            hydro_get_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH)
             0.f,
 #else
@@ -219,14 +224,14 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                 "# Offset: [%2d %2d %2d] -----------------------------------\n",
                 i - 1, j - 1, k - 1);
 
-        for (size_t pjd = 0; pjd < cj->count; pjd++) {
+        for (int pjd = 0; pjd < cj->count; pjd++) {
           fprintf(
               file,
               "%6llu %10f %10f %10f %10f %10f %10f %13e %13e %13e %13e %13e "
               "%13e %13e %13e\n",
               cj->parts[pjd].id, cj->parts[pjd].x[0], cj->parts[pjd].x[1],
               cj->parts[pjd].x[2], cj->parts[pjd].v[0], cj->parts[pjd].v[1],
-              cj->parts[pjd].v[2], cj->parts[pjd].rho,
+              cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
 #if defined(GIZMO_SPH)
               0.f,
 #else
@@ -339,7 +344,6 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   struct space space;
   space.periodic = 0;
-  space.h_max = h;
 
   struct engine engine;
   engine.s = &space;

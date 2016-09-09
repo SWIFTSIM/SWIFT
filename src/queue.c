@@ -188,7 +188,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   /* Set some pointers we will use often. */
   int *qtid = q->tid;
   struct task *qtasks = q->tasks;
-  const int qcount = q->count;
+  const int old_qcount = q->count;
 
   /* Data for the sliding window in which to try the task with the
      best overlap with the previous task. */
@@ -201,7 +201,7 @@ struct task *queue_gettask(struct queue *q, const struct task *prev,
   int ind = -1;
 
   /* Loop over the queue entries. */
-  for (int k = 0; k < qcount; k++) {
+  for (int k = 0; k < old_qcount; k++) {
     if (k < queue_search_window) {
       window[window_count].ind = k;
       window[window_count].tid = qtid[k];

@@ -38,9 +38,10 @@
 
 /* Includes. */
 #include "clocks.h"
+#include "cooling_struct.h"
 #include "parser.h"
 #include "partition.h"
-#include "potentials.h"
+#include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
@@ -61,7 +62,9 @@ enum engine_policy {
   engine_policy_hydro = (1 << 8),
   engine_policy_self_gravity = (1 << 9),
   engine_policy_external_gravity = (1 << 10),
-  engine_policy_cosmology = (1 << 11)
+  engine_policy_cosmology = (1 << 11),
+  engine_policy_drift_all = (1 << 12),
+  engine_policy_cooling = (1 << 13),
 };
 
 extern const char *engine_policy_names[];
@@ -81,16 +84,6 @@ extern int engine_rank;
 /* The maximal number of timesteps in a simulation */
 #define max_nr_timesteps (1 << 28)
 
-/* Mini struct to link cells to density/force tasks. */
-struct link {
-
-  /* The task pointer. */
-  struct task *t;
-
-  /* The next pointer. */
-  struct link *next;
-};
-
 /* Data structure for the engine. */
 struct engine {
 
@@ -108,6 +101,9 @@ struct engine {
 
   /* The task scheduler. */
   struct scheduler sched;
+
+  /* Common threadpool for all the engine's tasks. */
+  struct threadpool threadpool;
 
   /* The minimum and maximum allowed dt */
   double dt_min, dt_max;
@@ -136,6 +132,9 @@ struct engine {
   /* Minimal ti_end for the next time-step */
   int ti_end_min;
 
+  /* Are we drifting all particles now ? */
+  int drift_all;
+
   /* Number of particles updated */
   size_t updates, g_updates;
 
@@ -147,6 +146,7 @@ struct engine {
   double deltaTimeSnapshot;
   int ti_nextSnapshot;
   char snapshotBaseName[200];
+  int snapshotCompression;
   struct UnitSystem *snapshotUnits;
 
   /* Statistics information */
@@ -204,6 +204,9 @@ struct engine {
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
+  /* Properties of the cooling scheme */
+  const struct cooling_function_data *cooling_func;
+
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
 };
@@ -211,6 +214,7 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_compute_next_snapshot_time(struct engine *e);
+void engine_drift(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -218,10 +222,11 @@ void engine_init(struct engine *e, struct space *s,
                  const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
-                 const struct external_potential *potential);
+                 const struct external_potential *potential,
+                 const struct cooling_function_data *cooling);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
-void engine_prepare(struct engine *e);
+void engine_prepare(struct engine *e, int nodrift);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
 void engine_step(struct engine *e);
@@ -234,7 +239,6 @@ void engine_rebuild(struct engine *e);
 void engine_repartition(struct engine *e);
 void engine_makeproxies(struct engine *e);
 void engine_redistribute(struct engine *e);
-struct link *engine_addlink(struct engine *e, struct link *l, struct task *t);
 void engine_print_policy(struct engine *e);
 int engine_is_done(struct engine *e);
 void engine_pin();

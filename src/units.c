@@ -316,6 +316,13 @@ void units_get_base_unit_exponants_array(float baseUnitsExp[5],
 
     case UNIT_CONV_TEMPERATURE:
       baseUnitsExp[UNIT_TEMPERATURE] = 1.f;
+      break;
+
+    case UNIT_CONV_VOLUME:
+      baseUnitsExp[UNIT_LENGTH] = 3.f;
+
+    case UNIT_CONV_INV_VOLUME:
+      baseUnitsExp[UNIT_LENGTH] = -3.f;
   }
 }
 

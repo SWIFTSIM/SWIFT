@@ -37,11 +37,11 @@ ticks timers[timer_count];
  * To reset all timers, use the mask #timers_mask_all.
  */
 
-void timers_reset(unsigned int mask) {
+void timers_reset(unsigned long long mask) {
 
   int k;
 
   /* Loop over the timers and set the masked ones to zero. */
   for (k = 0; k < timer_count; k++)
-    if (mask & (1 << k)) timers[k] = 0;
+    if (mask & (1ull << k)) timers[k] = 0;
 }

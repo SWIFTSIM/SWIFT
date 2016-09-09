@@ -21,17 +21,18 @@
 #define SWIFT_GADGET2_HYDRO_IACT_H
 
 /**
+ * @file Gadget2/hydro_iact.h
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
  * The interactions computed here are the ones presented in the Gadget-2 paper
- *and use the same
- * numerical coefficients as the Gadget-2 code. When used with the Spline-3
- *kernel, the results
- * should be equivalent to the ones obtained with Gadget-2 up to the rounding
- *errors and interactions
- * missed by the Gadget-2 tree-code neighbours search.
- *
+ * Springel, V., MNRAS, Volume 364, Issue 4, pp. 1105-1134.
+ * We use the same numerical coefficients as the Gadget-2 code. When used with
+ * the Spline-3 kernel, the results should be equivalent to the ones obtained
+ * with Gadget-2 up to the rounding errors and interactions missed by the
+ * Gadget-2 tree-code neighbours search.
  */
+
+#include "minmax.h"
 
 /**
  * @brief Density loop
@@ -432,7 +433,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
@@ -465,8 +466,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
-  pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
+  pi->force.v_sig = (pi->force.v_sig > v_sig) ? pi->force.v_sig : v_sig;
+  pj->force.v_sig = (pj->force.v_sig > v_sig) ? pj->force.v_sig : v_sig;
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
@@ -641,8 +642,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_force(
     }
     pi[k]->force.h_dt -= pih_dt.f[k];
     pj[k]->force.h_dt -= pjh_dt.f[k];
-    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
-    pj[k]->force.v_sig = fmaxf(pj[k]->force.v_sig, v_sig.f[k]);
+    pi[k]->force.v_sig = max(pi[k]->force.v_sig, v_sig.f[k]);
+    pj[k]->force.v_sig = max(pj[k]->force.v_sig, v_sig.f[k]);
     pi[k]->entropy_dt += entropy_dt.f[k] * mj.f[k];
     pj[k]->entropy_dt += entropy_dt.f[k] * mi.f[k];
   }
@@ -707,7 +708,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
-  const float omega_ij = fminf(dvdr, 0.f);
+  const float omega_ij = (dvdr < 0.f) ? dvdr : 0.f;
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
@@ -735,7 +736,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
   /* Update the signal velocity. */
-  pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
+  pi->force.v_sig = (pi->force.v_sig > v_sig) ? pi->force.v_sig : v_sig;
 
   /* Change in entropy */
   pi->entropy_dt += mj * visc_term * dvdr;
@@ -900,7 +901,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_vec_force(
   for (k = 0; k < VEC_SIZE; k++) {
     for (j = 0; j < 3; j++) pi[k]->a_hydro[j] -= pia[j].f[k];
     pi[k]->force.h_dt -= pih_dt.f[k];
-    pi[k]->force.v_sig = fmaxf(pi[k]->force.v_sig, v_sig.f[k]);
+    pi[k]->force.v_sig = max(pi[k]->force.v_sig, v_sig.f[k]);
     pi[k]->entropy_dt += entropy_dt.f[k];
   }
 

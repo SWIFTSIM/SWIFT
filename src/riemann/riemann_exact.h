@@ -29,19 +29,10 @@
 #ifndef SWIFT_RIEMANN_EXACT_H
 #define SWIFT_RIEMANN_EXACT_H
 
-/* frequently used combinations of const_hydro_gamma */
-#define const_riemann_gp1d2g \
-  (0.5f * (const_hydro_gamma + 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1d2g \
-  (0.5f * (const_hydro_gamma - 1.0f) / const_hydro_gamma)
-#define const_riemann_gm1dgp1 \
-  ((const_hydro_gamma - 1.0f) / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgp1 (2.0f / (const_hydro_gamma + 1.0f))
-#define const_riemann_tdgm1 (2.0f / (const_hydro_gamma - 1.0f))
-#define const_riemann_gm1d2 (0.5f * (const_hydro_gamma - 1.0f))
-#define const_riemann_tgdgm1 \
-  (2.0f * const_hydro_gamma / (const_hydro_gamma - 1.0f))
-#define const_riemann_ginv (1.0f / const_hydro_gamma)
+#include <float.h>
+#include "adiabatic_index.h"
+#include "minmax.h"
+#include "riemann_vacuum.h"
 
 /**
  * @brief Functions (4.6) and (4.7) in Toro.
@@ -50,19 +41,18 @@
  * @param W The left or right state vector
  * @param a The left or right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_fb(GFLOAT p,
-                                                               GFLOAT* W,
-                                                               GFLOAT a) {
+__attribute__((always_inline)) INLINE static float riemann_fb(float p, float* W,
+                                                              float a) {
 
-  GFLOAT fval = 0.;
-  GFLOAT A, B;
+  float fval = 0.;
+  float A, B;
   if (p > W[4]) {
-    A = const_riemann_tdgp1 / W[0];
-    B = const_riemann_gm1dgp1 * W[4];
+    A = hydro_two_over_gamma_plus_one / W[0];
+    B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
     fval = (p - W[4]) * sqrtf(A / (p + B));
   } else {
-    fval =
-        const_riemann_tdgm1 * a * (powf(p / W[4], const_riemann_gm1d2g) - 1.0f);
+    fval = hydro_two_over_gamma_minus_one * a *
+           (pow_gamma_minus_one_over_two_gamma(p / W[4]) - 1.0f);
   }
   return fval;
 }
@@ -78,9 +68,8 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_fb(GFLOAT p,
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_f(
-    GFLOAT p, GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL,
-    GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_f(
+    float p, float* WL, float* WR, float vL, float vR, float aL, float aR) {
 
   return riemann_fb(p, WL, aL) + riemann_fb(p, WR, aR) + (vR - vL);
 }
@@ -92,18 +81,18 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_f(
  * @param W The left or right state vector
  * @param a The left or right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_fprimeb(GFLOAT p,
-                                                                    GFLOAT* W,
-                                                                    GFLOAT a) {
+__attribute__((always_inline)) INLINE static float riemann_fprimeb(float p,
+                                                                   float* W,
+                                                                   float a) {
 
-  GFLOAT fval = 0.;
-  GFLOAT A, B;
+  float fval = 0.;
+  float A, B;
   if (p > W[4]) {
-    A = const_riemann_tdgp1 / W[0];
-    B = const_riemann_gm1dgp1 * W[4];
+    A = hydro_two_over_gamma_plus_one / W[0];
+    B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
     fval = (1.0f - 0.5f * (p - W[4]) / (B + p)) * sqrtf(A / (p + B));
   } else {
-    fval = 1.0f / (W[0] * a) * powf(p / W[4], -const_riemann_gp1d2g);
+    fval = 1.0f / W[0] / a * pow_minus_gamma_plus_one_over_two_gamma(p / W[4]);
   }
   return fval;
 }
@@ -117,8 +106,8 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_fprimeb(GFLOAT p,
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_fprime(
-    GFLOAT p, GFLOAT* WL, GFLOAT* WR, GFLOAT aL, GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_fprime(
+    float p, float* WL, float* WR, float aL, float aR) {
 
   return riemann_fprimeb(p, WL, aL) + riemann_fprimeb(p, WR, aR);
 }
@@ -129,12 +118,12 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_fprime(
  * @param p The current guess for the pressure
  * @param W The left or right state vector
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_gb(GFLOAT p,
-                                                               GFLOAT* W) {
+__attribute__((always_inline)) INLINE static float riemann_gb(float p,
+                                                              float* W) {
 
-  GFLOAT A, B;
-  A = const_riemann_tdgp1 / W[0];
-  B = const_riemann_gm1dgp1 * W[4];
+  float A, B;
+  A = hydro_two_over_gamma_plus_one / W[0];
+  B = hydro_gamma_minus_one_over_gamma_plus_one * W[4];
   return sqrtf(A / (p + B));
 }
 
@@ -151,27 +140,27 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_gb(GFLOAT p,
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_guess_p(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL, GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_guess_p(
+    float* WL, float* WR, float vL, float vR, float aL, float aR) {
 
-  GFLOAT pguess, pmin, pmax, qmax;
-  GFLOAT ppv;
+  float pguess, pmin, pmax, qmax;
+  float ppv;
 
-  pmin = fminf(WL[4], WR[4]);
-  pmax = fmaxf(WL[4], WR[4]);
+  pmin = min(WL[4], WR[4]);
+  pmax = max(WL[4], WR[4]);
   qmax = pmax / pmin;
   ppv =
       0.5f * (WL[4] + WR[4]) - 0.125f * (vR - vL) * (WL[0] + WR[0]) * (aL + aR);
-  ppv = fmaxf(1.e-8f, ppv);
+  ppv = max(1.e-8f, ppv);
   if (qmax <= 2.0f && pmin <= ppv && ppv <= pmax) {
     pguess = ppv;
   } else {
     if (ppv < pmin) {
       /* two rarefactions */
-      pguess = powf((aL + aR - const_riemann_gm1d2 * (vR - vL)) /
-                        (aL / powf(WL[4], const_riemann_gm1d2g) +
-                         aR / powf(WR[4], const_riemann_gm1d2g)),
-                    const_riemann_tgdgm1);
+      pguess = pow_two_gamma_over_gamma_minus_one(
+          (aL + aR - hydro_gamma_minus_one_over_two * (vR - vL)) /
+          (aL / pow_gamma_minus_one_over_two_gamma(WL[4]) +
+           aR / pow_gamma_minus_one_over_two_gamma(WR[4])));
     } else {
       /* two shocks */
       pguess = (riemann_gb(ppv, WL) * WL[4] + riemann_gb(ppv, WR) * WR[4] - vR +
@@ -183,7 +172,7 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_guess_p(
      value for pressure (...).
      Thus in order to avoid negative guess values we introduce the small
      positive constant _tolerance" */
-  pguess = fmaxf(1.e-8f, pguess);
+  pguess = max(1.e-8f, pguess);
   return pguess;
 }
 
@@ -202,14 +191,14 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_guess_p(
  * @param aL The left sound speed
  * @param aR The right sound speed
  */
-__attribute__((always_inline)) INLINE static GFLOAT riemann_solve_brent(
-    GFLOAT lower_limit, GFLOAT upper_limit, GFLOAT lowf, GFLOAT upf,
-    GFLOAT error_tol, GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL,
-    GFLOAT aR) {
+__attribute__((always_inline)) INLINE static float riemann_solve_brent(
+    float lower_limit, float upper_limit, float lowf, float upf,
+    float error_tol, float* WL, float* WR, float vL, float vR, float aL,
+    float aR) {
 
-  GFLOAT a, b, c, d, s;
-  GFLOAT fa, fb, fc, fs;
-  GFLOAT tmp, tmp2;
+  float a, b, c, d, s;
+  float fa, fb, fc, fs;
+  float tmp, tmp2;
   int mflag;
   int i;
 
@@ -296,148 +285,6 @@ __attribute__((always_inline)) INLINE static GFLOAT riemann_solve_brent(
   return b;
 }
 
-/**
- * @brief Vacuum Riemann solver, based on section 4.6 in Toro
- *
- * @param WL The left state vector
- * @param WR The right state vector
- * @param vL The left velocity along the interface normal
- * @param vR The right velocity along the interface normal
- * @param aL The left sound speed
- * @param aR The right sound speed
- * @param Whalf Empty state vector to store the solution in
- * @param n_unit Normal vector of the interface
- */
-__attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT vL, GFLOAT vR, GFLOAT aL, GFLOAT aR,
-    GFLOAT* Whalf, float* n_unit) {
-
-  GFLOAT SL, SR;
-  GFLOAT vhalf;
-
-  if (!WR[0] && !WL[0]) {
-    /* if both states are vacuum, the solution is also vacuum */
-    Whalf[0] = 0.0f;
-    Whalf[1] = 0.0f;
-    Whalf[2] = 0.0f;
-    Whalf[3] = 0.0f;
-    Whalf[4] = 0.0f;
-    return;
-  }
-  if (!WR[0]) {
-    Whalf[1] = WL[1];
-    Whalf[2] = WL[2];
-    Whalf[3] = WL[3];
-    /* vacuum right state */
-    if (vL < aL) {
-      SL = vL + const_riemann_tdgm1 * aL;
-      if (SL > 0.0f) {
-        Whalf[0] =
-            WL[0] * powf(const_riemann_tdgp1 + const_riemann_gm1dgp1 / aL * vL,
-                         const_riemann_tdgm1);
-        vhalf = const_riemann_tdgp1 * (aL + const_riemann_gm1d2 * vL) - vL;
-        Whalf[4] =
-            WL[4] * powf(const_riemann_tdgp1 + const_riemann_gm1dgp1 / aL * vL,
-                         const_riemann_tgdgm1);
-      } else {
-        Whalf[0] = 0.0f;
-        Whalf[1] = 0.0f;
-        Whalf[2] = 0.0f;
-        Whalf[3] = 0.0f;
-        Whalf[4] = 0.0f;
-        return;
-      }
-    } else {
-      Whalf[0] = WL[0];
-      vhalf = 0.0f;
-      Whalf[4] = WL[4];
-    }
-  } else {
-    if (!WL[0]) {
-      Whalf[1] = WR[1];
-      Whalf[2] = WR[2];
-      Whalf[3] = WR[3];
-      /* vacuum left state */
-      if (-vR < aR) {
-        SR = vR - const_riemann_tdgm1 * aR;
-        if (SR >= 0.0f) {
-          Whalf[0] = 0.0f;
-          Whalf[1] = 0.0f;
-          Whalf[2] = 0.0f;
-          Whalf[3] = 0.0f;
-          Whalf[4] = 0.0f;
-          return;
-        } else {
-          Whalf[0] = WR[0] *
-                     powf(const_riemann_tdgp1 - const_riemann_gm1dgp1 / aR * vR,
-                          const_riemann_tdgm1);
-          vhalf = const_riemann_tdgp1 * (-aR + const_riemann_gm1d2 * vR) - vR;
-          Whalf[4] = WR[4] *
-                     powf(const_riemann_tdgp1 - const_riemann_gm1dgp1 / aR * vR,
-                          const_riemann_tgdgm1);
-        }
-      } else {
-        Whalf[0] = WR[0];
-        vhalf = 0.0f;
-        Whalf[4] = WR[4];
-      }
-    } else {
-      /* vacuum generation */
-      SR = vR - const_riemann_tdgm1 * aR;
-      SL = vL + const_riemann_tdgm1 * aL;
-      if (SR > 0.0f && SL < 0.0f) {
-        Whalf[0] = 0.0f;
-        Whalf[1] = 0.0f;
-        Whalf[2] = 0.0f;
-        Whalf[3] = 0.0f;
-        Whalf[4] = 0.0f;
-        return;
-      } else {
-        if (SL >= 0.0f) {
-          Whalf[1] = WL[1];
-          Whalf[2] = WL[2];
-          Whalf[3] = WL[3];
-          if (aL > vL) {
-            Whalf[0] = WL[0] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (aL + const_riemann_gm1d2 * vL) - vL;
-            Whalf[4] = WL[4] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tgdgm1);
-          } else {
-            Whalf[0] = WL[0];
-            vhalf = 0.0f;
-            Whalf[4] = WL[4];
-          }
-        } else {
-          Whalf[1] = WR[1];
-          Whalf[2] = WR[2];
-          Whalf[3] = WR[3];
-          if (-vR < aR) {
-            Whalf[0] = WR[0] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (-aR + const_riemann_gm1d2 * vR) - vR;
-            Whalf[4] = WR[4] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tgdgm1);
-          } else {
-            Whalf[0] = WR[0];
-            vhalf = 0.0f;
-            Whalf[4] = WR[4];
-          }
-        }
-      }
-    }
-  }
-
-  /* Add the velocity solution along the interface normal to the velocities */
-  Whalf[1] += vhalf * n_unit[0];
-  Whalf[2] += vhalf * n_unit[1];
-  Whalf[3] += vhalf * n_unit[2];
-}
-
 /* Solve the Riemann problem between the states WL and WR and store the result
  * in Whalf
  * The Riemann problem is solved in the x-direction; the velocities in the y-
@@ -456,20 +303,20 @@ __attribute__((always_inline)) INLINE static void riemann_solve_vacuum(
  * @param n_unit Normal vector of the interface
  */
 __attribute__((always_inline)) INLINE static void riemann_solver_solve(
-    GFLOAT* WL, GFLOAT* WR, GFLOAT* Whalf, float* n_unit) {
+    float* WL, float* WR, float* Whalf, float* n_unit) {
 
   /* velocity of the left and right state in a frame aligned with n_unit */
-  GFLOAT vL, vR, vhalf;
+  float vL, vR, vhalf;
   /* sound speeds */
-  GFLOAT aL, aR;
+  float aL, aR;
   /* variables used for finding pstar */
-  GFLOAT p, pguess, fp, fpguess;
+  float p, pguess, fp, fpguess;
   /* variables used for sampling the solution */
-  GFLOAT u;
-  GFLOAT pdpR, SR;
-  GFLOAT SHR, STR;
-  GFLOAT pdpL, SL;
-  GFLOAT SHL, STL;
+  float u;
+  float pdpR, SR;
+  float SHR, STR;
+  float pdpL, SL;
+  float SHL, STL;
   int errorFlag = 0;
 
   /* sanity checks */
@@ -500,156 +347,155 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
   vR = WR[1] * n_unit[0] + WR[2] * n_unit[1] + WR[3] * n_unit[2];
 
   /* calculate sound speeds */
-  aL = sqrtf(const_hydro_gamma * WL[4] / WL[0]);
-  aR = sqrtf(const_hydro_gamma * WR[4] / WR[0]);
+  aL = sqrtf(hydro_gamma * WL[4] / WL[0]);
+  aR = sqrtf(hydro_gamma * WR[4] / WR[0]);
 
-  if (!WL[0] || !WR[0]) {
-    /* vacuum: we need a vacuum riemann solver */
+  /* check vacuum (generation) condition */
+  if (riemann_is_vacuum(WL, WR, vL, vR, aL, aR)) {
     riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
     return;
   }
 
-  /* check vacuum generation condition */
-  if (2.0f * aL / (const_hydro_gamma - 1.0f) +
-          2.0f * aR / (const_hydro_gamma - 1.0f) <
-      fabs(vL - vR)) {
-    /* vacuum generation: need a vacuum riemann solver */
-    riemann_solve_vacuum(WL, WR, vL, vR, aL, aR, Whalf, n_unit);
-    return;
-  } else {
-    /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
-    /* We normally use a Newton-Raphson iteration to find the zeropoint
-       of riemann_f(p), but if pstar is close to 0, we risk negative p values.
-       Since riemann_f(p) is undefined for negative pressures, we don't
-       want this to happen.
-       We therefore use Brent's method if riemann_f(0) is larger than some
-       value. -5 makes the iteration fail safe while almost never invoking
-       the expensive Brent solver. */
-    p = 0.;
-    /* obtain a first guess for p */
-    pguess = riemann_guess_p(WL, WR, vL, vR, aL, aR);
-    fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
-    fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
-    /* ok, pstar is close to 0, better use Brent's method... */
-    /* we use Newton-Raphson until we find a suitable interval */
-    if (fp * fpguess >= 0.0f) {
-      /* Newton-Raphson until convergence or until suitable interval is found
-         to use Brent's method */
-      unsigned int counter = 0;
-      while (fabs(p - pguess) > 1.e-6f * 0.5f * (p + pguess) &&
-             fpguess < 0.0f) {
-        p = pguess;
-        pguess = pguess - fpguess / riemann_fprime(pguess, WL, WR, aL, aR);
-        fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
-        counter++;
-        if (counter > 1000) {
-          error("Stuck in Newton-Raphson!\n");
-        }
+  /* values are ok: let's find pstar (riemann_f(pstar) = 0)! */
+  /* We normally use a Newton-Raphson iteration to find the zeropoint
+     of riemann_f(p), but if pstar is close to 0, we risk negative p values.
+     Since riemann_f(p) is undefined for negative pressures, we don't
+     want this to happen.
+     We therefore use Brent's method if riemann_f(0) is larger than some
+     value. -5 makes the iteration fail safe while almost never invoking
+     the expensive Brent solver. */
+  p = 0.;
+  /* obtain a first guess for p */
+  pguess = riemann_guess_p(WL, WR, vL, vR, aL, aR);
+  fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
+  fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
+  /* ok, pstar is close to 0, better use Brent's method... */
+  /* we use Newton-Raphson until we find a suitable interval */
+  if (fp * fpguess >= 0.0f) {
+    /* Newton-Raphson until convergence or until suitable interval is found
+       to use Brent's method */
+    unsigned int counter = 0;
+    while (fabs(p - pguess) > 1.e-6f * 0.5f * (p + pguess) && fpguess < 0.0f) {
+      p = pguess;
+      pguess = pguess - fpguess / riemann_fprime(pguess, WL, WR, aL, aR);
+      fpguess = riemann_f(pguess, WL, WR, vL, vR, aL, aR);
+      counter++;
+      if (counter > 1000) {
+        error("Stuck in Newton-Raphson!\n");
       }
     }
-    /* As soon as there is a suitable interval: use Brent's method */
-    if (1.e6 * fabs(p - pguess) > 0.5f * (p + pguess) && fpguess > 0.0f) {
-      p = 0.0f;
-      fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
-      /* use Brent's method to find the zeropoint */
-      p = riemann_solve_brent(p, pguess, fp, fpguess, 1.e-6, WL, WR, vL, vR, aL,
-                              aR);
+  }
+  /* As soon as there is a suitable interval: use Brent's method */
+  if (1.e6 * fabs(p - pguess) > 0.5f * (p + pguess) && fpguess > 0.0f) {
+    p = 0.0f;
+    fp = riemann_f(p, WL, WR, vL, vR, aL, aR);
+    /* use Brent's method to find the zeropoint */
+    p = riemann_solve_brent(p, pguess, fp, fpguess, 1.e-6, WL, WR, vL, vR, aL,
+                            aR);
+  } else {
+    p = pguess;
+  }
+
+  /* calculate the velocity in the intermediate state */
+  u = 0.5f * (vL + vR) + 0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
+
+  /* sample the solution */
+  /* This corresponds to the flow chart in Fig. 4.14 in Toro */
+  if (u < 0.0f) {
+    /* advect velocity components */
+    Whalf[1] = WR[1];
+    Whalf[2] = WR[2];
+    Whalf[3] = WR[3];
+    pdpR = p / WR[4];
+    if (p > WR[4]) {
+      /* shockwave */
+      SR = vR +
+           aR * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpR +
+                      hydro_gamma_minus_one_over_two_gamma);
+      if (SR > 0.0f) {
+        Whalf[0] = WR[0] * (pdpR + hydro_gamma_minus_one_over_gamma_plus_one) /
+                   (hydro_gamma_minus_one_over_gamma_plus_one * pdpR + 1.0f);
+        vhalf = u - vR;
+        Whalf[4] = p;
+      } else {
+        Whalf[0] = WR[0];
+        vhalf = 0.0f;
+        Whalf[4] = WR[4];
+      }
     } else {
-      p = pguess;
-    }
-
-    /* calculate the velocity in the intermediate state */
-    u = 0.5f * (vL + vR) +
-        0.5f * (riemann_fb(p, WR, aR) - riemann_fb(p, WL, aL));
-
-    /* sample the solution */
-    /* This corresponds to the flow chart in Fig. 4.14 in Toro */
-    if (u < 0.0f) {
-      /* advect velocity components */
-      Whalf[1] = WR[1];
-      Whalf[2] = WR[2];
-      Whalf[3] = WR[3];
-      pdpR = p / WR[4];
-      if (p > WR[4]) {
-        /* shockwave */
-        SR =
-            vR + aR * sqrtf(const_riemann_gp1d2g * pdpR + const_riemann_gm1d2g);
-        if (SR > 0.0f) {
-          Whalf[0] = WR[0] * (pdpR + const_riemann_gm1dgp1) /
-                     (const_riemann_gm1dgp1 * pdpR + 1.0f);
+      /* rarefaction wave */
+      SHR = vR + aR;
+      if (SHR > 0.0f) {
+        STR = u + aR * pow_gamma_minus_one_over_two_gamma(pdpR);
+        if (STR <= 0.0f) {
+          Whalf[0] =
+              WR[0] * pow_two_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one -
+                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+          vhalf = hydro_two_over_gamma_plus_one *
+                      (-aR + hydro_gamma_minus_one_over_two * vR) -
+                  vR;
+          Whalf[4] =
+              WR[4] * pow_two_gamma_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one -
+                          hydro_gamma_minus_one_over_gamma_plus_one / aR * vR);
+        } else {
+          Whalf[0] = WR[0] * pow_one_over_gamma(pdpR);
           vhalf = u - vR;
           Whalf[4] = p;
-        } else {
-          Whalf[0] = WR[0];
-          vhalf = 0.0f;
-          Whalf[4] = WR[4];
         }
       } else {
-        /* rarefaction wave */
-        SHR = vR + aR;
-        if (SHR > 0.0f) {
-          STR = u + aR * powf(pdpR, const_riemann_gm1d2g);
-          if (STR <= 0.0f) {
-            Whalf[0] = WR[0] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (-aR + const_riemann_gm1d2 * vR) - vR;
-            Whalf[4] = WR[4] * powf(const_riemann_tdgp1 -
-                                        const_riemann_gm1dgp1 / aR * vR,
-                                    const_riemann_tgdgm1);
-          } else {
-            Whalf[0] = WR[0] * powf(pdpR, const_riemann_ginv);
-            vhalf = u - vR;
-            Whalf[4] = p;
-          }
-        } else {
-          Whalf[0] = WR[0];
-          vhalf = 0.0f;
-          Whalf[4] = WR[4];
-        }
+        Whalf[0] = WR[0];
+        vhalf = 0.0f;
+        Whalf[4] = WR[4];
+      }
+    }
+  } else {
+    Whalf[1] = WL[1];
+    Whalf[2] = WL[2];
+    Whalf[3] = WL[3];
+    pdpL = p / WL[4];
+    if (p > WL[4]) {
+      /* shockwave */
+      SL = vL -
+           aL * sqrtf(hydro_gamma_plus_one_over_two_gamma * pdpL +
+                      hydro_gamma_minus_one_over_two_gamma);
+      if (SL < 0.0f) {
+        Whalf[0] = WL[0] * (pdpL + hydro_gamma_minus_one_over_gamma_plus_one) /
+                   (hydro_gamma_minus_one_over_gamma_plus_one * pdpL + 1.0f);
+        vhalf = u - vL;
+        Whalf[4] = p;
+      } else {
+        Whalf[0] = WL[0];
+        vhalf = 0.0f;
+        Whalf[4] = WL[4];
       }
     } else {
-      Whalf[1] = WL[1];
-      Whalf[2] = WL[2];
-      Whalf[3] = WL[3];
-      pdpL = p / WL[4];
-      if (p > WL[4]) {
-        /* shockwave */
-        SL =
-            vL - aL * sqrtf(const_riemann_gp1d2g * pdpL + const_riemann_gm1d2g);
-        if (SL < 0.0f) {
-          Whalf[0] = WL[0] * (pdpL + const_riemann_gm1dgp1) /
-                     (const_riemann_gm1dgp1 * pdpL + 1.0f);
+      /* rarefaction wave */
+      SHL = vL - aL;
+      if (SHL < 0.0f) {
+        STL = u - aL * pow_gamma_minus_one_over_two_gamma(pdpL);
+        if (STL > 0.0f) {
+          Whalf[0] =
+              WL[0] * pow_two_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one +
+                          hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+          vhalf = hydro_two_over_gamma_plus_one *
+                      (aL + hydro_gamma_minus_one_over_two * vL) -
+                  vL;
+          Whalf[4] =
+              WL[4] * pow_two_gamma_over_gamma_minus_one(
+                          hydro_two_over_gamma_plus_one +
+                          hydro_gamma_minus_one_over_gamma_plus_one / aL * vL);
+        } else {
+          Whalf[0] = WL[0] * pow_one_over_gamma(pdpL);
           vhalf = u - vL;
           Whalf[4] = p;
-        } else {
-          Whalf[0] = WL[0];
-          vhalf = 0.0f;
-          Whalf[4] = WL[4];
         }
       } else {
-        /* rarefaction wave */
-        SHL = vL - aL;
-        if (SHL < 0.0f) {
-          STL = u - aL * powf(pdpL, const_riemann_gm1d2g);
-          if (STL > 0.0f) {
-            Whalf[0] = WL[0] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tdgm1);
-            vhalf = const_riemann_tdgp1 * (aL + const_riemann_gm1d2 * vL) - vL;
-            Whalf[4] = WL[4] * powf(const_riemann_tdgp1 +
-                                        const_riemann_gm1dgp1 / aL * vL,
-                                    const_riemann_tgdgm1);
-          } else {
-            Whalf[0] = WL[0] * powf(pdpL, const_riemann_ginv);
-            vhalf = u - vL;
-            Whalf[4] = p;
-          }
-        } else {
-          Whalf[0] = WL[0];
-          vhalf = 0.0f;
-          Whalf[4] = WL[4];
-        }
+        Whalf[0] = WL[0];
+        vhalf = 0.0f;
+        Whalf[4] = WL[4];
       }
     }
   }
@@ -661,10 +507,10 @@ __attribute__((always_inline)) INLINE static void riemann_solver_solve(
 }
 
 __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
-    GFLOAT* Wi, GFLOAT* Wj, float* n_unit, float* vij, GFLOAT* totflux) {
+    float* Wi, float* Wj, float* n_unit, float* vij, float* totflux) {
 
-  GFLOAT Whalf[5];
-  GFLOAT flux[5][3];
+  float Whalf[5];
+  float flux[5][3];
   float vtot[3];
   float rhoe;
 
@@ -690,7 +536,7 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   /* eqn. (15) */
   /* F_P = \rho e ( \vec{v} - \vec{v_{ij}} ) + P \vec{v} */
   /* \rho e = P / (\gamma-1) + 1/2 \rho \vec{v}^2 */
-  rhoe = Whalf[4] / (const_hydro_gamma - 1.0f) +
+  rhoe = Whalf[4] / hydro_gamma_minus_one +
          0.5f * Whalf[0] *
              (vtot[0] * vtot[0] + vtot[1] * vtot[1] + vtot[2] * vtot[2]);
   flux[4][0] = rhoe * Whalf[1] + Whalf[4] * vtot[0];

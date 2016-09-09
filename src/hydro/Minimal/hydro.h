@@ -29,12 +29,12 @@
  * term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
+ * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
 #include "adiabatic_index.h"
+#include "approx_math.h"
 #include "dimension.h"
 #include "equation_of_state.h"
 #include "hydro_properties.h"
@@ -100,6 +100,28 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
   const float u = p->u + p->u_dt * dt;
 
   return gas_soundspeed_from_internal_energy(p->rho, u);
+}
+
+/**
+ * @brief Returns the density of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_density(
+    const struct part *restrict p) {
+
+  return p->rho;
+}
+
+/**
+ * @brief Returns the mass of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_mass(
+    const struct part *restrict p) {
+
+  return p->mass;
 }
 
 /**
@@ -286,15 +308,32 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * Additional hydrodynamic quantites are drifted forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
- * @param p The particle
- * @param xp The extended data of the particle
- * @param t0 The time at the start of the drift (on the timeline)
- * @param t1 The time at the end of the drift (on the timeline)
- * @param timeBase The minimal time-step size
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @param dt The drift time-step.
+ * @param t0 The time at the start of the drift (on the timeline).
+ * @param t1 The time at the end of the drift (on the timeline).
+ * @param timeBase The minimal time-step size.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, int t0, int t1,
-    double timeBase) {
+    struct part *restrict p, const struct xpart *restrict xp, float dt, int t0,
+    int t1, double timeBase) {
+
+  const float h_inv = 1.f / p->h;
+
+  /* Predict smoothing length */
+  const float w1 = p->force.h_dt * h_inv * dt;
+  if (fabsf(w1) < 0.2f)
+    p->h *= approx_expf(w1); /* 4th order expansion of exp(w) */
+  else
+    p->h *= expf(w1);
+
+  /* Predict density */
+  const float w2 = -hydro_dimension * w1;
+  if (fabsf(w2) < 0.2f)
+    p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
+  else
+    p->rho *= expf(w2);
 
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;

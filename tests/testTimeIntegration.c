@@ -116,9 +116,6 @@ int main() {
 
     /* Kick... */
     runner_do_kick(&run, &c, 0);
-
-    /* Drift... */
-    runner_do_drift(&run, &c, 0);
   }
 
   /* Clean-up */
