@@ -432,4 +432,40 @@ __attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
 #endif
 }
 
+/**
+ * @brief Return the argument to the power one minus two over the adiabatic
+ * index
+ *
+ * Computes \f$x^{1 - \frac{2}{\gamma}}\f$.
+ *
+ * @param x Argument
+ * @return Argument to the power one minus two over the adiabatic index
+ */
+__attribute__((always_inline)) INLINE static float pow_one_minus_two_over_gamma(
+    float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, -0.2f);
+
+#elif defined(HYDRO_GAMMA_7_5)
+
+  return powf(x, -0.428571429f);
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return 1.f / sqrtf(x);
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return 1.f;
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
 #endif /* SWIFT_ADIABATIC_INDEX_H */

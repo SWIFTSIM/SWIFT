@@ -20,8 +20,8 @@
 #define SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H
 
 /**
- * @file PressureEntropy/hydro_part.h
- * @brief Pressure-Entropy implementation of SPH (Particle definition)
+ * @file PressureEntropy/hydro_iact.h
+ * @brief Pressure-Entropy implementation of SPH (Neighbour loop equations)
  *
  * The thermal variable is the entropy (S) and the entropy is smoothed over
  * contact discontinuities to prevent spurious surface tension.

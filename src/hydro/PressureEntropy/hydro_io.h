@@ -21,7 +21,7 @@
 
 /**
  * @file PressureEntropy/hydro_io.h
- * @brief Pressure-Entropy implementation of SPH (Particle definition)
+ * @brief Pressure-Entropy implementation of SPH (i/o routines)
  *
  * The thermal variable is the entropy (S) and the entropy is smoothed over
  * contact discontinuities to prevent spurious surface tension.

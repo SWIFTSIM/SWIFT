@@ -20,8 +20,9 @@
 #define SWIFT_PRESSURE_ENTROPY_HYDRO_H
 
 /**
- * @file PressureEntropy/hydro_part.h
- * @brief Pressure-Entropy implementation of SPH (Particle definition)
+ * @file PressureEntropy/hydro.h
+ * @brief Pressure-Entropy implementation of SPH (Non-neighbour loop
+ * equations)
  *
  * The thermal variable is the entropy (S) and the entropy is smoothed over
  * contact discontinuities to prevent spurious surface tension.
@@ -86,6 +87,28 @@ __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part *restrict p, float dt) {
 
   return p->force.soundspeed;
+}
+
+/**
+ * @brief Returns the density of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_density(
+    const struct part *restrict p) {
+
+  return p->rho;
+}
+
+/**
+ * @brief Returns the mass of a particle
+ *
+ * @param p The particle of interest
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_mass(
+    const struct part *restrict p) {
+
+  return p->mass;
 }
 
 /**
@@ -301,8 +324,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param timeBase The minimal time-step size
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, int t0, int t1,
-    double timeBase) {
+    struct part *restrict p, const struct xpart *restrict xp, float dt, int t0,
+    int t1, double timeBase) {
 
   /* Drift the pressure */
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
