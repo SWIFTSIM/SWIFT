@@ -8,8 +8,8 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
-  time_begin: 968   # The starting time of the simulation (in internal units).
-  time_end:   12000.  # The end time of the simulation (in internal units).
+  time_begin: 0     # The starting time of the simulation (in internal units).
+  time_end:   968.  # The end time of the simulation (in internal units).
   dt_min:     1e-4  # The minimal time-step size of the simulation (in internal units).
   dt_max:     1.    # The maximal time-step size of the simulation (in internal units).
 
@@ -19,9 +19,9 @@ Statistics:
   
 # Parameters governing the snapshots
 Snapshots:
-  basename:           Disk-Patch-dynamic # Common part of the name of output files
-  time_first:         968.               # Time of the first output (in internal units)
-  delta_time:         24.                 # Time difference between consecutive outputs (in internal units)
+  basename:            Disc-Patch   # Common part of the name of output files
+  time_first:          0.           # Time of the first output (in internal units)
+  delta_time:          12.          # Time difference between consecutive outputs (in internal units)
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -33,11 +33,12 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  Disk-Patch-dynamic.hdf5       # The file to read
+  file_name:  Disc-Patch.hdf5       # The file to read
 
 # External potential parameters
-Disk-PatchPotential:
+DiscPatchPotential:
   surface_density: 10.
   scale_height:    100.
-  z_disk:          200.
+  z_disc:          200.
   timestep_mult:   0.03
+  growth_time:     5.

@@ -1,4 +1,4 @@
-Generates and evolves a disk-patch, where gas is in hydrostatic
+Generates and evolves a disc-patch, where gas is in hydrostatic
 equilibrium with an imposed external gravitational force, using the
 equations from Creasey, Theuns & Bower, 2013, MNRAS, Volume 429,
 Issue 3, p.1922-1948.
@@ -10,11 +10,11 @@ To generate ICs ready for a scientific run:
 2) Generate pre-ICs by running the 'makeIC.py' script.
 
 3) Run SWIFT with an isothermal EoS, no cooling nor feedback, and the
-disk-patch potential switched on and using the parameters from
-'disk-patch-icc.yml'
+disc-patch potential switched on and using the parameters from
+'disc-patch-icc.yml'
 
 4) The ICs are then ready to be run for a science problem. Rename the last 
-output to 'Disk-Patch-dynamic.hdf5'. These are now the ICs for the actual test.
+output to 'Disc-Patch-dynamic.hdf5'. These are now the ICs for the actual test.
 
-When running SWIFT with the parameters from 'disk-patch.yml' and an
-ideal gas EoS on these ICs the disk should stay in equilibrium.
+When running SWIFT with the parameters from 'disc-patch.yml' and an
+ideal gas EoS on these ICs the disc should stay in equilibrium.
