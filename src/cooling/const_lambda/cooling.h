@@ -95,7 +95,7 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p, 0.f);
-
+  
   /* Internal energy floor */
   const float u_floor = cooling->min_energy;
 

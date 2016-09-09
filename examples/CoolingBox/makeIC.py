@@ -27,10 +27,10 @@ from numpy import *
 
 # Parameters
 periodic= 1           # 1 For periodic box
-boxSize = 1           #1 kiloparsec    
+boxSize = 1           # 1 kiloparsec    
 L = int(sys.argv[1])  # Number of particles along one axis
-rho = 3.2e2          # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
-P = 4.5e5          # Pressure in code units (at 10^5K)
+rho = 3.2e6           # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
+P = 4.5e9             # Pressure in code units (at 10^5K)
 gamma = 5./3.         # Gas adiabatic index
 eta = 1.2349          # 48 ngbs with cubic spline kernel
 fileName = "coolingBox.hdf5" 
