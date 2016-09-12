@@ -67,7 +67,7 @@
  *
  * (Should be used for debugging only as it runs in O(N).)
  */
-void printParticle(const struct part *parts, struct xpart *xparts,
+void printParticle(const struct part *parts, const struct xpart *xparts,
                    long long int id, size_t N) {
 
   int found = 0;
