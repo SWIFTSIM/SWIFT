@@ -56,8 +56,9 @@ pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init", "ghost",
-             "kick", "kick_fixdt", "send", "recv", "grav_gather_m", "grav_fft",
-             "grav_mm", "grav_up", "grav_external", "count"]
+             "extra_ghost", "kick", "kick_fixdt", "send", "recv",
+             "grav_gather_m", "grav_fft", "grav_mm", "grav_up",
+             "grav_external", "cooling", "count"]
 
 TASKCOLOURS = {"none": "black",
                "sort": "lightblue",
@@ -67,6 +68,7 @@ TASKCOLOURS = {"none": "black",
                "sub_pair": "navy",
                "init": "indigo",
                "ghost": "cyan",
+               "extra_ghost": "cyan",
                "kick": "green",
                "kick_fixdt": "green",
                "send": "yellow",
@@ -76,6 +78,7 @@ TASKCOLOURS = {"none": "black",
                "grav_mm": "mediumturquoise",
                "grav_up": "mediumvioletred",
                "grav_external": "darkred",
+               "cooling": "darkblue",
                "count": "powerblue"}
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "tend", "count"]
@@ -118,7 +121,7 @@ toc_step = int(full_step[5])
 CPU_CLOCK = float(full_step[-1])
 data = data[1:,:]
 
-print "CPU frequency:", CPU_CLOCK / 1.e9
+print "CPU frequency:", CPU_CLOCK
 
 # Avoid start and end times of zero.
 data = data[data[:,4] != 0]
@@ -130,6 +133,7 @@ if delta_t == 0:
     dt = max(data[:,5]) - min(data[:,4])
     if dt > delta_t:
         delta_t = dt
+    print "Data range: ", delta_t / CPU_CLOCK * 1000, "ms"
 
 # Once more doing the real gather and plots this time.
 start_t = tic_step 
