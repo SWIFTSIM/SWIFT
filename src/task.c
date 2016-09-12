@@ -63,7 +63,7 @@ const char *subtaskID_names[task_subtype_count] = {
  * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
-    const struct cell *ci, const struct cell *cj) {
+    const struct cell *restrict ci, const struct cell *restrict cj) {
 
   if (ci == NULL || cj == NULL) return 0;
 
@@ -85,7 +85,7 @@ __attribute__((always_inline)) INLINE static size_t task_cell_overlap_part(
  * @param cj The second #cell.
  */
 __attribute__((always_inline)) INLINE static size_t task_cell_overlap_gpart(
-    const struct cell *ci, const struct cell *cj) {
+    const struct cell *restrict ci, const struct cell *restrict cj) {
 
   if (ci == NULL || cj == NULL) return 0;
 
@@ -168,6 +168,10 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_none;
       break;
   }
+
+  /* Silence compile warnings */
+  error("Unknown task_action for task");
+  return task_action_none;
 }
 
 /**
@@ -177,7 +181,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
  * @param ta The first #task.
  * @param tb The second #task.
  */
-float task_overlap(const struct task *ta, const struct task *tb) {
+float task_overlap(const struct task *restrict ta,
+                   const struct task *restrict tb) {
 
   if (ta == NULL || tb == NULL) return 0.f;
 

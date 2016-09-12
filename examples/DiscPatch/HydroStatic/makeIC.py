@@ -25,9 +25,9 @@ import math
 import random
 import matplotlib.pyplot as plt
 
-# Generates a disk-patch in hydrostatic equilibrium
+# Generates a disc-patch in hydrostatic equilibrium
 # see Creasey, Theuns & Bower, 2013, for the equations:
-# disk parameters are: surface density sigma
+# disc parameters are: surface density sigma
 #                      scale height b
 # density: rho(z) = (sigma/2b) sech^2(z/b)
 # isothermal velocity dispersion = <v_z^2? = b pi G sigma
@@ -79,7 +79,7 @@ Radius  = 100.         # maximum radius of particles [kpc]
 G       = const_G 
 
 # File
-fileName = "Disk-Patch.hdf5" 
+fileName = "Disc-Patch.hdf5" 
 
 #---------------------------------------------------
 mass           = 1
@@ -145,7 +145,7 @@ mass           = 0.*h + pmass
 entropy_flag   = 0
 vel            = 0 + 0 * pos
 
-# move centre of disk to middle of box
+# move centre of disc to middle of box
 pos[:,:]     += boxSize/2
 
 

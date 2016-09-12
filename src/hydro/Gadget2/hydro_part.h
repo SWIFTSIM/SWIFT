@@ -19,6 +19,20 @@
 #ifndef SWIFT_GADGET2_HYDRO_PART_H
 #define SWIFT_GADGET2_HYDRO_PART_H
 
+/**
+ * @file Gadget2/hydro_part.h
+ * @brief SPH interaction functions following the Gadget-2 version of SPH.
+ *
+ * The interactions computed here are the ones presented in the Gadget-2 paper
+ * Springel, V., MNRAS, Volume 364, Issue 4, pp. 1105-1134.
+ * We use the same numerical coefficients as the Gadget-2 code. When used with
+ * the Spline-3 kernel, the results should be equivalent to the ones obtained
+ * with Gadget-2 up to the rounding errors and interactions missed by the
+ * Gadget-2 tree-code neighbours search.
+ */
+
+#include "cooling_struct.h"
+
 /* Extra particle data not needed during the SPH loops over neighbours. */
 struct xpart {
 
@@ -28,7 +42,10 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
-} __attribute__((aligned(xpart_align)));
+  /* Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
 struct part {
@@ -110,6 +127,6 @@ struct part {
   /* Pointer to corresponding gravity part. */
   struct gpart* gpart;
 
-} __attribute__((aligned(part_align)));
+} SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_GADGET2_HYDRO_PART_H */

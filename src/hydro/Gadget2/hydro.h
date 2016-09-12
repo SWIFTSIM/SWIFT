@@ -19,6 +19,18 @@
 #ifndef SWIFT_GADGET2_HYDRO_H
 #define SWIFT_GADGET2_HYDRO_H
 
+/**
+ * @file Gadget2/hydro.h
+ * @brief SPH interaction functions following the Gadget-2 version of SPH.
+ *
+ * The interactions computed here are the ones presented in the Gadget-2 paper
+ * Springel, V., MNRAS, Volume 364, Issue 4, pp. 1105-1134.
+ * We use the same numerical coefficients as the Gadget-2 code. When used with
+ * the Spline-3 kernel, the results should be equivalent to the ones obtained
+ * with Gadget-2 up to the rounding errors and interactions missed by the
+ * Gadget-2 tree-code neighbours search.
+ */
+
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "dimension.h"

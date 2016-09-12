@@ -33,11 +33,3 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./uniformBox.hdf5     # The file to read
-
-
-  # External potential parameters
-PointMass:
-  position_x:      50.     # location of external point mass in internal units
-  position_y:      50.
-  position_z:      50.	
-  mass:            1e10     # mass of external point mass in internal units

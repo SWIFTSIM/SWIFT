@@ -439,9 +439,9 @@ int main(int argc, char *argv[]) {
   if (with_external_gravity && myrank == 0) potential_print(&potential);
 
   /* Initialise the cooling function properties */
-  struct cooling_data cooling;
-  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling);
-  if (with_cooling && myrank == 0) cooling_print(&cooling);
+  struct cooling_function_data cooling_func;
+  if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
+  if (with_cooling && myrank == 0) cooling_print(&cooling_func);
 
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
@@ -457,7 +457,7 @@ int main(int argc, char *argv[]) {
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
               engine_policies, talking, &us, &prog_const, &hydro_properties,
-              &potential, &cooling);
+              &potential, &cooling_func);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
