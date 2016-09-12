@@ -61,9 +61,10 @@ PLOT_PARAMS = {"axes.labelsize": 10,
 pl.rcParams.update(PLOT_PARAMS)
 
 #  Tasks and subtypes. Indexed as in tasks.h.
-TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init", "ghost",
-             "kick", "kick_fixdt", "send", "recv", "grav_gather_m", "grav_fft",
-             "grav_mm", "grav_up", "grav_external", "count"]
+TASKTYPES = ["none", "sort", "self", "pair", "sub_self", "sub_pair", "init",
+             "ghost", "extra_ghost", "kick", "kick_fixdt", "send", "recv", 
+             "grav_gather_m", "grav_fft", "grav_mm", "grav_up",
+             "grav_external", "cooling", "count"] 
 
 TASKCOLOURS = {"none": "black",
                "sort": "lightblue",
@@ -73,6 +74,7 @@ TASKCOLOURS = {"none": "black",
                "sub_pair": "navy",
                "init": "indigo",
                "ghost": "cyan",
+               "extra_ghost": "cyan",
                "kick": "green",
                "kick_fixdt": "green",
                "send": "yellow",
@@ -82,6 +84,7 @@ TASKCOLOURS = {"none": "black",
                "grav_mm": "mediumturquoise",
                "grav_up": "mediumvioletred",
                "grav_external": "darkred",
+               "cooling", "darkblue",
                "count": "powerblue"}
 
 SUBTYPES = ["none", "density", "gradient", "force", "grav", "tend", "count"]
@@ -121,7 +124,7 @@ tic_step = int(full_step[5])
 toc_step = int(full_step[6])
 CPU_CLOCK = float(full_step[-1])
 
-print "CPU frequency:", CPU_CLOCK / 1.e9
+print "CPU frequency:", CPU_CLOCK
 
 
 nranks = int(max(data[:,0])) + 1
@@ -143,6 +146,8 @@ if delta_t == 0:
         dt = max(data[:,6]) - min(data[:,5])
         if dt > delta_t:
             delta_t = dt
+    print "Data range: ", delta_t / CPU_CLOCK * 1000, "ms"
+
 
 # Once more doing the real gather and plots this time.
 for rank in range(nranks):
