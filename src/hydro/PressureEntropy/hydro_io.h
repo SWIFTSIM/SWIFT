@@ -113,8 +113,8 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
       "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
   list[9] = io_make_output_field_convert_part(
       "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
-  list[10] = io_make_output_field("WeightedPressure", FLOAT, 1,
-                                  UNIT_CONV_PRESSURE, parts, weightedPressure);
+  list[10] = io_make_output_field("WeightedDensity", FLOAT, 1,
+                                  UNIT_CONV_DENSITY, parts, rho_bar);
 }
 
 /**

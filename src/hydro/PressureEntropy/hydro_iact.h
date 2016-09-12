@@ -43,9 +43,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float mi = pi->mass;
   const float mj = pj->mass;
 
-  /* Get the entropies. */
-  const float entropy_i = pi->entropy;
-  const float entropy_j = pj->entropy;
+  /* /\* Get the entropies. *\/ */
+  /* const float entropy_i = pi->entropy; */
+  /* const float entropy_j = pj->entropy; */
 
   /* Get r and r inverse. */
   const float r = sqrtf(r2);
@@ -58,15 +58,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-
-  /* Weighted pressure */
-  pi->weightedPressure += mj * pow_one_over_gamma(pj->entropy) * wi;
-  pi->density.weightedPressure_dh -=
-      mj * pow_one_over_gamma(entropy_j) * (hydro_dimension * wi + ui * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= ui * wi_dx;  //(hydro_dimension * wi + ui * wi_dx);
+  pi->density.wcount_dh -= ui * wi_dx;
+
+  /* Compute contribution to the weighted density */
+  pi->rho_bar += mj * pj->entropy_one_over_gamma * wi;
+  pi->pressure_dh -=
+      mj * pj->entropy_one_over_gamma * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute the kernel function for pj */
   const float hj_inv = 1.f / hj;
@@ -75,16 +76,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pj->rho += mi * wj;
-  // pj->rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
-
-  /* Weighted pressure */
-  pj->weightedPressure += mi * pow_one_over_gamma(pi->entropy) * wj;
-  pj->density.weightedPressure_dh -=
-      mi * pow_one_over_gamma(entropy_i) * (hydro_dimension * wj + uj * wj_dx);
+  pj->rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
-  pj->density.wcount_dh -= uj * wj_dx;  //(hydro_dimension * wj + uj * wj_dx);
+  pj->density.wcount_dh -= uj * wj_dx;
+
+  /* Compute contribution to the weighted density */
+  pj->rho_bar += mi * pi->entropy_one_over_gamma * wj;
+  pj->pressure_dh -=
+      mi * pi->entropy_one_over_gamma * (hydro_dimension * wj + uj * wj_dx);
 
   /* const float faci = mj * wi_dx * r_inv; */
   /* const float facj = mi * wj_dx * r_inv; */
@@ -135,7 +136,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float mj = pj->mass;
 
   /* Get the entropies. */
-  const float entropy_j = pj->entropy;
+  // const float entropy_j = pj->entropy;
 
   /* Get r and r inverse. */
   const float r = sqrtf(r2);
@@ -143,20 +144,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute the kernel function */
   const float h_inv = 1.0f / hi;
-  const float u = r * h_inv;
-  kernel_deval(u, &wi, &wi_dx);
+  const float ui = r * h_inv;
+  kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-
-  /* Weighted pressure */
-  pi->weightedPressure += mj * pow_one_over_gamma(pj->entropy) * wi;
-  pi->density.weightedPressure_dh -=
-      mj * pow_one_over_gamma(entropy_j) * (hydro_dimension * wi + u * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= u * wi_dx;  //(hydro_dimension * wi + u * wi_dx);
+  pi->density.wcount_dh -= ui * wi_dx;  //(hydro_dimension * wi + u * wi_dx);
+
+  /* Compute contribution to the weighted density */
+  pi->rho_bar += mj * pj->entropy_one_over_gamma * wi;
+  pi->pressure_dh -=
+      mj * pj->entropy_one_over_gamma * (hydro_dimension * wi + ui * wi_dx);
 
   /* const float fac = mj * wi_dx * ri; */
 
@@ -205,9 +207,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float entropy_i = pi->entropy;
-  const float entropy_j = pj->entropy;
-  const float entropy_product = pow_one_over_gamma(entropy_i * entropy_j);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -224,10 +223,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float f_ij =
-      1.f;  // - pi->force.f_ij / (mj * pow_one_over_gamma(entropy_j));
-  const float f_ji =
-      1.f;  // - pj->force.f_ij / (mi * pow_one_over_gamma(entropy_i));
+  const float f_i = pi->rho_dh * pi->pressure_dh;
+  const float f_j = pj->rho_dh * pj->pressure_dh;
+
+  /* Compute Pressure terms */
+  const float P_over_rho2_i = pi->force.P_over_rho2;
+  const float P_over_rho2_j = pj->force.P_over_rho2;
+
+  /* Compute entropy terms */
+  const float S_gamma_i = pi->entropy_one_over_gamma;
+  const float S_gamma_j = pj->entropy_one_over_gamma;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -254,22 +259,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
 
   /* Now, convolve with the kernel */
-  const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = entropy_product *
-                         (f_ij * pi->force.pressure_term * wi_dr +
-                          f_ji * pj->force.pressure_term * wj_dr) *
-                         r_inv;
-
-  /* if(pi->entropy != pj->entropy) { */
-  /* message("Si = %f Pi = %f, Pi_term = %f", pi->entropy, pi->weightedPressure,
-   * pi->force.pressure_term); */
-  /* message("Sj = %f Pj = %f, Pj_term = %f", pj->entropy, pj->weightedPressure,
-   * pj->force.pressure_term); */
-  /* error("done"); */
-  /* } */
+  const float visc_term = 0.5f * visc * (wi_dr + wj_dr);
+  const float sph_term = (S_gamma_j / S_gamma_i - f_i) * P_over_rho2_i * wi_dr +
+                         (S_gamma_i / S_gamma_j - f_j) * P_over_rho2_j * wj_dr;
 
   /* Eventually got the acceleration */
-  const float acc = visc_term + sph_term;
+  const float acc = (visc_term + sph_term) * r_inv;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
@@ -289,8 +284,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->force.v_sig = fmaxf(pj->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += mj * visc_term * dvdr;
-  pj->entropy_dt += mi * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * r_inv * dvdr;
+  pj->entropy_dt += mi * visc_term * r_inv * dvdr;
 }
 
 /**
@@ -321,9 +316,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-  const float entropy_i = pi->entropy;
-  const float entropy_j = pj->entropy;
-  const float entropy_product = pow_one_over_gamma(entropy_i * entropy_j);
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -340,10 +332,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float f_ij =
-      1.f;  // - pi->force.f_ij / (mj * pow_one_over_gamma(entropy_j));
-  const float f_ji =
-      1.f;  // - pj->force.f_ij / (mi * pow_one_over_gamma(entropy_i));
+  const float f_i = pi->rho_dh * pi->pressure_dh;
+  const float f_j = pj->rho_dh * pj->pressure_dh;
+
+  /* Compute Pressure terms */
+  const float P_over_rho2_i = pi->force.P_over_rho2;
+  const float P_over_rho2_j = pj->force.P_over_rho2;
+
+  /* Compute entropy terms */
+  const float S_gamma_i = pi->entropy_one_over_gamma;
+  const float S_gamma_j = pj->entropy_one_over_gamma;
 
   /* Compute sound speeds */
   const float ci = pi->force.soundspeed;
@@ -370,14 +368,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
 
   /* Now, convolve with the kernel */
-  const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
-  const float sph_term = entropy_product *
-                         (f_ij * pi->force.pressure_term * wi_dr +
-                          f_ji * pj->force.pressure_term * wj_dr) *
-                         r_inv;
+  const float visc_term = 0.5f * visc * (wi_dr + wj_dr);
+  const float sph_term = (S_gamma_j / S_gamma_i - f_i) * P_over_rho2_i * wi_dr +
+                         (S_gamma_i / S_gamma_j - f_j) * P_over_rho2_j * wj_dr;
 
   /* Eventually got the acceleration */
-  const float acc = visc_term + sph_term;
+  const float acc = (visc_term + sph_term) * r_inv;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * dx[0];
@@ -391,7 +387,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.v_sig = fmaxf(pi->force.v_sig, v_sig);
 
   /* Change in entropy */
-  pi->entropy_dt += mj * visc_term * dvdr;
+  pi->entropy_dt += mj * visc_term * r_inv * dvdr;
 }
 
 /**

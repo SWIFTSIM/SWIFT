@@ -72,14 +72,26 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Particle weighted pressure. */
-  float weightedPressure;
+  /*! Derivative of density with respect to h */
+  float rho_dh;
+
+  /*! Particle pressure. */
+  float pressure;
+
+  /*! Derivative of pressure with respect to h */
+  float pressure_dh;
+
+  /*! Particle weighted density */
+  float rho_bar;
 
   /*! Particle entropy. */
   float entropy;
 
   /*! Entropy time derivative */
   float entropy_dt;
+
+  /*! Particle entropy to the power 1/gamma. */
+  float entropy_one_over_gamma;
 
   union {
 
@@ -92,23 +104,23 @@ struct part {
       float wcount_dh;
 
       /*! Derivative of particle weighted pressure with h. */
-      float weightedPressure_dh;
+      // float weightedPressure_dh;
 
       /*! Particle velocity curl. */
       // float rot_v[3];
 
       /*! Particle velocity divergence. */
-      // float div_v;
+      float div_v;
 
     } density;
 
     struct {
 
       /*! "Grad h" term */
-      float f_ij;
+      // float f_ij;
 
       /*! Pressure term */
-      float pressure_term;
+      float P_over_rho2;
 
       /*! Particle sound speed. */
       float soundspeed;
