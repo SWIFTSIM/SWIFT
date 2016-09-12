@@ -410,7 +410,7 @@ __attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  return powf(x, 0.6f); /* x^(3/5) */
+  return powf(x, hydro_one_over_gamma); /* x^(3/5) */
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -418,7 +418,7 @@ __attribute__((always_inline)) INLINE static float pow_one_over_gamma(float x) {
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  return powf(x, 0.75f); /* x^(3/4) */
+  return powf(x, hydro_one_over_gamma); /* x^(3/4) */
 
 #elif defined(HYDRO_GAMMA_2_1)
 
