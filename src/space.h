@@ -44,6 +44,9 @@
 #define space_stretch 1.10f
 #define space_maxreldx 0.25f
 
+/* Maximum allowed depth of cell splits. */
+#define space_cell_maxdepth 52
+
 /* Split size. */
 extern int space_splitsize;
 extern int space_maxsize;
