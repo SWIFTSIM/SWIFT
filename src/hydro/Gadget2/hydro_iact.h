@@ -248,17 +248,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float ri = 1.0f / r;
 
   /* Compute the kernel function */
-  const float h_inv = 1.0f / hi;
-  const float u = r * h_inv;
-  kernel_deval(u, &wi, &wi_dx);
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + u * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= u * wi_dx;
+  pi->density.wcount_dh -= ui * wi_dx;
 
   const float fac = mj * wi_dx * ri;
 

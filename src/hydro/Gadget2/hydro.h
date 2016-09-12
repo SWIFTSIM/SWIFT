@@ -231,18 +231,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.wcount *= kernel_norm;
   p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
 
-  const float irho = 1.f / p->rho;
+  const float rho_inv = 1.f / p->rho;
 
   /* Compute the derivative term */
-  p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * irho);
+  p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * rho_inv);
 
   /* Finish calculation of the velocity curl components */
-  p->density.rot_v[0] *= h_inv_dim_plus_one * irho;
-  p->density.rot_v[1] *= h_inv_dim_plus_one * irho;
-  p->density.rot_v[2] *= h_inv_dim_plus_one * irho;
+  p->density.rot_v[0] *= h_inv_dim_plus_one * rho_inv;
+  p->density.rot_v[1] *= h_inv_dim_plus_one * rho_inv;
+  p->density.rot_v[2] *= h_inv_dim_plus_one * rho_inv;
 
   /* Finish calculation of the velocity divergence */
-  p->density.div_v *= h_inv_dim_plus_one * irho;
+  p->density.div_v *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**
@@ -273,13 +273,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure = hydro_get_pressure(p, half_dt);
 
-  const float irho = 1.f / p->rho;
+  const float rho_inv = 1.f / p->rho;
 
   /* Divide the pressure by the density and density gradient */
-  const float P_over_rho2 = pressure * irho * irho * p->rho_dh;
+  const float P_over_rho2 = pressure * rho_inv * rho_inv * p->rho_dh;
 
   /* Compute the sound speed */
-  const float soundspeed = sqrtf(hydro_gamma * pressure * irho);
+  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
 
   /* Compute the Balsara switch */
   const float balsara =
@@ -349,13 +349,13 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure = hydro_get_pressure(p, dt_entr);
 
-  const float irho = 1.f / p->rho;
+  const float rho_inv = 1.f / p->rho;
 
   /* Divide the pressure by the density and density gradient */
-  const float P_over_rho2 = pressure * irho * irho * p->rho_dh;
+  const float P_over_rho2 = pressure * rho_inv * rho_inv * p->rho_dh;
 
   /* Compute the new sound speed */
-  const float soundspeed = sqrtf(hydro_gamma * pressure * irho);
+  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
 
   /* Update variables */
   p->force.P_over_rho2 = P_over_rho2;
