@@ -2658,8 +2658,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  if (!flag_entropy_ICs) space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
-  if (1) engine_launch(e, e->nr_threads, mask, submask);
+  if (!flag_entropy_ICs) {
+
+    /* Apply the conversion */
+    space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+
+    /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
+    if (hydro_need_extra_init_loop)
+      engine_launch(e, e->nr_threads, mask, submask);
+  }
 
   clocks_gettime(&time2);
 
