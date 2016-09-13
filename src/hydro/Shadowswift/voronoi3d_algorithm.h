@@ -28,6 +28,9 @@
 #include "inline.h"
 #include "voronoi3d_cell.h"
 
+/* For debugging purposes */
+#define LOOP_CHECK 1000
+
 /* Tolerance parameter used to decide when to use more precise geometric
    criteria */
 #define VORONOI3D_TOLERANCE 1.e-6f
@@ -462,6 +465,12 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
     int *uw, float *l, int *lp, int *ls, int *lw, float *q, int *qp, int *qs,
     int *qw) {
 
+#ifdef LOOP_CHECK
+  // auxiliary variable that counts the number of times a loop is executed
+  // if this number exceeds the value of LOOP_CHECK, we terminate the program
+  int loopcount;
+#endif
+
   // stack to store all vertices that have already been tested (debugging only)
   float teststack[2 * VORONOI3D_MAXNUMVERT];
   // size of the used part of the stack
@@ -494,10 +503,20 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
       *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
                                 &teststack_size);
       *us = 1;
-      /* Not in while: PATH 1.0 */
-      /* somewhere in while: PATH 1.1 */
-      /* last valid option of while: PATH 1.2 */
+/* Not in while: PATH 1.0 */
+/* somewhere in while: PATH 1.1 */
+/* last valid option of while: PATH 1.2 */
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while ((*us) < c->orders[(*up)] && (*l) >= (*u)) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         *lp = voronoi_get_edge(c, (*up), (*us));
         *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
                                   &teststack_size);
@@ -522,17 +541,37 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
       // now find the index of the edge up-lp in the edge list of lp
       *ls = voronoi_get_edgeindex(c, (*up), (*us));
 
-      // if lp is also above the plane, replace up by lp and repeat the process
-      // until lp is below the plane
+// if lp is also above the plane, replace up by lp and repeat the process
+// until lp is below the plane
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while ((*lw) == 1) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         /* PATH 1.4 */
         *u = (*l);
         *up = (*lp);
         *us = 0;
-        /* no while: PATH 1.4.0 */
-        /* somewhere in while: PATH 1.4.1 */
-        /* last valid option of while: PATH 1.4.2 */
+/* no while: PATH 1.4.0 */
+/* somewhere in while: PATH 1.4.1 */
+/* last valid option of while: PATH 1.4.2 */
+#ifdef LOOP_CHECK
+        loopcount = 0;
+#endif
         while ((*us) < (*ls) && (*l) >= (*u)) {
+#ifdef LOOP_CHECK
+          if (loopcount == LOOP_CHECK) {
+            error("Number of iterations reached maximum (=%i) in while!",
+                  LOOP_CHECK);
+          }
+          ++loopcount;
+#endif
           *lp = voronoi_get_edge(c, (*up), (*us));
           *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
                                     teststack, &teststack_size);
@@ -540,10 +579,20 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         }
         if ((*l) >= (*u)) {
           (*us)++;
-          /* no while: PATH 1.4.3 */
-          /* somewhere in while: PATH 1.4.4 */
-          /* last valid option of while: PATH 1.4.5 */
+/* no while: PATH 1.4.3 */
+/* somewhere in while: PATH 1.4.4 */
+/* last valid option of while: PATH 1.4.5 */
+#ifdef LOOP_CHECK
+          loopcount = 0;
+#endif
           while ((*us) < c->orders[(*up)] && (*l) >= (*u)) {
+#ifdef LOOP_CHECK
+            if (loopcount == LOOP_CHECK) {
+              error("Number of iterations reached maximum (=%i) in while!",
+                    LOOP_CHECK);
+            }
+            ++loopcount;
+#endif
             *lp = voronoi_get_edge(c, (*up), (*us));
             *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
                                       teststack, &teststack_size);
@@ -581,10 +630,20 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
       *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
                                 &teststack_size);
       *us = 1;
-      /* not in while: PATH 2.0 */
-      /* somewhere in while: PATH 2.1 */
-      /* last valid option of while: PATH 2.2 */
+/* not in while: PATH 2.0 */
+/* somewhere in while: PATH 2.1 */
+/* last valid option of while: PATH 2.2 */
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while ((*us) < c->orders[(*up)] && (*u) >= (*q)) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         *qp = voronoi_get_edge(c, (*up), (*us));
         *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
                                   &teststack_size);
@@ -603,17 +662,37 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         (*us)--;
       }
 
-      // repeat the above process until qp is closer or above the plane
+// repeat the above process until qp is closer or above the plane
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while ((*qw) == -1) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         /* PATH 2.4 */
         *qs = voronoi_get_edgeindex(c, (*up), (*us));
         *u = (*q);
         *up = (*qp);
         *us = 0;
-        /* no while: PATH 2.4.0 */
-        /* somewhere in while: PATH 2.4.1 */
-        /* last valid option of while: 2.4.2 */
+/* no while: PATH 2.4.0 */
+/* somewhere in while: PATH 2.4.1 */
+/* last valid option of while: 2.4.2 */
+#ifdef LOOP_CHECK
+        loopcount = 0;
+#endif
         while ((*us) < (*qs) && (*u) >= (*q)) {
+#ifdef LOOP_CHECK
+          if (loopcount == LOOP_CHECK) {
+            error("Number of iterations reached maximum (=%i) in while!",
+                  LOOP_CHECK);
+          }
+          ++loopcount;
+#endif
           *qp = voronoi_get_edge(c, (*up), (*us));
           *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
                                     teststack, &teststack_size);
@@ -621,10 +700,20 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
         }
         if ((*u) >= (*q)) {
           (*us)++;
-          /* no while: PATH 2.4.3 */
-          /* somewhere in while: PATH 2.4.4 */
-          /* last valid option of while: PATH 2.4.5 */
+/* no while: PATH 2.4.3 */
+/* somewhere in while: PATH 2.4.4 */
+/* last valid option of while: PATH 2.4.5 */
+#ifdef LOOP_CHECK
+          loopcount = 0;
+#endif
           while ((*us) < c->orders[(*up)] && (*u) >= (*q)) {
+#ifdef LOOP_CHECK
+            if (loopcount == LOOP_CHECK) {
+              error("Number of iterations reached maximum (=%i) in while!",
+                    LOOP_CHECK);
+            }
+            ++loopcount;
+#endif
             *qp = voronoi_get_edge(c, (*up), (*us));
             *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
                                       teststack, &teststack_size);
@@ -672,6 +761,12 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
  */
 __attribute__((always_inline)) INLINE void voronoi_intersect(
     float *odx, struct voronoi_cell *c, unsigned long long ngb) {
+
+#ifdef LOOP_CHECK
+  // auxiliary variable that counts the number of times a loop is executed
+  // if this number exceeds the value of LOOP_CHECK, we terminate the program
+  int loopcount;
+#endif
 
   // vector pointing from the midpoint of the line segment between pi and pj to
   // pj.
@@ -739,7 +834,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     ++dstack_size;
     j = 0;
     lw = 0;
+#ifdef LOOP_CHECK
+    loopcount = 0;
+#endif
     while (j < dstack_size && lw != -1) {
+#ifdef LOOP_CHECK
+      if (loopcount == LOOP_CHECK) {
+        error("Number of iterations reached maximum (=%i) in while!",
+              LOOP_CHECK);
+      }
+      ++loopcount;
+#endif
       up = dstack[j];
       for (i = 0; i < c->orders[up]; ++i) {
         lp = voronoi_get_edge(c, up, i);
@@ -747,9 +852,19 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
                                  &teststack_size);
         if (!lw) {
           k = 0;
-          // make sure we don't add duplicates, since then we might get stuck in
-          // the outer loop...
+// make sure we don't add duplicates, since then we might get stuck in
+// the outer loop...
+#ifdef LOOP_CHECK
+          loopcount = 0;
+#endif
           while (k < dstack_size && dstack[k] != lp) {
+#ifdef LOOP_CHECK
+            if (loopcount == LOOP_CHECK) {
+              error("Number of iterations reached maximum (=%i) in while!",
+                    LOOP_CHECK);
+            }
+            ++loopcount;
+#endif
             ++k;
           }
           if (k == dstack_size) {
@@ -796,7 +911,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       lp = voronoi_get_edge(c, up, i);
       lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                &teststack_size);
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (lw != -1) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         i++;
         if (i == c->orders[up]) {
           // none of the edges of up is below the plane. Since the cell is
@@ -817,7 +942,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       }
 
       j = i + 1;
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (j < c->orders[up]) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         lp = voronoi_get_edge(c, up, j);
         lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                  &teststack_size);
@@ -857,7 +992,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       if (i < 0) {
         i = c->orders[up] - 1;
       }
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (i < j) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         qp = voronoi_get_edge(c, up, i);
         qs = voronoi_get_edgeindex(c, up, i);
         voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
@@ -881,7 +1026,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       lp = voronoi_get_edge(c, up, i);
       lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                &teststack_size);
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (lw == -1) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         i--;
         if (i == 0) {
           /* cell unaltered */
@@ -896,7 +1051,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       qp = voronoi_get_edge(c, up, j);
       qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q, teststack,
                                &teststack_size);
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (qw == -1) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         j++;
         qp = voronoi_get_edge(c, up, j);
         qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &l, teststack,
@@ -930,7 +1095,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
       us = i;
       i++;
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (i < c->orders[up]) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         qp = voronoi_get_edge(c, up, i);
         qs = voronoi_get_edgeindex(c, up, i);
         voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
@@ -943,7 +1118,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         k++;
       }
       i = 0;
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (i < j) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         qp = voronoi_get_edge(c, up, i);
         qs = voronoi_get_edgeindex(c, up, i);
         voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
@@ -1031,8 +1216,16 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
 
   cp = vindex;
   rp = vindex;
+#ifdef LOOP_CHECK
+  loopcount = 0;
+#endif
   while (qp != up || qs != us) {
-
+#ifdef LOOP_CHECK
+    if (loopcount == LOOP_CHECK) {
+      error("Number of iterations reached maximum (=%i) in while!", LOOP_CHECK);
+    }
+    ++loopcount;
+#endif
     lp = voronoi_get_edge(c, qp, qs);
     lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                              &teststack_size);
@@ -1054,7 +1247,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       lp = voronoi_get_edge(c, qp, qs);
       lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                                &teststack_size);
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (lw == -1) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         k++;
         qs++;
         if (qs == c->orders[qp]) {
@@ -1174,7 +1377,17 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       if (new_double_edge) {
         iqs = k;
       }
+#ifdef LOOP_CHECK
+      loopcount = 0;
+#endif
       while (i < iqs) {
+#ifdef LOOP_CHECK
+        if (loopcount == LOOP_CHECK) {
+          error("Number of iterations reached maximum (=%i) in while!",
+                LOOP_CHECK);
+        }
+        ++loopcount;
+#endif
         qs++;
         if (qs == c->orders[qp]) {
           qs = 0;
@@ -1314,8 +1527,18 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   int m, n;
   for (vindex = 0; vindex < c->nvert; vindex++) {
     j = vindex;
-    /* find next edge that is not deleted */
+/* find next edge that is not deleted */
+#ifdef LOOP_CHECK
+    loopcount = 0;
+#endif
     while (j < c->nvert && voronoi_get_edge(c, j, 0) < 0) {
+#ifdef LOOP_CHECK
+      if (loopcount == LOOP_CHECK) {
+        error("Number of iterations reached maximum (=%i) in while!",
+              LOOP_CHECK);
+      }
+      ++loopcount;
+#endif
       j++;
     }
 
@@ -1437,6 +1660,10 @@ __attribute__((always_inline)) INLINE void voronoi_centroid_tetrahedron(
 __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
     struct voronoi_cell *cell) {
 
+#ifdef LOOP_CHECK
+  int loopcount;
+#endif
+
   float v1[3], v2[3], v3[3], v4[3];
   int i, j, k, l, m, n;
   float tcentroid[3];
@@ -1485,7 +1712,18 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
         m = voronoi_get_edge(cell, k, l);
         voronoi_set_edge(cell, k, l, -1 - m);
 
+#ifdef LOOP_CHECK
+        loopcount = 0;
+#endif
         while (m != i) {
+#ifdef LOOP_CHECK
+          if (loopcount == LOOP_CHECK) {
+            voronoi_print_gnuplot_c(cell);
+            error("Number of iterations reached maximum (=%i) in while!",
+                  LOOP_CHECK);
+          }
+          ++loopcount;
+#endif
           n = voronoi_get_edgeindex(cell, k, l) + 1;
           if (n == cell->orders[m]) {
             n = 0;
@@ -1536,10 +1774,17 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
  * internal variables of the cell, so no new neighbours can be added after
  * this method has been called!
  *
+ * Note that the face midpoints are calculated relative w.r.t. the cell
+ * generator!
+ *
  * @param cell 3D Voronoi cell.
  */
 __attribute__((always_inline)) INLINE void voronoi_calculate_faces(
     struct voronoi_cell *cell) {
+
+#ifdef LOOP_CHECK
+  int loopcount;
+#endif
 
   int i, j, k, l, m, n;
   float area;
@@ -1570,7 +1815,17 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_faces(
         m = voronoi_get_edge(cell, k, l);
         voronoi_set_edge(cell, k, l, -1 - m);
 
+#ifdef LOOP_CHECK
+        loopcount = 0;
+#endif
         while (m != i) {
+#ifdef LOOP_CHECK
+          if (loopcount == LOOP_CHECK) {
+            error("Number of iterations reached maximum (=%i) in while!",
+                  LOOP_CHECK);
+          }
+          ++loopcount;
+#endif
           n = voronoi_get_edgeindex(cell, k, l) + 1;
           if (n == cell->orders[m]) {
             n = 0;
@@ -1605,10 +1860,6 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_faces(
         cell->face_midpoints[cell->nface][0] = midpoint[0] / area / 3.0f;
         cell->face_midpoints[cell->nface][1] = midpoint[1] / area / 3.0f;
         cell->face_midpoints[cell->nface][2] = midpoint[2] / area / 3.0f;
-        /* face midpoint was calculated relative to particle position */
-        cell->face_midpoints[cell->nface][0] += cell->x[0];
-        cell->face_midpoints[cell->nface][1] += cell->x[1];
-        cell->face_midpoints[cell->nface][2] += cell->x[2];
         cell->nface++;
 
         if (cell->nface == VORONOI3D_MAXFACE) {
