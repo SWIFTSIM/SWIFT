@@ -26,7 +26,8 @@
  * The thermal variable is the entropy (S) and the entropy is smoothed over
  * contact discontinuities to prevent spurious surface tension.
  *
- * Follows Hopkins, P., MNRAS, 2013, Volume 428, Issue 4, pp. 2840-2856
+ * Follows eqautions (19), (21) and (22) of Hopkins, P., MNRAS, 2013,
+ * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
 /**
@@ -37,19 +38,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   float wi, wi_dx;
   float wj, wj_dx;
-  /* float dv[3], curlvr[3]; */
+  float dv[3], curlvr[3];
 
   /* Get the masses. */
   const float mi = pi->mass;
   const float mj = pj->mass;
 
-  /* /\* Get the entropies. *\/ */
-  /* const float entropy_i = pi->entropy; */
-  /* const float entropy_j = pj->entropy; */
-
   /* Get r and r inverse. */
   const float r = sqrtf(r2);
-  /* const float r_inv = 1.0f / r; */
+  const float r_inv = 1.0f / r;
 
   /* Compute the kernel function for pi */
   const float hi_inv = 1.f / hi;
@@ -58,7 +55,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
@@ -66,7 +63,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the weighted density */
   pi->rho_bar += mj * pj->entropy_one_over_gamma * wi;
-  pi->pressure_dh -=
+  pi->density.pressure_dh -=
       mj * pj->entropy_one_over_gamma * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute the kernel function for pj */
@@ -76,7 +73,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
@@ -84,33 +81,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the weighted density */
   pj->rho_bar += mi * pi->entropy_one_over_gamma * wj;
-  pj->pressure_dh -=
+  pj->density.pressure_dh -=
       mi * pi->entropy_one_over_gamma * (hydro_dimension * wj + uj * wj_dx);
 
-  /* const float faci = mj * wi_dx * r_inv; */
-  /* const float facj = mi * wj_dx * r_inv; */
+  const float faci = mj * wi_dx * r_inv;
+  const float facj = mi * wj_dx * r_inv;
 
-  /* /\* Compute dv dot r *\/ */
-  /* dv[0] = pi->v[0] - pj->v[0]; */
-  /* dv[1] = pi->v[1] - pj->v[1]; */
-  /* dv[2] = pi->v[2] - pj->v[2]; */
-  /* const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]; */
+  /* Compute dv dot r */
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
 
-  /* pi->density.div_v -= faci * dvdr; */
-  /* pj->density.div_v -= facj * dvdr; */
+  pi->density.div_v -= faci * dvdr;
+  pj->density.div_v -= facj * dvdr;
 
-  /* /\* Compute dv cross r *\/ */
-  /* curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1]; */
-  /* curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2]; */
-  /* curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0]; */
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  /* pi->density.rot_v[0] += faci * curlvr[0]; */
-  /* pi->density.rot_v[1] += faci * curlvr[1]; */
-  /* pi->density.rot_v[2] += faci * curlvr[2]; */
+  pi->density.rot_v[0] += faci * curlvr[0];
+  pi->density.rot_v[1] += faci * curlvr[1];
+  pi->density.rot_v[2] += faci * curlvr[2];
 
-  /* pj->density.rot_v[0] += facj * curlvr[0]; */
-  /* pj->density.rot_v[1] += facj * curlvr[1]; */
-  /* pj->density.rot_v[2] += facj * curlvr[2]; */
+  pj->density.rot_v[0] += facj * curlvr[0];
+  pj->density.rot_v[1] += facj * curlvr[1];
+  pj->density.rot_v[2] += facj * curlvr[2];
 }
 
 /**
@@ -130,17 +127,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     float r2, float *dx, float hi, float hj, struct part *pi, struct part *pj) {
 
   float wi, wi_dx;
-  /* float dv[3], curlvr[3]; */
+  float dv[3], curlvr[3];
 
   /* Get the masses. */
   const float mj = pj->mass;
 
-  /* Get the entropies. */
-  // const float entropy_j = pj->entropy;
-
   /* Get r and r inverse. */
   const float r = sqrtf(r2);
-  /* const float ri = 1.0f / r; */
+  const float ri = 1.0f / r;
 
   /* Compute the kernel function */
   const float h_inv = 1.0f / hi;
@@ -149,34 +143,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= ui * wi_dx;  //(hydro_dimension * wi + u * wi_dx);
+  pi->density.wcount_dh -= ui * wi_dx;
 
   /* Compute contribution to the weighted density */
   pi->rho_bar += mj * pj->entropy_one_over_gamma * wi;
-  pi->pressure_dh -=
+  pi->density.pressure_dh -=
       mj * pj->entropy_one_over_gamma * (hydro_dimension * wi + ui * wi_dx);
 
-  /* const float fac = mj * wi_dx * ri; */
+  const float fac = mj * wi_dx * ri;
 
-  /* /\* Compute dv dot r *\/ */
-  /* dv[0] = pi->v[0] - pj->v[0]; */
-  /* dv[1] = pi->v[1] - pj->v[1]; */
-  /* dv[2] = pi->v[2] - pj->v[2]; */
-  /* const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]; */
-  /* pi->density.div_v -= fac * dvdr; */
+  /* Compute dv dot r */
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+  pi->density.div_v -= fac * dvdr;
 
-  /* /\* Compute dv cross r *\/ */
-  /* curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1]; */
-  /* curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2]; */
-  /* curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0]; */
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
 
-  /* pi->density.rot_v[0] += fac * curlvr[0]; */
-  /* pi->density.rot_v[1] += fac * curlvr[1]; */
-  /* pi->density.rot_v[2] += fac * curlvr[2]; */
+  pi->density.rot_v[0] += fac * curlvr[0];
+  pi->density.rot_v[1] += fac * curlvr[1];
+  pi->density.rot_v[2] += fac * curlvr[2];
 }
 
 /**
@@ -223,8 +217,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float f_i = pi->rho_dh * pi->pressure_dh;
-  const float f_j = pj->rho_dh * pj->pressure_dh;
+  const float f_i = pi->force.f;
+  const float f_j = pj->force.f;
 
   /* Compute Pressure terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
@@ -244,8 +238,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Balsara term */
-  /* const float balsara_i = pi->force.balsara; */
-  /* const float balsara_j = pj->force.balsara; */
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
@@ -256,7 +250,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+                     (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr);
@@ -332,8 +327,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float wj_dr = hjd_inv * wj_dx;
 
   /* Compute gradient terms */
-  const float f_i = pi->rho_dh * pi->pressure_dh;
-  const float f_j = pj->rho_dh * pj->pressure_dh;
+  const float f_i = pi->force.f;
+  const float f_j = pj->force.f;
 
   /* Compute Pressure terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
@@ -353,8 +348,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[2] - pj->v[2]) * dx[2];
 
   /* Balsara term */
-  /* const float balsara_i = pi->force.balsara; */
-  /* const float balsara_j = pj->force.balsara; */
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara;
 
   /* Are the particles moving towards each others ? */
   const float omega_ij = fminf(dvdr, 0.f);
@@ -365,7 +360,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.5f * const_viscosity_alpha * v_sig * mu_ij / rho_ij;
+  const float visc = -0.25f * const_viscosity_alpha * v_sig * mu_ij *
+                     (balsara_i + balsara_j) / rho_ij;
 
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr);

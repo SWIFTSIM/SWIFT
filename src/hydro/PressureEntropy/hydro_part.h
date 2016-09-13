@@ -26,7 +26,8 @@
  * The thermal variable is the entropy (S) and the entropy is smoothed over
  * contact discontinuities to prevent spurious surface tension.
  *
- * Follows Hopkins, P., MNRAS, 2013, Volume 428, Issue 4, pp. 2840-2856
+ * Follows eqautions (19), (21) and (22) of Hopkins, P., MNRAS, 2013,
+ * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
 #include "cooling_struct.h"
@@ -72,15 +73,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Derivative of density with respect to h */
-  float rho_dh;
-
-  /*! Particle pressure. */
-  float pressure;
-
-  /*! Derivative of pressure with respect to h */
-  float pressure_dh;
-
   /*! Particle weighted density */
   float rho_bar;
 
@@ -103,11 +95,14 @@ struct part {
       /*! Number of neighbours spatial derivative. */
       float wcount_dh;
 
-      /*! Derivative of particle weighted pressure with h. */
-      // float weightedPressure_dh;
+      /*! Derivative of density with respect to h */
+      float rho_dh;
+
+      /*! Derivative of pressure with respect to h */
+      float pressure_dh;
 
       /*! Particle velocity curl. */
-      // float rot_v[3];
+      float rot_v[3];
 
       /*! Particle velocity divergence. */
       float div_v;
@@ -116,8 +111,11 @@ struct part {
 
     struct {
 
+      /*! Balsara switch */
+      float balsara;
+
       /*! "Grad h" term */
-      // float f_ij;
+      float f;
 
       /*! Pressure term */
       float P_over_rho2;

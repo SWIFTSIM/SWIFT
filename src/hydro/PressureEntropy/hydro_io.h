@@ -26,7 +26,8 @@
  * The thermal variable is the entropy (S) and the entropy is smoothed over
  * contact discontinuities to prevent spurious surface tension.
  *
- * Follows Hopkins, P., MNRAS, 2013, Volume 428, Issue 4, pp. 2840-2856
+ * Follows eqautions (19), (21) and (22) of Hopkins, P., MNRAS, 2013,
+ * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
  */
 
 #include "adiabatic_index.h"
