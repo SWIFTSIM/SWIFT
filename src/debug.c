@@ -127,7 +127,7 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
  */
 void printParticle_single(const struct part *p, const struct xpart *xp) {
 
-  printf("## Particle: id=%lld", p->id);
+  printf("## Particle: id=%lld ", p->id);
   hydro_debug_particle(p, xp);
   printf("\n");
 }
