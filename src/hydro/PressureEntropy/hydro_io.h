@@ -56,9 +56,6 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
                                 parts, mass);
   list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
-  /* list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY, */
-  /*                               UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-   * entropy); */
   list[4] =
       io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
                           UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
@@ -127,8 +124,11 @@ void writeSPHflavour(hid_t h_grpsph) {
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
   writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-  writeAttribute_s(h_grpsph, "Viscosity Model",
-                   "Minimal treatment as in Monaghan (1992)");
+  writeAttribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
+  writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
+  writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 
   /* Time integration properties */
   writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
