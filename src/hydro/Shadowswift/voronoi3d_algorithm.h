@@ -20,6 +20,7 @@
 #ifndef SWIFT_VORONOI3D_ALGORITHM_H
 #define SWIFT_VORONOI3D_ALGORITHM_H
 
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +31,24 @@
 
 /* For debugging purposes */
 #define LOOP_CHECK 1000
+
+#ifdef LOOP_CHECK
+/* We need to do the trickery below to get a unique counter for each call to the
+   macro. This only works if the macro is never called twice on the same line.
+ */
+#define MERGE(a, b) a##b
+#define LOOPCOUNTER_NAME(line) MERGE(loopcount, line)
+#define safewhile(condition)                                        \
+  int LOOPCOUNTER_NAME(__LINE__) = 0;                               \
+  while (condition) {                                               \
+    if (LOOPCOUNTER_NAME(__LINE__) == LOOP_CHECK) {                 \
+      error("Number of iterations reached maximum (=%i) in while!", \
+            LOOP_CHECK);                                            \
+    }                                                               \
+    ++LOOPCOUNTER_NAME(__LINE__);
+#else
+#define safewhile(condition) while (condition) {
+#endif
 
 /* Tolerance parameter used to decide when to use more precise geometric
    criteria */
@@ -84,6 +103,27 @@ __attribute__((always_inline)) INLINE static void voronoi_get_box_centroid(
   box_centroid[0] = 0.5f * VORONOI3D_BOX_SIDE_X + VORONOI3D_BOX_ANCHOR_X;
   box_centroid[1] = 0.5f * VORONOI3D_BOX_SIDE_Y + VORONOI3D_BOX_ANCHOR_Y;
   box_centroid[2] = 0.5f * VORONOI3D_BOX_SIDE_Z + VORONOI3D_BOX_ANCHOR_Z;
+}
+
+__attribute__((always_inline)) INLINE void voronoi_box_test_inside(float *v,
+                                                                   double *x) {
+  float vpos[3];
+  vpos[0] = x[0] + v[0];
+  vpos[1] = x[1] + v[1];
+  vpos[2] = x[2] + v[2];
+  int check = (vpos[0] > VORONOI3D_BOX_ANCHOR_X - 1.e-5);
+  check &= (vpos[0] < VORONOI3D_BOX_ANCHOR_X + VORONOI3D_BOX_SIDE_X + 1.e-5);
+  check &= (vpos[1] > VORONOI3D_BOX_ANCHOR_Y - 1.e-5);
+  check &= (vpos[1] < VORONOI3D_BOX_ANCHOR_Y + VORONOI3D_BOX_SIDE_Y + 1.e-5);
+  check &= (vpos[2] > VORONOI3D_BOX_ANCHOR_Z - 1.e-5);
+  check &= (vpos[2] < VORONOI3D_BOX_ANCHOR_Z + VORONOI3D_BOX_SIDE_Z + 1.e-5);
+
+  if (!check) {
+    error("New vertex outside box! (%g %g %g, [%g %g %g], [%g %g %g])", vpos[0],
+          vpos[1], vpos[2], VORONOI3D_BOX_ANCHOR_X, VORONOI3D_BOX_ANCHOR_Y,
+          VORONOI3D_BOX_ANCHOR_Z, VORONOI3D_BOX_SIDE_X, VORONOI3D_BOX_SIDE_Y,
+          VORONOI3D_BOX_SIDE_Z);
+  }
 }
 
 __attribute__((always_inline)) INLINE static float voronoi_get_box_face(
@@ -167,6 +207,9 @@ __attribute__((always_inline)) INLINE void voronoi_print_cell(
     struct voronoi_cell *cell) {
 
   int i, j;
+
+  message("x: %g %g %g", cell->x[0], cell->x[1], cell->x[2]);
+  message("nvert: %i", cell->nvert);
 
   for (i = 0; i < cell->nvert; i++) {
     message("%i: %g %g %g (%i)", i, cell->vertices[3 * i],
@@ -465,12 +508,6 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
     int *uw, float *l, int *lp, int *ls, int *lw, float *q, int *qp, int *qs,
     int *qw) {
 
-#ifdef LOOP_CHECK
-  // auxiliary variable that counts the number of times a loop is executed
-  // if this number exceeds the value of LOOP_CHECK, we terminate the program
-  int loopcount;
-#endif
-
   // stack to store all vertices that have already been tested (debugging only)
   float teststack[2 * VORONOI3D_MAXNUMVERT];
   // size of the used part of the stack
@@ -503,254 +540,174 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
       *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
                                 &teststack_size);
       *us = 1;
-/* Not in while: PATH 1.0 */
-/* somewhere in while: PATH 1.1 */
-/* last valid option of while: PATH 1.2 */
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while ((*us) < c->orders[(*up)] && (*l) >= (*u)) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        *lp = voronoi_get_edge(c, (*up), (*us));
-        *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
-                                  &teststack_size);
-        (*us)++;
-      }
-      // we increased us too much, correct this
-      (*us)--;
-      if ((*l) >= (*u)) {
-        /* PATH 1.3 */
-        // up is the closest vertex to the plane, but is above the plane
-        // since the entire cell is convex, up is the closest vertex of all
-        // vertices of the cell
-        // this means the entire cell is supposedly above the plane, which is
-        // impossible
-        message(
-            "Cell completely gone! This should not happen. (l >= u, l = %g, u "
-            "= %g)",
-            (*l), (*u));
-        return -1;
-      }
-      // we know that lp is closer to the plane or below the plane
-      // now find the index of the edge up-lp in the edge list of lp
-      *ls = voronoi_get_edgeindex(c, (*up), (*us));
+      /* Not in while: PATH 1.0 */
+      /* somewhere in while: PATH 1.1 */
+      /* last valid option of while: PATH 1.2 */
+      safewhile((*us) < c->orders[(*up)] && (*l) >= (*u)) *lp =
+          voronoi_get_edge(c, (*up), (*us));
+      *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
+                                &teststack_size);
+      (*us)++;
+    }
+    // we increased us too much, correct this
+    (*us)--;
+    if ((*l) >= (*u)) {
+      /* PATH 1.3 */
+      // up is the closest vertex to the plane, but is above the plane
+      // since the entire cell is convex, up is the closest vertex of all
+      // vertices of the cell
+      // this means the entire cell is supposedly above the plane, which is
+      // impossible
+      message(
+          "Cell completely gone! This should not happen. (l >= u, l = %g, u "
+          "= %g)",
+          (*l), (*u));
+      return -1;
+    }
+    // we know that lp is closer to the plane or below the plane
+    // now find the index of the edge up-lp in the edge list of lp
+    *ls = voronoi_get_edgeindex(c, (*up), (*us));
 
-// if lp is also above the plane, replace up by lp and repeat the process
-// until lp is below the plane
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while ((*lw) == 1) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
+    // if lp is also above the plane, replace up by lp and repeat the process
+    // until lp is below the plane
+    safewhile((*lw) == 1)
         /* PATH 1.4 */
         *u = (*l);
-        *up = (*lp);
-        *us = 0;
-/* no while: PATH 1.4.0 */
-/* somewhere in while: PATH 1.4.1 */
-/* last valid option of while: PATH 1.4.2 */
-#ifdef LOOP_CHECK
-        loopcount = 0;
-#endif
-        while ((*us) < (*ls) && (*l) >= (*u)) {
-#ifdef LOOP_CHECK
-          if (loopcount == LOOP_CHECK) {
-            error("Number of iterations reached maximum (=%i) in while!",
-                  LOOP_CHECK);
-          }
-          ++loopcount;
-#endif
-          *lp = voronoi_get_edge(c, (*up), (*us));
-          *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
-                                    teststack, &teststack_size);
-          (*us)++;
-        }
-        if ((*l) >= (*u)) {
-          (*us)++;
-/* no while: PATH 1.4.3 */
-/* somewhere in while: PATH 1.4.4 */
-/* last valid option of while: PATH 1.4.5 */
-#ifdef LOOP_CHECK
-          loopcount = 0;
-#endif
-          while ((*us) < c->orders[(*up)] && (*l) >= (*u)) {
-#ifdef LOOP_CHECK
-            if (loopcount == LOOP_CHECK) {
-              error("Number of iterations reached maximum (=%i) in while!",
-                    LOOP_CHECK);
-            }
-            ++loopcount;
-#endif
-            *lp = voronoi_get_edge(c, (*up), (*us));
-            *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l,
-                                      teststack, &teststack_size);
-            (*us)++;
-          }
-          if ((*l) >= (*u)) {
-            /* PATH 1.4.6 */
-            message(
-                "Cell completely gone! This should not happen. (l >= u, l = "
-                "%g, u = %g)",
-                (*l), (*u));
-            return -1;
-          }
-        }
-        (*us)--;
-        *ls = voronoi_get_edgeindex(c, (*up), (*us));
-      }
-      // if lp is too close to the plane, replace up by lp and proceed to
-      // complicated setup
-      if ((*lw) == 0) {
-        /* PATH 1.5 */
-        *up = (*lp);
-        complicated = 1;
-      }
+    *up = (*lp);
+    *us = 0;
+    /* no while: PATH 1.4.0 */
+    /* somewhere in while: PATH 1.4.1 */
+    /* last valid option of while: PATH 1.4.2 */
+    safewhile((*us) < (*ls) && (*l) >= (*u)) *lp =
+        voronoi_get_edge(c, (*up), (*us));
+    *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
+                              &teststack_size);
+    (*us)++;
+  }
+  if ((*l) >= (*u)) {
+    (*us)++;
+    /* no while: PATH 1.4.3 */
+    /* somewhere in while: PATH 1.4.4 */
+    /* last valid option of while: PATH 1.4.5 */
+    safewhile((*us) < c->orders[(*up)] && (*l) >= (*u)) *lp =
+        voronoi_get_edge(c, (*up), (*us));
+    *lw = voronoi_test_vertex(&c->vertices[3 * (*lp)], dx, r2, l, teststack,
+                              &teststack_size);
+    (*us)++;
+  }
+  if ((*l) >= (*u)) {
+    /* PATH 1.4.6 */
+    message(
+        "Cell completely gone! This should not happen. (l >= u, l = "
+        "%g, u = %g)",
+        (*l), (*u));
+    return -1;
+  }
+}
+(*us)--;
+*ls = voronoi_get_edgeindex(c, (*up), (*us));
+}
+// if lp is too close to the plane, replace up by lp and proceed to
+// complicated setup
+if ((*lw) == 0) {
+  /* PATH 1.5 */
+  *up = (*lp);
+  complicated = 1;
+}
+}
+else { /* if(uw == 1) */
 
-    } else { /* if(uw == 1) */
+  /* PATH 2 */
 
-      /* PATH 2 */
+  // below: try to find a vertex above
+  // we test all edges of the current vertex stored in up (vertex 0) until
+  // we either find one above the plane or closer to the plane
 
-      // below: try to find a vertex above
-      // we test all edges of the current vertex stored in up (vertex 0) until
-      // we either find one above the plane or closer to the plane
-
-      *qp = voronoi_get_edge(c, (*up), 0);
-      *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
-                                &teststack_size);
-      *us = 1;
-/* not in while: PATH 2.0 */
-/* somewhere in while: PATH 2.1 */
-/* last valid option of while: PATH 2.2 */
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while ((*us) < c->orders[(*up)] && (*u) >= (*q)) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        *qp = voronoi_get_edge(c, (*up), (*us));
-        *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
-                                  &teststack_size);
-        (*us)++;
-      }
-      if ((*u) >= (*q)) {
-        /* PATH 2.3 */
-        // up is the closest vertex to the plane and is below the plane
-        // since the cell is convex, up is the closest vertex of all vertices of
-        // the cell
-        // this means that the entire cell is below the plane
-        /* cell unaltered */
-        return 0;
-      } else {
-        // the last increase in the loop pushed us too far, correct this
-        (*us)--;
-      }
+  *qp = voronoi_get_edge(c, (*up), 0);
+  *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
+                            &teststack_size);
+  *us = 1;
+  /* not in while: PATH 2.0 */
+  /* somewhere in while: PATH 2.1 */
+  /* last valid option of while: PATH 2.2 */
+  safewhile((*us) < c->orders[(*up)] && (*u) >= (*q)) *qp =
+      voronoi_get_edge(c, (*up), (*us));
+  *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
+                            &teststack_size);
+  (*us)++;
+}
+if ((*u) >= (*q)) {
+  /* PATH 2.3 */
+  // up is the closest vertex to the plane and is below the plane
+  // since the cell is convex, up is the closest vertex of all vertices of
+  // the cell
+  // this means that the entire cell is below the plane
+  /* cell unaltered */
+  return 0;
+} else {
+  // the last increase in the loop pushed us too far, correct this
+  (*us)--;
+}
 
 // repeat the above process until qp is closer or above the plane
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while ((*qw) == -1) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        /* PATH 2.4 */
-        *qs = voronoi_get_edgeindex(c, (*up), (*us));
-        *u = (*q);
-        *up = (*qp);
-        *us = 0;
+safewhile((*qw) == -1)
+    /* PATH 2.4 */
+    *qs = voronoi_get_edgeindex(c, (*up), (*us));
+*u = (*q);
+*up = (*qp);
+*us = 0;
 /* no while: PATH 2.4.0 */
 /* somewhere in while: PATH 2.4.1 */
 /* last valid option of while: 2.4.2 */
-#ifdef LOOP_CHECK
-        loopcount = 0;
-#endif
-        while ((*us) < (*qs) && (*u) >= (*q)) {
-#ifdef LOOP_CHECK
-          if (loopcount == LOOP_CHECK) {
-            error("Number of iterations reached maximum (=%i) in while!",
-                  LOOP_CHECK);
-          }
-          ++loopcount;
-#endif
-          *qp = voronoi_get_edge(c, (*up), (*us));
-          *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
-                                    teststack, &teststack_size);
-          (*us)++;
-        }
-        if ((*u) >= (*q)) {
-          (*us)++;
-/* no while: PATH 2.4.3 */
-/* somewhere in while: PATH 2.4.4 */
-/* last valid option of while: PATH 2.4.5 */
-#ifdef LOOP_CHECK
-          loopcount = 0;
-#endif
-          while ((*us) < c->orders[(*up)] && (*u) >= (*q)) {
-#ifdef LOOP_CHECK
-            if (loopcount == LOOP_CHECK) {
-              error("Number of iterations reached maximum (=%i) in while!",
-                    LOOP_CHECK);
-            }
-            ++loopcount;
-#endif
-            *qp = voronoi_get_edge(c, (*up), (*us));
-            *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q,
-                                      teststack, &teststack_size);
-            (*us)++;
-          }
-          if ((*u) >= (*q)) {
-            /* PATH 2.4.6 */
-            /* cell unaltered */
-            return 0;
-          }
-        }
-        (*us)--;
-      }
-      if ((*qw) == 1) {
-        // qp is above the plane: initialize lp to up and replace up by qp
-        *lp = (*up);
-        *ls = (*us);
-        *l = (*u);
-        *up = (*qp);
-        *us = voronoi_get_edgeindex(c, (*lp), (*ls));
-        *u = (*q);
-      } else {
-        /* PATH 2.5 */
-        // too close to call: go to complicated setup
-        *up = (*qp);
-        complicated = 1;
-      }
+safewhile((*us) < (*qs) && (*u) >= (*q)) *qp = voronoi_get_edge(c, (*up),
+                                                                (*us));
+*qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
+                          &teststack_size);
+(*us)++;
+}
+if ((*u) >= (*q)) {
+  (*us)++;
+  /* no while: PATH 2.4.3 */
+  /* somewhere in while: PATH 2.4.4 */
+  /* last valid option of while: PATH 2.4.5 */
+  safewhile((*us) < c->orders[(*up)] && (*u) >= (*q)) *qp =
+      voronoi_get_edge(c, (*up), (*us));
+  *qw = voronoi_test_vertex(&c->vertices[3 * (*qp)], dx, r2, q, teststack,
+                            &teststack_size);
+  (*us)++;
+}
+if ((*u) >= (*q)) {
+  /* PATH 2.4.6 */
+  /* cell unaltered */
+  return 0;
+}
+}
+(*us)--;
+}
+if ((*qw) == 1) {
+  // qp is above the plane: initialize lp to up and replace up by qp
+  *lp = (*up);
+  *ls = (*us);
+  *l = (*u);
+  *up = (*qp);
+  *us = voronoi_get_edgeindex(c, (*lp), (*ls));
+  *u = (*q);
+} else {
+  /* PATH 2.5 */
+  // too close to call: go to complicated setup
+  *up = (*qp);
+  complicated = 1;
+}
 
-    } /* if(uw == 1) */
+} /* if(uw == 1) */
 
-  } /* if(uw == 0) */
+} /* if(uw == 0) */
 
-  if (complicated) {
-    return 2;
-  } else {
-    return 1;
-  }
+if (complicated) {
+  return 2;
+} else {
+  return 1;
+}
 }
 
 /**
@@ -761,12 +718,6 @@ __attribute__((always_inline)) INLINE int voronoi_intersect_find_closest_vertex(
  */
 __attribute__((always_inline)) INLINE void voronoi_intersect(
     float *odx, struct voronoi_cell *c, unsigned long long ngb) {
-
-#ifdef LOOP_CHECK
-  // auxiliary variable that counts the number of times a loop is executed
-  // if this number exceeds the value of LOOP_CHECK, we terminate the program
-  int loopcount;
-#endif
 
   // vector pointing from the midpoint of the line segment between pi and pj to
   // pj.
@@ -834,342 +785,528 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     ++dstack_size;
     j = 0;
     lw = 0;
-#ifdef LOOP_CHECK
-    loopcount = 0;
-#endif
-    while (j < dstack_size && lw != -1) {
-#ifdef LOOP_CHECK
-      if (loopcount == LOOP_CHECK) {
-        error("Number of iterations reached maximum (=%i) in while!",
-              LOOP_CHECK);
+    safewhile(j < dstack_size && lw != -1) up = dstack[j];
+    for (i = 0; i < c->orders[up]; ++i) {
+      lp = voronoi_get_edge(c, up, i);
+      lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                               &teststack_size);
+      if (!lw) {
+        k = 0;
+        // make sure we don't add duplicates, since then we might get stuck in
+        // the outer loop...
+        safewhile(k < dstack_size && dstack[k] != lp)++ k;
       }
-      ++loopcount;
-#endif
-      up = dstack[j];
-      for (i = 0; i < c->orders[up]; ++i) {
-        lp = voronoi_get_edge(c, up, i);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-        if (!lw) {
-          k = 0;
-// make sure we don't add duplicates, since then we might get stuck in
-// the outer loop...
-#ifdef LOOP_CHECK
-          loopcount = 0;
-#endif
-          while (k < dstack_size && dstack[k] != lp) {
-#ifdef LOOP_CHECK
-            if (loopcount == LOOP_CHECK) {
-              error("Number of iterations reached maximum (=%i) in while!",
-                    LOOP_CHECK);
-            }
-            ++loopcount;
-#endif
-            ++k;
-          }
-          if (k == dstack_size) {
-            dstack[dstack_size] = lp;
-            ++dstack_size;
-          }
-        }
-        if (lw == -1) {
-          break;
-        }
+      if (k == dstack_size) {
+        dstack[dstack_size] = lp;
+        ++dstack_size;
       }
-      ++j;
     }
-    if (lw != -1) {
-      message("j: %i, dstack_size: %i", j, dstack_size);
-      message("dx: %g %g %g", dx[0], dx[1], dx[2]);
-      message("up: %i", up);
-      message("orders[up] = %i", c->orders[up]);
-      for (i = 0; i < c->orders[up]; ++i) {
-        lp = voronoi_get_edge(c, up, i);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-        message("edge[%i]: %i (%g %g %g - %i)", i, lp, c->vertices[3 * lp],
-                c->vertices[3 * lp + 1], c->vertices[3 * lp + 2], lw);
-      }
-      error("Cell completely gone! This should not happen.");
+    if (lw == -1) {
+      break;
     }
-
-    // the search routine detected a vertex very close to the plane
-    // the index of this vertex is stored in up
-    // we proceed by checking the edges of this vertex
-
-    lp = voronoi_get_edge(c, up, 0);
+  }
+  ++j;
+}
+if (lw != -1) {
+  message("j: %i, dstack_size: %i", j, dstack_size);
+  message("dx: %g %g %g", dx[0], dx[1], dx[2]);
+  message("up: %i", up);
+  message("orders[up] = %i", c->orders[up]);
+  for (i = 0; i < c->orders[up]; ++i) {
+    lp = voronoi_get_edge(c, up, i);
     lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
                              &teststack_size);
+    message("edge[%i]: %i (%g %g %g - %i)", i, lp, c->vertices[3 * lp],
+            c->vertices[3 * lp + 1], c->vertices[3 * lp + 2], lw);
+  }
+  error("Cell completely gone! This should not happen.");
+}
 
-    // the first edge can be below, above or on the plane
-    if (lw != -1) {
+// the search routine detected a vertex very close to the plane
+// the index of this vertex is stored in up
+// we proceed by checking the edges of this vertex
 
-      // above or on the plane: we try to find one below the plane
+lp = voronoi_get_edge(c, up, 0);
+lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                         &teststack_size);
 
-      rp = lw;
-      i = 1;
-      lp = voronoi_get_edge(c, up, i);
-      lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                               &teststack_size);
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (lw != -1) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
+// the first edge can be below, above or on the plane
+if (lw != -1) {
+
+  // above or on the plane: we try to find one below the plane
+
+  rp = lw;
+  i = 1;
+  lp = voronoi_get_edge(c, up, i);
+  lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                           &teststack_size);
+  safewhile(lw != -1) i++;
+  if (i == c->orders[up]) {
+    // none of the edges of up is below the plane. Since the cell is
+    // supposed to be convex, this means the entire cell is above or on
+    // the plane. This should not happen...
+    voronoi_print_gnuplot_c(c);
+    error(
+        "Cell completely gone! This should not happen. (i == "
+        "c->order[up], i = %d, c->orders[up] = %d, up = %d)\n"
+        "dx: [%g %g %g]\nv[up]: [%g %g %g]\nx: [%g %g %g]",
+        i, c->orders[up], up, dx[0], dx[1], dx[2], c->vertices[3 * up],
+        c->vertices[3 * up + 1], c->vertices[3 * up + 2], c->x[0], c->x[1],
+        c->x[2]);
+  }
+  lp = voronoi_get_edge(c, up, i);
+  lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                           &teststack_size);
+}
+
+j = i + 1;
+safewhile(j < c->orders[up]) lp = voronoi_get_edge(c, up, j);
+lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                         &teststack_size);
+if (lw != -1) {
+  break;
+}
+j++;
+}
+
+if (j == c->orders[up] && i == 1 && rp == 0) {
+  k = c->orders[up];
+  double_edge = 1;
+} else {
+  k = j - i + 2;
+}
+
+/* create new order k vertex */
+vindex = c->nvert;
+c->nvert++;
+if (c->nvert == VORONOI3D_MAXNUMVERT) {
+  error("Too many vertices!");
+}
+c->orders[vindex] = k;
+c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
+if (c->offsets[vindex] + k >= VORONOI3D_MAXNUMEDGE) {
+  error("Too many edges!");
+}
+
+k = 1;
+
+visitflags[vindex] = 0;
+c->vertices[3 * vindex + 0] = c->vertices[3 * up + 0];
+c->vertices[3 * vindex + 1] = c->vertices[3 * up + 1];
+c->vertices[3 * vindex + 2] = c->vertices[3 * up + 2];
+
+voronoi_box_test_inside(&c->vertices[3 * vindex], c->x);
+
+us = i - 1;
+if (i < 0) {
+  i = c->orders[up] - 1;
+}
+safewhile(i < j) qp = voronoi_get_edge(c, up, i);
+qs = voronoi_get_edgeindex(c, up, i);
+voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
+voronoi_set_edge(c, vindex, k, qp);
+voronoi_set_edgeindex(c, vindex, k, qs);
+voronoi_set_edge(c, qp, qs, vindex);
+voronoi_set_edgeindex(c, qp, qs, k);
+voronoi_set_edge(c, up, i, -1);
+i++;
+k++;
+}
+if (i == c->orders[up]) {
+  qs = 0;
+} else {
+  qs = i;
+}
+}
+else { /* if(lw != -1) */
+
+  i = c->orders[up] - 1;
+  lp = voronoi_get_edge(c, up, i);
+  lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                           &teststack_size);
+  safewhile(lw == -1) i--;
+  if (i == 0) {
+    /* cell unaltered */
+    return;
+  }
+  lp = voronoi_get_edge(c, up, i);
+  lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                           &teststack_size);
+}
+
+j = 1;
+qp = voronoi_get_edge(c, up, j);
+qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q, teststack,
+                         &teststack_size);
+safewhile(qw == -1) j++;
+qp = voronoi_get_edge(c, up, j);
+qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &l, teststack,
+                         &teststack_size);
+}
+
+if (i == j && qw == 0) {
+  double_edge = 1;
+  k = c->orders[up];
+} else {
+  k = c->orders[up] - i + j + 1;
+}
+
+/* create new order k vertex */
+vindex = c->nvert;
+c->nvert++;
+if (c->nvert == VORONOI3D_MAXNUMVERT) {
+  error("Too many vertices!");
+}
+c->orders[vindex] = k;
+c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
+if (c->offsets[vindex] + k >= VORONOI3D_MAXNUMEDGE) {
+  error("Too many edges!");
+}
+k = 1;
+
+visitflags[vindex] = 0;
+c->vertices[3 * vindex + 0] = c->vertices[3 * up + 0];
+c->vertices[3 * vindex + 1] = c->vertices[3 * up + 1];
+c->vertices[3 * vindex + 2] = c->vertices[3 * up + 2];
+
+voronoi_box_test_inside(&c->vertices[3 * vindex], c->x);
+
+us = i;
+i++;
+safewhile(i < c->orders[up]) qp = voronoi_get_edge(c, up, i);
+qs = voronoi_get_edgeindex(c, up, i);
+voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
+voronoi_set_edge(c, vindex, k, qp);
+voronoi_set_edgeindex(c, vindex, k, qs);
+voronoi_set_edge(c, qp, qs, vindex);
+voronoi_set_edgeindex(c, qp, qs, k);
+voronoi_set_edge(c, up, i, -1);
+i++;
+k++;
+}
+i = 0;
+safewhile(i < j) qp = voronoi_get_edge(c, up, i);
+qs = voronoi_get_edgeindex(c, up, i);
+voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
+voronoi_set_edge(c, vindex, k, qp);
+voronoi_set_edgeindex(c, vindex, k, qs);
+voronoi_set_edge(c, qp, qs, vindex);
+voronoi_set_edgeindex(c, qp, qs, k);
+voronoi_set_edge(c, up, i, -1);
+i++;
+k++;
+}
+qs = j;
+}
+
+if (!double_edge) {
+  voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, qs));
+  voronoi_set_ngb(c, vindex, 0, ngb);
+} else {
+  voronoi_set_ngb(c, vindex, 0, voronoi_get_ngb(c, up, qs));
+}
+
+dstack[dstack_size] = up;
+++dstack_size;
+
+cs = k;
+qp = up;
+q = u;
+i = voronoi_get_edge(c, up, us);
+us = voronoi_get_edgeindex(c, up, us);
+up = i;
+visitflags[qp] = -vindex;
+}
+else { /* if(complicated) */
+
+  if (u == l) {
+    error("Upper and lower vertex are the same!");
+  }
+
+  r = u / (u - l);
+  l = 1.0f - r;
+
+  if (r > FLT_MAX || r < -FLT_MAX || l > FLT_MAX || l < -FLT_MAX) {
+    error("Value overflow (r: %g, l: %g)", r, l);
+  }
+
+  /* create new order 3 vertex */
+  vindex = c->nvert;
+  c->nvert++;
+  if (c->nvert == VORONOI3D_MAXNUMVERT) {
+    error("Too many vertices!");
+  }
+  c->orders[vindex] = 3;
+  c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
+  if (c->offsets[vindex] + 3 >= VORONOI3D_MAXNUMEDGE) {
+    error("Too many edges!");
+  }
+
+  visitflags[vindex] = 0;
+  c->vertices[3 * vindex + 0] =
+      c->vertices[3 * lp + 0] * r + c->vertices[3 * up + 0] * l;
+  c->vertices[3 * vindex + 1] =
+      c->vertices[3 * lp + 1] * r + c->vertices[3 * up + 1] * l;
+  c->vertices[3 * vindex + 2] =
+      c->vertices[3 * lp + 2] * r + c->vertices[3 * up + 2] * l;
+
+  voronoi_box_test_inside(&c->vertices[3 * vindex], c->x);
+
+  dstack[dstack_size] = up;
+  ++dstack_size;
+
+  voronoi_set_edge(c, vindex, 1, lp);
+  voronoi_set_edgeindex(c, vindex, 1, ls);
+  voronoi_set_edge(c, lp, ls, vindex);
+  voronoi_set_edgeindex(c, lp, ls, 1);
+  voronoi_set_edge(c, up, us, -1);
+
+  voronoi_set_ngb(c, vindex, 0, ngb);
+  voronoi_set_ngb(c, vindex, 1, voronoi_get_ngb(c, up, us));
+  voronoi_set_ngb(c, vindex, 2, voronoi_get_ngb(c, lp, ls));
+
+  qs = us + 1;
+  if (qs == c->orders[up]) {
+    qs = 0;
+  }
+  qp = up;
+  q = u;
+
+  cs = 2;
+
+} /* if(complicated) */
+
+int cp = -1;
+int iqs = -1;
+int new_double_edge = -1;
+
+cp = vindex;
+rp = vindex;
+safewhile(qp != up || qs != us) lp = voronoi_get_edge(c, qp, qs);
+lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                         &teststack_size);
+if (lw == 0) {
+
+  k = 1;
+  if (double_edge) {
+    k = 0;
+  }
+  qs = voronoi_get_edgeindex(c, qp, qs);
+  qp = lp;
+  iqs = qs;
+
+  k++;
+  qs++;
+  if (qs == c->orders[qp]) {
+    qs = 0;
+  }
+  lp = voronoi_get_edge(c, qp, qs);
+  lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                           &teststack_size);
+  safewhile(lw == -1) k++;
+  qs++;
+  if (qs == c->orders[qp]) {
+    qs = 0;
+  }
+  lp = voronoi_get_edge(c, qp, qs);
+  lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
+                           &teststack_size);
+}
+
+j = visitflags[qp];
+if (qp == up && qs == us) {
+  new_double_edge = 0;
+  if (j > 0) {
+    k += c->orders[j];
+  }
+} else {
+  if (j > 0) {
+    k += c->orders[j];
+    if (lw == 0) {
+      i = -visitflags[lp];
+      if (i > 0) {
+        if (voronoi_get_edge(c, i, c->orders[i] - 1) == j) {
+          new_double_edge = 1;
+          k--;
+        } else {
+          new_double_edge = 0;
         }
-        ++loopcount;
-#endif
-        i++;
-        if (i == c->orders[up]) {
-          // none of the edges of up is below the plane. Since the cell is
-          // supposed to be convex, this means the entire cell is above or on
-          // the plane. This should not happen...
-          voronoi_print_gnuplot_c(c);
-          error(
-              "Cell completely gone! This should not happen. (i == "
-              "c->order[up], i = %d, c->orders[up] = %d, up = %d)\n"
-              "dx: [%g %g %g]\nv[up]: [%g %g %g]\nx: [%g %g %g]",
-              i, c->orders[up], up, dx[0], dx[1], dx[2], c->vertices[3 * up],
-              c->vertices[3 * up + 1], c->vertices[3 * up + 2], c->x[0],
-              c->x[1], c->x[2]);
-        }
-        lp = voronoi_get_edge(c, up, i);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-      }
-
-      j = i + 1;
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (j < c->orders[up]) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        lp = voronoi_get_edge(c, up, j);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-        if (lw != -1) {
-          break;
-        }
-        j++;
-      }
-
-      if (j == c->orders[up] && i == 1 && rp == 0) {
-        k = c->orders[up];
-        double_edge = 1;
       } else {
-        k = j - i + 2;
-      }
-
-      /* create new order k vertex */
-      vindex = c->nvert;
-      c->nvert++;
-      if (c->nvert == VORONOI3D_MAXNUMVERT) {
-        error("Too many vertices!");
-      }
-      c->orders[vindex] = k;
-      c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
-      if (c->offsets[vindex] + k >= VORONOI3D_MAXNUMEDGE) {
-        error("Too many edges!");
-      }
-
-      k = 1;
-
-      visitflags[vindex] = 0;
-      c->vertices[3 * vindex + 0] = c->vertices[3 * up + 0];
-      c->vertices[3 * vindex + 1] = c->vertices[3 * up + 1];
-      c->vertices[3 * vindex + 2] = c->vertices[3 * up + 2];
-
-      us = i - 1;
-      if (i < 0) {
-        i = c->orders[up] - 1;
-      }
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (i < j) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
+        if (j == rp && lp == up && voronoi_get_edge(c, qp, qs) == us) {
+          new_double_edge = 1;
+          k--;
+        } else {
+          new_double_edge = 0;
         }
-        ++loopcount;
-#endif
-        qp = voronoi_get_edge(c, up, i);
-        qs = voronoi_get_edgeindex(c, up, i);
-        voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
-        voronoi_set_edge(c, vindex, k, qp);
-        voronoi_set_edgeindex(c, vindex, k, qs);
-        voronoi_set_edge(c, qp, qs, vindex);
-        voronoi_set_edgeindex(c, qp, qs, k);
-        voronoi_set_edge(c, up, i, -1);
-        i++;
-        k++;
       }
-      if (i == c->orders[up]) {
-        qs = 0;
-      } else {
-        qs = i;
-      }
-
-    } else { /* if(lw != -1) */
-
-      i = c->orders[up] - 1;
-      lp = voronoi_get_edge(c, up, i);
-      lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                               &teststack_size);
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (lw == -1) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        i--;
-        if (i == 0) {
-          /* cell unaltered */
-          return;
-        }
-        lp = voronoi_get_edge(c, up, i);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-      }
-
-      j = 1;
-      qp = voronoi_get_edge(c, up, j);
-      qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &q, teststack,
-                               &teststack_size);
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (qw == -1) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        j++;
-        qp = voronoi_get_edge(c, up, j);
-        qw = voronoi_test_vertex(&c->vertices[3 * qp], dx, r2, &l, teststack,
-                                 &teststack_size);
-      }
-
-      if (i == j && qw == 0) {
-        double_edge = 1;
-        k = c->orders[up];
-      } else {
-        k = c->orders[up] - i + j + 1;
-      }
-
-      /* create new order k vertex */
-      vindex = c->nvert;
-      c->nvert++;
-      if (c->nvert == VORONOI3D_MAXNUMVERT) {
-        error("Too many vertices!");
-      }
-      c->orders[vindex] = k;
-      c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
-      if (c->offsets[vindex] + k >= VORONOI3D_MAXNUMEDGE) {
-        error("Too many edges!");
-      }
-      k = 1;
-
-      visitflags[vindex] = 0;
-      c->vertices[3 * vindex + 0] = c->vertices[3 * up + 0];
-      c->vertices[3 * vindex + 1] = c->vertices[3 * up + 1];
-      c->vertices[3 * vindex + 2] = c->vertices[3 * up + 2];
-
-      us = i;
-      i++;
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (i < c->orders[up]) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        qp = voronoi_get_edge(c, up, i);
-        qs = voronoi_get_edgeindex(c, up, i);
-        voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
-        voronoi_set_edge(c, vindex, k, qp);
-        voronoi_set_edgeindex(c, vindex, k, qs);
-        voronoi_set_edge(c, qp, qs, vindex);
-        voronoi_set_edgeindex(c, qp, qs, k);
-        voronoi_set_edge(c, up, i, -1);
-        i++;
-        k++;
-      }
-      i = 0;
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (i < j) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        qp = voronoi_get_edge(c, up, i);
-        qs = voronoi_get_edgeindex(c, up, i);
-        voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, i));
-        voronoi_set_edge(c, vindex, k, qp);
-        voronoi_set_edgeindex(c, vindex, k, qs);
-        voronoi_set_edge(c, qp, qs, vindex);
-        voronoi_set_edgeindex(c, qp, qs, k);
-        voronoi_set_edge(c, up, i, -1);
-        i++;
-        k++;
-      }
-      qs = j;
-    }
-
-    if (!double_edge) {
-      voronoi_set_ngb(c, vindex, k, voronoi_get_ngb(c, up, qs));
-      voronoi_set_ngb(c, vindex, 0, ngb);
     } else {
-      voronoi_set_ngb(c, vindex, 0, voronoi_get_ngb(c, up, qs));
+      new_double_edge = 0;
+    }
+  } else {
+    if (lw == 0) {
+      i = -visitflags[lp];
+      if (i == cp) {
+        new_double_edge = 1;
+        k--;
+      } else {
+        new_double_edge = 0;
+      }
+    } else {
+      new_double_edge = 0;
+    }
+  }
+}
+
+if (j > 0) {
+  error("Case not handled!");
+}
+
+/* create new order k vertex */
+vindex = c->nvert;
+c->nvert++;
+if (c->nvert == VORONOI3D_MAXNUMVERT) {
+  fprintf(stderr, "dx: %g %g %g\n", dx[0], dx[1], dx[2]);
+  fprintf(stderr, "r2: %g\n", r2);
+  fprintf(stderr, "u: %g, l: %g, q: %g\n", u, l, q);
+  fprintf(stderr, "up: %i, us: %i, uw: %i\n", up, us, uw);
+  fprintf(stderr, "lp: %i, ls: %i, lw: %i\n", lp, ls, lw);
+  fprintf(stderr, "qp: %i, qs: %i, qw: %i\n", qp, qs, qw);
+  fprintf(stderr, "complicated: %i\n", complicated);
+  fprintf(stderr, "vindex: %i\n", vindex);
+  for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
+    fprintf(stderr, "visitflags[%i]: %i\n", ic, visitflags[ic]);
+  }
+  for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
+    fprintf(stderr, "dstack[%i]: %i\n", ic, dstack[ic]);
+  }
+  fprintf(stderr, "dstack_size: %i\n", dstack_size);
+  for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
+    fprintf(stderr, "teststack[%i]: %g\n", ic, teststack[ic]);
+  }
+  fprintf(stderr, "teststack_size: %i\n", teststack_size);
+  fprintf(stderr, "r: %g\n", r);
+  fprintf(stderr, "cs: %i, rp: %i\n", cs, rp);
+  fprintf(stderr, "double_edge: %i\n", double_edge);
+  fprintf(stderr, "i: %i, j: %i, k: %i\n", i, j, k);
+  fprintf(stderr, "cp: %i, iqs: %i\n", cp, iqs);
+  fprintf(stderr, "new_double_edge: %i\n", new_double_edge);
+  error("Too many vertices!");
+}
+c->orders[vindex] = k;
+c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
+if (c->offsets[vindex] + k >= VORONOI3D_MAXNUMEDGE) {
+  error("Too many edges!");
+}
+
+visitflags[vindex] = 0;
+c->vertices[3 * vindex + 0] = c->vertices[3 * qp + 0];
+c->vertices[3 * vindex + 1] = c->vertices[3 * qp + 1];
+c->vertices[3 * vindex + 2] = c->vertices[3 * qp + 2];
+
+voronoi_box_test_inside(&c->vertices[3 * vindex], c->x);
+
+visitflags[qp] = -vindex;
+dstack[dstack_size] = qp;
+dstack_size++;
+j = vindex;
+i = 0;
+
+if (!double_edge) {
+  voronoi_set_ngb(c, j, i, ngb);
+  voronoi_set_edge(c, j, i, cp);
+  voronoi_set_edgeindex(c, j, i, cs);
+  voronoi_set_edge(c, cp, cs, j);
+  voronoi_set_edgeindex(c, cp, cs, i);
+  i++;
+}
+
+qs = iqs;
+iqs = k - 1;
+if (new_double_edge) {
+  iqs = k;
+}
+safewhile(i < iqs) qs++;
+if (qs == c->orders[qp]) {
+  qs = 0;
+}
+lp = voronoi_get_edge(c, qp, qs);
+ls = voronoi_get_edgeindex(c, qp, qs);
+voronoi_set_ngb(c, j, i, voronoi_get_ngb(c, qp, qs));
+voronoi_set_edge(c, j, i, lp);
+voronoi_set_edgeindex(c, j, i, ls);
+voronoi_set_edge(c, lp, ls, j);
+voronoi_set_edgeindex(c, lp, ls, i);
+voronoi_set_edge(c, qp, qs, -1);
+i++;
+}
+qs++;
+if (qs == c->orders[qp]) {
+  qs = 0;
+}
+cs = i;
+cp = j;
+
+if (new_double_edge) {
+  voronoi_set_ngb(c, j, 0, voronoi_get_ngb(c, qp, qs));
+} else {
+  voronoi_set_ngb(c, j, cs, voronoi_get_ngb(c, qp, qs));
+}
+
+double_edge = new_double_edge;
+}
+else { /* if(lw == 0) */
+
+  if (lw == 1) {
+    qs = voronoi_get_edgeindex(c, qp, qs) + 1;
+    if (qs == c->orders[lp]) {
+      qs = 0;
+    }
+    qp = lp;
+    q = l;
+    dstack[dstack_size] = qp;
+    dstack_size++;
+  } else {
+
+    if (q == l) {
+      error("Upper and lower vertex are the same!");
     }
 
-    dstack[dstack_size] = up;
-    ++dstack_size;
-
-    cs = k;
-    qp = up;
-    q = u;
-    i = voronoi_get_edge(c, up, us);
-    us = voronoi_get_edgeindex(c, up, us);
-    up = i;
-    visitflags[qp] = -vindex;
-
-  } else { /* if(complicated) */
-
-    r = u / (u - l);
+    r = q / (q - l);
     l = 1.0f - r;
+
+    if (r > FLT_MAX || r < -FLT_MAX || l > FLT_MAX || l < -FLT_MAX) {
+      error("Value out of bounds (r: %g, l: %g)!", r, l);
+    }
 
     /* create new order 3 vertex */
     vindex = c->nvert;
     c->nvert++;
     if (c->nvert == VORONOI3D_MAXNUMVERT) {
+      fprintf(stderr, "dx: %g %g %g\n", dx[0], dx[1], dx[2]);
+      fprintf(stderr, "r2: %g\n", r2);
+      fprintf(stderr, "u: %g, l: %g, q: %g\n", u, l, q);
+      fprintf(stderr, "up: %i, us: %i, uw: %i\n", up, us, uw);
+      fprintf(stderr, "lp: %i, ls: %i, lw: %i\n", lp, ls, lw);
+      fprintf(stderr, "qp: %i, qs: %i, qw: %i\n", qp, qs, qw);
+      fprintf(stderr, "complicated: %i\n", complicated);
+      fprintf(stderr, "vindex: %i\n", vindex);
+      for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
+        fprintf(stderr, "visitflags[%i]: %i\n", ic, visitflags[ic]);
+      }
+      for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
+        fprintf(stderr, "dstack[%i]: %i\n", ic, dstack[ic]);
+      }
+      fprintf(stderr, "dstack_size: %i\n", dstack_size);
+      for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
+        fprintf(stderr, "teststack[%i]: %g\n", ic, teststack[ic]);
+      }
+      fprintf(stderr, "teststack_size: %i\n", teststack_size);
+      fprintf(stderr, "r: %g\n", r);
+      fprintf(stderr, "cs: %i, rp: %i\n", cs, rp);
+      fprintf(stderr, "double_edge: %i\n", double_edge);
+      fprintf(stderr, "i: %i, j: %i, k: %i\n", i, j, k);
+      fprintf(stderr, "cp: %i, iqs: %i\n", cp, iqs);
+      fprintf(stderr, "new_double_edge: %i\n", new_double_edge);
       error("Too many vertices!");
     }
     c->orders[vindex] = 3;
@@ -1178,426 +1315,129 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       error("Too many edges!");
     }
 
-    visitflags[vindex] = 0;
     c->vertices[3 * vindex + 0] =
-        c->vertices[3 * lp + 0] * r + c->vertices[3 * up + 0] * l;
+        c->vertices[3 * lp + 0] * r + c->vertices[3 * qp + 0] * l;
     c->vertices[3 * vindex + 1] =
-        c->vertices[3 * lp + 1] * r + c->vertices[3 * up + 1] * l;
+        c->vertices[3 * lp + 1] * r + c->vertices[3 * qp + 1] * l;
     c->vertices[3 * vindex + 2] =
-        c->vertices[3 * lp + 2] * r + c->vertices[3 * up + 2] * l;
+        c->vertices[3 * lp + 2] * r + c->vertices[3 * qp + 2] * l;
 
-    dstack[dstack_size] = up;
-    ++dstack_size;
+    voronoi_box_test_inside(&c->vertices[3 * vindex], c->x);
 
+    ls = voronoi_get_edgeindex(c, qp, qs);
+    voronoi_set_edge(c, vindex, 0, cp);
     voronoi_set_edge(c, vindex, 1, lp);
+    voronoi_set_edgeindex(c, vindex, 0, cs);
     voronoi_set_edgeindex(c, vindex, 1, ls);
     voronoi_set_edge(c, lp, ls, vindex);
     voronoi_set_edgeindex(c, lp, ls, 1);
-    voronoi_set_edge(c, up, us, -1);
+    voronoi_set_edge(c, cp, cs, vindex);
+    voronoi_set_edgeindex(c, cp, cs, 0);
+    voronoi_set_edge(c, qp, qs, -1);
 
     voronoi_set_ngb(c, vindex, 0, ngb);
-    voronoi_set_ngb(c, vindex, 1, voronoi_get_ngb(c, up, us));
+    voronoi_set_ngb(c, vindex, 1, voronoi_get_ngb(c, qp, qs));
     voronoi_set_ngb(c, vindex, 2, voronoi_get_ngb(c, lp, ls));
 
-    qs = us + 1;
-    if (qs == c->orders[up]) {
+    qs++;
+    if (qs == c->orders[qp]) {
       qs = 0;
     }
-    qp = up;
-    q = u;
-
+    cp = vindex;
     cs = 2;
+  } /* if(lw == 1) */
 
-  } /* if(complicated) */
+} /* if(lw == 0) */
 
-  int cp = -1;
-  int iqs = -1;
-  int new_double_edge = -1;
+} /* while() */
 
-  cp = vindex;
-  rp = vindex;
-#ifdef LOOP_CHECK
-  loopcount = 0;
-#endif
-  while (qp != up || qs != us) {
-#ifdef LOOP_CHECK
-    if (loopcount == LOOP_CHECK) {
-      error("Number of iterations reached maximum (=%i) in while!", LOOP_CHECK);
-    }
-    ++loopcount;
-#endif
-    lp = voronoi_get_edge(c, qp, qs);
-    lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                             &teststack_size);
-    if (lw == 0) {
+voronoi_set_edge(c, cp, cs, rp);
+voronoi_set_edge(c, rp, 0, cp);
+voronoi_set_edgeindex(c, cp, cs, 0);
+voronoi_set_edgeindex(c, rp, 0, cs);
 
-      k = 1;
-      if (double_edge) {
-        k = 0;
-      }
-      qs = voronoi_get_edgeindex(c, qp, qs);
-      qp = lp;
-      iqs = qs;
-
-      k++;
-      qs++;
-      if (qs == c->orders[qp]) {
-        qs = 0;
-      }
-      lp = voronoi_get_edge(c, qp, qs);
-      lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                               &teststack_size);
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (lw == -1) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        k++;
-        qs++;
-        if (qs == c->orders[qp]) {
-          qs = 0;
-        }
-        lp = voronoi_get_edge(c, qp, qs);
-        lw = voronoi_test_vertex(&c->vertices[3 * lp], dx, r2, &l, teststack,
-                                 &teststack_size);
-      }
-
-      j = visitflags[qp];
-      if (qp == up && qs == us) {
-        new_double_edge = 0;
-        if (j > 0) {
-          k += c->orders[j];
-        }
-      } else {
-        if (j > 0) {
-          k += c->orders[j];
-          if (lw == 0) {
-            i = -visitflags[lp];
-            if (i > 0) {
-              if (voronoi_get_edge(c, i, c->orders[i] - 1) == j) {
-                new_double_edge = 1;
-                k--;
-              } else {
-                new_double_edge = 0;
-              }
-            } else {
-              if (j == rp && lp == up && voronoi_get_edge(c, qp, qs) == us) {
-                new_double_edge = 1;
-                k--;
-              } else {
-                new_double_edge = 0;
-              }
-            }
-          } else {
-            new_double_edge = 0;
-          }
-        } else {
-          if (lw == 0) {
-            i = -visitflags[lp];
-            if (i == cp) {
-              new_double_edge = 1;
-              k--;
-            } else {
-              new_double_edge = 0;
-            }
-          } else {
-            new_double_edge = 0;
-          }
-        }
-      }
-
-      if (j > 0) {
-        error("Case not handled!");
-      }
-
-      /* create new order k vertex */
-      vindex = c->nvert;
-      c->nvert++;
-      if (c->nvert == VORONOI3D_MAXNUMVERT) {
-        fprintf(stderr, "dx: %g %g %g\n", dx[0], dx[1], dx[2]);
-        fprintf(stderr, "r2: %g\n", r2);
-        fprintf(stderr, "u: %g, l: %g, q: %g\n", u, l, q);
-        fprintf(stderr, "up: %i, us: %i, uw: %i\n", up, us, uw);
-        fprintf(stderr, "lp: %i, ls: %i, lw: %i\n", lp, ls, lw);
-        fprintf(stderr, "qp: %i, qs: %i, qw: %i\n", qp, qs, qw);
-        fprintf(stderr, "complicated: %i\n", complicated);
-        fprintf(stderr, "vindex: %i\n", vindex);
-        for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-          fprintf(stderr, "visitflags[%i]: %i\n", ic, visitflags[ic]);
-        }
-        for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-          fprintf(stderr, "dstack[%i]: %i\n", ic, dstack[ic]);
-        }
-        fprintf(stderr, "dstack_size: %i\n", dstack_size);
-        for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-          fprintf(stderr, "teststack[%i]: %g\n", ic, teststack[ic]);
-        }
-        fprintf(stderr, "teststack_size: %i\n", teststack_size);
-        fprintf(stderr, "r: %g\n", r);
-        fprintf(stderr, "cs: %i, rp: %i\n", cs, rp);
-        fprintf(stderr, "double_edge: %i\n", double_edge);
-        fprintf(stderr, "i: %i, j: %i, k: %i\n", i, j, k);
-        fprintf(stderr, "cp: %i, iqs: %i\n", cp, iqs);
-        fprintf(stderr, "new_double_edge: %i\n", new_double_edge);
-        error("Too many vertices!");
-      }
-      c->orders[vindex] = k;
-      c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
-      if (c->offsets[vindex] + k >= VORONOI3D_MAXNUMEDGE) {
-        error("Too many edges!");
-      }
-
-      visitflags[vindex] = 0;
-      c->vertices[3 * vindex + 0] = c->vertices[3 * qp + 0];
-      c->vertices[3 * vindex + 1] = c->vertices[3 * qp + 1];
-      c->vertices[3 * vindex + 2] = c->vertices[3 * qp + 2];
-      visitflags[qp] = -vindex;
-      dstack[dstack_size] = qp;
+for (i = 0; i < dstack_size; i++) {
+  for (j = 0; j < c->orders[dstack[i]]; j++) {
+    if (voronoi_get_edge(c, dstack[i], j) >= 0) {
+      dstack[dstack_size] = voronoi_get_edge(c, dstack[i], j);
       dstack_size++;
-      j = vindex;
-      i = 0;
-
-      if (!double_edge) {
-        voronoi_set_ngb(c, j, i, ngb);
-        voronoi_set_edge(c, j, i, cp);
-        voronoi_set_edgeindex(c, j, i, cs);
-        voronoi_set_edge(c, cp, cs, j);
-        voronoi_set_edgeindex(c, cp, cs, i);
-        i++;
-      }
-
-      qs = iqs;
-      iqs = k - 1;
-      if (new_double_edge) {
-        iqs = k;
-      }
-#ifdef LOOP_CHECK
-      loopcount = 0;
-#endif
-      while (i < iqs) {
-#ifdef LOOP_CHECK
-        if (loopcount == LOOP_CHECK) {
-          error("Number of iterations reached maximum (=%i) in while!",
-                LOOP_CHECK);
-        }
-        ++loopcount;
-#endif
-        qs++;
-        if (qs == c->orders[qp]) {
-          qs = 0;
-        }
-        lp = voronoi_get_edge(c, qp, qs);
-        ls = voronoi_get_edgeindex(c, qp, qs);
-        voronoi_set_ngb(c, j, i, voronoi_get_ngb(c, qp, qs));
-        voronoi_set_edge(c, j, i, lp);
-        voronoi_set_edgeindex(c, j, i, ls);
-        voronoi_set_edge(c, lp, ls, j);
-        voronoi_set_edgeindex(c, lp, ls, i);
-        voronoi_set_edge(c, qp, qs, -1);
-        i++;
-      }
-      qs++;
-      if (qs == c->orders[qp]) {
-        qs = 0;
-      }
-      cs = i;
-      cp = j;
-
-      if (new_double_edge) {
-        voronoi_set_ngb(c, j, 0, voronoi_get_ngb(c, qp, qs));
-      } else {
-        voronoi_set_ngb(c, j, cs, voronoi_get_ngb(c, qp, qs));
-      }
-
-      double_edge = new_double_edge;
-
-    } else { /* if(lw == 0) */
-
-      if (lw == 1) {
-        qs = voronoi_get_edgeindex(c, qp, qs) + 1;
-        if (qs == c->orders[lp]) {
-          qs = 0;
-        }
-        qp = lp;
-        q = l;
-        dstack[dstack_size] = qp;
-        dstack_size++;
-      } else {
-
-        r = q / (q - l);
-        l = 1.0f - r;
-
-        /* create new order 3 vertex */
-        vindex = c->nvert;
-        c->nvert++;
-        if (c->nvert == VORONOI3D_MAXNUMVERT) {
-          fprintf(stderr, "dx: %g %g %g\n", dx[0], dx[1], dx[2]);
-          fprintf(stderr, "r2: %g\n", r2);
-          fprintf(stderr, "u: %g, l: %g, q: %g\n", u, l, q);
-          fprintf(stderr, "up: %i, us: %i, uw: %i\n", up, us, uw);
-          fprintf(stderr, "lp: %i, ls: %i, lw: %i\n", lp, ls, lw);
-          fprintf(stderr, "qp: %i, qs: %i, qw: %i\n", qp, qs, qw);
-          fprintf(stderr, "complicated: %i\n", complicated);
-          fprintf(stderr, "vindex: %i\n", vindex);
-          for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-            fprintf(stderr, "visitflags[%i]: %i\n", ic, visitflags[ic]);
-          }
-          for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-            fprintf(stderr, "dstack[%i]: %i\n", ic, dstack[ic]);
-          }
-          fprintf(stderr, "dstack_size: %i\n", dstack_size);
-          for (int ic = 0; ic < VORONOI3D_MAXNUMVERT; ic++) {
-            fprintf(stderr, "teststack[%i]: %g\n", ic, teststack[ic]);
-          }
-          fprintf(stderr, "teststack_size: %i\n", teststack_size);
-          fprintf(stderr, "r: %g\n", r);
-          fprintf(stderr, "cs: %i, rp: %i\n", cs, rp);
-          fprintf(stderr, "double_edge: %i\n", double_edge);
-          fprintf(stderr, "i: %i, j: %i, k: %i\n", i, j, k);
-          fprintf(stderr, "cp: %i, iqs: %i\n", cp, iqs);
-          fprintf(stderr, "new_double_edge: %i\n", new_double_edge);
-          error("Too many vertices!");
-        }
-        c->orders[vindex] = 3;
-        c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
-        if (c->offsets[vindex] + 3 >= VORONOI3D_MAXNUMEDGE) {
-          error("Too many edges!");
-        }
-
-        c->vertices[3 * vindex + 0] =
-            c->vertices[3 * lp + 0] * r + c->vertices[3 * qp + 0] * l;
-        c->vertices[3 * vindex + 1] =
-            c->vertices[3 * lp + 1] * r + c->vertices[3 * qp + 1] * l;
-        c->vertices[3 * vindex + 2] =
-            c->vertices[3 * lp + 2] * r + c->vertices[3 * qp + 2] * l;
-
-        ls = voronoi_get_edgeindex(c, qp, qs);
-        voronoi_set_edge(c, vindex, 0, cp);
-        voronoi_set_edge(c, vindex, 1, lp);
-        voronoi_set_edgeindex(c, vindex, 0, cs);
-        voronoi_set_edgeindex(c, vindex, 1, ls);
-        voronoi_set_edge(c, lp, ls, vindex);
-        voronoi_set_edgeindex(c, lp, ls, 1);
-        voronoi_set_edge(c, cp, cs, vindex);
-        voronoi_set_edgeindex(c, cp, cs, 0);
-        voronoi_set_edge(c, qp, qs, -1);
-
-        voronoi_set_ngb(c, vindex, 0, ngb);
-        voronoi_set_ngb(c, vindex, 1, voronoi_get_ngb(c, qp, qs));
-        voronoi_set_ngb(c, vindex, 2, voronoi_get_ngb(c, lp, ls));
-
-        qs++;
-        if (qs == c->orders[qp]) {
-          qs = 0;
-        }
-        cp = vindex;
-        cs = 2;
-      } /* if(lw == 1) */
-
-    } /* if(lw == 0) */
-
-  } /* while() */
-
-  voronoi_set_edge(c, cp, cs, rp);
-  voronoi_set_edge(c, rp, 0, cp);
-  voronoi_set_edgeindex(c, cp, cs, 0);
-  voronoi_set_edgeindex(c, rp, 0, cs);
-
-  for (i = 0; i < dstack_size; i++) {
-    for (j = 0; j < c->orders[dstack[i]]; j++) {
-      if (voronoi_get_edge(c, dstack[i], j) >= 0) {
-        dstack[dstack_size] = voronoi_get_edge(c, dstack[i], j);
-        dstack_size++;
-        voronoi_set_edge(c, dstack[i], j, -1);
-        voronoi_set_edgeindex(c, dstack[i], j, -1);
-      }
+      voronoi_set_edge(c, dstack[i], j, -1);
+      voronoi_set_edgeindex(c, dstack[i], j, -1);
     }
   }
+}
 
-  /* remove deleted vertices from all arrays */
-  struct voronoi_cell new_cell;
-  // make sure the contents of the new cell are the same as for the old cell
-  memcpy(&new_cell, c, sizeof(struct voronoi_cell));
-  int m, n;
-  for (vindex = 0; vindex < c->nvert; vindex++) {
-    j = vindex;
-/* find next edge that is not deleted */
-#ifdef LOOP_CHECK
-    loopcount = 0;
-#endif
-    while (j < c->nvert && voronoi_get_edge(c, j, 0) < 0) {
-#ifdef LOOP_CHECK
-      if (loopcount == LOOP_CHECK) {
-        error("Number of iterations reached maximum (=%i) in while!",
-              LOOP_CHECK);
-      }
-      ++loopcount;
-#endif
-      j++;
-    }
+/* remove deleted vertices from all arrays */
+struct voronoi_cell new_cell;
+// make sure the contents of the new cell are the same as for the old cell
+memcpy(&new_cell, c, sizeof(struct voronoi_cell));
+int m, n;
+for (vindex = 0; vindex < c->nvert; vindex++) {
+  j = vindex;
+  /* find next edge that is not deleted */
+  safewhile(j < c->nvert && voronoi_get_edge(c, j, 0) < 0) j++;
+}
 
-    if (j == c->nvert) {
-      /* ready */
-      break;
-    }
+if (j == c->nvert) {
+  /* ready */
+  break;
+}
 
-    /* copy vertices */
-    new_cell.vertices[3 * vindex + 0] = c->vertices[3 * j + 0];
-    new_cell.vertices[3 * vindex + 1] = c->vertices[3 * j + 1];
-    new_cell.vertices[3 * vindex + 2] = c->vertices[3 * j + 2];
+/* copy vertices */
+new_cell.vertices[3 * vindex + 0] = c->vertices[3 * j + 0];
+new_cell.vertices[3 * vindex + 1] = c->vertices[3 * j + 1];
+new_cell.vertices[3 * vindex + 2] = c->vertices[3 * j + 2];
 
-    /* copy order */
-    new_cell.orders[vindex] = c->orders[j];
+/* copy order */
+new_cell.orders[vindex] = c->orders[j];
 
-    /* set offset */
-    if (vindex) {
-      new_cell.offsets[vindex] =
-          new_cell.offsets[vindex - 1] + new_cell.orders[vindex - 1];
-    } else {
-      new_cell.offsets[vindex] = 0;
-    }
+/* set offset */
+if (vindex) {
+  new_cell.offsets[vindex] =
+      new_cell.offsets[vindex - 1] + new_cell.orders[vindex - 1];
+} else {
+  new_cell.offsets[vindex] = 0;
+}
 
-    /* copy edges, edgeindices and ngbs */
-    for (k = 0; k < c->orders[j]; k++) {
-      voronoi_set_edge(&new_cell, vindex, k, voronoi_get_edge(c, j, k));
-      voronoi_set_edgeindex(&new_cell, vindex, k,
-                            voronoi_get_edgeindex(c, j, k));
-      voronoi_set_ngb(&new_cell, vindex, k, voronoi_get_ngb(c, j, k));
-    }
+/* copy edges, edgeindices and ngbs */
+for (k = 0; k < c->orders[j]; k++) {
+  voronoi_set_edge(&new_cell, vindex, k, voronoi_get_edge(c, j, k));
+  voronoi_set_edgeindex(&new_cell, vindex, k, voronoi_get_edgeindex(c, j, k));
+  voronoi_set_ngb(&new_cell, vindex, k, voronoi_get_ngb(c, j, k));
+}
 
-    /* update other edges */
-    for (k = 0; k < c->orders[j]; k++) {
-      m = voronoi_get_edge(c, j, k);
-      n = voronoi_get_edgeindex(c, j, k);
-      if (m < vindex) {
-        voronoi_set_edge(&new_cell, m, n, vindex);
-      } else {
-        voronoi_set_edge(c, m, n, vindex);
-      }
-    }
-
-    /* deactivate edge */
-    voronoi_set_edge(c, j, 0, -1);
+/* update other edges */
+for (k = 0; k < c->orders[j]; k++) {
+  m = voronoi_get_edge(c, j, k);
+  n = voronoi_get_edgeindex(c, j, k);
+  if (m < vindex) {
+    voronoi_set_edge(&new_cell, m, n, vindex);
+  } else {
+    voronoi_set_edge(c, m, n, vindex);
   }
-  new_cell.nvert = vindex;
+}
 
-  new_cell.x[0] = c->x[0];
-  new_cell.x[1] = c->x[1];
-  new_cell.x[2] = c->x[2];
-  new_cell.centroid[0] = c->centroid[0];
-  new_cell.centroid[1] = c->centroid[1];
-  new_cell.centroid[2] = c->centroid[2];
-  new_cell.volume = c->volume;
-  new_cell.nface = c->nface;
+/* deactivate edge */
+voronoi_set_edge(c, j, 0, -1);
+}
+new_cell.nvert = vindex;
 
-  /* Update the cell values. */
-  voronoi3d_cell_copy(&new_cell, c);
+new_cell.x[0] = c->x[0];
+new_cell.x[1] = c->x[1];
+new_cell.x[2] = c->x[2];
+new_cell.centroid[0] = c->centroid[0];
+new_cell.centroid[1] = c->centroid[1];
+new_cell.centroid[2] = c->centroid[2];
+new_cell.volume = c->volume;
+new_cell.nface = c->nface;
+
+/* Update the cell values. */
+voronoi3d_cell_copy(&new_cell, c);
+
+/* Final checks */
+for (i = 0; i < c->nvert; ++i) {
+  voronoi_box_test_inside(&c->vertices[3 * i], c->x);
+}
 }
 
 /**
@@ -1660,14 +1500,14 @@ __attribute__((always_inline)) INLINE void voronoi_centroid_tetrahedron(
 __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
     struct voronoi_cell *cell) {
 
-#ifdef LOOP_CHECK
-  int loopcount;
-#endif
-
   float v1[3], v2[3], v3[3], v4[3];
   int i, j, k, l, m, n;
   float tcentroid[3];
   float tvol;
+
+  for (i = 0; i < cell->nvert; ++i) {
+    voronoi_box_test_inside(&cell->vertices[3 * i], cell->x);
+  }
 
   /* we need to calculate the volume of the tetrahedra formed by the first
      vertex and the triangles that make up the other faces
@@ -1712,61 +1552,55 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
         m = voronoi_get_edge(cell, k, l);
         voronoi_set_edge(cell, k, l, -1 - m);
 
-#ifdef LOOP_CHECK
-        loopcount = 0;
-#endif
-        while (m != i) {
-#ifdef LOOP_CHECK
-          if (loopcount == LOOP_CHECK) {
-            voronoi_print_gnuplot_c(cell);
-            error("Number of iterations reached maximum (=%i) in while!",
-                  LOOP_CHECK);
-          }
-          ++loopcount;
-#endif
-          n = voronoi_get_edgeindex(cell, k, l) + 1;
-          if (n == cell->orders[m]) {
-            n = 0;
-          }
-          v4[0] = cell->vertices[3 * m + 0];
-          v4[1] = cell->vertices[3 * m + 1];
-          v4[2] = cell->vertices[3 * m + 2];
-          tvol = voronoi_volume_tetrahedron(v1, v2, v3, v4);
-          cell->volume += tvol;
-          voronoi_centroid_tetrahedron(tcentroid, v1, v2, v3, v4);
-          cell->centroid[0] += tcentroid[0] * tvol;
-          cell->centroid[1] += tcentroid[1] * tvol;
-          cell->centroid[2] += tcentroid[2] * tvol;
-          k = m;
-          l = n;
-          v3[0] = v4[0];
-          v3[1] = v4[1];
-          v3[2] = v4[2];
-          m = voronoi_get_edge(cell, k, l);
-          voronoi_set_edge(cell, k, l, -1 - m);
-        } /* while() */
+        int loopcount = 0;
+        safewhile(m != i) if (loopcount == 999) {
+          voronoi_print_cell(cell);
+          voronoi_print_gnuplot_c(cell);
+        }
+        ++loopcount;
+        n = voronoi_get_edgeindex(cell, k, l) + 1;
+        if (n == cell->orders[m]) {
+          n = 0;
+        }
+        v4[0] = cell->vertices[3 * m + 0];
+        v4[1] = cell->vertices[3 * m + 1];
+        v4[2] = cell->vertices[3 * m + 2];
+        tvol = voronoi_volume_tetrahedron(v1, v2, v3, v4);
+        cell->volume += tvol;
+        voronoi_centroid_tetrahedron(tcentroid, v1, v2, v3, v4);
+        cell->centroid[0] += tcentroid[0] * tvol;
+        cell->centroid[1] += tcentroid[1] * tvol;
+        cell->centroid[2] += tcentroid[2] * tvol;
+        k = m;
+        l = n;
+        v3[0] = v4[0];
+        v3[1] = v4[1];
+        v3[2] = v4[2];
+        m = voronoi_get_edge(cell, k, l);
+        voronoi_set_edge(cell, k, l, -1 - m);
+      } /* while() */
 
-      } /* if(k >= 0) */
+    } /* if(k >= 0) */
 
-    } /* for(j) */
+  } /* for(j) */
 
-  } /* for(i) */
+} /* for(i) */
 
-  cell->centroid[0] /= cell->volume;
-  cell->centroid[1] /= cell->volume;
-  cell->centroid[2] /= cell->volume;
+cell->centroid[0] /= cell->volume;
+cell->centroid[1] /= cell->volume;
+cell->centroid[2] /= cell->volume;
 
-  /* centroid was calculated relative w.r.t. particle position */
-  cell->centroid[0] += cell->x[0];
-  cell->centroid[1] += cell->x[1];
-  cell->centroid[2] += cell->x[2];
+/* centroid was calculated relative w.r.t. particle position */
+cell->centroid[0] += cell->x[0];
+cell->centroid[1] += cell->x[1];
+cell->centroid[2] += cell->x[2];
 
-  /* Reset the edges: we still need them for the face calculation */
-  for (i = 0; i < VORONOI3D_MAXNUMEDGE; ++i) {
-    if (cell->edges[i] < 0) {
-      cell->edges[i] = -1 - cell->edges[i];
-    }
+/* Reset the edges: we still need them for the face calculation */
+for (i = 0; i < VORONOI3D_MAXNUMEDGE; ++i) {
+  if (cell->edges[i] < 0) {
+    cell->edges[i] = -1 - cell->edges[i];
   }
+}
 }
 
 /**
@@ -1781,10 +1615,6 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_cell(
  */
 __attribute__((always_inline)) INLINE void voronoi_calculate_faces(
     struct voronoi_cell *cell) {
-
-#ifdef LOOP_CHECK
-  int loopcount;
-#endif
 
   int i, j, k, l, m, n;
   float area;
@@ -1815,67 +1645,56 @@ __attribute__((always_inline)) INLINE void voronoi_calculate_faces(
         m = voronoi_get_edge(cell, k, l);
         voronoi_set_edge(cell, k, l, -1 - m);
 
-#ifdef LOOP_CHECK
-        loopcount = 0;
-#endif
-        while (m != i) {
-#ifdef LOOP_CHECK
-          if (loopcount == LOOP_CHECK) {
-            error("Number of iterations reached maximum (=%i) in while!",
-                  LOOP_CHECK);
-          }
-          ++loopcount;
-#endif
-          n = voronoi_get_edgeindex(cell, k, l) + 1;
-          if (n == cell->orders[m]) {
-            n = 0;
-          }
-          u[0] = cell->vertices[3 * k + 0] - cell->vertices[3 * i + 0];
-          u[1] = cell->vertices[3 * k + 1] - cell->vertices[3 * i + 1];
-          u[2] = cell->vertices[3 * k + 2] - cell->vertices[3 * i + 2];
-          v[0] = cell->vertices[3 * m + 0] - cell->vertices[3 * i + 0];
-          v[1] = cell->vertices[3 * m + 1] - cell->vertices[3 * i + 1];
-          v[2] = cell->vertices[3 * m + 2] - cell->vertices[3 * i + 2];
-          w[0] = u[1] * v[2] - u[2] * v[1];
-          w[1] = u[2] * v[0] - u[0] * v[2];
-          w[2] = u[0] * v[1] - u[1] * v[0];
-          loc_area = sqrtf(w[0] * w[0] + w[1] * w[1] + w[2] * w[2]);
-          area += loc_area;
-          midpoint[0] += loc_area * (cell->vertices[3 * k + 0] +
-                                     cell->vertices[3 * i + 0] +
-                                     cell->vertices[3 * m + 0]);
-          midpoint[1] += loc_area * (cell->vertices[3 * k + 1] +
-                                     cell->vertices[3 * i + 1] +
-                                     cell->vertices[3 * m + 1]);
-          midpoint[2] += loc_area * (cell->vertices[3 * k + 2] +
-                                     cell->vertices[3 * i + 2] +
-                                     cell->vertices[3 * m + 2]);
-          k = m;
-          l = n;
-          m = voronoi_get_edge(cell, k, l);
-          voronoi_set_edge(cell, k, l, -1 - m);
+        safewhile(m != i) n = voronoi_get_edgeindex(cell, k, l) + 1;
+        if (n == cell->orders[m]) {
+          n = 0;
         }
+        u[0] = cell->vertices[3 * k + 0] - cell->vertices[3 * i + 0];
+        u[1] = cell->vertices[3 * k + 1] - cell->vertices[3 * i + 1];
+        u[2] = cell->vertices[3 * k + 2] - cell->vertices[3 * i + 2];
+        v[0] = cell->vertices[3 * m + 0] - cell->vertices[3 * i + 0];
+        v[1] = cell->vertices[3 * m + 1] - cell->vertices[3 * i + 1];
+        v[2] = cell->vertices[3 * m + 2] - cell->vertices[3 * i + 2];
+        w[0] = u[1] * v[2] - u[2] * v[1];
+        w[1] = u[2] * v[0] - u[0] * v[2];
+        w[2] = u[0] * v[1] - u[1] * v[0];
+        loc_area = sqrtf(w[0] * w[0] + w[1] * w[1] + w[2] * w[2]);
+        area += loc_area;
+        midpoint[0] +=
+            loc_area * (cell->vertices[3 * k + 0] + cell->vertices[3 * i + 0] +
+                        cell->vertices[3 * m + 0]);
+        midpoint[1] +=
+            loc_area * (cell->vertices[3 * k + 1] + cell->vertices[3 * i + 1] +
+                        cell->vertices[3 * m + 1]);
+        midpoint[2] +=
+            loc_area * (cell->vertices[3 * k + 2] + cell->vertices[3 * i + 2] +
+                        cell->vertices[3 * m + 2]);
+        k = m;
+        l = n;
+        m = voronoi_get_edge(cell, k, l);
+        voronoi_set_edge(cell, k, l, -1 - m);
+      }
 
-        cell->face_areas[cell->nface] = 0.5f * area;
-        cell->face_midpoints[cell->nface][0] = midpoint[0] / area / 3.0f;
-        cell->face_midpoints[cell->nface][1] = midpoint[1] / area / 3.0f;
-        cell->face_midpoints[cell->nface][2] = midpoint[2] / area / 3.0f;
-        cell->nface++;
+      cell->face_areas[cell->nface] = 0.5f * area;
+      cell->face_midpoints[cell->nface][0] = midpoint[0] / area / 3.0f;
+      cell->face_midpoints[cell->nface][1] = midpoint[1] / area / 3.0f;
+      cell->face_midpoints[cell->nface][2] = midpoint[2] / area / 3.0f;
+      cell->nface++;
 
-        if (cell->nface == VORONOI3D_MAXFACE) {
-          error("Too many faces!");
-        }
+      if (cell->nface == VORONOI3D_MAXFACE) {
+        error("Too many faces!");
+      }
 
-      } /* if(k >= 0) */
+    } /* if(k >= 0) */
 
-    } /* for(j) */
+  } /* for(j) */
 
-  } /* for(i) */
+} /* for(i) */
 
-  /* Overwrite the old neighbour array. */
-  for (i = 0; i < cell->nface; ++i) {
-    cell->ngbs[i] = newngbs[i];
-  }
+/* Overwrite the old neighbour array. */
+for (i = 0; i < cell->nface; ++i) {
+  cell->ngbs[i] = newngbs[i];
+}
 }
 
 /*******************************************************************************
