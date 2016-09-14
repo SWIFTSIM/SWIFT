@@ -65,9 +65,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_internal_energy(
 __attribute__((always_inline)) INLINE static float hydro_get_pressure(
     const struct part *restrict p, float dt) {
 
-  const float u = p->u + p->u_dt * dt;
-
-  return gas_pressure_from_internal_energy(p->rho, u);
+  return p->force.pressure;
 }
 
 /**
@@ -97,9 +95,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_entropy(
 __attribute__((always_inline)) INLINE static float hydro_get_soundspeed(
     const struct part *restrict p, float dt) {
 
-  const float u = p->u + p->u_dt * dt;
-
-  return gas_soundspeed_from_internal_energy(p->rho, u);
+  return p->force.soundspeed;
 }
 
 /**
@@ -139,12 +135,11 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 
   p->u = u;
 
-  /* Compute the pressure */
+  /* Compute the new pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
 
-  /* Compute the sound speed from the pressure*/
-  const float rho_inv = 1.f / p->rho;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
+  /* Compute the new sound speed */
+  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
 
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure;
@@ -167,9 +162,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
 
-  /* Compute the sound speed from the pressure*/
-  const float rho_inv = 1.f / p->rho;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
+  /* Compute the new sound speed */
+  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
 
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure;
@@ -293,12 +287,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure = hydro_get_pressure(p, half_dt);
 
-  const float rho_inv = 1.f / p->rho;
-
   /* Compute the sound speed */
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   /* Compute the "grad h" term */
+  const float rho_inv = 1.f / p->rho;
   const float grad_h_term =
       1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
 
@@ -367,10 +360,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float dt_entr = (t1 - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure = hydro_get_pressure(p, dt_entr);
 
-  const float rho_inv = 1.f / p->rho;
-
   /* Compute the new sound speed */
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
@@ -419,12 +410,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
 
-  /* Compute the sound speed from the pressure*/
-  const float rho_inv = 1.f / p->rho;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
 
-  p->force.soundspeed = soundspeed;
   p->force.pressure = pressure;
+  p->force.soundspeed = soundspeed;
 }
 
 /**
@@ -442,7 +432,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   /* Compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_internal_energy(p->rho, p->u);
+
   p->force.pressure = pressure;
+  p->force.soundspeed = soundspeed;
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */

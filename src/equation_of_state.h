@@ -126,6 +126,21 @@ gas_soundspeed_from_internal_energy(float density, float u) {
   return sqrtf(u * hydro_gamma * hydro_gamma_minus_one);
 }
 
+/**
+ * @brief Returns the sound speed given density and pressure
+ *
+ * Computes \f$c = \sqrt{\frac{\gamma P}{\rho} }\f$.
+ *
+ * @param density The density \f$\rho\f$
+ * @param P The pressure \f$P\f$
+ */
+__attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
+    float density, float P) {
+
+  const float density_inv = 1.f / density;
+  return sqrtf(hydro_gamma * P * density_inv);
+}
+
 /* ------------------------------------------------------------------------- */
 #elif defined(EOS_ISOTHERMAL_GAS)
 
@@ -216,6 +231,22 @@ gas_pressure_from_internal_energy(float density, float u) {
  */
 __attribute__((always_inline)) INLINE static float
 gas_soundspeed_from_internal_energy(float density, float u) {
+
+  return sqrtf(const_isothermal_internal_energy * hydro_gamma *
+               hydro_gamma_minus_one);
+}
+
+/**
+ * @brief Returns the sound speed given density and pressure
+ *
+ * Since we are using an isothermal EoS, the pressure value is ignored
+ * Computes \f$c = \sqrt{u_{cst} \gamma \rho^{\gamma-1}}\f$.
+ *
+ * @param density The density \f$\rho\f$
+ * @param P The pressure \f$P\f$
+ */
+__attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
+    float density, float P) {
 
   return sqrtf(const_isothermal_internal_energy * hydro_gamma *
                hydro_gamma_minus_one);
