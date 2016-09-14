@@ -265,6 +265,7 @@ int main(int argc, char *argv[]) {
   /* Report CPU frequency. */
   cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
+    message("Running on: %s",hostname());
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
