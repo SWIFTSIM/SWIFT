@@ -9,6 +9,6 @@ python makeIC.py 10
 
 #-C 2>&1 | tee output.log
 
-#python energy_plot.py 0
+python energy_plot.py 0
 
-python test_energy_conservation.py 0
+#python test_energy_conservation.py 0

@@ -1619,8 +1619,10 @@ void space_init(struct space *s, const struct swift_params *params,
     } else {
       for (size_t k = 0; k < Npart; k++)
         for (int j = 0; j < 3; j++)
-          if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j])
+          if (parts[k].x[j] < 0 || parts[k].x[j] >= dim[j]){
+	    printf("parts[%lld].x[%d] = %f , dim[%d] = %f\n" , k , j , parts[k].x[j] , j , dim[j]);
             error("Not all particles are within the specified domain.");
+	  }
     }
 
     /* Same for the gparts */
