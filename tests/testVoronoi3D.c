@@ -89,39 +89,39 @@ void test_calculate_cell() {
   float face_midpoint[3], face_area;
   face_area = voronoi_get_box_face(VORONOI3D_BOX_FRONT, face_midpoint);
   assert(cell.face_areas[0] == face_area);
-  assert(cell.face_midpoints[0][0] == face_midpoint[0]);
-  assert(cell.face_midpoints[0][1] == face_midpoint[1]);
-  assert(cell.face_midpoints[0][2] == face_midpoint[2]);
+  assert(cell.face_midpoints[0][0] == face_midpoint[0] - cell.x[0]);
+  assert(cell.face_midpoints[0][1] == face_midpoint[1] - cell.x[1]);
+  assert(cell.face_midpoints[0][2] == face_midpoint[2] - cell.x[2]);
 
   face_area = voronoi_get_box_face(VORONOI3D_BOX_LEFT, face_midpoint);
   assert(cell.face_areas[1] == face_area);
-  assert(cell.face_midpoints[1][0] == face_midpoint[0]);
-  assert(cell.face_midpoints[1][1] == face_midpoint[1]);
-  assert(cell.face_midpoints[1][2] == face_midpoint[2]);
+  assert(cell.face_midpoints[1][0] == face_midpoint[0] - cell.x[0]);
+  assert(cell.face_midpoints[1][1] == face_midpoint[1] - cell.x[1]);
+  assert(cell.face_midpoints[1][2] == face_midpoint[2] - cell.x[2]);
 
   face_area = voronoi_get_box_face(VORONOI3D_BOX_BOTTOM, face_midpoint);
   assert(cell.face_areas[2] == face_area);
-  assert(cell.face_midpoints[2][0] == face_midpoint[0]);
-  assert(cell.face_midpoints[2][1] == face_midpoint[1]);
-  assert(cell.face_midpoints[2][2] == face_midpoint[2]);
+  assert(cell.face_midpoints[2][0] == face_midpoint[0] - cell.x[0]);
+  assert(cell.face_midpoints[2][1] == face_midpoint[1] - cell.x[1]);
+  assert(cell.face_midpoints[2][2] == face_midpoint[2] - cell.x[2]);
 
   face_area = voronoi_get_box_face(VORONOI3D_BOX_TOP, face_midpoint);
   assert(cell.face_areas[3] == face_area);
-  assert(cell.face_midpoints[3][0] == face_midpoint[0]);
-  assert(cell.face_midpoints[3][1] == face_midpoint[1]);
-  assert(cell.face_midpoints[3][2] == face_midpoint[2]);
+  assert(cell.face_midpoints[3][0] == face_midpoint[0] - cell.x[0]);
+  assert(cell.face_midpoints[3][1] == face_midpoint[1] - cell.x[1]);
+  assert(cell.face_midpoints[3][2] == face_midpoint[2] - cell.x[2]);
 
   face_area = voronoi_get_box_face(VORONOI3D_BOX_BACK, face_midpoint);
   assert(cell.face_areas[4] == face_area);
-  assert(cell.face_midpoints[4][0] == face_midpoint[0]);
-  assert(cell.face_midpoints[4][1] == face_midpoint[1]);
-  assert(cell.face_midpoints[4][2] == face_midpoint[2]);
+  assert(cell.face_midpoints[4][0] == face_midpoint[0] - cell.x[0]);
+  assert(cell.face_midpoints[4][1] == face_midpoint[1] - cell.x[1]);
+  assert(cell.face_midpoints[4][2] == face_midpoint[2] - cell.x[2]);
 
   face_area = voronoi_get_box_face(VORONOI3D_BOX_RIGHT, face_midpoint);
   assert(cell.face_areas[5] == face_area);
-  assert(cell.face_midpoints[5][0] == face_midpoint[0]);
-  assert(cell.face_midpoints[5][1] == face_midpoint[1]);
-  assert(cell.face_midpoints[5][2] == face_midpoint[2]);
+  assert(cell.face_midpoints[5][0] == face_midpoint[0] - cell.x[0]);
+  assert(cell.face_midpoints[5][1] == face_midpoint[1] - cell.x[1]);
+  assert(cell.face_midpoints[5][2] == face_midpoint[2] - cell.x[2]);
 }
 
 void test_paths() {
@@ -1280,9 +1280,9 @@ int main() {
       if (fabs(A - expected_areas[i]) > 1.e-5) {
         error("Wrong surface area: %g!", A);
       }
-      if (fabs(midpoint[0] - expected_midpoints[i][0]) > 1.e-5 ||
-          fabs(midpoint[1] - expected_midpoints[i][1]) > 1.e-5 ||
-          fabs(midpoint[2] - expected_midpoints[i][2]) > 1.e-5) {
+      if (fabs(midpoint[0] - expected_midpoints[i][0] + cell.x[0]) > 1.e-5 ||
+          fabs(midpoint[1] - expected_midpoints[i][1] + cell.x[1]) > 1.e-5 ||
+          fabs(midpoint[2] - expected_midpoints[i][2] + cell.x[2]) > 1.e-5) {
         error("Wrong face midpoint: %g %g %g (should be %g %g %g)!",
               midpoint[0], midpoint[1], midpoint[2], expected_midpoints[i][0],
               expected_midpoints[i][1], expected_midpoints[i][2]);

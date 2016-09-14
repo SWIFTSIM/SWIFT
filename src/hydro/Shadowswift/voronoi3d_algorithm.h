@@ -1412,6 +1412,89 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     }
   }
 
+  /* collapse order 1 and 2 vertices: vertices with only 1 edge or 2 edges that
+     can be created during the plane intersection routine */
+  /* first flag them */
+  int low_order_stack[VORONOI3D_MAXNUMVERT];
+  int low_order_index = 0;
+  for (i = 0; i < c->nvert; ++i) {
+    if (voronoi_get_edge(c, i, 0) >= 0 && c->orders[i] < 3) {
+      low_order_stack[low_order_index] = i;
+      ++low_order_index;
+    }
+  }
+
+  /* now remove them */
+  while (low_order_index) {
+    int v = low_order_stack[low_order_index - 1];
+    /* the vertex might already be deleted by a previous operation */
+    if (voronoi_get_edge(c, v, 0) < 0) {
+      --low_order_index;
+      continue;
+    }
+    if (c->orders[v] == 2) {
+      int j = voronoi_get_edge(c, v, 0);
+      int k = voronoi_get_edge(c, v, 1);
+      int l = 0;
+      safewhile(l < c->orders[j] && voronoi_get_edge(c, j, l) != k) { ++l; }
+      if (l == c->orders[j]) {
+        int a = voronoi_get_edgeindex(c, v, 0);
+        int b = voronoi_get_edgeindex(c, v, 1);
+        /* j and k are not joined together. Replace their edges pointing to v
+           with a new edge pointing from j to k */
+        voronoi_set_edge(c, j, a, k);
+        voronoi_set_edgeindex(c, j, a, b);
+        voronoi_set_edge(c, k, b, j);
+        voronoi_set_edgeindex(c, k, b, a);
+      } else {
+        /* just remove the edges from j to v and from k to v */
+        // this is trickier than one would think...
+        error("Removing an order 2 vertex is not yet supported!");
+      }
+      /* Remove the vertex */
+      voronoi_set_edge(c, v, 0, -1);
+      voronoi_set_edgeindex(c, v, 0, -1);
+      voronoi_set_edge(c, v, 1, -1);
+      voronoi_set_edgeindex(c, v, 1, -1);
+    } else if (c->orders[v] == 1) {
+      int j = voronoi_get_edge(c, v, 0);
+      /* we have to remove the edge between j and v. We create a new vertex */
+      vindex = c->nvert;
+      ++c->nvert;
+      c->vertices[3 * vindex] = c->vertices[3 * j];
+      c->vertices[3 * vindex + 1] = c->vertices[3 * j + 1];
+      c->vertices[3 * vindex + 2] = c->vertices[3 * j + 2];
+      c->orders[vindex] = c->orders[j] - 1;
+      int m = 0;
+      for (int k = 0; k < c->orders[j]; ++k) {
+        int l = voronoi_get_edge(c, j, k);
+        if (l != v) {
+          /* make a new edge */
+          voronoi_set_edge(c, vindex, m, l);
+          voronoi_set_edgeindex(c, vindex, m, voronoi_get_edgeindex(c, j, k));
+          /* update the other vertex */
+          voronoi_set_edge(c, l, voronoi_get_edgeindex(c, j, k), vindex);
+          voronoi_set_edgeindex(c, l, voronoi_get_edgeindex(c, j, k), m);
+          ++m;
+        }
+        /* remove the old vertex */
+        voronoi_set_edge(c, j, k, -1);
+        voronoi_set_edgeindex(c, j, k, -1);
+      }
+      /* if the new vertex is a new order 2 vertex, add it to the stack */
+      if (c->orders[vindex] == 2) {
+        low_order_stack[low_order_index - 1] = vindex;
+      } else {
+        --low_order_index;
+      }
+      /* remove the order 1 vertex */
+      voronoi_set_edge(c, v, 0, -1);
+      voronoi_set_edgeindex(c, v, 0, -1);
+    } else {
+      error("Vertex with order %i. This should not happen!", c->orders[v]);
+    }
+  }
+
   /* remove deleted vertices from all arrays */
   struct voronoi_cell new_cell;
   // make sure the contents of the new cell are the same as for the old cell
