@@ -65,6 +65,7 @@
 /* SPH variant to use */
 //#define MINIMAL_SPH
 #define GADGET2_SPH
+//#define HOPKINS_PE_SPH
 //#define DEFAULT_SPH
 //#define GIZMO_SPH
 
