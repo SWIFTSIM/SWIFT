@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,12 +16,24 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_PRESSURE_ENTROPY_HYDRO_IO_H
+#define SWIFT_PRESSURE_ENTROPY_HYDRO_IO_H
+
+/**
+ * @file PressureEntropy/hydro_io.h
+ * @brief Pressure-Entropy implementation of SPH (i/o routines)
+ *
+ * The thermal variable is the entropy (S) and the entropy is smoothed over
+ * contact discontinuities to prevent spurious surface tension.
+ *
+ * Follows eqautions (19), (21) and (22) of Hopkins, P., MNRAS, 2013,
+ * Volume 428, Issue 4, pp. 2840-2856 with a simple Balsara viscosity term.
+ */
 
 #include "adiabatic_index.h"
-#include "hydro_gradients.h"
-#include "hydro_slope_limiters.h"
+#include "hydro.h"
 #include "io_properties.h"
-#include "riemann.h"
+#include "kernel_hydro.h"
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -41,57 +53,28 @@ void hydro_read_particles(struct part* parts, struct io_props* list,
   list[1] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
                                 UNIT_CONV_SPEED, parts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
-                                parts, conserved.mass);
+                                parts, mass);
   list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
-  list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-                                conserved.energy);
+  list[4] =
+      io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
+                          UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
-                                UNIT_CONV_DENSITY, parts, primitives.rho);
+                                UNIT_CONV_DENSITY, parts, rho);
 }
 
-/**
- * @brief Get the internal energy of a particle
- *
- * @param e #engine.
- * @param p Particle.
- * @return Internal energy of the particle
- */
 float convert_u(struct engine* e, struct part* p) {
-  return p->primitives.P / hydro_gamma_minus_one / p->primitives.rho;
+
+  return hydro_get_internal_energy(p, 0);
 }
 
-/**
- * @brief Get the entropic function of a particle
- *
- * @param e #engine.
- * @param p Particle.
- * @return Entropic function of the particle
- */
-float convert_A(struct engine* e, struct part* p) {
-  return p->primitives.P / pow_gamma(p->primitives.rho);
-}
+float convert_P(struct engine* e, struct part* p) {
 
-/**
- * @brief Get the total energy of a particle
- *
- * @param e #engine.
- * @param p Particle.
- * @return Total energy of the particle
- */
-float convert_Etot(struct engine* e, struct part* p) {
-  float momentum2;
-
-  momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
-              p->conserved.momentum[1] * p->conserved.momentum[1] +
-              p->conserved.momentum[2] * p->conserved.momentum[2];
-
-  return p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
+  return hydro_get_pressure(p, 0);
 }
 
 /**
@@ -104,37 +87,32 @@ float convert_Etot(struct engine* e, struct part* p) {
 void hydro_write_particles(struct part* parts, struct io_props* list,
                            int* num_fields) {
 
-  *num_fields = 13;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field("Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH,
                                  parts, x);
-  list[1] = io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts,
-                                 primitives.v);
-  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts,
-                                 conserved.mass);
+  list[1] =
+      io_make_output_field("Velocities", FLOAT, 3, UNIT_CONV_SPEED, parts, v);
+  list[2] =
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, parts, mass);
   list[3] = io_make_output_field("SmoothingLength", FLOAT, 1, UNIT_CONV_LENGTH,
                                  parts, h);
   list[4] = io_make_output_field_convert_part("InternalEnergy", FLOAT, 1,
                                               UNIT_CONV_ENERGY_PER_UNIT_MASS,
-                                              parts, primitives.P, convert_u);
+                                              parts, entropy, convert_u);
   list[5] = io_make_output_field("ParticleIDs", ULONGLONG, 1,
                                  UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_output_field("Acceleration", FLOAT, 3,
                                  UNIT_CONV_ACCELERATION, parts, a_hydro);
-  list[7] = io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts,
-                                 primitives.rho);
-  list[8] = io_make_output_field("Volume", FLOAT, 1, UNIT_CONV_VOLUME, parts,
-                                 geometry.volume);
-  list[9] = io_make_output_field("GradDensity", FLOAT, 3, UNIT_CONV_DENSITY,
-                                 parts, primitives.gradients.rho);
-  list[10] = io_make_output_field_convert_part(
-      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY, parts, primitives.P, convert_A);
-  list[11] = io_make_output_field("Pressure", FLOAT, 1, UNIT_CONV_PRESSURE,
-                                  parts, primitives.P);
-  list[12] =
-      io_make_output_field_convert_part("TotEnergy", FLOAT, 1, UNIT_CONV_ENERGY,
-                                        parts, conserved.energy, convert_Etot);
+  list[7] =
+      io_make_output_field("Density", FLOAT, 1, UNIT_CONV_DENSITY, parts, rho);
+  list[8] = io_make_output_field(
+      "Entropy", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, parts, entropy);
+  list[9] = io_make_output_field_convert_part(
+      "Pressure", FLOAT, 1, UNIT_CONV_PRESSURE, parts, rho, convert_P);
+  list[10] = io_make_output_field("WeightedDensity", FLOAT, 1,
+                                  UNIT_CONV_DENSITY, parts, rho_bar);
 }
 
 /**
@@ -142,19 +120,19 @@ void hydro_write_particles(struct part* parts, struct io_props* list,
  * @param h_grpsph The HDF5 group in which to write
  */
 void writeSPHflavour(hid_t h_grpsph) {
-  /* Gradient information */
-  writeAttribute_s(h_grpsph, "Gradient reconstruction model",
-                   HYDRO_GRADIENT_IMPLEMENTATION);
 
-  /* Slope limiter information */
-  writeAttribute_s(h_grpsph, "Cell wide slope limiter model",
-                   HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
-  writeAttribute_s(h_grpsph, "Piecewise slope limiter model",
-                   HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
+  /* Viscosity and thermal conduction */
+  /* Nothing in this minimal model... */
+  writeAttribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
+  writeAttribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
+  writeAttribute_f(h_grpsph, "Viscosity alpha", const_viscosity_alpha);
+  writeAttribute_f(h_grpsph, "Viscosity beta", 3.f);
 
-  /* Riemann solver information */
-  writeAttribute_s(h_grpsph, "Riemann solver type",
-                   RIEMANN_SOLVER_IMPLEMENTATION);
+  /* Time integration properties */
+  writeAttribute_f(h_grpsph, "Maximal Delta u change over dt",
+                   const_max_u_change);
 }
 
 /**
@@ -163,3 +141,5 @@ void writeSPHflavour(hid_t h_grpsph) {
  * @return 1 if entropy is in 'internal energy', 0 otherwise.
  */
 int writeEntropyFlag() { return 0; }
+
+#endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_IO_H */

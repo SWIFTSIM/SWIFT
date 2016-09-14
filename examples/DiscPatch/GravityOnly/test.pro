@@ -8,7 +8,7 @@ iplot = 1 ; if iplot = 1, make plot of E/Lz conservation, else, simply compare f
 @physunits
 
 indir    = './'
-basefile = 'Disk-Patch_'
+basefile = 'Disc-Patch_'
 
 ; set properties of potential
 uL   = phys.pc                  ; unit of length
@@ -21,7 +21,7 @@ scale_height    = 100.
 
 ; derived units
 constG   = 10.^(alog10(phys.g)+alog10(uM)-2d0*alog10(uV)-alog10(uL)) ;
-pcentre  = [0.,0.,200.] * pc / uL
+pcentre  = [0.,0.,300.] * pc / uL
 
 ;
 infile = indir + basefile + '*'
@@ -35,11 +35,11 @@ nfiles = n_elements(res)
 ; compare all
 ifile   = 0
 inf     = indir + basefile + strtrim(string(ifile,'(i3.3)'),1) + '.hdf5'
-id      = h5rd(inf,'PartType0/ParticleIDs')
+id      = h5rd(inf,'PartType1/ParticleIDs')
 nfollow = n_elements(id)
 
 ; follow a subset
-; nfollow  = min(4000, nfollow)   ; number of particles to follow
+nfollow  = 500                    ; number of particles to follow
 
 ;
 if (iplot eq 1) then begin
@@ -55,37 +55,30 @@ lout     = fltarr(nfollow, nsave) ; Lz
 xout     = fltarr(nfollow, nsave) ; x
 yout     = fltarr(nfollow, nsave) ; y
 zout     = fltarr(nfollow, nsave) ; z
-vzout    = fltarr(nfollow, nsave) ; z
-rout     = fltarr(nfollow, nsave) ; rho
-hout     = fltarr(nfollow, nsave) ; h
-uout     = fltarr(nfollow, nsave) ; thermal energy
 eout     = fltarr(nfollow, nsave) ; energies
 ekin     = fltarr(nfollow, nsave)
 epot     = fltarr(nfollow, nsave) ; 2 pi G Sigma b ln(cosh(z/b)) + const
 tout     = fltarr(nsave)
+
+
 
 ifile  = 0
 isave = 0
 for ifile=0,nfiles-1,nskip do begin
    inf    = indir + basefile + strtrim(string(ifile,'(i3.3)'),1) + '.hdf5'
    time   = h5ra(inf, 'Header','Time')
-   p      = h5rd(inf,'PartType0/Coordinates')
-   v      = h5rd(inf,'PartType0/Velocities')
-   id     = h5rd(inf,'PartType0/ParticleIDs')
-   rho    = h5rd(inf,'PartType0/Density')
-   h      = h5rd(inf,'PartType0/SmoothingLength')
-   utherm = h5rd(inf,'PartType0/InternalEnergy')
+   p      = h5rd(inf,'PartType1/Coordinates')
+   v      = h5rd(inf,'PartType1/Velocities')
+   id     = h5rd(inf,'PartType1/ParticleIDs')
    indx   = sort(id)
 
-;  if you want to sort particles by ID
-   id     = id[indx]
-   rho    = rho[indx]
-   utherm = utherm[indx]
-   h      = h[indx]
-   for ic=0,2 do begin
-      tmp = reform(p[ic,*]) & p[ic,*] = tmp[indx]
-      tmp = reform(v[ic,*]) & v[ic,*] = tmp[indx]
-   endfor
+;; ;  if you want to sort particles by ID
+;;    id     = id[indx]
+;;    for ic=0,2 do begin
+;;       tmp = reform(p[ic,*]) & p[ic,*] = tmp[indx]
+;;       tmp = reform(v[ic,*]) & v[ic,*] = tmp[indx]
+;;    endfor
+   
 
 ; calculate energy
    dd  = size(p,/dimen) & npart = dd[1]
@@ -96,10 +89,6 @@ for ifile=0,nfiles-1,nskip do begin
    xout[*,isave] = p[0,0:nfollow-1]-pcentre[0]
    yout[*,isave] = p[1,0:nfollow-1]-pcentre[1]
    zout[*,isave] = p[2,0:nfollow-1]-pcentre[2]
-   vzout[*,isave]= v[2,0:nfollow-1]
-   rout[*,isave] = rho[0:nfollow-1]
-   hout[*,isave] = h[0:nfollow-1]
-   uout[*,isave] = utherm[0:nfollow-1]
    Lz  = (p[0,*]-pcentre[0]) * v[1,*] - (p[1,*]-pcentre[1]) * v[0,*]
    dz  = reform(p[2,0:nfollow-1]-pcentre[2])
 ;   print,'time = ',time,p[0,0],v[0,0],id[0]
@@ -121,21 +110,48 @@ x0 = reform(xout[0,*])
 y0 = reform(xout[1,*])
 z0 = reform(xout[2,*])
 
+; calculate relative energy change
+de    = 0.0 * eout
+dl    = 0.0 * lout
+nsave = isave
+for ifile=1, nsave-1 do de[*,ifile] = (eout[*,ifile]-eout[*,0])/eout[*,0]
+for ifile=1, nsave-1 do dl[*,ifile] = (lout[*,ifile] - lout[*,0])/lout[*,0]
 
-; plot density profile and compare to analytic profile
-nplot = nfollow
 
-                                ; plot density profile
-wset,0
-xr   = [0, 3*scale_height]
-nbins = 100
-zpos  = findgen(nbins)/float(nbins-1) * max(xr)
-dens  = (surface_density/(2.d0*scale_height)) * 1./cosh(zpos/scale_height)^2
-plot,[0],[0],xr=xr,/xs,yr=[0,max(dens)*1.4],/ys,/nodata,xtitle='|z|',ytitle='density'
-oplot,zpos,dens,color=black,thick=3
-;oplot,abs(zout[*,1]),rout[*,1],psym=3 ; initial profile
-oplot,abs(zout[*,nsave-1]),rout[*,nsave-1],psym=3,color=red
+; calculate statistics of energy changes
+print,' relatve energy change: (per cent) ',minmax(de) * 100.
+print,' relative Lz    change: (per cent) ',minmax(dl) * 100.
 
+; plot enery and Lz conservation for some particles
+if(iplot eq 1) then begin
+; plot results on energy conservation for some particles
+   nplot = min(10, nfollow)
+   win,0
+   xr = [min(tout), max(tout)]
+   yr = [-2,2]*1d-2             ; in percent
+   plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/nodata,xtitle='time',ytitle='dE/E, dL/L (%)'
+   for i=0,nplot-1 do oplot,tout,de[i,*]
+   for i=0,nplot-1 do oplot,tout,dl[i,*],color=red
+   legend,['dE/E','dL/L'],linestyle=[0,0],color=[black,red],box=0,/bottom,/left
+   screen_to_png,'e-time.png'
+
+;  plot vertical oscillation
+   win,2
+   xr = [min(tout), max(tout)]
+   yr = [-3,3]*scale_height
+   plot,[0],[0],xr=xr,yr=yr,/xs,/ys,/iso,/nodata,xtitle='x',ytitle='y'
+   color = floor(findgen(nplot)*255/float(nplot))
+   for i=0,nplot-1 do oplot,tout,zout[i,*],color=color(i)
+   screen_to_png,'orbit.png'
+
+; make histogram of energy changes at end
+   win,6
+   ohist,de,x,y,-0.05,0.05,0.001
+   plot,x,y,psym=10,xtitle='de (%)'
+   screen_to_png,'de-hist.png'
+
+
+endif
 
 end
 

@@ -65,6 +65,7 @@
 /* SPH variant to use */
 //#define MINIMAL_SPH
 #define GADGET2_SPH
+//#define HOPKINS_PE_SPH
 //#define DEFAULT_SPH
 //#define GIZMO_SPH
 
@@ -90,9 +91,12 @@
 #define const_gravity_eta 0.025f
 
 /* External gravity properties */
+
+#define EXTERNAL_POTENTIAL_NONE
 //#define EXTERNAL_POTENTIAL_POINTMASS
-#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
-//#define EXTERNAL_POTENTIAL_DISK_PATCH
+//#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
+//#define EXTERNAL_POTENTIAL_DISC_PATCH
+
 
 /* Cooling properties */
 //#define COOLING_NONE

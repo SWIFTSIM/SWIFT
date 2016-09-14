@@ -763,6 +763,7 @@ INPUT                  =  @top_srcdir@ @top_srcdir@/src @top_srcdir@/tests @top_
 INPUT		       += @top_srcdir@/src/hydro/Minimal
 INPUT		       += @top_srcdir@/src/gravity/Default
 INPUT		       += @top_srcdir@/src/riemann
+INPUT		       += @top_srcdir@/src/potential/point_mass
 INPUT		       += @top_srcdir@/src/cooling/const_du
 
 # This tag can be used to specify the character encoding of the source files

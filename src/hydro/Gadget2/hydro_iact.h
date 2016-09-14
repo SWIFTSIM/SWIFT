@@ -20,17 +20,19 @@
 #ifndef SWIFT_GADGET2_HYDRO_IACT_H
 #define SWIFT_GADGET2_HYDRO_IACT_H
 
-#include "minmax.h"
-
 /**
+ * @file Gadget2/hydro_iact.h
  * @brief SPH interaction functions following the Gadget-2 version of SPH.
  *
  * The interactions computed here are the ones presented in the Gadget-2 paper
- * and use the same numerical coefficients as the Gadget-2 code. When used with
+ * Springel, V., MNRAS, Volume 364, Issue 4, pp. 1105-1134.
+ * We use the same numerical coefficients as the Gadget-2 code. When used with
  * the Spline-3 kernel, the results should be equivalent to the ones obtained
  * with Gadget-2 up to the rounding errors and interactions missed by the
  * Gadget-2 tree-code neighbours search.
  */
+
+#include "minmax.h"
 
 /**
  * @brief Density loop
@@ -246,17 +248,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float ri = 1.0f / r;
 
   /* Compute the kernel function */
-  const float h_inv = 1.0f / hi;
-  const float u = r * h_inv;
-  kernel_deval(u, &wi, &wi_dx);
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  kernel_deval(ui, &wi, &wi_dx);
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + u * wi_dx);
+  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
-  pi->density.wcount_dh -= u * wi_dx;
+  pi->density.wcount_dh -= ui * wi_dx;
 
   const float fac = mj * wi_dx * ri;
 

@@ -203,4 +203,6 @@ struct part {
   /* Associated gravitas. */
   struct gpart *gpart;
 
-} __attribute__((aligned(part_align)));
+} SWIFT_STRUCT_ALIGN;
+
+#endif /* SWIFT_GIZMO_HYDRO_PART_H */

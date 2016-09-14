@@ -26,7 +26,7 @@ import random
 
 # Generates N particles in a box of [0:BoxSize,0:BoxSize,-2scale_height:2scale_height]
 # see Creasey, Theuns & Bower, 2013, for the equations:
-# disk parameters are: surface density sigma
+# disc parameters are: surface density sigma
 #                      scale height b
 # density: rho(z) = (sigma/2b) sech^2(z/b)
 # isothermal velocity dispersion = <v_z^2? = b pi G sigma
@@ -79,7 +79,7 @@ N       = int(sys.argv[1])  # Number of particles
 rho = 2.              # Density
 P = 1.                # Pressure
 gamma = 5./3.         # Gas adiabatic index
-fileName = "Disk-Patch.hdf5" 
+fileName = "Disc-Patch.hdf5" 
 
 
 #---------------------------------------------------

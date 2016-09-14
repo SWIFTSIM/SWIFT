@@ -68,8 +68,9 @@ __attribute__((always_inline)) INLINE static int get_integer_timestep(
 __attribute__((always_inline)) INLINE static int get_gpart_timestep(
     const struct gpart *restrict gp, const struct engine *restrict e) {
 
-  const float new_dt_external = gravity_compute_timestep_external(
-      e->external_potential, e->physical_constants, gp);
+  const float new_dt_external = external_gravity_timestep(
+      e->time, e->external_potential, e->physical_constants, gp);
+
   /* const float new_dt_self = */
   /*     gravity_compute_timestep_self(e->physical_constants, gp); */
   const float new_dt_self = FLT_MAX;  // MATTHIEU
@@ -111,8 +112,9 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
   float new_dt_grav = FLT_MAX;
   if (p->gpart != NULL) {
 
-    const float new_dt_external = gravity_compute_timestep_external(
-        e->external_potential, e->physical_constants, p->gpart);
+    const float new_dt_external = external_gravity_timestep(
+        e->time, e->external_potential, e->physical_constants, p->gpart);
+
     /* const float new_dt_self = */
     /*     gravity_compute_timestep_self(e->physical_constants, p->gpart); */
     const float new_dt_self = FLT_MAX;  // MATTHIEU

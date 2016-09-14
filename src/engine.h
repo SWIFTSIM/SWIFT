@@ -41,7 +41,7 @@
 #include "cooling_struct.h"
 #include "parser.h"
 #include "partition.h"
-#include "potentials.h"
+#include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"

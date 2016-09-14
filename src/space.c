@@ -1269,6 +1269,12 @@ void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
       atomic_cas(&s->maxdepth, maxdepth, c->depth);
     }
 
+    /* If the depth is too large, we have a problem and should stop. */
+    if (maxdepth > space_cell_maxdepth) {
+      error("Exceeded maximum depth (%d) when splitting cells, aborting",
+            space_cell_maxdepth);
+    }
+
     /* Split or let it be? */
     if (count > space_splitsize || gcount > space_splitsize) {
 
