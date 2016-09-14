@@ -126,6 +126,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
     struct part *restrict p, float u) {
 
   p->entropy = gas_entropy_from_internal_energy(p->rho, u);
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+
+  /* Compute the sound speed from the pressure*/
+  const float rho_inv = 1.f / p->rho;
+  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
+
+  p->force.soundspeed = soundspeed;
+  p->force.P_over_rho2 = pressure * rho_inv * rho_inv;
 }
 
 /**
@@ -141,6 +151,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part *restrict p, float S) {
 
   p->entropy = S;
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_entropy(p->rho, p->entropy);
+
+  /* Compute the sound speed from the pressure*/
+  const float rho_inv = 1.f / p->rho;
+  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_inv);
+
+  p->force.soundspeed = soundspeed;
+  p->force.P_over_rho2 = pressure * rho_inv * rho_inv;
 }
 
 /**

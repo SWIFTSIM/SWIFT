@@ -138,6 +138,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
     struct part *restrict p, float u) {
 
   p->u = u;
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  p->force.pressure = pressure;
 }
 
 /**
@@ -153,6 +157,10 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
     struct part *restrict p, float S) {
 
   p->u = gas_internal_energy_from_entropy(p->rho, S);
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  p->force.pressure = pressure;
 }
 
 /**
