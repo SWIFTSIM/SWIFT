@@ -165,8 +165,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
   const float v_sig = ci + cj - 3.f * mu_ij;
 
   /* Construct the full viscosity term */
@@ -276,8 +276,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float ci = sqrtf(hydro_gamma * pressurei / rhoi);
-  const float cj = sqrtf(hydro_gamma * pressurej / rhoj);
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
   const float v_sig = ci + cj - 3.f * mu_ij;
 
   /* Construct the full viscosity term */

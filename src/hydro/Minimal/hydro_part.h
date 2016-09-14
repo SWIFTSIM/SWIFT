@@ -131,6 +131,9 @@ struct part {
       /*! Particle pressure. */
       float pressure;
 
+      /*! Particle soundspeed. */
+      float soundspeed;
+
       /*! Particle signal velocity */
       float v_sig;
 
