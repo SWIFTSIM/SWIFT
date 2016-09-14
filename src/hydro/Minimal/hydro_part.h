@@ -93,9 +93,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Derivative of density with respect to h */
-  float rho_dh;
-
   /* Store density/force specific stuff. */
   union {
 
@@ -114,6 +111,9 @@ struct part {
       /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
 
+      /*! Derivative of density with respect to h */
+      float rho_dh;
+
     } density;
 
     /**
@@ -124,6 +124,9 @@ struct part {
      * loop over neighbours and the ghost, drift and kick tasks.
      */
     struct {
+
+      /*! "Grad h" term */
+      float f;
 
       /*! Particle pressure. */
       float pressure;

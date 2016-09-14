@@ -214,7 +214,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
-  p->rho_dh = 0.f;
+  p->density.rho_dh = 0.f;
 }
 
 /**
@@ -240,19 +240,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Final operation on the density (add self-contribution). */
   p->rho += p->mass * kernel_root;
-  p->rho_dh -= hydro_dimension * p->mass * kernel_root;
+  p->density.rho_dh -= hydro_dimension * p->mass * kernel_root;
   p->density.wcount += kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   p->rho *= h_inv_dim;
-  p->rho_dh *= h_inv_dim_plus_one;
+  p->density.rho_dh *= h_inv_dim_plus_one;
   p->density.wcount *= kernel_norm;
   p->density.wcount_dh *= h_inv * kernel_gamma * kernel_norm;
-
-  const float irho = 1.f / p->rho;
-
-  /* Compute the derivative term */
-  p->rho_dh = 1.f / (1.f + hydro_dimension_inv * p->h * p->rho_dh * irho);
 }
 
 /**
@@ -276,7 +271,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
   const float pressure = hydro_get_pressure(p, half_dt);
+  const float rho_inv = 1.f / p->rho;
 
+  /* Compute the "grad h" term */
+  const float grad_h_term =
+      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+
+  /* Update variables. */
+  p->force.f = grad_h_term;
   p->force.pressure = pressure;
 }
 
@@ -379,6 +381,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Do not 'overcool' when timestep increases */
   if (p->u + p->u_dt * half_dt < 0.5f * p->u) p->u_dt = -0.5f * p->u / half_dt;
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  p->force.pressure = pressure;
 }
 
 /**
@@ -392,6 +398,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *restrict p) {}
+    struct part *restrict p) {
+
+  /* Compute the pressure */
+  const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
+  p->force.pressure = pressure;
+}
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */
