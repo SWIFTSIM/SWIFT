@@ -270,12 +270,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Final operation on the weighted density */
   p->rho_bar *= entropy_minus_one_over_gamma;
 
-  /* Compute the derivative term */
-  p->density.rho_dh =
-      1.f / (1.f + hydro_dimension_inv * h * p->density.rho_dh * rho_inv);
-  p->density.pressure_dh *=
-      h * rho_inv * hydro_dimension_inv * entropy_minus_one_over_gamma;
-
   /* Finish calculation of the velocity curl components */
   p->density.rot_v[0] *= h_inv_dim_plus_one * rho_inv;
   p->density.rot_v[1] *= h_inv_dim_plus_one * rho_inv;
@@ -325,7 +319,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
 
   /* Compute "grad h" term */
-  const float grad_h_term = p->density.rho_dh * p->density.pressure_dh;
+  const float rho_inv = 1.f / p->rho;
+  const float entropy_minus_one_over_gamma = 1.f / p->entropy_one_over_gamma;
+  const float rho_dh =
+      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+  const float pressure_dh = p->density.pressure_dh * rho_inv * p->h *
+                            hydro_dimension_inv * entropy_minus_one_over_gamma;
+
+  const float grad_h_term = rho_dh * pressure_dh;
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
