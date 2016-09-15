@@ -1,0 +1,6 @@
+;
+;In this example we distribute a set of gas particles in sphere with an r^-2
+;density profile, with an external isothermal potential. The particles are
+;stationary with a pressure gradient such that we have hydrostatic equilibrium.
+;
+;The mass and radius of the halo is set by 'v_rot'
