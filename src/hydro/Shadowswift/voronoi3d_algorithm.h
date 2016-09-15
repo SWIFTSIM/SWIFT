@@ -224,19 +224,19 @@ __attribute__((always_inline)) INLINE void voronoi_print_cell(
 
   int i, j;
 
-  message("x: %g %g %g", cell->x[0], cell->x[1], cell->x[2]);
-  message("nvert: %i", cell->nvert);
+  fprintf(stderr, "x: %g %g %g\n", cell->x[0], cell->x[1], cell->x[2]);
+  fprintf(stderr, "nvert: %i\n", cell->nvert);
 
   for (i = 0; i < cell->nvert; i++) {
-    message("%i: %g %g %g (%i)", i, cell->vertices[3 * i],
+    fprintf(stderr, "%i: %g %g %g (%i)\n", i, cell->vertices[3 * i],
             cell->vertices[3 * i + 1], cell->vertices[3 * i + 2],
             cell->orders[i]);
     for (j = 0; j < cell->orders[i]; j++) {
-      message("%i (%i)", cell->edges[cell->offsets[i] + j],
+      fprintf(stderr, "%i (%i)\n", cell->edges[cell->offsets[i] + j],
               cell->edgeindices[cell->offsets[i] + j]);
     }
   }
-  message("\n");
+  fprintf(stderr, "\n");
 }
 
 /**
@@ -307,7 +307,8 @@ __attribute__((always_inline)) INLINE void voronoi_check_cell_consistency(
       l = voronoi_get_edgeindex(c, i, j);
       m = voronoi_get_edge(c, e, l);
       if (m != i) {
-        voronoi_print_gnuplot_c(c);
+        //        voronoi_print_gnuplot_c(c);
+        voronoi_print_cell(c);
         error("Cell inconsistency!");
       }
     }
@@ -1446,6 +1447,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         voronoi_set_edgeindex(c, j, a, b);
         voronoi_set_edge(c, k, b, j);
         voronoi_set_edgeindex(c, k, b, a);
+        /* no new elements added to the stack: decrease the counter */
         --low_order_index;
       } else {
         /* just remove the edges from j to v and from k to v: create two new
@@ -1497,11 +1499,15 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
           voronoi_set_edgeindex(c, k, n, -1);
         }
         /* check if j or k has become an order 2 vertex */
+        /* if they have become an order 1 vertex, they were already an order 2
+           vertex, and they should already be in the list... */
         if (c->orders[vindex] == 2) {
           if (c->orders[vindex - 1] == 2) {
             low_order_stack[low_order_index] = vindex - 1;
             ++low_order_index;
             low_order_stack[low_order_index] = vindex;
+            /* we do not increase the index here: we want this element to be the
+               next element that is processed */
           } else {
             low_order_stack[low_order_index] = vindex;
           }
@@ -1509,6 +1515,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
           if (c->orders[vindex - 1] == 2) {
             low_order_stack[low_order_index] = vindex - 1;
           } else {
+            /* no new vertices added to the stack: decrease the counter */
             --low_order_index;
           }
         }
