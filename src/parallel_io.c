@@ -487,8 +487,9 @@ void read_ic_parallel(char* fileName, const struct UnitSystem* internal_units,
   }
 
   /* Convert the dimensions of the box */
-  for (int j = 0; j<3 ; j++)
-   dim[j] *= units_conversion_factor(ic_units, internal_units, UNIT_CONV_LENGTH);
+  for (int j = 0; j < 3; j++)
+    dim[j] *=
+        units_conversion_factor(ic_units, internal_units, UNIT_CONV_LENGTH);
 
   /* Allocate memory to store SPH particles */
   *Ngas = N[0];
