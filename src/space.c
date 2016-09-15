@@ -228,7 +228,14 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
     error(
         "Must have at least 3 cells in each spatial dimension when periodicity "
-        "is switched on.");
+        "is switched on.\nThis error is often caused by any of the "
+        "followings:\n"
+        " - too few particles to generate a sensible grid,\n"
+        " - the initial value of 'SPH:max_smoothing_length' is too large,\n"
+        " - the (minimal) time-step is too large leading to particle with "
+        "predicted smoothing lengths too large for the box size,\n"
+        " - particle with velocities so large that they move by more than two "
+        "box sizes per time-step.\n");
 
   /* Check if we have enough cells for gravity. */
   if (s->gravity && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
