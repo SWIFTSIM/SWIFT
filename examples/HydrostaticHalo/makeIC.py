@@ -153,7 +153,7 @@ ds[()] = h
 h = np.zeros(1)
 
 # Internal energies
-u = v_c**4 / (2. * const_G * gamma - 1.) # only true when M_vir = r_vir = 1.
+u = v_c**2 / (2. * (gamma - 1.)) 
 u = np.full((N, ), u)
 ds = grp.create_dataset('InternalEnergy', (N,), 'f')
 ds[()] = u

@@ -3,6 +3,24 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
+def do_binning(x,y,x_bin_edges):
+
+    #x and y are arrays, where y = f(x)
+    #returns number of elements of x in each bin, and the total of the y elements corresponding to those x values
+
+    n_bins = x_bin_edges.size - 1
+    count = np.zeros(n_bins)
+    y_totals = np.zeros(n_bins)
+    
+    for i in range(n_bins):
+        ind = np.intersect1d(np.where(x > bin_edges[i])[0],np.where(x <= bin_edges[i+1])[0])
+        count[i] = ind.size
+        binned_y = y[ind]
+        y_totals[i] = np.sum(binned_y)
+
+    return(count,y_totals)
+
+
 n_snaps = 11
 
 #for the plotting
@@ -54,39 +72,33 @@ for i in range(n_snaps):
     radius_cgs = radius*unit_length_cgs
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
+#get the internal energies
+    u_dset = f["PartType0/InternalEnergy"]
+    u = np.array(u_dset)
+
+#make dimensionless
+    u /= v_c**2/(2. * (gamma - 1.))
     r = radius_over_virial_radius
 
-    bin_width = 1./n_radial_bins
-    hist = np.histogram(r,bins = n_radial_bins)[0] # number of particles in each bin
+    bin_edges = np.linspace(0,1,n_radial_bins + 1)
+    (hist,u_totals) = do_binning(r,u,bin_edges)
+    
+    bin_widths = 1. / n_radial_bins
+    radial_bin_mids = np.linspace(bin_widths / 2. , 1. - bin_widths / 2. , n_radial_bins) 
+    binned_u = u_totals / hist
 
-#find the mass in each radial bin
 
-    mass_dset = f["PartType0/Masses"]
-#mass of each particles should be equal
-    part_mass = np.array(mass_dset)[0]
-    part_mass_cgs = part_mass * unit_mass_cgs
-    part_mass_over_virial_mass = part_mass_cgs / M_vir_cgs 
-
-    mass_hist = hist * part_mass_over_virial_mass
-    radial_bin_mids = np.linspace(bin_width/2.,1 - bin_width/2.,n_radial_bins)
-#volume in each radial bin
-    volume = 4.*np.pi * radial_bin_mids**2 * bin_width
-
-#now divide hist by the volume so we have a density in each bin
-
-    density = mass_hist / volume
-
-    t = np.linspace(0.01,1.0,1000)
-    rho_analytic = t**(-2)/(4.*np.pi)
-
-    plt.plot(radial_bin_mids,density,'ko',label = "Numerical solution")
-    plt.plot(t,rho_analytic,label = "Analytic Solution")
-    plt.legend(loc = "upper right")
+    plt.plot(radial_bin_mids,binned_u,'ko',label = "Numerical solution")
+    plt.plot((0,1),(1,1),label = "Analytic Solution")
+    plt.legend(loc = "lower right")
     plt.xlabel(r"$r / r_{vir}$")
-    plt.ylabel(r"$\rho / (M_{vir} / r_{vir}^3)$")
+    plt.ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
     plt.title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
-    plt.ylim((0.1,40))
-    plot_filename = "density_profile_%03d.png" %i
+    plt.ylim((0,1))
+    plot_filename = "internal_energy_profile_%03d.png" %i
     plt.savefig(plot_filename,format = "png")
     plt.close()
 
+
+        
+    
