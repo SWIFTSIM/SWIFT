@@ -120,20 +120,15 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  * @param c The #cell.
  * @param gsuper The gsuper #cell.
  */
-void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
-                                            struct cell *gsuper) {
+void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
   const int is_with_external_gravity =
-      (e->policy & engine_policy_external_gravity) ==
-      engine_policy_external_gravity;
-  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
+      (e->policy & engine_policy_external_gravity);
+  const int is_fixdt = (e->policy & engine_policy_fixdt);
 
-  /* Is this the super-cell? */
-  if (gsuper == NULL && (c->grav != NULL || (!c->split && c->gcount > 0))) {
-
-    /* This is the super cell, i.e. the first with gravity tasks attached. */
-    gsuper = c;
+  /* Are we in a cell with self/pair tasks ? */
+  if (c->super == c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -154,20 +149,18 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
                                       0, c, NULL, 0);
       }
 
+      /* External gravity task */
       if (is_with_external_gravity)
         c->grav_external = scheduler_addtask(
             s, task_type_grav_external, task_subtype_none, 0, 0, c, NULL, 0);
     }
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL)
+          engine_make_gravity_hierarchical_tasks(e, c->progeny[k]);
   }
-
-  /* Set the super-cell. */
-  c->gsuper = gsuper;
-
-  /* Recurse. */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_make_gravity_hierarchical_tasks(e, c->progeny[k], gsuper);
 }
 
 /**
@@ -180,19 +173,14 @@ void engine_make_gravity_hierarchical_tasks(struct engine *e, struct cell *c,
  * @param c The #cell.
  * @param super The super #cell.
  */
-void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
-                                          struct cell *super) {
+void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c) {
 
   struct scheduler *s = &e->sched;
-  const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
-  const int is_with_cooling =
-      (e->policy & engine_policy_cooling) == engine_policy_cooling;
+  const int is_fixdt = (e->policy & engine_policy_fixdt);
+  const int is_with_cooling = (e->policy & engine_policy_cooling);
 
-  /* Is this the super-cell? */
-  if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
-
-    /* This is the super cell, i.e. the first with density tasks attached. */
-    super = c;
+  /* Are we in a cell with self/pair tasks ? */
+  if (c->super == c) {
 
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
@@ -227,16 +215,13 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL, 0);
     }
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL)
+          engine_make_hydro_hierarchical_tasks(e, c->progeny[k]);
   }
-
-  /* Set the super-cell. */
-  c->super = super;
-
-  /* Recurse. */
-  if (c->split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_make_hydro_hierarchical_tasks(e, c->progeny[k], super);
 }
 
 /**
@@ -1429,11 +1414,11 @@ static inline void engine_make_gravity_dependencies(struct scheduler *sched,
                                                     struct cell *c) {
 
   /* init --> gravity --> kick */
-  scheduler_addunlock(sched, c->gsuper->init, gravity);
-  scheduler_addunlock(sched, gravity, c->gsuper->kick);
+  scheduler_addunlock(sched, c->super->init, gravity);
+  scheduler_addunlock(sched, gravity, c->super->kick);
 
   /* grav_up --> gravity ( --> kick) */
-  scheduler_addunlock(sched, c->gsuper->grav_up, gravity);
+  scheduler_addunlock(sched, c->super->grav_up, gravity);
 }
 
 /**
@@ -1475,10 +1460,10 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       /* Gather the multipoles --> mm interaction --> kick */
       scheduler_addunlock(sched, gather, t);
-      scheduler_addunlock(sched, t, t->ci->gsuper->kick);
+      scheduler_addunlock(sched, t, t->ci->super->kick);
 
       /* init --> mm interaction */
-      scheduler_addunlock(sched, t->ci->gsuper->init, t);
+      scheduler_addunlock(sched, t->ci->super->init, t);
     }
 
     /* Self-interaction? */
@@ -1496,7 +1481,7 @@ void engine_link_gravity_tasks(struct engine *e) {
         engine_make_gravity_dependencies(sched, t, t->ci);
       }
 
-      if (t->cj->nodeID == nodeID && t->ci->gsuper != t->cj->gsuper) {
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
         engine_make_gravity_dependencies(sched, t, t->cj);
       }
@@ -1518,7 +1503,7 @@ void engine_link_gravity_tasks(struct engine *e) {
 
         engine_make_gravity_dependencies(sched, t, t->ci);
       }
-      if (t->cj->nodeID == nodeID && t->ci->gsuper != t->cj->gsuper) {
+      if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
         engine_make_gravity_dependencies(sched, t, t->cj);
       }
@@ -1885,15 +1870,18 @@ void engine_maketasks(struct engine *e) {
      depend on the sorts of its progeny. */
   if (e->policy & engine_policy_hydro) engine_count_and_link_tasks(e);
 
+  /* Now that the pair tasks are at the right level, set the super pointers. */
+  for (int k = 0; k < nr_cells; k++) cell_set_super(&cells[k], NULL);
+
   /* Append hierarchical tasks to each cells */
   if (e->policy & engine_policy_hydro)
     for (int k = 0; k < nr_cells; k++)
-      engine_make_hydro_hierarchical_tasks(e, &cells[k], NULL);
+      engine_make_hydro_hierarchical_tasks(e, &cells[k]);
 
   if ((e->policy & engine_policy_self_gravity) ||
       (e->policy & engine_policy_external_gravity))
     for (int k = 0; k < nr_cells; k++)
-      engine_make_gravity_hierarchical_tasks(e, &cells[k], NULL);
+      engine_make_gravity_hierarchical_tasks(e, &cells[k]);
 
   /* Run through the tasks and make force tasks for each density task.
      Each force task depends on the cell ghosts and unlocks the kick task
