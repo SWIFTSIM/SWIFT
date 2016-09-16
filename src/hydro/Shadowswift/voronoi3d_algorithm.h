@@ -1440,11 +1440,11 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
     if (c->orders[v] == 2) {
       int j = voronoi_get_edge(c, v, 0);
       int k = voronoi_get_edge(c, v, 1);
+      int b = voronoi_get_edgeindex(c, v, 1);
       int l = 0;
       safewhile(l < c->orders[j] && voronoi_get_edge(c, j, l) != k) { ++l; }
       if (l == c->orders[j]) {
         int a = voronoi_get_edgeindex(c, v, 0);
-        int b = voronoi_get_edgeindex(c, v, 1);
         /* j and k are not joined together. Replace their edges pointing to v
            with a new edge pointing from j to k */
         voronoi_set_edge(c, j, a, k);
@@ -1501,8 +1501,13 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
             voronoi_set_edge(c, l, voronoi_get_edgeindex(c, k, n), vindex);
             voronoi_set_edgeindex(c, l, voronoi_get_edgeindex(c, k, n), m);
             /* copy ngb information */
-            /* we shift all neighbours after the edge that is deleted... */
-            voronoi_set_ngb(c, vindex, m, voronoi_get_ngb(c, k + (m < n), n));
+            /* this one is special: we copy the ngb corresponding to the
+               deleted edge and skip the one after that */
+            if (n == b + 1) {
+              voronoi_set_ngb(c, vindex, m, voronoi_get_ngb(c, k, b));
+            } else {
+              voronoi_set_ngb(c, vindex, m, voronoi_get_ngb(c, k, n));
+            }
             ++m;
           }
           /* remove the old vertex */
