@@ -73,7 +73,7 @@ const_G                = ((CONST_G_CGS*const_unit_mass_in_cgs*const_unit_time_in
 print 'G=', const_G
 
 # Parameters
-periodic= 0            # 1 For periodic box
+periodic= 1            # 1 For periodic box
 boxSize = 4.          
 G       = const_G 
 N       = int(sys.argv[1])  # Number of particles
@@ -128,6 +128,11 @@ coords += np.full((N,3),boxSize/2.)
 print "x range = (%f,%f)" %(np.min(coords[:,0]),np.max(coords[:,0]))
 print "y range = (%f,%f)" %(np.min(coords[:,1]),np.max(coords[:,1]))
 print "z range = (%f,%f)" %(np.min(coords[:,2]),np.max(coords[:,2]))
+
+print np.mean(coords[:,0])
+print np.mean(coords[:,1])
+print np.mean(coords[:,2])
+
 ds = grp.create_dataset('Coordinates', (N, 3), 'd')
 ds[()] = coords
 coords = np.zeros(1)

@@ -9,3 +9,5 @@ python makeIC.py 1000
 python radial_profile.py 10
 
 python internal_energy_profile.py 10
+
+python test_energy_conservation.py

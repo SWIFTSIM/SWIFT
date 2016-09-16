@@ -32,6 +32,7 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "units.h"
+#include "space.h"
 
 /**
  * @brief External Potential Properties - Point mass case
@@ -127,6 +128,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 static INLINE void potential_init_backend(
     const struct swift_params* parameter_file,
     const struct phys_const* phys_const, const struct UnitSystem* us,
+    const struct space* s,
     struct external_potential* potential) {
 
   potential->x =
