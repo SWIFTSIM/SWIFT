@@ -304,11 +304,15 @@ __attribute__((always_inline)) INLINE void voronoi_check_cell_consistency(
   for (i = 0; i < c->nvert; i++) {
     for (j = 0; j < c->orders[i]; j++) {
       e = voronoi_get_edge(c, i, j);
+      if (e < 0) {
+        continue;
+      }
       l = voronoi_get_edgeindex(c, i, j);
       m = voronoi_get_edge(c, e, l);
       if (m != i) {
         //        voronoi_print_gnuplot_c(c);
         voronoi_print_cell(c);
+        fprintf(stderr, "i: %i, j: %i, e: %i, l: %i, m: %i\n", i, j, e, l, m);
         error("Cell inconsistency!");
       }
     }
@@ -1426,7 +1430,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
   }
 
   /* now remove them */
-  while (low_order_index) {
+  safewhile(low_order_index) {
     int v = low_order_stack[low_order_index - 1];
     /* the vertex might already have been deleted by a previous operation */
     if (voronoi_get_edge(c, v, 0) < 0) {
@@ -1459,6 +1463,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         c->vertices[3 * vindex + 1] = c->vertices[3 * j + 1];
         c->vertices[3 * vindex + 2] = c->vertices[3 * j + 2];
         c->orders[vindex] = c->orders[j] - 1;
+        c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
         int m = 0;
         for (int n = 0; n < c->orders[j]; ++n) {
           int l = voronoi_get_edge(c, j, n);
@@ -1469,6 +1474,8 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
             /* update the other vertex */
             voronoi_set_edge(c, l, voronoi_get_edgeindex(c, j, n), vindex);
             voronoi_set_edgeindex(c, l, voronoi_get_edgeindex(c, j, n), m);
+            /* copy ngb information */
+            voronoi_set_ngb(c, vindex, m, voronoi_get_ngb(c, j, n));
             ++m;
           }
           /* remove the old vertex */
@@ -1482,6 +1489,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
         c->vertices[3 * vindex + 1] = c->vertices[3 * k + 1];
         c->vertices[3 * vindex + 2] = c->vertices[3 * k + 2];
         c->orders[vindex] = c->orders[k] - 1;
+        c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
         m = 0;
         for (int n = 0; n < c->orders[k]; ++n) {
           int l = voronoi_get_edge(c, k, n);
@@ -1492,6 +1500,9 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
             /* update the other vertex */
             voronoi_set_edge(c, l, voronoi_get_edgeindex(c, k, n), vindex);
             voronoi_set_edgeindex(c, l, voronoi_get_edgeindex(c, k, n), m);
+            /* copy ngb information */
+            /* we shift all neighbours after the edge that is deleted... */
+            voronoi_set_ngb(c, vindex, m, voronoi_get_ngb(c, k + (m < n), n));
             ++m;
           }
           /* remove the old vertex */
@@ -1534,6 +1545,7 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
       c->vertices[3 * vindex + 1] = c->vertices[3 * j + 1];
       c->vertices[3 * vindex + 2] = c->vertices[3 * j + 2];
       c->orders[vindex] = c->orders[j] - 1;
+      c->offsets[vindex] = c->offsets[vindex - 1] + c->orders[vindex - 1];
       int m = 0;
       for (int k = 0; k < c->orders[j]; ++k) {
         int l = voronoi_get_edge(c, j, k);
@@ -1544,6 +1556,8 @@ __attribute__((always_inline)) INLINE void voronoi_intersect(
           /* update the other vertex */
           voronoi_set_edge(c, l, voronoi_get_edgeindex(c, j, k), vindex);
           voronoi_set_edgeindex(c, l, voronoi_get_edgeindex(c, j, k), m);
+          /* copy ngb information */
+          voronoi_set_ngb(c, vindex, m, voronoi_get_ngb(c, j, k));
           ++m;
         }
         /* remove the old vertex */
