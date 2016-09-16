@@ -698,7 +698,7 @@ void cell_sanitize(struct cell *c) {
   float h_min = FLT_MAX, h_max = 0.f;
   for (int i = 0; i < count; ++i) {
 
-    const float h = log10f(parts[i].h);
+    const float h = logf(parts[i].h);
     h_mean += h;
     h_mean2 += h * h;
     h_max = max(h_max, h);
@@ -707,24 +707,28 @@ void cell_sanitize(struct cell *c) {
   h_mean /= count;
   h_mean2 /= count;
   const float h_var = h_mean2 - h_mean * h_mean;
-  const float h_std = sqrtf(h_var);
+  const float h_std = (h_var > 0.f) ? sqrtf(h_var) : 0.1f * h_mean;
 
   /* Choose a cut */
-  const float h_limit = pow(10.f, h_mean + 4.f * h_std);
+  const float h_limit = expf(h_mean + 4.f * h_std);
 
   /* Be verbose this is not innocuous */
-  message("Cell properties: h_min= %f h_max= %f geometric mean= %f",
-          powf(10.f, h_min), powf(10.f, h_max), powf(10.f, h_mean));
+  message("Cell properties: h_min= %f h_max= %f geometric mean= %f.",
+          expf(h_min), expf(h_max), expf(h_mean));
 
   if (c->h_max > h_limit) {
 
-    message("Smoothing lengths will be limited to (mean + 4sigma)= %f",
+    message("Smoothing lengths will be limited to (mean + 4sigma)= %f.",
             h_limit);
 
     /* Apply the cut */
     for (int i = 0; i < count; ++i) parts->h = min(parts[i].h, h_limit);
 
     c->h_max = h_limit;
+
+  } else {
+
+    message("Smoothing lengths will not be limited.");
   }
 }
 

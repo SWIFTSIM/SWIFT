@@ -233,7 +233,7 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
         "followings:\n"
         " - too few particles to generate a sensible grid,\n"
         " - the initial value of 'SPH:max_smoothing_length' is too large,\n"
-        " - the (minimal) time-step is too large leading to particle with "
+        " - the (minimal) time-step is too large leading to particles with "
         "predicted smoothing lengths too large for the box size,\n"
         " - particle with velocities so large that they move by more than two "
         "box sizes per time-step.\n");
