@@ -141,6 +141,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
+      const double hi = ci->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -149,7 +150,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split? */
-      if (ci->split) {
+      if (ci->split && ci->h_max * kernel_gamma * space_stretch < hi / 2) {
 
         /* Make a sub? */
         if (scheduler_dosub &&
