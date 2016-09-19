@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
@@ -72,7 +72,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute contribution to the density */
   pj->rho += mi * wj;
-  pj->rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
+  pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
 
   /* Compute contribution to the number of neighbours */
   pj->density.wcount += wj;
@@ -209,13 +209,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_vec_density(
   /* Update particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
-    pi[k]->rho_dh -= rhoi_dh.f[k];
+    pi[k]->density.rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
     pi[k]->density.div_v -= div_vi.f[k];
     for (j = 0; j < 3; j++) pi[k]->density.rot_v[j] += curl_vi[j].f[k];
     pj[k]->rho += rhoj.f[k];
-    pj[k]->rho_dh -= rhoj_dh.f[k];
+    pj[k]->density.rho_dh -= rhoj_dh.f[k];
     pj[k]->density.wcount += wcountj.f[k];
     pj[k]->density.wcount_dh -= wcountj_dh.f[k];
     pj[k]->density.div_v -= div_vj.f[k];
@@ -254,7 +254,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute contribution to the density */
   pi->rho += mj * wi;
-  pi->rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
+  pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
 
   /* Compute contribution to the number of neighbours */
   pi->density.wcount += wi;
@@ -366,7 +366,7 @@ runner_iact_nonsym_vec_density(float *R2, float *Dx, float *Hi, float *Hj,
   /* Update particles. */
   for (k = 0; k < VEC_SIZE; k++) {
     pi[k]->rho += rhoi.f[k];
-    pi[k]->rho_dh -= rhoi_dh.f[k];
+    pi[k]->density.rho_dh -= rhoi_dh.f[k];
     pi[k]->density.wcount += wcounti.f[k];
     pi[k]->density.wcount_dh -= wcounti_dh.f[k];
     pi[k]->density.div_v -= div_vi.f[k];
@@ -415,7 +415,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Compute gradient terms */
+  /* Compute h-gradient terms */
+  const float f_i = pi->force.f;
+  const float f_j = pj->force.f;
+
+  /* Compute pressure terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
   const float P_over_rho2_j = pj->force.P_over_rho2;
 
@@ -447,7 +451,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
   const float sph_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+      (f_i * P_over_rho2_i * wi_dr + f_j * P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;
@@ -690,7 +694,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Compute gradient terms */
+  /* Compute h-gradient terms */
+  const float f_i = pi->force.f;
+  const float f_j = pj->force.f;
+
+  /* Compute pressure terms */
   const float P_over_rho2_i = pi->force.P_over_rho2;
   const float P_over_rho2_j = pj->force.P_over_rho2;
 
@@ -722,7 +730,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Now, convolve with the kernel */
   const float visc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
   const float sph_term =
-      (P_over_rho2_i * wi_dr + P_over_rho2_j * wj_dr) * r_inv;
+      (f_i * P_over_rho2_i * wi_dr + f_j * P_over_rho2_j * wj_dr) * r_inv;
 
   /* Eventually got the acceleration */
   const float acc = visc_term + sph_term;

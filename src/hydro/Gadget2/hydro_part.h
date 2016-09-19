@@ -80,9 +80,6 @@ struct part {
   /* Entropy time derivative */
   float entropy_dt;
 
-  /* Derivative of the density with respect to smoothing length. */
-  float rho_dh;
-
   union {
 
     struct {
@@ -92,6 +89,9 @@ struct part {
 
       /* Number of neighbours spatial derivative. */
       float wcount_dh;
+
+      /* Derivative of the density with respect to h. */
+      float rho_dh;
 
       /* Particle velocity curl. */
       float rot_v[3];
@@ -105,6 +105,9 @@ struct part {
 
       /* Balsara switch */
       float balsara;
+
+      /*! "Grad h" term */
+      float f;
 
       /* Pressure over density squared (including drho/dh term) */
       float P_over_rho2;

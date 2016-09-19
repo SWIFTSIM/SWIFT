@@ -199,10 +199,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             hydro_get_density(&main_cell->parts[pid]),
 #if defined(GIZMO_SPH)
             0.f,
-#elif defined(HOPKINS_PE_SPH)
-            main_cell->parts[pid].density.rho_dh,
 #else
-            main_cell->parts[pid].rho_dh,
+            main_cell->parts[pid].density.rho_dh,
 #endif
             main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
@@ -238,10 +236,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->parts[pjd].v[2], hydro_get_density(&cj->parts[pjd]),
 #if defined(GIZMO_SPH)
               0.f,
-#elif defined(HOPKINS_PE_SPH)
-              main_cell->parts[pjd].density.rho_dh,
 #else
-              main_cell->parts[pjd].rho_dh,
+              main_cell->parts[pjd].density.rho_dh,
 #endif
               cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
 #if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
