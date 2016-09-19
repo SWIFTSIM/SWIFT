@@ -840,7 +840,6 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
   return 0;
 }
 
-
 /**
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
@@ -850,20 +849,15 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
 void cell_set_super(struct cell *c, struct cell *super) {
 
   /* Are we in a cell with some kind of self/pair task ? */
-  if (c->nr_tasks > 0) super = c;
+  if (super == NULL && c->nr_tasks > 0) super = c;
 
-  //message("depth=%d nr_tasks=%d super=%p", c->depth, c->nr_tasks, super);
-  
   /* Set the super-cell */
   c->super = super;
 
-  if(c->super == NULL)
-    message("depth=%d nr_tasks=%d super=%p count=%d loc=[%f %f %f], width=%f",
-	    c->depth, c->nr_tasks, super,
-	    c->count, c->loc[0], c->loc[1], c->loc[2], c->width[0]);
-  
-  /* Recurse if we are not in a hierarchy without any tasks. */
-  if (c->split && super != NULL)
+  //if (c->nr_tasks == 0 && super == NULL) message("No tasks here");
+
+  /* Recurse */
+  if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
 }
