@@ -854,8 +854,6 @@ void cell_set_super(struct cell *c, struct cell *super) {
   /* Set the super-cell */
   c->super = super;
 
-  //if (c->nr_tasks == 0 && super == NULL) message("No tasks here");
-
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
