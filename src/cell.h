@@ -213,6 +213,7 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset);
+void cell_sanitize(struct cell *c);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);

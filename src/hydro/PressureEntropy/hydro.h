@@ -129,12 +129,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
   p->entropy_one_over_gamma = pow_one_over_gamma(p->entropy);
 
   /* Compute the pressure */
-  const float entropy = p->entropy;
-  const float pressure = gas_pressure_from_entropy(p->rho_bar, entropy);
+  const float pressure = gas_pressure_from_entropy(p->rho_bar, p->entropy);
 
   /* Compute the sound speed from the pressure*/
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho_bar, pressure);
   const float rho_bar_inv = 1.f / p->rho_bar;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_bar_inv);
+
   p->force.soundspeed = soundspeed;
   p->force.P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
 }
@@ -155,12 +155,12 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
   p->entropy_one_over_gamma = pow_one_over_gamma(p->entropy);
 
   /* Compute the pressure */
-  const float entropy = p->entropy;
-  const float pressure = gas_pressure_from_entropy(p->rho_bar, entropy);
+  const float pressure = gas_pressure_from_entropy(p->rho_bar, p->entropy);
 
   /* Compute the sound speed from the pressure*/
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho_bar, pressure);
   const float rho_bar_inv = 1.f / p->rho_bar;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_bar_inv);
+
   p->force.soundspeed = soundspeed;
   p->force.P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
 }
@@ -216,10 +216,11 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p) {
-  p->density.wcount = 0.f;
-  p->density.wcount_dh = 0.f;
+
   p->rho = 0.f;
   p->rho_bar = 0.f;
+  p->density.wcount = 0.f;
+  p->density.wcount_dh = 0.f;
   p->density.rho_dh = 0.f;
   p->density.pressure_dh = 0.f;
 
@@ -269,12 +270,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Final operation on the weighted density */
   p->rho_bar *= entropy_minus_one_over_gamma;
 
-  /* Compute the derivative term */
-  p->density.rho_dh =
-      1.f / (1.f + hydro_dimension_inv * h * p->density.rho_dh * rho_inv);
-  p->density.pressure_dh *=
-      h * rho_inv * hydro_dimension_inv * entropy_minus_one_over_gamma;
-
   /* Finish calculation of the velocity curl components */
   p->density.rot_v[0] *= h_inv_dim_plus_one * rho_inv;
   p->density.rot_v[1] *= h_inv_dim_plus_one * rho_inv;
@@ -310,22 +305,33 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Compute the pressure */
   const float half_dt = (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
-  const float pressure = hydro_get_pressure(p, half_dt);
+  const float entropy = hydro_get_entropy(p, half_dt);
+  const float pressure = gas_pressure_from_entropy(p->rho_bar, entropy);
 
   /* Compute the sound speed from the pressure*/
-  const float rho_bar_inv = 1.f / p->rho_bar;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_bar_inv);
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho_bar, pressure);
 
   /* Compute the Balsara switch */
   const float balsara =
       abs_div_v / (abs_div_v + curl_v + 0.0001f * soundspeed / fac_mu / p->h);
 
-  /* Compute "grad h" term */
-  const float grad_h_term = p->density.rho_dh * p->density.pressure_dh;
+  /* Divide the pressure by the density squared to get the SPH term */
+  const float rho_bar_inv = 1.f / p->rho_bar;
+  const float P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
+
+  /* Compute "grad h" term (note we use rho here and not rho_bar !)*/
+  const float rho_inv = 1.f / p->rho;
+  const float entropy_minus_one_over_gamma = 1.f / p->entropy_one_over_gamma;
+  const float rho_dh =
+      1.f / (1.f + hydro_dimension_inv * p->h * p->density.rho_dh * rho_inv);
+  const float pressure_dh = p->density.pressure_dh * rho_inv * p->h *
+                            hydro_dimension_inv * entropy_minus_one_over_gamma;
+
+  const float grad_h_term = rho_dh * pressure_dh;
 
   /* Update variables. */
   p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
+  p->force.P_over_rho2 = P_over_rho2;
   p->force.balsara = balsara;
   p->force.f = grad_h_term;
 }
@@ -394,14 +400,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho_bar, entropy);
 
-  /* Compute the sound speed from the pressure*/
+  /* Compute the new sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho_bar, pressure);
+
+  /* Divide the pressure by the density squared to get the SPH term */
   const float rho_bar_inv = 1.f / p->rho_bar;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_bar_inv);
+  const float P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
 
   /* Update the variables */
   p->entropy_one_over_gamma = pow_one_over_gamma(entropy);
   p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
+  p->force.P_over_rho2 = P_over_rho2;
 }
 
 /**
@@ -446,13 +455,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   /* Compute the pressure */
   const float pressure = gas_pressure_from_entropy(p->rho_bar, p->entropy);
 
-  /* Compute the sound speed from the pressure*/
+  /* Compute the new sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho_bar, pressure);
+
+  /* Divide the pressure by the density squared to get the SPH term */
   const float rho_bar_inv = 1.f / p->rho_bar;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_bar_inv);
+  const float P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
 
   p->entropy_one_over_gamma = pow_one_over_gamma(p->entropy);
   p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
+  p->force.P_over_rho2 = P_over_rho2;
 }
 
 /**
@@ -470,14 +482,17 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->entropy_one_over_gamma = pow_one_over_gamma(p->entropy);
 
   /* Compute the pressure */
-  const float entropy = p->entropy;
-  const float pressure = gas_pressure_from_entropy(p->rho_bar, entropy);
+  const float pressure = gas_pressure_from_entropy(p->rho_bar, p->entropy);
 
-  /* Compute the sound speed from the pressure*/
+  /* Compute the sound speed */
+  const float soundspeed = gas_soundspeed_from_pressure(p->rho_bar, pressure);
+
+  /* Divide the pressure by the density squared to get the SPH term */
   const float rho_bar_inv = 1.f / p->rho_bar;
-  const float soundspeed = sqrtf(hydro_gamma * pressure * rho_bar_inv);
+  const float P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
+
   p->force.soundspeed = soundspeed;
-  p->force.P_over_rho2 = pressure * rho_bar_inv * rho_bar_inv;
+  p->force.P_over_rho2 = P_over_rho2;
 }
 
 #endif /* SWIFT_PRESSURE_ENTROPY_HYDRO_H */

@@ -12,6 +12,7 @@ Scheduler:
   cell_max_size:    8000000  # (Optional) Maximal number of interactions per task if we force the split (this is the default value).
   cell_sub_size:    64000000 # (Optional) Maximal number of interactions per sub-task  (this is the default value).
   cell_split_size:  400      # (Optional) Maximal number of particles per cell (this is the default value).
+  cell_max_count:   10000    # (Optional) Maximal number of particles per cell allowed before triggering a sanitizing (this is the default value).
 
 # Parameters governing the time integration
 TimeIntegration:
