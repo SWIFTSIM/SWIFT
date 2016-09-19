@@ -731,9 +731,6 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   /* Do we need to drift ? */
   if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
 
-  /* Check that we are actually going to move forward. */
-  if (ti_current == ti_old) return;
-
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
 
@@ -872,9 +869,6 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
-
-  /* If we aren't going to do anything with this cell, we can stop here. */
-  if (c->ti_end_min > ti_current) return;
 
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
