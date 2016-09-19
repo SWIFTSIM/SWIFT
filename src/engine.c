@@ -150,14 +150,14 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
       /* Generate the ghost task. */
       if (is_hydro)
-	c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
-				     c, NULL, 0);
+        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
+                                     0, c, NULL, 0);
 
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
       if (is_hydro)
-	c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
-					   task_subtype_none, 0, 0, c, NULL, 0);
+        c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
+                                           task_subtype_none, 0, 0, c, NULL, 0);
 #endif
 
       /* Cooling task */
@@ -1883,7 +1883,8 @@ void engine_maketasks(struct engine *e) {
      depend on the sorts of its progeny. */
   engine_count_and_link_tasks(e);
 
-  /* Now that the pair tasks are at the right level, set the super pointers. */
+  /* Now that the self/pair tasks are at the right level, set the super
+   * pointers. */
   for (int k = 0; k < nr_cells; k++) cell_set_super(&cells[k], NULL);
 
   /* Append hierarchical tasks to each cells */
@@ -1895,8 +1896,9 @@ void engine_maketasks(struct engine *e) {
      of its super-cell. */
   if (e->policy & engine_policy_hydro) engine_make_extra_hydroloop_tasks(e);
 
-  /* Add the dependencies for the self-gravity stuff */
-  engine_link_gravity_tasks(e);
+  /* Add the dependencies for the gravity stuff */
+  if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
+    engine_link_gravity_tasks(e);
 
 #ifdef WITH_MPI
 
