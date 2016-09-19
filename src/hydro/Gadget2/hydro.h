@@ -37,6 +37,7 @@
 #include "equation_of_state.h"
 #include "hydro_properties.h"
 #include "kernel_hydro.h"
+#include "minmax.h"
 
 /**
  * @brief Returns the internal energy of a particle
@@ -116,8 +117,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_mass(
  * @brief Modifies the thermal state of a particle to the imposed internal
  * energy
  *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
+ * This overwrites the current state of the particle but does *not* change its
+ * time-derivatives. Entropy, pressure, sound-speed and signal velocity will be
+ * updated.
  *
  * @param p The particle
  * @param u The new internal energy
@@ -133,17 +135,24 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
   /* Compute the new sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
+  /* Update the signal velocity */
+  const float v_sig_old = p->force.v_sig;
+  const float v_sig_new = p->force.v_sig - p->force.soundspeed + soundspeed;
+  const float v_sig = max(v_sig_old, v_sig_new);
+
   const float rho_inv = 1.f / p->rho;
 
   p->force.soundspeed = soundspeed;
   p->force.P_over_rho2 = pressure * rho_inv * rho_inv;
+  p->force.v_sig = v_sig;
 }
 
 /**
  * @brief Modifies the thermal state of a particle to the imposed entropy
  *
- * This overrides the current state of the particle but does *not* change its
- * time-derivatives
+ * This overwrites the current state of the particle but does *not* change its
+ * time-derivatives. Entropy, pressure, sound-speed and signal velocity will be
+ * updated.
  *
  * @param p The particle
  * @param S The new entropy
@@ -159,10 +168,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
   /* Compute the new sound speed */
   const float soundspeed = gas_soundspeed_from_pressure(p->rho, pressure);
 
+  /* Update the signal velocity */
+  const float v_sig_old = p->force.v_sig;
+  const float v_sig_new = p->force.v_sig - p->force.soundspeed + soundspeed;
+  const float v_sig = max(v_sig_old, v_sig_new);
+
   const float rho_inv = 1.f / p->rho;
 
   p->force.soundspeed = soundspeed;
   p->force.P_over_rho2 = pressure * rho_inv * rho_inv;
+  p->force.v_sig = v_sig;
 }
 
 /**
