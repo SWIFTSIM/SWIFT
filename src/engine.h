@@ -207,7 +207,7 @@ struct engine {
   const struct external_potential *external_potential;
 
   /* Properties of the cooling scheme */
-  const struct cooling_data *cooling_data;
+  const struct cooling_function_data *cooling_func;
 
   /* Properties of source terms */
   struct sourceterms *sourceterms;
@@ -228,7 +228,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
-                 const struct cooling_data *cooling,
+                 const struct cooling_function_data *cooling,
                  struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);

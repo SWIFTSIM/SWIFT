@@ -35,7 +35,7 @@
  * @param us The current internal system of units
  * @param source the structure that has all the source term properties
  */
-void source_terms_init(const struct swift_params* parameter_file,
+void sourceterms_init(const struct swift_params* parameter_file,
                        struct UnitSystem* us, struct sourceterms* source) {
 
 #ifdef SN_FEEDBACK
@@ -54,7 +54,7 @@ void source_terms_init(const struct swift_params* parameter_file,
  *
  * @param source the structure that has all the source term properties
  */
-void source_terms_print(const struct sourceterms* source) {
+void sourceterms_print(struct sourceterms* source) {
 
 #ifdef SN_FEEDBACK
   message(

@@ -3188,7 +3188,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
-                 const struct cooling_data *cooling,
+                 const struct cooling_function_data *cooling_func,
                  struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
@@ -3241,7 +3241,7 @@ void engine_init(struct engine *e, struct space *s,
   e->physical_constants = physical_constants;
   e->hydro_properties = hydro;
   e->external_potential = potential;
-  e->cooling_data = cooling;
+  e->cooling_func = cooling_func;
   e->sourceterms = sourceterms;
   e->parameter_file = params;
   engine_rank = nodeID;

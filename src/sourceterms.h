@@ -30,9 +30,9 @@ struct sourceterms {
 #endif
 };
 
-void source_terms_init(const struct swift_params* parameter_file,
+void sourceterms_init(const struct swift_params* parameter_file,
                        struct UnitSystem* us, struct sourceterms* source);
-void source_terms_print(const struct sourceterms* source);
+void sourceterms_print(struct sourceterms* source);
 #ifdef SN_FEEDBACK
 #include "sourceterms/sn_feedback/sn_feedback.h"
 #endif
