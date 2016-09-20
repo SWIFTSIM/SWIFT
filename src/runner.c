@@ -187,7 +187,6 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
                     ti_current, p_sn->x[0], p_sn->x[1], p_sn->x[2]);
             message(" applied super nova, velocity = %e %e %e", p_sn->v[0],
                     p_sn->v[1], p_sn->v[2]);
-            error("end");
 
             /* update timestep if new time step shorter than old time step */
             const int dti = get_part_timestep(p_sn, xp_sn, r->e);
