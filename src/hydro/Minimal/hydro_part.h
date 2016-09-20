@@ -28,10 +28,11 @@
  * term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of
- * Price, D., Journal of Computational Physics, 2012, Volume 231, Issue 3,
- * pp. 759-794.
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
+ * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
+
+#include "cooling_struct.h"
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -42,12 +43,16 @@
  */
 struct xpart {
 
-  float x_diff[3]; /*!< Offset between current position and position at last
-                      tree rebuild. */
+  /*! Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
 
-  float v_full[3]; /*!< Velocity at the last full step. */
+  /*! Velocity at the last full step. */
+  float v_full[3];
 
-} __attribute__((aligned(xpart_align)));
+  /*! Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
+
+} SWIFT_STRUCT_ALIGN;
 
 /**
  * @brief Particle fields for the SPH particles
@@ -58,27 +63,35 @@ struct xpart {
  */
 struct part {
 
-  double x[3]; /*!< Particle position. */
+  /*! Particle position. */
+  double x[3];
 
-  float v[3]; /*!< Particle predicted velocity. */
+  /*! Particle predicted velocity. */
+  float v[3];
 
-  float a_hydro[3]; /*!< Particle acceleration. */
+  /*! Particle acceleration. */
+  float a_hydro[3];
 
-  float mass; /*!< Particle mass. */
+  /*! Particle mass. */
+  float mass;
 
-  float h; /*!< Particle smoothing length. */
+  /*! Particle smoothing length. */
+  float h;
 
-  int ti_begin; /*!< Time at the beginning of time-step. */
+  /*! Time at the beginning of time-step. */
+  int ti_begin;
 
-  int ti_end; /*!< Time at the end of time-step. */
+  /*! Time at the end of time-step. */
+  int ti_end;
 
-  float u; /*!< Particle internal energy. */
+  /*! Particle internal energy. */
+  float u;
 
-  float u_dt; /*!< Time derivative of the internal energy. */
+  /*! Time derivative of the internal energy. */
+  float u_dt;
 
-  float rho; /*!< Particle density. */
-
-  float rho_dh; /*!< Derivative of density with respect to h */
+  /*! Particle density. */
+  float rho;
 
   /* Store density/force specific stuff. */
   union {
@@ -92,10 +105,15 @@ struct part {
      */
     struct {
 
-      float wcount; /*!< Neighbour number count. */
+      /*! Neighbour number count. */
+      float wcount;
 
-      float wcount_dh; /*!< Derivative of the neighbour number with respect to
-                          h. */
+      /*! Derivative of the neighbour number with respect to h. */
+      float wcount_dh;
+
+      /*! Derivative of density with respect to h */
+      float rho_dh;
+
     } density;
 
     /**
@@ -107,19 +125,30 @@ struct part {
      */
     struct {
 
-      float pressure; /*!< Particle pressure. */
+      /*! "Grad h" term */
+      float f;
 
-      float v_sig; /*!< Particle signal velocity */
+      /*! Particle pressure. */
+      float pressure;
 
-      float h_dt; /*!< Time derivative of smoothing length  */
+      /*! Particle soundspeed. */
+      float soundspeed;
+
+      /*! Particle signal velocity */
+      float v_sig;
+
+      /*! Time derivative of smoothing length  */
+      float h_dt;
 
     } force;
   };
 
-  long long id; /*!< Particle unique ID. */
+  /*! Particle unique ID. */
+  long long id;
 
-  struct gpart* gpart; /*!< Pointer to corresponding gravity part. */
+  /*! Pointer to corresponding gravity part. */
+  struct gpart* gpart;
 
-} __attribute__((aligned(part_align)));
+} SWIFT_STRUCT_ALIGN;
 
 #endif /* SWIFT_MINIMAL_HYDRO_PART_H */

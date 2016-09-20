@@ -139,10 +139,10 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 #if defined(GIZMO_SPH)
             0.f,
 #else
-            cj->parts[pid].rho_dh,
+            ci->parts[pid].density.rho_dh,
 #endif
             ci->parts[pid].density.wcount, ci->parts[pid].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
             ci->parts[pid].density.div_v, ci->parts[pid].density.rot_v[0],
             ci->parts[pid].density.rot_v[1], ci->parts[pid].density.rot_v[2]
 #else
@@ -163,10 +163,10 @@ void dump_particle_fields(char *fileName, struct cell *ci, struct cell *cj) {
 #if defined(GIZMO_SPH)
             0.f,
 #else
-            cj->parts[pjd].rho_dh,
+            cj->parts[pjd].density.rho_dh,
 #endif
             cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-#if defined(GADGET2_SPH) || defined(DEFAULT_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
             cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
             cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else

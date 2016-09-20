@@ -26,6 +26,7 @@
 #include "../config.h"
 
 /* Includes. */
+#include "align.h"
 #include "cell.h"
 #include "cycle.h"
 
@@ -150,7 +151,7 @@ struct task {
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
 
-} __attribute__((aligned(32)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */
 void task_unlock(struct task *t);

@@ -279,7 +279,7 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
     /* Is this part within the time step? */
     if (g->ti_end <= ti_current) {
 
-      external_gravity(time, potential, constants, g);
+      external_gravity_acceleration(time, potential, constants, g);
     }
   }
 
@@ -297,9 +297,10 @@ void runner_do_grav_external(struct runner *r, struct cell *c, int timer) {
 void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
   struct part *restrict parts = c->parts;
+  struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
   const int ti_current = r->e->ti_current;
-  const struct cooling_data *cooling = r->e->cooling_data;
+  const struct cooling_function_data *cooling_func = r->e->cooling_func;
   const struct phys_const *constants = r->e->physical_constants;
   const struct UnitSystem *us = r->e->internalUnits;
   const double timeBase = r->e->timeBase;
@@ -322,13 +323,14 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
 
     /* Get a direct pointer on the part. */
     struct part *restrict p = &parts[i];
+    struct xpart *restrict xp = &xparts[i];
 
     /* Kick has already updated ti_end, so need to check ti_begin */
     if (p->ti_begin == ti_current) {
 
       const double dt = (p->ti_end - p->ti_begin) * timeBase;
 
-      cooling_cool_part(constants, us, cooling, p, dt);
+      cooling_cool_part(constants, us, cooling_func, p, xp, dt);
     }
   }
 
@@ -859,7 +861,8 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   const double dt = (ti_current - ti_old) * timeBase;
 
   float dx_max = 0.f, dx2_max = 0.f, h_max = 0.f;
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, e_rad = 0.0;
+  double entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0};
   double ang_mom[3] = {0.0, 0.0, 0.0};
 
@@ -931,6 +934,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
       e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
       e_pot += 0.;
       e_int += m * hydro_get_internal_energy(p, half_dt);
+      e_rad += cooling_get_radiated_energy(xp);
 
       /* Collect entropy */
       entropy += m * hydro_get_entropy(p, half_dt);
@@ -957,6 +961,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
         e_kin += cp->e_kin;
         e_int += cp->e_int;
         e_pot += cp->e_pot;
+        e_rad += cp->e_rad;
         entropy += cp->entropy;
         mom[0] += cp->mom[0];
         mom[1] += cp->mom[1];
@@ -974,6 +979,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   c->e_kin = e_kin;
   c->e_int = e_int;
   c->e_pot = e_pot;
+  c->e_rad = e_rad;
   c->entropy = entropy;
   c->mom[0] = mom[0];
   c->mom[1] = mom[1];

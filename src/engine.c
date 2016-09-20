@@ -1946,14 +1946,14 @@ void engine_maketasks(struct engine *e) {
   scheduler_ranktasks(sched);
 
   /* Weight the tasks. */
-  scheduler_reweight(sched);
+  scheduler_reweight(sched, e->verbose);
 
   /* Set the tasks age. */
   e->tasks_age = 0;
 
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including reweight).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -2254,6 +2254,8 @@ void engine_rebuild(struct engine *e) {
   /* Re-build the space. */
   space_rebuild(e->s, 0.0, e->verbose);
 
+  if (e->ti_current == 0) space_sanitize(e->s);
+
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
   engine_exchange_cells(e);
@@ -2278,8 +2280,11 @@ void engine_rebuild(struct engine *e) {
  * @brief Prepare the #engine by re-building the cells and tasks.
  *
  * @param e The #engine to prepare.
+ * @param nodrift Whether to drift particles before rebuilding or not. Will
+ *                not be necessary if all particles have already been
+ *                drifted (before repartitioning for instance).
  */
-void engine_prepare(struct engine *e) {
+void engine_prepare(struct engine *e, int nodrift) {
 
   TIMER_TIC;
 
@@ -2295,32 +2300,32 @@ void engine_prepare(struct engine *e) {
   rebuild = buff;
 #endif
 
-  /* Did this not go through? */
+  /* And rebuild if necessary. */
   if (rebuild) {
 
-    /* First drift all particles to the current time */
-    e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 1, e);
+    /* Drift all particles to the current time if needed. */
+    if (!nodrift) {
+      e->drift_all = 1;
+      engine_drift(e);
 
-    /* Restore the default drifting policy */
-    e->drift_all = (e->policy & engine_policy_drift_all);
+      /* Restore the default drifting policy */
+      e->drift_all = (e->policy & engine_policy_drift_all);
+    }
 
-    /* And now rebuild */
     engine_rebuild(e);
   }
 
   /* Re-rank the tasks every now and then. */
   if (e->tasks_age % engine_tasksreweight == 1) {
-    scheduler_reweight(&e->sched);
+    scheduler_reweight(&e->sched, e->verbose);
   }
   e->tasks_age += 1;
 
   TIMER_TOC(timer_prepare);
 
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+    message("took %.3f %s (including marktask, rebuild and reweight).",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
 }
 
 /**
@@ -2412,6 +2417,7 @@ void engine_collect_kick(struct cell *c) {
  */
 void engine_collect_timestep(struct engine *e) {
 
+  const ticks tic = getticks();
   int updates = 0, g_updates = 0;
   int ti_end_min = max_nr_timesteps;
   const struct space *s = e->s;
@@ -2456,6 +2462,10 @@ void engine_collect_timestep(struct engine *e) {
   e->ti_end_min = ti_end_min;
   e->updates = updates;
   e->g_updates = g_updates;
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2465,9 +2475,11 @@ void engine_collect_timestep(struct engine *e) {
  */
 void engine_print_stats(struct engine *e) {
 
+  const ticks tic = getticks();
   const struct space *s = e->s;
 
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, entropy = 0.0, mass = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, e_rad = 0.0;
+  double entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
 
   /* Collect the cell data. */
@@ -2478,6 +2490,7 @@ void engine_print_stats(struct engine *e) {
       e_kin += c->e_kin;
       e_int += c->e_int;
       e_pot += c->e_pot;
+      e_rad += c->e_rad;
       entropy += c->entropy;
       mom[0] += c->mom[0];
       mom[1] += c->mom[1];
@@ -2490,33 +2503,35 @@ void engine_print_stats(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
-    double in[11] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
-    double out[11];
+    double in[12] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
+    double out[12];
     out[0] = e_kin;
     out[1] = e_int;
     out[2] = e_pot;
-    out[3] = mom[0];
-    out[4] = mom[1];
-    out[5] = mom[2];
-    out[6] = ang_mom[0];
-    out[7] = ang_mom[1];
-    out[8] = ang_mom[2];
-    out[9] = mass;
-    out[10] = entropy;
+    out[3] = e_rad;
+    out[4] = mom[0];
+    out[5] = mom[1];
+    out[6] = mom[2];
+    out[7] = ang_mom[0];
+    out[8] = ang_mom[1];
+    out[9] = ang_mom[2];
+    out[10] = mass;
+    out[11] = entropy;
     if (MPI_Reduce(out, in, 11, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
       error("Failed to aggregate stats.");
     e_kin = out[0];
     e_int = out[1];
     e_pot = out[2];
-    mom[0] = out[3];
-    mom[1] = out[4];
-    mom[2] = out[5];
-    ang_mom[0] = out[6];
-    ang_mom[1] = out[7];
-    ang_mom[2] = out[8];
-    mass = out[9];
-    entropy = out[10];
+    e_rad = out[3];
+    mom[0] = out[4];
+    mom[1] = out[5];
+    mom[2] = out[6];
+    ang_mom[0] = out[7];
+    ang_mom[1] = out[8];
+    ang_mom[2] = out[9];
+    mass = out[10];
+    entropy = out[11];
   }
 #endif
 
@@ -2524,13 +2539,17 @@ void engine_print_stats(struct engine *e) {
 
   /* Print info */
   if (e->nodeID == 0) {
-    fprintf(
-        e->file_stats,
-        " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
-        e->time, mass, e_tot, e_kin, e_int, e_pot, entropy, mom[0], mom[1],
-        mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
+    fprintf(e->file_stats,
+            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
+            "%14e\n",
+            e->time, mass, e_tot, e_kin, e_int, e_pot, e_rad, entropy, mom[0],
+            mom[1], mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
     fflush(e->file_stats);
   }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2543,6 +2562,8 @@ void engine_print_stats(struct engine *e) {
  */
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask) {
+
+  const ticks tic = getticks();
 
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
@@ -2568,6 +2589,10 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
   while (e->barrier_launch || e->barrier_running)
     if (pthread_cond_wait(&e->barrier_cond, &e->barrier_mutex) != 0)
       error("Error while waiting for barrier.");
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -2587,7 +2612,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
 
   if (e->nodeID == 0) message("Running initialisation fake time-step.");
 
-  engine_prepare(e);
+  engine_prepare(e, 1);
 
   engine_marktasks(e);
 
@@ -2646,7 +2671,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  if (!flag_entropy_ICs) space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+  if (!flag_entropy_ICs) {
+
+    /* Apply the conversion */
+    space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+
+    /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
+    if (hydro_need_extra_init_loop)
+      engine_launch(e, e->nr_threads, mask, submask);
+  }
 
   clocks_gettime(&time2);
 
@@ -2688,8 +2721,7 @@ void engine_step(struct engine *e) {
 
     /* Drift everybody to the snapshot position */
     e->drift_all = 1;
-    threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                   e->s->nr_cells, sizeof(struct cell), 1, e);
+    engine_drift(e);
 
     /* Restore the default drifting policy */
     e->drift_all = (e->policy & engine_policy_drift_all);
@@ -2727,15 +2759,20 @@ void engine_step(struct engine *e) {
     e->timeLastStatistics += e->deltaTimeStatistics;
   }
 
-  /* Drift only the necessary particles */
-  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
-                 e->s->nr_cells, sizeof(struct cell), 1, e);
+  /* Drift only the necessary particles, that all means all particles
+   * if we are about to repartition. */
+  int repart = (e->forcerepart != REPART_NONE);
+  e->drift_all = repart || e->drift_all;
+  engine_drift(e);
 
   /* Re-distribute the particles amongst the nodes? */
-  if (e->forcerepart != REPART_NONE) engine_repartition(e);
+  if (repart) engine_repartition(e);
 
   /* Prepare the space. */
-  engine_prepare(e);
+  engine_prepare(e, e->drift_all);
+
+  /* Restore the default drifting policy */
+  e->drift_all = (e->policy & engine_policy_drift_all);
 
   /* Build the masks corresponding to the policy */
   unsigned int mask = 0, submask = 0;
@@ -2807,6 +2844,8 @@ void engine_step(struct engine *e) {
     submask |= 1 << task_subtype_tend;
   }
 
+  if (e->verbose) engine_print_task_counts(e);
+
   /* Send off the runners. */
   TIMER_TIC;
   engine_launch(e, e->nr_threads, mask, submask);
@@ -2825,6 +2864,21 @@ void engine_step(struct engine *e) {
  */
 int engine_is_done(struct engine *e) {
   return !(e->ti_current < max_nr_timesteps);
+}
+
+/**
+ * @brief Drift particles using the current engine drift policy.
+ *
+ * @param e The #engine.
+ */
+void engine_drift(struct engine *e) {
+
+  const ticks tic = getticks();
+  threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
+                 e->s->nr_cells, sizeof(struct cell), 1, e);
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
@@ -3339,11 +3393,11 @@ void engine_init(struct engine *e, struct space *s,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, "w");
-    fprintf(
-        e->file_stats,
-        "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s\n",
-        "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "Entropy", "p_x",
-        "p_y", "p_z", "ang_x", "ang_y", "ang_z");
+    fprintf(e->file_stats,
+            "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
+            "%14s\n",
+            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_radcool",
+            "Entropy", "p_x", "p_y", "p_z", "ang_x", "ang_y", "ang_z");
     fflush(e->file_stats);
 
     char timestepsfileName[200] = "";

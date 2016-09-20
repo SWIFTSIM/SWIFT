@@ -35,8 +35,9 @@ InitialConditions:
   file_name:  ./multiTypes.hdf5     # The file to read
 
 # External potential parameters
-PointMass:
+PointMassPotential:
   position_x:      50.     # location of external point mass in internal units
   position_y:      50.
   position_z:      50.	
   mass:            1e10     # mass of external point mass in internal units
+  timestep_mult:   1e-2

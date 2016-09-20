@@ -141,6 +141,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
+      const double hi = ci->dmin;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -149,7 +150,7 @@ static void scheduler_splittask(struct task *t, struct scheduler *s) {
       }
 
       /* Is this cell even split? */
-      if (ci->split) {
+      if (ci->split && ci->h_max * kernel_gamma * space_stretch < hi / 2) {
 
         /* Make a sub? */
         if (scheduler_dosub &&
@@ -890,10 +891,11 @@ void scheduler_reset(struct scheduler *s, int size) {
  * @brief Compute the task weights
  *
  * @param s The #scheduler.
+ * @param verbose Are we talkative ?
  */
+void scheduler_reweight(struct scheduler *s, int verbose) {
 
-void scheduler_reweight(struct scheduler *s) {
-
+  const ticks tic = getticks();
   const int nr_tasks = s->nr_tasks;
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
@@ -902,11 +904,8 @@ void scheduler_reweight(struct scheduler *s) {
                                0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
                                0.5788, 0.4025, 0.5788};
   const float wscale = 0.001;
-  // ticks tic;
 
-  /* Run through the tasks backwards and set their waits and
-     weights. */
-  // tic = getticks();
+  /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
     struct task *t = &tasks[tid[k]];
     t->weight = 0;
@@ -963,8 +962,10 @@ void scheduler_reweight(struct scheduler *s) {
           break;
       }
   }
-  // message( "weighting tasks took %.3f %s." ,
-  // clocks_from_ticks( getticks() - tic ), clocks_getunit());
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 
   /* int min = tasks[0].weight, max = tasks[0].weight;
   for ( int k = 1 ; k < nr_tasks ; k++ )

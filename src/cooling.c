@@ -36,7 +36,7 @@
 void cooling_init(const struct swift_params* parameter_file,
                   const struct UnitSystem* us,
                   const struct phys_const* phys_const,
-                  struct cooling_data* cooling) {
+                  struct cooling_function_data* cooling) {
 
   cooling_init_backend(parameter_file, us, phys_const, cooling);
 }
@@ -48,7 +48,7 @@ void cooling_init(const struct swift_params* parameter_file,
  *
  * @param cooling The properties of the cooling function.
  */
-void cooling_print(const struct cooling_data* cooling) {
+void cooling_print(const struct cooling_function_data* cooling) {
 
   cooling_print_backend(cooling);
 }

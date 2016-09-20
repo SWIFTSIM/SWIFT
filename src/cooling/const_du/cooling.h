@@ -22,11 +22,12 @@
 #define SWIFT_COOLING_CONST_DU_H
 
 /**
- * @file src/cooling/const/cooling.h
+ * @file src/cooling/const_du/cooling.h
  * @brief Routines related to the "constant cooling" cooling function.
  *
  * This is the simplest possible cooling function. A constant cooling rate with
- * a minimal energy floor is applied.
+ * a minimal energy floor is applied. Should be used as a template for more
+ * realistic functions.
  */
 
 /* Some standard headers. */
@@ -34,6 +35,7 @@
 
 /* Local includes. */
 #include "const.h"
+#include "cooling_struct.h"
 #include "error.h"
 #include "hydro.h"
 #include "parser.h"
@@ -42,32 +44,23 @@
 #include "units.h"
 
 /**
- * @brief Properties of the cooling function.
- */
-struct cooling_data {
-
-  /*! Cooling rate in internal units. du_dt = -cooling_rate */
-  float cooling_rate;
-
-  /*! Minimally allowed internal energy of the particles */
-  float min_energy;
-
-  /*! Constant multiplication factor for time-step criterion */
-  float cooling_tstep_mult;
-};
-
-/**
  * @brief Apply the cooling function to a particle.
+ *
+ * In this simple example we just apply the const cooling rate
+ * and check that we don't go below the given floor.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
- * @param cooling The #cooling_data used in the run.
+ * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
  * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void cooling_cool_part(
-    const struct phys_const* const phys_const, const struct UnitSystem* us,
-    const struct cooling_data* cooling, struct part* p, float dt) {
+    const struct phys_const* restrict phys_const,
+    const struct UnitSystem* restrict us,
+    const struct cooling_function_data* restrict cooling,
+    struct part* restrict p, struct xpart* restrict xp, float dt) {
 
   /* Get current internal energy (dt=0) */
   const float u_old = hydro_get_internal_energy(p, 0.f);
@@ -86,27 +79,69 @@ __attribute__((always_inline)) INLINE static void cooling_cool_part(
 
   /* Update the internal energy */
   hydro_set_internal_energy(p, u_new);
+
+  /* Store the radiated energy */
+  xp->cooling_data.radiated_energy += hydro_get_mass(p) * (u_old - u_new);
 }
 
 /**
  * @brief Computes the cooling time-step.
  *
- * @param cooling The #cooling_data used in the run.
+ * In this simple example, we return \f$ \alpha \frac{u}{du/dt} \f$.
+ * This is used to compute the time-step of the particle. Cooling functions
+ * that are solved implicitly can simply return FLT_MAX here.
+ *
+ * @param cooling The #cooling_function_data used in the run.
  * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
  * @param p Pointer to the particle data.
  */
-__attribute__((always_inline)) INLINE static double cooling_timestep(
-    const struct cooling_data* cooling,
-    const struct phys_const* const phys_const, const struct part* const p) {
+__attribute__((always_inline)) INLINE static float cooling_timestep(
+    const struct cooling_function_data* restrict cooling,
+    const struct phys_const* restrict phys_const,
+    const struct UnitSystem* restrict us, const struct part* restrict p) {
 
   const float cooling_rate = cooling->cooling_rate;
-  const float internal_energy =
-      hydro_get_internal_energy(p, 0);  // dt = 0 because using current entropy
+  const float internal_energy = hydro_get_internal_energy(p, 0);
   return cooling->cooling_tstep_mult * internal_energy / cooling_rate;
 }
 
 /**
- * @brief Initialises the cooling properties.
+ * @brief Sets the cooling properties of the (x-)particles to a valid start
+ * state.
+ *
+ * In this case, we set the total radiated energy to 0. Note that the particle
+ * structure is just passed in for cases where information needs to be read
+ * from there.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+__attribute__((always_inline)) INLINE static void cooling_init_part(
+    const struct part* restrict p, struct xpart* restrict xp) {
+
+  xp->cooling_data.radiated_energy = 0.f;
+}
+
+/**
+ * @brief Returns the total radiated energy by this particle.
+ *
+ * In this simple example we jsut return the quantity accumulated in the
+ * #cooling_xpart_data of this particle.
+ *
+ * @param xp The extended particle data
+ */
+__attribute__((always_inline)) INLINE static float cooling_get_radiated_energy(
+    const struct xpart* restrict xp) {
+
+  return xp->cooling_data.radiated_energy;
+}
+
+/**
+ * @brief Initialises the cooling function properties from the parameter file
+ *
+ * In this example, we just read in the values from the YAML file without
+ * doing any conversions or multiplying any constants in.
  *
  * @param parameter_file The parsed parameter file.
  * @param us The current internal system of units.
@@ -115,7 +150,8 @@ __attribute__((always_inline)) INLINE static double cooling_timestep(
  */
 static INLINE void cooling_init_backend(
     const struct swift_params* parameter_file, const struct UnitSystem* us,
-    const struct phys_const* phys_const, struct cooling_data* cooling) {
+    const struct phys_const* phys_const,
+    struct cooling_function_data* cooling) {
 
   cooling->cooling_rate =
       parser_get_param_double(parameter_file, "ConstCooling:cooling_rate");
@@ -130,9 +166,10 @@ static INLINE void cooling_init_backend(
  *
  * @param cooling The properties of the cooling function.
  */
-static INLINE void cooling_print_backend(const struct cooling_data* cooling) {
+static INLINE void cooling_print_backend(
+    const struct cooling_function_data* cooling) {
 
-  message("Cooling function is 'Constant cooling' with rate %f and floor %f",
+  message("Cooling function is 'Constant cooling' with rate %f and floor %f.",
           cooling->cooling_rate, cooling->min_energy);
 }
 

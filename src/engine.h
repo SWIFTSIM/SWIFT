@@ -38,10 +38,10 @@
 
 /* Includes. */
 #include "clocks.h"
-#include "cooling.h"
+#include "cooling_struct.h"
 #include "parser.h"
 #include "partition.h"
-#include "potentials.h"
+#include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "sourceterms.h"
@@ -219,6 +219,7 @@ struct engine {
 /* Function prototypes. */
 void engine_barrier(struct engine *e, int tid);
 void engine_compute_next_snapshot_time(struct engine *e);
+void engine_drift(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -231,7 +232,7 @@ void engine_init(struct engine *e, struct space *s,
                  struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
-void engine_prepare(struct engine *e);
+void engine_prepare(struct engine *e, int nodrift);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
 void engine_step(struct engine *e);

@@ -38,7 +38,7 @@ InitialConditions:
   shift_z:    50.
 
 # External potential parameters
-PointMass:
+PointMassPotential:
   position_x:      50.     # location of external point mass in internal units
   position_y:      50.
   position_z:      50.	

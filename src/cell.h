@@ -30,6 +30,7 @@
 #include <stddef.h>
 
 /* Local includes. */
+#include "align.h"
 #include "lock.h"
 #include "multipole.h"
 #include "part.h"
@@ -44,7 +45,7 @@ struct space;
  * The maximum was lowered by a further factor of 2 to be on the safe side.*/
 #define cell_max_tag (1 << 29)
 
-#define cell_align 32
+#define cell_align 128
 
 /* Global variables. */
 extern int cell_next_tag;
@@ -74,7 +75,8 @@ struct pcell {
 
   /* Relative indices of the cell's progeny. */
   int progeny[8];
-};
+
+} SWIFT_STRUCT_ALIGN;
 
 /* Structure to store the data of a single cell. */
 struct cell {
@@ -185,7 +187,7 @@ struct cell {
   double mom[3], ang_mom[3];
 
   /* Mass, potential, internal  and kinetic energy of particles in this cell. */
-  double mass, e_pot, e_int, e_kin, entropy;
+  double mass, e_pot, e_int, e_kin, e_rad, entropy;
 
   /* Number of particles updated in this cell. */
   int updated, g_updated;
@@ -211,7 +213,7 @@ struct cell {
 
 #endif
 
-} __attribute__((aligned(cell_align)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
@@ -219,6 +221,7 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset);
+void cell_sanitize(struct cell *c);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);

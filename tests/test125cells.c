@@ -95,6 +95,8 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
 
 #if defined(GADGET2_SPH)
   part->entropy = pressure / pow_gamma(density);
+#elif defined(HOPKINS_PE_SPH)
+  part->entropy = pressure / pow_gamma(density);
 #elif defined(DEFAULT_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH)
@@ -519,6 +521,7 @@ int main(int argc, char *argv[]) {
   hp.CFL_condition = 0.1;
 
   struct engine engine;
+  bzero(&engine, sizeof(struct engine));
   engine.hydro_properties = &hp;
   engine.physical_constants = &prog_const;
   engine.s = &space;
