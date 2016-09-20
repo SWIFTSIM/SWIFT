@@ -892,3 +892,23 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
   /* No neighbouring cell has active particles. Drift not necessary */
   return 0;
 }
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super Pointer to the deepest cell with tasks in this part of the tree.
+ */
+void cell_set_super(struct cell *c, struct cell *super) {
+
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super == NULL && c->nr_tasks > 0) super = c;
+
+  /* Set the super-cell */
+  c->super = super;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_set_super(c->progeny[k], super);
+}

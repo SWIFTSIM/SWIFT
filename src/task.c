@@ -48,13 +48,12 @@
 
 /* Task type names. */
 const char *taskID_names[task_type_count] = {
-    "none",       "sort",    "self",          "pair",          "sub_self",
-    "sub_pair",   "init",    "ghost",         "extra_ghost",   "kick",
-    "kick_fixdt", "send",    "recv",          "grav_gather_m", "grav_fft",
-    "grav_mm",    "grav_up", "grav_external", "cooling"};
+    "none", "sort",          "self",        "pair",    "sub_self",   "sub_pair",
+    "init", "ghost",         "extra_ghost", "kick",    "kick_fixdt", "send",
+    "recv", "grav_gather_m", "grav_fft",    "grav_mm", "grav_up",    "cooling"};
 
 const char *subtaskID_names[task_subtype_count] = {
-    "none", "density", "gradient", "force", "grav", "tend"};
+    "none", "density", "gradient", "force", "grav", "external_grav", "tend"};
 
 /**
  * @brief Computes the overlap between the parts array of two given cells.
@@ -134,6 +133,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
           break;
 
         case task_subtype_grav:
+        case task_subtype_external_grav:
           return task_action_gpart;
           break;
 
@@ -149,7 +149,14 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_kick_fixdt:
     case task_type_send:
     case task_type_recv:
-      return task_action_all;
+      if (t->ci->count > 0 && t->ci->gcount > 0)
+        return task_action_all;
+      else if (t->ci->count > 0)
+        return task_action_part;
+      else if (t->ci->gcount > 0)
+        return task_action_gpart;
+      else
+        error("Task without particles");
       break;
 
     case task_type_grav_gather_m:
@@ -157,10 +164,6 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_grav_mm:
     case task_type_grav_up:
       return task_action_multipole;
-      break;
-
-    case task_type_grav_external:
-      return task_action_gpart;
       break;
 
     default:
@@ -391,4 +394,16 @@ void task_print_submask(unsigned int submask) {
   for (int k = 1; k < task_subtype_count; k++)
     printf(" %s=%s", subtaskID_names[k], (submask & (1 << k)) ? "yes" : "no");
   printf(" ]\n");
+}
+
+/**
+ * @brief Print basic information about a task.
+ *
+ * @param t The #task.
+ */
+void task_print(const struct task *t) {
+
+  message("Type:'%s' sub_type:'%s' wait=%d nr_unlocks=%d skip=%d",
+          taskID_names[t->type], subtaskID_names[t->subtype], t->wait,
+          t->nr_unlock_tasks, t->skip);
 }
