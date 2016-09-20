@@ -432,49 +432,19 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   struct cell *restrict cells_top = s->cells_top;
   const int ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-
   /* Run through the particles and get their cell index. */
-  // tic = getticks();
   const size_t ind_size = s->size_parts;
   int *ind;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
-  for (size_t k = 0; k < nr_parts; k++) {
-    struct part *restrict p = &s->parts[k];
-    for (int j = 0; j < 3; j++)
-      if (p->x[j] < 0.0)
-        p->x[j] += dim[j];
-      else if (p->x[j] >= dim[j])
-        p->x[j] -= dim[j];
-    ind[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    cells_top[ind[k]].count++;
-  }
-  // message( "getting particle indices took %.3f %s." ,
-  // clocks_from_ticks(getticks() - tic), clocks_getunit()):
+  space_parts_get_cell_index(s, ind, cells_top);
 
   /* Run through the gravity particles and get their cell index. */
-  // tic = getticks();
   const size_t gind_size = s->size_gparts;
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
-  for (size_t k = 0; k < nr_gparts; k++) {
-    struct gpart *restrict gp = &s->gparts[k];
-    for (int j = 0; j < 3; j++)
-      if (gp->x[j] < 0.0)
-        gp->x[j] += dim[j];
-      else if (gp->x[j] >= dim[j])
-        gp->x[j] -= dim[j];
-    gind[k] =
-        cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
-    cells_top[gind[k]].gcount++;
-  }
-// message( "getting g-particle indices took %.3f %s." ,
-// clocks_from_ticks(getticks() - tic), clocks_getunit());
+  space_gparts_get_cell_index(s, ind, cells_top);
 
 #ifdef WITH_MPI
 
@@ -577,6 +547,9 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
     free(ind);
     ind = ind_new;
   }
+
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
   /* Assign each particle to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
@@ -749,6 +722,81 @@ void space_sanitize(struct space *s) {
       /* Ok, clean-up the mess */
       cell_sanitize(c);
     }
+  }
+}
+
+/**
+ * @brief Computes the cell index of all the particles and update the cell count.
+ *
+ * @param s The #space.
+ * @param ind The array of indices to fill.
+ * @param cells The array of #cell to update.
+ */
+void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells) {
+
+  const size_t nr_parts = s->nr_parts;
+  struct part *parts = s->parts;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
+
+  for (size_t k = 0; k < nr_parts; k++) {
+
+    /* Get the particle */
+    struct part *restrict p = &parts[k];
+
+    /* Put it back into the simulation volume */
+    for (int j = 0; j < 3; j++)
+      if (p->x[j] < 0.0)
+        p->x[j] += dim[j];
+      else if (p->x[j] >= dim[j])
+        p->x[j] -= dim[j];
+
+    /* Get its cell index */
+    const int index =
+        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+    ind[k] = index;
+
+    /* Tell the cell it has a new member */
+    cells[index].count++;
+  }
+}
+
+/**
+ * @brief Computes the cell index of all the g-particles and update the cell gcount.
+ *
+ * @param s The #space.
+ * @param gind The array of indices to fill.
+ * @param cells The array of #cell to update.
+ */
+void space_gparts_get_cell_index(struct space *s, int *gind,
+                                 struct cell *cells) {
+
+  const size_t nr_gparts = s->nr_gparts;
+  struct gpart *gparts = s->gparts;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
+
+  for (size_t k = 0; k < nr_gparts; k++) {
+
+    /* Get the particle */
+    struct gpart *restrict gp = &gparts[k];
+
+    /* Put it back into the simulation volume */
+    for (int j = 0; j < 3; j++)
+      if (gp->x[j] < 0.0)
+        gp->x[j] += dim[j];
+      else if (gp->x[j] >= dim[j])
+        gp->x[j] -= dim[j];
+
+    /* Get its cell index */
+    const int index =
+        cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
+    gind[k] = index;
+
+    /* Tell the cell it has a new member */
+    cells[index].gcount++;
   }
 }
 
