@@ -447,6 +447,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
   if (ind_size > 0) space_parts_get_cell_index(s, ind, cells_top, verbose);
+  for (size_t i = 0; i < ind_size; ++i) cells_top[ind[i]].count++;
 
   /* Run through the gravity particles and get their cell index. */
   const size_t gind_size = s->size_gparts;
@@ -454,6 +455,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
   if (gind_size > 0) space_gparts_get_cell_index(s, gind, cells_top, verbose);
+  for (size_t i = 0; i < gind_size; ++i) cells_top[gind[i]].gcount++;
 
 #ifdef WITH_MPI
 
@@ -749,7 +751,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   struct index_data *data = (struct index_data *)extra_data;
   struct space *s = data->s;
   int *ind = data->ind + (ptrdiff_t)(parts - s->parts);
-  struct cell *cells = data->cells;
+  // struct cell *cells = data->cells;
 
   /* Get some constants */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -772,7 +774,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     ind[k] = index;
 
     /* Tell the cell it has a new member */
-    atomic_inc(&(cells[index].count));
+    // atomic_inc(&(cells[index].count));
   }
 }
 
@@ -791,7 +793,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   struct index_data *data = (struct index_data *)extra_data;
   struct space *s = data->s;
   int *ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
-  struct cell *cells = data->cells;
+  // struct cell *cells = data->cells;
 
   /* Get some constants */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -814,7 +816,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     ind[k] = index;
 
     /* Tell the cell it has a new member */
-    atomic_inc(&(cells[index].gcount));
+    // atomic_inc(&(cells[index].gcount));
   }
 }
 
