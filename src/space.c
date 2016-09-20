@@ -113,6 +113,15 @@ struct parallel_sort {
 };
 
 /**
+ * @brief Information required to compute the particle cell indices.
+ */
+struct index_data {
+  struct space *s;
+  struct cell *cells;
+  int *ind;
+};
+
+/**
  * @brief Get the shift-id of the given pair of cells, swapping them
  *      if need be.
  *
@@ -437,14 +446,14 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
   int *ind;
   if ((ind = (int *)malloc(sizeof(int) * ind_size)) == NULL)
     error("Failed to allocate temporary particle indices.");
-  space_parts_get_cell_index(s, ind, cells_top);
+  if (ind_size > 0) space_parts_get_cell_index(s, ind, cells_top, verbose);
 
   /* Run through the gravity particles and get their cell index. */
   const size_t gind_size = s->size_gparts;
   int *gind;
   if ((gind = (int *)malloc(sizeof(int) * gind_size)) == NULL)
     error("Failed to allocate temporary g-particle indices.");
-  space_gparts_get_cell_index(s, ind, cells_top);
+  if (gind_size > 0) space_gparts_get_cell_index(s, gind, cells_top, verbose);
 
 #ifdef WITH_MPI
 
@@ -726,21 +735,28 @@ void space_sanitize(struct space *s) {
 }
 
 /**
- * @brief Computes the cell index of all the particles and update the cell count.
+ * @brief #threadpool mapper function to compute the particle cell indices.
  *
- * @param s The #space.
- * @param ind The array of indices to fill.
- * @param cells The array of #cell to update.
+ * @param map_data Pointer towards the particles.
+ * @param num_parts The number of particles to treat.
+ * @param extra_data Pointers to the space and index list
  */
-void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells) {
+void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
+                                       void *extra_data) {
 
-  const size_t nr_parts = s->nr_parts;
-  struct part *parts = s->parts;
+  /* Unpack the data */
+  struct part *restrict parts = (struct part *)map_data;
+  struct index_data *data = (struct index_data *)extra_data;
+  struct space *s = data->s;
+  int *ind = data->ind;
+  struct cell *cells = data->cells;
+
+  /* Get some constants */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
-  for (size_t k = 0; k < nr_parts; k++) {
+  for (int k = 0; k < nr_parts; k++) {
 
     /* Get the particle */
     struct part *restrict p = &parts[k];
@@ -755,30 +771,38 @@ void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells) {
     /* Get its cell index */
     const int index =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-    ind[k] = index;
+
+    /* Save the index at the right place */
+    *(ind + (ptrdiff_t)(p - s->parts)) = index;
 
     /* Tell the cell it has a new member */
-    cells[index].count++;
+    atomic_inc(&(cells[index].count));
   }
 }
 
 /**
- * @brief Computes the cell index of all the g-particles and update the cell gcount.
+ * @brief #threadpool mapper function to compute the g-particle cell indices.
  *
- * @param s The #space.
- * @param gind The array of indices to fill.
- * @param cells The array of #cell to update.
+ * @param map_data Pointer towards the g-particles.
+ * @param num_parts The number of g-particles to treat.
+ * @param extra_data Pointers to the space and index list
  */
-void space_gparts_get_cell_index(struct space *s, int *gind,
-                                 struct cell *cells) {
+void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
+                                        void *extra_data) {
 
-  const size_t nr_gparts = s->nr_gparts;
-  struct gpart *gparts = s->gparts;
+  /* Unpack the data */
+  struct gpart *restrict gparts = (struct gpart *)map_data;
+  struct index_data *data = (struct index_data *)extra_data;
+  struct space *s = data->s;
+  int *ind = data->ind;
+  struct cell *cells = data->cells;
+
+  /* Get some constants */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
-  for (size_t k = 0; k < nr_gparts; k++) {
+  for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
     struct gpart *restrict gp = &gparts[k];
@@ -793,11 +817,69 @@ void space_gparts_get_cell_index(struct space *s, int *gind,
     /* Get its cell index */
     const int index =
         cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
-    gind[k] = index;
+
+    /* Save the index at the right place */
+    *(ind + (ptrdiff_t)(gp - s->gparts)) = index;
 
     /* Tell the cell it has a new member */
-    cells[index].gcount++;
+    atomic_inc(&(cells[index].gcount));
   }
+}
+
+/**
+ * @brief Computes the cell index of all the particles and update the cell
+ * count.
+ *
+ * @param s The #space.
+ * @param ind The array of indices to fill.
+ * @param cells The array of #cell to update.
+ * @param verbose Are we talkative ?
+ */
+void space_parts_get_cell_index(struct space *s, int *ind, struct cell *cells,
+                                int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Pack the extra information */
+  struct index_data data;
+  data.s = s;
+  data.cells = cells;
+  data.ind = ind;
+
+  threadpool_map(&s->e->threadpool, space_parts_get_cell_index_mapper, s->parts,
+                 s->nr_parts, sizeof(struct part), 1000, &data);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Computes the cell index of all the g-particles and update the cell
+ * gcount.
+ *
+ * @param s The #space.
+ * @param gind The array of indices to fill.
+ * @param cells The array of #cell to update.
+ * @param verbose Are we talkative ?
+ */
+void space_gparts_get_cell_index(struct space *s, int *gind, struct cell *cells,
+                                 int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Pack the extra information */
+  struct index_data data;
+  data.s = s;
+  data.cells = cells;
+  data.ind = gind;
+
+  threadpool_map(&s->e->threadpool, space_gparts_get_cell_index_mapper,
+                 s->gparts, s->nr_gparts, sizeof(struct gpart), 1000, &data);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
