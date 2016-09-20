@@ -18,20 +18,21 @@
  ******************************************************************************/
 #ifndef SWIFT_SOURCETERMS_H
 #define SWIFT_SOURCETERMS_H
-
 #include "./const.h"
+#ifdef SN_FEEDBACK
+#include "sourceterms/sn_feedback/sn_feedback_struct.h"
+#endif
+
 /* So far only one model here */
 struct sourceterms {
 #ifdef SN_FEEDBACK
-#include "sourceterms/sn_feedback/sn_feedback_struct.h"
+  struct supernova_struct supernova;
 #endif
 };
 
 void source_terms_init(const struct swift_params* parameter_file,
                        struct UnitSystem* us, struct sourceterms* source);
 void source_terms_print(const struct sourceterms* source);
-/* float calculate_entropy(const float entropy_old, const float density, */
-/*                         const float u_old, const float u_new); */
 #ifdef SN_FEEDBACK
 #include "sourceterms/sn_feedback/sn_feedback.h"
 #endif

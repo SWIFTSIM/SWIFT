@@ -1,7 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2016 Tom Theuns (tom.theuns@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,16 +20,9 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Some standard headers. */
-#include <math.h>
-
 /* Local includes. */
 #include "const.h"
-#include "equation_of_state.h"
-#include "error.h"
 #include "parser.h"
-#include "part.h"
-#include "physical_constants.h"
 #include "units.h"
 
 /* This object's header. */
@@ -53,6 +45,7 @@ void source_terms_init(const struct swift_params* parameter_file,
   source->supernova.x = parser_get_param_double(parameter_file, "SN:x");
   source->supernova.y = parser_get_param_double(parameter_file, "SN:y");
   source->supernova.z = parser_get_param_double(parameter_file, "SN:z");
+  source->supernova.status = supernova_is_not_done;
 #endif /* SN_FEEDBCK */
 };
 
@@ -71,11 +64,3 @@ void source_terms_print(const struct sourceterms* source) {
       source->supernova.y, source->supernova.z);
 #endif /* SN_FEEDBACK */
 };
-
-/* __attribute__((always_inline)) INLINE float calculate_entropy( */
-/*     const float entropy_old, const float density, const float u_old, */
-/*     const float u_new) { */
-/*   return entropy_old + */
-/*          hydro_gamma_minus_one * (u_new - u_old) * */
-/*              pow_minus_gamma_minus_one(density); */
-/* }; */

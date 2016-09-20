@@ -210,7 +210,7 @@ struct engine {
   const struct cooling_data *cooling_data;
 
   /* Properties of source terms */
-  const struct sourceterms *sourceterms;
+  struct sourceterms *sourceterms;
 
   /* The (parsed) parameter file */
   const struct swift_params *parameter_file;
@@ -228,7 +228,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
                  const struct cooling_data *cooling,
-                 const struct sourceterms *sourceterms);
+                 struct sourceterms *sourceterms);
 void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
                    unsigned int submask);
 void engine_prepare(struct engine *e);

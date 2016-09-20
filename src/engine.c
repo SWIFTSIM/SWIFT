@@ -1796,15 +1796,17 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       scheduler_addunlock(sched, t->ci->init, t);
       scheduler_addunlock(sched, t, t->ci->kick);
     }
-    /* source terms depend on kick (should eventually depend on cooling) */
-    else if (t->type == task_type_sourceterms) {
-      scheduler_addunlock(sched, t->ci->kick, t);
-    }
-
-    /* Cooling tasks should depend on kick and does not unlock anything since
-     it is the last task*/
+    /* Cooling tasks should depend on kick and unlock sourceterms */
     else if (t->type == task_type_cooling) {
       scheduler_addunlock(sched, t->ci->kick, t);
+      scheduler_addunlock(sched, t->ci->sourceterms, t);		
+	 }
+	 /* source terms depend on cooling if performed, else on kick. It is the last task */
+    else if (t->type == task_type_sourceterms) {
+		if (e->policy == engine_policy_cooling)
+		  scheduler_addunlock(sched, t->ci->cooling, t);
+		else
+		  scheduler_addunlock(sched, t->ci->kick, t);
     }
   }
 }
@@ -3133,7 +3135,7 @@ void engine_init(struct engine *e, struct space *s,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
                  const struct cooling_data *cooling,
-                 const struct sourceterms *sourceterms) {
+                 struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
