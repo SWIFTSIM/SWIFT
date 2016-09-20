@@ -41,6 +41,7 @@
 #define space_splitsize_default 400
 #define space_maxsize_default 8000000
 #define space_subsize_default 64000000
+#define space_maxcount_default 10000
 #define space_stretch 1.10f
 #define space_maxreldx 0.25f
 
@@ -51,6 +52,7 @@
 extern int space_splitsize;
 extern int space_maxsize;
 extern int space_subsize;
+extern int space_maxcount;
 
 /* Map shift vector to sortlist. */
 extern const int sortlistID[27];
@@ -148,6 +150,7 @@ void space_init(struct space *s, const struct swift_params *params,
                 double dim[3], struct part *parts, struct gpart *gparts,
                 size_t Npart, size_t Ngpart, int periodic, int gravity,
                 int verbose, int dry_run);
+void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
 void space_map_parts(struct space *s,
@@ -164,7 +167,8 @@ void space_gparts_sort_mapper(void *map_data, int num_elements,
                               void *extra_data);
 void space_rebuild(struct space *s, double h_max, int verbose);
 void space_recycle(struct space *s, struct cell *c);
-void space_split(struct space *s, struct cell *cells, int verbose);
+void space_split(struct space *s, struct cell *cells, int nr_cells,
+                 int verbose);
 void space_split_mapper(void *map_data, int num_elements, void *extra_data);
 void space_do_parts_sort();
 void space_do_gparts_sort();

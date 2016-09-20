@@ -58,6 +58,7 @@
 int space_splitsize = space_splitsize_default;
 int space_subsize = space_subsize_default;
 int space_maxsize = space_maxsize_default;
+int space_maxcount = space_maxcount_default;
 
 /* Map shift vector to sortlist. */
 const int sortlistID[27] = {
@@ -228,7 +229,14 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
   if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
     error(
         "Must have at least 3 cells in each spatial dimension when periodicity "
-        "is switched on.");
+        "is switched on.\nThis error is often caused by any of the "
+        "followings:\n"
+        " - too few particles to generate a sensible grid,\n"
+        " - the initial value of 'SPH:max_smoothing_length' is too large,\n"
+        " - the (minimal) time-step is too large leading to particles with "
+        "predicted smoothing lengths too large for the box size,\n"
+        " - particle with velocities so large that they move by more than two "
+        "box sizes per time-step.\n");
 
   /* Check if we have enough cells for gravity. */
   if (s->gravity && (cdim[0] < 8 || cdim[1] < 8 || cdim[2] < 8))
@@ -691,7 +699,7 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
 
   /* At this point, we have the upper-level cells, old or new. Now make
      sure that the parts in each cell are ok. */
-  space_split(s, cells_top, verbose);
+  space_split(s, cells_top, s->nr_cells, verbose);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -704,19 +712,44 @@ void space_rebuild(struct space *s, double cell_max, int verbose) {
  * This is done in parallel using threads in the #threadpool.
  *
  * @param s The #space.
- * @param cells The cell hierarchy
+ * @param cells The cell hierarchy.
+ * @param nr_cells The number of cells.
  * @param verbose Are we talkative ?
  */
-void space_split(struct space *s, struct cell *cells, int verbose) {
+void space_split(struct space *s, struct cell *cells, int nr_cells,
+                 int verbose) {
 
   const ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_mapper, cells, s->nr_cells,
+  threadpool_map(&s->e->threadpool, space_split_mapper, cells, nr_cells,
                  sizeof(struct cell), 1, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+}
+
+/**
+ * @brief Runs through the top-level cells and checks whether tasks associated
+ * with them can be split. If not, try to sanitize the cells.
+ *
+ * @param s The #space to act upon.
+ */
+void space_sanitize(struct space *s) {
+
+  for (int k = 0; k < s->nr_cells; k++) {
+
+    struct cell *c = &s->cells_top[k];
+    const double min_width = c->dmin;
+
+    /* Do we have a problem ? */
+    if (c->h_max * kernel_gamma * space_stretch > min_width * 0.5 &&
+        c->count > space_maxcount) {
+
+      /* Ok, clean-up the mess */
+      cell_sanitize(c);
+    }
+  }
 }
 
 /**
@@ -1240,17 +1273,17 @@ void space_map_cells_pre(struct space *s, int full,
  *        too many particles.
  *
  * @param map_data Pointer towards the top-cells.
- * @param num_elements The number of cells to treat.
+ * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void space_split_mapper(void *map_data, int num_elements, void *extra_data) {
+void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
   struct cell *restrict cells_top = (struct cell *)map_data;
   struct engine *e = s->e;
 
-  for (int ind = 0; ind < num_elements; ind++) {
+  for (int ind = 0; ind < num_cells; ind++) {
 
     struct cell *c = &cells_top[ind];
 
@@ -1571,6 +1604,8 @@ void space_init(struct space *s, const struct swift_params *params,
                                            space_subsize_default);
   space_splitsize = parser_get_opt_param_int(
       params, "Scheduler:cell_split_size", space_splitsize_default);
+  space_maxcount = parser_get_opt_param_int(params, "Scheduler:cell_max_count",
+                                            space_maxcount_default);
   if (verbose)
     message("max_size set to %d, sub_size set to %d, split_size set to %d",
             space_maxsize, space_subsize, space_splitsize);

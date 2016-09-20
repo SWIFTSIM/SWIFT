@@ -111,13 +111,8 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           "%13e %13e %13e %10f\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
           p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->rho,
-#ifdef HOPKINS_PE_SPH
-          p->density.rho_dh,
-#else
-          p->rho_dh,
-#endif
-          p->density.wcount, p->density.wcount_dh, p->force.h_dt,
-          p->force.v_sig,
+          p->density.rho_dh, p->density.wcount, p->density.wcount_dh,
+          p->force.h_dt, p->force.v_sig,
 #if defined(GADGET2_SPH)
           p->density.div_v, p->density.rot_v[0], p->density.rot_v[1],
           p->density.rot_v[2], p->entropy_dt

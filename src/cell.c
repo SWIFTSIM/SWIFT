@@ -680,6 +680,59 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset) {
 }
 
 /**
+ * @brief Sanitizes the smoothing length values of cells by setting large
+ * outliers to more sensible values.
+ *
+ * We compute the mean and standard deviation of the smoothing lengths in
+ * logarithmic space and limit values to mean + 4 sigma.
+ *
+ * @param c The cell.
+ */
+void cell_sanitize(struct cell *c) {
+
+  const int count = c->count;
+  struct part *parts = c->parts;
+
+  /* First collect some statistics */
+  float h_mean = 0.f, h_mean2 = 0.f;
+  float h_min = FLT_MAX, h_max = 0.f;
+  for (int i = 0; i < count; ++i) {
+
+    const float h = logf(parts[i].h);
+    h_mean += h;
+    h_mean2 += h * h;
+    h_max = max(h_max, h);
+    h_min = min(h_min, h);
+  }
+  h_mean /= count;
+  h_mean2 /= count;
+  const float h_var = h_mean2 - h_mean * h_mean;
+  const float h_std = (h_var > 0.f) ? sqrtf(h_var) : 0.1f * h_mean;
+
+  /* Choose a cut */
+  const float h_limit = expf(h_mean + 4.f * h_std);
+
+  /* Be verbose this is not innocuous */
+  message("Cell properties: h_min= %f h_max= %f geometric mean= %f.",
+          expf(h_min), expf(h_max), expf(h_mean));
+
+  if (c->h_max > h_limit) {
+
+    message("Smoothing lengths will be limited to (mean + 4sigma)= %f.",
+            h_limit);
+
+    /* Apply the cut */
+    for (int i = 0; i < count; ++i) parts->h = min(parts[i].h, h_limit);
+
+    c->h_max = h_limit;
+
+  } else {
+
+    message("Smoothing lengths will not be limited.");
+  }
+}
+
+/**
  * @brief Converts hydro quantities to a valid state after the initial density
  * calculation
  *
