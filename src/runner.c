@@ -133,7 +133,6 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
                               sourceterms->supernova.z};
   const int dimen = 3;
   const double timeBase = r->e->timeBase;
-  const float CFL_condition = r->e->hydro_properties->CFL_condition;
 
   TIMER_TIC;
 
@@ -145,95 +144,80 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
   }
 
   /* is supernova still active? */
-  if(sourceterms->supernova.status == supernova_is_not_done)
-	 {
-		/* does cell contain explosion? */
-		if (count > 0) {
-		  const int incell = is_in_cell(cell_min, cell_width, location, dimen);
-		  if (incell == 1) {
-			 
-			 /* inject SN energy into particle with highest id, if it is active */
-			 int imax = 0;
-			 struct part *restrict  p_sn  = NULL;
-			 struct xpart *restrict xp_sn = NULL;
-			 
-			 for (int i = 0; i < count; i++) {
-				
-				/* Get a direct pointer on the part. */
-				struct part *restrict p = &parts[i];
-				if (p->id > imax) {
-				  imax  = p->id;
-				  p_sn  = p;
-				  xp_sn = &xparts[i];
-				}
-			 }
-			 
-			 /* Is this part within the time step? */
-			 if (p_sn->ti_begin == ti_current) {
-				
-				/* Does this time step straddle the feedback injection time? */
-				const float t_begin = p_sn->ti_begin * timeBase;
-				const float t_end = p_sn->ti_end * timeBase;
-				if (t_begin <= sourceterms->supernova.time &&
-					 t_end > sourceterms->supernova.time) {
-				  
-				  /* add supernova feedback */
-				  const int orig_dti = get_part_timestep(p_sn, xp_sn, r->e);
-				  const float ci_old = hydro_get_soundspeed(p_sn, 0.0); /* sound speed */
-				  const float u_old  = hydro_get_internal_energy(p_sn, 0.0);
-				  do_supernova_feedback(sourceterms, p_sn);
-				  /* updating u does not propagate corerctly in Gizmo branch: needs updating /
-				  
-				  /* label supernova as done */
-				  sourceterms->supernova.status = supernova_is_done;
-				  message(" applied super nova, time = %d", ti_current);
-				  /* recompute time step */
-				  const float u            = hydro_get_internal_energy(p_sn, 0.0);
-				  const float ci           = sqrt(hydro_gamma_minus_one * hydro_gamma * u);
-				  /* following needs updating to be amde consisten 
-				  const float ci           = hydro_get_soundspeed((p_sn, 0.0);
-				  */
-				  const float max_timestep = CFL_condition * p_sn->h / ci;    /* new maximum timestep */
-				  const int old_dti = p_sn->ti_end - p_sn->ti_begin;
-				  const float old_timestep = (p_sn->ti_end - p_sn->ti_begin) * timeBase; /* current time step */
-				  float sn_timestep  = old_timestep;
-				  message(" old c=%e old u= %e new c= %e new u= %e", ci_old, u_old, ci, u);
-				  message(" h= %e cfl= %e", p_sn->h, CFL_condition);
-				  message(" old dt= %e new dt = %e", old_timestep, max_timestep);
-				  if(max_timestep < old_timestep)
-					 {
-						sn_timestep = max_timestep;
-						const int new_dti =
-						  get_integer_timestep(max_timestep, p_sn->ti_begin, p_sn->ti_end, r->e->timeBase_inv);
-						p_sn->ti_end = p_sn->ti_begin + new_dti;
-						/* apply new time-step */
-						p_sn->ti_end = p_sn->ti_begin + new_dti;
-						message(" changed timestep from %d %d to %d", orig_dti, old_dti, new_dti);
+  if (sourceterms->supernova.status == supernova_is_not_done) {
+    /* does cell contain explosion? */
+    if (count > 0) {
+      const int incell = is_in_cell(cell_min, cell_width, location, dimen);
+      if (incell == 1) {
 
-						/* apply simple time-step limiter on all particles in this cell: */
-						int i_limit=0;
-						for (int i=0; i<count; i++)
-						  {
-							 struct part *restrict p = &parts[i];
-							 const float old_dt = (p->ti_end - p->ti_begin) * timeBase;
-							 if(old_dt > 2*sn_timestep)
-								{
-								  i_limit++;
-								  const int new_dti =
-									 get_integer_timestep(max_timestep, p->ti_begin, p->ti_end, r->e->timeBase_inv);
-								  p->ti_end = p->ti_begin + new_dti;
-								  message(" old step = %e new step = %e", old_dt, new_dti * r->e->timeBase);
-								}
-						  }
-						message(" limited timestep of %d particles ",i_limit);
-						  
-					 }
-				  error(" check! ");
-				}
-			 }
-		  }
-		}
-	 }
+        /* inject SN energy into particle with highest id, if it is active */
+        int imax = 0;
+        struct part *restrict p_sn = NULL;
+        struct xpart *restrict xp_sn = NULL;
+
+        for (int i = 0; i < count; i++) {
+
+          /* Get a direct pointer on the part. */
+          struct part *restrict p = &parts[i];
+          if (p->id > imax) {
+            imax = p->id;
+            p_sn = p;
+            xp_sn = &xparts[i];
+          }
+        }
+
+        /* Is this part within the time step? */
+        if (p_sn->ti_begin == ti_current) {
+
+          /* Does this time step straddle the feedback injection time? */
+          const float t_begin = p_sn->ti_begin * timeBase;
+          const float t_end = p_sn->ti_end * timeBase;
+          if (t_begin <= sourceterms->supernova.time &&
+              t_end > sourceterms->supernova.time) {
+
+            /* store old time step */
+            const int dti_old = p_sn->ti_end - p_sn->ti_begin;
+
+            /* add supernova feedback */
+            do_supernova_feedback(sourceterms, p_sn);
+
+            /* label supernova as done */
+            sourceterms->supernova.status = supernova_is_done;
+            message(" applied super nova, time = %d, location= %e %e %e",
+                    ti_current, p_sn->x[0], p_sn->x[1], p_sn->x[2]);
+            message(" applied super nova, velocity = %e %e %e", p_sn->v[0],
+                    p_sn->v[1], p_sn->v[2]);
+            error("end");
+
+            /* update timestep if new time step shorter than old time step */
+            const int dti = get_part_timestep(p_sn, xp_sn, r->e);
+            if (dti < dti_old) {
+              p_sn->ti_end = p_sn->ti_begin + dti;
+              message(" changed timestep from %d to %d", dti_old, dti);
+
+              /* apply simple time-step limiter on all particles in same cell:
+               */
+              int i_limit = 0;
+              for (int i = 0; i < count; i++) {
+                struct part *restrict p = &parts[i];
+                const int dti_old = p->ti_end - p->ti_begin;
+                if (dti_old > 2 * dti) {
+                  i_limit++;
+                  const int dti_new = 2 * dti;
+                  p->ti_end = p->ti_begin + dti_new;
+                  message(" old step = %d new step = %d", dti_old, dti_new);
+                } else
+                  message(" old step = %d", dti_old);
+              }
+              message(" count= %d limited timestep of %d particles ", count,
+                      i_limit);
+            }
+            //				  error(" check! ");
+          }
+        }
+      }
+    }
+  }
 
   if (timer) TIMER_TOC(timer_dosource);
 }

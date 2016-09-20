@@ -20,21 +20,20 @@
  * @file src/sourceterms/sn_feedback_struct.h
  * @brief Routines related to source terms (feedback)
  *
- * enumeration type that sets if supernova explosion is done (is_done) or still needs doing (is_not_done)
+ * enumeration type that sets if supernova explosion is done (is_done) or still
+ * needs doing (is_not_done)
  */
 #ifndef SWIFT_SN_FEEDBACK_STRUCT_H
 #define SWIFT_SN_FEEDBACK_STRUCT_H
-enum supernova_status {
-  supernova_is_done,
-  supernova_is_not_done
-};
+enum supernova_status { supernova_is_done, supernova_is_not_done };
 
 /**
  * @file src/sourceterms/sn_feedback_struct.h
  * @brief Routines related to source terms (feedback)
  *
  * The structure that describes the source term (supernova feedback)
- * It specifies the time, energy and location of the desired supernova explosion, and a status (supernova_is_done/supernova_is_not_done)
+ * It specifies the time, energy and location of the desired supernova
+ * explosion, and a status (supernova_is_done/supernova_is_not_done)
  * that records the status of the supernova
  */
 struct supernova_struct {

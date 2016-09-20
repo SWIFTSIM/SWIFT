@@ -36,7 +36,7 @@
  * @param source the structure that has all the source term properties
  */
 void sourceterms_init(const struct swift_params* parameter_file,
-                       struct UnitSystem* us, struct sourceterms* source) {
+                      struct UnitSystem* us, struct sourceterms* source) {
 
 #ifdef SN_FEEDBACK
   source->supernova.time = parser_get_param_double(parameter_file, "SN:time");

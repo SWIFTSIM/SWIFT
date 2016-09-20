@@ -38,7 +38,8 @@ __attribute__((always_inline)) INLINE static int is_in_cell(
  * @param sourceterms the structure describing the source terms properties
  * @param p the particle to apply feedback to
  *
- * This routine heats an individual particle (p), increasing its thermal energy per unit mass 
+ * This routine heats an individual particle (p), increasing its thermal energy
+ * per unit mass
  *      by supernova energy / particle mass.
  */
 __attribute__((always_inline)) INLINE static void do_supernova_feedback(
@@ -49,7 +50,9 @@ __attribute__((always_inline)) INLINE static void do_supernova_feedback(
   hydro_set_internal_energy(p, u_new);
   const float u_set = hydro_get_internal_energy(p, 0.0);
   message(" unew = %e %e s= %e", u_new, u_set, p->entropy);
-  message(" injected SN energy in particle = %lld, increased energy from %e to %e, check= %e", p->id, u_old, u_new, u_set);
-  
+  message(
+      " injected SN energy in particle = %lld, increased energy from %e to %e, "
+      "check= %e",
+      p->id, u_old, u_new, u_set);
 };
 #endif /* SWIFT_SN_FEEDBACK_H */
