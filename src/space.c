@@ -738,7 +738,7 @@ void space_sanitize(struct space *s) {
  * @brief #threadpool mapper function to compute the particle cell indices.
  *
  * @param map_data Pointer towards the particles.
- * @param num_parts The number of particles to treat.
+ * @param nr_parts The number of particles to treat.
  * @param extra_data Pointers to the space and index list
  */
 void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
@@ -748,7 +748,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   struct part *restrict parts = (struct part *)map_data;
   struct index_data *data = (struct index_data *)extra_data;
   struct space *s = data->s;
-  int *ind = data->ind;
+  int *ind = data->ind + (ptrdiff_t)(parts - s->parts);
   struct cell *cells = data->cells;
 
   /* Get some constants */
@@ -762,18 +762,14 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     struct part *restrict p = &parts[k];
 
     /* Put it back into the simulation volume */
-    for (int j = 0; j < 3; j++)
-      if (p->x[j] < 0.0)
-        p->x[j] += dim[j];
-      else if (p->x[j] >= dim[j])
-        p->x[j] -= dim[j];
+    p->x[0] = box_wrap(p->x[0], 0.0, dim[0]);
+    p->x[1] = box_wrap(p->x[1], 0.0, dim[1]);
+    p->x[2] = box_wrap(p->x[2], 0.0, dim[2]);
 
     /* Get its cell index */
     const int index =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-
-    /* Save the index at the right place */
-    *(ind + (ptrdiff_t)(p - s->parts)) = index;
+    ind[k] = index;
 
     /* Tell the cell it has a new member */
     atomic_inc(&(cells[index].count));
@@ -784,7 +780,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
  * @brief #threadpool mapper function to compute the g-particle cell indices.
  *
  * @param map_data Pointer towards the g-particles.
- * @param num_parts The number of g-particles to treat.
+ * @param nr_gparts The number of g-particles to treat.
  * @param extra_data Pointers to the space and index list
  */
 void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
@@ -794,7 +790,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   struct gpart *restrict gparts = (struct gpart *)map_data;
   struct index_data *data = (struct index_data *)extra_data;
   struct space *s = data->s;
-  int *ind = data->ind;
+  int *ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
   struct cell *cells = data->cells;
 
   /* Get some constants */
@@ -808,18 +804,14 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     struct gpart *restrict gp = &gparts[k];
 
     /* Put it back into the simulation volume */
-    for (int j = 0; j < 3; j++)
-      if (gp->x[j] < 0.0)
-        gp->x[j] += dim[j];
-      else if (gp->x[j] >= dim[j])
-        gp->x[j] -= dim[j];
+    gp->x[0] = box_wrap(gp->x[0], 0.0, dim[0]);
+    gp->x[1] = box_wrap(gp->x[1], 0.0, dim[1]);
+    gp->x[2] = box_wrap(gp->x[2], 0.0, dim[2]);
 
     /* Get its cell index */
     const int index =
         cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
-
-    /* Save the index at the right place */
-    *(ind + (ptrdiff_t)(gp - s->gparts)) = index;
+    ind[k] = index;
 
     /* Tell the cell it has a new member */
     atomic_inc(&(cells[index].gcount));
