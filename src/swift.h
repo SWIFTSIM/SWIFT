@@ -49,6 +49,7 @@
 #include "scheduler.h"
 #include "serial_io.h"
 #include "single_io.h"
+#include "sourceterms.h"
 #include "space.h"
 #include "task.h"
 #include "timers.h"

@@ -168,6 +168,9 @@ struct cell {
   /* Task for cooling */
   struct task *cooling;
 
+  /* Task for source terms */
+  struct task *sourceterms;
+
   /* Number of tasks that are associated with this cell. */
   int nr_tasks;
 
