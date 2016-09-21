@@ -68,7 +68,7 @@
 #include "units.h"
 #include "version.h"
 
-const char *engine_policy_names[15] = {"none",
+const char *engine_policy_names[16] = {"none",
                                        "rand",
                                        "steal",
                                        "keep",
@@ -82,7 +82,8 @@ const char *engine_policy_names[15] = {"none",
                                        "external_gravity",
                                        "cosmology_integration",
                                        "drift_all",
-                                       "cooling"};
+                                       "cooling",
+                                       "sourceterms"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -128,6 +129,9 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   const int is_fixdt = (e->policy & engine_policy_fixdt);
   const int is_hydro = (e->policy & engine_policy_hydro);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
+ const int is_with_sourceterms =
+      (e->policy & engine_policy_sourceterms) == engine_policy_sourceterms;
+
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
@@ -164,6 +168,10 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       if (is_with_cooling)
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL, 0);
+      /* add source terms */
+      if (is_with_sourceterms)
+        c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
+                                           task_subtype_none, 0, 0, c, NULL, 0);
     }
 
   } else { /* We are above the super-cell so need to go deeper */
@@ -1783,11 +1791,17 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       }
 #endif
     }
-
-    /* Cooling tasks should depend on kick and does not unlock anything since
-     it is the last task*/
+    /* Cooling tasks should depend on kick and unlock sourceterms */
     else if (t->type == task_type_cooling) {
       scheduler_addunlock(sched, t->ci->kick, t);
+    }
+    /* source terms depend on cooling if performed, else on kick. It is the last
+       task */
+    else if (t->type == task_type_sourceterms) {
+      if (e->policy == engine_policy_cooling)
+        scheduler_addunlock(sched, t->ci->cooling, t);
+      else
+        scheduler_addunlock(sched, t->ci->kick, t);
     }
   }
 }
@@ -2824,6 +2838,11 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_cooling;
   }
 
+  /* Add the tasks corresponding to sourceterms to the masks */
+  if (e->policy & engine_policy_sourceterms) {
+    mask |= 1 << task_type_sourceterms;
+  }
+
   /* Add MPI tasks if need be */
   if (e->policy & engine_policy_mpi) {
 
@@ -3167,6 +3186,7 @@ void engine_unpin() {
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
+ * @param sourceterms The properties of the source terms function.
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -3175,7 +3195,8 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func) {
+                 const struct cooling_function_data *cooling_func,
+                 struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -3228,6 +3249,7 @@ void engine_init(struct engine *e, struct space *s,
   e->hydro_properties = hydro;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
+  e->sourceterms = sourceterms;
   e->parameter_file = params;
   engine_rank = nodeID;
 
