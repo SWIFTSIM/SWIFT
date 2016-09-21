@@ -121,7 +121,6 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
  *
  * @param e The #engine.
  * @param c The #cell.
- * @param super The super #cell.
  */
 void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
 
@@ -129,9 +128,7 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
   const int is_fixdt = (e->policy & engine_policy_fixdt);
   const int is_hydro = (e->policy & engine_policy_hydro);
   const int is_with_cooling = (e->policy & engine_policy_cooling);
- const int is_with_sourceterms =
-      (e->policy & engine_policy_sourceterms) == engine_policy_sourceterms;
-
+  const int is_with_sourceterms = (e->policy & engine_policy_sourceterms);
 
   /* Are we in a super-cell ? */
   if (c->super == c) {
