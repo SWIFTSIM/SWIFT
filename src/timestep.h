@@ -24,8 +24,8 @@
 
 /* Local headers. */
 #include "const.h"
+#include "cooling.h"
 #include "debug.h"
-
 /**
  * @brief Compute a valid integer time-step form a given time-step
  *

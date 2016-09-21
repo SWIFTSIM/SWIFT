@@ -97,6 +97,9 @@
 #define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 //#define EXTERNAL_POTENTIAL_DISC_PATCH
 
+/* Source terms */
+#define SOURCETERMS_NONE
+//#define SOURCETERMS_SN_FEEDBACK
 
 /* Cooling properties */
 //#define COOLING_NONE
