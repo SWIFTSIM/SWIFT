@@ -8,7 +8,8 @@ iplot = 1 ; if iplot = 1, make plot of E/Lz conservation, else, simply compare f
 @physunits
 
 indir    = './'
-basefile = 'Disk-Patch-dynamic_'
+;basefile = 'Disc-Patch-dynamic_'
+basefile = 'Disc-Patch_'
 
 ; set properties of potential
 uL   = phys.pc                  ; unit of length
@@ -16,18 +17,27 @@ uM   = phys.msun                ; unit of mass
 uV   = 1d5                      ; unit of velocity
 
 ; properties of patch
-surface_density = 10.
+surface_density = 100.          ; surface density of all mass, which generates the gravitational potential
 scale_height    = 100.
-z_disk          = 200.;
+z_disk          = 200.          ;
+fgas            = 0.1           ; gas fraction
 gamma           = 5./3.
 
 ; derived units
 constG   = 10.^(alog10(phys.g)+alog10(uM)-2d0*alog10(uV)-alog10(uL)) ;
 pcentre  = [0.,0.,z_disk] * pc / uL
 utherm     = !pi * constG * surface_density * scale_height / (gamma-1.)
+temp       = (utherm*uV^2)*phys.m_h/phys.kb
 soundspeed = sqrt(gamma * (gamma-1.) * utherm)
 t_dyn      = sqrt(scale_height / (constG * surface_density))
-
+rho0       = fgas*(surface_density)/(2.*scale_height)
+print,' dynamical time = ',t_dyn,' = ',t_dyn*UL/uV/(1d6*phys.yr),' Myr'
+print,' thermal energy per unit mass = ',utherm
+print,' central density = ',rho0,' = ',rho0*uM/uL^3/m_h,' particles/cm^3'
+print,' central temperature = ',temp
+lambda = 2 * !pi * phys.G^1.5 * (scale_height*uL)^1.5 * (surface_density * uM/uL^2)^0.5 * phys.m_h^2 / (gamma-1) / fgas
+print,' lambda = ',lambda
+stop
 ;
 infile = indir + basefile + '*'
 spawn,'ls -1 '+infile,res

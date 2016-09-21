@@ -120,19 +120,11 @@ const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
  * @param timer 1 if the time is to be recorded.
  */
 void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
-
-  struct part *restrict parts = c->parts;
-  struct xpart *restrict xparts = c->xparts;
   const int count = c->count;
   const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
   const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
-  const int ti_current = r->e->ti_current;
   struct sourceterms *sourceterms = r->e->sourceterms;
-  const double location[3] = {sourceterms->supernova.x,
-                              sourceterms->supernova.y,
-                              sourceterms->supernova.z};
   const int dimen = 3;
-  const double timeBase = r->e->timeBase;
 
   TIMER_TIC;
 
@@ -143,78 +135,13 @@ void runner_do_sourceterms(struct runner *r, struct cell *c, int timer) {
     return;
   }
 
-  /* is supernova still active? */
-  if (sourceterms->supernova.status == supernova_is_not_done) {
-    /* does cell contain explosion? */
-    if (count > 0) {
-      const int incell = is_in_cell(cell_min, cell_width, location, dimen);
-      if (incell == 1) {
+  if (count > 0) {
 
-        /* inject SN energy into particle with highest id, if it is active */
-        int imax = 0;
-        struct part *restrict p_sn = NULL;
-        struct xpart *restrict xp_sn = NULL;
-
-        for (int i = 0; i < count; i++) {
-
-          /* Get a direct pointer on the part. */
-          struct part *restrict p = &parts[i];
-          if (p->id > imax) {
-            imax = p->id;
-            p_sn = p;
-            xp_sn = &xparts[i];
-          }
-        }
-
-        /* Is this part within the time step? */
-        if (p_sn->ti_begin == ti_current) {
-
-          /* Does this time step straddle the feedback injection time? */
-          const float t_begin = p_sn->ti_begin * timeBase;
-          const float t_end = p_sn->ti_end * timeBase;
-          if (t_begin <= sourceterms->supernova.time &&
-              t_end > sourceterms->supernova.time) {
-
-            /* store old time step */
-            const int dti_old = p_sn->ti_end - p_sn->ti_begin;
-
-            /* add supernova feedback */
-            do_supernova_feedback(sourceterms, p_sn);
-
-            /* label supernova as done */
-            sourceterms->supernova.status = supernova_is_done;
-            message(" applied super nova, time = %d, location= %e %e %e",
-                    ti_current, p_sn->x[0], p_sn->x[1], p_sn->x[2]);
-            message(" applied super nova, velocity = %e %e %e", p_sn->v[0],
-                    p_sn->v[1], p_sn->v[2]);
-
-            /* update timestep if new time step shorter than old time step */
-            const int dti = get_part_timestep(p_sn, xp_sn, r->e);
-            if (dti < dti_old) {
-              p_sn->ti_end = p_sn->ti_begin + dti;
-              message(" changed timestep from %d to %d", dti_old, dti);
-
-              /* apply simple time-step limiter on all particles in same cell:
-               */
-              int i_limit = 0;
-              for (int i = 0; i < count; i++) {
-                struct part *restrict p = &parts[i];
-                const int dti_old = p->ti_end - p->ti_begin;
-                if (dti_old > 2 * dti) {
-                  i_limit++;
-                  const int dti_new = 2 * dti;
-                  p->ti_end = p->ti_begin + dti_new;
-                  message(" old step = %d new step = %d", dti_old, dti_new);
-                } else
-                  message(" old step = %d", dti_old);
-              }
-              message(" count= %d limited timestep of %d particles ", count,
-                      i_limit);
-            }
-            //				  error(" check! ");
-          }
-        }
-      }
+    /* do sourceterms in this cell? */
+    const int incell =
+        sourceterms_test_cell(cell_min, cell_width, sourceterms, dimen);
+    if (incell == 1) {
+      sourceterms_apply(r, sourceterms, c);
     }
   }
 

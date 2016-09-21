@@ -44,7 +44,7 @@
 #include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
-#include "sourceterms.h"
+#include "sourceterms_struct.h"
 #include "space.h"
 #include "task.h"
 #include "units.h"

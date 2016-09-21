@@ -22,6 +22,7 @@
 
 /* Local includes. */
 #include "const.h"
+#include "hydro.h"
 #include "parser.h"
 #include "units.h"
 
@@ -29,7 +30,7 @@
 #include "sourceterms.h"
 
 /**
- * @brief Initialises the source terms
+ * @brief Initialises the sourceterms
  *
  * @param parameter_file The parsed parameter file
  * @param us The current internal system of units
@@ -37,30 +38,23 @@
  */
 void sourceterms_init(const struct swift_params* parameter_file,
                       struct UnitSystem* us, struct sourceterms* source) {
-
-#ifdef SN_FEEDBACK
-  source->supernova.time = parser_get_param_double(parameter_file, "SN:time");
-  source->supernova.energy =
-      parser_get_param_double(parameter_file, "SN:energy");
-  source->supernova.x = parser_get_param_double(parameter_file, "SN:x");
-  source->supernova.y = parser_get_param_double(parameter_file, "SN:y");
-  source->supernova.z = parser_get_param_double(parameter_file, "SN:z");
-  source->supernova.status = supernova_is_not_done;
-#endif /* SN_FEEDBCK */
+#ifdef SOURCETERMS_SN_FEEDBACK
+  supernova_init(parameter_file, us, source);
+#endif /* SOURCETERMS_SN_FEEDBACK */
 };
 
 /**
- * @brief Prints the properties of the external potential to stdout.
- *
+ * @brief Prints the properties of the source terms to stdout
  * @param source the structure that has all the source term properties
  */
 void sourceterms_print(struct sourceterms* source) {
-
-#ifdef SN_FEEDBACK
-  message(
-      " Single SNe of energy= %e will explode at time= %e at location "
-      "(%e,%e,%e)",
-      source->supernova.energy, source->supernova.time, source->supernova.x,
-      source->supernova.y, source->supernova.z);
-#endif /* SN_FEEDBACK */
+#ifdef SOURCETERMS_NONE
+  error(" no sourceterms defined yet you ran with -F");
+#ifdef SOURCETERMS_SN_FEEDBACK
+#error can't have sourceterms when defined SOURCETERMS_NONE
+#endif
+#endif
+#ifdef SOURCETERMS_SN_FEEDBACK
+  supernova_print(source);
+#endif /* SOURCETERMS_SN_FEEDBACK */
 };

@@ -97,7 +97,8 @@
 //#define EXTERNAL_POTENTIAL_DISC_PATCH
 
 /* Source terms */
-#define SN_FEEDBACK
+#define SOURCETERMS_NONE
+//#define SOURCETERMS_SN_FEEDBACK
 
 /* Cooling properties */
 #define COOLING_NONE
