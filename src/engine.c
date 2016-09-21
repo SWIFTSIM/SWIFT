@@ -1799,7 +1799,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
     /* Cooling tasks should depend on kick and unlock sourceterms */
     else if (t->type == task_type_cooling) {
       scheduler_addunlock(sched, t->ci->kick, t);
-      scheduler_addunlock(sched, t->ci->sourceterms, t);
     }
     /* source terms depend on cooling if performed, else on kick. It is the last
        task */
