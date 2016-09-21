@@ -43,7 +43,8 @@ include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h \
     engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h \
     common_io.h single_io.h multipole.h map.h tools.h partition.h clocks.h parser.h \
     physical_constants.h physical_constants_cgs.h potential.h version.h \
-    hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h
+    hydro_properties.h riemann.h threadpool.h cooling.h cooling_struct.h sourceterms.h \
+    sourceterms_struct.h
 
 
 # Common source files
