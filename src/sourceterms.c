@@ -51,7 +51,7 @@ void sourceterms_print(struct sourceterms* source) {
 #ifdef SOURCETERMS_NONE
   error(" no sourceterms defined yet you ran with -F");
 #ifdef SOURCETERMS_SN_FEEDBACK
-#error can't have sourceterms when defined SOURCETERMS_NONE
+#error "can't have sourceterms when defined SOURCETERMS_NONE"
 #endif
 #endif
 #ifdef SOURCETERMS_SN_FEEDBACK
