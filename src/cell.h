@@ -216,9 +216,6 @@ struct cell {
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
-#define cell_getid2(cdim_x, cdim_y, cdim_z, i, j, k) \
-  ((int)(k) + cdim_z * ((int)(j) + cdim_y * (int)(i)))
-
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset);
 void cell_sanitize(struct cell *c);

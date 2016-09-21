@@ -756,9 +756,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  // const int cdim_x = s->cdim[0];
-  const int cdim_y = s->cdim[1];
-  const int cdim_z = s->cdim[2];
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double ih_x = s->iwidth[0];
   const double ih_y = s->iwidth[1];
   const double ih_z = s->iwidth[2];
@@ -778,8 +776,8 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
 
     /* Get its cell index */
-    const int index = cell_getid2(0., cdim_y, cdim_z, pos_x * ih_x,
-                                  pos_y * ih_y, pos_z * ih_z);
+    const int index =
+        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
 
     /* Update the position */
@@ -806,24 +804,37 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
 
   /* Get some constants */
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const double dim_x = s->dim[0];
+  const double dim_y = s->dim[1];
+  const double dim_z = s->dim[2];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
+  const double ih_x = s->iwidth[0];
+  const double ih_y = s->iwidth[1];
+  const double ih_z = s->iwidth[2];
 
   for (int k = 0; k < nr_gparts; k++) {
 
     /* Get the particle */
     struct gpart *restrict gp = &gparts[k];
 
+    const double old_pos_x = gp->x[0];
+    const double old_pos_y = gp->x[1];
+    const double old_pos_z = gp->x[2];
+
     /* Put it back into the simulation volume */
-    gp->x[0] = box_wrap(gp->x[0], 0.0, dim[0]);
-    gp->x[1] = box_wrap(gp->x[1], 0.0, dim[1]);
-    gp->x[2] = box_wrap(gp->x[2], 0.0, dim[2]);
+    const double pos_x = box_wrap(old_pos_x, 0.0, dim_x);
+    const double pos_y = box_wrap(old_pos_y, 0.0, dim_y);
+    const double pos_z = box_wrap(old_pos_z, 0.0, dim_z);
 
     /* Get its cell index */
     const int index =
-        cell_getid(cdim, gp->x[0] * ih[0], gp->x[1] * ih[1], gp->x[2] * ih[2]);
+        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
     ind[k] = index;
+
+    /* Update the position */
+    gp->x[0] = pos_x;
+    gp->x[1] = pos_y;
+    gp->x[2] = pos_z;
   }
 }
 
