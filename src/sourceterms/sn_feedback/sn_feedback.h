@@ -111,25 +111,24 @@ __attribute__((always_inline)) INLINE static void supernova_feedback_apply(
 
       /* add supernova feedback */
       const float u_old = hydro_get_internal_energy(p_sn, 0);
-      message(" u_old= %e entropy= %e", u_old, p_sn->entropy);
+      const float ent_old = hydro_get_entropy(p_sn, 0.0);
       const float u_new =
           u_old + sourceterms->supernova.energy / hydro_get_mass(p_sn);
       hydro_set_internal_energy(p_sn, u_new);
       const float u_set = hydro_get_internal_energy(p_sn, 0.0);
       const float ent_set = hydro_get_entropy(p_sn, 0.0);
-      message(" unew = %e %e s= %e", u_new, u_set, ent_set);
+      message(
+          " applied super nova, time = %e, location= %e %e %e velocity= %e %e "
+          "%e",
+          ti_current * timeBase, p_sn->x[0], p_sn->x[1], p_sn->x[2], p_sn->v[0],
+          p_sn->v[1], p_sn->v[2]);
       message(
           " injected SN energy in particle = %lld, increased energy from %e to "
-          "%e, "
-          "check= %e",
-          p_sn->id, u_old, u_new, u_set);
+          "%e and is notw %e, entropy from %e to %e",
+          p_sn->id, u_old, u_new, u_set, ent_old, ent_set);
 
       /* label supernova as done */
       sourceterms->supernova.status = supernova_is_done;
-      message(" applied super nova, time = %d, location= %e %e %e", ti_current,
-              p_sn->x[0], p_sn->x[1], p_sn->x[2]);
-      message(" applied super nova, velocity = %e %e %e", p_sn->v[0],
-              p_sn->v[1], p_sn->v[2]);
 
       /* update timestep if new time step shorter than old time step */
       const int dti = get_part_timestep(p_sn, xp_sn, r->e);
@@ -153,6 +152,7 @@ __attribute__((always_inline)) INLINE static void supernova_feedback_apply(
         }
         message(" count= %d limited timestep of %d particles ", count, i_limit);
       } /* end of limiter */
+      error("end");
     }
   }
 };
