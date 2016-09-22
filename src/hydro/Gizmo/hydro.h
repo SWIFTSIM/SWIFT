@@ -150,18 +150,16 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* compute primitive variables */
   /* eqns (3)-(5) */
   const float m = p->conserved.mass;
-  if (m > 0.f) {
-    float momentum[3];
-    momentum[0] = p->conserved.momentum[0];
-    momentum[1] = p->conserved.momentum[1];
-    momentum[2] = p->conserved.momentum[2];
-    p->primitives.rho = m / volume;
-    p->primitives.v[0] = momentum[0] / m;
-    p->primitives.v[1] = momentum[1] / m;
-    p->primitives.v[2] = momentum[2] / m;
-    const float energy = p->conserved.energy;
-    p->primitives.P = hydro_gamma_minus_one * energy / volume;
-  }
+  float momentum[3];
+  momentum[0] = p->conserved.momentum[0];
+  momentum[1] = p->conserved.momentum[1];
+  momentum[2] = p->conserved.momentum[2];
+  p->primitives.rho = m / volume;
+  p->primitives.v[0] = momentum[0] / m;
+  p->primitives.v[1] = momentum[1] / m;
+  p->primitives.v[2] = momentum[2] / m;
+  const float energy = p->conserved.energy;
+  p->primitives.P = hydro_gamma_minus_one * energy / volume;
 }
 
 /**
@@ -258,6 +256,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   const float volume = p->geometry.volume;
   const float m = p->conserved.mass;
   p->primitives.rho = m / volume;
+
+  /* first get the initial velocities, as they were overwritten in end_density
+   */
+  p->primitives.v[0] = p->v[0];
+  p->primitives.v[1] = p->v[1];
+  p->primitives.v[2] = p->v[2];
 
   p->conserved.momentum[0] = m * p->primitives.v[0];
   p->conserved.momentum[1] = m * p->primitives.v[1];

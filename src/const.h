@@ -65,6 +65,7 @@
 /* SPH variant to use */
 //#define MINIMAL_SPH
 #define GADGET2_SPH
+//#define HOPKINS_PE_SPH
 //#define DEFAULT_SPH
 //#define GIZMO_SPH
 
@@ -94,6 +95,10 @@
 //#define EXTERNAL_POTENTIAL_POINTMASS
 //#define EXTERNAL_POTENTIAL_ISOTHERMALPOTENTIAL
 //#define EXTERNAL_POTENTIAL_DISC_PATCH
+
+/* Source terms */
+#define SOURCETERMS_NONE
+//#define SOURCETERMS_SN_FEEDBACK
 
 /* Cooling properties */
 #define COOLING_NONE

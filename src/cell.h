@@ -168,6 +168,9 @@ struct cell {
   /* Task for cooling */
   struct task *cooling;
 
+  /* Task for source terms */
+  struct task *sourceterms;
+
   /* Number of tasks that are associated with this cell. */
   int nr_tasks;
 
@@ -218,6 +221,7 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset);
+void cell_sanitize(struct cell *c);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,24 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_HYDRO_IO_H
-#define SWIFT_HYDRO_IO_H
-
+#ifndef SWIFT_SOURCETERMS_STRUCT_H
+#define SWIFT_SOURCETERMS_STRUCT_H
 #include "./const.h"
-
-/* Import the right functions */
-#if defined(MINIMAL_SPH)
-#include "./hydro/Minimal/hydro_io.h"
-#elif defined(GADGET2_SPH)
-#include "./hydro/Gadget2/hydro_io.h"
-#elif defined(HOPKINS_PE_SPH)
-#include "./hydro/PressureEntropy/hydro_io.h"
-#elif defined(DEFAULT_SPH)
-#include "./hydro/Default/hydro_io.h"
-#elif defined(GIZMO_SPH)
-#include "./hydro/Gizmo/hydro_io.h"
-#else
-#error "Invalid choice of SPH variant"
+#ifdef SOURCETERMS_SN_FEEDBACK
+#include "sourceterms/sn_feedback/sn_feedback_struct.h"
 #endif
 
-#endif /* SWIFT_HYDRO_IO_H */
+#endif /*  SWIFT_SOURCETERMS_STRUCT_H */

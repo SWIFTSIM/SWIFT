@@ -68,7 +68,7 @@
 #include "units.h"
 #include "version.h"
 
-const char *engine_policy_names[15] = {"none",
+const char *engine_policy_names[16] = {"none",
                                        "rand",
                                        "steal",
                                        "keep",
@@ -82,7 +82,8 @@ const char *engine_policy_names[15] = {"none",
                                        "external_gravity",
                                        "cosmology_integration",
                                        "drift_all",
-                                       "cooling"};
+                                       "cooling",
+                                       "sourceterms"};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -187,6 +188,8 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
   const int is_fixdt = (e->policy & engine_policy_fixdt) == engine_policy_fixdt;
   const int is_with_cooling =
       (e->policy & engine_policy_cooling) == engine_policy_cooling;
+  const int is_with_sourceterms =
+      (e->policy & engine_policy_sourceterms) == engine_policy_sourceterms;
 
   /* Is this the super-cell? */
   if (super == NULL && (c->density != NULL || (c->count > 0 && !c->split))) {
@@ -216,16 +219,18 @@ void engine_make_hydro_hierarchical_tasks(struct engine *e, struct cell *c,
       /* Generate the ghost task. */
       c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
-
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
       c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                          task_subtype_none, 0, 0, c, NULL, 0);
 #endif
-
       if (is_with_cooling)
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL, 0);
+      /* add source terms */
+      if (is_with_sourceterms)
+        c->sourceterms = scheduler_addtask(s, task_type_sourceterms,
+                                           task_subtype_none, 0, 0, c, NULL, 0);
     }
   }
 
@@ -1782,11 +1787,17 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
       scheduler_addunlock(sched, t->ci->init, t);
       scheduler_addunlock(sched, t, t->ci->kick);
     }
-
-    /* Cooling tasks should depend on kick and does not unlock anything since
-     it is the last task*/
+    /* Cooling tasks should depend on kick and unlock sourceterms */
     else if (t->type == task_type_cooling) {
       scheduler_addunlock(sched, t->ci->kick, t);
+    }
+    /* source terms depend on cooling if performed, else on kick. It is the last
+       task */
+    else if (t->type == task_type_sourceterms) {
+      if (e->policy == engine_policy_cooling)
+        scheduler_addunlock(sched, t->ci->cooling, t);
+      else
+        scheduler_addunlock(sched, t->ci->kick, t);
     }
   }
 }
@@ -2195,6 +2206,8 @@ void engine_rebuild(struct engine *e) {
 
   /* Re-build the space. */
   space_rebuild(e->s, 0.0, e->verbose);
+
+  if (e->ti_current == 0) space_sanitize(e->s);
 
 /* If in parallel, exchange the cell structure. */
 #ifdef WITH_MPI
@@ -2611,7 +2624,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   TIMER_TOC(timer_runners);
 
   /* Apply some conversions (e.g. internal energy -> entropy) */
-  if (!flag_entropy_ICs) space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+  if (!flag_entropy_ICs) {
+
+    /* Apply the conversion */
+    space_map_cells_pre(s, 0, cell_convert_hydro, NULL);
+
+    /* Correct what we did (e.g. in PE-SPH, need to recompute rho_bar) */
+    if (hydro_need_extra_init_loop)
+      engine_launch(e, e->nr_threads, mask, submask);
+  }
 
   clocks_gettime(&time2);
 
@@ -2763,6 +2784,11 @@ void engine_step(struct engine *e) {
     mask |= 1 << task_type_cooling;
   }
 
+  /* Add the tasks corresponding to sourceterms to the masks */
+  if (e->policy & engine_policy_sourceterms) {
+    mask |= 1 << task_type_sourceterms;
+  }
+
   /* Add MPI tasks if need be */
   if (e->policy & engine_policy_mpi) {
 
@@ -2772,6 +2798,8 @@ void engine_step(struct engine *e) {
   }
   
   engine_print_task_counts(e);
+
+  if (e->verbose) engine_print_task_counts(e);
 
   /* Send off the runners. */
   TIMER_TIC;
@@ -3106,6 +3134,7 @@ void engine_unpin() {
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
+ * @param sourceterms The properties of the source terms function.
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
@@ -3114,7 +3143,8 @@ void engine_init(struct engine *e, struct space *s,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
-                 const struct cooling_function_data *cooling_func) {
+                 const struct cooling_function_data *cooling_func,
+                 struct sourceterms *sourceterms) {
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -3167,6 +3197,7 @@ void engine_init(struct engine *e, struct space *s,
   e->hydro_properties = hydro;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
+  e->sourceterms = sourceterms;
   e->parameter_file = params;
   engine_rank = nodeID;
 

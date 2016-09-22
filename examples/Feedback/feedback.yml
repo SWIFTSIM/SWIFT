@@ -15,13 +15,13 @@ TimeIntegration:
 
 # Parameters governing the snapshots
 Snapshots:
-  basename:            sedov # Common part of the name of output files
-  time_first:          0.    # Time of the first output (in internal units)
-  delta_time:          1e-2  # Time difference between consecutive outputs (in internal units)
+  basename:            Feedback # Common part of the name of output files
+  time_first:          0.       # Time of the first output (in internal units)
+  delta_time:          1e-2     # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
-  delta_time:          1e-5 # Time between statistics output
+  delta_time:          1e-3 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -32,5 +32,13 @@ SPH:
 
 # Parameters related to the initial conditions
 InitialConditions:
-  file_name:  ./sedov.hdf5          # The file to read
+  file_name:  ./Feedback.hdf5          # The file to read
 
+# Parameters for feedback
+
+SN:
+	time:    0.001 # time the SN explodes (internal units)
+	energy:  1.0   # energy of the explosion (internal units)
+	x:       0.5   # x-position of explostion (internal units)
+	y:       0.5   # y-position of explostion (internal units)
+	z:       0.5   # z-position of explostion (internal units)

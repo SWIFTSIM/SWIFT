@@ -104,11 +104,18 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         }
         part->h = size * h / (float)n;
         part->id = ++(*partId);
+
 #ifdef GIZMO_SPH
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
 #endif
+
+#if defined(HOPKINS_PE_SPH)
+        part->entropy = 1.f;
+        part->entropy_one_over_gamma = 1.f;
+#endif
+
         part->ti_begin = 0;
         part->ti_end = 1;
         ++part;
@@ -193,16 +200,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(GIZMO_SPH)
             0.f,
 #else
-            main_cell->parts[pid].rho_dh,
+            main_cell->parts[pid].density.rho_dh,
 #endif
             main_cell->parts[pid].density.wcount,
             main_cell->parts[pid].density.wcount_dh,
-#if defined(GADGET2_SPH)
-            main_cell->parts[pid].density.div_v,
-            main_cell->parts[pid].density.rot_v[0],
-            main_cell->parts[pid].density.rot_v[1],
-            main_cell->parts[pid].density.rot_v[2]
-#elif defined(DEFAULT_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
             main_cell->parts[pid].density.div_v,
             main_cell->parts[pid].density.rot_v[0],
             main_cell->parts[pid].density.rot_v[1],
@@ -235,13 +237,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(GIZMO_SPH)
               0.f,
 #else
-              main_cell->parts[pjd].rho_dh,
+              main_cell->parts[pjd].density.rho_dh,
 #endif
               cj->parts[pjd].density.wcount, cj->parts[pjd].density.wcount_dh,
-#if defined(GADGET2_SPH)
-              cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
-              cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
-#elif defined(DEFAULT_SPH)
+#if defined(GADGET2_SPH) || defined(DEFAULT_SPH) || defined(HOPKINS_PE_SPH)
               cj->parts[pjd].density.div_v, cj->parts[pjd].density.rot_v[0],
               cj->parts[pjd].density.rot_v[1], cj->parts[pjd].density.rot_v[2]
 #else

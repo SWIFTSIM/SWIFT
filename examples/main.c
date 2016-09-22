@@ -76,6 +76,7 @@ void print_help_message() {
          "Overwrite the CPU frequency (Hz) to be used for time measurements");
   printf("  %2s %8s %s\n", "-g", "",
          "Run with an external gravitational potential");
+  printf("  %2s %8s %s\n", "-F", "", "Run with feedback ");
   printf("  %2s %8s %s\n", "-G", "", "Run with self-gravity");
   printf("  %2s %8s %s\n", "-n", "{int}",
          "Execute a fixed number of time steps. When unset use the time_end "
@@ -147,6 +148,7 @@ int main(int argc, char *argv[]) {
   int nsteps = -2;
   int with_cosmology = 0;
   int with_external_gravity = 0;
+  int with_sourceterms = 0;
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
@@ -159,7 +161,7 @@ int main(int argc, char *argv[]) {
 
   /* Parse the parameters */
   int c;
-  while ((c = getopt(argc, argv, "acCdDef:gGhn:st:v:y:")) != -1) switch (c) {
+  while ((c = getopt(argc, argv, "acCdDef:FgGhn:st:v:y:")) != -1) switch (c) {
       case 'a':
         with_aff = 1;
         break;
@@ -184,6 +186,9 @@ int main(int argc, char *argv[]) {
           if (myrank == 0) print_help_message();
           return 1;
         }
+        break;
+      case 'F':
+        with_sourceterms = 1;
         break;
       case 'g':
         with_external_gravity = 1;
@@ -444,6 +449,11 @@ int main(int argc, char *argv[]) {
   if (with_cooling) cooling_init(params, &us, &prog_const, &cooling_func);
   if (with_cooling && myrank == 0) cooling_print(&cooling_func);
 
+  /* Initialise the feedback properties */
+  struct sourceterms sourceterms;
+  if (with_sourceterms) sourceterms_init(params, &us, &sourceterms);
+  if (with_sourceterms && myrank == 0) sourceterms_print(&sourceterms);
+
   /* Construct the engine policy */
   int engine_policies = ENGINE_POLICY | engine_policy_steal;
   if (with_drift_all) engine_policies |= engine_policy_drift_all;
@@ -452,13 +462,14 @@ int main(int argc, char *argv[]) {
   if (with_external_gravity) engine_policies |= engine_policy_external_gravity;
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
   if (with_cooling) engine_policies |= engine_policy_cooling;
+  if (with_sourceterms) engine_policies |= engine_policy_sourceterms;
 
   /* Initialize the engine with the space and policies. */
   if (myrank == 0) clocks_gettime(&tic);
   struct engine e;
   engine_init(&e, &s, params, nr_nodes, myrank, nr_threads, with_aff,
               engine_policies, talking, &us, &prog_const, &hydro_properties,
-              &potential, &cooling_func);
+              &potential, &cooling_func, &sourceterms);
   if (myrank == 0) {
     clocks_gettime(&toc);
     message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
