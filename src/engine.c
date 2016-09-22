@@ -2694,8 +2694,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
  * @brief Let the #engine loose to compute the forces.
  *
  * @param e The #engine.
- */
-void engine_step(struct engine *e) {
+ * @param reparttype type of repartitioning to use (MPI only)
+*/
+void engine_step(struct engine *e, enum repartition_type reparttype) {
 
   double snapshot_drift_time = 0.;
 
@@ -2708,6 +2709,27 @@ void engine_step(struct engine *e) {
 
   /* Recover the (integer) end of the next time-step */
   engine_collect_timestep(e);
+
+  /* If the last step updated all particles then repartition the space around
+   * the nodes.
+   *
+   * XXX handle fixdt, that will repartition all the time.
+   *
+   * XXX Look at node balance, try to use that to decide if necessary.
+   */
+#ifdef WITH_MPI
+  if (e->nodeID == 0) {
+    if ((e->updates != 0 && e->updates == e->total_nr_parts) ||
+        (e->g_updates != 0 && e->g_updates == e->total_nr_gparts)) {
+      message("will repartition %ld %ld %ld %ld", e->updates,
+              e->total_nr_parts, e->g_updates, e->total_nr_gparts);
+      e->forcerepart = reparttype;
+    }
+  }
+
+  /* All nodes do this together. */
+  MPI_Bcast(&e->forcerepart, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
 
   /* Check for output */
   while (e->ti_end_min >= e->ti_nextSnapshot && e->ti_nextSnapshot > 0) {
@@ -3171,6 +3193,8 @@ void engine_unpin() {
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
  * @param nr_threads The number of threads per MPI rank.
+ * @param Ngas total number of gas particles in the simulation.
+ * @param Ndm total number of gravity particles in the simulation.
  * @param with_aff use processor affinity, if supported.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
@@ -3183,8 +3207,8 @@ void engine_unpin() {
  */
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int with_aff, int policy, int verbose,
-                 const struct UnitSystem *internal_units,
+                 int nr_threads, int Ngas, int Ndm, int with_aff, int policy,
+                 int verbose, const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
@@ -3201,6 +3225,8 @@ void engine_init(struct engine *e, struct space *s,
   e->step = 0;
   e->nr_nodes = nr_nodes;
   e->nodeID = nodeID;
+  e->total_nr_parts = Ngas;
+  e->total_nr_gparts = Ndm;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
   e->forcerebuild = 1;

@@ -140,6 +140,9 @@ struct engine {
   /* Number of particles updated */
   size_t updates, g_updates;
 
+  /* Total numbers of particles in the system. */
+  size_t total_nr_parts, total_nr_gparts;
+
   /* The internal system of units */
   const struct UnitSystem *internalUnits;
 
@@ -223,8 +226,8 @@ void engine_drift(struct engine *e);
 void engine_dump_snapshot(struct engine *e);
 void engine_init(struct engine *e, struct space *s,
                  const struct swift_params *params, int nr_nodes, int nodeID,
-                 int nr_threads, int with_aff, int policy, int verbose,
-                 const struct UnitSystem *internal_units,
+                 int nr_threads, int Ngas, int Ndm, int with_aff, int policy,
+                 int verbose, const struct UnitSystem *internal_units,
                  const struct phys_const *physical_constants,
                  const struct hydro_props *hydro,
                  const struct external_potential *potential,
@@ -235,7 +238,7 @@ void engine_launch(struct engine *e, int nr_runners, unsigned int mask,
 void engine_prepare(struct engine *e, int nodrift);
 void engine_print(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs);
-void engine_step(struct engine *e);
+void engine_step(struct engine *e, enum repartition_type reparttype);
 void engine_maketasks(struct engine *e);
 void engine_split(struct engine *e, struct partition *initial_partition);
 void engine_exchange_strays(struct engine *e, size_t offset_parts,
