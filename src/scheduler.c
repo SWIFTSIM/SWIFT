@@ -42,6 +42,7 @@
 #include "atomic.h"
 #include "const.h"
 #include "cycle.h"
+#include "engine.h"
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
@@ -1048,6 +1049,48 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* Re-wait the tasks. */
   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 1000, s);
+
+/* Check we have not missed an active task */
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const int ti_current = s->space->e->ti_current;
+  for (int k = 0; k < s->nr_tasks; k++) {
+
+    struct task *t = &s->tasks[k];
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+
+    if (cj == NULL) { /* self */
+
+      if (ci->ti_end_min == ti_current && t->skip && t->type != task_type_sort)
+        error(
+            "Task (type='%s/%s') should not have been skipped ti_current=%d "
+            "c->ti_end_min=%d",
+            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+            ci->ti_end_min);
+
+      /* Special treatment for sort tasks */
+      if (ci->ti_end_min == ti_current && t->skip &&
+          t->type == task_type_sort && t->flags == 0)
+        error(
+            "Task (type='%s/%s') should not have been skipped ti_current=%d "
+            "c->ti_end_min=%d t->flags=%d",
+            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+            ci->ti_end_min, t->flags);
+
+    } else { /* pair */
+
+      if ((ci->ti_end_min == ti_current || cj->ti_end_min == ti_current) &&
+          t->skip)
+        error(
+            "Task (type='%s/%s') should not have been skipped ti_current=%d "
+            "ci->ti_end_min=%d cj->ti_end_min=%d",
+            taskID_names[t->type], subtaskID_names[t->subtype], ti_current,
+            ci->ti_end_min, cj->ti_end_min);
+    }
+  }
+
+#endif
 
   /* Loop over the tasks and enqueue whoever is ready. */
   threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,

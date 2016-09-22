@@ -760,7 +760,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   struct part *const parts = c->parts;
   struct xpart *const xparts = c->xparts;
   struct gpart *const gparts = c->gparts;
-  
+
   /* Clear the active particle counters. */
   c->updated = 0;
   c->g_updated = 0;
@@ -1324,6 +1324,25 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
       t->rid = r->cpuid;
+
+/* Check that we haven't scheduled an inactive task */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (cj == NULL) { /* self */
+        if (ci->ti_end_min > e->ti_current)
+          error(
+              "Task (type='%s/%s') should have been skipped ti_current=%d "
+              "c->ti_end_min=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
+              ci->ti_end_min);
+      } else { /* pair */
+        if (ci->ti_end_min > e->ti_current && cj->ti_end_min > e->ti_current)
+          error(
+              "Task (type='%s/%s') should have been skipped ti_current=%d "
+              "ci->ti_end_min=%d cj->ti_end_min=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
+              ci->ti_end_min, cj->ti_end_min);
+      }
+#endif
 
       /* Different types of tasks... */
       switch (t->type) {
