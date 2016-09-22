@@ -159,7 +159,12 @@ AC_C_INLINE
 if test "x$enable_debug" = "xyes"; then
    #  Show inlined functions.
    if test "$ax_cv_c_compiler_vendor" = "gnu"; then
-      CFLAGS="$CFLAGS -gdwarf -fvar-tracking-assignments"
+      # Would like to use -gdwarf and let the compiler pick a good version
+      # but that doesn't always work.
+      AX_CHECK_COMPILE_FLAG([-gdwarf -fvar-tracking-assignments],
+        [inline_EXTRA_FLAGS="-gdwarf -fvar-tracking-assignments"],
+        [inline_EXTRA_FLAGS="-gdwarf-2 -fvar-tracking-assignments"])
+      CFLAGS="$CFLAGS $inline_EXTRA_FLAGS"
    elif test "$ax_cv_c_compiler_vendor" = "intel"; then
       CFLAGS="$CFLAGS -debug inline-debug-info"
    fi
