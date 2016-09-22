@@ -153,26 +153,20 @@ void engine_make_hierarchical_tasks(struct engine *e, struct cell *c) {
       }
 
       /* Generate the ghost task. */
-<<<<<<< HEAD
-      if (is_hydro)
-        c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0,
-                                     0, c, NULL, 0);
 
-=======
       c->ghost = scheduler_addtask(s, task_type_ghost, task_subtype_none, 0, 0,
                                    c, NULL, 0);
->>>>>>> master
+
 #ifdef EXTRA_HYDRO_LOOP
       /* Generate the extra ghost task. */
       if (is_hydro)
         c->extra_ghost = scheduler_addtask(s, task_type_extra_ghost,
                                            task_subtype_none, 0, 0, c, NULL, 0);
 #endif
-<<<<<<< HEAD
+
 
       /* Cooling task */
-=======
->>>>>>> master
+
       if (is_with_cooling)
         c->cooling = scheduler_addtask(s, task_type_cooling, task_subtype_none,
                                        0, 0, c, NULL, 0);
@@ -1800,17 +1794,13 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 #endif
     }
 
-<<<<<<< HEAD
-    /* Cooling tasks should depend on kick and does not unlock anything since
-     it is the last task*/
-=======
     /* External gravity tasks should depend on init and unlock the kick */
     else if (t->type == task_type_grav_external) {
       scheduler_addunlock(sched, t->ci->init, t);
       scheduler_addunlock(sched, t, t->ci->kick);
     }
     /* Cooling tasks should depend on kick and unlock sourceterms */
->>>>>>> master
+
     else if (t->type == task_type_cooling) {
       scheduler_addunlock(sched, t->ci->kick, t);
     }
