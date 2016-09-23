@@ -907,6 +907,9 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   /* Update the time of the last drift */
   c->ti_old = ti_current;
 
+  /* Do we have at least one active particle in the cell ?*/
+  if (c->ti_end_min > ti_current) return;
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -1328,12 +1331,22 @@ void *runner_main(void *data) {
 /* Check that we haven't scheduled an inactive task */
 #ifdef SWIFT_DEBUG_CHECKS
       if (cj == NULL) { /* self */
-        if (ci->ti_end_min > e->ti_current)
+        if (ci->ti_end_min > e->ti_current && t->type != task_type_sort)
           error(
               "Task (type='%s/%s') should have been skipped ti_current=%d "
               "c->ti_end_min=%d",
               taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
               ci->ti_end_min);
+
+        /* Special case for sorts */
+        if (ci->ti_end_min > e->ti_current && t->type == task_type_sort &&
+            t->flags == 0)
+          error(
+              "Task (type='%s/%s') should have been skipped ti_current=%d "
+              "c->ti_end_min=%d t->flags=%d",
+              taskID_names[t->type], subtaskID_names[t->subtype], e->ti_current,
+              ci->ti_end_min, t->flags);
+
       } else { /* pair */
         if (ci->ti_end_min > e->ti_current && cj->ti_end_min > e->ti_current)
           error(
