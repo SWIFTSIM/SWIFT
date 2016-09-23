@@ -765,6 +765,9 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   c->updated = 0;
   c->g_updated = 0;
 
+  /* Should we abort as a rebuild has been triggered ? */
+  if (e->forcerebuild) return;
+
   /* Do we need to drift ? */
   if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
 
@@ -907,59 +910,13 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   /* Update the time of the last drift */
   c->ti_old = ti_current;
 
-  /* Do we have at least one active particle in the cell ?*/
-  if (c->ti_end_min > ti_current) return;
+  /* Now let's un-skip the tasks associated with this active cell */
+  if (c->ti_end_min == ti_current) {
 
-  /* Un-skip the density tasks involved with this cell. */
-  for (struct link *l = c->density; l != NULL; l = l->next) {
-    struct task *t = l->t;
-    const struct cell *ci = t->ci;
-    const struct cell *cj = t->cj;
-    t->skip = 0;
-    if (t->type == task_type_pair) {
-      if (!(ci->sorted & (1 << t->flags))) {
-        atomic_or(&ci->sorts->flags, (1 << t->flags));
-        ci->sorts->skip = 0;
-      }
-      if (!(cj->sorted & (1 << t->flags))) {
-        atomic_or(&cj->sorts->flags, (1 << t->flags));
-        cj->sorts->skip = 0;
-      }
-    }
-    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-      if (t->tight &&
-          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
-           ci->dx_max > space_maxreldx * ci->h_max ||
-           cj->dx_max > space_maxreldx * cj->h_max))
-        e->forcerebuild = 1;
-#ifdef WITH_MPI
-      /* Activate the recv tasks. */
-      if (ci->nodeID != engine_rank) {
-        if (ci->recv_xv != NULL) ci->recv_xv->skip = 0;
-        if (ci->recv_rho != NULL) ci->recv_rho->skip = 0;
-        if (ci->recv_ti != NULL) ci->recv_ti->skip = 0;
-      } else if (cj->nodeID != engine_rank) {
-        if (cj->recv_xv != NULL) cj->recv_xv->skip = 0;
-        if (cj->recv_rho != NULL) cj->recv_rho->skip = 0;
-        if (cj->recv_ti != NULL) cj->recv_ti->skip = 0;
-      }
-#endif
-    }
+    const int forcerebuild = cell_unskip_tasks(c);
+
+    if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
-
-  /* Unskip all the other task types. */
-  for (struct link *l = c->gradient; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->force; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->grav; l != NULL; l = l->next) l->t->skip = 0;
-#ifdef WITH_MPI
-  for (struct link *l = c->send_xv; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->send_rho; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->send_ti; l != NULL; l = l->next) l->t->skip = 0;
-#endif
-  if (c->extra_ghost != NULL) c->extra_ghost->skip = 0;
-  if (c->ghost != NULL) c->ghost->skip = 0;
-  if (c->init != NULL) c->init->skip = 0;
-  if (c->kick != NULL) c->kick->skip = 0;
 }
 
 /**

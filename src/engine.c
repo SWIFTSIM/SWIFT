@@ -2800,8 +2800,6 @@ void engine_step(struct engine *e) {
     submask |= 1 << task_subtype_tend;
   }
 
-  engine_print_task_counts(e);
-
   if (e->verbose) engine_print_task_counts(e);
 
   /* Send off the runners. */

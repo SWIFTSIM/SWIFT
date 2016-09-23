@@ -892,3 +892,79 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
   /* No neighbouring cell has active particles. Drift not necessary */
   return 0;
 }
+
+/**
+ * @brief Un-skips all the tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_tasks(struct cell *c) {
+
+  /* Un-skip the density tasks involved with this cell. */
+  for (struct link *l = c->density; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    const struct cell *ci = t->ci;
+    const struct cell *cj = t->cj;
+    t->skip = 0;
+
+    /* Set the correct sorting flags */
+    if (t->type == task_type_pair) {
+      if (!(ci->sorted & (1 << t->flags))) {
+        atomic_or(&ci->sorts->flags, (1 << t->flags));
+        ci->sorts->skip = 0;
+      }
+      if (!(cj->sorted & (1 << t->flags))) {
+        atomic_or(&cj->sorts->flags, (1 << t->flags));
+        cj->sorts->skip = 0;
+      }
+    }
+
+    /* Check whether there was too much particle motion */
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      if (t->tight &&
+          (max(ci->h_max, cj->h_max) + ci->dx_max + cj->dx_max > cj->dmin ||
+           ci->dx_max > space_maxreldx * ci->h_max ||
+           cj->dx_max > space_maxreldx * cj->h_max))
+        return 1;
+
+#ifdef WITH_MPI
+      /* Activate the recv tasks. */
+      if (ci->nodeID != engine_rank) {
+        if (ci->recv_xv != NULL) ci->recv_xv->skip = 0;
+        if (ci->recv_rho != NULL) ci->recv_rho->skip = 0;
+        if (ci->recv_gradient != NULL) ci->recv_gradient->skip = 0;
+        if (ci->recv_ti != NULL) ci->recv_ti->skip = 0;
+      } else if (cj->nodeID != engine_rank) {
+        if (cj->recv_xv != NULL) cj->recv_xv->skip = 0;
+        if (cj->recv_rho != NULL) cj->recv_rho->skip = 0;
+        if (cj->recv_gradient != NULL) cj->recv_gradient->skip = 0;
+        if (cj->recv_ti != NULL) cj->recv_ti->skip = 0;
+      }
+#endif
+    }
+  }
+
+  /* Unskip all the other task types. */
+  for (struct link *l = c->gradient; l != NULL; l = l->next) l->t->skip = 0;
+  for (struct link *l = c->force; l != NULL; l = l->next) l->t->skip = 0;
+  for (struct link *l = c->grav; l != NULL; l = l->next) l->t->skip = 0;
+#ifdef WITH_MPI
+  for (struct link *l = c->send_xv; l != NULL; l = l->next) l->t->skip = 0;
+  for (struct link *l = c->send_rho; l != NULL; l = l->next) l->t->skip = 0;
+  for (struct link *l = c->send_gradient; l != NULL; l = l->next)
+    l->t->skip = 0;
+  for (struct link *l = c->send_ti; l != NULL; l = l->next) l->t->skip = 0;
+#endif
+  if (c->extra_ghost != NULL) c->extra_ghost->skip = 0;
+  if (c->ghost != NULL) c->ghost->skip = 0;
+  if (c->init != NULL) c->init->skip = 0;
+  if (c->kick != NULL) c->kick->skip = 0;
+  if (c->cooling != NULL) c->cooling->skip = 0;
+  if (c->sourceterms != NULL) c->sourceterms->skip = 0;
+  if (c->grav_external != NULL) c->grav_external->skip = 0;
+
+  return 0;
+}
