@@ -3,7 +3,7 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
-n_snaps = 101
+n_snaps = 1000
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0
@@ -63,13 +63,13 @@ for i in range(n_snaps):
 
     vels_dset = f["PartType0/Velocities"]
     vels = np.array(vels_dset)
-    speed_squared = coords[:,0]**2 + coords[:,1]**2 + coords[:,2]**2
+    speed_squared = vels[:,0]**2 + vels[:,1]**2 + vels[:,2]**2
     total_kinetic_energy = 0.5 * np.sum(speed_squared)
     kinetic_energy_array = np.append(kinetic_energy_array,total_kinetic_energy)
 
     u_dset = f["PartType0/InternalEnergy"]
     u = np.array(u_dset)
-    total_internal_energy = 0.5 * np.sum(u)
+    total_internal_energy = np.sum(u)
     internal_energy_array = np.append(internal_energy_array,total_internal_energy)
 
 #put energies in units of v_c^2 and rescale by number of particles
@@ -78,11 +78,6 @@ pe = potential_energy_array / (N*v_c**2)
 ke = kinetic_energy_array / (N*v_c**2)
 ie = internal_energy_array / (N*v_c**2)
 te = pe + ke + ie
-
-print pe
-print ke
-print ie
-print te
 
 dyn_time_cgs = r_vir_cgs / v_c_cgs
 time_array = time_array_cgs / dyn_time_cgs
@@ -98,3 +93,4 @@ plt.title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %
 plt.ylim((-2,2))
 #plot_filename = "density_profile_%03d.png" %i
 plt.show()
+

@@ -112,7 +112,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
   g->a_grav[0] = term * dx;
   g->a_grav[1] = term * dy;
-  g->a_grav[2] = term * dz;
+  g->a_grav[2] = term * dz; 
 }
 
 /**

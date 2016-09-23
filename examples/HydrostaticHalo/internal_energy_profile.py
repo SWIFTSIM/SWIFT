@@ -21,7 +21,7 @@ def do_binning(x,y,x_bin_edges):
     return(count,y_totals)
 
 
-n_snaps = 11
+n_snaps = 100
 
 #for the plotting
 n_radial_bins = int(sys.argv[1])

@@ -6,7 +6,7 @@ import sys
 n_snaps = 11
 
 #for the plotting
-n_radial_bins = int(sys.argv[1])
+#n_radial_bins = int(sys.argv[1])
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0
@@ -56,36 +56,45 @@ for i in range(n_snaps):
 
     r = radius_over_virial_radius
 
-    bin_width = 1./n_radial_bins
-    hist = np.histogram(r,bins = n_radial_bins)[0] # number of particles in each bin
+    # bin_width = 1./n_radial_bins
+#     hist = np.histogram(r,bins = n_radial_bins)[0] # number of particles in each bin
 
-#find the mass in each radial bin
+# #find the mass in each radial bin
 
-    mass_dset = f["PartType0/Masses"]
-#mass of each particles should be equal
-    part_mass = np.array(mass_dset)[0]
-    part_mass_cgs = part_mass * unit_mass_cgs
-    part_mass_over_virial_mass = part_mass_cgs / M_vir_cgs 
+#     mass_dset = f["PartType0/Masses"]
+# #mass of each particles should be equal
+#     part_mass = np.array(mass_dset)[0]
+#     part_mass_cgs = part_mass * unit_mass_cgs
+#     part_mass_over_virial_mass = part_mass_cgs / M_vir_cgs 
 
-    mass_hist = hist * part_mass_over_virial_mass
-    radial_bin_mids = np.linspace(bin_width/2.,1 - bin_width/2.,n_radial_bins)
-#volume in each radial bin
-    volume = 4.*np.pi * radial_bin_mids**2 * bin_width
+#     mass_hist = hist * part_mass_over_virial_mass
+#     radial_bin_mids = np.linspace(bin_width/2.,1 - bin_width/2.,n_radial_bins)
+# #volume in each radial bin
+#     volume = 4.*np.pi * radial_bin_mids**2 * bin_width
 
-#now divide hist by the volume so we have a density in each bin
+# #now divide hist by the volume so we have a density in each bin
 
-    density = mass_hist / volume
+#     density = mass_hist / volume
 
-    t = np.linspace(0.01,1.0,1000)
+    # read the densities
+
+    density_dset = f["PartType0/Density"]
+    density = np.array(density_dset)
+    density_cgs = density * unit_mass_cgs / unit_length_cgs**3
+    rho = density_cgs * r_vir_cgs**3 / M_vir_cgs
+
+    t = np.linspace(0.01,2.0,1000)
     rho_analytic = t**(-2)/(4.*np.pi)
 
-    plt.plot(radial_bin_mids,density,'ko',label = "Numerical solution")
+    plt.plot(r,rho,'x',label = "Numerical solution")
     plt.plot(t,rho_analytic,label = "Analytic Solution")
     plt.legend(loc = "upper right")
     plt.xlabel(r"$r / r_{vir}$")
     plt.ylabel(r"$\rho / (M_{vir} / r_{vir}^3)$")
     plt.title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
-    plt.ylim((0.1,40))
+    #plt.ylim((0.1,40))
+    plt.xscale('log')
+    plt.yscale('log')
     plot_filename = "density_profile_%03d.png" %i
     plt.savefig(plot_filename,format = "png")
     plt.close()

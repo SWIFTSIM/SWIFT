@@ -90,17 +90,6 @@ grp.attrs["Unit time in cgs (U_t)"] = const_unit_length_in_cgs / const_unit_velo
 grp.attrs["Unit current in cgs (U_I)"] = 1.
 grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] =  [N ,0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
 
 # Runtime parameters
 grp = file.create_group("/RuntimePars")
@@ -109,12 +98,10 @@ grp.attrs["PeriodicBoundariesOn"] = periodic
 # set seed for random number
 np.random.seed(1234)
 
-# Particle group
-grp = file.create_group("/PartType0")
 
 # Positions
 # r^(-2) distribution corresponds to uniform distribution in radius
-radius = np.random.rand(N)
+radius = boxSize  * np.sqrt(3.) / 2.* np.random.rand(N) #the diagonal extent of the cube
 ctheta = -1. + 2 * np.random.rand(N)
 stheta = np.sqrt(1.-ctheta**2)
 phi    =  2 * math.pi * np.random.rand(N)
@@ -133,9 +120,84 @@ print np.mean(coords[:,0])
 print np.mean(coords[:,1])
 print np.mean(coords[:,2])
 
+#now find the particles which are within the box
+
+x_coords = coords[:,0]
+y_coords = coords[:,1]
+z_coords = coords[:,2]
+
+ind = np.where(x_coords < boxSize)[0]
+x_coords = x_coords[ind]
+y_coords = y_coords[ind]
+z_coords = z_coords[ind]
+
+ind = np.where(x_coords > 0.)[0]
+x_coords = x_coords[ind]
+y_coords = y_coords[ind]
+z_coords = z_coords[ind]
+
+ind = np.where(y_coords < boxSize)[0]
+x_coords = x_coords[ind]
+y_coords = y_coords[ind]
+z_coords = z_coords[ind]
+
+ind = np.where(y_coords > 0.)[0]
+x_coords = x_coords[ind]
+y_coords = y_coords[ind]
+z_coords = z_coords[ind]
+
+ind = np.where(z_coords < boxSize)[0]
+x_coords = x_coords[ind]
+y_coords = y_coords[ind]
+z_coords = z_coords[ind]
+
+ind = np.where(z_coords > 0.)[0]
+x_coords = x_coords[ind]
+y_coords = y_coords[ind]
+z_coords = z_coords[ind]
+
+#count number of particles
+
+N = x_coords.size
+
+print "Number of particles in the box = " , N
+
+#make the coords and radius arrays again
+coords_2 = np.zeros((N,3))
+coords_2[:,0] = x_coords
+coords_2[:,1] = y_coords
+coords_2[:,2] = z_coords
+
+radius = np.sqrt(coords_2[:,0]**2 + coords_2[:,1]**2 + coords_2[:,2]**2)
+
+#test we've done it right
+
+print "x range = (%f,%f)" %(np.min(coords_2[:,0]),np.max(coords_2[:,0]))
+print "y range = (%f,%f)" %(np.min(coords_2[:,1]),np.max(coords_2[:,1]))
+print "z range = (%f,%f)" %(np.min(coords_2[:,2]),np.max(coords_2[:,2]))
+
+print np.mean(coords_2[:,0])
+print np.mean(coords_2[:,1])
+print np.mean(coords_2[:,2])
+
+# Header
+grp = file.create_group("/Header")
+grp.attrs["BoxSize"] = boxSize
+grp.attrs["NumPart_Total"] =  [N ,0, 0, 0, 0, 0]
+grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
+grp.attrs["Time"] = 0.0
+grp.attrs["NumFilesPerSnapshot"] = 1
+grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
+grp.attrs["Dimension"] = 3
+
+# Particle group
+grp = file.create_group("/PartType0")
+
 ds = grp.create_dataset('Coordinates', (N, 3), 'd')
-ds[()] = coords
-coords = np.zeros(1)
+ds[()] = coords_2
+coords_2 = np.zeros(1)
 
 # All velocities set to zero
 v = np.zeros((N,3))
