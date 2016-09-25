@@ -24,8 +24,8 @@
 
 /* Local headers. */
 #include "const.h"
+#include "cooling.h"
 #include "debug.h"
-
 /**
  * @brief Compute a valid integer time-step form a given time-step
  *
@@ -68,18 +68,18 @@ __attribute__((always_inline)) INLINE static int get_integer_timestep(
 __attribute__((always_inline)) INLINE static int get_gpart_timestep(
     const struct gpart *restrict gp, const struct engine *restrict e) {
 
-  const float new_dt_external = gravity_compute_timestep_external(
-      e->external_potential, e->physical_constants, gp);
+  const float new_dt_external = external_gravity_timestep(
+      e->time, e->external_potential, e->physical_constants, gp);
+
   /* const float new_dt_self = */
   /*     gravity_compute_timestep_self(e->physical_constants, gp); */
   const float new_dt_self = FLT_MAX;  // MATTHIEU
 
-  float new_dt =
-      (new_dt_external < new_dt_self) ? new_dt_external : new_dt_self;
+  float new_dt = min(new_dt_external, new_dt_self);
 
   /* Limit timestep within the allowed range */
-  new_dt = (new_dt < e->dt_max) ? new_dt : e->dt_max;
-  new_dt = (new_dt > e->dt_min) ? new_dt : e->dt_min;
+  new_dt = min(new_dt, e->dt_max);
+  new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
   const int new_dti =
@@ -102,22 +102,28 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
   /* Compute the next timestep (hydro condition) */
   const float new_dt_hydro = hydro_compute_timestep(p, xp, e->hydro_properties);
 
+  /* Compute the next timestep (cooling condition) */
+  float new_dt_cooling = FLT_MAX;
+  if (e->policy & engine_policy_cooling)
+    new_dt_cooling = cooling_timestep(e->cooling_func, e->physical_constants,
+                                      e->internalUnits, p);
+
   /* Compute the next timestep (gravity condition) */
   float new_dt_grav = FLT_MAX;
   if (p->gpart != NULL) {
 
-    const float new_dt_external = gravity_compute_timestep_external(
-        e->external_potential, e->physical_constants, p->gpart);
+    const float new_dt_external = external_gravity_timestep(
+        e->time, e->external_potential, e->physical_constants, p->gpart);
+
     /* const float new_dt_self = */
     /*     gravity_compute_timestep_self(e->physical_constants, p->gpart); */
     const float new_dt_self = FLT_MAX;  // MATTHIEU
 
-    new_dt_grav =
-        (new_dt_external < new_dt_self) ? new_dt_external : new_dt_self;
+    new_dt_grav = min(new_dt_external, new_dt_self);
   }
 
   /* Final time-step is minimum of hydro and gravity */
-  float new_dt = (new_dt_hydro < new_dt_grav) ? new_dt_hydro : new_dt_grav;
+  float new_dt = min(min(new_dt_hydro, new_dt_cooling), new_dt_grav);
 
   /* Limit change in h */
   const float dt_h_change =
@@ -125,11 +131,11 @@ __attribute__((always_inline)) INLINE static int get_part_timestep(
           ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
 
-  new_dt = (new_dt < dt_h_change) ? new_dt : dt_h_change;
+  new_dt = min(new_dt, dt_h_change);
 
   /* Limit timestep within the allowed range */
-  new_dt = (new_dt < e->dt_max) ? new_dt : e->dt_max;
-  new_dt = (new_dt > e->dt_min) ? new_dt : e->dt_min;
+  new_dt = min(new_dt, e->dt_max);
+  new_dt = max(new_dt, e->dt_min);
 
   /* Convert to integer time */
   const int new_dti =

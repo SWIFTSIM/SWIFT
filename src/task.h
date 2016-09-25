@@ -26,6 +26,7 @@
 #include "../config.h"
 
 /* Includes. */
+#include "align.h"
 #include "cell.h"
 #include "cycle.h"
 
@@ -54,6 +55,7 @@ enum task_types {
   task_type_grav_up,
   task_type_grav_external,
   task_type_cooling,
+  task_type_sourceterms,
   task_type_count
 } __attribute__((packed));
 
@@ -149,7 +151,7 @@ struct task {
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
 
-} __attribute__((aligned(32)));
+} SWIFT_STRUCT_ALIGN;
 
 /* Function prototypes. */
 void task_unlock(struct task *t);

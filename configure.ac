@@ -155,6 +155,21 @@ LT_INIT
 AC_PROG_CC_C99
 AC_C_INLINE
 
+# If debugging try to show inlined functions.
+if test "x$enable_debug" = "xyes"; then
+   #  Show inlined functions.
+   if test "$ax_cv_c_compiler_vendor" = "gnu"; then
+      # Would like to use -gdwarf and let the compiler pick a good version
+      # but that doesn't always work.
+      AX_CHECK_COMPILE_FLAG([-gdwarf -fvar-tracking-assignments],
+        [inline_EXTRA_FLAGS="-gdwarf -fvar-tracking-assignments"],
+        [inline_EXTRA_FLAGS="-gdwarf-2 -fvar-tracking-assignments"])
+      CFLAGS="$CFLAGS $inline_EXTRA_FLAGS"
+   elif test "$ax_cv_c_compiler_vendor" = "intel"; then
+      CFLAGS="$CFLAGS -debug inline-debug-info"
+   fi
+fi
+
 # Define HAVE_POSIX_MEMALIGN if it works.
 AX_FUNC_POSIX_MEMALIGN
 
@@ -451,7 +466,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 AC_MSG_RESULT($rtc_ok)
 
 # Add warning flags by default, if these can be used. Option =error adds
-# -Werror to GCC, clang and Intel.  Note do this last as compiler tests may 
+# -Werror to GCC, clang and Intel.  Note do this last as compiler tests may
 # become errors, if that's an issue don't use CFLAGS for these, use an AC_SUBST().
 AC_ARG_ENABLE([compiler-warnings],
    [AS_HELP_STRING([--enable-compiler-warnings],
@@ -461,7 +476,7 @@ AC_ARG_ENABLE([compiler-warnings],
    [enable_warn="error"]
 )
 if test "$enable_warn" != "no"; then
-   
+
     # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
@@ -475,7 +490,7 @@ if test "$enable_warn" != "no"; then
 	     AX_CFLAGS_WARN_ALL
 	  ;;
     esac
-    
+
     # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
