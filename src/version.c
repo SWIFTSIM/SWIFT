@@ -21,9 +21,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Needed for gethostname() */
-#include <unistd.h>
-
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -49,24 +46,6 @@
 
 /* Local headers. */
 #include "version_string.h"
-
-/**
- * @brief Return the hostname
- *
- * Will return the name of the host.
- *
- * @result the hostname.
- */
-const char *hostname(void) {
-  static char buf[256];
-  static int initialised = 0;
-  if (!initialised) {
-    buf[255] = '\0';
-    if (gethostname(buf, 255)) sprintf(buf, "%s", "Unknown host");
-    initialised = 1;
-  }
-  return buf;
-}
 
 /**
  * @brief Return the source code git revision
