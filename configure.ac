@@ -501,6 +501,66 @@ if test "$enable_warn" != "no"; then
     fi
 fi
 
+# Various package configuration options.
+
+# Hydro scheme.
+AC_ARG_WITH([hydro],
+   [AS_HELP_STRING([--with-hydro=<scheme>],
+      [Hydro dynamics to use @<:@gadget2,minimal,hopkins,default,gizmo default gadget2@:>@]
+   )],
+   [with_hydro="$withval"],
+   [with_hydro="gadget2"]
+)
+case "$with_hydro" in
+   gadget2)
+      AC_DEFINE([GADGET2_SPH], [1], [Gadget2 SPH])
+   ;; 
+   minimal)
+      AC_DEFINE([MINIMAL_SPH], [1], [Minimal SPH])
+   ;; 
+   hopkins)
+      AC_DEFINE([HOPKINS_PE_SPH], [1], [Hopkins Pressure-Entropy SPH])
+   ;; 
+   default)
+      AC_DEFINE([DEFAULT_SPH], [1], [Default SPH])
+   ;; 
+   gizmo)
+      AC_DEFINE([GIZMO_SPH], [1], [GIZMO SPH])
+   ;; 
+
+   *)
+      AC_MSG_ERROR([unknown hydrodynamics scheme: $with_hydro])
+   ;;
+esac
+
+
+
+#  Dimensionality of the hydro scheme.
+AC_ARG_WITH([hydro-dimension],
+   [AS_HELP_STRING([--with-hydro-dimension=3, 2 or 1],
+      [dimensionality of problem @<:@3/2/1 default 3@:>@]
+   )],
+   [with_dimension="$withval"],
+   [with_dimension="3"]
+)
+case "$with_dimension" in
+   1)
+      AC_DEFINE([HYDRO_DIMENSION_1D], [1], [1D analysis])
+   ;; 
+   2)
+      AC_DEFINE([HYDRO_DIMENSION_2D], [1], [2D analysis])
+   ;; 
+   3)
+      AC_DEFINE([HYDRO_DIMENSION_3D], [1], [3D analysis])
+   ;; 
+   *)
+      AC_MSG_ERROR([Dimensionality must be 1, 2 or 3])
+   ;;
+esac
+
+
+
+
 # Check for git, needed for revision stamps.
 AC_PATH_PROG([GIT_CMD], [git])
 AC_SUBST([GIT_CMD])
@@ -533,6 +593,8 @@ AC_MSG_RESULT([
    libNUMA enabled : $have_numa
    Using tcmalloc  : $have_tcmalloc
    CPU profiler    : $have_profiler
+   Hydro scheme    : $with_hydro
+   Dimensionality  : $with_dimension
 ])
 
 # Generate output.
