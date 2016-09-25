@@ -262,12 +262,21 @@ int main(int argc, char *argv[]) {
     message(
         "Executing a dry run. No i/o or time integration will be performed.");
 
-  /* Report CPU frequency. */
+  /* Report CPU frequency.*/
   cpufreq = clocks_get_cpufreq();
   if (myrank == 0) {
-    message("Running on: %s",hostname());
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
+
+  /* Report host name(s). */
+  if (myrank == 0) {
+    message("Rank 0 Running on: %s", hostname());
+  }
+#ifdef WITH_MPI
+  else if (verbose > 1) {
+    message("Rank %d running on: %s", myrank, hostname());
+  }
+#endif
 
   /* Do we choke on FP-exceptions ? */
   if (with_fp_exceptions) {
