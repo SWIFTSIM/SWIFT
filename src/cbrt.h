@@ -76,7 +76,7 @@ __attribute__((always_inline)) inline float icbrtf(float x_in) {
       exponent_rem > 0
           ? (exponent_rem > 1 ? 5.61231024154687e-01f : 7.07106781186548e-01f)
           : 8.90898718140339e-01f;
-  
+
   // Scale the result and set the correct sign.
   res = copysignf(res * exponent_scale, x_in);
 

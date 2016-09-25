@@ -18,10 +18,10 @@
  ******************************************************************************/
 
 // Standard includes.
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <math.h>
 
 // Local includes.
 #include "cbrt.h"
@@ -71,8 +71,7 @@ int main(int argc, char *argv[]) {
     acc_ours += icbrtf(data[k]);
   }
   message("icbrtf took %.3f %s (acc = %.8e).",
-          clocks_from_ticks(getticks() - tic_ours), clocks_getunit(),
-          acc_ours);
+          clocks_from_ticks(getticks() - tic_ours), clocks_getunit(), acc_ours);
 
   /* Third run to check the speed of the cube root. */
   acc_exact = 0.0f;
@@ -91,8 +90,7 @@ int main(int argc, char *argv[]) {
     acc_ours += data[k] * temp * temp;
   }
   message("x * icbrtf^2 took %.3f %s (acc = %.8e).",
-          clocks_from_ticks(getticks() - tic_ours), clocks_getunit(),
-          acc_ours);
+          clocks_from_ticks(getticks() - tic_ours), clocks_getunit(), acc_ours);
 
   /* Fourth run to check the speed of (.)^(2/3). */
   acc_exact = 0.0f;
@@ -111,8 +109,7 @@ int main(int argc, char *argv[]) {
     acc_ours += data[k] * icbrtf(data[k]);
   }
   message("x * icbrtf took %.3f %s (acc = %.8e).",
-          clocks_from_ticks(getticks() - tic_ours), clocks_getunit(),
-          acc_ours);
+          clocks_from_ticks(getticks() - tic_ours), clocks_getunit(), acc_ours);
 
   return 0;
 }

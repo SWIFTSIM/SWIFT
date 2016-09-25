@@ -33,6 +33,7 @@
 #include <math.h>
 
 /* Local headers. */
+#include "cbrt.h"
 #include "const.h"
 #include "debug.h"
 #include "error.h"
@@ -110,8 +111,8 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float cbrt = cbrtf(x); /* x^(1/3) */
-  return cbrt * cbrt * x;      /* x^(5/3) */
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return x * x * icbrt;          /* x^(5/3) */
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -119,7 +120,8 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  return cbrtf(x) * x; /* x^(4/3) */
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return x * x * icbrt * icbrt;  /* x^(4/3) */
 
 #elif defined(HYDRO_GAMMA_2_1)
 
@@ -144,8 +146,8 @@ __attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float cbrt = cbrtf(x); /* x^(1/3) */
-  return cbrt * cbrt;          /* x^(2/3) */
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return x * icbrt;              /* x^(2/3) */
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -153,7 +155,8 @@ __attribute__((always_inline)) INLINE static float pow_gamma_minus_one(
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  return cbrtf(x); /* x^(1/3) */
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return x * icbrt * icbrt;      /* x^(1/3) */
 
 #elif defined(HYDRO_GAMMA_2_1)
 
@@ -178,8 +181,8 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float cbrt_inv = 1.f / cbrtf(x); /* x^(-1/3) */
-  return cbrt_inv * cbrt_inv;            /* x^(-2/3) */
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return icbrt * icbrt;          /* x^(-2/3) */
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -187,7 +190,7 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma_minus_one(
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  return 1.f / cbrtf(x); /* x^(-1/3) */
+  return icbrtf(x); /* x^(-1/3) */
 
 #elif defined(HYDRO_GAMMA_2_1)
 
@@ -214,9 +217,9 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
 
 #if defined(HYDRO_GAMMA_5_3)
 
-  const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
-  const float cbrt_inv2 = cbrt_inv * cbrt_inv; /* x^(-2/3) */
-  return cbrt_inv * cbrt_inv2 * cbrt_inv2;     /* x^(-5/3) */
+  const float icbrt = icbrtf(x);      /* x^(-1/3) */
+  const float icbrt2 = icbrt * icbrt; /* x^(-2/3) */
+  return icbrt * icbrt2 * icbrt2;     /* x^(-5/3) */
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -224,7 +227,7 @@ __attribute__((always_inline)) INLINE static float pow_minus_gamma(float x) {
 
 #elif defined(HYDRO_GAMMA_4_3)
 
-  const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
+  const float cbrt_inv = icbrtf(x);            /* x^(-1/3) */
   const float cbrt_inv2 = cbrt_inv * cbrt_inv; /* x^(-2/3) */
   return cbrt_inv2 * cbrt_inv2;                /* x^(-4/3) */
 
