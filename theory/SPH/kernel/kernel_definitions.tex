@@ -1,12 +1,9 @@
-\documentclass[a4paper]{mnras}
-\usepackage[utf8]{inputenc}
-\usepackage{amsmath}
+\documentclass[usenatbib, useAMS,a4paper]{mnras}
 \usepackage{graphicx}
-\usepackage{xspace}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{times}
 
 \newcommand{\swift}{{\sc Swift}\xspace}
-
-
 
 %opening
 \title{SPH kernels in SWIFT}
@@ -16,7 +13,9 @@
 
 \maketitle
 
-In here we follow the definitions of Dehnen \& Aly 2012.
+We follow the definitions and notation of
+\cite{Dehnen2012}. Motivation for all the material given here can be
+found in their paper.
 
 \section{General Definitions}
 
@@ -237,5 +236,8 @@ expressions and are shown on Fig.~\ref{fig:sph:kernel_derivatives}:
 \frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right].
 \end{eqnarray*}
 Note that for all the kernels listed above, $f'(0) = 0$. 
+
+\bibliographystyle{mnras}
+\bibliography{./bibliography.bib}
 
 \end{document}
