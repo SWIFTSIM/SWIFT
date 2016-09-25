@@ -2183,9 +2183,8 @@ void engine_print_task_counts(struct engine *e) {
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
-  printf("%s engine_print_task_counts: time step:%d task counts are [ %s=%i",
-         clocks_get_timesincestart(), e->ti_current, taskID_names[0],
-         counts[0]);
+  printf("%s engine_print_task_counts: task counts are [ %s=%i",
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
@@ -3365,14 +3364,13 @@ void engine_init(struct engine *e, struct space *s,
             nr_nodes * nr_threads);
     e->file_timesteps = fopen(timestepsfileName, "w");
     fprintf(e->file_timesteps,
-            "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
-            "Version: %s \n# "
+            "# Branch: %s\n# Revision: %s\n# Compiler: %s, Version: %s \n# "
             "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
             "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
             "+/- %.2f\n# Eta: %f\n",
-            hostname(), git_branch(), git_revision(), compiler_name(),
-            compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
-            kernel_name, e->hydro_properties->target_neighbours,
+            git_branch(), git_revision(), compiler_name(), compiler_version(),
+            e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION, kernel_name,
+            e->hydro_properties->target_neighbours,
             e->hydro_properties->delta_neighbours,
             e->hydro_properties->eta_neighbours);
 
