@@ -26,6 +26,9 @@
 /* Some standard headers. */
 #include <math.h>
 
+/* Local headers. */
+#include "error.h"
+
 /**
  * @brief Compute the inverse cube root of a single-precision floating-point
  * number.
@@ -37,13 +40,19 @@
  */
 __attribute__((always_inline)) inline float icbrtf(float x_in) {
 
+  union {
+    float as_float;
+    unsigned int as_uint;
+    int as_int;
+  } cast;
+
   // Extract the exponent.
-  const unsigned int x_as_uint = *((char *)&x_in);
-  const int exponent = ((x_as_uint & 0x7f800000) >> 23) - 127;
+  cast.as_float = x_in;
+  const int exponent = ((cast.as_int & 0x7f800000) >> 23) - 127;
 
   // Clear the exponent and sign to get the mantissa.
-  const unsigned int x_norm_as_int = (x_as_uint & ~0xff800000) | 0x3f800000;
-  const float x_norm = *((char *)&x_norm_as_int);
+  cast.as_uint = (cast.as_uint & ~0xff800000) | 0x3f800000;
+  const float x_norm = cast.as_float;
 
   // Multiply by sqrt(1/2) and subtract one, should then be in the
   // range [sqrt(1/2) - 1, sqrt(2) - 1).
@@ -61,19 +70,21 @@ __attribute__((always_inline)) inline float icbrtf(float x_in) {
   if (exponent_new < 0) exponent_new -= 2;
   exponent_new = -exponent_new / 3;
   const int exponent_rem = exponent + 3 * exponent_new;
-  const unsigned int exponent_scale_as_int = (exponent_new + 127) << 23;
-  float exponent_scale = *((char *)&exponent_scale_as_int);
+  cast.as_uint = (exponent_new + 127) << 23;
+  float exponent_scale = cast.as_float;
   exponent_scale *=
       exponent_rem > 0
           ? (exponent_rem > 1 ? 5.61231024154687e-01f : 7.07106781186548e-01f)
           : 8.90898718140339e-01f;
-  res *= exponent_scale;
+  
+  // Scale the result and set the correct sign.
+  res = copysignf(res * exponent_scale, x_in);
 
   // One step of Newton iteration to refine the result.
   res *= (1.0f / 3.0f) * (4.0f - x_in * res * res * res);
 
   // We're done.
-  return copysignf(res, x_in);
+  return res;
 }
 
 #endif /* SWIFT_CBRT_H */
