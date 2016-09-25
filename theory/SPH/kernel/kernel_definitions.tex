@@ -218,7 +218,7 @@ All kernels available in \swift are shown on Fig.~\ref{fig:sph:kernels}.
 
 \begin{figure}
 \includegraphics[width=\columnwidth]{kernel_derivatives.pdf}
-\caption{The first and secon derivatives of the kernel functions
+\caption{The first and second derivatives of the kernel functions
   available in \swift for a mean inter-particle separation $\langle
   x\rangle=1.5$ and a resolution $\eta=1.2348$.  A Gaussian kernel
   with the same smoothing length is shown for comparison.}
@@ -229,14 +229,13 @@ All kernels available in \swift are shown on Fig.~\ref{fig:sph:kernels}.
 \section{Kernel Derivatives}
 
 The derivatives of the kernel function have relatively simple
-expressions and are shown on Fig.~\ref{fig:sph:kernel_derivatives}.
+expressions and are shown on Fig.~\ref{fig:sph:kernel_derivatives}:
 
 \begin{eqnarray*}
- \vec\nabla_x W(\vec{x},h) &=& \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|} \\
+ \vec\nabla_x W(\vec{x},h) &=& \frac{1}{h^4}f'\left(\frac{|\vec{x}|}{h}\right) \frac{\vec{x}}{|\vec{x}|}, \\
  \frac{\partial W(\vec{x},h)}{\partial h} &=&- \frac{1}{h^4}\left[3f\left(\frac{|\vec{x}|}{h}\right) + 
-\frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right]
+\frac{|\vec{x}|}{h}f'\left(\frac{|\vec{x}|}{h}\right)\right].
 \end{eqnarray*}
-
 Note that for all the kernels listed above, $f'(0) = 0$. 
 
 \end{document}
