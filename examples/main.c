@@ -269,13 +269,12 @@ int main(int argc, char *argv[]) {
   }
 
   /* Report host name(s). */
-  if (myrank == 0) {
-    message("Rank 0 Running on: %s", hostname());
-  }
 #ifdef WITH_MPI
-  else if (verbose > 1) {
+  if (myrank == 0 || verbose > 1) {
     message("Rank %d running on: %s", myrank, hostname());
   }
+#else
+  message("Running on: %s", hostname());
 #endif
 
   /* Do we choke on FP-exceptions ? */
