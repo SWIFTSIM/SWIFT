@@ -2228,9 +2228,8 @@ void engine_print_task_counts(struct engine *e) {
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #else
-  printf("%s engine_print_task_counts: time step:%d task counts are [ %s=%i",
-         clocks_get_timesincestart(), e->ti_current, taskID_names[0],
-         counts[0]);
+  printf("%s engine_print_task_counts: task counts are [ %s=%i",
+         clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
