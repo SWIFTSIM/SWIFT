@@ -765,9 +765,6 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   c->updated = 0;
   c->g_updated = 0;
 
-  /* Should we abort as a rebuild has been triggered ? */
-  if (e->forcerebuild) return;
-
   /* Do we need to drift ? */
   if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
 
