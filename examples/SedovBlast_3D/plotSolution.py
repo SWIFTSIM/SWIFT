@@ -18,7 +18,7 @@
  # 
  ##############################################################################
 
-# Computes the analytical solution of the 2D Sedov blast wave.
+# Computes the analytical solution of the 3D Sedov blast wave.
 # The script works for a given initial box and dumped energy and computes the solution at a later time t.
 
 # Parameters

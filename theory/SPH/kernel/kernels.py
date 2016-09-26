@@ -1,5 +1,21 @@
-#!/usr/bin/env python2                                  
-# -*- coding: utf-8 -*-            
+###############################################################################
+ # This file is part of SWIFT.
+ # Copyright (c) 2016  Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ # 
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU Lesser General Public License as published
+ # by the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ # 
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ # 
+ # You should have received a copy of the GNU Lesser General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ # 
+ ##############################################################################
 import matplotlib
 matplotlib.use("Agg")
 from pylab import *
@@ -22,9 +38,9 @@ params = {
     'text.usetex': True,
 'figure.figsize' : (4.15,4.15),
 'figure.subplot.left'    : 0.14,
-'figure.subplot.right'   : 0.99  ,
-'figure.subplot.bottom'  : 0.08  ,
-'figure.subplot.top'     : 0.99  ,
+'figure.subplot.right'   : 0.99,
+'figure.subplot.bottom'  : 0.06,
+'figure.subplot.top'     : 0.99,
 'figure.subplot.wspace'  : 0.  ,
 'figure.subplot.hspace'  : 0.  ,
 'lines.markersize' : 6,
@@ -139,6 +155,10 @@ arrow(H_WendlandC6, 0.12*maxY , 0., -0.12*maxY*0.9, fc='y', ec='y', length_inclu
 plot([h, h], [0., maxY], 'k:', linewidth=0.5)
 text(h, maxY*0.35, "$h\\equiv\\eta\\langle x\\rangle = %.4f$"%h, rotation=90, backgroundcolor='w', ha='center', va='bottom')
 
+# Show sigma
+plot([h/2, h/2], [0., maxY], 'k:', linewidth=0.5)
+text(h/2, maxY*0.05, "$\\sigma\\equiv h/2$", rotation=90, backgroundcolor='w', ha='center', va='bottom')
+
 # Show <x>
 plot([dx, dx], [0., maxY], 'k:', linewidth=0.5)
 text(dx, maxY*0.35, "$\\langle x\\rangle = %.1f$"%dx, rotation=90, backgroundcolor='w', ha='center', va='bottom')
@@ -162,6 +182,9 @@ plot(xx, W_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$")
 
 # Show h
 plot([h, h], [0., 1.], 'k:', linewidth=0.5)
+
+# Show sigma
+plot([h/2, h/2], [0., 1.], 'k:', linewidth=0.5)
 
 # Show <x>
 plot([dx, dx], [0., 1.], 'k:', linewidth=0.5)
@@ -272,13 +295,16 @@ maxY = d_Gaussian(h/2, h)
 # Show h
 plot([h, h], [2*maxY, 0.1], 'k:', linewidth=0.5)
 
+# Show sigma
+plot([h/2, h/2], [2*maxY, 0.1], 'k:', linewidth=0.5)
+
 # Show <x>
 plot([dx, dx], [2*maxY, 0.1], 'k:', linewidth=0.5)
 
 
 xlim(0., 2.5*h)
 gca().xaxis.set_ticklabels([])
-ylim(1.2*maxY, -0.1*maxY)
+ylim(1.1*maxY, -0.1*maxY)
 xlabel("$r$", labelpad=0)
 ylabel("$\\partial W(r,h)/\\partial r$", labelpad=0.5)
 legend(loc="lower right")
@@ -288,11 +314,13 @@ legend(loc="lower right")
 subplot(212)
 
 maxY = d2_Gaussian(h,h)
+plot([h/2, h/2], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
 plot([h, h], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
-text(h, -3.*maxY, "$h\\equiv\\eta\\langle x\\rangle = %.4f$"%h, rotation=90, backgroundcolor='w', ha='center', va='bottom')
-
 plot([dx, dx], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
+text(h/2, -3.*maxY, "$\\sigma\\equiv h/2$", rotation=90, backgroundcolor='w', ha='center', va='bottom')
+text(h, -3.*maxY, "$h\\equiv\\eta\\langle x\\rangle = %.4f$"%h, rotation=90, backgroundcolor='w', ha='center', va='bottom')
 text(dx, -3.*maxY, "$\\langle x\\rangle = %.1f$"%dx, rotation=90, backgroundcolor='w', ha='center', va='bottom')
+
 
 plot([0, 2.5*h], [0., 0.], 'k--', linewidth=0.7)
 plot(xx, d2_Gaussian(xx, h), 'k-', linewidth=0.7, label="${\\rm Gaussian}$")
@@ -304,7 +332,7 @@ plot(xx, d2W_WendlandC4(xx), 'm-', label="${\\rm Wendland~C4}$")
 plot(xx, d2W_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$")
 
 xlim(0., 2.5*h)
-ylim(-3.2*maxY, 1.4*maxY)
+ylim(-3.2*maxY, 1.3*maxY)
 xlabel("$r$", labelpad=0)
 ylabel("$\\partial^2 W(r,h)/\\partial r^2$", labelpad=0.5)
 

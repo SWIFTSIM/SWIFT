@@ -3194,7 +3194,7 @@ void engine_unpin() {
  * @param physical_constants The #phys_const used for this run.
  * @param hydro The #hydro_props used for this run.
  * @param potential The properties of the external potential.
- * @param cooling The properties of the cooling function.
+ * @param cooling_func The properties of the cooling function.
  * @param sourceterms The properties of the source terms function.
  */
 void engine_init(struct engine *e, struct space *s,
@@ -3425,13 +3425,14 @@ void engine_init(struct engine *e, struct space *s,
             nr_nodes * nr_threads);
     e->file_timesteps = fopen(timestepsfileName, "w");
     fprintf(e->file_timesteps,
-            "# Branch: %s\n# Revision: %s\n# Compiler: %s, Version: %s \n# "
+            "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
+            "Version: %s \n# "
             "Number of threads: %d\n# Number of MPI ranks: %d\n# Hydrodynamic "
             "scheme: %s\n# Hydrodynamic kernel: %s\n# No. of neighbours: %.2f "
             "+/- %.2f\n# Eta: %f\n",
-            git_branch(), git_revision(), compiler_name(), compiler_version(),
-            e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION, kernel_name,
-            e->hydro_properties->target_neighbours,
+            hostname(), git_branch(), git_revision(), compiler_name(),
+            compiler_version(), e->nr_threads, e->nr_nodes, SPH_IMPLEMENTATION,
+            kernel_name, e->hydro_properties->target_neighbours,
             e->hydro_properties->delta_neighbours,
             e->hydro_properties->eta_neighbours);
 
