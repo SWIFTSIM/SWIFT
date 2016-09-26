@@ -83,6 +83,7 @@ theory/latex/swift.pdf
 theory/SPH/kernel/kernels.pdf
 theory/SPH/kernel/kernel_derivatives.pdf
 theory/SPH/kernel/kernel_definitions.pdf
+theory/SPH/flavours/sph_flavours.pdf
 theory/paper_pasc/pasc_paper.pdf
 
 m4/libtool.m4
