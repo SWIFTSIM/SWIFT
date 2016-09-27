@@ -403,6 +403,17 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       s->cells_top[k].sourceterms = NULL;
       s->cells_top[k].super = &s->cells_top[k];
       s->cells_top[k].gsuper = &s->cells_top[k];
+#if WITH_MPI
+      s->cells_top[k].recv_xv = NULL;
+      s->cells_top[k].recv_rho = NULL;
+      s->cells_top[k].recv_gradient = NULL;
+      s->cells_top[k].recv_ti = NULL;
+
+      s->cells_top[k].send_xv = NULL;
+      s->cells_top[k].send_rho = NULL;
+      s->cells_top[k].send_gradient = NULL;
+      s->cells_top[k].send_ti = NULL;
+#endif
     }
     s->maxdepth = 0;
   }
