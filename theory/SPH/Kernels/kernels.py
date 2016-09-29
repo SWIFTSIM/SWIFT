@@ -153,7 +153,7 @@ def W_WendlandC6(r):     return C_WendlandC6 * wendlandC6(r / H_WendlandC6)  / H
 # PLOT STUFF
 figure()
 subplot(211)
-xx = linspace(0., 5*h, 1000)
+xx = linspace(0., 5*h, 100)
 maxY = 1.2*Gaussian(0, h)
 
 # Plot the kernels
@@ -261,44 +261,54 @@ def d_wendlandC2(r):     return where(r > 1., 0., 20.*r**4 - 60.*r**3 + 60.*r**2
 def d_wendlandC4(r):     return where(r > 1., 0., 93.3333*r**7 - 448.*r**6 + 840.*r**5 - 746.667*r**4 + 280.*r**3 - 18.6667*r)
 def d_wendlandC6(r):     return where(r > 1., 0., 352.*r**10 - 2310.*r**9 + 6336.*r**8 - 9240.*r**7 + 7392.*r**6 - 2772.*r**5 + 264.*r**3 - 22.*r)
 def d_Gaussian(r,h): return (-8.*sqrt(2.)/(PI**(3./2.) * h**5)) * r * exp(- 2.*r**2 / (h**2))
+def dh_Gaussian(r,h): return -(3*Gaussian(r,h) + (r/h) * d_Gaussian(r,h))
 
 # Get the second derivative of the reduced kernel definitions for 3D kernels
-def d2_cubic_spline(r):   return where(r > 1., 0., where(r < 0.5,
-                                                         18.*r - 6.,
-                                                         -6.*r + 6.) )
+# def d2_cubic_spline(r):   return where(r > 1., 0., where(r < 0.5,
+#                                                          18.*r - 6.,
+#                                                          -6.*r + 6.) )
 
-def d2_quartic_spline(r): return where(r > 1., 0., where(r < 0.2,
-                                                         72.*r**2 - 4.8,
-                                                         where(r < 0.6,
-                                                               -48.*r**2 + 48.*r  - (48./5.),
-                                                               12.*r**2 - 24.*r + 12.)))
+# def d2_quartic_spline(r): return where(r > 1., 0., where(r < 0.2,
+#                                                          72.*r**2 - 4.8,
+#                                                          where(r < 0.6,
+#                                                                -48.*r**2 + 48.*r  - (48./5.),
+#                                                                12.*r**2 - 24.*r + 12.)))
 
-def d2_quintic_spline(r): return where(r > 1., 0., where(r < 1./3.,
-                                                         -200.*r**3 + 120.*r**2 - (40./9.),
-                                                         where(r < 2./3.,
-                                                               100.*r**3 - 180.*r**2 + 100.*r - (140./9.),
-                                                               -20.*r**3 + 60.*r**2 - 60.*r + 20)))
-def d2_wendlandC2(r):     return where(r > 1., 0., 80.*r**3 - 180.*r**2 + 120.*r - 20.)
-def d2_wendlandC4(r):     return where(r > 1., 0., 653.3333*r**6 - 2688.*r**5 + 4200.*r**4 - 2986.667*r**3 + 840.*r**2 - 18.6667)
-def d2_wendlandC6(r):     return where(r > 1., 0., 3520.*r**9 - 20790.*r**8 + 50688.*r**7 - 64680.*r**6 + 44352.*r**5 - 13860.*r**4 + 792.*r**2 - 22)
-def d2_Gaussian(r,h): return (32*sqrt(2)/(PI**(3./2.)*h**7)) * r**2 * exp(-2.*r**2 / (h**2)) - 8.*sqrt(2.)/(PI**(3./2.) * h**5) * exp(- 2.*r**2 / (h**2))
+# def d2_quintic_spline(r): return where(r > 1., 0., where(r < 1./3.,
+#                                                          -200.*r**3 + 120.*r**2 - (40./9.),
+#                                                          where(r < 2./3.,
+#                                                                100.*r**3 - 180.*r**2 + 100.*r - (140./9.),
+#                                                                -20.*r**3 + 60.*r**2 - 60.*r + 20)))
+# def d2_wendlandC2(r):     return where(r > 1., 0., 80.*r**3 - 180.*r**2 + 120.*r - 20.)
+# def d2_wendlandC4(r):     return where(r > 1., 0., 653.3333*r**6 - 2688.*r**5 + 4200.*r**4 - 2986.667*r**3 + 840.*r**2 - 18.6667)
+# def d2_wendlandC6(r):     return where(r > 1., 0., 3520.*r**9 - 20790.*r**8 + 50688.*r**7 - 64680.*r**6 + 44352.*r**5 - 13860.*r**4 + 792.*r**2 - 22)
+# def d2_Gaussian(r,h): return (32*sqrt(2)/(PI**(3./2.)*h**7)) * r**2 * exp(-2.*r**2 / (h**2)) - 8.*sqrt(2.)/(PI**(3./2.) * h**5) * exp(- 2.*r**2 / (h**2))
 
 
 # Derivative of kernel definitions (3D)
-def dW_cubic_spline(r):   return C_cubic      * d_cubic_spline(r / H_cubic)     / H_cubic**4
-def dW_quartic_spline(r): return C_quartic    * d_quartic_spline(r / H_quartic) / H_quartic**4
-def dW_quintic_spline(r): return C_quintic    * d_quintic_spline(r / H_quintic) / H_quintic**4
-def dW_WendlandC2(r):     return C_WendlandC2 * d_wendlandC2(r / H_WendlandC2)  / H_WendlandC2**4
-def dW_WendlandC4(r):     return C_WendlandC4 * d_wendlandC4(r / H_WendlandC4)  / H_WendlandC4**4
-def dW_WendlandC6(r):     return C_WendlandC6 * d_wendlandC6(r / H_WendlandC6)  / H_WendlandC6**4
+def dWdx_cubic_spline(r):   return C_cubic      * d_cubic_spline(r / H_cubic)     / H_cubic**4
+def dWdx_quartic_spline(r): return C_quartic    * d_quartic_spline(r / H_quartic) / H_quartic**4
+def dWdx_quintic_spline(r): return C_quintic    * d_quintic_spline(r / H_quintic) / H_quintic**4
+def dWdx_WendlandC2(r):     return C_WendlandC2 * d_wendlandC2(r / H_WendlandC2)  / H_WendlandC2**4
+def dWdx_WendlandC4(r):     return C_WendlandC4 * d_wendlandC4(r / H_WendlandC4)  / H_WendlandC4**4
+def dWdx_WendlandC6(r):     return C_WendlandC6 * d_wendlandC6(r / H_WendlandC6)  / H_WendlandC6**4
+
+# Derivative of kernel definitions (3D)
+def dWdh_cubic_spline(r):   return (3. * cubic_spline(r / H_cubic) + (r / H_cubic) * d_cubic_spline(r / H_cubic)) * (-C_cubic / H_cubic**4) 
+def dWdh_quartic_spline(r): return (3. * quartic_spline(r / H_quartic) + (r / H_quartic) * d_quartic_spline(r / H_quartic)) * (-C_quartic / H_quartic**4) 
+def dWdh_quintic_spline(r): return (3. * quintic_spline(r / H_quintic) + (r / H_quintic) * d_quintic_spline(r / H_quintic)) * (-C_quintic / H_quintic**4) 
+def dWdh_WendlandC2(r):     return (3. * wendlandC2(r / H_WendlandC2) + (r / H_WendlandC2) * d_wendlandC2(r / H_WendlandC2)) * (-C_WendlandC2 / H_WendlandC2**4) 
+def dWdh_WendlandC4(r):     return (3. * wendlandC4(r / H_WendlandC4) + (r / H_WendlandC4) * d_wendlandC4(r / H_WendlandC4)) * (-C_WendlandC4 / H_WendlandC4**4) 
+def dWdh_WendlandC6(r):     return (3. * wendlandC6(r / H_WendlandC6) + (r / H_WendlandC6) * d_wendlandC6(r / H_WendlandC6)) * (-C_WendlandC6 / H_WendlandC6**4) 
+
 
 # Second derivative of kernel definitions (3D)
-def d2W_cubic_spline(r):   return C_cubic      * d2_cubic_spline(r / H_cubic)     / H_cubic**5
-def d2W_quartic_spline(r): return C_quartic    * d2_quartic_spline(r / H_quartic) / H_quartic**5
-def d2W_quintic_spline(r): return C_quintic    * d2_quintic_spline(r / H_quintic) / H_quintic**5
-def d2W_WendlandC2(r):     return C_WendlandC2 * d2_wendlandC2(r / H_WendlandC2)  / H_WendlandC2**5
-def d2W_WendlandC4(r):     return C_WendlandC4 * d2_wendlandC4(r / H_WendlandC4)  / H_WendlandC4**5
-def d2W_WendlandC6(r):     return C_WendlandC6 * d2_wendlandC6(r / H_WendlandC6)  / H_WendlandC6**5
+#def d2W_cubic_spline(r):   return C_cubic      * d2_cubic_spline(r / H_cubic)     / H_cubic**5
+#def d2W_quartic_spline(r): return C_quartic    * d2_quartic_spline(r / H_quartic) / H_quartic**5
+#def d2W_quintic_spline(r): return C_quintic    * d2_quintic_spline(r / H_quintic) / H_quintic**5
+#def d2W_WendlandC2(r):     return C_WendlandC2 * d2_wendlandC2(r / H_WendlandC2)  / H_WendlandC2**5
+#def d2W_WendlandC4(r):     return C_WendlandC4 * d2_wendlandC4(r / H_WendlandC4)  / H_WendlandC4**5
+#def d2W_WendlandC6(r):     return C_WendlandC6 * d2_wendlandC6(r / H_WendlandC6)  / H_WendlandC6**5
 
 
 figure()
@@ -306,12 +316,12 @@ subplot(211)
 
 plot([0, 2.5*h], [0., 0.], 'k--', linewidth=0.7)
 plot(xx, d_Gaussian(xx, h), 'k-', linewidth=0.7, label="${\\rm Gaussian}$", lw=1.5)
-plot(xx, dW_cubic_spline(xx), 'b-', label="${\\rm Cubic~spline}$", lw=1.5)
-plot(xx, dW_quartic_spline(xx), 'c-', label="${\\rm Quartic~spline}$", lw=1.5)
-plot(xx, dW_quintic_spline(xx), 'g-', label="${\\rm Quintic~spline}$", lw=1.5)
-plot(xx, dW_WendlandC2(xx), 'r-', label="${\\rm Wendland~C2}$", lw=1.5)
-plot(xx, dW_WendlandC4(xx), 'm-', label="${\\rm Wendland~C4}$", lw=1.5)
-plot(xx, dW_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$", lw=1.5)
+plot(xx, dWdx_cubic_spline(xx), 'b-', label="${\\rm Cubic~spline}$", lw=1.5)
+plot(xx, dWdx_quartic_spline(xx), 'c-', label="${\\rm Quartic~spline}$", lw=1.5)
+plot(xx, dWdx_quintic_spline(xx), 'g-', label="${\\rm Quintic~spline}$", lw=1.5)
+plot(xx, dWdx_WendlandC2(xx), 'r-', label="${\\rm Wendland~C2}$", lw=1.5)
+plot(xx, dWdx_WendlandC4(xx), 'm-', label="${\\rm Wendland~C4}$", lw=1.5)
+plot(xx, dWdx_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$", lw=1.5)
 
 maxY = d_Gaussian(h/2, h)
 
@@ -327,7 +337,7 @@ plot([dx, dx], [2*maxY, 0.1], 'k:', linewidth=0.5)
 
 xlim(0., 2.5*h)
 gca().xaxis.set_ticklabels([])
-ylim(1.1*maxY, -0.1*maxY)
+ylim(1.3*maxY, -0.1*maxY)
 xlabel("$r$", labelpad=0)
 ylabel("$\\partial W(r,h)/\\partial r$", labelpad=0.5)
 legend(loc="lower right", frameon=False, handletextpad=0.1, handlelength=1.2, fontsize=8)
@@ -335,29 +345,27 @@ legend(loc="lower right", frameon=False, handletextpad=0.1, handlelength=1.2, fo
 
 
 subplot(212)
-
-maxY = d2_Gaussian(h,h)
-plot([h/2, h/2], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
-plot([h, h], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
-plot([dx, dx], [-4*maxY, 1.4*maxY], 'k:', linewidth=0.5)
-text(h/2, -2.9*maxY, "$\\sigma\\equiv h/2$", rotation=90, backgroundcolor='w', ha='center', va='bottom', fontsize=9)
-text(h, -2.9*maxY, "$h\\equiv\\eta\\langle x\\rangle$", rotation=90, backgroundcolor='w', ha='center', va='bottom', fontsize=9)
-text(dx, -2.9*maxY, "$\\langle x\\rangle = %.1f$"%dx, rotation=90, backgroundcolor='w', ha='center', va='bottom', fontsize=9)
+plot([h/2, h/2], [0.77*maxY, -0.15*maxY], 'k:', linewidth=0.5)
+plot([h, h], [0.77*maxY, -0.15*maxY], 'k:', linewidth=0.5)
+plot([dx, dx], [0.77*maxY, -0.15*maxY], 'k:', linewidth=0.5)
+text(h/2, 1.25*maxY, "$\\sigma\\equiv h/2$", rotation=90, ha='center', va='bottom', fontsize=9)
+text(h, 1.25*maxY, "$h\\equiv\\eta\\langle x\\rangle$", rotation=90, ha='center', va='bottom', fontsize=9)
+text(dx, 1.25*maxY, "$\\langle x\\rangle = %.1f$"%dx, rotation=90, ha='center', va='bottom', fontsize=9)
 
 
 plot([0, 2.5*h], [0., 0.], 'k--', linewidth=0.7)
-plot(xx, d2_Gaussian(xx, h), 'k-', linewidth=0.7, label="${\\rm Gaussian}$")
-plot(xx, d2W_cubic_spline(xx), 'b-', label="${\\rm Cubic~spline}$", lw=1.5)
-plot(xx, d2W_quartic_spline(xx), 'c-', label="${\\rm Quartic~spline}$", lw=1.5)
-plot(xx, d2W_quintic_spline(xx), 'g-', label="${\\rm Quintic~spline}$", lw=1.5)
-plot(xx, d2W_WendlandC2(xx), 'r-', label="${\\rm Wendland~C2}$", lw=1.5)
-plot(xx, d2W_WendlandC4(xx), 'm-', label="${\\rm Wendland~C4}$", lw=1.5)
-plot(xx, d2W_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$", lw=1.5)
+#plot(xx, dh_Gaussian(xx, h), 'k-', linewidth=0.7, label="${\\rm Gaussian}$")
+plot(xx, dWdh_cubic_spline(xx), 'b-', label="${\\rm Cubic~spline}$", lw=1.5)
+plot(xx, dWdh_quartic_spline(xx), 'c-', label="${\\rm Quartic~spline}$", lw=1.5)
+plot(xx, dWdh_quintic_spline(xx), 'g-', label="${\\rm Quintic~spline}$", lw=1.5)
+plot(xx, dWdh_WendlandC2(xx), 'r-', label="${\\rm Wendland~C2}$", lw=1.5)
+plot(xx, dWdh_WendlandC4(xx), 'm-', label="${\\rm Wendland~C4}$", lw=1.5)
+plot(xx, dWdh_WendlandC6(xx), 'y-', label="${\\rm Wendland~C6}$", lw=1.5)
 
 xlim(0., 2.5*h)
-ylim(-3.2*maxY, 1.3*maxY)
+ylim(1.3*maxY, -0.15*maxY)
 xlabel("$r$", labelpad=-1)
-ylabel("$\\partial^2 W(r,h)/\\partial r^2$", labelpad=0.5)
+ylabel("$\\partial W(r,h)/\\partial h$", labelpad=0.5)
 
 
 savefig("kernel_derivatives.pdf")
