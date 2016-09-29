@@ -1,29 +1,3 @@
-\documentclass[fleqn, usenatbib, useAMS, a4paper]{mnras}
-\usepackage{graphicx}
-\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
-\usepackage{times}
-\usepackage[super]{nth}
-
-\newcommand{\swift}{{\sc swift}\xspace}
-\newcommand{\gadget}{{\sc gadget}\xspace}
-\newcommand{\dd}[2]{\frac{\partial #1}{\partial #2}}
-\renewcommand{\vec}[1]{{\mathbf{#1}}}
-\newcommand{\Wij}{\overline{\nabla_xW_{ij}}}
-\newcommand{\tbd}{\textcolor{red}{TO BE DONE}}
-
-\newcommand{\MinimalSPH}{\textsc{minimal-sph}\xspace}
-\newcommand{\GadgetSPH}{\textsc{gadget-sph}\xspace}
-\newcommand{\PESPH}{\textsc{pe-sph}\xspace}
-%\setlength{\mathindent}{0pt}
-
-%opening
-\title{SPH flavours in SWIFT}
-\author{Matthieu Schaller}
-
-\begin{document}
-
-\maketitle
-
 For vector quantities, we define $\vec{a}_{ij} \equiv (\vec{a}_i -
 \vec{a}_j)$. Barred quantities ($\bar a_{ij}$) correspond to the
 average over two particles of a quantity: $\bar a_{ij} \equiv
@@ -32,7 +6,7 @@ vector quantity $\Wij \equiv \frac{1}{2}\left(W(\vec{x}_{ij}, h_i) +
 \nabla_x W(\vec{x}_{ij},h_j)\right)$.
 
 
-%#########################################################################################################
+%#######################################################################################################
 \subsection{\MinimalSPH}
 \label{sec:sph:minimal}
 
@@ -174,7 +148,7 @@ where, as above, the last two updated quantities are obtained using
 the pre-defined equation of state. Note that the thermal energy $u_i$
 itself is \emph{not} updated.
 
-%#########################################################################################################
+%#######################################################################################################
 
 \subsection{Gadget-2 SPH}
 \label{sec:sph:gadget2}
@@ -281,7 +255,7 @@ the pre-defined equation of state. Note that the entropic function $A_i$
 itself is \emph{not} updated.
 
 
-%#########################################################################################################
+%#######################################################################################################
 
 \subsection{Pressure-Entropy SPH}
 \label{sec:sph:pe}
@@ -351,7 +325,3 @@ Dalla Vecchia (\textit{in prep.}), also described in section 2.2.2 of
 \cite{Schaller2015}.\\
 \label{sec:sph:anarchy}
 \tbd 
-\bibliographystyle{mnras}
-\bibliography{./bibliography.bib}
-
-\end{document}

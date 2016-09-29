@@ -1,5 +1,5 @@
 #!/bin/bash
-pdflatex sph_flavours.tex
+pdflatex -jobname=sph_flavours sph_flavours_standalone.tex
 bibtex sph_flavours.aux 
-pdflatex sph_flavours.tex
-pdflatex sph_flavours.tex
+pdflatex -jobname=sph_flavours sph_flavours_standalone.tex
+pdflatex -jobname=sph_flavours sph_flavours_standalone.tex
