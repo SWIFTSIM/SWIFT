@@ -931,17 +931,53 @@ int cell_unskip_tasks(struct cell *c) {
         return 1;
 
 #ifdef WITH_MPI
-      /* Activate the recv tasks. */
+      /* Activate the send/recv flags. */
       if (ci->nodeID != engine_rank) {
-        if (ci->recv_xv != NULL) ci->recv_xv->skip = 0;
-        if (ci->recv_rho != NULL) ci->recv_rho->skip = 0;
-        if (ci->recv_gradient != NULL) ci->recv_gradient->skip = 0;
-        if (ci->recv_ti != NULL) ci->recv_ti->skip = 0;
+
+        /* Activate the tasks to recv foreign cell ci's data. */
+        ci->recv_xv->skip = 0;
+        ci->recv_rho->skip = 0;
+        ci->recv_ti->skip = 0;
+
+        /* Look for the local cell cj's send tasks. */
+        struct link *l = NULL;
+        for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next);
+        if (l == NULL) error("Missing link to send_xv task.");
+        l->t->skip = 0;
+
+        for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next);
+        if (l == NULL) error("Missing link to send_rho task.");
+        l->t->skip = 0;
+
+        for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
+             l = l->next);
+        if (l == NULL) error("Missing link to send_ti task.");
+        l->t->skip = 0;
+
       } else if (cj->nodeID != engine_rank) {
-        if (cj->recv_xv != NULL) cj->recv_xv->skip = 0;
-        if (cj->recv_rho != NULL) cj->recv_rho->skip = 0;
-        if (cj->recv_gradient != NULL) cj->recv_gradient->skip = 0;
-        if (cj->recv_ti != NULL) cj->recv_ti->skip = 0;
+
+        /* Activate the tasks to recv foreign cell cj's data. */
+        cj->recv_xv->skip = 0;
+        cj->recv_rho->skip = 0;
+        cj->recv_ti->skip = 0;
+        /* Look for the local cell ci's send tasks. */
+        struct link *l = NULL;
+        for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next);
+        if (l == NULL) error("Missing link to send_xv task.");
+        l->t->skip = 0;
+
+        for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next);
+        if (l == NULL) error("Missing link to send_rho task.");
+        l->t->skip = 0;
+
+        for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
+             l = l->next);
+        if (l == NULL) error("Missing link to send_ti task.");
+        l->t->skip = 0;
       }
 #endif
     }
@@ -951,13 +987,6 @@ int cell_unskip_tasks(struct cell *c) {
   for (struct link *l = c->gradient; l != NULL; l = l->next) l->t->skip = 0;
   for (struct link *l = c->force; l != NULL; l = l->next) l->t->skip = 0;
   for (struct link *l = c->grav; l != NULL; l = l->next) l->t->skip = 0;
-#ifdef WITH_MPI
-  for (struct link *l = c->send_xv; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->send_rho; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->send_gradient; l != NULL; l = l->next)
-    l->t->skip = 0;
-  for (struct link *l = c->send_ti; l != NULL; l = l->next) l->t->skip = 0;
-#endif
   if (c->extra_ghost != NULL) c->extra_ghost->skip = 0;
   if (c->ghost != NULL) c->ghost->skip = 0;
   if (c->init != NULL) c->init->skip = 0;

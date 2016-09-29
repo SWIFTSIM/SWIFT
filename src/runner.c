@@ -765,9 +765,6 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   c->updated = 0;
   c->g_updated = 0;
 
-  /* Should we abort as a rebuild has been triggered ? */
-  if (e->forcerebuild) return;
-
   /* Do we need to drift ? */
   if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
 
@@ -909,14 +906,6 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
 
   /* Update the time of the last drift */
   c->ti_old = ti_current;
-
-  /* Now let's un-skip the tasks associated with this active cell */
-  if (c->ti_end_min == ti_current) {
-
-    const int forcerebuild = cell_unskip_tasks(c);
-
-    if (forcerebuild) atomic_inc(&e->forcerebuild);
-  }
 }
 
 /**
@@ -938,6 +927,13 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
 
     /* Only drift local particles. */
     if (c != NULL && c->nodeID == e->nodeID) runner_do_drift(c, e);
+
+    /* Now let's un-skip the tasks associated with this cell if active
+     * and we're not rebuilding which will repeat this work. */
+    if (!e->forcerebuild && c->ti_end_min == e->ti_current) {
+      const int forcerebuild = cell_unskip_tasks(c);
+      if (forcerebuild) atomic_inc(&e->forcerebuild);
+    }
   }
 }
 
