@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
     message("CPU frequency used for tick conversion: %llu Hz", cpufreq);
   }
 
-  /* Report host name(s). */
+/* Report host name(s). */
 #ifdef WITH_MPI
   if (myrank == 0 || verbose > 1) {
     message("Rank %d running on: %s", myrank, hostname());
