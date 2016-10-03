@@ -752,7 +752,7 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
  * @param c The cell.
  * @param e The engine.
  */
-static void runner_do_drift(struct cell *c, struct engine *e) {
+static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
   const double timeBase = e->timeBase;
   const int ti_old = c->ti_old;
@@ -766,7 +766,7 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
   c->g_updated = 0;
 
   /* Do we need to drift ? */
-  if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
+  if (drift) drift = (e->drift_all || cell_is_drift_needed(c, ti_current));
 
   /* Drift from the last time the cell was drifted to the current time */
   const double dt = (ti_current - ti_old) * timeBase;
@@ -779,85 +779,87 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
 
   /* No children? */
   if (!c->split) {
+    if (drift) {
 
-    /* Check that we are actually going to move forward. */
-    if (ti_current >= ti_old) {
+      /* Check that we are actually going to move forward. */
+      if (ti_current >= ti_old) {
 
-      /* Loop over all the g-particles in the cell */
-      const size_t nr_gparts = c->gcount;
-      for (size_t k = 0; k < nr_gparts; k++) {
+        /* Loop over all the g-particles in the cell */
+        const size_t nr_gparts = c->gcount;
+        for (size_t k = 0; k < nr_gparts; k++) {
 
-        /* Get a handle on the gpart. */
-        struct gpart *const gp = &gparts[k];
+          /* Get a handle on the gpart. */
+          struct gpart *const gp = &gparts[k];
 
-        /* Drift... */
-        drift_gpart(gp, dt, timeBase, ti_old, ti_current);
+          /* Drift... */
+          drift_gpart(gp, dt, timeBase, ti_old, ti_current);
 
-        /* Compute (square of) motion since last cell construction */
-        const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-                          gp->x_diff[1] * gp->x_diff[1] +
-                          gp->x_diff[2] * gp->x_diff[2];
-        dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
-      }
+          /* Compute (square of) motion since last cell construction */
+          const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
+                            gp->x_diff[1] * gp->x_diff[1] +
+                            gp->x_diff[2] * gp->x_diff[2];
+          dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+        }
 
-      /* Loop over all the particles in the cell (more work for these !) */
-      const size_t nr_parts = c->count;
-      for (size_t k = 0; k < nr_parts; k++) {
+        /* Loop over all the particles in the cell (more work for these !) */
+        const size_t nr_parts = c->count;
+        for (size_t k = 0; k < nr_parts; k++) {
 
-        /* Get a handle on the part. */
-        struct part *const p = &parts[k];
-        struct xpart *const xp = &xparts[k];
+          /* Get a handle on the part. */
+          struct part *const p = &parts[k];
+          struct xpart *const xp = &xparts[k];
 
-        /* Drift... */
-        drift_part(p, xp, dt, timeBase, ti_old, ti_current);
+          /* Drift... */
+          drift_part(p, xp, dt, timeBase, ti_old, ti_current);
 
-        /* Compute (square of) motion since last cell construction */
-        const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
-                          xp->x_diff[1] * xp->x_diff[1] +
-                          xp->x_diff[2] * xp->x_diff[2];
-        dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
+          /* Compute (square of) motion since last cell construction */
+          const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
+                            xp->x_diff[1] * xp->x_diff[1] +
+                            xp->x_diff[2] * xp->x_diff[2];
+          dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
 
-        /* Maximal smoothing length */
-        h_max = (h_max > p->h) ? h_max : p->h;
+          /* Maximal smoothing length */
+          h_max = (h_max > p->h) ? h_max : p->h;
 
-        /* Now collect quantities for statistics */
+          /* Now collect quantities for statistics */
 
-        const float half_dt =
-            (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
-        const double x[3] = {p->x[0], p->x[1], p->x[2]};
-        const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
-                            xp->v_full[1] + p->a_hydro[1] * half_dt,
-                            xp->v_full[2] + p->a_hydro[2] * half_dt};
+          const float half_dt =
+              (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+          const double x[3] = {p->x[0], p->x[1], p->x[2]};
+          const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
+                              xp->v_full[1] + p->a_hydro[1] * half_dt,
+                              xp->v_full[2] + p->a_hydro[2] * half_dt};
 
-        const float m = hydro_get_mass(p);
+          const float m = hydro_get_mass(p);
 
-        /* Collect mass */
-        mass += m;
+          /* Collect mass */
+          mass += m;
 
-        /* Collect momentum */
-        mom[0] += m * v[0];
-        mom[1] += m * v[1];
-        mom[2] += m * v[2];
+          /* Collect momentum */
+          mom[0] += m * v[0];
+          mom[1] += m * v[1];
+          mom[2] += m * v[2];
 
-        /* Collect angular momentum */
-        ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
-        ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
-        ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
+          /* Collect angular momentum */
+          ang_mom[0] += m * (x[1] * v[2] - x[2] * v[1]);
+          ang_mom[1] += m * (x[2] * v[0] - x[0] * v[2]);
+          ang_mom[2] += m * (x[0] * v[1] - x[1] * v[0]);
 
-        /* Collect energies. */
-        e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-        e_pot += 0.;
-        e_int += m * hydro_get_internal_energy(p, half_dt);
-        e_rad += cooling_get_radiated_energy(xp);
+          /* Collect energies. */
+          e_kin += 0.5 * m * (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+          e_pot += 0.;
+          e_int += m * hydro_get_internal_energy(p, half_dt);
+          e_rad += cooling_get_radiated_energy(xp);
 
-        /* Collect entropy */
-        entropy += m * hydro_get_entropy(p, half_dt);
-      }
+          /* Collect entropy */
+          entropy += m * hydro_get_entropy(p, half_dt);
+        }
 
-      /* Now, get the maximal particle motion from its square */
-      dx_max = sqrtf(dx2_max);
+        /* Now, get the maximal particle motion from its square */
+        dx_max = sqrtf(dx2_max);
 
-    } /* Check that we are actually going to move forward. */
+      } /* Check that we are actually going to move forward. */
+    }
   }
 
   /* Otherwise, aggregate data from children. */
@@ -869,43 +871,51 @@ static void runner_do_drift(struct cell *c, struct engine *e) {
         struct cell *cp = c->progeny[k];
 
         /* Recurse. */
-        runner_do_drift(cp, e);
-
-        dx_max = max(dx_max, cp->dx_max);
-        h_max = max(h_max, cp->h_max);
-        mass += cp->mass;
-        e_kin += cp->e_kin;
-        e_int += cp->e_int;
-        e_pot += cp->e_pot;
-        e_rad += cp->e_rad;
-        entropy += cp->entropy;
-        mom[0] += cp->mom[0];
-        mom[1] += cp->mom[1];
-        mom[2] += cp->mom[2];
-        ang_mom[0] += cp->ang_mom[0];
-        ang_mom[1] += cp->ang_mom[1];
-        ang_mom[2] += cp->ang_mom[2];
+        runner_do_drift(cp, e, drift);
+        if (drift) {
+          dx_max = max(dx_max, cp->dx_max);
+          h_max = max(h_max, cp->h_max);
+          mass += cp->mass;
+          e_kin += cp->e_kin;
+          e_int += cp->e_int;
+          e_pot += cp->e_pot;
+          e_rad += cp->e_rad;
+          entropy += cp->entropy;
+          mom[0] += cp->mom[0];
+          mom[1] += cp->mom[1];
+          mom[2] += cp->mom[2];
+          ang_mom[0] += cp->ang_mom[0];
+          ang_mom[1] += cp->ang_mom[1];
+          ang_mom[2] += cp->ang_mom[2];
+        }
       }
   }
 
   /* Store the values */
-  c->h_max = h_max;
-  c->dx_max = dx_max;
-  c->mass = mass;
-  c->e_kin = e_kin;
-  c->e_int = e_int;
-  c->e_pot = e_pot;
-  c->e_rad = e_rad;
-  c->entropy = entropy;
-  c->mom[0] = mom[0];
-  c->mom[1] = mom[1];
-  c->mom[2] = mom[2];
-  c->ang_mom[0] = ang_mom[0];
-  c->ang_mom[1] = ang_mom[1];
-  c->ang_mom[2] = ang_mom[2];
+  if (drift) {
+    c->h_max = h_max;
+    c->dx_max = dx_max;
+    c->mass = mass;
+    c->e_kin = e_kin;
+    c->e_int = e_int;
+    c->e_pot = e_pot;
+    c->e_rad = e_rad;
+    c->entropy = entropy;
+    c->mom[0] = mom[0];
+    c->mom[1] = mom[1];
+    c->mom[2] = mom[2];
+    c->ang_mom[0] = ang_mom[0];
+    c->ang_mom[1] = ang_mom[1];
+    c->ang_mom[2] = ang_mom[2];
 
-  /* Update the time of the last drift */
-  c->ti_old = ti_current;
+    /* Update the time of the last drift */
+    c->ti_old = ti_current;
+  }
+
+  if (c->ti_end_min == e->ti_current) {
+    const int forcerebuild = cell_unskip_tasks(c);
+    if (forcerebuild) atomic_inc(&e->forcerebuild);
+  }
 }
 
 /**
@@ -924,16 +934,7 @@ void runner_do_drift_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &cells[ind];
-
-    /* Only drift local particles. */
-    if (c != NULL && c->nodeID == e->nodeID) runner_do_drift(c, e);
-
-    /* Now let's un-skip the tasks associated with this cell if active
-     * and we're not rebuilding which will repeat this work. */
-    if (!e->forcerebuild && c->ti_end_min == e->ti_current) {
-      const int forcerebuild = cell_unskip_tasks(c);
-      if (forcerebuild) atomic_inc(&e->forcerebuild);
-    }
+    if (c != NULL) runner_do_drift(c, e, (c->nodeID == e->nodeID));
   }
 }
 
