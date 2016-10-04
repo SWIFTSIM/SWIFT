@@ -1948,7 +1948,7 @@ void engine_maketasks(struct engine *e) {
 }
 
 /**
- * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
  *        Threadpool mapper function for fixdt version.
  *
  * @param map_data pointer to the tasks
@@ -1963,6 +1963,9 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
+
+    /* All tasks are unskipped (we skip by default). */
+    t->skip = 0;
 
     /* Pair? */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
@@ -1990,7 +1993,7 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
  *        Threadpool mapper function.
  *
  * @param map_data pointer to the tasks
@@ -2009,7 +2012,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Single-cell task? */
     if (t->type == task_type_self || t->type == task_type_ghost ||
-        t->type == task_type_extra_ghost || t->type == task_type_sub_self) {
+        t->type == task_type_extra_ghost ||
+        t->type == task_type_grav_external || t->type == task_type_cooling ||
+        t->type == task_type_sourceterms || t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
       t->skip = (t->ci->ti_end_min > ti_end);
@@ -2125,7 +2130,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Mark tasks to be skipped and set the sort flags accordingly.
+ * @brief Mark tasks to be un-skipped and set the sort flags accordingly.
  *
  * @return 1 if the space has to be rebuilt, 0 otherwise.
  */
