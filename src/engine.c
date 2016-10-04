@@ -2009,7 +2009,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Single-cell task? */
     if (t->type == task_type_self || t->type == task_type_ghost ||
-        t->type == task_type_sub_self) {
+        t->type == task_type_extra_ghost || t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
       t->skip = (t->ci->ti_end_min > ti_end);
