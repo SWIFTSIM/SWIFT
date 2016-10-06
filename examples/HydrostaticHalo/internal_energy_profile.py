@@ -21,16 +21,17 @@ def do_binning(x,y,x_bin_edges):
     return(count,y_totals)
 
 
-n_snaps = 100
-
 #for the plotting
-n_radial_bins = int(sys.argv[1])
+max_r = float(sys.argv[1])
+n_radial_bins = int(sys.argv[2])
+n_snaps = int(sys.argv[3])
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0
 PARSEC_IN_CGS = 3.0856776e18
 KM_PER_SEC_IN_CGS = 1.0e5
 CONST_G_CGS = 6.672e-8
+CONST_m_H_CGS = 1.67e-24
 h = 0.67777 # hubble parameter
 gamma = 5./3.
 eta = 1.2349
@@ -47,6 +48,8 @@ unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"]
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
 v_c = float(params.attrs["IsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
+#lambda_cgs = float(params.attrs["LambdaCooling:lambda_cgs"])
+#X_H = float(params.attrs["LambdaCooling:hydrogen_mass_abundance"])
 header = f["Header"]
 N = header.attrs["NumPart_Total"][0]
 box_centre = np.array(header.attrs["BoxSize"])
@@ -80,21 +83,25 @@ for i in range(n_snaps):
     u /= v_c**2/(2. * (gamma - 1.))
     r = radius_over_virial_radius
 
-    bin_edges = np.linspace(0,1,n_radial_bins + 1)
+    bin_edges = np.linspace(0,max_r,n_radial_bins + 1)
     (hist,u_totals) = do_binning(r,u,bin_edges)
     
-    bin_widths = 1. / n_radial_bins
-    radial_bin_mids = np.linspace(bin_widths / 2. , 1. - bin_widths / 2. , n_radial_bins) 
+    bin_widths = bin_edges[1] - bin_edges[0]
+    radial_bin_mids = np.linspace(bin_widths / 2. , max_r - bin_widths / 2. , n_radial_bins) 
     binned_u = u_totals / hist
 
+    #calculate cooling radius
+
+    #r_cool_over_r_vir = np.sqrt((2.*(gamma - 1.)*lambda_cgs*M_vir_cgs*X_H**2)/(4.*np.pi*CONST_m_H_CGS**2*v_c_cgs**2*r_vir_cgs**3))*np.sqrt(snap_time_cgs)
 
     plt.plot(radial_bin_mids,binned_u,'ko',label = "Numerical solution")
-    plt.plot((0,1),(1,1),label = "Analytic Solution")
+    #plt.plot((0,1),(1,1),label = "Analytic Solution")
+    #plt.plot((r_cool_over_r_vir,r_cool_over_r_vir),(0,2),'r',label = "Cooling radius")
     plt.legend(loc = "lower right")
     plt.xlabel(r"$r / r_{vir}$")
     plt.ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
     plt.title(r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(snap_time_cgs,N,v_c))
-    plt.ylim((0,1))
+    plt.ylim((0,2))
     plot_filename = "internal_energy_profile_%03d.png" %i
     plt.savefig(plot_filename,format = "png")
     plt.close()
