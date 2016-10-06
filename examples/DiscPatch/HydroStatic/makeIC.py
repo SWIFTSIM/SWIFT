@@ -56,9 +56,10 @@ print "UnitVelocity_in_cgs: ", const_unit_velocity_in_cgs
 
 
 # parameters of potential
-surface_density = 10.
+surface_density = 100. # surface density of all mass, which generates the gravitational potential
 scale_height    = 100.
 gamma           = 5./3.
+fgas            = 0.1  # gas fraction
 
 # derived units
 const_unit_time_in_cgs = (const_unit_length_in_cgs / const_unit_velocity_in_cgs)
@@ -131,7 +132,7 @@ h      = glass_h[0:numGas]
 numGas = numpy.shape(pos)[0]
 
 # compute furthe properties of ICs
-column_density = surface_density * numpy.tanh(boxSize/2./scale_height)
+column_density = fgas * surface_density * numpy.tanh(boxSize/2./scale_height)
 enclosed_mass  = column_density * boxSize * boxSize
 pmass          = enclosed_mass / numGas
 meanrho        = enclosed_mass / boxSize**3
