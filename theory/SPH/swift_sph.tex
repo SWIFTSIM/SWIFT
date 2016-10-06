@@ -1,0 +1,38 @@
+\documentclass[fleqn, usenatbib, useAMS]{mnras}
+\usepackage{graphicx}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{times}
+\usepackage[super]{nth}
+
+\newcommand{\swift}{{\sc swift}\xspace}
+\newcommand{\gadget}{{\sc gadget}\xspace}
+\newcommand{\dd}[2]{\frac{\partial #1}{\partial #2}}
+\renewcommand{\vec}[1]{{\mathbf{#1}}}
+\newcommand{\Wij}{\overline{\nabla_xW_{ij}}}
+\newcommand{\tbd}{\textcolor{red}{TO BE DONE}}
+
+\newcommand{\MinimalSPH}{\textsc{minimal-sph}\xspace}
+\newcommand{\GadgetSPH}{\textsc{gadget-sph}\xspace}
+\newcommand{\PESPH}{\textsc{pe-sph}\xspace}
+%\setlength{\mathindent}{0pt}
+
+%opening
+\title{SPH implementation in \swift}
+\author{Matthieu Schaller}
+
+\begin{document}
+
+\maketitle
+\section{Kernel functions}
+\input{Kernels/kernel_definitions}
+
+\section{Equation of state}
+\input{EoS/eos}
+
+\section{SPH flavours}
+\input{Flavours/sph_flavours}
+
+\bibliographystyle{mnras}
+\bibliography{./bibliography}
+
+\end{document}

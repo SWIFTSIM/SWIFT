@@ -1,23 +1,8 @@
-\documentclass[fleqn, usenatbib, useAMS,a4paper]{mnras}
-\usepackage{graphicx}
-\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
-\usepackage{times}
-
-\newcommand{\swift}{{\sc Swift}\xspace}
-
-%opening
-\title{SPH kernels in SWIFT}
-\author{Matthieu Schaller}
-
-\begin{document}
-
-\maketitle
-
 We follow the definitions and notation of
 \cite{Dehnen2012}. Motivation for all the material given here can be
 found in their paper.
 
-\section{General Definitions}
+\subsection{General Definitions}
 
 The desirable properties of an SPH kernels $W(\vec{x},h)$ are:
 \begin{enumerate}
@@ -83,7 +68,7 @@ the usual cubic spline kernel (see below), setting the simulation
 resolution to $\eta=1.2348$ yields the commonly used value $N_{\rm
   ngb} = 48$.
 
-\section{Kernels available in \swift}
+\subsection{Kernels available in \swift}
 
 The \swift kernels are split into two categories, the B-splines
 ($M_{4,5,6}$) and the Wendland kernels ($C2$, $C4$ and $C6$). In all
@@ -198,11 +183,13 @@ All kernels available in \swift are shown on Fig.~\ref{fig:sph:kernels}.
 \includegraphics[width=\columnwidth]{kernels.pdf}
 \caption{The kernel functions available in \swift for a mean
   inter-particle separation $\langle x\rangle=1.5$ and a resolution
-  $\eta=1.2348$. The corresponding kernel support radii $H$ (shown by
-  arrows) and number of neighours $N_{\rm ngb}$ are indicated on the
-  figure. A Gaussian kernel with the same smoothing length is shown
-  for comparison. Note that all these kernels have the \emph{same
-    resolution} despite having vastly different number of neighbours.}
+  $\eta=1.2348$ shown in linear (top) and log (bottom) units to
+  highlight their differences. The corresponding kernel support radii
+  $H$ (shown by arrows) and number of neighours $N_{\rm ngb}$ are
+  indicated on the figure. A Gaussian kernel with the same smoothing
+  length is shown for comparison. Note that all these kernels have
+  the \emph{same resolution} despite having vastly different number of
+  neighbours.}
 \label{fig:sph:kernels}
 \end{figure}
 
@@ -216,7 +203,7 @@ All kernels available in \swift are shown on Fig.~\ref{fig:sph:kernels}.
 \end{figure}
 
 
-\section{Kernel Derivatives}
+\subsection{Kernel Derivatives}
 
 The derivatives of the kernel function have relatively simple
 expressions and are shown on Fig.~\ref{fig:sph:kernel_derivatives}:
@@ -228,7 +215,3 @@ expressions and are shown on Fig.~\ref{fig:sph:kernel_derivatives}:
 \end{align}
 Note that for all the kernels listed above, $f'(0) = 0$. 
 
-\bibliographystyle{mnras}
-\bibliography{./bibliography.bib}
-
-\end{document}
