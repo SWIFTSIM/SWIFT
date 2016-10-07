@@ -3,7 +3,7 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
-n_snaps = 41
+n_snaps = 101
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0
@@ -72,25 +72,43 @@ for i in range(n_snaps):
     total_internal_energy = np.sum(u)
     internal_energy_array = np.append(internal_energy_array,total_internal_energy)
 
+#get the radiated energy
+
+energy_array = np.genfromtxt("energy.txt",skip_header = 1)
+#rad_energy_time = energy_array[:,0]
+#rad_energy_time_cgs = rad_energy_time * unit_time_cgs
+rad_energy_array = energy_array[:,6]
+
+#only use every 10th term in the rad_energy_array
+rad_energy_array = rad_energy_array[0::10]
+
 #put energies in units of v_c^2 and rescale by number of particles
 
 pe = potential_energy_array / (N*v_c**2)
 ke = kinetic_energy_array / (N*v_c**2)
 ie = internal_energy_array / (N*v_c**2)
-te = pe + ke + ie
+re = rad_energy_array / (N*v_c**2)
+te = pe + ke + ie #+ re
+
+print pe
+print ke
+print ie
+#print re
+print te
 
 dyn_time_cgs = r_vir_cgs / v_c_cgs
 time_array = time_array_cgs / dyn_time_cgs
-
+#rad_time_array = rad_energy_time_cgs / dyn_time_cgs
 plt.plot(time_array,ke,label = "Kinetic Energy")
 plt.plot(time_array,pe,label = "Potential Energy")
 plt.plot(time_array,ie,label = "Internal Energy")
+#plt.plot(time_array,re,label = "Radiated Energy")
 plt.plot(time_array,te,label = "Total Energy")
-plt.legend(loc = "upper right")
+plt.legend(loc = "lower left")
 plt.xlabel(r"$t / t_{dyn}$")
 plt.ylabel(r"$E / v_c^2$")
 plt.title(r"$%d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$" %(N,v_c))
-plt.ylim((-4,2))
+#plt.ylim((-4,2))
 #plot_filename = "density_profile_%03d.png" %i
 plt.show()
 
