@@ -2487,7 +2487,7 @@ void engine_print_stats(struct engine *e) {
   const ticks tic = getticks();
   const struct space *s = e->s;
 
-  double e_kin = 0.0, e_int = 0.0, e_pot = 0.0, e_rad = 0.0;
+  double e_kin = 0.0, e_int = 0.0, e_pot_self = 0.0, e_pot_ext = 0.0 ,e_rad = 0.0;
   double entropy = 0.0, mass = 0.0;
   double mom[3] = {0.0, 0.0, 0.0}, ang_mom[3] = {0.0, 0.0, 0.0};
 
@@ -2498,7 +2498,8 @@ void engine_print_stats(struct engine *e) {
       mass += c->mass;
       e_kin += c->e_kin;
       e_int += c->e_int;
-      e_pot += c->e_pot;
+      e_pot_self += c->e_pot_self;
+      e_pot_ext += c->e_pot_ext;
       e_rad += c->e_rad;
       entropy += c->entropy;
       mom[0] += c->mom[0];
@@ -2512,46 +2513,49 @@ void engine_print_stats(struct engine *e) {
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
   {
-    double in[12] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
-    double out[12];
+    double in[13] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
+    double out[13];
     out[0] = e_kin;
     out[1] = e_int;
-    out[2] = e_pot;
-    out[3] = e_rad;
-    out[4] = mom[0];
-    out[5] = mom[1];
-    out[6] = mom[2];
-    out[7] = ang_mom[0];
-    out[8] = ang_mom[1];
-    out[9] = ang_mom[2];
-    out[10] = mass;
-    out[11] = entropy;
+    out[2] = e_pot_self;
+    out[3] = e_pot_ext;
+    out[4] = e_rad;
+    out[5] = mom[0];
+    out[6] = mom[1];
+    out[7] = mom[2];
+    out[8] = ang_mom[0];
+    out[9] = ang_mom[1];
+    out[10] = ang_mom[2];
+    out[11] = mass;
+    out[12] = entropy;
     if (MPI_Reduce(out, in, 11, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
       error("Failed to aggregate stats.");
     e_kin = out[0];
     e_int = out[1];
-    e_pot = out[2];
-    e_rad = out[3];
-    mom[0] = out[4];
-    mom[1] = out[5];
-    mom[2] = out[6];
-    ang_mom[0] = out[7];
-    ang_mom[1] = out[8];
-    ang_mom[2] = out[9];
-    mass = out[10];
-    entropy = out[11];
+    e_pot_self = out[2];
+    e_pot_ext = out[3];
+    e_rad = out[4];
+    mom[0] = out[5];
+    mom[1] = out[6];
+    mom[2] = out[7];
+    ang_mom[0] = out[8];
+    ang_mom[1] = out[9];
+    ang_mom[2] = out[10];
+    mass = out[11];
+    entropy = out[12];
   }
 #endif
 
+  const double e_pot = e_pot_self + e_pot_ext;
   const double e_tot = e_kin + e_int + e_pot;
 
   /* Print info */
   if (e->nodeID == 0) {
     fprintf(e->file_stats,
             " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-            "%14e\n",
-            e->time, mass, e_tot, e_kin, e_int, e_pot, e_rad, entropy, mom[0],
+            "%14e %14e %14e\n",
+            e->time, mass, e_tot, e_kin, e_int, e_pot, e_pot_self, e_pot_ext, e_rad, entropy, mom[0],
             mom[1], mom[2], ang_mom[0], ang_mom[1], ang_mom[2]);
     fflush(e->file_stats);
   }
@@ -3411,9 +3415,9 @@ void engine_init(struct engine *e, struct space *s,
     e->file_stats = fopen(energyfileName, "w");
     fprintf(e->file_stats,
             "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-            "%14s\n",
-            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_radcool",
-            "Entropy", "p_x", "p_y", "p_z", "ang_x", "ang_y", "ang_z");
+            "%14s %14s %14s\n",
+            "Time", "Mass", "E_tot", "E_kin", "E_int", "E_pot", "E_pot_self", "E_pot_ext", 
+	    "E_radcool", "Entropy", "p_x", "p_y", "p_z", "ang_x", "ang_y", "ang_z");
     fflush(e->file_stats);
 
     char timestepsfileName[200] = "";

@@ -3,7 +3,7 @@ import h5py as h5
 import matplotlib.pyplot as plt
 import sys
 
-n_snaps = 1000
+n_snaps = 5
 
 #some constants
 OMEGA = 0.3 # Cosmological matter fraction at z = 0

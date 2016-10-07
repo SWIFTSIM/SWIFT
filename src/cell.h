@@ -5,6 +5,7 @@
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
+ *                    Stefan Arridge (stefan.arridge@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -182,7 +183,7 @@ struct cell {
   double mom[3], ang_mom[3];
 
   /* Mass, potential, internal  and kinetic energy of particles in this cell. */
-  double mass, e_pot, e_int, e_kin, e_rad, entropy;
+  double mass, e_pot_self, e_pot_ext, e_pot, e_int, e_kin, e_rad, entropy;
 
   /* Number of particles updated in this cell. */
   int updated, g_updated;
