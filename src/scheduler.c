@@ -1040,10 +1040,12 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   s->mask = mask;
   s->submask = submask | (1 << task_subtype_none);
 
-  /* Clear all the waits and rids. */
+  /* Clear all the waits, rids and times. */
   for (int k = 0; k < s->nr_tasks; k++) {
     s->tasks[k].wait = 1;
     s->tasks[k].rid = -1;
+    s->tasks[k].tic = 0;
+    s->tasks[k].toc = 0;
   }
 
   /* Re-wait the tasks. */
