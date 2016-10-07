@@ -2359,6 +2359,10 @@ void engine_collect_kick(struct cell *c) {
         ti_end_min = min(ti_end_min, cp->ti_end_min);
         updated += cp->updated;
         g_updated += cp->g_updated;
+
+        /* Collected, so clear for next time. */
+        cp->updated = 0;
+        cp->g_updated = 0;
       }
     }
   }
@@ -2394,6 +2398,10 @@ void engine_collect_timestep(struct engine *e) {
       ti_end_min = min(ti_end_min, c->ti_end_min);
       updates += c->updated;
       g_updates += c->g_updated;
+
+      /* Collected, so clear for next time. */
+      c->updated = 0;
+      c->g_updated = 0;
     }
 
 /* Aggregate the data from the different nodes. */

@@ -756,10 +756,6 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
   const int ti_current = e->ti_current;
 
-  /* Clear the active particle counters. */
-  c->updated = 0;
-  c->g_updated = 0;
-
   /* Unskip any active tasks. */
   if (c->ti_end_min == e->ti_current) {
     const int forcerebuild = cell_unskip_tasks(c);
