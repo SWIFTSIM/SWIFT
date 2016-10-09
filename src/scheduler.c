@@ -42,7 +42,6 @@
 #include "atomic.h"
 #include "const.h"
 #include "cycle.h"
-#include "engine.h"
 #include "error.h"
 #include "intrinsics.h"
 #include "kernel_hydro.h"
@@ -50,6 +49,24 @@
 #include "space.h"
 #include "task.h"
 #include "timers.h"
+
+/**
+ * @brief Add a task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param t The task to be added.
+ */
+
+void scheduler_add_active(struct scheduler *s, struct task *t) {
+  int ind = atomic_inc(&s->active_count);
+  s->tid_active[ind] = t - s->tasks;
+}
+
+/**
+ * @brief Re-set the list of active tasks.
+ */
+
+void scheduler_clear_active(struct scheduler *s) { s->active_count = 0; }
 
 /**
  * @brief Add an unlock_task to the given task.
@@ -864,6 +881,7 @@ void scheduler_reset(struct scheduler *s, int size) {
     /* Free existing task lists if necessary. */
     if (s->tasks != NULL) free(s->tasks);
     if (s->tasks_ind != NULL) free(s->tasks_ind);
+    if (s->tid_active != NULL) free(s->tid_active);
 
     /* Allocate the new lists. */
     if (posix_memalign((void *)&s->tasks, task_align,
@@ -872,6 +890,9 @@ void scheduler_reset(struct scheduler *s, int size) {
 
     if ((s->tasks_ind = (int *)malloc(sizeof(int) * size)) == NULL)
       error("Failed to allocate task lists.");
+
+    if ((s->tid_active = (int *)malloc(sizeof(int) * size)) == NULL)
+      error("Failed to allocate aactive task lists.");
   }
 
   /* Reset the counters. */
@@ -883,6 +904,7 @@ void scheduler_reset(struct scheduler *s, int size) {
   s->submask = 0;
   s->nr_unlocks = 0;
   s->completed_unlock_writes = 0;
+  s->active_count = 0;
 
   /* Set the task pointers in the queues. */
   for (int k = 0; k < s->nr_queues; k++) s->queues[k].tasks = s->tasks;
@@ -892,11 +914,11 @@ void scheduler_reset(struct scheduler *s, int size) {
  * @brief Compute the task weights
  *
  * @param s The #scheduler.
- * @param verbose Are we talkative ?
+ * @param verbose Are we talkative?
  */
+
 void scheduler_reweight(struct scheduler *s, int verbose) {
 
-  const ticks tic = getticks();
   const int nr_tasks = s->nr_tasks;
   int *tid = s->tasks_ind;
   struct task *tasks = s->tasks;
@@ -905,6 +927,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                                0.4025, 0.1897, 0.4025, 0.1897, 0.4025,
                                0.5788, 0.4025, 0.5788};
   const float wscale = 0.001;
+  const ticks tic = getticks();
 
   /* Run through the tasks backwards and set their weights. */
   for (int k = nr_tasks - 1; k >= 0; k--) {
@@ -1040,7 +1063,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   s->mask = mask;
   s->submask = submask | (1 << task_subtype_none);
 
-  /* Clear all the waits, rids and times. */
+  /* Clear all the waits, rids, and times. */
   for (int k = 0; k < s->nr_tasks; k++) {
     s->tasks[k].wait = 1;
     s->tasks[k].rid = -1;
@@ -1049,6 +1072,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   }
 
   /* Re-wait the tasks. */
+  message("sheduler_rewait_mapper...");
   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 1000, s);
 
@@ -1095,8 +1119,17 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 #endif
 
   /* Loop over the tasks and enqueue whoever is ready. */
+  /* message("sheduler_enqueue_mapper...");
   threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,
-                 s->nr_tasks, sizeof(int), 1000, s);
+                 s->nr_tasks, sizeof(int), 1000, s); */
+  for (int k = 0; k < s->active_count; k++) {
+    struct task *t = &s->tasks[s->tid_active[k]];
+    if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
+        ((1 << t->subtype) & s->submask)) {
+      scheduler_enqueue(s, t);
+      pthread_cond_signal(&s->sleep_cond);
+    }
+  }
 
   /* To be safe, fire of one last sleep_cond in a safe way. */
   pthread_mutex_lock(&s->sleep_mutex);

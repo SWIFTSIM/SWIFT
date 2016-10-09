@@ -758,14 +758,13 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
   /* Unskip any active tasks. */
   if (c->ti_end_min == e->ti_current) {
-    const int forcerebuild = cell_unskip_tasks(c);
+    const int forcerebuild = cell_unskip_tasks(c, &e->sched);
     if (forcerebuild) atomic_inc(&e->forcerebuild);
   }
 
   /* Do we really need to drift? */
   if (drift) {
-    if (!e->drift_all && !cell_is_drift_needed(c, ti_current))
-      return;
+    if (!e->drift_all && !cell_is_drift_needed(c, ti_current)) return;
   } else {
 
     /* Not drifting, but may still need to recurse for task skipping. */
@@ -813,8 +812,8 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
         /* Compute (square of) motion since last cell construction */
         const float dx2 = gp->x_diff[0] * gp->x_diff[0] +
-          gp->x_diff[1] * gp->x_diff[1] +
-          gp->x_diff[2] * gp->x_diff[2];
+                          gp->x_diff[1] * gp->x_diff[1] +
+                          gp->x_diff[2] * gp->x_diff[2];
         dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
       }
 
@@ -831,8 +830,8 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 
         /* Compute (square of) motion since last cell construction */
         const float dx2 = xp->x_diff[0] * xp->x_diff[0] +
-          xp->x_diff[1] * xp->x_diff[1] +
-          xp->x_diff[2] * xp->x_diff[2];
+                          xp->x_diff[1] * xp->x_diff[1] +
+                          xp->x_diff[2] * xp->x_diff[2];
         dx2_max = (dx2_max > dx2) ? dx2_max : dx2;
 
         /* Maximal smoothing length */
@@ -841,7 +840,7 @@ static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
         /* Now collect quantities for statistics */
 
         const float half_dt =
-          (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
+            (ti_current - (p->ti_begin + p->ti_end) / 2) * timeBase;
         const double x[3] = {p->x[0], p->x[1], p->x[2]};
         const float v[3] = {xp->v_full[0] + p->a_hydro[0] * half_dt,
                             xp->v_full[1] + p->a_hydro[1] * half_dt,

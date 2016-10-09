@@ -52,6 +52,7 @@
 #include "gravity.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "scheduler.h"
 #include "space.h"
 #include "timers.h"
 
@@ -901,7 +902,7 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_tasks(struct cell *c) {
+int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->density; l != NULL; l = l->next) {
@@ -914,11 +915,13 @@ int cell_unskip_tasks(struct cell *c) {
     if (t->type == task_type_pair) {
       if (!(ci->sorted & (1 << t->flags))) {
         atomic_or(&ci->sorts->flags, (1 << t->flags));
-        ci->sorts->skip = 0;
+        if (atomic_cas(&ci->sorts->skip, 1, 0))
+          scheduler_add_active(s, ci->sorts);
       }
       if (!(cj->sorted & (1 << t->flags))) {
         atomic_or(&cj->sorts->flags, (1 << t->flags));
-        cj->sorts->skip = 0;
+        if (atomic_cas(&cj->sorts->skip, 1, 0))
+          scheduler_add_active(s, cj->sorts);
       }
     }
 
@@ -942,19 +945,22 @@ int cell_unskip_tasks(struct cell *c) {
         /* Look for the local cell cj's send tasks. */
         struct link *l = NULL;
         for (l = cj->send_xv; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next);
+             l = l->next)
+          ;
         if (l == NULL) error("Missing link to send_xv task.");
-        l->t->skip = 0;
+        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
 
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next);
+             l = l->next)
+          ;
         if (l == NULL) error("Missing link to send_rho task.");
-        l->t->skip = 0;
+        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
 
         for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
-             l = l->next);
+             l = l->next)
+          ;
         if (l == NULL) error("Missing link to send_ti task.");
-        l->t->skip = 0;
+        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
 
       } else if (cj->nodeID != engine_rank) {
 
@@ -965,35 +971,48 @@ int cell_unskip_tasks(struct cell *c) {
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
         for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next);
+             l = l->next)
+          ;
         if (l == NULL) error("Missing link to send_xv task.");
-        l->t->skip = 0;
+        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next);
+             l = l->next)
+          ;
         if (l == NULL) error("Missing link to send_rho task.");
-        l->t->skip = 0;
+        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
 
         for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
-             l = l->next);
+             l = l->next)
+          ;
         if (l == NULL) error("Missing link to send_ti task.");
-        l->t->skip = 0;
+        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
       }
 #endif
     }
   }
 
   /* Unskip all the other task types. */
-  for (struct link *l = c->gradient; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->force; l != NULL; l = l->next) l->t->skip = 0;
-  for (struct link *l = c->grav; l != NULL; l = l->next) l->t->skip = 0;
-  if (c->extra_ghost != NULL) c->extra_ghost->skip = 0;
-  if (c->ghost != NULL) c->ghost->skip = 0;
-  if (c->init != NULL) c->init->skip = 0;
-  if (c->kick != NULL) c->kick->skip = 0;
-  if (c->cooling != NULL) c->cooling->skip = 0;
-  if (c->sourceterms != NULL) c->sourceterms->skip = 0;
-  if (c->grav_external != NULL) c->grav_external->skip = 0;
+  for (struct link *l = c->gradient; l != NULL; l = l->next)
+    if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+  for (struct link *l = c->force; l != NULL; l = l->next)
+    if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+  for (struct link *l = c->grav; l != NULL; l = l->next)
+    if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+  if (c->extra_ghost != NULL && atomic_cas(&c->extra_ghost->skip, 1, 0))
+    scheduler_add_active(s, c->extra_ghost);
+  if (c->ghost != NULL && atomic_cas(&c->ghost->skip, 1, 0))
+    scheduler_add_active(s, c->ghost);
+  if (c->init != NULL && atomic_cas(&c->init->skip, 1, 0))
+    scheduler_add_active(s, c->init);
+  if (c->kick != NULL && atomic_cas(&c->kick->skip, 1, 0))
+    scheduler_add_active(s, c->kick);
+  if (c->cooling != NULL && atomic_cas(&c->cooling->skip, 1, 0))
+    scheduler_add_active(s, c->cooling);
+  if (c->sourceterms != NULL && atomic_cas(&c->sourceterms->skip, 1, 0))
+    scheduler_add_active(s, c->sourceterms);
+  if (c->grav_external != NULL && atomic_cas(&c->grav_external->skip, 1, 0))
+    scheduler_add_active(s, c->grav_external);
 
   return 0;
 }

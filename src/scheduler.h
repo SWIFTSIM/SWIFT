@@ -83,6 +83,10 @@ struct scheduler {
   /* The task indices. */
   int *tasks_ind;
 
+  /* List of initial tasks. */
+  int *tid_active;
+  int active_count;
+
   /* The task unlocks. */
   struct task **volatile unlocks;
   int *volatile unlock_ind;
@@ -106,6 +110,8 @@ struct scheduler {
 };
 
 /* Function prototypes. */
+void scheduler_add_active(struct scheduler *s, struct task *t);
+void scheduler_clear_active(struct scheduler *s);
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,
                     struct threadpool *tp);
