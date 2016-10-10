@@ -1057,7 +1057,7 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  // ticks tic = getticks();
+  ticks tic = getticks();
 
   /* Store the masks */
   s->mask = mask;
@@ -1122,6 +1122,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* message("sheduler_enqueue_mapper...");
   threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,
                  s->nr_tasks, sizeof(int), 1000, s); */
+  message("launching %i active tasks.", s->active_count);
   for (int k = 0; k < s->active_count; k++) {
     struct task *t = &s->tasks[s->tid_active[k]];
     if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
@@ -1136,8 +1137,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
 
-  /* message("enqueueing tasks took %.3f %s." ,
-          clocks_from_ticks( getticks() - tic ), clocks_getunit()); */
+  message("enqueueing tasks took %.3f %s." ,
+          clocks_from_ticks( getticks() - tic ), clocks_getunit());
 }
 
 /**
