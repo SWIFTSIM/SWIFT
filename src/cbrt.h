@@ -26,9 +26,6 @@
 /* Some standard headers. */
 #include <math.h>
 
-/* Local headers. */
-#include "error.h"
-
 /**
  * @brief Compute the inverse cube root of a single-precision floating-point
  * number.
