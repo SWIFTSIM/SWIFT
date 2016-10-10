@@ -305,16 +305,71 @@ P_{\partial h_i}$ and $\rho_{\partial h_i}$
 (eq. \ref{eq:sph:minimal:rho_dh}):
 
 \begin{equation}
-  f_i \equiv \left(\frac{\bar P_{\partial h_i} h_i}{3\rho_i
-    \tilde{A}_i}\right)\left(1 + \frac{h_i}{3\rho_i}\rho_{\partial 
-    h_i}\right)^{-1}.
+  f_i \equiv \left(\frac{h_i}{3\rho_i}\bar P_{\partial
+    h_i}\right)\left(1 + \frac{h_i}{3\rho_i}\rho_{\partial
+    h_i}\right)^{-1}. 
 \end{equation}
 
 \subsubsection{Hydrodynamical accelerations (\nth{2} neighbour loop)}
 
+The accelerations are given by the following term:
+
+\begin{align}
+  \frac{d\vec{v}_i}{dt} = -\sum_j m_j &\left[\frac{\bar P_i}{\bar\rho_i^2} \left(\frac{\tilde A_j}{\tilde A_i} - \frac{f_i}{\tilde A_i}\right)\nabla_x W(\vec{x}_{ij}, h_i) \right.  \nonumber \\
+  &+\frac{P_j}{\rho_j^2} \left(\frac{\tilde A_i}{\tilde A_j} - \frac{f_j}{\tilde A_j}\right)\nabla_x W(\vec{x}_{ij},h_j) \\
+  &+ \left. \bigg.\nu_{ij} \Wij \right], \label{eq:sph:pe:dv_dt}
+\end{align}
+where the viscosity term $\nu_{ij}$ has been computed as in
+the \GadgetSPH case (Eq. \ref{eq:sph:gadget2:balsara}
+and \ref{eq:sph:gadget2:nu_ij}). For completeness, the equation of
+motion for the entropy is
+
+\begin{equation}
+\frac{dA_i}{dt} = \frac{1}{2} A_{\rm eos}\left(\rho_i, \sum_j
+m_j \nu_{ij}\vec{v}_{ij}\cdot \Wij\right).
+\end{equation}
+
+\subsubsection{Time integration}
+
+The time-step condition is identical to the \MinimalSPH case
+(Eq. \ref{eq:sph:minimal:dt}). The same applies to the integration
+forward in time (Eq. \ref{eq:sph:minimal:kick_v} to
+\ref{eq:sph:minimal:kick_c}) with the exception of the change in
+internal energy (Eq. \ref{eq:sph:minimal:kick_u}) which gets replaced
+by an integration for the the entropy:
+
+\begin{align}
+  \vec{v}_i &\rightarrow \vec{v}_i + \frac{d\vec{v}_i}{dt} \Delta t  \label{eq:sph:pe:kick_v}\\
+  A_i &\rightarrow A_i + \frac{dA_i}{dt} \Delta t \label{eq:sph:pe:kick_A}\\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, A_i\right) \label{eq:sph:pe:kick_P}, \\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i,
+  A_i\right) \label{eq:sph:pe:kick_c}, \\
+  \tilde A_i &= A_i^{1/\gamma}
+\end{align}
+where, once again, we made use of the equation of state relating
+thermodynamical quantities.
 
 
 \subsubsection{Particle properties prediction}
+
+The prediction step is also identical to the \MinimalSPH case with the
+entropic function replacing the thermal energy.
+
+\begin{align}
+  \vec{x}_i &\rightarrow \vec{x}_i + \vec{v}_i \Delta t  \label{eq:sph:pe:drift_x} \\
+  h_i &\rightarrow h_i \exp\left(\frac{1}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:pe:drift_h}\\
+  \rho_i &\rightarrow \rho_i \exp\left(-\frac{3}{h_i} \frac{dh_i}{dt}
+  \Delta t\right), \label{eq:sph:pe:drift_rho} \\
+  \tilde A_i &\rightarrow \left(A_i + \frac{dA_i}{dt}
+  \Delta t\right)^{1/\gamma} \label{eq:sph:pe:drift_A_tilde}, \\
+  P_i &\rightarrow P_{\rm eos}\left(\rho_i, A_i + \frac{dA_i}{dt} \Delta t\right), \label{eq:sph:pe:drift_P}\\
+  c_i &\rightarrow c_{\rm eos}\left(\rho_i, A_i + \frac{dA_i}{dt}
+  \Delta t\right) \label{eq:sph:pe:drift_c}, 
+\end{align}
+where, as above, the last two updated quantities are obtained using
+the pre-defined equation of state. Note that the entropic function $A_i$
+itself is \emph{not} updated.
 
 \subsection{Pressure-Energy SPH}
 \label{sec:sph:pu}
