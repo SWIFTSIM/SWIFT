@@ -112,7 +112,7 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
 #if defined(HYDRO_GAMMA_5_3)
 
   const float icbrt = icbrtf(x); /* x^(-1/3) */
-  return x * x * icbrt;          /* x^(5/3) */
+  return icbrt * x * x;          /* x^(5/3) */
 
 #elif defined(HYDRO_GAMMA_7_5)
 
@@ -121,7 +121,7 @@ __attribute__((always_inline)) INLINE static float pow_gamma(float x) {
 #elif defined(HYDRO_GAMMA_4_3)
 
   const float icbrt = icbrtf(x); /* x^(-1/3) */
-  return x * x * icbrt * icbrt;  /* x^(4/3) */
+  return icbrt * icbrt * x * x;  /* x^(4/3) */
 
 #elif defined(HYDRO_GAMMA_2_1)
 
