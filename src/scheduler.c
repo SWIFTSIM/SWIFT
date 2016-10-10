@@ -1119,6 +1119,9 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
       pthread_cond_signal(&s->sleep_cond);
     }
   }
+  
+  /* Clear the list of active tasks. */
+  s->active_count = 0;
 
   /* To be safe, fire of one last sleep_cond in a safe way. */
   pthread_mutex_lock(&s->sleep_mutex);

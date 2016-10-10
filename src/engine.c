@@ -1381,7 +1381,6 @@ void engine_count_and_link_tasks(struct engine *e) {
     if (t->type == task_type_sort && t->ci->split)
       for (int j = 0; j < 8; j++)
         if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
-          t->ci->progeny[j]->sorts->skip = 0;
           scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
         }
 
@@ -2151,13 +2150,13 @@ int engine_marktasks(struct engine *e) {
 
     /* Multiple-timestep case */
   } else {
-
+  
     /* Run through the tasks and mark as skip or not. */
     size_t extra_data[3] = {e->ti_current, rebuild_space, (size_t)&e->sched};
-    scheduler_clear_active(&e->sched);
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), 10000, extra_data);
     rebuild_space = extra_data[1];
+    message("scheduler active tasks: %i", e->sched.active_count);
   }
 
   if (e->verbose)
