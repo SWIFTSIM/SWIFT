@@ -78,6 +78,7 @@ tests/testRiemannExact
 tests/testRiemannTRRS
 tests/testRiemannHLLC
 tests/testMatrixInversion
+tests/testCbrt
 
 theory/latex/swift.pdf
 theory/SPH/kernel/kernels.pdf
