@@ -67,11 +67,6 @@ int main(int argc, char *argv[]) {
           "failed for x = %.8e, exact = %.8e, ours = %.8e, err = %.3e, rel = "
           "%.3e",
           data[k], exact, ours, err_abs, err_rel);
-
-    /* if (err_abs * fabsf(exact)  > err_rel_tol) { */
-    /*   error("failed for x = %.8e, exact = %.8e, ours = %.8e, err = %.3e", */
-    /*         data[k], exact, ours, err_abs); */
-    /* } */
   }
 
   /* Second run to check the speed of the inverse cube root. */
