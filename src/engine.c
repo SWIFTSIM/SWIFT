@@ -1867,7 +1867,8 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_external_gravity)
     engine_make_external_gravity_tasks(e);
 
-  if (e->sched.nr_tasks == 0) error("No hydro or gravity tasks created.");
+  if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
+    error("We have particles but no hydro or gravity tasks were created.");
 
   /* Split the tasks. */
   scheduler_splittasks(sched);
