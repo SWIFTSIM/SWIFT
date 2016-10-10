@@ -1057,12 +1057,18 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
     s->tasks[k].rid = -1;
     s->tasks[k].tic = 0;
     s->tasks[k].toc = 0;
+    if (((1 << s->tasks[k].type) & mask) == 0 || 
+        ((1 << s->tasks[k].subtype) & s->submask) == 0)
+      s->tasks[k].skip = 1;
   }
 
   /* Re-wait the tasks. */
   message("sheduler_rewait_mapper...");
   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 1000, s);
+                 
+  message("preparing tasks took %.3f %s.", clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 
 /* Check we have not missed an active task */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1110,7 +1116,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   /* message("sheduler_enqueue_mapper...");
   threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,
                  s->nr_tasks, sizeof(int), 1000, s); */
-  message("launching %i active tasks.", s->active_count);
   for (int k = 0; k < s->active_count; k++) {
     struct task *t = &s->tasks[s->tid_active[k]];
     if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
