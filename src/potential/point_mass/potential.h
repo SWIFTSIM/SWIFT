@@ -116,6 +116,26 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   g->a_grav[2] += -potential->mass * dz * rinv3;
 }
 
+
+/**
+ * @brief Computes the gravitational potential energy of a particle in an isothermal potential.
+ *
+ * @param potential The #external_potential used in the run.
+ * @param phys_const Physical constants in internal units. 
+ * @param p Pointer to the particle data.
+ */
+
+ __attribute__((always_inline)) INLINE static float external_gravity_get_potential_energy(
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct part* p) {
+
+  const float dx = p->x[0] - potential->x;
+  const float dy = p->x[1] - potential->y;
+  const float dz = p->x[2] - potential->z;
+  const float rinv = 1./sqrtf(dx * dx + dy * dy + dz * dz);
+  return -phys_const->const_newton_G * potential->mass * r_inv;
+ }
+
 /**
  * @brief Initialises the external potential properties in the internal system
  * of units.

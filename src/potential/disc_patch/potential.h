@@ -151,6 +151,24 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 }
 
 /**
+ * @brief Computes the gravitational potential energy of a particle in the
+ * disc patch potential.
+ * Time evolving system so not sure how to do this
+ * Placeholder for now- just returns 0
+ *
+ * @param potential The #external_potential used in the run.
+ * @param phys_const Physical constants in internal units. 
+ * @param p Pointer to the particle data.
+ */
+
+ __attribute__((always_inline)) INLINE static float external_gravity_get_potential_energy(
+    const struct external_potential* potential,
+    const struct phys_const* const phys_const, struct part* p) {
+
+  return 0.;
+ }
+
+/**
  * @brief Initialises the external potential properties in the internal system
  * of units.
  *
