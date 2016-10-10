@@ -2121,8 +2121,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
-    /* Init? */
-    else if (t->type == task_type_init) {
+    /* Any other single-cell task? */
+    else {
       /* Set this task's skip. */
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
@@ -2139,7 +2139,7 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   const ticks tic = getticks();
   int rebuild_space = 0;
-
+  
   /* Much less to do here if we're on a fixed time-step. */
   if (e->policy & engine_policy_fixdt) {
 
@@ -2156,7 +2156,6 @@ int engine_marktasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
                    s->nr_tasks, sizeof(struct task), 10000, extra_data);
     rebuild_space = extra_data[1];
-    message("scheduler active tasks: %i", e->sched.active_count);
   }
 
   if (e->verbose)
@@ -2846,6 +2845,7 @@ void engine_drift(struct engine *e) {
   const ticks tic = getticks();
   threadpool_map(&e->threadpool, runner_do_drift_mapper, e->s->cells_top,
                  e->s->nr_cells, sizeof(struct cell), 1, e);
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
