@@ -2019,10 +2019,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         t->type == task_type_sourceterms || t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
-      if ((t->skip = (t->ci->ti_end_min > ti_end)))
-        continue;
-      else
-        scheduler_add_active(s, t);
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
     /* Pair? */
@@ -2040,10 +2037,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         *rebuild_space = 1;
 
       /* Set this task's skip. */
-      if ((t->skip = (ci->ti_end_min > ti_end && cj->ti_end_min > ti_end)) == 1)
-        continue;
-      else scheduler_add_active(s, t);
-      
+      if (ci->ti_end_min <= ti_end || cj->ti_end_min <= ti_end)
+        scheduler_activate(s, t);
+
       /* If this is not a density task, we don't have to do any of the below. */
       if (t->subtype != task_subtype_density) continue;
 
@@ -2051,13 +2047,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->type == task_type_pair) {
         if (!(ci->sorted & (1 << t->flags))) {
           atomic_or(&ci->sorts->flags, (1 << t->flags));
-          if (atomic_cas(&ci->sorts->skip, 1, 0))
-            scheduler_add_active(s, ci->sorts);
+          scheduler_activate(s, ci->sorts);
         }
         if (!(cj->sorted & (1 << t->flags))) {
           atomic_or(&cj->sorts->flags, (1 << t->flags));
-          if (atomic_cas(&cj->sorts->skip, 1, 0))
-            scheduler_add_active(s, cj->sorts);
+          scheduler_activate(s, cj->sorts);
         }
       }
 
@@ -2077,19 +2071,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_xv task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_rho task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_ti task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
       } else if (cj->nodeID != engine_rank) {
 
@@ -2103,19 +2097,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_xv task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_rho task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_ti task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
       }
 
 #endif
@@ -2125,19 +2119,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t->type == task_type_kick) {
       t->ci->updated = 0;
       t->ci->g_updated = 0;
-      if ((t->skip = (t->ci->ti_end_min > ti_end)))
-        continue;
-      else
-        scheduler_add_active(s, t);
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
     /* Init? */
     else if (t->type == task_type_init) {
       /* Set this task's skip. */
-      if ((t->skip = (t->ci->ti_end_min > ti_end)))
-        continue;
-      else
-        scheduler_add_active(s, t);
+      if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
   }
 }

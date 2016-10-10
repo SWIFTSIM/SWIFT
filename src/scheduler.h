@@ -33,6 +33,7 @@
 
 /* Includes. */
 #include "cell.h"
+#include "inline.h"
 #include "lock.h"
 #include "queue.h"
 #include "task.h"
@@ -109,8 +110,23 @@ struct scheduler {
   int nodeID;
 };
 
+/* Inlined functions (for speed). */
+/**
+ * @brief Add a task to the list of active tasks.
+ *
+ * @param s The #scheduler.
+ * @param t The task to be added.
+ */
+
+__attribute__((always_inline)) INLINE static void scheduler_activate(
+    struct scheduler *s, struct task *t) {
+  if (atomic_cas(&t->skip, 1, 0)) {
+    int ind = atomic_inc(&s->active_count);
+    s->tid_active[ind] = t - s->tasks;
+  }
+}
+
 /* Function prototypes. */
-void scheduler_add_active(struct scheduler *s, struct task *t);
 void scheduler_clear_active(struct scheduler *s);
 void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
                     int nr_queues, unsigned int flags, int nodeID,

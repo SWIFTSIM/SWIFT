@@ -51,18 +51,6 @@
 #include "timers.h"
 
 /**
- * @brief Add a task to the list of active tasks.
- *
- * @param s The #scheduler.
- * @param t The task to be added.
- */
-
-void scheduler_add_active(struct scheduler *s, struct task *t) {
-  int ind = atomic_inc(&s->active_count);
-  s->tid_active[ind] = t - s->tasks;
-}
-
-/**
  * @brief Re-set the list of active tasks.
  */
 
@@ -1137,8 +1125,8 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
 
-  message("enqueueing tasks took %.3f %s." ,
-          clocks_from_ticks( getticks() - tic ), clocks_getunit());
+  message("enqueueing tasks took %.3f %s.", clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 }
 
 /**

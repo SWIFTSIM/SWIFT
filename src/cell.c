@@ -915,13 +915,11 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     if (t->type == task_type_pair) {
       if (!(ci->sorted & (1 << t->flags))) {
         atomic_or(&ci->sorts->flags, (1 << t->flags));
-        if (atomic_cas(&ci->sorts->skip, 1, 0))
-          scheduler_add_active(s, ci->sorts);
+        scheduler_activate(s, ci->sorts);
       }
       if (!(cj->sorted & (1 << t->flags))) {
         atomic_or(&cj->sorts->flags, (1 << t->flags));
-        if (atomic_cas(&cj->sorts->skip, 1, 0))
-          scheduler_add_active(s, cj->sorts);
+        scheduler_activate(s, cj->sorts);
       }
     }
 
@@ -948,19 +946,19 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_xv task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = cj->send_rho; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_rho task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = cj->send_ti; l != NULL && l->t->cj->nodeID != ci->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_ti task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
       } else if (cj->nodeID != engine_rank) {
 
@@ -974,19 +972,19 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_xv task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = ci->send_rho; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_rho task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
 
         for (l = ci->send_ti; l != NULL && l->t->cj->nodeID != cj->nodeID;
              l = l->next)
           ;
         if (l == NULL) error("Missing link to send_ti task.");
-        if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+        scheduler_activate(s, l->t);
       }
 #endif
     }
@@ -994,25 +992,18 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types. */
   for (struct link *l = c->gradient; l != NULL; l = l->next)
-    if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+    scheduler_activate(s, l->t);
   for (struct link *l = c->force; l != NULL; l = l->next)
-    if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
+    scheduler_activate(s, l->t);
   for (struct link *l = c->grav; l != NULL; l = l->next)
-    if (atomic_cas(&l->t->skip, 1, 0)) scheduler_add_active(s, l->t);
-  if (c->extra_ghost != NULL && atomic_cas(&c->extra_ghost->skip, 1, 0))
-    scheduler_add_active(s, c->extra_ghost);
-  if (c->ghost != NULL && atomic_cas(&c->ghost->skip, 1, 0))
-    scheduler_add_active(s, c->ghost);
-  if (c->init != NULL && atomic_cas(&c->init->skip, 1, 0))
-    scheduler_add_active(s, c->init);
-  if (c->kick != NULL && atomic_cas(&c->kick->skip, 1, 0))
-    scheduler_add_active(s, c->kick);
-  if (c->cooling != NULL && atomic_cas(&c->cooling->skip, 1, 0))
-    scheduler_add_active(s, c->cooling);
-  if (c->sourceterms != NULL && atomic_cas(&c->sourceterms->skip, 1, 0))
-    scheduler_add_active(s, c->sourceterms);
-  if (c->grav_external != NULL && atomic_cas(&c->grav_external->skip, 1, 0))
-    scheduler_add_active(s, c->grav_external);
+    scheduler_activate(s, l->t);
+  if (c->extra_ghost != NULL) scheduler_activate(s, c->extra_ghost);
+  if (c->ghost != NULL) scheduler_activate(s, c->ghost);
+  if (c->init != NULL) scheduler_activate(s, c->init);
+  if (c->kick != NULL) scheduler_activate(s, c->kick);
+  if (c->cooling != NULL) scheduler_activate(s, c->cooling);
+  if (c->sourceterms != NULL) scheduler_activate(s, c->sourceterms);
+  if (c->grav_external != NULL) scheduler_activate(s, c->grav_external);
 
   return 0;
 }
