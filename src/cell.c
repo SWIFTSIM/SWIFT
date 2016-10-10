@@ -909,7 +909,7 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     const struct cell *ci = t->ci;
     const struct cell *cj = t->cj;
-    t->skip = 0;
+    scheduler_activate(s, t);
 
     /* Set the correct sorting flags */
     if (t->type == task_type_pair) {
@@ -936,9 +936,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       if (ci->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell ci's data. */
-        ci->recv_xv->skip = 0;
-        ci->recv_rho->skip = 0;
-        ci->recv_ti->skip = 0;
+        scheduler_activate(s, ci->recv_xv);
+        scheduler_activate(s, ci->recv_rho);
+        scheduler_activate(s, ci->recv_ti);
 
         /* Look for the local cell cj's send tasks. */
         struct link *l = NULL;
@@ -963,9 +963,9 @@ int cell_unskip_tasks(struct cell *c, struct scheduler *s) {
       } else if (cj->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell cj's data. */
-        cj->recv_xv->skip = 0;
-        cj->recv_rho->skip = 0;
-        cj->recv_ti->skip = 0;
+        scheduler_activate(s, cj->recv_xv);
+        scheduler_activate(s, cj->recv_rho);
+        scheduler_activate(s, cj->recv_ti);
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
         for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
