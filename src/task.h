@@ -53,7 +53,6 @@ enum task_types {
   task_type_grav_fft,
   task_type_grav_mm,
   task_type_grav_up,
-  task_type_grav_external,
   task_type_cooling,
   task_type_sourceterms,
   task_type_count
@@ -68,6 +67,7 @@ enum task_subtypes {
   task_subtype_gradient,
   task_subtype_force,
   task_subtype_grav,
+  task_subtype_external_grav,
   task_subtype_tend,
   task_subtype_count
 } __attribute__((packed));
@@ -160,5 +160,6 @@ int task_lock(struct task *t);
 void task_print_mask(unsigned int mask);
 void task_print_submask(unsigned int submask);
 void task_do_rewait(struct task *t);
+void task_print(const struct task *t);
 
 #endif /* SWIFT_TASK_H */
