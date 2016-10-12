@@ -1249,8 +1249,9 @@ void engine_make_external_gravity_tasks(struct engine *e) {
     if (ci->nodeID != nodeID) continue;
 
     /* If the cells is local build a self-interaction */
-    scheduler_addtask(sched, task_type_self, task_subtype_external_grav, 0, 0,
-                      ci, NULL, 0);
+    ci->grav_external = scheduler_addtask(sched, task_type_self,
+                                          task_subtype_external_grav, 0, 0,
+                                          ci, NULL, 0);
   }
 }
 
@@ -2120,10 +2121,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
     }
 
-    /* Any other single-cell task? */
-    else {
-      /* Set this task's skip. */
+    /* Init? */
+    else if (t->type == task_type_init) {
       if (t->ci->ti_end_min <= ti_end) scheduler_activate(s, t);
+    }
+
+    /* Tasks with no cells should not be skipped? */
+    else if (t->type == task_type_grav_gather_m ||
+             t->type == task_type_grav_fft) {
+      scheduler_activate(s, t);
     }
   }
 }
