@@ -23,6 +23,11 @@
 #include "adiabatic_index.h"
 #include "riemann_vacuum.h"
 
+#ifndef EOS_IDEAL_GAS
+#error \
+    "The TRRS Riemann solver currently only supports an ideal gas equation of state. Either select this equation of state, or try using another Riemann solver!"
+#endif
+
 /**
  * @brief Solve the Riemann problem using the Two Rarefaction Riemann Solver
  *

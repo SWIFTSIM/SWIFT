@@ -131,13 +131,8 @@ struct cell {
   /* Parent cell. */
   struct cell *parent;
 
-  /* Super cell, i.e. the highest-level supercell that has hydro interactions.
-   */
+  /* Super cell, i.e. the highest-level supercell that has pair/self tasks */
   struct cell *super;
-
-  /* Super cell, i.e. the highest-level supercell that has gravity interactions.
-   */
-  struct cell *gsuper;
 
   /* The task computing this cell's sorts. */
   struct task *sorts;
@@ -242,5 +237,6 @@ void cell_check_multipole(struct cell *c, void *data);
 void cell_clean(struct cell *c);
 int cell_is_drift_needed(struct cell *c, int ti_current);
 int cell_unskip_tasks(struct cell *c, struct scheduler *s);
+void cell_set_super(struct cell *c, struct cell *super);
 
 #endif /* SWIFT_CELL_H */

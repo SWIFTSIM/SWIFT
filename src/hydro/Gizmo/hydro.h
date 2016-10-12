@@ -524,6 +524,7 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
   /* conserved.energy is NOT the specific energy (u), but the total thermal
      energy (u*m) */
   p->conserved.energy = u * p->conserved.mass;
+  p->primitives.P = hydro_gamma_minus_one * p->primitives.rho * u;
 }
 
 /**
@@ -540,4 +541,5 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 
   p->conserved.energy = gas_internal_energy_from_entropy(p->primitives.rho, S) *
                         p->conserved.mass;
+  p->primitives.P = gas_pressure_from_entropy(p->primitives.rho, S);
 }

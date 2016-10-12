@@ -1185,20 +1185,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_pair:
       case task_type_sub_pair:
-        if (t->subtype == task_subtype_grav) {
-
-          qid = t->ci->gsuper->owner;
-          if (qid < 0 ||
-              s->queues[qid].count > s->queues[t->cj->gsuper->owner].count)
-            qid = t->cj->gsuper->owner;
-
-        } else {
-
-          qid = t->ci->super->owner;
-          if (qid < 0 ||
-              s->queues[qid].count > s->queues[t->cj->super->owner].count)
-            qid = t->cj->super->owner;
-        }
+        qid = t->ci->super->owner;
+        if (qid < 0 ||
+            s->queues[qid].count > s->queues[t->cj->super->owner].count)
+          qid = t->cj->super->owner;
         break;
       case task_type_recv:
 #ifdef WITH_MPI
