@@ -2012,8 +2012,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Single-cell task? */
     if (t->type == task_type_self || t->type == task_type_ghost ||
-        t->type == task_type_extra_ghost ||
-        t->type == task_type_grav_external || t->type == task_type_cooling ||
+        t->type == task_type_extra_ghost || t->type == task_type_cooling ||
         t->type == task_type_sourceterms || t->type == task_type_sub_self) {
 
       /* Set this task's skip. */
