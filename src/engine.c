@@ -1959,13 +1959,14 @@ void engine_marktasks_fixdt_mapper(void *map_data, int num_elements,
                                    void *extra_data) {
   /* Unpack the arguments. */
   struct task *tasks = (struct task *)map_data;
-  int *rebuild_space = (int *)extra_data;
+  size_t *rebuild_space = &((size_t *)extra_data)[0];
+  struct scheduler *s = (struct scheduler *)(((size_t *)extra_data)[1]);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
     /* All tasks are unskipped (we skip by default). */
-    t->skip = 0;
+    scheduler_activate(s, t);
 
     /* Pair? */
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
@@ -2060,9 +2061,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (ci->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell ci's data. */
-        ci->recv_xv->skip = 0;
-        ci->recv_rho->skip = 0;
-        ci->recv_ti->skip = 0;
+        scheduler_activate(s, ci->recv_xv);
+        scheduler_activate(s, ci->recv_rho);
+        scheduler_activate(s, ci->recv_ti);
 
         /* Look for the local cell cj's send tasks. */
         struct link *l = NULL;
@@ -2087,9 +2088,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       } else if (cj->nodeID != engine_rank) {
 
         /* Activate the tasks to recv foreign cell cj's data. */
-        cj->recv_xv->skip = 0;
-        cj->recv_rho->skip = 0;
-        cj->recv_ti->skip = 0;
+        scheduler_activate(s, cj->recv_xv);
+        scheduler_activate(s, cj->recv_rho);
+        scheduler_activate(s, cj->recv_ti);
+
         /* Look for the local cell ci's send tasks. */
         struct link *l = NULL;
         for (l = ci->send_xv; l != NULL && l->t->cj->nodeID != cj->nodeID;
@@ -2139,18 +2141,19 @@ int engine_marktasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   const ticks tic = getticks();
   int rebuild_space = 0;
-  
+
   /* Much less to do here if we're on a fixed time-step. */
   if (e->policy & engine_policy_fixdt) {
 
     /* Run through the tasks and mark as skip or not. */
+    size_t extra_data[2] = {rebuild_space, (size_t)&e->sched};
     threadpool_map(&e->threadpool, engine_marktasks_fixdt_mapper, s->tasks,
-                   s->nr_tasks, sizeof(struct task), 1000, &rebuild_space);
+                   s->nr_tasks, sizeof(struct task), 1000, extra_data);
     return rebuild_space;
 
     /* Multiple-timestep case */
   } else {
-  
+
     /* Run through the tasks and mark as skip or not. */
     size_t extra_data[3] = {e->ti_current, rebuild_space, (size_t)&e->sched};
     threadpool_map(&e->threadpool, engine_marktasks_mapper, s->tasks,
@@ -2634,7 +2637,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs) {
   }
 
   /* Now, launch the calculation */
-  engine_print_task_counts(e);
   TIMER_TIC;
   engine_launch(e, e->nr_threads, mask, submask);
   TIMER_TOC(timer_runners);

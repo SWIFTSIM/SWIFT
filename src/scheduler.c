@@ -1515,6 +1515,7 @@ void scheduler_clean(struct scheduler *s) {
   free(s->tasks_ind);
   free(s->unlocks);
   free(s->unlock_ind);
+  free(s->tid_active);
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
   free(s->queues);
 }
