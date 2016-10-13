@@ -2034,9 +2034,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            cj->dx_max > space_maxreldx * cj->h_max))
         *rebuild_space = 1;
 
-      /* Set this task's skip. */
+      /* Set this task's skip, otherwise nothing to do. */
       if (ci->ti_end_min <= ti_end || cj->ti_end_min <= ti_end)
         scheduler_activate(s, t);
+      else
+        continue;
 
       /* If this is not a density task, we don't have to do any of the below. */
       if (t->subtype != task_subtype_density) continue;
