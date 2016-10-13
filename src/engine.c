@@ -1885,14 +1885,16 @@ void engine_maketasks(struct engine *e) {
   /* Split the tasks. */
   scheduler_splittasks(sched);
 
-  /* Allocate the list of cell-task links. The maximum number of links
-     is the number of cells (s->tot_cells) times the number of neighbours (27)
-     times the number of interaction types (2, density and force, grav). */
+  /* Allocate the list of cell-task links. The maximum number of links is the
+   * number of cells (s->tot_cells) times the number of neighbours (26) times
+   * the number of interaction types, so 26 * 3 (density, force, grav) pairs
+   * and 4 (density, force, grav, ext_grav) self.
+   */
   if (e->links != NULL) free(e->links);
 #ifdef EXTRA_HYDRO_LOOP
-  e->size_links = s->tot_cells * 27 * 4;
+  e->size_links = s->tot_cells * (26 * 4 + 4);
 #else
-  e->size_links = s->tot_cells * 27 * 3;
+  e->size_links = s->tot_cells * (26 * 3 + 4);
 #endif
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
