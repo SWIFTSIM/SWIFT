@@ -1409,6 +1409,7 @@ static inline void engine_make_gravity_dependencies(struct engine *e,
 
   /* link to cell. */
   engine_addlink(e, &c->grav, gravity);
+  atomic_inc(&c->nr_grav);
 }
 
 /**
@@ -1420,11 +1421,9 @@ static inline void engine_make_gravity_dependencies(struct engine *e,
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-static inline void engine_make_external_gravity_dependencies(struct engine *e,
-                                                             struct scheduler
-                                                             *sched, struct
-                                                             task *gravity,
-                                                             struct cell *c) {
+static inline void engine_make_external_gravity_dependencies(
+    struct engine *e, struct scheduler *sched, struct task *gravity,
+    struct cell *c) {
 
   /* init --> external gravity --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
@@ -1432,6 +1431,7 @@ static inline void engine_make_external_gravity_dependencies(struct engine *e,
 
   /* link to cell. */
   engine_addlink(e, &c->grav, gravity);
+  atomic_inc(&c->nr_grav);
 }
 
 /**
