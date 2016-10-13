@@ -1045,8 +1045,6 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
 void scheduler_start(struct scheduler *s, unsigned int mask,
                      unsigned int submask) {
 
-  ticks tic = getticks();
-
   /* Store the masks */
   s->mask = mask;
   s->submask = submask | (1 << task_subtype_none);
@@ -1057,18 +1055,14 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
     s->tasks[k].rid = -1;
     s->tasks[k].tic = 0;
     s->tasks[k].toc = 0;
-    if (((1 << s->tasks[k].type) & mask) == 0 || 
+    if (((1 << s->tasks[k].type) & mask) == 0 ||
         ((1 << s->tasks[k].subtype) & s->submask) == 0)
       s->tasks[k].skip = 1;
   }
 
   /* Re-wait the tasks. */
-  message("sheduler_rewait_mapper...");
   threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tasks, s->nr_tasks,
                  sizeof(struct task), 1000, s);
-                 
-  message("preparing tasks took %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
 
 /* Check we have not missed an active task */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1113,9 +1107,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
 #endif
 
   /* Loop over the tasks and enqueue whoever is ready. */
-  /* message("sheduler_enqueue_mapper...");
-  threadpool_map(s->threadpool, scheduler_enqueue_mapper, s->tasks_ind,
-                 s->nr_tasks, sizeof(int), 1000, s); */
   for (int k = 0; k < s->active_count; k++) {
     struct task *t = &s->tasks[s->tid_active[k]];
     if (atomic_dec(&t->wait) == 1 && !t->skip && ((1 << t->type) & s->mask) &&
@@ -1124,7 +1115,7 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
       pthread_cond_signal(&s->sleep_cond);
     }
   }
-  
+
   /* Clear the list of active tasks. */
   s->active_count = 0;
 
@@ -1132,9 +1123,6 @@ void scheduler_start(struct scheduler *s, unsigned int mask,
   pthread_mutex_lock(&s->sleep_mutex);
   pthread_cond_broadcast(&s->sleep_cond);
   pthread_mutex_unlock(&s->sleep_mutex);
-
-  message("enqueueing tasks took %.3f %s.", clocks_from_ticks(getticks() - tic),
-          clocks_getunit());
 }
 
 /**
