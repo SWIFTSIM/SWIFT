@@ -747,10 +747,13 @@ void runner_do_ghost(struct runner *r, struct cell *c) {
 }
 
 /**
- * @brief Drift particles and g-particles in a cell forward in time
+ * @brief Drift particles and g-particles in a cell forward in time,
+ *              unskipping any tasks associated with active cells.
  *
  * @param c The cell.
  * @param e The engine.
+ * @param drift whether to actually drift the particles, will not be
+ *              necessary for non-local cells.
  */
 static void runner_do_drift(struct cell *c, struct engine *e, int drift) {
 

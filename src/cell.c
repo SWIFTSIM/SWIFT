@@ -899,6 +899,7 @@ int cell_is_drift_needed(struct cell *c, int ti_current) {
  * if the space needs to be rebuilt.
  *
  * @param c the #cell.
+ * @param s the #scheduler.
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
