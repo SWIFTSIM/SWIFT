@@ -1248,7 +1248,7 @@ void engine_make_external_gravity_tasks(struct engine *e) {
     /* Is that neighbour local ? */
     if (ci->nodeID != nodeID) continue;
 
-    /* If the cells is local build a self-interaction */
+    /* If the cell is local build a self-interaction */
     scheduler_addtask(sched, task_type_self, task_subtype_external_grav, 0, 0,
                       ci, NULL, 0);
   }
@@ -1390,11 +1390,13 @@ void engine_count_and_link_tasks(struct engine *e) {
 /**
  * @brief Creates the dependency network for the gravity tasks of a given cell.
  *
+ * @param e the #engine
  * @param sched The #scheduler.
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-static inline void engine_make_gravity_dependencies(struct scheduler *sched,
+static inline void engine_make_gravity_dependencies(struct engine *e,
+                                                    struct scheduler *sched,
                                                     struct task *gravity,
                                                     struct cell *c) {
 
@@ -1404,22 +1406,32 @@ static inline void engine_make_gravity_dependencies(struct scheduler *sched,
 
   /* grav_up --> gravity ( --> kick) */
   scheduler_addunlock(sched, c->super->grav_up, gravity);
+
+  /* link to cell. */
+  engine_addlink(e, &c->grav, gravity);
 }
 
 /**
  * @brief Creates the dependency network for the external gravity tasks of a
  * given cell.
  *
+ * @param e the #engine
  * @param sched The #scheduler.
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-static inline void engine_make_external_gravity_dependencies(
-    struct scheduler *sched, struct task *gravity, struct cell *c) {
+static inline void engine_make_external_gravity_dependencies(struct engine *e,
+                                                             struct scheduler
+                                                             *sched, struct
+                                                             task *gravity,
+                                                             struct cell *c) {
 
   /* init --> external gravity --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
   scheduler_addunlock(sched, gravity, c->super->kick);
+
+  /* link to cell. */
+  engine_addlink(e, &c->grav, gravity);
 }
 
 /**
@@ -1470,7 +1482,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Self-interaction for self-gravity? */
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
-      engine_make_gravity_dependencies(sched, t, t->ci);
+      engine_make_gravity_dependencies(e, sched, t, t->ci);
 
     }
 
@@ -1478,7 +1490,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t->type == task_type_self &&
              t->subtype == task_subtype_external_grav) {
 
-      engine_make_external_gravity_dependencies(sched, t, t->ci);
+      engine_make_external_gravity_dependencies(e, sched, t, t->ci);
 
     }
 
@@ -1487,12 +1499,12 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       if (t->ci->nodeID == nodeID) {
 
-        engine_make_gravity_dependencies(sched, t, t->ci);
+        engine_make_gravity_dependencies(e, sched, t, t->ci);
       }
 
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-        engine_make_gravity_dependencies(sched, t, t->cj);
+        engine_make_gravity_dependencies(e, sched, t, t->cj);
       }
 
     }
@@ -1501,7 +1513,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
 
       if (t->ci->nodeID == nodeID) {
-        engine_make_gravity_dependencies(sched, t, t->ci);
+        engine_make_gravity_dependencies(e, sched, t, t->ci);
       }
     }
 
@@ -1510,7 +1522,7 @@ void engine_link_gravity_tasks(struct engine *e) {
              t->subtype == task_subtype_external_grav) {
 
       if (t->ci->nodeID == nodeID) {
-        engine_make_external_gravity_dependencies(sched, t, t->ci);
+        engine_make_external_gravity_dependencies(e, sched, t, t->ci);
       }
     }
 
@@ -1519,11 +1531,11 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       if (t->ci->nodeID == nodeID) {
 
-        engine_make_gravity_dependencies(sched, t, t->ci);
+        engine_make_gravity_dependencies(e, sched, t, t->ci);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-        engine_make_gravity_dependencies(sched, t, t->cj);
+        engine_make_gravity_dependencies(e, sched, t, t->cj);
       }
     }
   }
@@ -1875,12 +1887,12 @@ void engine_maketasks(struct engine *e) {
 
   /* Allocate the list of cell-task links. The maximum number of links
      is the number of cells (s->tot_cells) times the number of neighbours (27)
-     times the number of interaction types (2, density and force). */
+     times the number of interaction types (2, density and force, grav). */
   if (e->links != NULL) free(e->links);
 #ifdef EXTRA_HYDRO_LOOP
-  e->size_links = s->tot_cells * 27 * 3;
+  e->size_links = s->tot_cells * 27 * 4;
 #else
-  e->size_links = s->tot_cells * 27 * 2;
+  e->size_links = s->tot_cells * 27 * 3;
 #endif
   if ((e->links = malloc(sizeof(struct link) * e->size_links)) == NULL)
     error("Failed to allocate cell-task links.");
