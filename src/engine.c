@@ -1329,102 +1329,104 @@ void engine_make_hydroloop_tasks(struct engine *e) {
 /**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
- * For each hydrodynamic task, construct the links with the corresponding cell.
- * Similarly, construct the dependencies for all the sorting tasks.
+ * For each hydrodynamic and gravity task, construct the links with
+ * the corresponding cell.  Similarly, construct the dependencies for
+ * all the sorting tasks.
  *
  * @param e The #engine.
  */
 void engine_count_and_link_tasks(struct engine *e) {
 
-  struct scheduler *sched = &e->sched;
+  struct scheduler *const sched = &e->sched;
+  const int nr_tasks = sched->nr_tasks;
 
-  for (int ind = 0; ind < sched->nr_tasks; ind++) {
+  for (int ind = 0; ind < nr_tasks; ind++) {
 
-    struct task *t = &sched->tasks[ind];
+    struct task *const t = &sched->tasks[ind];
+    struct cell *const ci = t->ci;
+    struct cell *const cj = t->cj;
 
     if (t->skip) continue;
 
     /* Link sort tasks together. */
-    if (t->type == task_type_sort && t->ci->split)
+    if (t->type == task_type_sort && ci->split)
       for (int j = 0; j < 8; j++)
-        if (t->ci->progeny[j] != NULL && t->ci->progeny[j]->sorts != NULL) {
-          t->ci->progeny[j]->sorts->skip = 0;
-          scheduler_addunlock(sched, t->ci->progeny[j]->sorts, t);
+        if (ci->progeny[j] != NULL && ci->progeny[j]->sorts != NULL) {
+          ci->progeny[j]->sorts->skip = 0;
+          scheduler_addunlock(sched, ci->progeny[j]->sorts, t);
         }
 
-    /* Link density tasks to cells. */
+    /* Link self tasks to cells. */
     if (t->type == task_type_self) {
-      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
       }
       if (t->subtype == task_subtype_external_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
       }
 
+      /* Link pair tasks to cells. */
     } else if (t->type == task_type_pair) {
-      atomic_inc(&t->ci->nr_tasks);
-      atomic_inc(&t->cj->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
+      atomic_inc(&cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        engine_addlink(e, &t->cj->density, t);
-        atomic_inc(&t->cj->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
+        engine_addlink(e, &cj->density, t);
+        atomic_inc(&cj->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
-        engine_addlink(e, &t->cj->grav, t);
-        atomic_inc(&t->cj->nr_grav);
-      }
-      if (t->subtype == task_subtype_external_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
-        engine_addlink(e, &t->cj->grav, t);
-        atomic_inc(&t->cj->nr_grav);
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+        engine_addlink(e, &cj->grav, t);
+        atomic_inc(&cj->nr_grav);
       }
 
+      /* Link sub-self tasks to cells. */
     } else if (t->type == task_type_sub_self) {
-      atomic_inc(&t->ci->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
       }
       if (t->subtype == task_subtype_external_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
       }
 
+      /* Link sub-pair tasks to cells. */
     } else if (t->type == task_type_sub_pair) {
-      atomic_inc(&t->ci->nr_tasks);
-      atomic_inc(&t->cj->nr_tasks);
+      atomic_inc(&ci->nr_tasks);
+      atomic_inc(&cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
-        engine_addlink(e, &t->ci->density, t);
-        atomic_inc(&t->ci->nr_density);
-        engine_addlink(e, &t->cj->density, t);
-        atomic_inc(&t->cj->nr_density);
+        engine_addlink(e, &ci->density, t);
+        atomic_inc(&ci->nr_density);
+        engine_addlink(e, &cj->density, t);
+        atomic_inc(&cj->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
-        engine_addlink(e, &t->cj->grav, t);
-        atomic_inc(&t->cj->nr_grav);
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+        engine_addlink(e, &cj->grav, t);
+        atomic_inc(&cj->nr_grav);
       }
       if (t->subtype == task_subtype_external_grav) {
-        engine_addlink(e, &t->ci->grav, t);
-        atomic_inc(&t->ci->nr_grav);
-        engine_addlink(e, &t->cj->grav, t);
-        atomic_inc(&t->cj->nr_grav);
+        error("Found a sub-pair/external-gravity task...");
+        engine_addlink(e, &ci->grav, t);
+        atomic_inc(&ci->nr_grav);
+        engine_addlink(e, &cj->grav, t);
+        atomic_inc(&cj->nr_grav);
       }
     }
   }
