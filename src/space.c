@@ -392,10 +392,6 @@ void space_regrid(struct space *s, double cell_max, int verbose) {
       space_rebuild_recycle(s, &s->cells_top[k]);
       s->cells_top[k].sorts = NULL;
       s->cells_top[k].nr_tasks = 0;
-      s->cells_top[k].nr_density = 0;
-      s->cells_top[k].nr_gradient = 0;
-      s->cells_top[k].nr_force = 0;
-      s->cells_top[k].nr_grav = 0;
       s->cells_top[k].density = NULL;
       s->cells_top[k].gradient = NULL;
       s->cells_top[k].force = NULL;

@@ -757,16 +757,9 @@ void cell_convert_hydro(struct cell *c, void *data) {
  */
 void cell_clean_links(struct cell *c, void *data) {
   c->density = NULL;
-  c->nr_density = 0;
-
   c->gradient = NULL;
-  c->nr_gradient = 0;
-
   c->force = NULL;
-  c->nr_force = 0;
-
   c->grav = NULL;
-  c->nr_grav = 0;
 }
 
 /**
