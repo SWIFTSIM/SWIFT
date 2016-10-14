@@ -139,7 +139,6 @@ struct cell {
 
   /* The tasks computing this cell's density. */
   struct link *density, *gradient, *force, *grav;
-  int nr_density, nr_gradient, nr_force, nr_grav;
 
   /* The hierarchical tasks. */
   struct task *extra_ghost, *ghost, *init, *kick;

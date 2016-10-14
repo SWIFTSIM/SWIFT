@@ -1361,15 +1361,12 @@ void engine_count_and_link_tasks(struct engine *e) {
       atomic_inc(&ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
-        atomic_inc(&ci->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
-        atomic_inc(&ci->nr_grav);
       }
       if (t->subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
-        atomic_inc(&ci->nr_grav);
       }
 
       /* Link pair tasks to cells. */
@@ -1378,15 +1375,11 @@ void engine_count_and_link_tasks(struct engine *e) {
       atomic_inc(&cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
-        atomic_inc(&ci->nr_density);
         engine_addlink(e, &cj->density, t);
-        atomic_inc(&cj->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
-        atomic_inc(&ci->nr_grav);
         engine_addlink(e, &cj->grav, t);
-        atomic_inc(&cj->nr_grav);
       }
 
       /* Link sub-self tasks to cells. */
@@ -1394,15 +1387,12 @@ void engine_count_and_link_tasks(struct engine *e) {
       atomic_inc(&ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
-        atomic_inc(&ci->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
-        atomic_inc(&ci->nr_grav);
       }
       if (t->subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav, t);
-        atomic_inc(&ci->nr_grav);
       }
 
       /* Link sub-pair tasks to cells. */
@@ -1411,22 +1401,16 @@ void engine_count_and_link_tasks(struct engine *e) {
       atomic_inc(&cj->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &ci->density, t);
-        atomic_inc(&ci->nr_density);
         engine_addlink(e, &cj->density, t);
-        atomic_inc(&cj->nr_density);
       }
       if (t->subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav, t);
-        atomic_inc(&ci->nr_grav);
         engine_addlink(e, &cj->grav, t);
-        atomic_inc(&cj->nr_grav);
       }
       if (t->subtype == task_subtype_external_grav) {
         error("Found a sub-pair/external-gravity task...");
         engine_addlink(e, &ci->grav, t);
-        atomic_inc(&ci->nr_grav);
         engine_addlink(e, &cj->grav, t);
-        atomic_inc(&cj->nr_grav);
       }
     }
   }
@@ -1658,9 +1642,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loops and the cell */
       engine_addlink(e, &t->ci->gradient, t2);
-      atomic_inc(&t->ci->nr_gradient);
       engine_addlink(e, &t->ci->force, t3);
-      atomic_inc(&t->ci->nr_force);
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t3, t->ci);
@@ -1673,7 +1655,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
 
       /* Now, build all the dependencies for the hydro */
       engine_make_hydro_loops_dependencies(sched, t, t2, t->ci);
@@ -1692,13 +1673,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->gradient, t2);
-      atomic_inc(&t->ci->nr_gradient);
       engine_addlink(e, &t->cj->gradient, t2);
-      atomic_inc(&t->cj->nr_gradient);
       engine_addlink(e, &t->ci->force, t3);
-      atomic_inc(&t->ci->nr_force);
       engine_addlink(e, &t->cj->force, t3);
-      atomic_inc(&t->cj->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
@@ -1717,9 +1694,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
       engine_addlink(e, &t->cj->force, t2);
-      atomic_inc(&t->cj->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
@@ -1750,9 +1725,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->gradient, t2);
-      atomic_inc(&t->ci->nr_gradient);
       engine_addlink(e, &t->ci->force, t3);
-      atomic_inc(&t->ci->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
@@ -1768,7 +1741,6 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loop and the cell */
       engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
@@ -1794,13 +1766,9 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->gradient, t2);
-      atomic_inc(&t->ci->nr_gradient);
       engine_addlink(e, &t->cj->gradient, t2);
-      atomic_inc(&t->cj->nr_gradient);
       engine_addlink(e, &t->ci->force, t3);
-      atomic_inc(&t->ci->nr_force);
       engine_addlink(e, &t->cj->force, t3);
-      atomic_inc(&t->cj->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
@@ -1819,9 +1787,7 @@ void engine_make_extra_hydroloop_tasks(struct engine *e) {
 
       /* Add the link between the new loop and both cells */
       engine_addlink(e, &t->ci->force, t2);
-      atomic_inc(&t->ci->nr_force);
       engine_addlink(e, &t->cj->force, t2);
-      atomic_inc(&t->cj->nr_force);
 
       /* Now, build all the dependencies for the hydro for the cells */
       /* that are local and are not descendant of the same super-cells */
