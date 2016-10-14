@@ -1359,6 +1359,15 @@ void engine_count_and_link_tasks(struct engine *e) {
         engine_addlink(e, &t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
       }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+      }
+
     } else if (t->type == task_type_pair) {
       atomic_inc(&t->ci->nr_tasks);
       atomic_inc(&t->cj->nr_tasks);
@@ -1368,12 +1377,34 @@ void engine_count_and_link_tasks(struct engine *e) {
         engine_addlink(e, &t->cj->density, t);
         atomic_inc(&t->cj->nr_density);
       }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &t->cj->grav, t);
+        atomic_inc(&t->cj->nr_grav);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &t->cj->grav, t);
+        atomic_inc(&t->cj->nr_grav);
+      }
+
     } else if (t->type == task_type_sub_self) {
       atomic_inc(&t->ci->nr_tasks);
       if (t->subtype == task_subtype_density) {
         engine_addlink(e, &t->ci->density, t);
         atomic_inc(&t->ci->nr_density);
       }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+      }
+
     } else if (t->type == task_type_sub_pair) {
       atomic_inc(&t->ci->nr_tasks);
       atomic_inc(&t->cj->nr_tasks);
@@ -1383,6 +1414,18 @@ void engine_count_and_link_tasks(struct engine *e) {
         engine_addlink(e, &t->cj->density, t);
         atomic_inc(&t->cj->nr_density);
       }
+      if (t->subtype == task_subtype_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &t->cj->grav, t);
+        atomic_inc(&t->cj->nr_grav);
+      }
+      if (t->subtype == task_subtype_external_grav) {
+        engine_addlink(e, &t->ci->grav, t);
+        atomic_inc(&t->ci->nr_grav);
+        engine_addlink(e, &t->cj->grav, t);
+        atomic_inc(&t->cj->nr_grav);
+      }
     }
   }
 }
@@ -1390,13 +1433,11 @@ void engine_count_and_link_tasks(struct engine *e) {
 /**
  * @brief Creates the dependency network for the gravity tasks of a given cell.
  *
- * @param e the #engine
  * @param sched The #scheduler.
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
-static inline void engine_make_gravity_dependencies(struct engine *e,
-                                                    struct scheduler *sched,
+static inline void engine_make_gravity_dependencies(struct scheduler *sched,
                                                     struct task *gravity,
                                                     struct cell *c) {
 
@@ -1406,32 +1447,22 @@ static inline void engine_make_gravity_dependencies(struct engine *e,
 
   /* grav_up --> gravity ( --> kick) */
   scheduler_addunlock(sched, c->super->grav_up, gravity);
-
-  /* link to cell. */
-  engine_addlink(e, &c->grav, gravity);
-  atomic_inc(&c->nr_grav);
 }
 
 /**
  * @brief Creates the dependency network for the external gravity tasks of a
  * given cell.
  *
- * @param e the #engine
  * @param sched The #scheduler.
  * @param gravity The gravity task to link.
  * @param c The cell.
  */
 static inline void engine_make_external_gravity_dependencies(
-    struct engine *e, struct scheduler *sched, struct task *gravity,
-    struct cell *c) {
+    struct scheduler *sched, struct task *gravity, struct cell *c) {
 
   /* init --> external gravity --> kick */
   scheduler_addunlock(sched, c->super->init, gravity);
   scheduler_addunlock(sched, gravity, c->super->kick);
-
-  /* link to cell. */
-  engine_addlink(e, &c->grav, gravity);
-  atomic_inc(&c->nr_grav);
 }
 
 /**
@@ -1482,7 +1513,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     /* Self-interaction for self-gravity? */
     if (t->type == task_type_self && t->subtype == task_subtype_grav) {
 
-      engine_make_gravity_dependencies(e, sched, t, t->ci);
+      engine_make_gravity_dependencies(sched, t, t->ci);
 
     }
 
@@ -1490,7 +1521,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t->type == task_type_self &&
              t->subtype == task_subtype_external_grav) {
 
-      engine_make_external_gravity_dependencies(e, sched, t, t->ci);
+      engine_make_external_gravity_dependencies(sched, t, t->ci);
 
     }
 
@@ -1499,12 +1530,12 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       if (t->ci->nodeID == nodeID) {
 
-        engine_make_gravity_dependencies(e, sched, t, t->ci);
+        engine_make_gravity_dependencies(sched, t, t->ci);
       }
 
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-        engine_make_gravity_dependencies(e, sched, t, t->cj);
+        engine_make_gravity_dependencies(sched, t, t->cj);
       }
 
     }
@@ -1513,7 +1544,7 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t->type == task_type_sub_self && t->subtype == task_subtype_grav) {
 
       if (t->ci->nodeID == nodeID) {
-        engine_make_gravity_dependencies(e, sched, t, t->ci);
+        engine_make_gravity_dependencies(sched, t, t->ci);
       }
     }
 
@@ -1522,7 +1553,7 @@ void engine_link_gravity_tasks(struct engine *e) {
              t->subtype == task_subtype_external_grav) {
 
       if (t->ci->nodeID == nodeID) {
-        engine_make_external_gravity_dependencies(e, sched, t, t->ci);
+        engine_make_external_gravity_dependencies(sched, t, t->ci);
       }
     }
 
@@ -1531,11 +1562,11 @@ void engine_link_gravity_tasks(struct engine *e) {
 
       if (t->ci->nodeID == nodeID) {
 
-        engine_make_gravity_dependencies(e, sched, t, t->ci);
+        engine_make_gravity_dependencies(sched, t, t->ci);
       }
       if (t->cj->nodeID == nodeID && t->ci->super != t->cj->super) {
 
-        engine_make_gravity_dependencies(e, sched, t, t->cj);
+        engine_make_gravity_dependencies(sched, t, t->cj);
       }
     }
   }
