@@ -2869,7 +2869,7 @@ void engine_drift(struct engine *e) {
                  e->s->nr_cells, sizeof(struct cell), 1, e);
 
   if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+    message("took %.3f %s (including task unskipping).", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
 
