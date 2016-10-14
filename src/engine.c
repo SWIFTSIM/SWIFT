@@ -2181,17 +2181,21 @@ int engine_marktasks(struct engine *e) {
  */
 void engine_print_task_counts(struct engine *e) {
 
-  struct scheduler *sched = &e->sched;
+  const ticks tic = getticks();
+  struct scheduler *const sched = &e->sched;
+  const int nr_tasks = sched->nr_tasks;
+  const struct task *const tasks = sched->tasks;
 
   /* Count and print the number of each task type. */
   int counts[task_type_count + 1];
   for (int k = 0; k <= task_type_count; k++) counts[k] = 0;
-  for (int k = 0; k < sched->nr_tasks; k++) {
-    if (sched->tasks[k].skip)
+  for (int k = 0; k < nr_tasks; k++) {
+    if (tasks[k].skip)
       counts[task_type_count] += 1;
     else
-      counts[(int)sched->tasks[k].type] += 1;
+      counts[(int)tasks[k].type] += 1;
   }
+  message("Total = %d", nr_tasks);
 #ifdef WITH_MPI
   printf("[%04i] %s engine_print_task_counts: task counts are [ %s=%i",
          e->nodeID, clocks_get_timesincestart(), taskID_names[0], counts[0]);
@@ -2205,6 +2209,10 @@ void engine_print_task_counts(struct engine *e) {
   fflush(stdout);
   message("nr_parts = %zu.", e->s->nr_parts);
   message("nr_gparts = %zu.", e->s->nr_gparts);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
