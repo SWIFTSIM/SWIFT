@@ -179,12 +179,6 @@ struct cell {
   /* ID of the previous owner, e.g. runner. */
   int owner;
 
-  /* Momentum of particles in cell. */
-  double mom[3], ang_mom[3];
-
-  /* Mass, potential, internal  and kinetic energy of particles in this cell. */
-  double mass, e_pot, e_int, e_kin, e_rad, entropy;
-
   /* Number of particles updated in this cell. */
   int updated, g_updated;
 
