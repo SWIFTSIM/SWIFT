@@ -2460,61 +2460,28 @@ void engine_collect_timestep(struct engine *e) {
 void engine_print_stats(struct engine *e) {
 
   const ticks tic = getticks();
-  const struct space *s = e->s;
 
   struct statistics stats;
-  bzero(&stats, sizeof(struct statistics));
+  stats_init(&stats);
 
   /* Collect the stats on this node */
-  stats_collect(s, &stats);
+  stats_collect(e->s, &stats);
 
 /* Aggregate the data from the different nodes. */
 #ifdef WITH_MPI
-/* { */
-/*   double in[12] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.}; */
-/*   double out[12]; */
-/*   out[0] = e_kin; */
-/*   out[1] = e_int; */
-/*   out[2] = e_pot; */
-/*   out[3] = e_rad; */
-/*   out[4] = mom[0]; */
-/*   out[5] = mom[1]; */
-/*   out[6] = mom[2]; */
-/*   out[7] = ang_mom[0]; */
-/*   out[8] = ang_mom[1]; */
-/*   out[9] = ang_mom[2]; */
-/*   out[10] = mass; */
-/*   out[11] = entropy; */
-/*   if (MPI_Reduce(out, in, 11, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD) != */
-/*       MPI_SUCCESS) */
-/*     error("Failed to aggregate stats."); */
-/*   e_kin = out[0]; */
-/*   e_int = out[1]; */
-/*   e_pot = out[2]; */
-/*   e_rad = out[3]; */
-/*   mom[0] = out[4]; */
-/*   mom[1] = out[5]; */
-/*   mom[2] = out[6]; */
-/*   ang_mom[0] = out[7]; */
-/*   ang_mom[1] = out[8]; */
-/*   ang_mom[2] = out[9]; */
-/*   mass = out[10]; */
-/*   entropy = out[11]; */
-/* } */
+  struct statistics global_stats;
+  stats_init(&global_stats);
+
+  if (MPI_Reduce(&stats, &global_stats, 1, statistics_mpi_type,
+                 statistics_mpi_reduce_op, 0, MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to aggregate stats.");
+#else
+  struct statistics global_stats = stats;
 #endif
 
-  const double E_tot = stats.E_kin + stats.E_int + stats.E_pot;
-
   /* Print info */
-  if (e->nodeID == 0) {
-    fprintf(e->file_stats,
-            " %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-            "%14e\n",
-            e->time, stats.mass, E_tot, stats.E_kin, stats.E_int, stats.E_pot,
-            stats.E_rad, stats.entropy, stats.mom[0], stats.mom[1],
-            stats.mom[2], stats.ang_mom[0], stats.ang_mom[1], stats.ang_mom[2]);
-    fflush(e->file_stats);
-  }
+  if (e->nodeID == 0)
+    stats_print_to_file(e->file_stats, &global_stats, e->time);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -3483,6 +3450,7 @@ void engine_init(struct engine *e, struct space *s,
 /* Construct types for MPI communications */
 #ifdef WITH_MPI
   part_create_mpi_types();
+  stats_create_MPI_type();
 #endif
 
   /* Initialize the threadpool. */

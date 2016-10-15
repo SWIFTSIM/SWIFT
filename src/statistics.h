@@ -60,5 +60,17 @@ struct statistics {
 };
 
 void stats_collect(const struct space* s, struct statistics* stats);
+void stats_add(struct statistics* a, const struct statistics* b);
+void stats_print_to_file(FILE* file, const struct statistics* stats,
+                         double time);
+void stats_init(struct statistics* s);
+
+#ifdef WITH_MPI
+extern MPI_Datatype statistics_mpi_type;
+extern MPI_Op statistics_mpi_reduce_op;
+
+void stats_add_MPI(void* in, void* out, int* len, MPI_Datatype* datatype);
+void stats_create_MPI_type();
+#endif
 
 #endif /* SWIFT_STATISTICS_H */
